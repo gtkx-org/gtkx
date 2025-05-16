@@ -1,18 +1,15 @@
 import { call } from "@gtkx/native";
 
 const getMajorVersion = () => {
-  call("getMajorVersion", [], "number");
-  return 4;
+  return call("gtk_get_major_version", [], "number");
 };
 
 const getMinorVersion = () => {
-  call("getMinorVersion", [], "number");
-  return 10;
+  return call("gtk_get_minor_version", [], "number");
 };
 
 const getMicroVersion = () => {
-  call("getMicroVersion", [], "number");
-  return 4;
+  return call("gtk_get_micro_version", [], "number");
 };
 
 export { getMajorVersion, getMinorVersion, getMicroVersion };

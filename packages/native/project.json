@@ -2,7 +2,7 @@
   "targets": {
     "build": {
       "inputs": [
-        "{projectRoot}/src",
+        "{projectRoot}/src/**/*",
         "{projectRoot}/index.d.ts",
         "{projectRoot}/index.js",
         "{projectRoot}/package-lock.json"
