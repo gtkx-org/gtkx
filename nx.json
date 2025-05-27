@@ -19,7 +19,7 @@
       "cache": true
     }
   },
-  "nxCloudId": "68211a61db7c0371a056553d",
+  "nxCloudId": "683633c628e9eb683bfef9b9",
   "plugins": [
     {
       "plugin": "@nx/js/typescript",
