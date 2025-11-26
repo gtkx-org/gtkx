@@ -14,4 +14,5 @@ export interface Node<W extends gtk.Widget = gtk.Widget> {
     mount(): void;
     attachToParent(parent: Node): void;
     detachFromParent(parent: Node): void;
+    dispose?(): void;
 }

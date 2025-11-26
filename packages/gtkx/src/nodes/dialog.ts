@@ -1,7 +1,7 @@
 import type * as gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
-import { isConnectable, isPresentable } from "../widget-capabilities.js";
+import { disconnectSignalHandlers, isConnectable, isPresentable } from "../widget-capabilities.js";
 
 const DIALOG_TYPES = ["FileDialog", "ColorDialog", "FontDialog", "AlertDialog", "AboutDialog"];
 
@@ -104,4 +104,8 @@ export class DialogNode implements Node {
     attachToParent(_parent: Node): void {}
 
     detachFromParent(_parent: Node): void {}
+
+    dispose(): void {
+        disconnectSignalHandlers(this.dialog, this.signalHandlers);
+    }
 }

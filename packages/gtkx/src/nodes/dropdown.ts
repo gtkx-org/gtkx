@@ -4,6 +4,7 @@ import type { Node } from "../node.js";
 import {
     appendChild,
     type Connectable,
+    disconnectSignalHandlers,
     isConnectable,
     isModelSettable,
     isSelectable,
@@ -83,6 +84,7 @@ export class DropDownNode implements Node<DropDownWidget> {
     private widget: DropDownWidget;
     private labelFn: ItemLabelFn<unknown>;
     private onSelectionChanged?: (item: unknown, index: number) => void;
+    private signalHandlers = new Map<string, number>();
 
     constructor(_type: string, widget: gtk.Widget, props: Props) {
         if (!isDropDownWidget(widget)) {
@@ -101,7 +103,8 @@ export class DropDownNode implements Node<DropDownWidget> {
                 const item = store?.getItem(index);
                 this.onSelectionChanged?.(item, index);
             };
-            this.widget.connect("notify::selected", handler);
+            const handlerId = this.widget.connect("notify::selected", handler);
+            this.signalHandlers.set("notify::selected", handlerId);
         }
     }
 
@@ -170,6 +173,10 @@ export class DropDownNode implements Node<DropDownWidget> {
     }
 
     mount(): void {}
+
+    dispose(): void {
+        disconnectSignalHandlers(this.widget, this.signalHandlers);
+    }
 }
 
 /**

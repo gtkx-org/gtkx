@@ -92,3 +92,7 @@ export const removeChild = (parent: gtk.Widget, child: gtk.Widget): void => {
         parent.setChild(null);
     }
 };
+
+export type SignalHandlerMap = Map<string, number>;
+
+export { disconnectSignalHandlers } from "./signal-utils.js";

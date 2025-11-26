@@ -1,7 +1,7 @@
 import * as gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
-import { appendChild, isConnectable, removeChild } from "../widget-capabilities.js";
+import { appendChild, disconnectSignalHandlers, isConnectable, removeChild } from "../widget-capabilities.js";
 
 type RenderItemFn<T> = (item: T | null) => gtk.Widget;
 
@@ -33,6 +33,7 @@ export class ListViewNode<T = unknown> implements Node<ListViewWidget> {
     private items: T[] = [];
     private renderItem: RenderItemFn<T> | null = null;
     private signalHandlers = new Map<string, number>();
+    private factorySignalHandlers = new Map<string, number>();
 
     constructor(_type: string, widget: gtk.Widget, props: Props) {
         if (!isListViewWidget(widget)) {
@@ -46,7 +47,7 @@ export class ListViewNode<T = unknown> implements Node<ListViewWidget> {
 
         this.renderItem = props.renderItem as RenderItemFn<T> | null;
 
-        this.factory.connect("setup", (listItemPtr: unknown) => {
+        const setupHandlerId = this.factory.connect("setup", (listItemPtr: unknown) => {
             const listItem = Object.create(gtk.ListItem.prototype) as gtk.ListItem;
             listItem.ptr = listItemPtr;
 
@@ -55,8 +56,9 @@ export class ListViewNode<T = unknown> implements Node<ListViewWidget> {
                 listItem.setChild(widget.ptr);
             }
         });
+        this.factorySignalHandlers.set("setup", setupHandlerId);
 
-        this.factory.connect("bind", (listItemPtr: unknown) => {
+        const bindHandlerId = this.factory.connect("bind", (listItemPtr: unknown) => {
             const listItem = Object.create(gtk.ListItem.prototype) as gtk.ListItem;
             listItem.ptr = listItemPtr;
 
@@ -68,6 +70,7 @@ export class ListViewNode<T = unknown> implements Node<ListViewWidget> {
                 listItem.setChild(widget.ptr);
             }
         });
+        this.factorySignalHandlers.set("bind", bindHandlerId);
 
         this.widget.setModel(this.selectionModel.ptr);
         this.widget.setFactory(this.factory.ptr);
@@ -160,6 +163,11 @@ export class ListViewNode<T = unknown> implements Node<ListViewWidget> {
     }
 
     mount(): void {}
+
+    dispose(): void {
+        disconnectSignalHandlers(this.widget, this.signalHandlers);
+        disconnectSignalHandlers(this.factory, this.factorySignalHandlers);
+    }
 }
 
 const LIST_WIDGETS = ["ListView", "ColumnView", "GridView"];

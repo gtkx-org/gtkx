@@ -141,7 +141,9 @@ export class GtkReconciler {
             afterActiveInstanceBlur: () => {},
             prepareScopeUpdate: () => {},
             getInstanceFromScope: () => null,
-            detachDeletedInstance: () => {},
+            detachDeletedInstance: (instance: Node): void => {
+                instance.dispose?.();
+            },
             resetFormInstance: (): void => {},
             requestPostPaintCallback: (): void => {},
             shouldAttemptEagerTransition: () => false,

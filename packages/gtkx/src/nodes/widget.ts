@@ -2,7 +2,14 @@ import type * as gtk from "@gtkx/ffi/gtk";
 import { call } from "@gtkx/native";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
-import { appendChild, isConnectable, isDefaultSizable, isPresentable, removeChild } from "../widget-capabilities.js";
+import {
+    appendChild,
+    disconnectSignalHandlers,
+    isConnectable,
+    isDefaultSizable,
+    isPresentable,
+    removeChild,
+} from "../widget-capabilities.js";
 import { ActionBarNode } from "./action-bar.js";
 import { NotebookNode } from "./notebook.js";
 import { OverlayNode } from "./overlay.js";
@@ -168,5 +175,9 @@ export class WidgetNode implements Node {
         if (isPresentable(this.widget)) {
             this.widget.present();
         }
+    }
+
+    dispose(): void {
+        disconnectSignalHandlers(this.widget, this.signalHandlers);
     }
 }
