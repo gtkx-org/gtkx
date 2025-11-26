@@ -1,8 +1,28 @@
 {
     "name": "@gtkx/gtkx",
-    "version": "0.1.0",
+    "version": "0.1.1",
+    "description": "Build GTK4 desktop applications with React and TypeScript",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eugeniodepalo/gtkx.git",
+        "directory": "packages/gtkx"
+    },
+    "homepage": "https://eugeniodepalo.github.io/gtkx",
+    "bugs": {
+        "url": "https://github.com/eugeniodepalo/gtkx/issues"
+    },
+    "keywords": [
+        "gtk",
+        "gtk4",
+        "react",
+        "typescript",
+        "linux",
+        "desktop",
+        "gui",
+        "native"
+    ],
     "type": "module",
     "exports": {
         "./package.json": "./package.json",
@@ -12,6 +32,9 @@
             "types": "./dist/index.d.ts"
         }
     },
+    "files": [
+        "dist"
+    ],
     "scripts": {
         "build": "tsc -b",
         "codegen": "tsx scripts/codegen.ts"

@@ -1,8 +1,27 @@
 {
     "name": "@gtkx/ffi",
-    "version": "0.1.0",
+    "version": "0.1.1",
+    "description": "Generated TypeScript FFI bindings for GTK4 libraries",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eugeniodepalo/gtkx.git",
+        "directory": "packages/ffi"
+    },
+    "homepage": "https://eugeniodepalo.github.io/gtkx",
+    "bugs": {
+        "url": "https://github.com/eugeniodepalo/gtkx/issues"
+    },
+    "keywords": [
+        "gtk",
+        "gtk4",
+        "ffi",
+        "bindings",
+        "typescript",
+        "linux",
+        "desktop"
+    ],
     "type": "module",
     "exports": {
         "./package.json": "./package.json",
@@ -17,6 +36,9 @@
             "types": "./dist/generated/*/index.d.ts"
         }
     },
+    "files": [
+        "dist"
+    ],
     "scripts": {
         "build": "tsc -b",
         "codegen": "tsx scripts/codegen.ts"

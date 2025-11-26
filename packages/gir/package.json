@@ -1,11 +1,32 @@
 {
     "name": "@gtkx/gir",
-    "version": "0.1.0",
+    "version": "0.1.1",
+    "description": "GObject Introspection file parser for GTKX",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eugeniodepalo/gtkx.git",
+        "directory": "packages/gir"
+    },
+    "homepage": "https://eugeniodepalo.github.io/gtkx",
+    "bugs": {
+        "url": "https://github.com/eugeniodepalo/gtkx/issues"
+    },
+    "keywords": [
+        "gtk",
+        "gtk4",
+        "gir",
+        "gobject",
+        "introspection",
+        "parser"
+    ],
     "type": "module",
     "exports": {
         "./package.json": "./package.json",
         ".": "./src/index.ts"
-    }
+    },
+    "files": [
+        "src"
+    ]
 }

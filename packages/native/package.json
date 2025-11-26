@@ -1,8 +1,27 @@
 {
     "name": "@gtkx/native",
-    "version": "0.1.0",
+    "version": "0.1.1",
+    "description": "Rust-based native module providing FFI bindings for GTKX",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eugeniodepalo/gtkx.git",
+        "directory": "packages/native"
+    },
+    "homepage": "https://eugeniodepalo.github.io/gtkx",
+    "bugs": {
+        "url": "https://github.com/eugeniodepalo/gtkx/issues"
+    },
+    "keywords": [
+        "gtk",
+        "gtk4",
+        "react",
+        "native",
+        "ffi",
+        "linux",
+        "desktop"
+    ],
     "type": "module",
     "exports": {
         "./package.json": "./package.json",
@@ -12,6 +31,10 @@
             "types": "./dist/index.d.ts"
         }
     },
+    "files": [
+        "dist",
+        "index.node"
+    ],
     "scripts": {
         "build": "tsc -b && cp index.node dist/",
         "native-build": "cargo build --message-format=json-render-diagnostics --release > cargo.log && neon dist < cargo.log",

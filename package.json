@@ -4,6 +4,7 @@
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
+    "private": true,
     "scripts": {
         "build": "turbo build",
         "docs": "pnpm --filter website start",

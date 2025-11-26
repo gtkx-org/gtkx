@@ -11,6 +11,21 @@
     }
 }
 
+.heroLogo {
+    width: 128px;
+    height: 128px;
+    margin-bottom: 1.5rem;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+}
+
+@media screen and (max-width: 996px) {
+    .heroLogo {
+        width: 96px;
+        height: 96px;
+        margin-bottom: 1rem;
+    }
+}
+
 .buttons {
     display: flex;
     align-items: center;
@@ -29,13 +44,16 @@
 }
 
 .screenshot {
+    max-width: 800px;
     width: 100%;
     border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.08);
+    margin: 0 auto;
+    display: block;
 }
 
 [data-theme="dark"] .screenshot {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .codeExample {

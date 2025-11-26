@@ -11,52 +11,87 @@ This guide will help you set up GTKX and create your first GTK4 application with
 Before you begin, ensure you have the following installed:
 
 - **Node.js** 20 or later
-- **pnpm** package manager
-- **Rust** toolchain (for building the native module)
 - **GTK4** development libraries
 
 ### Installing GTK4 on Linux
 
 **Fedora:**
 ```bash
-sudo dnf install gtk4-devel gobject-introspection-devel
+sudo dnf install gtk4-devel
 ```
 
 **Ubuntu/Debian:**
 ```bash
-sudo apt install libgtk-4-dev gobject-introspection
+sudo apt install libgtk-4-dev
 ```
 
 **Arch Linux:**
 ```bash
-sudo pacman -S gtk4 gobject-introspection
+sudo pacman -S gtk4
 ```
 
 ## Installation
 
-### Option 1: Clone the Repository
+Install the GTKX packages from npm:
 
 ```bash
-git clone https://github.com/eugeniodepalo/gtkx.git
-cd gtkx
-pnpm install
+npm install @gtkx/gtkx react
 ```
 
-### Initial Build
-
-Run the full build to generate FFI bindings and compile the native module:
+Or with pnpm:
 
 ```bash
-# Sync GIR files from your system
-cd packages/ffi && pnpm run codegen --sync
-
-# Build all packages
-cd ../.. && pnpm build
+pnpm add @gtkx/gtkx react
 ```
 
 ## Creating Your First App
 
-Create a new file `src/index.tsx`:
+### Project Setup
+
+Create a new directory and initialize your project:
+
+```bash
+mkdir my-gtkx-app
+cd my-gtkx-app
+npm init -y
+npm install @gtkx/gtkx react typescript @types/react
+```
+
+### Configuration
+
+Create `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src"]
+}
+```
+
+Update your `package.json`:
+
+```json
+{
+  "name": "my-gtkx-app",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  }
+}
+```
+
+### Your First Component
+
+Create `src/index.tsx`:
 
 ```tsx
 import { ApplicationWindow, Button, Box, Label, quit, render } from "@gtkx/gtkx";
@@ -90,11 +125,11 @@ const App = () => {
 render(<App />, "com.example.myapp");
 ```
 
-## Running Your App
+### Run Your App
 
 ```bash
-pnpm build
-pnpm start
+npm run build
+npm start
 ```
 
 ## Project Structure
@@ -105,64 +140,38 @@ A typical GTKX project looks like:
 my-gtkx-app/
 ├── src/
 │   └── index.tsx      # Entry point
+├── dist/              # Compiled output
 ├── package.json
 └── tsconfig.json
 ```
 
-### package.json
+## Building from Source
 
-```json
-{
-  "name": "my-gtkx-app",
-  "type": "module",
-  "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js"
-  },
-  "dependencies": {
-    "@gtkx/gtkx": "workspace:*",
-    "@gtkx/ffi": "workspace:*",
-    "react": "^19.0.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.0.0"
-  }
-}
-```
-
-### tsconfig.json
-
-```json
-{
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
-    "strict": true,
-    "outDir": "dist",
-    "rootDir": "src"
-  },
-  "include": ["src"]
-}
-```
-
-## Running the Examples
-
-The repository includes example applications:
+If you want to contribute or need the latest development version:
 
 ```bash
-# Simple demo
-cd examples/demo
-pnpm build && pnpm start
+# Clone the repository
+git clone https://github.com/eugeniodepalo/gtkx.git
+cd gtkx
 
-# Kitchen sink with all widgets
-cd examples/kitchen-sink
-pnpm build && pnpm start
+# Install dependencies
+pnpm install
+
+# Install additional build dependencies
+# Fedora: sudo dnf install gobject-introspection-devel
+# Ubuntu: sudo apt install gobject-introspection
+# You also need Rust toolchain for the native module
+
+# Sync GIR files and build
+cd packages/ffi && pnpm run codegen --sync
+cd ../.. && pnpm build
+
+# Run the examples
+cd examples/demo && pnpm build && pnpm start
 ```
 
 ## Next Steps
 
-- [Components Guide](./guides/components) - Learn about available widgets
-- [Event Handling](./guides/events) - Handle user interactions
-- [Architecture](./architecture) - Understand how GTKX works internally
+- [Components Guide](/docs/guides/components) - Learn about available widgets
+- [Event Handling](/docs/guides/events) - Handle user interactions
+- [Architecture](/docs/architecture) - Understand how GTKX works internally
