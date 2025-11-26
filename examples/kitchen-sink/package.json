@@ -4,6 +4,7 @@
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
+    "private": true,
     "scripts": {
         "build": "tsc -b",
         "start": "node ./dist/index.js"
