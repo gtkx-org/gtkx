@@ -66,11 +66,6 @@ const removeItemFromList = <T>(widget: gtk.Widget, item: T): void => {
     }
 };
 
-type WidgetNodeLike = Node & { getWidget: () => gtk.Widget };
-
-const hasGetWidget = (node: Node): node is WidgetNodeLike =>
-    "getWidget" in node && typeof (node as WidgetNodeLike).getWidget === "function";
-
 const LIST_WIDGETS = ["ListView", "ColumnView", "GridView"];
 
 /**
@@ -121,14 +116,16 @@ export class ListItemNode<T = unknown> implements Node {
     insertBefore(_child: Node, _before: Node): void {}
 
     attachToParent(parent: Node): void {
-        if (hasGetWidget(parent)) {
-            addItemToList(parent.getWidget(), this.item);
+        const widget = parent.getWidget?.();
+        if (widget) {
+            addItemToList(widget, this.item);
         }
     }
 
     detachFromParent(parent: Node): void {
-        if (hasGetWidget(parent)) {
-            removeItemFromList(parent.getWidget(), this.item);
+        const widget = parent.getWidget?.();
+        if (widget) {
+            removeItemFromList(widget, this.item);
         }
     }
 

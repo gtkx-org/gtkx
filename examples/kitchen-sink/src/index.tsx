@@ -43,7 +43,7 @@ import {
     TextView,
     ToggleButton,
 } from "@gtkx/gtkx";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const ButtonsSection = () => {
     const [clickCount, setClickCount] = useState(0);
@@ -73,12 +73,19 @@ const ButtonsSection = () => {
                         <FontDialogButton />
                     </Box>
                     <Box spacing={10}>
-                        <EmojiChooser
-                            onEmojiPicked={(emoji: string) => {
-                                if (emoji) setSelectedEmoji(emoji);
-                            }}
-                        />
-                        <Label.Root label={`Selected: ${selectedEmoji}`} />
+                        <MenuButton.Root label={`Emoji: ${selectedEmoji}`}>
+                            <MenuButton.Popover>
+                                <Popover.Root>
+                                    <Popover.Child>
+                                        <EmojiChooser
+                                            onEmojiPicked={(emoji: string) => {
+                                                if (emoji) setSelectedEmoji(emoji);
+                                            }}
+                                        />
+                                    </Popover.Child>
+                                </Popover.Root>
+                            </MenuButton.Popover>
+                        </MenuButton.Root>
                     </Box>
                 </Box>
             </Frame.Child>
@@ -89,8 +96,11 @@ const ButtonsSection = () => {
 const InputsSection = () => {
     const [checked, setChecked] = useState(false);
     const [switchOn, setSwitchOn] = useState(true);
-    const [entryText, setEntryText] = useState("");
     const [selectedRadio, setSelectedRadio] = useState(0);
+    const [spinValue, setSpinValue] = useState(50);
+
+    const spinAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
+    const scaleAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
 
     return (
         <Frame.Root>
@@ -101,11 +111,7 @@ const InputsSection = () => {
                 <Box spacing={10} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
                     <Box spacing={5}>
                         <Label.Root label="Entry:" />
-                        <Entry
-                            placeholderText="Type something..."
-                            text={entryText}
-                            onChanged={() => setEntryText(entryText)}
-                        />
+                        <Entry placeholderText="Type something..." />
                     </Box>
                     <Box spacing={5}>
                         <Label.Root label="Search:" />
@@ -147,11 +153,15 @@ const InputsSection = () => {
                     </Box>
                     <Box spacing={10}>
                         <Label.Root label="SpinButton:" />
-                        <SpinButton />
+                        <SpinButton
+                            adjustment={spinAdjustment.ptr}
+                            onValueChanged={() => setSpinValue(Math.round(spinAdjustment.getValue()))}
+                        />
+                        <Label.Root label={`Value: ${spinValue}`} />
                     </Box>
                     <Box spacing={10} hexpand>
                         <Label.Root label="Scale:" />
-                        <Scale hexpand drawValue />
+                        <Scale hexpand drawValue adjustment={scaleAdjustment.ptr} />
                     </Box>
                 </Box>
             </Frame.Child>
@@ -250,45 +260,44 @@ const ListBoxSection = () => (
     </Frame.Root>
 );
 
-const PopoverSection = () => {
-    const [popoverOpen, setPopoverOpen] = useState(false);
-
-    return (
-        <Frame.Root>
-            <Frame.LabelWidget>
-                <Label.Root label="Popover & MenuButton" />
-            </Frame.LabelWidget>
-            <Frame.Child>
-                <Box spacing={10} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
-                    <Popover.Root autohide>
-                        <Popover.Child>
-                            <Box spacing={10} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
-                                <Label.Root label="Popover Content!" />
-                                <Button label="Action 1" onClicked={() => {}} />
-                                <Button label="Action 2" onClicked={() => {}} />
-                            </Box>
-                        </Popover.Child>
-                        <Button label="Open Popover" onClicked={() => setPopoverOpen(!popoverOpen)} />
-                    </Popover.Root>
-                    <MenuButton.Root label="Menu Button">
-                        <MenuButton.Popover>
-                            <Popover.Root>
-                                <Popover.Child>
-                                    <Box spacing={5} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
-                                        <Button label="Menu Item 1" onClicked={() => {}} />
-                                        <Button label="Menu Item 2" onClicked={() => {}} />
-                                        <Separator />
-                                        <Button label="Menu Item 3" onClicked={() => {}} />
-                                    </Box>
-                                </Popover.Child>
-                            </Popover.Root>
-                        </MenuButton.Popover>
-                    </MenuButton.Root>
-                </Box>
-            </Frame.Child>
-        </Frame.Root>
-    );
-};
+const PopoverSection = () => (
+    <Frame.Root>
+        <Frame.LabelWidget>
+            <Label.Root label="Popover & MenuButton" />
+        </Frame.LabelWidget>
+        <Frame.Child>
+            <Box spacing={10} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
+                <MenuButton.Root label="Open Popover">
+                    <MenuButton.Popover>
+                        <Popover.Root>
+                            <Popover.Child>
+                                <Box spacing={10} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
+                                    <Label.Root label="Popover Content!" />
+                                    <Button label="Action 1" onClicked={() => {}} />
+                                    <Button label="Action 2" onClicked={() => {}} />
+                                </Box>
+                            </Popover.Child>
+                        </Popover.Root>
+                    </MenuButton.Popover>
+                </MenuButton.Root>
+                <MenuButton.Root label="Menu Button">
+                    <MenuButton.Popover>
+                        <Popover.Root>
+                            <Popover.Child>
+                                <Box spacing={5} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
+                                    <Button label="Menu Item 1" onClicked={() => {}} />
+                                    <Button label="Menu Item 2" onClicked={() => {}} />
+                                    <Separator />
+                                    <Button label="Menu Item 3" onClicked={() => {}} />
+                                </Box>
+                            </Popover.Child>
+                        </Popover.Root>
+                    </MenuButton.Popover>
+                </MenuButton.Root>
+            </Box>
+        </Frame.Child>
+    </Frame.Root>
+);
 
 const RevealerSection = () => {
     const [revealed, setRevealed] = useState(false);
@@ -468,7 +477,7 @@ const ListViewSection = () => {
                     <ScrolledWindow vexpand hexpand>
                         <ListView.Root
                             vexpand
-                            itemFactory={(item: { id: number; text: string } | null) => {
+                            renderItem={(item: { id: number; text: string } | null) => {
                                 const box = new Gtk.Box();
                                 const label = new Gtk.Label(item?.text ?? "");
                                 box.append(label.ptr);
@@ -490,27 +499,18 @@ const ListViewSection = () => {
     );
 };
 
-const CalendarSection = () => {
-    const [selectedDate, setSelectedDate] = useState("No date selected");
-
-    return (
-        <Frame.Root>
-            <Frame.LabelWidget>
-                <Label.Root label="Calendar" />
-            </Frame.LabelWidget>
-            <Frame.Child>
-                <Box spacing={10} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
-                    <Calendar
-                        onDaySelected={() => {
-                            setSelectedDate(new Date().toLocaleDateString());
-                        }}
-                    />
-                    <Label.Root label={`Selected: ${selectedDate}`} />
-                </Box>
-            </Frame.Child>
-        </Frame.Root>
-    );
-};
+const CalendarSection = () => (
+    <Frame.Root>
+        <Frame.LabelWidget>
+            <Label.Root label="Calendar" />
+        </Frame.LabelWidget>
+        <Frame.Child>
+            <Box spacing={10} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
+                <Calendar showDayNames showHeading showWeekNumbers />
+            </Box>
+        </Frame.Child>
+    </Frame.Root>
+);
 
 const TextViewSection = () => (
     <Frame.Root>
@@ -527,19 +527,41 @@ const TextViewSection = () => (
     </Frame.Root>
 );
 
-const DropDownSection = () => (
-    <Frame.Root>
-        <Frame.LabelWidget>
-            <Label.Root label="DropDown" />
-        </Frame.LabelWidget>
-        <Frame.Child>
-            <Box spacing={10} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
-                <Label.Root label="Select an option:" />
-                <DropDown hexpand />
-            </Box>
-        </Frame.Child>
-    </Frame.Root>
-);
+type DropDownOption = { id: number; label: string };
+
+const dropdownOptions: DropDownOption[] = [
+    { id: 1, label: "Option 1" },
+    { id: 2, label: "Option 2" },
+    { id: 3, label: "Option 3" },
+    { id: 4, label: "Option 4" },
+];
+
+const DropDownSection = () => {
+    const [selected, setSelected] = useState<DropDownOption | null>(null);
+
+    return (
+        <Frame.Root>
+            <Frame.LabelWidget>
+                <Label.Root label="DropDown" />
+            </Frame.LabelWidget>
+            <Frame.Child>
+                <Box spacing={10} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
+                    <Label.Root label="Select an option:" />
+                    <DropDown.Root
+                        hexpand
+                        itemLabel={(item: DropDownOption) => item.label}
+                        onSelectionChanged={(item: DropDownOption) => setSelected(item)}
+                    >
+                        {dropdownOptions.map((option) => (
+                            <DropDown.Item key={option.id} item={option} />
+                        ))}
+                    </DropDown.Root>
+                    <Label.Root label={`Selected: ${selected?.label ?? "None"}`} />
+                </Box>
+            </Frame.Child>
+        </Frame.Root>
+    );
+};
 
 const AboutDialogSection = () => {
     const [showAbout, setShowAbout] = useState(false);
@@ -571,19 +593,30 @@ const AboutDialogSection = () => {
     );
 };
 
-const GridSection = () => (
+const GridLayoutSection = () => (
     <Frame.Root>
         <Frame.LabelWidget>
-            <Label.Root label="Grid Layout" />
+            <Label.Root label="Grid Layout (2x2)" />
         </Frame.LabelWidget>
         <Frame.Child>
             <Box marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
-                <Grid columnSpacing={10} rowSpacing={10}>
-                    <Button label="(0,0)" />
-                    <Button label="(1,0)" />
-                    <Button label="(0,1)" />
-                    <Button label="(1,1)" />
-                </Grid>
+                <Grid.Root rowSpacing={10} columnSpacing={10} hexpand>
+                    <Grid.Child column={0} row={0}>
+                        <Button label="Top Left" hexpand />
+                    </Grid.Child>
+                    <Grid.Child column={1} row={0}>
+                        <Button label="Top Right" hexpand />
+                    </Grid.Child>
+                    <Grid.Child column={0} row={1}>
+                        <Button label="Bottom Left" hexpand />
+                    </Grid.Child>
+                    <Grid.Child column={1} row={1}>
+                        <Button label="Bottom Right" hexpand />
+                    </Grid.Child>
+                    <Grid.Child column={0} row={2} columnSpan={2}>
+                        <Button label="Full Width (spans 2 columns)" hexpand />
+                    </Grid.Child>
+                </Grid.Root>
             </Box>
         </Frame.Child>
     </Frame.Root>
@@ -598,10 +631,7 @@ export const App = () => (
         </HeaderBar.Root>
         <ScrolledWindow vexpand>
             <Box spacing={20} marginTop={20} marginBottom={20} marginStart={20} marginEnd={20}>
-                <Label.Root
-                    label="Welcome to the GTKX Kitchen Sink! This demo showcases GTK4 widgets rendered through React."
-                    wrap
-                />
+                Welcome to the GTKX Kitchen Sink! This demo showcases GTK4 widgets rendered through React.
                 <Separator />
                 <ButtonsSection />
                 <InputsSection />
@@ -617,7 +647,7 @@ export const App = () => (
                 <TextViewSection />
                 <CalendarSection />
                 <AboutDialogSection />
-                <GridSection />
+                <GridLayoutSection />
                 <NotebookSection />
                 <PanedSection />
                 <ListViewSection />

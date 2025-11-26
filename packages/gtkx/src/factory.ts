@@ -1,6 +1,8 @@
 import * as gtk from "@gtkx/ffi/gtk";
 import type { Node } from "./node.js";
 import { DialogNode } from "./nodes/dialog.js";
+import { DropDownItemNode, DropDownNode } from "./nodes/dropdown.js";
+import { GridChildNode, GridNode } from "./nodes/grid.js";
 import { ListItemNode } from "./nodes/list.js";
 import { SlotNode } from "./nodes/slot.js";
 import { WidgetNode } from "./nodes/widget.js";
@@ -35,7 +37,16 @@ type NodeClass = {
     new (type: string, widget: gtk.Widget, props: Props): Node;
 };
 
-const NODE_CLASSES: NodeClass[] = [SlotNode, ListItemNode, DialogNode, WidgetNode];
+const NODE_CLASSES: NodeClass[] = [
+    SlotNode,
+    ListItemNode,
+    DropDownItemNode,
+    DropDownNode,
+    GridChildNode,
+    GridNode,
+    DialogNode,
+    WidgetNode,
+];
 
 const createWidget = (type: string, props: Props, currentApp: unknown): gtk.Widget => {
     // biome-ignore lint/performance/noDynamicNamespaceImportAccess: dynamic widget creation

@@ -22,6 +22,8 @@ interface ContainerMetadata {
 }
 
 const LIST_WIDGETS = new Set(["ListView", "ColumnView", "GridView"]);
+const DROPDOWN_WIDGETS = new Set(["DropDown"]);
+const GRID_WIDGETS = new Set(["Grid"]);
 
 const COMMON_WIDGET_PROPS = new Set([
     "halign",
@@ -99,6 +101,8 @@ const toJsxPropertyType = (tsType: string, girTypeName?: string): string => {
 };
 
 const isListWidget = (widgetName: string): boolean => LIST_WIDGETS.has(widgetName);
+const isDropDownWidget = (widgetName: string): boolean => DROPDOWN_WIDGETS.has(widgetName);
+const isGridWidget = (widgetName: string): boolean => GRID_WIDGETS.has(widgetName);
 
 const formatDoc = (doc: string | undefined, indent: string = ""): string => {
     if (!doc) return "";
@@ -372,6 +376,18 @@ ${widgetPropsContent}
                 const widgetName = toPascalCase(widget.name);
                 sections.push(`interface ${widgetName}_Item_Props<T> {\n\titem: T;\n}\n`);
             }
+
+            if (isDropDownWidget(widget.name)) {
+                const widgetName = toPascalCase(widget.name);
+                sections.push(`interface ${widgetName}_Item_Props<T> {\n\titem: T;\n}\n`);
+            }
+
+            if (isGridWidget(widget.name)) {
+                const widgetName = toPascalCase(widget.name);
+                sections.push(
+                    `interface ${widgetName}_Child_Props {\n\tcolumn?: number;\n\trow?: number;\n\tcolumnSpan?: number;\n\trowSpan?: number;\n\tchildren?: ReactNode;\n}\n`,
+                );
+            }
         }
 
         return sections.join("\n");
@@ -449,7 +465,16 @@ ${widgetPropsContent}
 
         if (isListWidget(widget.name)) {
             lines.push("");
-            lines.push(`\titemFactory?: (item: any) => unknown;`);
+            lines.push(`\t/** Function to render each item as a GTK widget */`);
+            lines.push(`\trenderItem?: <T>(item: T) => Gtk.Widget;`);
+        }
+
+        if (isDropDownWidget(widget.name)) {
+            lines.push("");
+            lines.push(`\t/** Function to convert item to display label */`);
+            lines.push(`\titemLabel?: (item: any) => string;`);
+            lines.push(`\t/** Called when selection changes */`);
+            lines.push(`\tonSelectionChanged?: (item: any, index: number) => void;`);
         }
 
         lines.push("");
@@ -586,7 +611,11 @@ ${widgetPropsContent}
             if (!metadata) throw new Error(`Missing container metadata for widget: ${widget.name}`);
 
             const nonChildSlots = metadata.namedChildSlots.filter((slot) => slot.slotName !== "Child");
-            const hasMeaningfulSlots = nonChildSlots.length > 0 || isListWidget(widget.name);
+            const hasMeaningfulSlots =
+                nonChildSlots.length > 0 ||
+                isListWidget(widget.name) ||
+                isDropDownWidget(widget.name) ||
+                isGridWidget(widget.name);
 
             if (hasMeaningfulSlots) {
                 const typeMembers = [
@@ -595,6 +624,8 @@ ${widgetPropsContent}
                         (slot) => `${slot.slotName}: GtkComponent<${widgetName}_${slot.slotName}_Props>`,
                     ),
                     ...(isListWidget(widget.name) ? [`Item: GtkComponent<${widgetName}_Item_Props<any>>`] : []),
+                    ...(isDropDownWidget(widget.name) ? [`Item: GtkComponent<${widgetName}_Item_Props<any>>`] : []),
+                    ...(isGridWidget(widget.name) ? [`Child: GtkComponent<${widgetName}_Child_Props>`] : []),
                 ];
                 const valueMembers = [
                     `Root: "${widgetName}" as unknown as GtkComponent<${propsName}>`,
@@ -604,6 +635,12 @@ ${widgetPropsContent}
                     ),
                     ...(isListWidget(widget.name)
                         ? [`Item: "${widgetName}.Item" as unknown as GtkComponent<${widgetName}_Item_Props<any>>`]
+                        : []),
+                    ...(isDropDownWidget(widget.name)
+                        ? [`Item: "${widgetName}.Item" as unknown as GtkComponent<${widgetName}_Item_Props<any>>`]
+                        : []),
+                    ...(isGridWidget(widget.name)
+                        ? [`Child: "${widgetName}.Child" as unknown as GtkComponent<${widgetName}_Child_Props>`]
                         : []),
                 ];
                 lines.push(
@@ -643,7 +680,11 @@ ${widgetPropsContent}
             if (!metadata) throw new Error(`Missing container metadata for widget: ${widget.name}`);
 
             const nonChildSlots = metadata.namedChildSlots.filter((slot) => slot.slotName !== "Child");
-            const hasMeaningfulSlots = nonChildSlots.length > 0 || isListWidget(widget.name);
+            const hasMeaningfulSlots =
+                nonChildSlots.length > 0 ||
+                isListWidget(widget.name) ||
+                isDropDownWidget(widget.name) ||
+                isGridWidget(widget.name);
 
             if (hasMeaningfulSlots) {
                 elements.push(`"${widgetName}.Root": ${propsName};`);
@@ -657,6 +698,14 @@ ${widgetPropsContent}
 
             if (isListWidget(widget.name)) {
                 elements.push(`"${widgetName}.Item": ${widgetName}_Item_Props<any>;`);
+            }
+
+            if (isDropDownWidget(widget.name)) {
+                elements.push(`"${widgetName}.Item": ${widgetName}_Item_Props<any>;`);
+            }
+
+            if (isGridWidget(widget.name)) {
+                elements.push(`"${widgetName}.Child": ${widgetName}_Child_Props;`);
             }
         }
 

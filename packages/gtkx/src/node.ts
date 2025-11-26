@@ -1,3 +1,4 @@
+import type * as gtk from "@gtkx/ffi/gtk";
 import type { Props } from "./factory.js";
 
 /**
@@ -5,6 +6,12 @@ import type { Props } from "./factory.js";
  * Each node knows how to manage its own behavior.
  */
 export interface Node {
+    /**
+     * Gets the underlying GTK widget, if this node has one.
+     * Not all nodes have widgets (e.g., SlotNode, ListItemNode).
+     */
+    getWidget?(): gtk.Widget;
+
     /**
      * Append a child to this node.
      */

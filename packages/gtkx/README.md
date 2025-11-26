@@ -379,7 +379,7 @@ A virtualized list for large datasets.
 
 ```tsx
 <ListView.Root
-  itemFactory={(item) => {
+  renderItem={(item) => {
     const box = new Gtk.Box();
     const label = new Gtk.Label(item?.text ?? "");
     box.append(label.ptr);

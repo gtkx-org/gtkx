@@ -2,11 +2,6 @@ import type * as gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
 
-type WidgetNodeLike = Node & { getWidget: () => gtk.Widget };
-
-const hasGetWidget = (node: Node): node is WidgetNodeLike =>
-    "getWidget" in node && typeof (node as WidgetNodeLike).getWidget === "function";
-
 /**
  * Node implementation for named child slots.
  * Handles widget properties that accept a single child widget,
@@ -30,7 +25,7 @@ export class SlotNode implements Node {
         return suffix !== "Item" && suffix !== "Root";
     }
 
-    private child: WidgetNodeLike | null = null;
+    private child: Node | null = null;
     private slotName: string;
 
     /**
@@ -48,7 +43,7 @@ export class SlotNode implements Node {
     }
 
     appendChild(child: Node): void {
-        if (hasGetWidget(child)) {
+        if (child.getWidget) {
             this.child = child;
         }
     }
@@ -66,10 +61,10 @@ export class SlotNode implements Node {
     mount(): void {}
 
     attachToParent(parent: Node): void {
-        if (!hasGetWidget(parent) || !this.child) return;
+        const parentWidget = parent.getWidget?.();
+        const childWidget = this.child?.getWidget?.();
+        if (!parentWidget || !childWidget) return;
 
-        const parentWidget = parent.getWidget();
-        const childWidget = this.child.getWidget();
         const setterName = `set${this.slotName}`;
         const setter = parentWidget[setterName as keyof gtk.Widget];
         if (typeof setter === "function") {
@@ -78,9 +73,9 @@ export class SlotNode implements Node {
     }
 
     detachFromParent(parent: Node): void {
-        if (!hasGetWidget(parent)) return;
+        const parentWidget = parent.getWidget?.();
+        if (!parentWidget) return;
 
-        const parentWidget = parent.getWidget();
         const setterName = `set${this.slotName}`;
         const setter = parentWidget[setterName as keyof gtk.Widget];
         if (typeof setter === "function") {

@@ -500,6 +500,9 @@ impl From<&glib::Value> for Value {
             let boxed = Boxed::from_glib_none(value.type_(), boxed_ptr as *mut c_void);
             let object_id = ObjectId::new(Object::Boxed(boxed));
             Value::Object(object_id)
+        } else if value.type_().is_a(glib::types::Type::PARAM_SPEC) {
+            let param_spec: glib::ParamSpec = value.get().unwrap();
+            Value::String(param_spec.name().to_string())
         } else {
             panic!("Unsupported glib value type: {:?}", value.type_());
         }

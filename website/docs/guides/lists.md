@@ -79,7 +79,7 @@ const [items, setItems] = useState([
 <ScrolledWindow vexpand hexpand>
   <ListView.Root
     vexpand
-    itemFactory={(item: { id: number; text: string } | null) => {
+    renderItem={(item: { id: number; text: string } | null) => {
       const box = new Gtk.Box();
       const label = new Gtk.Label(item?.text ?? "");
       box.append(label.ptr);
@@ -95,11 +95,42 @@ const [items, setItems] = useState([
 </ScrolledWindow>
 ```
 
-The `itemFactory` function:
-- Receives the item data (or null during initialization)
-- Must return a GTK widget instance
+The `renderItem` function:
+- Receives the item data (typed as `T`, or null during initialization)
+- Must return a `Gtk.Widget` instance
 - Is called for each visible item
-- Uses imperative widget construction for performance
+- Uses imperative widget construction via the FFI
+
+## DropDown
+
+For dropdown selection with typed items:
+
+```tsx
+type Option = { id: number; label: string };
+
+const options: Option[] = [
+  { id: 1, label: "Option 1" },
+  { id: 2, label: "Option 2" },
+  { id: 3, label: "Option 3" },
+];
+
+const [selected, setSelected] = useState<Option | null>(null);
+
+<DropDown.Root
+  hexpand
+  itemLabel={(item: Option) => item.label}
+  onSelectionChanged={(item: Option) => setSelected(item)}
+>
+  {options.map(option => (
+    <DropDown.Item key={option.id} item={option} />
+  ))}
+</DropDown.Root>
+```
+
+### Props
+
+- `itemLabel`: Function to convert item to display string
+- `onSelectionChanged`: Called when selection changes with the selected item
 
 ## Adding and Removing Items
 

@@ -231,6 +231,36 @@ import * as Gtk from "@gtkx/ffi/gtk";
 </Box>
 ```
 
+### Grid Layout
+
+For precise 2D positioning with rows and columns:
+
+```tsx
+<Grid.Root rowSpacing={10} columnSpacing={10} hexpand>
+  <Grid.Child column={0} row={0}>
+    <Button label="Top Left" hexpand />
+  </Grid.Child>
+  <Grid.Child column={1} row={0}>
+    <Button label="Top Right" hexpand />
+  </Grid.Child>
+  <Grid.Child column={0} row={1}>
+    <Button label="Bottom Left" hexpand />
+  </Grid.Child>
+  <Grid.Child column={1} row={1}>
+    <Button label="Bottom Right" hexpand />
+  </Grid.Child>
+  <Grid.Child column={0} row={2} columnSpan={2}>
+    <Button label="Full Width (spans 2 columns)" hexpand />
+  </Grid.Child>
+</Grid.Root>
+```
+
+Grid.Child props:
+- `column`: Column index (0-based)
+- `row`: Row index (0-based)
+- `columnSpan`: Number of columns to span (default: 1)
+- `rowSpan`: Number of rows to span (default: 1)
+
 ### Expansion and Alignment
 
 Control how widgets fill space:
