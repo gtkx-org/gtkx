@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/gir",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "GObject Introspection file parser for GTKX",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
