@@ -55,6 +55,7 @@ const config: Config = {
                 entryPoints: ["../packages/gtkx/src/index.ts"],
                 tsconfig: "../packages/gtkx/tsconfig.lib.json",
                 out: "docs/api",
+                readme: "none",
                 sidebar: {
                     autoConfiguration: true,
                     pretty: true,

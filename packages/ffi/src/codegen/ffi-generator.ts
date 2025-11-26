@@ -99,9 +99,25 @@ const toKebabCase = (str: string): string => str.replace(/([a-z])([A-Z])/g, "$1-
 
 const toConstantCase = (str: string): string => str.replace(/-/g, "_").toUpperCase();
 
+const sanitizeDoc = (doc: string): string => {
+    let result = doc;
+    result = result.replace(/<picture>[\s\S]*?<\/picture>/gi, "");
+    result = result.replace(/<img[^>]*>/gi, "");
+    result = result.replace(/<source[^>]*>/gi, "");
+    result = result.replace(/!\[[^\]]*\]\([^)]+\.png\)/gi, "");
+    result = result.replace(/<kbd>([^<]*)<\/kbd>/gi, "`$1`");
+    result = result.replace(/<kbd>/gi, "`");
+    result = result.replace(/<\/kbd>/gi, "`");
+    result = result.replace(/\[([^\]]+)\]\([^)]+\.html[^)]*\)/gi, "$1");
+    result = result.replace(/@(\w+)\s/g, "`$1` ");
+    return result.trim();
+};
+
 const formatDoc = (doc: string | undefined, indent: string = ""): string => {
     if (!doc) return "";
-    const lines = doc.split("\n").map((line) => line.trim());
+    const sanitized = sanitizeDoc(doc);
+    if (!sanitized) return "";
+    const lines = sanitized.split("\n").map((line) => line.trim());
     const firstLine = lines[0] ?? "";
     if (lines.length === 1 && firstLine.length < 80) {
         return `${indent}/** ${firstLine} */\n`;
@@ -111,17 +127,19 @@ const formatDoc = (doc: string | undefined, indent: string = ""): string => {
 };
 
 const formatMethodDoc = (doc: string | undefined, params: GirParameter[], indent: string = "  "): string => {
-    if (!doc && params.every((p) => !p.doc)) return "";
+    const sanitizedDoc = doc ? sanitizeDoc(doc) : undefined;
+    if (!sanitizedDoc && params.every((p) => !p.doc)) return "";
     const lines: string[] = [];
-    if (doc) {
-        for (const line of doc.split("\n")) {
+    if (sanitizedDoc) {
+        for (const line of sanitizedDoc.split("\n")) {
             lines.push(` * ${line.trim()}`);
         }
     }
     for (const param of params) {
         if (param.doc && param.name && param.name !== "..." && param.name !== "") {
             const paramName = toValidIdentifier(toCamelCase(param.name));
-            const paramDoc = param.doc.split("\n")[0]?.trim() ?? "";
+            const sanitizedParamDoc = sanitizeDoc(param.doc);
+            const paramDoc = sanitizedParamDoc.split("\n")[0]?.trim() ?? "";
             lines.push(` * @param ${paramName} - ${paramDoc}`);
         }
     }

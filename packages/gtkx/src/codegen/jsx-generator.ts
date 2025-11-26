@@ -104,9 +104,25 @@ const isListWidget = (widgetName: string): boolean => LIST_WIDGETS.has(widgetNam
 const isDropDownWidget = (widgetName: string): boolean => DROPDOWN_WIDGETS.has(widgetName);
 const isGridWidget = (widgetName: string): boolean => GRID_WIDGETS.has(widgetName);
 
+const sanitizeDoc = (doc: string): string => {
+    let result = doc;
+    result = result.replace(/<picture>[\s\S]*?<\/picture>/gi, "");
+    result = result.replace(/<img[^>]*>/gi, "");
+    result = result.replace(/<source[^>]*>/gi, "");
+    result = result.replace(/!\[[^\]]*\]\([^)]+\.png\)/gi, "");
+    result = result.replace(/<kbd>([^<]*)<\/kbd>/gi, "`$1`");
+    result = result.replace(/<kbd>/gi, "`");
+    result = result.replace(/<\/kbd>/gi, "`");
+    result = result.replace(/\[([^\]]+)\]\([^)]+\.html[^)]*\)/gi, "$1");
+    result = result.replace(/@(\w+)\s/g, "`$1` ");
+    return result.trim();
+};
+
 const formatDoc = (doc: string | undefined, indent: string = ""): string => {
     if (!doc) return "";
-    const lines = doc.split("\n").map((line) => line.trim());
+    const sanitized = sanitizeDoc(doc);
+    if (!sanitized) return "";
+    const lines = sanitized.split("\n").map((line) => line.trim());
     const firstLine = lines[0] ?? "";
     if (lines.length === 1 && firstLine.length < 80) {
         return `${indent}/** ${firstLine} */\n`;
@@ -224,7 +240,7 @@ ${widgetPropsContent}
         if (widgetDoc) {
             lines.push(widgetDoc.trimEnd());
         }
-        lines.push("interface WidgetProps {");
+        lines.push("export interface WidgetProps {");
 
         const addProp = (name: string, type: string): void => {
             const doc = propDocs.get(name);
@@ -369,23 +385,23 @@ ${widgetPropsContent}
 
             for (const slot of metadata.namedChildSlots) {
                 const widgetName = toPascalCase(widget.name);
-                sections.push(`interface ${widgetName}_${slot.slotName}_Props {\n\tchildren?: ReactNode;\n}\n`);
+                sections.push(`export interface ${widgetName}_${slot.slotName}_Props {\n\tchildren?: ReactNode;\n}\n`);
             }
 
             if (isListWidget(widget.name)) {
                 const widgetName = toPascalCase(widget.name);
-                sections.push(`interface ${widgetName}_Item_Props<T> {\n\titem: T;\n}\n`);
+                sections.push(`export interface ${widgetName}_Item_Props<T> {\n\titem: T;\n}\n`);
             }
 
             if (isDropDownWidget(widget.name)) {
                 const widgetName = toPascalCase(widget.name);
-                sections.push(`interface ${widgetName}_Item_Props<T> {\n\titem: T;\n}\n`);
+                sections.push(`export interface ${widgetName}_Item_Props<T> {\n\titem: T;\n}\n`);
             }
 
             if (isGridWidget(widget.name)) {
                 const widgetName = toPascalCase(widget.name);
                 sections.push(
-                    `interface ${widgetName}_Child_Props {\n\tcolumn?: number;\n\trow?: number;\n\tcolumnSpan?: number;\n\trowSpan?: number;\n\tchildren?: ReactNode;\n}\n`,
+                    `export interface ${widgetName}_Child_Props {\n\tcolumn?: number;\n\trow?: number;\n\tcolumnSpan?: number;\n\trowSpan?: number;\n\tchildren?: ReactNode;\n}\n`,
                 );
             }
         }
@@ -402,7 +418,7 @@ ${widgetPropsContent}
         if (widget.doc) {
             lines.push(formatDoc(widget.doc).trimEnd());
         }
-        lines.push(`interface ${widgetName}Props extends ${parentPropsName} {`);
+        lines.push(`export interface ${widgetName}Props extends ${parentPropsName} {`);
 
         const seenProps = new Set<string>();
         const allProps = [...widget.properties];
@@ -466,7 +482,7 @@ ${widgetPropsContent}
         if (isListWidget(widget.name)) {
             lines.push("");
             lines.push(`\t/** Function to render each item as a GTK widget */`);
-            lines.push(`\trenderItem?: <T>(item: T) => Gtk.Widget;`);
+            lines.push(`\trenderItem?: (item: any) => Gtk.Widget;`);
         }
 
         if (isDropDownWidget(widget.name)) {
@@ -561,7 +577,7 @@ ${widgetPropsContent}
         if (dialog.doc) {
             lines.push(formatDoc(dialog.doc).trimEnd());
         }
-        lines.push(`interface ${dialogName}Props {`);
+        lines.push(`export interface ${dialogName}Props {`);
 
         if (dialog.name === "FileDialog") {
             lines.push(`\tmode?: "open" | "save" | "selectFolder" | "openMultiple";`);

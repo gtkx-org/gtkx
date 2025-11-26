@@ -462,6 +462,17 @@ const ListViewSection = () => {
         setItems((i) => i.slice(0, -1));
     };
 
+    const renderItem = (item: { id: number; text: string } | null) => {
+        const box = new Gtk.Box();
+        const label = new Gtk.Label(item?.text ?? "");
+        box.append(label.ptr);
+        box.setMarginStart(10);
+        box.setMarginEnd(10);
+        box.setMarginTop(5);
+        box.setMarginBottom(5);
+        return box;
+    };
+
     return (
         <Frame.Root vexpand>
             <Frame.LabelWidget>
@@ -475,19 +486,7 @@ const ListViewSection = () => {
                         <Label.Root label={`Total: ${items.length}`} />
                     </Box>
                     <ScrolledWindow vexpand hexpand>
-                        <ListView.Root
-                            vexpand
-                            renderItem={(item: { id: number; text: string } | null) => {
-                                const box = new Gtk.Box();
-                                const label = new Gtk.Label(item?.text ?? "");
-                                box.append(label.ptr);
-                                box.setMarginStart(10);
-                                box.setMarginEnd(10);
-                                box.setMarginTop(5);
-                                box.setMarginBottom(5);
-                                return box;
-                            }}
-                        >
+                        <ListView.Root vexpand renderItem={renderItem}>
                             {items.map((item) => (
                                 <ListView.Item item={item} key={item.id} />
                             ))}
