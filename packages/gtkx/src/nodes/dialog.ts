@@ -6,10 +6,10 @@ import { disconnectSignalHandlers, isConnectable, isPresentable } from "../widge
 const DIALOG_TYPES = ["FileDialog", "ColorDialog", "FontDialog", "AlertDialog", "AboutDialog"];
 
 interface FileDialogWidget extends gtk.Widget {
-    open(parent: unknown, cancellable: null, callback: null, userData: null): void;
-    save(parent: unknown, cancellable: null, callback: null, userData: null): void;
-    selectFolder(parent: unknown, cancellable: null, callback: null, userData: null): void;
-    openMultiple(parent: unknown, cancellable: null, callback: null, userData: null): void;
+    open(parent?: unknown): Promise<unknown>;
+    save(parent?: unknown): Promise<unknown>;
+    selectFolder(parent?: unknown): Promise<unknown>;
+    openMultiple(parent?: unknown): Promise<unknown>;
 }
 
 const isFileDialog = (dialog: gtk.Widget): dialog is FileDialogWidget =>
@@ -96,16 +96,19 @@ export class DialogNode implements Node {
         if (this.dialogType !== "FileDialog" || !isFileDialog(this.dialog)) return;
 
         const mode = this.initialProps.mode as string | undefined;
-        const parentWindow = undefined;
+        const parentWindow = this.initialProps.parent as unknown;
+        const onResponse = this.initialProps.onResponse as ((result: unknown) => void) | undefined;
 
         const methodMap = {
-            save: this.dialog.save,
-            selectFolder: this.dialog.selectFolder,
-            openMultiple: this.dialog.openMultiple,
+            save: this.dialog.save.bind(this.dialog),
+            selectFolder: this.dialog.selectFolder.bind(this.dialog),
+            openMultiple: this.dialog.openMultiple.bind(this.dialog),
         } as const;
 
-        const method = (mode && methodMap[mode as keyof typeof methodMap]) || this.dialog.open;
-        method.call(this.dialog, parentWindow, null, null, null);
+        const method = (mode && methodMap[mode as keyof typeof methodMap]) || this.dialog.open.bind(this.dialog);
+        method(parentWindow)
+            .then((result) => onResponse?.(result))
+            .catch(() => onResponse?.(null));
     }
 
     attachToParent(_parent: Node): void {}

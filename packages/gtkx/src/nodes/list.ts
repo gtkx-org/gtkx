@@ -53,7 +53,7 @@ export class ListViewNode<T = unknown> implements Node<ListViewWidget> {
 
             if (this.renderItem) {
                 const widget = this.renderItem(null);
-                listItem.setChild(widget.ptr);
+                listItem.setChild(widget);
             }
         });
         this.factorySignalHandlers.set("setup", setupHandlerId);
@@ -67,7 +67,7 @@ export class ListViewNode<T = unknown> implements Node<ListViewWidget> {
 
             if (this.renderItem && item !== undefined) {
                 const widget = this.renderItem(item);
-                listItem.setChild(widget.ptr);
+                listItem.setChild(widget);
             }
         });
         this.factorySignalHandlers.set("bind", bindHandlerId);

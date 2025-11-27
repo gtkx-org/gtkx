@@ -206,6 +206,7 @@ export class CodeGenerator {
     private typeMapper: TypeMapper;
     private usesRef = false;
     private usesCall = false;
+    private addGioImport = false;
     private usesType = false;
     private usesRead = false;
     private usesWrite = false;
@@ -220,6 +221,7 @@ export class CodeGenerator {
     private recordNameToFile = new Map<string, string>();
     private interfaceNameToFile = new Map<string, string>();
     private currentSharedLibrary = "";
+    private cyclicReturnTypes = new Set<string>();
 
     /**
      * Creates a new code generator with the given options.
@@ -248,18 +250,9 @@ export class CodeGenerator {
         const interfaceMap = this.buildInterfaceMap(namespace);
         this.attachConstructorFunctions(namespace, classMap);
 
-        for (const iface of namespace.interfaces) {
-            files.set(
-                `${toKebabCase(iface.name)}.ts`,
-                await this.generateInterface(iface, namespace.sharedLibrary, classMap),
-            );
-        }
-
-        for (const cls of namespace.classes) {
-            files.set(
-                `${toKebabCase(cls.name)}.ts`,
-                await this.generateClass(cls, namespace.sharedLibrary, classMap, interfaceMap),
-            );
+        const allEnums = [...namespace.enumerations, ...namespace.bitfields];
+        if (allEnums.length > 0) {
+            files.set("enums.ts", await this.generateEnums(allEnums));
         }
 
         for (const record of namespace.records) {
@@ -268,14 +261,24 @@ export class CodeGenerator {
             }
         }
 
+        const sortedClasses = this.topologicalSortClasses(namespace.classes, classMap);
+        for (const cls of sortedClasses) {
+            files.set(
+                `${toKebabCase(cls.name)}.ts`,
+                await this.generateClass(cls, namespace.sharedLibrary, classMap, interfaceMap),
+            );
+        }
+
+        for (const iface of namespace.interfaces) {
+            files.set(
+                `${toKebabCase(iface.name)}.ts`,
+                await this.generateInterface(iface, namespace.sharedLibrary, classMap),
+            );
+        }
+
         const standaloneFunctions = this.getStandaloneFunctions(namespace, classMap);
         if (standaloneFunctions.length > 0) {
             files.set("functions.ts", await this.generateFunctions(standaloneFunctions, namespace.sharedLibrary));
-        }
-
-        const allEnums = [...namespace.enumerations, ...namespace.bitfields];
-        if (allEnums.length > 0) {
-            files.set("enums.ts", await this.generateEnums(allEnums));
         }
 
         files.set("index.ts", await this.generateIndex(files.keys()));
@@ -373,6 +376,7 @@ export class CodeGenerator {
     private resetState(): void {
         this.usesRef = false;
         this.usesCall = false;
+        this.addGioImport = false;
         this.usesType = false;
         this.usesRead = false;
         this.usesWrite = false;
@@ -384,6 +388,7 @@ export class CodeGenerator {
         this.usedSameNamespaceClasses.clear();
         this.usedInterfaces.clear();
         this.signalClasses.clear();
+        this.cyclicReturnTypes.clear();
         this.typeMapper.setEnumUsageCallback((enumName) => this.usedEnums.add(enumName));
         this.typeMapper.setRecordUsageCallback((recordName) => this.usedRecords.add(recordName));
         this.typeMapper.setExternalTypeUsageCallback((usage) => {
@@ -402,28 +407,48 @@ export class CodeGenerator {
         interfaceMap: Map<string, GirInterface>,
     ): Promise<string> {
         this.resetState();
+        this.cyclicReturnTypes = this.computeCyclicReturnTypes(cls, classMap);
+
+        const asyncMethods = new Set<string>();
+        const finishMethods = new Set<string>();
+        for (const method of cls.methods) {
+            if (this.hasAsyncCallback(method)) {
+                asyncMethods.add(method.name);
+                finishMethods.add(`${method.name}_finish`);
+            }
+        }
+
+        const parentMethodNames = this.collectParentMethodNames(cls, classMap, interfaceMap);
+        const filteredClassMethods = cls.methods.filter((m) => !parentMethodNames.has(m.name));
+        const classMethodNames = new Set(cls.methods.map((m) => m.name));
+
+        const interfaceMethods = cls.implements
+            .flatMap((ifaceName) => interfaceMap.get(ifaceName)?.methods ?? [])
+            .filter((m) => !classMethodNames.has(m.name) && !parentMethodNames.has(m.name));
+
+        const syncMethods = filteredClassMethods.filter((m) => !asyncMethods.has(m.name) && !finishMethods.has(m.name));
+        const syncInterfaceMethods = interfaceMethods.filter(
+            (m) => !asyncMethods.has(m.name) && !finishMethods.has(m.name),
+        );
 
         this.usesRef =
-            cls.methods.some((m) => hasOutParameter(m.parameters)) ||
+            syncMethods.some((m) => hasOutParameter(m.parameters)) ||
             cls.constructors.some((c) => hasOutParameter(c.parameters)) ||
-            cls.functions.some((f) => hasOutParameter(f.parameters));
+            cls.functions.some((f) => hasOutParameter(f.parameters)) ||
+            syncInterfaceMethods.some((m) => hasOutParameter(m.parameters));
         this.usesCall =
-            cls.methods.length > 0 || cls.constructors.length > 0 || cls.functions.length > 0 || cls.signals.length > 0;
+            filteredClassMethods.length > 0 ||
+            cls.constructors.length > 0 ||
+            cls.functions.length > 0 ||
+            cls.signals.length > 0 ||
+            interfaceMethods.length > 0;
 
         const className = normalizeClassName(cls.name);
         const hasParent = !!(cls.parent && classMap.has(cls.parent));
         const parentClassName = cls.parent ? normalizeClassName(cls.parent) : "";
         const extendsClause = hasParent ? ` extends ${parentClassName}` : "";
 
-        const implementedInterfaces = cls.implements
-            .filter((ifaceName) => interfaceMap.has(ifaceName))
-            .map((ifaceName) => {
-                const normalizedName = toPascalCase(ifaceName);
-                this.usedInterfaces.set(normalizedName, ifaceName);
-                return normalizedName;
-            });
-        const implementsClause =
-            implementedInterfaces.length > 0 ? ` implements ${implementedInterfaces.join(", ")}` : "";
+        const implementsClause = "";
 
         const sections: string[] = [];
 
@@ -444,8 +469,12 @@ export class CodeGenerator {
         sections.push(this.generateConstructors(cls, sharedLibrary, hasParent));
         sections.push(this.generateCreatePtr(cls, sharedLibrary, hasParent));
         sections.push(this.generateStaticFunctions(cls.functions, sharedLibrary, className));
-        sections.push(this.generateMethods(cls.methods, sharedLibrary, cls.name));
+        sections.push(this.generateMethods(filteredClassMethods, sharedLibrary, cls.name));
         sections.push(this.generateProperties(cls.properties, cls.methods));
+
+        if (interfaceMethods.length > 0) {
+            sections.push(this.generateMethods(interfaceMethods, sharedLibrary, className));
+        }
 
         if (cls.signals.length > 0) {
             const hasConnectMethod = cls.methods.some((m) => toCamelCase(m.name) === "connect");
@@ -456,6 +485,128 @@ export class CodeGenerator {
 
         const imports = this.generateImports(className, hasParent ? parentClassName : undefined);
         return this.formatCode(imports + sections.join("\n"));
+    }
+
+    private topologicalSortClasses(classes: GirClass[], classMap: Map<string, GirClass>): GirClass[] {
+        const sorted: GirClass[] = [];
+        const visited = new Set<string>();
+
+        const visit = (cls: GirClass) => {
+            if (visited.has(cls.name)) return;
+            visited.add(cls.name);
+            if (cls.parent && classMap.has(cls.parent)) {
+                const parent = classMap.get(cls.parent) as GirClass;
+                visit(parent);
+            }
+            sorted.push(cls);
+        };
+
+        for (const cls of classes) {
+            visit(cls);
+        }
+
+        return sorted;
+    }
+
+    private isDescendantOf(className: string, ancestorName: string, classMap: Map<string, GirClass>): boolean {
+        const cls = classMap.get(className);
+        if (!cls) return false;
+        if (cls.parent === ancestorName) return true;
+        if (cls.parent && classMap.has(cls.parent)) {
+            return this.isDescendantOf(cls.parent, ancestorName, classMap);
+        }
+        return false;
+    }
+
+    private computeCyclicReturnTypes(cls: GirClass, classMap: Map<string, GirClass>): Set<string> {
+        const cyclic = new Set<string>();
+        for (const method of cls.methods) {
+            const returnTypeName = method.returnType.name;
+            if (returnTypeName && classMap.has(returnTypeName)) {
+                if (this.wouldCreateCycle(cls.name, returnTypeName, classMap)) {
+                    cyclic.add(normalizeClassName(returnTypeName));
+                }
+            }
+        }
+        for (const func of cls.functions) {
+            const returnTypeName = func.returnType.name;
+            if (returnTypeName && classMap.has(returnTypeName)) {
+                if (this.wouldCreateCycle(cls.name, returnTypeName, classMap)) {
+                    cyclic.add(normalizeClassName(returnTypeName));
+                }
+            }
+        }
+        return cyclic;
+    }
+
+    private wouldCreateCycle(currentClass: string, returnType: string, classMap: Map<string, GirClass>): boolean {
+        if (this.isDescendantOf(returnType, currentClass, classMap)) {
+            return true;
+        }
+        const returnTypeClass = classMap.get(returnType);
+        if (!returnTypeClass) return false;
+        const ancestors = this.getAncestors(returnType, classMap);
+        for (const ancestor of ancestors) {
+            const ancestorClass = classMap.get(ancestor);
+            if (!ancestorClass) continue;
+            if (this.classImports(ancestorClass, currentClass, classMap)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private getAncestors(className: string, classMap: Map<string, GirClass>): string[] {
+        const ancestors: string[] = [];
+        let current = classMap.get(className);
+        while (current?.parent && classMap.has(current.parent)) {
+            ancestors.push(current.parent);
+            current = classMap.get(current.parent);
+        }
+        return ancestors;
+    }
+
+    private classImports(cls: GirClass, targetClass: string, _classMap: Map<string, GirClass>): boolean {
+        for (const method of cls.methods) {
+            if (method.returnType.name === targetClass) return true;
+            for (const param of method.parameters) {
+                if (param.type.name === targetClass) return true;
+            }
+        }
+        for (const func of cls.functions) {
+            if (func.returnType.name === targetClass) return true;
+            for (const param of func.parameters) {
+                if (param.type.name === targetClass) return true;
+            }
+        }
+        for (const prop of cls.properties) {
+            if (prop.type.name === targetClass) return true;
+        }
+        return false;
+    }
+
+    private collectParentMethodNames(
+        cls: GirClass,
+        classMap: Map<string, GirClass>,
+        interfaceMap: Map<string, GirInterface>,
+    ): Set<string> {
+        const names = new Set<string>();
+        let current = cls.parent ? classMap.get(cls.parent) : undefined;
+        while (current) {
+            for (const method of current.methods) {
+                names.add(method.name);
+            }
+            for (const ifaceName of current.implements) {
+                const iface = interfaceMap.get(ifaceName);
+                if (iface) {
+                    for (const method of iface.methods) {
+                        names.add(method.name);
+                    }
+                }
+            }
+            current = current.parent ? classMap.get(current.parent) : undefined;
+        }
+        return names;
     }
 
     private generateConstructors(cls: GirClass, _sharedLibrary: string, hasParent: boolean): string {
@@ -530,7 +681,9 @@ export class CodeGenerator {
             return `  protected createPtr(_args: unknown[]): unknown {\n    return null;\n  }\n`;
         }
 
-        const filteredParams = mainConstructor.parameters.filter((p) => !isVararg(p));
+        const filteredParams = mainConstructor.parameters.filter(
+            (p, i) => !isVararg(p) && !this.typeMapper.isClosureTarget(i, mainConstructor.parameters),
+        );
         const paramTypes = filteredParams.map((p) => this.typeMapper.mapParameter(p).ts);
         const paramNames = filteredParams.map((p) => toValidIdentifier(toCamelCase(p.name)));
 
@@ -674,14 +827,313 @@ ${allArgs ? `${allArgs},` : ""}
         const generatedMethods = new Set<string>();
         const sections: string[] = [];
 
+        const asyncMethods = new Set<string>();
+        const finishMethods = new Set<string>();
+        for (const method of methods) {
+            if (this.hasAsyncCallback(method)) {
+                asyncMethods.add(method.name);
+                finishMethods.add(`${method.name}_finish`);
+            }
+        }
+
         for (const method of methods) {
             const methodKey = `${toCamelCase(method.name)}:${method.cIdentifier}`;
             if (generatedMethods.has(methodKey)) continue;
             generatedMethods.add(methodKey);
+
+            if (asyncMethods.has(method.name) || finishMethods.has(method.name)) {
+                const asyncWrapper = this.generateAsyncWrapper(method, methods, sharedLibrary, className);
+                if (asyncWrapper) {
+                    sections.push(asyncWrapper);
+                }
+                continue;
+            }
+
             sections.push(this.generateMethod(method, sharedLibrary, className));
         }
 
         return sections.join("\n");
+    }
+
+    private hasAsyncCallback(method: GirMethod): boolean {
+        return method.parameters.some((p) => p.type.name === "Gio.AsyncReadyCallback");
+    }
+
+    private findFinishMethod(asyncMethod: GirMethod, allMethods: GirMethod[]): GirMethod | undefined {
+        const finishName = `${asyncMethod.name}_finish`;
+        return allMethods.find((m) => m.name === finishName);
+    }
+
+    private generateAsyncWrapper(
+        method: GirMethod,
+        allMethods: GirMethod[],
+        sharedLibrary: string,
+        className?: string,
+    ): string | null {
+        if (!this.hasAsyncCallback(method)) return null;
+
+        const finishMethod = this.findFinishMethod(method, allMethods);
+        if (!finishMethod) return null;
+
+        let methodName = toCamelCase(method.name);
+        if (className) {
+            const renames = METHOD_RENAMES.get(className);
+            const renamed = renames?.get(methodName);
+            if (renamed) methodName = renamed;
+        }
+
+        const paramsWithoutCallback = method.parameters.filter(
+            (p, i) =>
+                !isVararg(p) &&
+                p.type.name !== "Gio.AsyncReadyCallback" &&
+                !this.typeMapper.isClosureTarget(i, method.parameters),
+        );
+
+        let hasRequiredAfterOptional = false;
+        let seenOptional = false;
+        for (const p of paramsWithoutCallback) {
+            const isOptional = this.typeMapper.isNullable(p);
+            if (isOptional) seenOptional = true;
+            else if (seenOptional) hasRequiredAfterOptional = true;
+        }
+        if (hasRequiredAfterOptional) {
+            return null;
+        }
+
+        const params = paramsWithoutCallback
+            .map((p) => {
+                const mapped = this.typeMapper.mapParameter(p);
+                const paramName = toValidIdentifier(toCamelCase(p.name));
+                const isOptional = this.typeMapper.isNullable(p);
+                return `${paramName}${isOptional ? "?" : ""}: ${mapped.ts}`;
+            })
+            .join(", ");
+
+        const finishParams = finishMethod.parameters.filter((p) => !isVararg(p));
+        const outputParams = finishParams.filter(
+            (p) => p.direction === "out" || (p.type.name !== "Gio.AsyncResult" && p.direction !== "in"),
+        );
+
+        const returnTypeMapping = this.typeMapper.mapType(finishMethod.returnType, true);
+        const mainReturnType = returnTypeMapping.ts;
+        const hasMainReturn = mainReturnType !== "void";
+
+        this.addGioImport = true;
+
+        const promiseType = this.buildAsyncReturnType(hasMainReturn, mainReturnType, outputParams);
+
+        const lines: string[] = [];
+        lines.push(`  /**`);
+        lines.push(`   * Promise-based version of ${methodName}.`);
+        if (method.doc) {
+            const docLines = sanitizeDoc(method.doc).split("\n").slice(0, 3);
+            for (const line of docLines) {
+                lines.push(`   * ${line.trim()}`);
+            }
+        }
+        lines.push(`   */`);
+        lines.push(`  ${methodName}(${params}): Promise<${promiseType}> {`);
+        lines.push(`    return new Promise((resolve, reject) => {`);
+
+        const callArgs = this.buildAsyncCallArgs(method, finishMethod, outputParams, sharedLibrary);
+        lines.push(callArgs);
+
+        lines.push(`    });`);
+        lines.push(`  }`);
+
+        return `${lines.join("\n")}\n`;
+    }
+
+    private buildAsyncReturnType(hasMainReturn: boolean, mainReturnType: string, outputParams: GirParameter[]): string {
+        if (outputParams.length === 0) {
+            return hasMainReturn ? mainReturnType : "void";
+        }
+
+        const outputTypes: string[] = [];
+        if (hasMainReturn) {
+            outputTypes.push(`result: ${mainReturnType}`);
+        }
+        for (const param of outputParams) {
+            const paramName = toValidIdentifier(toCamelCase(param.name));
+            const mapped = this.typeMapper.mapParameter(param);
+            let paramType = mapped.ts;
+            if (paramType.startsWith("Ref<") && paramType.endsWith(">")) {
+                paramType = paramType.slice(4, -1);
+            }
+            outputTypes.push(`${paramName}: ${paramType}`);
+        }
+
+        return `{ ${outputTypes.join("; ")} }`;
+    }
+
+    private buildAsyncCallArgs(
+        method: GirMethod,
+        finishMethod: GirMethod,
+        outputParams: GirParameter[],
+        sharedLibrary: string,
+    ): string {
+        const returnTypeMapping = this.typeMapper.mapType(finishMethod.returnType, true);
+        const hasMainReturn = returnTypeMapping.ts !== "void";
+        const needsObjectWrap =
+            (returnTypeMapping.ffi.type === "gobject" || returnTypeMapping.ffi.type === "boxed") &&
+            returnTypeMapping.ts !== "unknown";
+
+        const lines: string[] = [];
+
+        for (const param of outputParams) {
+            const paramName = toValidIdentifier(toCamelCase(param.name));
+            lines.push(`      const ${paramName}Ref = { value: null as unknown };`);
+        }
+
+        const nonCallbackParams = method.parameters.filter(
+            (p, i) =>
+                !isVararg(p) &&
+                p.type.name !== "Gio.AsyncReadyCallback" &&
+                !this.typeMapper.isClosureTarget(i, method.parameters),
+        );
+
+        const asyncCallArgs = nonCallbackParams
+            .map((param) => {
+                const mapped = this.typeMapper.mapParameter(param);
+                const jsParamName = toValidIdentifier(toCamelCase(param.name));
+                const needsPtr = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
+                const valueName = needsPtr ? `(${jsParamName} as any)?.ptr ?? ${jsParamName}` : jsParamName;
+                return `          {\n            type: ${this.generateTypeDescriptor(mapped.ffi)},\n            value: ${valueName},\n          }`;
+            })
+            .join(",\n");
+
+        const finishCallArgs = this.generateFinishCallArguments(finishMethod.parameters, outputParams);
+        const finishReturnType = this.typeMapper.mapType(finishMethod.returnType, true);
+
+        lines.push(`      const callback = (_source: unknown, asyncResult: unknown) => {`);
+        lines.push(`        try {`);
+
+        if (finishMethod.throws) {
+            lines.push(`          const error = { value: null as unknown };`);
+        }
+
+        const errorArg = finishMethod.throws
+            ? `,\n            { type: { type: "ref", innerType: { type: "boxed", innerType: "GError", lib: "libglib-2.0.so.0" } }, value: error }`
+            : "";
+
+        if (hasMainReturn) {
+            const varName = needsObjectWrap ? "ptr" : "result";
+            const castType = needsObjectWrap ? "unknown" : finishReturnType.ts;
+            lines.push(`          const ${varName} = call(`);
+            lines.push(`            "${sharedLibrary}",`);
+            lines.push(`            "${finishMethod.cIdentifier}",`);
+            lines.push(`            [`);
+            lines.push(`              { type: { type: "gobject" }, value: this.ptr },`);
+            lines.push(`${finishCallArgs}${errorArg}`);
+            lines.push(`            ],`);
+            lines.push(`            ${this.generateTypeDescriptor(finishReturnType.ffi)}`);
+            lines.push(`          ) as ${castType};`);
+        } else {
+            lines.push(`          call(`);
+            lines.push(`            "${sharedLibrary}",`);
+            lines.push(`            "${finishMethod.cIdentifier}",`);
+            lines.push(`            [`);
+            lines.push(`              { type: { type: "gobject" }, value: this.ptr },`);
+            lines.push(`${finishCallArgs}${errorArg}`);
+            lines.push(`            ],`);
+            lines.push(`            { type: "undefined" }`);
+            lines.push(`          );`);
+        }
+
+        if (finishMethod.throws) {
+            lines.push(`          if (error.value !== null) {`);
+            lines.push(`            throw new NativeError(error.value);`);
+            lines.push(`          }`);
+            this.usesNativeError = true;
+        }
+
+        if (outputParams.length === 0) {
+            if (hasMainReturn) {
+                if (needsObjectWrap) {
+                    lines.push(
+                        `          if (ptr === null) { resolve(null as unknown as ${finishReturnType.ts}); return; }`,
+                    );
+                    lines.push(
+                        `          const instance = Object.create(${finishReturnType.ts}.prototype) as ${finishReturnType.ts} & { ptr: unknown };`,
+                    );
+                    lines.push(`          instance.ptr = ptr;`);
+                    lines.push(`          resolve(instance);`);
+                } else {
+                    lines.push(`          resolve(result);`);
+                }
+            } else {
+                lines.push(`          resolve();`);
+            }
+        } else {
+            const resolveFields: string[] = [];
+            if (hasMainReturn) {
+                if (needsObjectWrap) {
+                    lines.push(`          const result = (ptr === null ? null : (() => {`);
+                    lines.push(
+                        `            const instance = Object.create(${finishReturnType.ts}.prototype) as ${finishReturnType.ts} & { ptr: unknown };`,
+                    );
+                    lines.push(`            instance.ptr = ptr;`);
+                    lines.push(`            return instance;`);
+                    lines.push(`          })()) as ${finishReturnType.ts};`);
+                }
+                resolveFields.push("result");
+            }
+            for (const param of outputParams) {
+                const paramName = toValidIdentifier(toCamelCase(param.name));
+                const mapped = this.typeMapper.mapParameter(param);
+                let paramType = mapped.ts;
+                if (paramType.startsWith("Ref<") && paramType.endsWith(">")) {
+                    paramType = paramType.slice(4, -1);
+                }
+                resolveFields.push(`${paramName}: ${paramName}Ref.value as ${paramType}`);
+            }
+            lines.push(`          resolve({ ${resolveFields.join(", ")} });`);
+        }
+
+        lines.push(`        } catch (err) {`);
+        lines.push(`          reject(err);`);
+        lines.push(`        }`);
+        lines.push(`      };`);
+
+        lines.push(`      call(`);
+        lines.push(`        "${sharedLibrary}",`);
+        lines.push(`        "${method.cIdentifier}",`);
+        lines.push(`        [`);
+        lines.push(`          { type: { type: "gobject" }, value: this.ptr },`);
+        if (asyncCallArgs) {
+            lines.push(`${asyncCallArgs},`);
+        }
+        lines.push(`          {`);
+        lines.push(
+            `            type: { type: "asyncCallback", sourceType: { type: "gobject", borrowed: true }, resultType: { type: "gobject", borrowed: true } },`,
+        );
+        lines.push(`            value: callback,`);
+        lines.push(`          },`);
+        lines.push(`        ],`);
+        lines.push(`        { type: "undefined" }`);
+        lines.push(`      );`);
+
+        return lines.join("\n");
+    }
+
+    private generateFinishCallArguments(parameters: GirParameter[], outputParams: GirParameter[]): string {
+        return parameters
+            .filter((p) => !isVararg(p))
+            .map((param) => {
+                const paramName = toValidIdentifier(toCamelCase(param.name));
+                if (param.type.name === "Gio.AsyncResult") {
+                    return `              { type: { type: "gobject" }, value: asyncResult }`;
+                }
+                if (outputParams.some((op) => op.name === param.name)) {
+                    const mapped = this.typeMapper.mapParameter(param);
+                    return `              { type: ${this.generateTypeDescriptor(mapped.ffi)}, value: ${paramName}Ref }`;
+                }
+                const mapped = this.typeMapper.mapParameter(param);
+                const needsPtr = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
+                const valueName = needsPtr ? `(${paramName} as any)?.ptr ?? ${paramName}` : paramName;
+                return `              { type: ${this.generateTypeDescriptor(mapped.ffi)}, value: ${valueName} }`;
+            })
+            .join(",\n");
     }
 
     private generateMethod(method: GirMethod, sharedLibrary: string, className?: string): string {
@@ -702,7 +1154,10 @@ ${allArgs ? `${allArgs},` : ""}
         const hasResultParam = method.parameters.some((p) => toValidIdentifier(toCamelCase(p.name)) === "result");
         const resultVarName = hasResultParam ? "_result" : "result";
 
-        const needsCast = returnTypeMapping.ts !== "void" && returnTypeMapping.ts !== "unknown";
+        const needsObjectWrap =
+            (returnTypeMapping.ffi.type === "gobject" || returnTypeMapping.ffi.type === "boxed") &&
+            tsReturnType !== "unknown" &&
+            returnTypeMapping.kind !== "interface";
         const hasReturnValue = returnTypeMapping.ts !== "void";
 
         const lines: string[] = [];
@@ -716,19 +1171,49 @@ ${allArgs ? `${allArgs},` : ""}
             lines.push(`    const error = { value: null as unknown };`);
         }
 
-        const callPrefix = method.throws
-            ? hasReturnValue
-                ? `const ${resultVarName} = `
-                : ""
-            : hasReturnValue
-              ? "return "
-              : "";
-
         const args = this.generateCallArguments(method.parameters);
         const errorArg = method.throws ? this.generateErrorArgument() : "";
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
 
-        lines.push(`    ${callPrefix}call(
+        if (needsObjectWrap && hasReturnValue) {
+            const isCyclic = this.cyclicReturnTypes.has(tsReturnType);
+            lines.push(`    const ptr = call(
+      "${sharedLibrary}",
+      "${method.cIdentifier}",
+      [
+        {
+          type: { type: "gobject" },
+          value: this.ptr,
+        },
+${allArgs ? `${allArgs},` : ""}
+      ],
+      ${this.generateTypeDescriptor(returnTypeMapping.ffi)}
+    );`);
+            if (method.throws) {
+                lines.push(this.generateErrorCheck());
+            }
+            lines.push(`    if (ptr === null) return null as unknown as ${tsReturnType};`);
+            if (isCyclic) {
+                lines.push(`    return { ptr } as unknown as ${tsReturnType};`);
+            } else {
+                lines.push(
+                    `    const instance = Object.create(${tsReturnType}.prototype) as ${tsReturnType} & { ptr: unknown };`,
+                );
+                lines.push(`    instance.ptr = ptr;`);
+                lines.push(`    return instance;`);
+            }
+        } else {
+            const callPrefix = method.throws
+                ? hasReturnValue
+                    ? `const ${resultVarName} = `
+                    : ""
+                : hasReturnValue
+                  ? "return "
+                  : "";
+
+            const needsCast = returnTypeMapping.ts !== "void" && returnTypeMapping.ts !== "unknown";
+
+            lines.push(`    ${callPrefix}call(
       "${sharedLibrary}",
       "${method.cIdentifier}",
       [
@@ -741,10 +1226,11 @@ ${allArgs ? `${allArgs},` : ""}
       ${this.generateTypeDescriptor(returnTypeMapping.ffi)}
     )${needsCast ? ` as ${tsReturnType}` : ""};`);
 
-        if (method.throws) {
-            lines.push(this.generateErrorCheck());
-            if (hasReturnValue) {
-                lines.push(`    return ${resultVarName};`);
+            if (method.throws) {
+                lines.push(this.generateErrorCheck());
+                if (hasReturnValue) {
+                    lines.push(`    return ${resultVarName};`);
+                }
             }
         }
 
@@ -900,7 +1386,7 @@ ${allArgs ? `${allArgs},` : ""}
 
     private async generateInterface(
         iface: GirInterface,
-        _sharedLibrary: string,
+        sharedLibrary: string,
         _classMap: Map<string, GirClass>,
     ): Promise<string> {
         this.resetState();
@@ -908,14 +1394,31 @@ ${allArgs ? `${allArgs},` : ""}
         const interfaceName = toPascalCase(iface.name);
         const sections: string[] = [];
 
+        this.usesCall = iface.methods.length > 0;
+        this.usesRef = iface.methods.some((m) => hasOutParameter(m.parameters));
+
         if (iface.doc) {
             sections.push(formatDoc(iface.doc));
         }
-        sections.push(`export interface ${interfaceName} {`);
+        sections.push(`export class ${interfaceName} {`);
         sections.push(`  ptr: unknown;`);
+        sections.push(``);
+        sections.push(`  protected constructor(ptr: unknown) {`);
+        sections.push(`    this.ptr = ptr;`);
+        sections.push(`  }`);
+        sections.push(``);
+        sections.push(`  static fromPtr(ptr: unknown): ${interfaceName} {`);
+        sections.push(`    return new ${interfaceName}(ptr);`);
+        sections.push(`  }`);
+
+        if (iface.methods.length > 0) {
+            sections.push(this.generateMethods(iface.methods, sharedLibrary, interfaceName));
+        }
+
         sections.push("}");
 
-        return this.formatCode(sections.join("\n"));
+        const imports = this.generateImports(interfaceName);
+        return this.formatCode(imports + sections.join("\n"));
     }
 
     private async generateRecord(record: GirRecord, sharedLibrary: string): Promise<string> {
@@ -1317,7 +1820,10 @@ ${args}
         const hasResultParam = func.parameters.some((p) => toValidIdentifier(toCamelCase(p.name)) === "result");
         const resultVarName = hasResultParam ? "_result" : "result";
 
-        const needsCast = returnTypeMapping.ts !== "void" && returnTypeMapping.ts !== "unknown";
+        const needsObjectWrap =
+            (returnTypeMapping.ffi.type === "gobject" || returnTypeMapping.ffi.type === "boxed") &&
+            returnTypeMapping.ts !== "unknown" &&
+            returnTypeMapping.kind !== "interface";
         const hasReturnValue = returnTypeMapping.ts !== "void";
 
         const lines: string[] = [];
@@ -1331,26 +1837,43 @@ ${args}
             lines.push(`  const error = { value: null as unknown };`);
         }
 
-        const callPrefix = func.throws
-            ? hasReturnValue
-                ? `const ${resultVarName} = `
-                : ""
-            : hasReturnValue
-              ? "return "
-              : "";
-
         const args = this.generateCallArguments(func.parameters, "  ");
         const errorArg = func.throws ? this.generateErrorArgument("  ") : "";
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;
 
-        lines.push(`  ${callPrefix}call("${sharedLibrary}", "${func.cIdentifier}", [
+        if (needsObjectWrap && hasReturnValue) {
+            lines.push(`  const ptr = call("${sharedLibrary}", "${func.cIdentifier}", [
+${allArgs ? `${allArgs},` : ""}
+  ], ${this.generateTypeDescriptor(returnTypeMapping.ffi)});`);
+            if (func.throws) {
+                lines.push(this.generateErrorCheck(""));
+            }
+            lines.push(`  if (ptr === null) return null as unknown as ${returnTypeMapping.ts};`);
+            lines.push(
+                `  const instance = Object.create(${returnTypeMapping.ts}.prototype) as ${returnTypeMapping.ts} & { ptr: unknown };`,
+            );
+            lines.push(`  instance.ptr = ptr;`);
+            lines.push(`  return instance;`);
+        } else {
+            const callPrefix = func.throws
+                ? hasReturnValue
+                    ? `const ${resultVarName} = `
+                    : ""
+                : hasReturnValue
+                  ? "return "
+                  : "";
+
+            const needsCast = returnTypeMapping.ts !== "void" && returnTypeMapping.ts !== "unknown";
+
+            lines.push(`  ${callPrefix}call("${sharedLibrary}", "${func.cIdentifier}", [
 ${allArgs ? `${allArgs},` : ""}
   ], ${this.generateTypeDescriptor(returnTypeMapping.ffi)})${needsCast ? ` as ${returnTypeMapping.ts}` : ""};`);
 
-        if (func.throws) {
-            lines.push(this.generateErrorCheck(""));
-            if (hasReturnValue) {
-                lines.push(`  return ${resultVarName};`);
+            if (func.throws) {
+                lines.push(this.generateErrorCheck(""));
+                if (hasReturnValue) {
+                    lines.push(`  return ${resultVarName};`);
+                }
             }
         }
 
@@ -1383,7 +1906,9 @@ ${allArgs ? `${allArgs},` : ""}
     }
 
     private generateParameterList(parameters: GirParameter[], makeAllOptional = false): string {
-        const filteredParams = parameters.filter((p) => !isVararg(p));
+        const filteredParams = parameters.filter(
+            (p, i) => !isVararg(p) && !this.typeMapper.isClosureTarget(i, parameters),
+        );
 
         const required: string[] = [];
         const optional: string[] = [];
@@ -1401,11 +1926,13 @@ ${allArgs ? `${allArgs},` : ""}
 
     private generateCallArguments(parameters: GirParameter[], indent = "      "): string {
         return parameters
-            .filter((p) => !isVararg(p))
+            .filter((p, i) => !isVararg(p) && !this.typeMapper.isClosureTarget(i, parameters))
             .map((param) => {
                 const mapped = this.typeMapper.mapParameter(param);
                 const jsParamName = toValidIdentifier(toCamelCase(param.name));
-                return `${indent}  {\n${indent}    type: ${this.generateTypeDescriptor(mapped.ffi)},\n${indent}    value: ${jsParamName},\n${indent}  }`;
+                const needsPtr = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
+                const valueName = needsPtr ? `(${jsParamName} as any)?.ptr ?? ${jsParamName}` : jsParamName;
+                return `${indent}  {\n${indent}    type: ${this.generateTypeDescriptor(mapped.ffi)},\n${indent}    value: ${valueName},\n${indent}  }`;
             })
             .join(",\n");
     }
@@ -1444,6 +1971,9 @@ ${indent}  }`;
         if (type.type === "array" && type.itemType) {
             return `{ type: "array", itemType: ${this.generateTypeDescriptor(type.itemType)} }`;
         }
+        if (type.type === "asyncCallback" && type.sourceType && type.resultType) {
+            return `{ type: "asyncCallback", sourceType: ${this.generateTypeDescriptor(type.sourceType)}, resultType: ${this.generateTypeDescriptor(type.resultType)} }`;
+        }
         return `{ type: "${type.type}" }`;
     }
 
@@ -1473,7 +2003,7 @@ ${indent}  }`;
             const normalizedParentClass = parentClassName ? normalizeClassName(parentClassName) : "";
             if (normalizedRecordName !== normalizedCurrentClass && normalizedRecordName !== normalizedParentClass) {
                 const originalName = this.recordNameToFile.get(normalizedRecordName) ?? normalizedRecordName;
-                lines.push(`import type { ${normalizedRecordName} } from "./${toKebabCase(originalName)}.js";`);
+                lines.push(`import { ${normalizedRecordName} } from "./${toKebabCase(originalName)}.js";`);
             }
         }
 
@@ -1481,7 +2011,7 @@ ${indent}  }`;
             a[0].localeCompare(b[0]),
         )) {
             const originalFileName = this.interfaceNameToFile.get(interfaceName) ?? originalName;
-            lines.push(`import type { ${interfaceName} } from "./${toKebabCase(originalFileName)}.js";`);
+            lines.push(`import { ${interfaceName} } from "./${toKebabCase(originalFileName)}.js";`);
         }
 
         for (const [className, originalName] of Array.from(this.usedSameNamespaceClasses.entries()).sort((a, b) =>
@@ -1495,7 +2025,11 @@ ${indent}  }`;
                 !this.signalClasses.has(className) &&
                 !this.usedInterfaces.has(className)
             ) {
-                lines.push(`import type { ${className} } from "./${toKebabCase(originalName)}.js";`);
+                if (this.cyclicReturnTypes.has(className)) {
+                    lines.push(`import type { ${className} } from "./${toKebabCase(originalName)}.js";`);
+                } else {
+                    lines.push(`import { ${className} } from "./${toKebabCase(originalName)}.js";`);
+                }
             }
         }
 
@@ -1509,6 +2043,9 @@ ${indent}  }`;
         for (const usage of this.usedExternalTypes.values()) {
             if (usage.namespace === this.options.namespace) continue;
             externalNamespaces.add(usage.namespace);
+        }
+        if (this.addGioImport && this.options.namespace !== "Gio") {
+            externalNamespaces.add("Gio");
         }
         for (const namespace of Array.from(externalNamespaces).sort()) {
             const nsLower = namespace.toLowerCase();

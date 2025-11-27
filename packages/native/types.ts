@@ -32,6 +32,14 @@ type UndefinedType = { type: "undefined" };
 type CallbackType = { type: "callback"; argTypes?: Type[] };
 
 /**
+ * Async callback type descriptor for GAsyncReadyCallback.
+ * Used with async GIO/GTK operations like file I/O, network, etc.
+ * The sourceType is the type of the source object (first callback arg).
+ * The resultType is the type of the GAsyncResult (second callback arg).
+ */
+type AsyncCallbackType = { type: "asyncCallback"; sourceType: Type; resultType: Type };
+
+/**
  * FFI type descriptor used to specify the type of arguments and return values
  * when calling native GTK functions via FFI.
  */
@@ -45,6 +53,7 @@ export type Type =
     | ArrayType
     | RefType
     | CallbackType
+    | AsyncCallbackType
     | NullType
     | UndefinedType;
 

@@ -6,7 +6,7 @@
         },
         "build": {
             "dependsOn": ["^build", "codegen", "native-build"],
-            "outputs": ["dist/**", "build/**"]
+            "outputs": ["dist/**", "build/**", "*.tsbuildinfo"]
         },
         "native-build": {
             "outputs": ["target/**", "index.node", "cargo.log"]

@@ -184,6 +184,10 @@ export interface GirParameter {
     nullable?: boolean;
     /** Whether this parameter is optional. */
     optional?: boolean;
+    /** The scope of the callback (async, call, notified). */
+    scope?: "async" | "call" | "notified";
+    /** Index of the closure/user_data parameter for callbacks. */
+    closure?: number;
     /** Documentation for the parameter. */
     doc?: string;
 }
@@ -282,6 +286,10 @@ export interface FfiTypeDescriptor {
     innerType?: FfiTypeDescriptor | string;
     /** Item type for array types. */
     itemType?: FfiTypeDescriptor;
+    /** Source type for asyncCallback (the GObject source). */
+    sourceType?: FfiTypeDescriptor;
+    /** Result type for asyncCallback (the GAsyncResult). */
+    resultType?: FfiTypeDescriptor;
 }
 
 /**
@@ -366,7 +374,7 @@ export class TypeRegistry {
     registerInterface(namespace: string, name: string): void {
         const transformedName = normalizeTypeName(name);
         this.types.set(`${namespace}.${name}`, {
-            kind: "interface",
+            kind: "class",
             name,
             namespace,
             transformedName,
@@ -496,6 +504,7 @@ export interface MappedType {
     ts: string;
     ffi: FfiTypeDescriptor;
     externalType?: ExternalTypeUsage;
+    kind?: TypeKind;
 }
 
 /**
@@ -705,6 +714,7 @@ export class TypeMapper {
                         ts: qualifiedName,
                         ffi: { type: "gobject", borrowed: isReturn },
                         externalType: isExternal ? externalType : undefined,
+                        kind: registered.kind,
                     };
                 }
             }
@@ -750,12 +760,14 @@ export class TypeMapper {
                             innerType: registered.glibTypeName ?? registered.transformedName,
                         },
                         externalType,
+                        kind: registered.kind,
                     };
                 }
                 return {
                     ts: qualifiedName,
                     ffi: { type: "gobject", borrowed: isReturn },
                     externalType,
+                    kind: registered.kind,
                 };
             }
         }
@@ -784,6 +796,17 @@ export class TypeMapper {
             };
         }
 
+        if (param.type.name === "Gio.AsyncReadyCallback") {
+            return {
+                ts: "(source: unknown, result: unknown) => void",
+                ffi: {
+                    type: "asyncCallback",
+                    sourceType: { type: "gobject", borrowed: true },
+                    resultType: { type: "gobject", borrowed: true },
+                },
+            };
+        }
+
         if (param.type.name === "GLib.Closure" || param.type.name.endsWith("Func")) {
             return {
                 ts: "(...args: unknown[]) => unknown",
@@ -792,6 +815,16 @@ export class TypeMapper {
         }
 
         return this.mapType(param.type);
+    }
+
+    /**
+     * Checks if a parameter is a closure/user_data target for a GAsyncReadyCallback.
+     * @param paramIndex - The index of the parameter to check
+     * @param allParams - All parameters in the method
+     * @returns True if this parameter is user_data for a GAsyncReadyCallback
+     */
+    isClosureTarget(paramIndex: number, allParams: GirParameter[]): boolean {
+        return allParams.some((p) => p.type.name === "Gio.AsyncReadyCallback" && p.closure === paramIndex);
     }
 
     /**

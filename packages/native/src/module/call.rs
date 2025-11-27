@@ -71,7 +71,15 @@ fn handle_call(
     args: Vec<Arg>,
     result_type: Type,
 ) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
-    let arg_types: Vec<ffi::Type> = args.iter().map(|arg| (&arg.type_).into()).collect();
+    let mut arg_types: Vec<ffi::Type> = Vec::with_capacity(args.len() + 1);
+    for arg in &args {
+        if matches!(arg.type_, Type::AsyncCallback(_)) {
+            arg_types.push(ffi::Type::pointer());
+            arg_types.push(ffi::Type::pointer());
+        } else {
+            arg_types.push((&arg.type_).into());
+        }
+    }
 
     let cif = ffi::Builder::new()
         .res((&result_type).into())
@@ -84,7 +92,18 @@ fn handle_call(
         .map(TryInto::<cif::Value>::try_into)
         .collect::<anyhow::Result<Vec<cif::Value>>>()?;
 
-    let mut ffi_args: Vec<ffi::Arg> = cif_args.iter().map(Into::into).collect();
+    let mut ffi_args: Vec<ffi::Arg> = Vec::with_capacity(cif_args.len() + 1);
+    for cif_arg in &cif_args {
+        match cif_arg {
+            cif::Value::AsyncCallback(async_cb) => {
+                ffi_args.push(ffi::arg(&async_cb.trampoline_ptr));
+                ffi_args.push(ffi::arg(&async_cb.closure.ptr));
+            }
+            other => {
+                ffi_args.push(other.into());
+            }
+        }
+    }
 
     let symbol_ptr = unsafe {
         GtkThreadState::with::<_, anyhow::Result<ffi::CodePtr>>(|state| {

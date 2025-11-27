@@ -23,6 +23,12 @@ pub struct CallbackType {
 }
 
 #[derive(Debug, Clone)]
+pub struct AsyncCallbackType {
+    pub source_type: Box<Type>,
+    pub result_type: Box<Type>,
+}
+
+#[derive(Debug, Clone)]
 pub enum Type {
     Integer(IntegerType),
     Float(FloatType),
@@ -34,6 +40,7 @@ pub enum Type {
     Boxed(BoxedType),
     Array(ArrayType),
     Callback(CallbackType),
+    AsyncCallback(AsyncCallbackType),
     Ref(RefType),
 }
 
@@ -72,6 +79,16 @@ impl Type {
                 };
                 Ok(Type::Callback(CallbackType { arg_types }))
             }
+            "asyncCallback" => {
+                let source_type_value: Handle<JsValue> = obj.get(cx, "sourceType")?;
+                let result_type_value: Handle<JsValue> = obj.get(cx, "resultType")?;
+                let source_type = Box::new(Type::from_js_value(cx, source_type_value)?);
+                let result_type = Box::new(Type::from_js_value(cx, result_type_value)?);
+                Ok(Type::AsyncCallback(AsyncCallbackType {
+                    source_type,
+                    result_type,
+                }))
+            }
             "ref" => Ok(Type::Ref(RefType::from_js_value(cx, obj.upcast())?)),
             _ => cx.throw_type_error(format!("Unknown type: {}", type_)),
         }
@@ -90,6 +107,7 @@ impl From<&Type> for ffi::Type {
             Type::Boxed(type_) => type_.into(),
             Type::Array(type_) => type_.into(),
             Type::Callback(_) => ffi::Type::pointer(),
+            Type::AsyncCallback(_) => ffi::Type::pointer(),
             Type::Ref(type_) => type_.into(),
             Type::Undefined => ffi::Type::void(),
         }

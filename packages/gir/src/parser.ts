@@ -218,14 +218,20 @@ export class GirParser {
 
         const params = Array.isArray(parametersNode.parameter) ? parametersNode.parameter : [parametersNode.parameter];
 
-        return params.map((param: Record<string, unknown>) => ({
-            name: String(param["@_name"] ?? ""),
-            type: this.parseType((param.type ?? param.array) as Record<string, unknown> | undefined),
-            direction: (String(param["@_direction"] ?? "in") as "in" | "out" | "inout") || "in",
-            nullable: param["@_nullable"] === "1",
-            optional: param["@_allow-none"] === "1",
-            doc: extractDoc(param),
-        }));
+        return params.map((param: Record<string, unknown>) => {
+            const scope = param["@_scope"] as string | undefined;
+            const closure = param["@_closure"] as string | undefined;
+            return {
+                name: String(param["@_name"] ?? ""),
+                type: this.parseType((param.type ?? param.array) as Record<string, unknown> | undefined),
+                direction: (String(param["@_direction"] ?? "in") as "in" | "out" | "inout") || "in",
+                nullable: param["@_nullable"] === "1",
+                optional: param["@_allow-none"] === "1",
+                scope: scope as "async" | "call" | "notified" | undefined,
+                closure: closure !== undefined ? parseInt(closure, 10) : undefined,
+                doc: extractDoc(param),
+            };
+        });
     }
 
     private parseReturnType(returnValue: Record<string, unknown> | undefined): GirType {

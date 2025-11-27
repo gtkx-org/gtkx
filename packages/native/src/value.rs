@@ -472,9 +472,14 @@ impl Value {
                 Value::Boolean(boolean)
             }
             Type::GObject(_) => {
-                let object: glib::Object = gvalue.get().unwrap();
-                let object_id = ObjectId::new(Object::GObject(object));
-                Value::Object(object_id)
+                let object: Option<glib::Object> = gvalue.get().unwrap();
+                match object {
+                    Some(obj) => {
+                        let object_id = ObjectId::new(Object::GObject(obj));
+                        Value::Object(object_id)
+                    }
+                    None => Value::Null,
+                }
             }
             Type::Boxed(boxed_type) => {
                 let boxed_ptr = gvalue.as_ptr();
@@ -541,9 +546,8 @@ impl From<Value> for Option<glib::Value> {
             Value::Number(n) => Some(n.into()),
             Value::String(s) => Some(s.into()),
             Value::Boolean(b) => Some(b.into()),
-            Value::Null => None,
-            Value::Undefined => None,
-            _ => panic!("Unsupported Result type for glib::Value conversion"),
+            Value::Null | Value::Undefined => None,
+            _ => None,
         }
     }
 }

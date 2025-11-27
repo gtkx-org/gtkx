@@ -1,4 +1,5 @@
 mod arg;
+mod async_callback;
 mod boxed;
 mod cif;
 mod module;
