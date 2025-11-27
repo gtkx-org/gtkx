@@ -2,6 +2,7 @@
 import Link from "@docusaurus/Link";
 import useBaseUrl from "@docusaurus/useBaseUrl";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
+import CodeBlock from "@theme/CodeBlock";
 import Heading from "@theme/Heading";
 import Layout from "@theme/Layout";
 import clsx from "clsx";
@@ -98,9 +99,8 @@ function CodeExample(): ReactNode {
                 </Heading>
                 <div className="row">
                     <div className="col col--8 col--offset-2">
-                        <pre className={styles.codeBlock}>
-                            <code>
-                                {`import { ApplicationWindow, Button, quit, render } from "@gtkx/gtkx";
+                        <CodeBlock language="tsx">
+                            {`import { ApplicationWindow, Button, quit, render } from "@gtkx/gtkx";
 
 render(
   <ApplicationWindow
@@ -116,8 +116,7 @@ render(
   </ApplicationWindow>,
   "com.example.app"
 );`}
-                            </code>
-                        </pre>
+                        </CodeBlock>
                     </div>
                 </div>
             </div>
@@ -133,14 +132,13 @@ function StylingExample(): ReactNode {
                     CSS-in-JS Styling
                 </Heading>
                 <p className="text--center margin-bottom--lg">
-                    Style your widgets with an Emotion-like API. Use template literals, keyframe animations, and GTK theme
-                    variables.
+                    Style your widgets with an Emotion-like API. Use template literals, keyframe animations, and GTK
+                    theme variables.
                 </p>
                 <div className="row">
                     <div className="col col--8 col--offset-2">
-                        <pre className={styles.codeBlock}>
-                            <code>
-                                {`import { css, keyframes, injectGlobal } from "@gtkx/css";
+                        <CodeBlock language="tsx">
+                            {`import { css, keyframes, injectGlobal } from "@gtkx/css";
 
 // Global styles
 injectGlobal\`
@@ -163,14 +161,8 @@ const cardStyle = css\`
 <Box cssClasses={[cardStyle]}>
   <Label.Root label="Styled with Emotion!" />
 </Box>`}
-                            </code>
-                        </pre>
+                        </CodeBlock>
                     </div>
-                </div>
-                <div className="text--center margin-top--lg">
-                    <Link className="button button--primary" to="/docs/guides/styling">
-                        Learn more about styling
-                    </Link>
                 </div>
             </div>
         </section>

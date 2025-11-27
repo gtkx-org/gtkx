@@ -48,14 +48,6 @@
     background: var(--ifm-color-emphasis-200);
 }
 
-.codeBlock {
-    padding: 1.5rem;
-    border-radius: var(--ifm-code-border-radius);
-    background: var(--ifm-code-background);
-    font-size: 0.9rem;
-    overflow-x: auto;
-}
-
 .stylingSection {
     padding: 3rem 0;
 }

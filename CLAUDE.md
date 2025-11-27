@@ -16,6 +16,8 @@ This is a pnpm monorepo with the following packages:
 - **`packages/gir`**: GIR (GObject Introspection) file parser. Parses XML `.gir` files into TypeScript interfaces and maps GIR types to TypeScript/FFI types.
 - **`packages/ffi`**: Generated TypeScript FFI bindings for GTK libraries. Contains a code generator that reads GIR files and produces TypeScript classes/interfaces.
 - **`packages/gtkx`**: React integration layer. Implements a custom React Reconciler that translates React components into GTK widgets. Includes JSX type generation.
+- **`packages/css`**: Emotion-style CSS-in-JS for styling GTK widgets with familiar CSS syntax.
+- **`website`**: Docusaurus documentation site with guides and API reference.
 - **`examples/demo`**: Simple demo application
 - **`examples/kitchen-sink`**: More complex example with various widgets
 
@@ -112,6 +114,13 @@ cd examples/kitchen-sink && pnpm build && pnpm start
 ```bash
 pnpm knip           # Find unused exports, dependencies, types
 pnpm knip:fix       # Auto-fix some issues
+pnpm test           # Run tests across all packages
+```
+
+**Documentation:**
+```bash
+pnpm docs           # Start documentation dev server
+pnpm docs:build     # Build documentation for production
 ```
 
 ## Important Generator Behavior
