@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/gtkx",
-    "version": "0.1.7",
+    "version": "0.1.8",
     "description": "Build GTK4 desktop applications with React and TypeScript",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",

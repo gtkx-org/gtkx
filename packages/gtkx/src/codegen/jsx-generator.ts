@@ -335,7 +335,6 @@ ${widgetPropsContent}
         });
     }
 
-
     private analyzeContainerCapabilities(widget: GirClass, classMap: Map<string, GirClass>): ContainerMetadata {
         const hasAppend = widget.methods.some((m) => m.name === "append");
         const hasSetChild = widget.methods.some((m) => m.name === "set_child");
@@ -534,11 +533,7 @@ ${widgetPropsContent}
         return params ? `(${params}) => ${returnType}` : `() => ${returnType}`;
     }
 
-
-    private generateExports(
-        widgets: GirClass[],
-        containerMetadata: Map<string, ContainerMetadata>,
-    ): string {
+    private generateExports(widgets: GirClass[], containerMetadata: Map<string, ContainerMetadata>): string {
         const lines: string[] = [];
 
         for (const widget of widgets) {
@@ -572,10 +567,7 @@ ${widgetPropsContent}
         return `${lines.join("\n")}\n`;
     }
 
-    private generateJsxNamespace(
-        widgets: GirClass[],
-        containerMetadata: Map<string, ContainerMetadata>,
-    ): string {
+    private generateJsxNamespace(widgets: GirClass[], containerMetadata: Map<string, ContainerMetadata>): string {
         const elements: string[] = [];
 
         for (const widget of widgets) {

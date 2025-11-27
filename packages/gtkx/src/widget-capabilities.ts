@@ -93,6 +93,4 @@ export const removeChild = (parent: gtk.Widget, child: gtk.Widget): void => {
     }
 };
 
-export type SignalHandlerMap = Map<string, number>;
-
 export { disconnectSignalHandlers } from "./signal-utils.js";
