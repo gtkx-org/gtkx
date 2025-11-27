@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/css",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "description": "Emotion-style CSS-in-JS for GTKX applications",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",

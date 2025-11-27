@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/ffi",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "description": "Generated TypeScript FFI bindings for GTK4 libraries",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
