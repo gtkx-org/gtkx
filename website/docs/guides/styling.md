@@ -22,7 +22,7 @@ Import the styling functions and apply them via the `cssClasses` prop:
 
 ```tsx
 import { css } from "@gtkx/css";
-import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/gtkx";
+import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/react";
 
 const buttonStyle = css`
   padding: 16px 32px;
@@ -245,7 +245,7 @@ Common GTK style classes:
 import { css, cx, injectGlobal, keyframes } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
-import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/gtkx";
+import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/react";
 
 // Global styles
 injectGlobal`

@@ -10,12 +10,13 @@ GTKX provides React components for GTK4 widgets. This guide covers the core patt
 
 ### render
 
-The main entry point for GTKX applications:
+The main entry point for GTKX applications. Returns the GTK Application instance:
 
 ```tsx
-import { ApplicationWindow, Button, quit, render } from "@gtkx/gtkx";
+import { ApplicationWindow, Button, quit, render } from "@gtkx/react";
 
-render(
+// Export the app instance for use in dialogs
+export const app = render(
   <ApplicationWindow
     title="My App"
     defaultWidth={800}
@@ -31,15 +32,24 @@ render(
 The `render` function:
 - Takes a React element tree as the first argument
 - Takes an application ID as the second argument (reverse domain notation)
-- Optionally accepts `ApplicationFlags` as the third argument
+- Returns the `Gtk.Application` instance (export it for use with dialogs)
 - Starts the GTK main loop
+
+Exporting the app instance allows components to import it for dialogs:
+
+```tsx
+import { app } from "./index.js";
+
+const dialog = new Gtk.FileDialog();
+const file = await dialog.open(app.getActiveWindow());
+```
 
 ### quit
 
 Cleanly shuts down the application:
 
 ```tsx
-import { quit } from "@gtkx/gtkx";
+import { quit } from "@gtkx/react";
 
 <ApplicationWindow onCloseRequest={quit}>
   {/* Content */}
@@ -53,25 +63,33 @@ The `quit` function:
 
 ### createPortal
 
-Renders children into a different widget container:
+Renders children outside the normal component tree. Most commonly used for AboutDialog:
 
 ```tsx
-import { createPortal } from "@gtkx/gtkx";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import { AboutDialog, Button, createPortal } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
 
-function MyComponent() {
-  const containerRef = useRef<Gtk.Box>(null);
+const AboutButton = () => {
+  const [showAbout, setShowAbout] = useState(false);
 
   return (
     <>
-      <Box ref={containerRef} />
-      {containerRef.current && createPortal(
-        <Label.Root label="Rendered in the Box" />,
-        containerRef.current
+      <Button label="About" onClicked={() => setShowAbout(true)} />
+      {showAbout && createPortal(
+        <AboutDialog
+          programName="My App"
+          version="1.0.0"
+          licenseType={Gtk.License.MIT_X11}
+          onCloseRequest={() => {
+            setShowAbout(false);
+            return false;
+          }}
+        />
       )}
     </>
   );
-}
+};
 ```
 
 ### createRef
@@ -79,7 +97,7 @@ function MyComponent() {
 Creates references for callback-based GTK APIs:
 
 ```tsx
-import { createRef } from "@gtkx/gtkx";
+import { createRef } from "@gtkx/react";
 
 const ref = createRef(myValue);
 ```

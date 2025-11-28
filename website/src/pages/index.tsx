@@ -90,6 +90,27 @@ function HomepageFeatures(): ReactNode {
     );
 }
 
+function ScreenshotSection(): ReactNode {
+    const screenshotUrl = useBaseUrl("/img/screenshot.png");
+    return (
+        <section className={styles.screenshotSection}>
+            <div className="container">
+                <Heading as="h2" className="text--center margin-bottom--lg">
+                    Native GTK4 Widgets
+                </Heading>
+                <div className="row">
+                    <div className="col col--10 col--offset-1">
+                        <img src={screenshotUrl} alt="GTKX Demo Application" className={styles.screenshot} />
+                        <p className="text--center margin-top--md">
+                            The gtk4-demo application showcasing buttons, inputs, lists, dialogs, and more.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
 function CodeExample(): ReactNode {
     return (
         <section className={styles.codeExample}>
@@ -100,7 +121,7 @@ function CodeExample(): ReactNode {
                 <div className="row">
                     <div className="col col--8 col--offset-2">
                         <CodeBlock language="tsx">
-                            {`import { ApplicationWindow, Button, quit, render } from "@gtkx/gtkx";
+                            {`import { ApplicationWindow, Button, quit, render } from "@gtkx/react";
 
 render(
   <ApplicationWindow
@@ -175,6 +196,7 @@ export default function Home(): ReactNode {
             <HomepageHeader />
             <main>
                 <HomepageFeatures />
+                <ScreenshotSection />
                 <CodeExample />
                 <StylingExample />
             </main>

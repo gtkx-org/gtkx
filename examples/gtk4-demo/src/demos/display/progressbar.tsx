@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label, ProgressBar } from "@gtkx/gtkx";
+import { Box, Button, Label, ProgressBar } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 

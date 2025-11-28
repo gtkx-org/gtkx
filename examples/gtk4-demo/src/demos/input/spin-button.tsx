@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, SpinButton } from "@gtkx/gtkx";
+import { Box, Label, SpinButton } from "@gtkx/react";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 

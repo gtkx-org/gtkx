@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, CenterBox, Label } from "@gtkx/gtkx";
+import { Box, Button, CenterBox, Label } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 export const CenterBoxDemo = () => {
@@ -78,7 +78,7 @@ export const centerBoxDemo: Demo = {
     keywords: ["center", "box", "layout", "slots", "GtkCenterBox"],
     component: CenterBoxDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, CenterBox, Label } from "@gtkx/gtkx";
+import { Box, Button, CenterBox, Label } from "@gtkx/react";
 
 export const CenterBoxDemo = () => {
     return (

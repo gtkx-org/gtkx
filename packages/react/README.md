@@ -1,11 +1,11 @@
-# @gtkx/gtkx
+# @gtkx/react
 
 React integration layer for GTKX. This package provides a custom React reconciler that renders React components as native GTK4 widgets.
 
 ## Installation
 
 ```bash
-pnpm add @gtkx/gtkx react
+pnpm add @gtkx/react react
 ```
 
 ### Peer Dependencies
@@ -29,11 +29,25 @@ sudo apt install libgtk-4-dev
 ## Quick Start
 
 ```tsx
-import { ApplicationWindow, Button, quit, render } from "@gtkx/gtkx";
+import { ApplicationWindow, Button, Box, Label, quit, render } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
 
-render(
+const Counter = () => {
+  const [count, setCount] = useState(0);
+
+  return (
+    <Box valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} spacing={10}>
+      <Label.Root label={`Count: ${count}`} cssClasses={["title-2"]} />
+      <Button label="Increment" onClicked={() => setCount(c => c + 1)} />
+    </Box>
+  );
+};
+
+// Export app instance for use in dialogs
+export const app = render(
   <ApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
-    <Button label="Hello!" onClicked={() => console.log("Clicked!")} />
+    <Counter />
   </ApplicationWindow>,
   "com.example.myapp"
 );
@@ -49,10 +63,14 @@ npx tsx src/index.tsx
 
 ### `render(element, applicationId)`
 
-Renders a React element tree as a GTK4 application.
+Renders a React element tree as a GTK4 application. Returns the GTK Application instance.
 
 - `element` — Root React element (typically `ApplicationWindow`)
 - `applicationId` — Unique identifier in reverse-DNS format (e.g., `com.example.app`)
+
+```tsx
+export const app = render(<App />, "com.example.myapp");
+```
 
 ### `quit()`
 
@@ -62,12 +80,20 @@ Signals the application to close. Returns `false` (useful as a direct event hand
 <ApplicationWindow onCloseRequest={quit}>...</ApplicationWindow>
 ```
 
+### `createPortal(element)`
+
+Renders a React element outside the normal component tree (useful for dialogs).
+
+```tsx
+{showDialog && createPortal(<AboutDialog ... />)}
+```
+
 ### `createRef()`
 
 Creates a reference for FFI output parameters.
 
 ```tsx
-import { createRef } from "@gtkx/gtkx";
+import { createRef } from "@gtkx/react";
 
 const ref = createRef();
 someGtkFunction(ref);
@@ -98,10 +124,13 @@ console.log(ref.value);
 **Grid** — Arranges children in a grid layout
 
 ```tsx
-<Grid columnSpacing={10} rowSpacing={10}>
-  <Button label="(0,0)" />
-  <Button label="(1,0)" />
-</Grid>
+<Grid.Root columnSpacing={10} rowSpacing={10}>
+  <Grid.Child column={0} row={0}><Button label="(0,0)" /></Grid.Child>
+  <Grid.Child column={1} row={0}><Button label="(1,0)" /></Grid.Child>
+  <Grid.Child column={0} row={1} columnSpan={2}>
+    <Button label="Spans 2 columns" hexpand />
+  </Grid.Child>
+</Grid.Root>
 ```
 
 **ScrolledWindow** — Adds scrollbars to content
@@ -110,15 +139,6 @@ console.log(ref.value);
 <ScrolledWindow vexpand hexpand>
   <TextView />
 </ScrolledWindow>
-```
-
-**Notebook** — Tabbed container
-
-```tsx
-<Notebook>
-  <Box>{/* Tab 1 */}</Box>
-  <Box>{/* Tab 2 */}</Box>
-</Notebook>
 ```
 
 **Paned** — Resizable split container
@@ -145,22 +165,22 @@ console.log(ref.value);
 **ToggleButton** — Button with on/off state
 
 ```tsx
-<ToggleButton.Root label={active ? "ON" : "OFF"} active={active} onToggled={() => setActive((a) => !a)} />
+<ToggleButton.Root label={active ? "ON" : "OFF"} active={active} onToggled={() => setActive(a => !a)} />
 ```
 
 **CheckButton** — Checkbox with label
 
 ```tsx
-<CheckButton.Root label="Accept terms" active={checked} onToggled={() => setChecked((c) => !c)} />
+<CheckButton.Root label="Accept terms" active={checked} onToggled={() => setChecked(c => !c)} />
 ```
 
-**Switch** — On/off toggle
+**Switch** — On/off toggle (must return `true` from `onStateSet`)
 
 ```tsx
 <Switch
   active={enabled}
   onStateSet={() => {
-    setEnabled((e) => !e);
+    setEnabled(e => !e);
     return true;
   }}
 />
@@ -169,21 +189,22 @@ console.log(ref.value);
 **Entry** — Single-line text input
 
 ```tsx
-<Entry placeholderText="Enter text..." text={value} onChanged={handleChange} />
+<Entry placeholderText="Enter text..." />
+<PasswordEntry placeholderText="Password..." />
+<SearchEntry placeholderText="Search..." />
+```
+
+**SpinButton** — Numeric input with increment/decrement
+
+```tsx
+const adjustment = useRef(new Gtk.Adjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1 }));
+<SpinButton adjustment={adjustment.current.ptr} onValueChanged={() => setValue(adjustment.current.getValue())} />
 ```
 
 **Scale** — Horizontal or vertical slider
 
 ```tsx
-<Scale hexpand drawValue />
-```
-
-**TextView** — Multi-line text editor
-
-```tsx
-<ScrolledWindow>
-  <TextView editable wrapMode={Gtk.WrapMode.WORD} />
-</ScrolledWindow>
+<Scale hexpand drawValue adjustment={adjustment.current.ptr} />
 ```
 
 ### Display Widgets
@@ -191,7 +212,7 @@ console.log(ref.value);
 **Label** — Text display
 
 ```tsx
-<Label.Root label="Hello, World!" />
+<Label.Root label="Hello, World!" cssClasses={["title-2"]} />
 ```
 
 **ProgressBar** — Progress indicator
@@ -222,47 +243,74 @@ console.log(ref.value);
 
 ```tsx
 <CenterBox.Root>
-  <CenterBox.StartWidget>
-    <Button label="Left" />
-  </CenterBox.StartWidget>
-  <CenterBox.CenterWidget>
-    <Label.Root label="Center" />
-  </CenterBox.CenterWidget>
-  <CenterBox.EndWidget>
-    <Button label="Right" />
-  </CenterBox.EndWidget>
+  <CenterBox.StartWidget><Button label="Left" /></CenterBox.StartWidget>
+  <CenterBox.CenterWidget><Label.Root label="Center" /></CenterBox.CenterWidget>
+  <CenterBox.EndWidget><Button label="Right" /></CenterBox.EndWidget>
 </CenterBox.Root>
+```
+
+### List Widgets
+
+**ListBox** — Simple vertical list
+
+```tsx
+<ListBox selectionMode={Gtk.SelectionMode.SINGLE}>
+  <ListBoxRow><Label.Root label="Item 1" /></ListBoxRow>
+  <ListBoxRow><Label.Root label="Item 2" /></ListBoxRow>
+</ListBox>
+```
+
+**DropDown** — Dropdown selector
+
+```tsx
+<DropDown.Root
+  itemLabel={(item) => item.name}
+  onSelectionChanged={(item, index) => setSelected(item)}
+>
+  {items.map(item => <DropDown.Item key={item.id} item={item} />)}
+</DropDown.Root>
+```
+
+**ListView** — Virtualized list for large datasets
+
+```tsx
+<ListView.Root renderItem={(item) => {
+  if (!item) return new Gtk.Box();
+  return new Gtk.Label({ label: item.name });
+}}>
+  {items.map(item => <ListView.Item item={item} key={item.id} />)}
+</ListView.Root>
 ```
 
 ### Dialog Widgets
 
-**Popover** — Popup attached to a widget
+**AboutDialog** — Application about dialog (React component)
 
 ```tsx
-<Popover.Root autohide>
-  <Popover.Child>
-    <Box>{/* Content */}</Box>
-  </Popover.Child>
-  <Button label="Show Popover" />
-</Popover.Root>
+{showAbout && createPortal(
+  <AboutDialog
+    programName="My App"
+    version="1.0.0"
+    onCloseRequest={() => { setShowAbout(false); return false; }}
+  />
+)}
 ```
 
-**AboutDialog** — Application about dialog
+**Async Dialogs** — AlertDialog, FileDialog, ColorDialog, FontDialog (imperative)
 
 ```tsx
-{showAbout && <AboutDialog programName="My App" version="1.0.0" onCloseRequest={() => setShowAbout(false)} />}
-```
+import { app } from "./index.js";
 
-**ColorDialogButton** — Color picker
-
-```tsx
-<ColorDialogButton />
-```
-
-**FontDialogButton** — Font picker
-
-```tsx
-<FontDialogButton />
+const openFile = async () => {
+  const dialog = new Gtk.FileDialog();
+  dialog.setTitle("Open File");
+  try {
+    const file = await dialog.open(app.getActiveWindow());
+    console.log(file.getPath());
+  } catch {
+    // Cancelled
+  }
+};
 ```
 
 ## Named Slots
@@ -278,6 +326,12 @@ Some GTK widgets have named child positions, handled via compound components:
     <Box>{/* Content */}</Box>
   </Frame.Child>
 </Frame.Root>
+
+<Expander.Root label="Click to expand">
+  <Expander.Child>
+    <Box>Hidden content</Box>
+  </Expander.Child>
+</Expander.Root>
 ```
 
 ## Using GTK Enums
@@ -287,9 +341,9 @@ Import enums from `@gtkx/ffi/gtk`:
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
 
-<Box orientation={Gtk.Orientation.VERTICAL} />;
-<ListBox selectionMode={Gtk.SelectionMode.SINGLE} />;
-<Revealer transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN} />;
+<Box orientation={Gtk.Orientation.VERTICAL} />
+<ListBox selectionMode={Gtk.SelectionMode.SINGLE} />
+<Revealer transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN} />
 ```
 
 ## Hooks Support
@@ -297,8 +351,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 Standard React hooks work as expected:
 
 ```tsx
-import { useState, useEffect } from "react";
-import { ApplicationWindow, Button, Label, Box, quit, render } from "@gtkx/gtkx";
+import { useState, useEffect, useRef } from "react";
 
 const Counter = () => {
   const [count, setCount] = useState(0);
@@ -310,17 +363,10 @@ const Counter = () => {
   return (
     <Box spacing={10}>
       <Label.Root label={`Count: ${count}`} />
-      <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
+      <Button label="Increment" onClicked={() => setCount(c => c + 1)} />
     </Box>
   );
 };
-
-render(
-  <ApplicationWindow title="Counter" onCloseRequest={quit}>
-    <Counter />
-  </ApplicationWindow>,
-  "com.example.counter"
-);
 ```
 
 ## Architecture
@@ -329,7 +375,7 @@ render(
 ┌─────────────────────────────────┐
 │     Your React Application      │
 ├─────────────────────────────────┤
-│   @gtkx/gtkx (React Reconciler) │
+│   @gtkx/react (React Reconciler) │
 ├─────────────────────────────────┤
 │   @gtkx/ffi (TypeScript FFI)    │
 ├─────────────────────────────────┤

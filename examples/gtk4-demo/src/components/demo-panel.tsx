@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Frame, Label, ScrolledWindow } from "@gtkx/gtkx";
+import { Box, Frame, Label, ScrolledWindow } from "@gtkx/react";
 import type { Demo } from "../demos/types.js";
 
 interface DemoPanelProps {

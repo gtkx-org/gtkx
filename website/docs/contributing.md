@@ -21,12 +21,7 @@ Thank you for your interest in contributing to GTKX! This guide will help you ge
 git clone https://github.com/eugeniodepalo/gtkx.git
 cd gtkx
 pnpm install
-
-# Sync GIR files from your system
-cd packages/ffi && pnpm run codegen --sync
-
-# Build all packages
-cd ../.. && pnpm build
+pnpm build
 ```
 
 ## Project Structure
@@ -34,15 +29,15 @@ cd ../.. && pnpm build
 ```
 gtkx/
 ├── packages/
-│   ├── native/     # Rust FFI module
-│   ├── gir/        # GIR parser
-│   ├── ffi/        # Generated FFI bindings
-│   ├── gtkx/       # React integration
+│   ├── native/     # Rust FFI module (Neon + libffi)
+│   ├── gir/        # GIR XML parser
+│   ├── ffi/        # Generated TypeScript FFI bindings
+│   ├── gtkx/       # React reconciler + JSX types
 │   └── css/        # CSS-in-JS styling
 ├── examples/
-│   ├── demo/       # Simple example
-│   └── kitchen-sink/  # Full widget showcase
-└── website/        # Documentation site
+│   └── gtk4-demo/  # Comprehensive widget showcase
+├── girs/           # Synced GIR files from system
+└── website/        # Docusaurus documentation site
 ```
 
 ## Code Style
@@ -162,11 +157,19 @@ When reporting bugs, please include:
 - Minimal reproduction code
 - Expected vs actual behavior
 
+## Running the Demo
+
+After building, you can run the demo application to test your changes:
+
+```bash
+cd examples/gtk4-demo && pnpm build && pnpm start
+```
+
 ## Getting Help
 
 - Check existing issues and discussions
 - Read the [Architecture](./architecture) documentation
-- Review the [examples](https://github.com/eugeniodepalo/gtkx/tree/main/examples)
+- Review the [gtk4-demo example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/gtk4-demo)
 
 ## License
 

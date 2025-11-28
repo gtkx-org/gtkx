@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label, MenuButton, Popover } from "@gtkx/gtkx";
+import { Box, Button, Label, MenuButton, Popover } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 

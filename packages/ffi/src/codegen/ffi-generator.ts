@@ -253,6 +253,11 @@ const hasOutParameter = (params: GirParameter[]): boolean =>
 
 const isVararg = (param: GirParameter): boolean => param.name === "..." || param.name === "";
 
+const cTypeToGetTypeFunc = (cType: string): string => {
+    const snakeCase = cType.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
+    return `${snakeCase}_get_type`;
+};
+
 /**
  * Generates TypeScript FFI bindings from GIR namespace definitions.
  * Creates classes, methods, properties, and signal handlers that call
@@ -494,12 +499,15 @@ export class CodeGenerator {
             cls.constructors.some((c) => hasOutParameter(c.parameters)) ||
             cls.functions.some((f) => hasOutParameter(f.parameters)) ||
             syncInterfaceMethods.some((m) => hasOutParameter(m.parameters));
+        const hasNonVarargConstructor = cls.constructors.some((c) => !c.parameters.some(isVararg));
+        const needsGObjectNewFallback = !hasNonVarargConstructor && !!cls.parent && !!cls.cType;
         this.usesCall =
             filteredClassMethods.length > 0 ||
             cls.constructors.length > 0 ||
             cls.functions.length > 0 ||
             cls.signals.length > 0 ||
-            interfaceMethods.length > 0;
+            interfaceMethods.length > 0 ||
+            needsGObjectNewFallback;
 
         const className = normalizeClassName(cls.name);
         const parentInfo = parseParentReference(cls.parent, classMap);
@@ -730,6 +738,28 @@ export class CodeGenerator {
         const mainConstructor = cls.constructors.find((c) => !c.parameters.some(isVararg));
 
         if (!mainConstructor) {
+            if (hasParent && cls.cType) {
+                const getTypeFunc = cTypeToGetTypeFunc(cls.cType);
+                const override = hasParent ? "override " : "";
+                return `  protected ${override}createPtr(_args: unknown[]): unknown {
+    const gtype = call(
+      "${sharedLibrary}",
+      "${getTypeFunc}",
+      [],
+      { type: "int", size: 64, unsigned: true }
+    ) as number;
+    return call(
+      "libgobject-2.0.so.0",
+      "g_object_new",
+      [
+        { type: { type: "int", size: 64, unsigned: true }, value: gtype },
+        { type: { type: "gobject" }, value: null },
+      ],
+      { type: "gobject", borrowed: true }
+    );
+  }
+`;
+            }
             if (hasParent) {
                 return `  protected override createPtr(_args: unknown[]): unknown {\n    return null;\n  }\n`;
             }

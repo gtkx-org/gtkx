@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 
@@ -25,7 +25,7 @@ export const helloWorldDemo: Demo = {
     keywords: ["hello", "intro", "getting-started", "GtkLabel", "GtkButton"],
     component: HelloWorldDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
 
 export const HelloWorldDemo = () => {

@@ -54,13 +54,15 @@ The generated code:
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
+import { app } from "./index.js"; // Import the exported app instance
 
 const openFile = async () => {
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Open File");
 
     try {
-        const file = await dialog.open();
+        // Pass the active window for proper modal behavior
+        const file = await dialog.open(app.getActiveWindow());
         const path = file.getPath();
         console.log(`Opened: ${path}`);
     } catch (error) {
@@ -68,6 +70,8 @@ const openFile = async () => {
     }
 };
 ```
+
+The `app.getActiveWindow()` call returns the currently active window, which should be passed to dialog methods for proper modal behavior.
 
 ### Error Handling
 
@@ -192,12 +196,14 @@ const style = fontDesc.getStyle();
 ### Simple Pattern
 
 ```tsx
+import { app } from "./index.js";
+
 const [selectedPath, setSelectedPath] = useState<string | null>(null);
 
 const handleOpen = async () => {
     const dialog = new Gtk.FileDialog();
     try {
-        const file = await dialog.open();
+        const file = await dialog.open(app.getActiveWindow());
         setSelectedPath(file.getPath());
     } catch {
         // User cancelled
@@ -208,6 +214,8 @@ const handleOpen = async () => {
 ### With Loading State
 
 ```tsx
+import { app } from "./index.js";
+
 const [loading, setLoading] = useState(false);
 const [result, setResult] = useState<string | null>(null);
 
@@ -215,7 +223,7 @@ const handleOpen = async () => {
     setLoading(true);
     try {
         const dialog = new Gtk.FileDialog();
-        const file = await dialog.open();
+        const file = await dialog.open(app.getActiveWindow());
         setResult(file.getPath());
     } catch {
         // User cancelled

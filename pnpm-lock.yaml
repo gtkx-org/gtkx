@@ -47,7 +47,7 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../../packages/ffi
-      '@gtkx/gtkx':
+      '@gtkx/react':
         specifier: workspace:*
         version: link:../../packages/gtkx
       react:

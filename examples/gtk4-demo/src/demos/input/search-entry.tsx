@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, ListBox, ListBoxRow, ScrolledWindow, SearchEntry } from "@gtkx/gtkx";
+import { Box, Label, ListBox, ListBoxRow, ScrolledWindow, SearchEntry } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 const fruits = [

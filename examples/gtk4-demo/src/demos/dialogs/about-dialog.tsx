@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AboutDialog, Box, Button, createPortal, Label } from "@gtkx/gtkx";
+import { AboutDialog, Box, Button, createPortal, Label } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 
@@ -64,7 +64,7 @@ export const aboutDialogDemo: Demo = {
     keywords: ["about", "dialog", "credits", "license", "GtkAboutDialog"],
     component: AboutDialogDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { AboutDialog, Button, createPortal } from "@gtkx/gtkx";
+import { AboutDialog, Button, createPortal } from "@gtkx/react";
 import { useState } from "react";
 
 const MyComponent = () => {

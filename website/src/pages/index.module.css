@@ -48,6 +48,29 @@
     background: var(--ifm-color-emphasis-200);
 }
 
+.screenshotSection {
+    padding: 3rem 0;
+    background: var(--ifm-color-emphasis-100);
+}
+
+[data-theme="dark"] .screenshotSection {
+    background: var(--ifm-color-emphasis-200);
+}
+
+.screenshot {
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .screenshot {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.screenshotSection p {
+    color: var(--ifm-color-emphasis-700);
+}
+
 .stylingSection {
     padding: 3rem 0;
 }

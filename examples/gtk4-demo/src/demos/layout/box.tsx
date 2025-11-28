@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 export const BoxDemo = () => {
@@ -110,7 +110,7 @@ export const boxDemo: Demo = {
     keywords: ["box", "layout", "container", "horizontal", "vertical", "GtkBox"],
     component: BoxDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 
 export const BoxDemo = () => {
     return (

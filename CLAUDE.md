@@ -23,10 +23,10 @@ This is a pnpm monorepo:
 ### Basic Application
 
 ```tsx
-import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/gtkx";
+import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
-render(
+export const app = render(
     <ApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
         <Box valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} spacing={12}>
             <Label.Root label="Hello, GTKX!" />
@@ -40,20 +40,29 @@ render(
 ### Styling with CSS-in-JS
 
 ```tsx
-import { css, injectGlobal } from "@gtkx/css";
+import { css, cx, injectGlobal, keyframes } from "@gtkx/css";
 
 injectGlobal`
-    window { background: #3584e4; }
+    window { background: @theme_bg_color; }
+`;
+
+const fadeIn = keyframes`
+    from { opacity: 0; }
+    to { opacity: 1; }
 `;
 
 const buttonStyle = css`
     padding: 16px 32px;
     border-radius: 12px;
     font-weight: bold;
+    animation: ${fadeIn} 0.3s ease-in;
 `;
 
-<Button cssClasses={[buttonStyle]} label="Styled Button" />
-<Button cssClasses={["suggested-action"]} label="System Style" />
+// Combine custom styles with GTK built-in classes
+<Button cssClasses={[cx(buttonStyle, "suggested-action")]} label="Styled Button" />
+
+// GTK built-in classes: suggested-action, destructive-action, flat, card,
+// title-1 through title-4, heading, dim-label, monospace, accent
 ```
 
 ### State Management with React Hooks
@@ -97,6 +106,12 @@ Some widgets use `.Root` with slot children for complex layouts:
     <Paned.StartChild><Box>Left pane</Box></Paned.StartChild>
     <Paned.EndChild><Box>Right pane</Box></Paned.EndChild>
 </Paned.Root>
+
+<Expander.Root label="Click to expand">
+    <Expander.Child>
+        <Box>Hidden content</Box>
+    </Expander.Child>
+</Expander.Root>
 ```
 
 ### Form Inputs
@@ -104,10 +119,17 @@ Some widgets use `.Root` with slot children for complex layouts:
 ```tsx
 <Entry placeholderText="Type something..." />
 <SearchEntry placeholderText="Search..." />
+<PasswordEntry placeholderText="Password..." />
+
 <CheckButton.Root label="Enable feature" active={checked} onToggled={() => setChecked(c => !c)} />
+
+// Switch requires returning true from onStateSet
 <Switch active={switchOn} onStateSet={() => { setSwitchOn(s => !s); return true; }} />
-<SpinButton adjustment={adjustment.ptr} onValueChanged={() => setValue(adjustment.getValue())} />
-<Scale hexpand drawValue adjustment={adjustment.ptr} />
+
+// SpinButton with Adjustment
+const adjustment = useRef(new Gtk.Adjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1 }));
+<SpinButton adjustment={adjustment.current.ptr} onValueChanged={() => setValue(adjustment.current.getValue())} />
+<Scale hexpand drawValue adjustment={adjustment.current.ptr} />
 ```
 
 ### Lists and Collections
@@ -120,27 +142,82 @@ Some widgets use `.Root` with slot children for complex layouts:
 
 <DropDown.Root
     itemLabel={(item) => item.label}
-    onSelectionChanged={(item) => setSelected(item)}
+    onSelectionChanged={(item, index) => setSelected(item)}
 >
     {options.map(opt => <DropDown.Item key={opt.id} item={opt} />)}
 </DropDown.Root>
 
-<ListView.Root renderItem={(item) => { /* return GTK widget */ }}>
+<ListView.Root renderItem={(item) => {
+    if (!item) return new Gtk.Box(); // Setup phase
+    return new Gtk.Label({ label: item.name });
+}}>
     {items.map(item => <ListView.Item item={item} key={item.id} />)}
 </ListView.Root>
+
+<FlowBox maxChildrenPerLine={5} selectionMode={Gtk.SelectionMode.SINGLE}>
+    {items.map(item => <FlowBoxChild key={item.id}>{/* content */}</FlowBoxChild>)}
+</FlowBox>
 ```
 
-### Dialogs
+### Async Dialogs (Promise-based)
 
 ```tsx
+import { app } from "./index.js"; // Import the exported app instance
+
+const showAlertDialog = async () => {
+    const dialog = new Gtk.AlertDialog();
+    dialog.setMessage("Confirm Action");
+    dialog.setDetail("Are you sure you want to proceed?");
+    dialog.setButtons(["Cancel", "OK"]);
+    dialog.setCancelButton(0);
+    dialog.setDefaultButton(1);
+
+    try {
+        const response = await dialog.choose(app.getActiveWindow());
+        console.log(response === 1 ? "Confirmed" : "Cancelled");
+    } catch {
+        console.log("Dismissed");
+    }
+};
+
+const openFile = async () => {
+    const dialog = new Gtk.FileDialog();
+    dialog.setTitle("Open File");
+    try {
+        const file = await dialog.open(app.getActiveWindow());
+        console.log(file.getPath());
+    } catch {
+        console.log("Cancelled");
+    }
+};
+
+const chooseColor = async () => {
+    const dialog = new Gtk.ColorDialog();
+    dialog.setWithAlpha(true);
+    try {
+        const rgba = await dialog.chooseRgba(app.getActiveWindow());
+        console.log(`rgba(${rgba.red * 255}, ${rgba.green * 255}, ${rgba.blue * 255}, ${rgba.alpha})`);
+    } catch {
+        console.log("Cancelled");
+    }
+};
+```
+
+### AboutDialog (React Component)
+
+```tsx
+import { createPortal } from "@gtkx/react";
+
 const [showAbout, setShowAbout] = useState(false);
 
 <Button label="About" onClicked={() => setShowAbout(true)} />
-{showAbout && (
+{showAbout && createPortal(
     <AboutDialog
         programName="My App"
         version="1.0.0"
         comments="Description here"
+        licenseType={Gtk.License.MIT_X11}
+        authors={["Author Name"]}
         onCloseRequest={() => { setShowAbout(false); return false; }}
     />
 )}
@@ -169,12 +246,6 @@ const [showAbout, setShowAbout] = useState(false);
 <Revealer revealChild={revealed} transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}>
     <Label.Root label="Revealed content" />
 </Revealer>
-
-<Expander.Root label="Click to expand">
-    <Expander.Child>
-        <Box>Hidden content</Box>
-    </Expander.Child>
-</Expander.Root>
 ```
 
 ### Grid Layout
@@ -191,10 +262,31 @@ const [showAbout, setShowAbout] = useState(false);
 
 ## Key Patterns
 
+- **App instance**: Export `const app = render(...)` for access to `app.getActiveWindow()`
 - **Event handlers**: Use `on{EventName}` pattern (e.g., `onClicked`, `onToggled`, `onCloseRequest`)
 - **GTK enums**: Import from `@gtkx/ffi/gtk` (e.g., `Gtk.Align.CENTER`, `Gtk.Orientation.VERTICAL`)
 - **Text children**: Automatically wrapped in `<Label>` widgets
 - **Property names**: Use camelCase (GTK's snake_case is converted)
+- **Switch handlers**: Must return `true` from `onStateSet`
+- **Window close**: Return `false` from `onCloseRequest` to allow closing
+
+### Common Widget Props
+
+```tsx
+// Layout
+hexpand={true} vexpand={true}
+halign={Gtk.Align.CENTER} valign={Gtk.Align.START}
+marginStart={10} marginEnd={10} marginTop={10} marginBottom={10}
+
+// Styling
+cssClasses={["suggested-action", customStyle]}
+
+// Box/Container
+orientation={Gtk.Orientation.VERTICAL} spacing={12}
+
+// Window
+title="Window Title" defaultWidth={800} defaultHeight={600}
+```
 
 ### Error Handling
 
@@ -204,7 +296,7 @@ Native GTK/GLib errors are thrown as `NativeError`, which wraps GLib's `GError`:
 import { NativeError } from "@gtkx/ffi";
 
 try {
-    keyFile.getString("NonExistentGroup", "key");
+    keyFile.loadFromFile("/nonexistent", GLib.KeyFileFlags.NONE);
 } catch (err) {
     if (err instanceof NativeError) {
         console.error(err.message);  // Human-readable error message
@@ -218,9 +310,8 @@ try {
 
 ```bash
 pnpm install
-cd packages/ffi && pnpm run codegen --sync  # Sync GIR files (first time)
 pnpm build                                   # Full build
-cd examples/demo && pnpm build && pnpm start # Run demo
+cd examples/gtk4-demo && turbo start         # Run demo
 pnpm knip                                    # Find unused code
 pnpm test                                    # Run tests
 ```

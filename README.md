@@ -26,6 +26,7 @@ GTKX bridges React's component model with GTK4's native widget system. Write JSX
 - **Native performance** — Direct FFI calls to GTK4 via Rust, zero browser overhead
 - **Familiar syntax** — JSX with camelCase props and `onEvent` handlers
 - **CSS-in-JS styling** — Emotion-style `css` tagged template literals via `@gtkx/css`
+- **Async dialogs** — Promise-based APIs for file, color, and font dialogs
 
 ## Quick Start
 
@@ -50,14 +51,13 @@ sudo apt install libgtk-4-dev
 git clone https://github.com/eugeniodepalo/gtkx.git
 cd gtkx
 pnpm install
-cd packages/ffi && pnpm run codegen --sync && cd ../..
 pnpm build
 ```
 
 ### Running the Demo
 
 ```bash
-cd examples/demo && pnpm build && pnpm start
+cd examples/gtk4-demo && turbo start
 ```
 
 ## Example
@@ -65,11 +65,12 @@ cd examples/demo && pnpm build && pnpm start
 ```tsx
 import { css, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/gtkx";
+import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/react";
+import { useState } from "react";
 
 injectGlobal`
   window {
-    background: #3584e4;
+    background: @theme_bg_color;
   }
 `;
 
@@ -78,12 +79,24 @@ const buttonStyle = css`
   border-radius: 12px;
 `;
 
-render(
-  <ApplicationWindow title="Hello GTKX" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+const Counter = () => {
+  const [count, setCount] = useState(0);
+
+  return (
     <Box valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} spacing={12}>
-      <Label.Root label="Hello, GTK!" />
-      <Button cssClasses={[buttonStyle]} label="Click me" onClicked={() => console.log("Clicked!")} />
+      <Label.Root label={`Clicked ${count} times`} cssClasses={["title-2"]} />
+      <Button
+        cssClasses={[buttonStyle, "suggested-action"]}
+        label="Click me"
+        onClicked={() => setCount(c => c + 1)}
+      />
     </Box>
+  );
+};
+
+export const app = render(
+  <ApplicationWindow title="Hello GTKX" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+    <Counter />
   </ApplicationWindow>,
   "com.example.app"
 );
@@ -95,7 +108,7 @@ render(
 ┌─────────────────────────────────┐
 │     Your React Application      │
 ├─────────────────────────────────┤
-│   @gtkx/gtkx (React Reconciler) │
+│  @gtkx/react (React Reconciler) │
 ├─────────────────────────────────┤
 │   @gtkx/ffi (TypeScript FFI)    │
 ├─────────────────────────────────┤
@@ -109,7 +122,7 @@ render(
 
 | Package | Description |
 |---------|-------------|
-| [`@gtkx/gtkx`](packages/gtkx) | React reconciler and JSX components |
+| [`@gtkx/react`](packages/gtkx) | React reconciler and JSX components |
 | [`@gtkx/ffi`](packages/ffi) | Generated TypeScript FFI bindings for GTK4 |
 | [`@gtkx/css`](packages/css) | Emotion-style CSS-in-JS for GTK widgets |
 | [`@gtkx/native`](packages/native) | Rust-based FFI bridge using libffi |
@@ -119,8 +132,7 @@ render(
 
 | Example | Description |
 |---------|-------------|
-| [`demo`](examples/demo) | Simple styled application |
-| [`kitchen-sink`](examples/kitchen-sink) | Comprehensive widget showcase |
+| [`gtk4-demo`](examples/gtk4-demo) | Comprehensive widget showcase with demos |
 
 ## Documentation
 

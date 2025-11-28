@@ -18,7 +18,7 @@ GTKX is a framework for building GTK4 desktop applications using React and TypeS
 
 ## Packages
 
-- @gtkx/gtkx: React integration layer with JSX components
+- @gtkx/react: React integration layer with JSX components
 - @gtkx/ffi: Generated TypeScript FFI bindings for GTK libraries
 - @gtkx/gir: GIR file parser for code generation
 - @gtkx/native: Rust-based Neon module for FFI calls
@@ -26,7 +26,7 @@ GTKX is a framework for building GTK4 desktop applications using React and TypeS
 ## Quick Example
 
 ```tsx
-import { ApplicationWindow, Button, quit, render } from "@gtkx/gtkx";
+import { ApplicationWindow, Button, quit, render } from "@gtkx/react";
 
 render(
   <ApplicationWindow

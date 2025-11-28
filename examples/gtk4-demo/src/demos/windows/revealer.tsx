@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label, Revealer } from "@gtkx/gtkx";
+import { Box, Button, Label, Revealer } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 
@@ -139,7 +139,7 @@ export const revealerDemo: Demo = {
     keywords: ["revealer", "animation", "show", "hide", "transition", "GtkRevealer"],
     component: RevealerDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label, Revealer } from "@gtkx/gtkx";
+import { Box, Button, Label, Revealer } from "@gtkx/react";
 import { useState } from "react";
 
 export const RevealerDemo = () => {

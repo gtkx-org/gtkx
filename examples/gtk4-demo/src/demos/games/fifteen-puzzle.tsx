@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 
@@ -183,7 +183,7 @@ export const fifteenPuzzleDemo: Demo = {
     keywords: ["game", "puzzle", "15", "sliding", "tiles", "interactive"],
     component: FifteenPuzzleDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 import { useState, useCallback } from "react";
 
 const GRID_SIZE = 4;

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Image, Label } from "@gtkx/gtkx";
+import { Box, Image, Label } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 export const ImageDemo = () => {

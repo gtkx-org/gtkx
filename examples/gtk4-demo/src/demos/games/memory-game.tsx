@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 
@@ -193,7 +193,7 @@ export const memoryGameDemo: Demo = {
     keywords: ["game", "memory", "cards", "matching", "interactive"],
     component: MemoryGameDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 import { useState, useCallback, useEffect } from "react";
 
 const SYMBOLS = ["A", "B", "C", "D", "E", "F", "G", "H"];

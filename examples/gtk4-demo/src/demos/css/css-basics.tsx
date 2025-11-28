@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 const customButton = css`

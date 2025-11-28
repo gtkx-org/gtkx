@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, LinkButton } from "@gtkx/gtkx";
+import { Box, Label, LinkButton } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 export const LinkButtonDemo = () => {
@@ -40,7 +40,7 @@ export const linkButtonDemo: Demo = {
     keywords: ["link", "button", "uri", "url", "browser", "GtkLinkButton"],
     component: LinkButtonDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, LinkButton } from "@gtkx/gtkx";
+import { Box, Label, LinkButton } from "@gtkx/react";
 
 export const LinkButtonDemo = () => {
     return (

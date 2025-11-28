@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 
@@ -144,7 +144,7 @@ export const printDialogDemo: Demo = {
     keywords: ["print", "dialog", "pdf", "export", "GtkPrintOperation"],
     component: PrintDialogDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/gtkx";
+import { Box, Button, Label } from "@gtkx/react";
 import { useState, useRef } from "react";
 
 export const PrintDialogDemo = () => {

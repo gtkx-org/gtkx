@@ -70,6 +70,8 @@ Some GTK signals expect a return value to control default behavior:
 
 ### Example: Switch State Handling
 
+The Switch widget requires returning `true` from `onStateSet` to indicate the signal was handled:
+
 ```tsx
 const [active, setActive] = useState(false);
 
@@ -79,6 +81,21 @@ const [active, setActive] = useState(false);
   onStateSet={() => {
     setActive(a => !a);
     return true;
+  }}
+/>
+```
+
+### Example: AboutDialog Close Handling
+
+AboutDialog's `onCloseRequest` must return `false` to allow the dialog to close:
+
+```tsx
+<AboutDialog
+  programName="My App"
+  version="1.0.0"
+  onCloseRequest={() => {
+    setShowAbout(false);
+    return false; // Allow closing
   }}
 />
 ```
@@ -107,7 +124,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 Use the `quit` function to cleanly shut down:
 
 ```tsx
-import { quit } from "@gtkx/gtkx";
+import { quit } from "@gtkx/react";
 
 <ApplicationWindow onCloseRequest={quit}>
   {/* Content */}

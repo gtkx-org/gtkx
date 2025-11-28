@@ -20,7 +20,7 @@
             "dependsOn": ["build"]
         },
         "@gtkx/website#build": {
-            "dependsOn": ["@gtkx/gtkx#build"]
+            "dependsOn": ["@gtkx/react#build"]
         }
     }
 }

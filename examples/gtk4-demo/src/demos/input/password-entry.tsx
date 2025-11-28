@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, PasswordEntry } from "@gtkx/gtkx";
+import { Box, Label, PasswordEntry } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 export const PasswordEntryDemo = () => {

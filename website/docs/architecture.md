@@ -15,7 +15,7 @@ GTKX consists of five packages that work together to render React components as 
 │         Your Application            │
 │    (React components + hooks)       │
 ├─────────────────────────────────────┤
-│            @gtkx/gtkx               │
+│            @gtkx/react               │
 │    React Reconciler + JSX Types     │
 ├──────────────────┬──────────────────┤
 │    @gtkx/ffi     │    @gtkx/css     │
@@ -111,7 +111,7 @@ export class Button extends Widget {
 }
 ```
 
-### @gtkx/gtkx (JSX Generator)
+### @gtkx/react (JSX Generator)
 
 Generates JSX type definitions that map React props to GTK properties and signals:
 

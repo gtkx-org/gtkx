@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, ScrolledWindow, TextView } from "@gtkx/gtkx";
+import { Box, Label, ScrolledWindow, TextView } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 export const TextViewDemo = () => {

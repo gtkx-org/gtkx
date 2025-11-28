@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Entry, Label } from "@gtkx/gtkx";
+import { Box, Entry, Label } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 export const ClipboardDemo = () => {

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, Paned, ScrolledWindow } from "@gtkx/gtkx";
+import { Box, Label, Paned, ScrolledWindow } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 export const PanesDemo = () => {
@@ -107,7 +107,7 @@ export const panesDemo: Demo = {
     keywords: ["paned", "split", "resize", "divider", "GtkPaned"],
     component: PanesDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, Paned, ScrolledWindow } from "@gtkx/gtkx";
+import { Box, Label, Paned, ScrolledWindow } from "@gtkx/react";
 
 export const PanesDemo = () => {
     return (

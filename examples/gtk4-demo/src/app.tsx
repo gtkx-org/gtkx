@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Box, Paned, quit } from "@gtkx/gtkx";
+import { ApplicationWindow, Box, Paned, quit } from "@gtkx/react";
 import { DemoPanel } from "./components/demo-panel.js";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";

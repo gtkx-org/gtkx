@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, FlowBox, FlowBoxChild, Label, ScrolledWindow } from "@gtkx/gtkx";
+import { Box, FlowBox, FlowBoxChild, Label, ScrolledWindow } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 const colors = [

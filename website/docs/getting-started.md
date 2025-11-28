@@ -37,13 +37,13 @@ sudo pacman -S gtk4
 Install the GTKX packages from npm:
 
 ```bash
-npm install @gtkx/gtkx react
+npm install @gtkx/react @gtkx/ffi react
 ```
 
 Or with pnpm:
 
 ```bash
-pnpm add @gtkx/gtkx react
+pnpm add @gtkx/react @gtkx/ffi react
 ```
 
 ## Creating Your First App
@@ -56,7 +56,7 @@ Create a new directory and initialize your project:
 mkdir my-gtkx-app
 cd my-gtkx-app
 npm init -y
-npm install @gtkx/gtkx react typescript @types/react
+npm install @gtkx/react @gtkx/ffi react typescript @types/react
 ```
 
 ### Configuration
@@ -96,7 +96,8 @@ Update your `package.json`:
 Create `src/index.tsx`:
 
 ```tsx
-import { ApplicationWindow, Button, Box, Label, quit, render } from "@gtkx/gtkx";
+import { ApplicationWindow, Button, Box, Label, quit, render } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const App = () => {
@@ -109,10 +110,18 @@ const App = () => {
       defaultHeight={300}
       onCloseRequest={quit}
     >
-      <Box spacing={10} marginTop={20} marginStart={20} marginEnd={20}>
-        <Label.Root label={`Count: ${count}`} />
+      <Box
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={10}
+        marginTop={20}
+        marginStart={20}
+        marginEnd={20}
+        valign={Gtk.Align.CENTER}
+      >
+        <Label.Root label={`Count: ${count}`} cssClasses={["title-2"]} />
         <Button
           label="Increment"
+          cssClasses={["suggested-action"]}
           onClicked={() => setCount(c => c + 1)}
         />
         <Button
@@ -124,7 +133,8 @@ const App = () => {
   );
 };
 
-render(<App />, "com.example.myapp");
+// Export the app instance for use in components that need it (e.g., dialogs)
+export const app = render(<App />, "com.example.myapp");
 ```
 
 ### Run Your App
@@ -141,10 +151,56 @@ A typical GTKX project looks like:
 ```
 my-gtkx-app/
 ├── src/
-│   └── index.tsx      # Entry point
+│   └── index.tsx      # Entry point (exports app instance)
 ├── dist/              # Compiled output
 ├── package.json
 └── tsconfig.json
+```
+
+## Key Concepts
+
+### The App Instance
+
+Export your app instance from the entry point:
+
+```tsx
+export const app = render(<App />, "com.example.myapp");
+```
+
+This allows components to access the application object for things like:
+- Getting the active window: `app.getActiveWindow()`
+- Showing dialogs with proper parent windows
+
+### GTK Enums
+
+Import GTK enums from `@gtkx/ffi/gtk`:
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+
+<Box orientation={Gtk.Orientation.VERTICAL} />
+<Label.Root halign={Gtk.Align.START} />
+```
+
+### CSS Classes
+
+Use GTK's built-in style classes and custom CSS:
+
+```tsx
+// Built-in classes
+<Button cssClasses={["suggested-action"]} label="Primary" />
+<Button cssClasses={["destructive-action"]} label="Delete" />
+<Label.Root cssClasses={["title-2", "dim-label"]} label="Title" />
+
+// Custom CSS with @gtkx/css
+import { css } from "@gtkx/css";
+
+const myStyle = css`
+  padding: 16px;
+  border-radius: 8px;
+`;
+
+<Button cssClasses={[myStyle]} label="Styled" />
 ```
 
 ## Building from Source
@@ -170,11 +226,10 @@ Then clone and build:
 git clone https://github.com/eugeniodepalo/gtkx.git
 cd gtkx
 pnpm install
-cd packages/ffi && pnpm run codegen --sync
-cd ../.. && pnpm build
+pnpm build
 
-# Run the examples
-cd examples/demo && pnpm build && pnpm start
+# Run the demo
+cd examples/gtk4-demo && turbo start
 ```
 
 ## Next Steps
@@ -182,4 +237,5 @@ cd examples/demo && pnpm build && pnpm start
 - [Components Guide](/docs/guides/components) - Learn about available widgets
 - [Styling Guide](/docs/guides/styling) - CSS-in-JS styling with @gtkx/css
 - [Event Handling](/docs/guides/events) - Handle user interactions
+- [Dialogs Guide](/docs/guides/dialogs) - Work with file, color, and alert dialogs
 - [Architecture](/docs/architecture) - Understand how GTKX works internally

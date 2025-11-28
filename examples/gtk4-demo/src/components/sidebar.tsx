@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Expander, Label, ScrolledWindow, SearchEntry } from "@gtkx/gtkx";
+import { Box, Button, Expander, Label, ScrolledWindow, SearchEntry } from "@gtkx/react";
 import { useState } from "react";
 import { useDemo } from "../context/demo-context.js";
 

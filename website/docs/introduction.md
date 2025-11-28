@@ -17,19 +17,24 @@ GTKX is a framework for building GTK4 desktop applications using React and TypeS
 ## Quick Example
 
 ```tsx
-import { ApplicationWindow, Button, quit, render } from "@gtkx/gtkx";
+import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
 
-render(
-  <ApplicationWindow
-    title="Hello, GTKX!"
-    defaultWidth={400}
-    defaultHeight={300}
-    onCloseRequest={quit}
-  >
-    <Button
-      label="Click me!"
-      onClicked={() => console.log("Clicked!")}
-    />
+const Counter = () => {
+  const [count, setCount] = useState(0);
+  return (
+    <Box valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} spacing={12}>
+      <Label.Root label={`Count: ${count}`} cssClasses={["title-2"]} />
+      <Button label="Increment" onClicked={() => setCount(c => c + 1)} />
+    </Box>
+  );
+};
+
+// Export app instance for use in dialogs
+export const app = render(
+  <ApplicationWindow title="Hello, GTKX!" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+    <Counter />
   </ApplicationWindow>,
   "com.example.app"
 );
@@ -41,7 +46,7 @@ GTKX is organized as a monorepo with the following packages:
 
 | Package | Description |
 |---------|-------------|
-| `@gtkx/gtkx` | React integration layer with JSX components |
+| `@gtkx/react` | React integration layer with JSX components |
 | `@gtkx/ffi` | Generated TypeScript FFI bindings for GTK libraries |
 | `@gtkx/gir` | GIR file parser for code generation |
 | `@gtkx/native` | Rust-based Neon module for FFI calls |
@@ -70,5 +75,5 @@ For development from source, you also need:
 - [Getting Started](/docs/getting-started) - Install and create your first app
 - [Components Guide](/docs/guides/components) - Core API and component patterns
 - [Styling Guide](/docs/guides/styling) - CSS-in-JS styling with @gtkx/css
-- [API Reference](/docs/api) - Generated API documentation
+- [Dialogs Guide](/docs/guides/dialogs) - Working with file, color, and alert dialogs
 - [Architecture](/docs/architecture) - Deep dive into how GTKX works

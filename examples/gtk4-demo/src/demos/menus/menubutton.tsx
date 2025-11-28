@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Image, Label, MenuButton, Popover } from "@gtkx/gtkx";
+import { Box, Button, Image, Label, MenuButton, Popover } from "@gtkx/react";
 import type { Demo } from "../types.js";
 
 export const MenuButtonDemo = () => {

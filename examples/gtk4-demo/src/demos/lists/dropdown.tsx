@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, DropDown, Label } from "@gtkx/gtkx";
+import { Box, DropDown, Label } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 

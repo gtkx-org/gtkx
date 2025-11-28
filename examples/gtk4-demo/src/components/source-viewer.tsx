@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkFfi from "@gtkx/ffi/gtk";
-import { Box, Button, Label, ScrolledWindow, TextView } from "@gtkx/gtkx";
+import { Box, Button, Label, ScrolledWindow, TextView } from "@gtkx/react";
 import { useMemo, useRef } from "react";
 
 interface SourceViewerProps {

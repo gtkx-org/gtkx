@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, CheckButton, Label } from "@gtkx/gtkx";
+import { Box, CheckButton, Label } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 
@@ -47,7 +47,7 @@ export const checkButtonDemo: Demo = {
     keywords: ["check", "checkbox", "toggle", "GtkCheckButton"],
     component: CheckButtonDemo,
     source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, CheckButton, Label } from "@gtkx/gtkx";
+import { Box, CheckButton, Label } from "@gtkx/react";
 import { useState } from "react";
 
 export const CheckButtonDemo = () => {
