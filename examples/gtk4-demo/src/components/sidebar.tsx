@@ -25,12 +25,7 @@ export const Sidebar = () => {
                     {filteredCategories.map((category) => (
                         <Expander.Root key={category.id} label={category.title}>
                             <Expander.Child>
-                                <Box
-                                    orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={4}
-                                    marginTop={4}
-                                    marginBottom={8}
-                                >
+                                <Box orientation={Gtk.Orientation.VERTICAL} spacing={4} marginTop={4} marginBottom={8}>
                                     {category.demos.map((demo) => (
                                         <Button
                                             key={demo.id}
@@ -45,10 +40,7 @@ export const Sidebar = () => {
                                                 marginTop={4}
                                                 marginBottom={4}
                                             >
-                                                <Label.Root
-                                                    label={demo.title}
-                                                    halign={Gtk.Align.START}
-                                                />
+                                                <Label.Root label={demo.title} halign={Gtk.Align.START} />
                                                 <Label.Root
                                                     label={demo.description}
                                                     halign={Gtk.Align.START}

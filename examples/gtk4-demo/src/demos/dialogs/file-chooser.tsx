@@ -52,17 +52,13 @@ export const FileChooserDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Open File" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Button label="Open File..." onClicked={openSingleFile} />
-                {selectedFile && (
-                    <Label.Root label={`Selected: ${selectedFile}`} cssClasses={["dim-label"]} wrap />
-                )}
+                {selectedFile && <Label.Root label={`Selected: ${selectedFile}`} cssClasses={["dim-label"]} wrap />}
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Select Folder" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Button label="Select Folder..." onClicked={selectFolder} />
-                {selectedFolder && (
-                    <Label.Root label={`Selected: ${selectedFolder}`} cssClasses={["dim-label"]} wrap />
-                )}
+                {selectedFolder && <Label.Root label={`Selected: ${selectedFolder}`} cssClasses={["dim-label"]} wrap />}
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>

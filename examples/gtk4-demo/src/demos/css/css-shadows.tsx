@@ -1,6 +1,6 @@
+import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label } from "@gtkx/gtkx";
-import { css } from "@gtkx/css";
 import type { Demo } from "../types.js";
 
 const cardBase = css`
@@ -52,17 +52,41 @@ export const CssShadowsDemo = () => {
                 <Label.Root label="Shadow Sizes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={[cardBase, shadowSmall]} widthRequest={100} heightRequest={100} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                        <Box
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={0}
+                            cssClasses={[cardBase, shadowSmall]}
+                            widthRequest={100}
+                            heightRequest={100}
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.CENTER}
+                        >
                             <Label.Root label="Small" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
                         </Box>
                     </Box>
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={[cardBase, shadowMedium]} widthRequest={100} heightRequest={100} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                        <Box
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={0}
+                            cssClasses={[cardBase, shadowMedium]}
+                            widthRequest={100}
+                            heightRequest={100}
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.CENTER}
+                        >
                             <Label.Root label="Medium" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
                         </Box>
                     </Box>
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={[cardBase, shadowLarge]} widthRequest={100} heightRequest={100} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                        <Box
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={0}
+                            cssClasses={[cardBase, shadowLarge]}
+                            widthRequest={100}
+                            heightRequest={100}
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.CENTER}
+                        >
                             <Label.Root label="Large" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
                         </Box>
                     </Box>
@@ -71,14 +95,30 @@ export const CssShadowsDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Colored Shadow" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={[cardBase, coloredShadow]} halign={Gtk.Align.CENTER} widthRequest={200} heightRequest={100} valign={Gtk.Align.CENTER}>
+                <Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={0}
+                    cssClasses={[cardBase, coloredShadow]}
+                    halign={Gtk.Align.CENTER}
+                    widthRequest={200}
+                    heightRequest={100}
+                    valign={Gtk.Align.CENTER}
+                >
                     <Label.Root label="Blue Glow" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
                 </Box>
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Multi-layer Shadow" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={[cardBase, multiShadow]} halign={Gtk.Align.CENTER} widthRequest={200} heightRequest={100} valign={Gtk.Align.CENTER}>
+                <Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={0}
+                    cssClasses={[cardBase, multiShadow]}
+                    halign={Gtk.Align.CENTER}
+                    widthRequest={200}
+                    heightRequest={100}
+                    valign={Gtk.Align.CENTER}
+                >
                     <Label.Root label="Layered" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
                 </Box>
             </Box>

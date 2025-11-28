@@ -9,11 +9,7 @@ export const PanesDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Horizontal Paned" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
-                    label="Drag the handle between panes to resize them."
-                    wrap
-                    cssClasses={["dim-label"]}
-                />
+                <Label.Root label="Drag the handle between panes to resize them." wrap cssClasses={["dim-label"]} />
                 <Paned.Root
                     orientation={Gtk.Orientation.HORIZONTAL}
                     wideHandle

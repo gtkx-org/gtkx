@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from "react";
-import type { Demo, Category } from "../demos/types.js";
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import type { Category, Demo } from "../demos/types.js";
 
 interface DemoContextValue {
     categories: Category[];
@@ -19,22 +19,18 @@ interface DemoProviderProps {
 }
 
 export const DemoProvider = ({ categories, children }: DemoProviderProps) => {
-    const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(
-        categories[0]?.id ?? null
-    );
-    const [currentDemoId, setCurrentDemoId] = useState<string | null>(
-        categories[0]?.demos[0]?.id ?? null
-    );
+    const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(categories[0]?.id ?? null);
+    const [currentDemoId, setCurrentDemoId] = useState<string | null>(categories[0]?.demos[0]?.id ?? null);
     const [searchQuery, setSearchQuery] = useState("");
 
     const currentCategory = useMemo(
         () => categories.find((c) => c.id === currentCategoryId) ?? null,
-        [categories, currentCategoryId]
+        [categories, currentCategoryId],
     );
 
     const currentDemo = useMemo(
         () => currentCategory?.demos.find((d) => d.id === currentDemoId) ?? null,
-        [currentCategory, currentDemoId]
+        [currentCategory, currentDemoId],
     );
 
     const selectDemo = useCallback((categoryId: string, demoId: string) => {
@@ -54,7 +50,7 @@ export const DemoProvider = ({ categories, children }: DemoProviderProps) => {
                     (demo) =>
                         demo.title.toLowerCase().includes(query) ||
                         demo.description.toLowerCase().includes(query) ||
-                        demo.keywords.some((k) => k.toLowerCase().includes(query))
+                        demo.keywords.some((k) => k.toLowerCase().includes(query)),
                 ),
             }))
             .filter((category) => category.demos.length > 0);
@@ -70,7 +66,7 @@ export const DemoProvider = ({ categories, children }: DemoProviderProps) => {
             setSearchQuery,
             filteredCategories,
         }),
-        [categories, currentDemo, currentCategory, selectDemo, searchQuery, filteredCategories]
+        [categories, currentDemo, currentCategory, selectDemo, searchQuery, filteredCategories],
     );
 
     return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;

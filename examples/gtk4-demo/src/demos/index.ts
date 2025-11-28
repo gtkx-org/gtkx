@@ -1,21 +1,21 @@
-import type { Category } from "./types.js";
-import { gettingStartedDemos } from "./getting-started/index.js";
 import { buttonsDemos } from "./buttons/index.js";
-import { inputDemos } from "./input/index.js";
-import { dialogsDemos } from "./dialogs/index.js";
-import { layoutDemos } from "./layout/index.js";
-import { windowsDemos } from "./windows/index.js";
-import { displayDemos } from "./display/index.js";
-import { listsDemos } from "./lists/index.js";
 import { cssDemos } from "./css/index.js";
-import { menusDemos } from "./menus/index.js";
-import { textDemos } from "./text/index.js";
-import { gamesDemos } from "./games/index.js";
-import { miscDemos } from "./misc/index.js";
+import { dialogsDemos } from "./dialogs/index.js";
+import { displayDemos } from "./display/index.js";
 import { drawingDemos } from "./drawing/index.js";
-import { pathDemos } from "./path/index.js";
+import { gamesDemos } from "./games/index.js";
+import { gettingStartedDemos } from "./getting-started/index.js";
 import { glShadersDemos } from "./gl-shaders/index.js";
+import { inputDemos } from "./input/index.js";
+import { layoutDemos } from "./layout/index.js";
+import { listsDemos } from "./lists/index.js";
+import { menusDemos } from "./menus/index.js";
+import { miscDemos } from "./misc/index.js";
+import { pathDemos } from "./path/index.js";
 import { printDemos } from "./print/index.js";
+import { textDemos } from "./text/index.js";
+import type { Category } from "./types.js";
+import { windowsDemos } from "./windows/index.js";
 
 export const categories: Category[] = [
     { id: "getting-started", title: "Getting Started", demos: gettingStartedDemos },

@@ -1,5 +1,8 @@
 import { EventEmitter } from "node:events";
-import { start as nativeStart, stop as nativeStop } from "@gtkx/native";
+import { createRef, start as nativeStart, stop as nativeStop } from "@gtkx/native";
+
+export { createRef };
+
 import type { ApplicationFlags } from "./generated/gio/enums.js";
 import { Application } from "./generated/gtk/application.js";
 

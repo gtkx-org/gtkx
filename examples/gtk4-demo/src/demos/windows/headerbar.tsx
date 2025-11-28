@@ -18,7 +18,13 @@ export const HeaderBarDemo = () => {
                             <Label.Root label="Application Title" />
                         </HeaderBar.TitleWidget>
                     </HeaderBar.Root>
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} heightRequest={50} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                    <Box
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={0}
+                        heightRequest={50}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                    >
                         <Label.Root label="Window content" cssClasses={["dim-label"]} />
                     </Box>
                 </Box>
@@ -35,7 +41,13 @@ export const HeaderBarDemo = () => {
                             </Box>
                         </HeaderBar.TitleWidget>
                     </HeaderBar.Root>
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} heightRequest={50} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                    <Box
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={0}
+                        heightRequest={50}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                    >
                         <Label.Root label="Content area" cssClasses={["dim-label"]} />
                     </Box>
                 </Box>
@@ -49,7 +61,13 @@ export const HeaderBarDemo = () => {
                             <Label.Root label="Document Viewer" />
                         </HeaderBar.TitleWidget>
                     </HeaderBar.Root>
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8} marginStart={8} marginEnd={8} marginTop={8}>
+                    <Box
+                        orientation={Gtk.Orientation.HORIZONTAL}
+                        spacing={8}
+                        marginStart={8}
+                        marginEnd={8}
+                        marginTop={8}
+                    >
                         <Button
                             label={searchVisible ? "Hide Search" : "Show Search"}
                             cssClasses={["flat"]}
@@ -65,7 +83,13 @@ export const HeaderBarDemo = () => {
                             marginBottom={8}
                         />
                     )}
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} heightRequest={50} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                    <Box
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={0}
+                        heightRequest={50}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                    >
                         <Label.Root label="Content" cssClasses={["dim-label"]} />
                     </Box>
                 </Box>

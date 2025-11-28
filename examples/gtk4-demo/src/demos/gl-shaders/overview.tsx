@@ -10,25 +10,43 @@ export const GlShadersOverviewDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="About GL Rendering" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label.Root
-                    label="GTK4 uses OpenGL for hardware-accelerated rendering. Custom shaders can be used for advanced visual effects."
+                    label="GTK4 uses OpenGL for hardware-accelerated rendering by default. The GtkGLArea widget provides a dedicated OpenGL rendering surface, while GskGLShader enables custom GLSL fragment shaders."
                     wrap
                     cssClasses={["dim-label"]}
                 />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Shader Types" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label.Root label="Available Components" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label.Root
-                    label="• GskGLShader - Custom GLSL fragment shaders\n• GtkGLArea - OpenGL rendering widget\n• GskShaderNode - Shader-based render nodes"
+                    label="• GtkGLArea - OpenGL rendering widget with render signal\n• GskGLShader - GLSL fragment shader compilation\n• GskShaderNode - Shader-based render nodes\n• GdkGLContext - OpenGL context management"
                     wrap
                     cssClasses={["dim-label"]}
                 />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Status" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label.Root label="Shader Capabilities" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Label.Root
-                    label="OpenGL and shader support requires direct GL context access which is planned for future GTKX releases."
+                    label="• Custom GLSL fragment shaders\n• Up to 4 texture inputs\n• Uniform variable support\n• Automatic GPU acceleration\n• Integration with GTK's render pipeline"
+                    wrap
+                    cssClasses={["dim-label"]}
+                />
+            </Box>
+
+            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <Label.Root label="Use Cases" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label.Root
+                    label="• Custom visual effects (blur, glow, distortion)\n• Real-time graphics applications\n• 3D rendering and visualization\n• Game graphics\n• Image processing filters"
+                    wrap
+                    cssClasses={["dim-label"]}
+                />
+            </Box>
+
+            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <Label.Root label="Current Status" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label.Root
+                    label="GtkGLArea JSX component and GskGLShader FFI bindings are available. The render signal provides a GdkGLContext for OpenGL operations. Full GL bindings integration is in development."
                     wrap
                     cssClasses={["dim-label"]}
                 />
@@ -41,7 +59,35 @@ export const glShadersOverviewDemo: Demo = {
     id: "gl-shaders-overview",
     title: "GL & Shaders Overview",
     description: "Hardware-accelerated rendering with OpenGL shaders.",
-    keywords: ["opengl", "gl", "shaders", "glsl", "gpu"],
+    keywords: ["opengl", "gl", "shaders", "glsl", "gpu", "hardware"],
     component: GlShadersOverviewDemo,
-    source: `// OpenGL and shader support coming in future releases`,
+    source: `import * as Gtk from "@gtkx/ffi/gtk";
+import * as Gsk from "@gtkx/ffi/gsk";
+
+// GtkGLArea provides an OpenGL rendering surface
+// The GLArea JSX component is available
+
+// Example shader code (GLSL fragment shader):
+const shaderSource = \`
+uniform float u_time;
+uniform vec2 u_resolution;
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_resolution;
+    vec3 color = vec3(uv.x, uv.y, sin(u_time));
+    gl_FragColor = vec4(color, 1.0);
+}
+\`;
+
+// GskGLShader for custom effects
+const shader = Gsk.GLShader.newFromBytes(shaderBytes);
+
+// GLArea widget handles the render signal
+<GLArea
+    onRender={(area, context) => {
+        // OpenGL rendering code here
+        // context is the GdkGLContext
+        return true; // Return true to stop signal propagation
+    }}
+/>`,
 };

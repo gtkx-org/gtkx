@@ -21,8 +21,20 @@ export const SpinnerDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Interactive Spinner" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} cssClasses={["card"]} halign={Gtk.Align.CENTER}>
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} marginTop={20} marginBottom={20} marginStart={40} marginEnd={40}>
+                <Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    cssClasses={["card"]}
+                    halign={Gtk.Align.CENTER}
+                >
+                    <Box
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={12}
+                        marginTop={20}
+                        marginBottom={20}
+                        marginStart={40}
+                        marginEnd={40}
+                    >
                         <Spinner spinning={spinning} widthRequest={48} heightRequest={48} halign={Gtk.Align.CENTER} />
                         <Button
                             label={spinning ? "Stop" : "Start"}

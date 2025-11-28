@@ -34,11 +34,7 @@ export const DemoPanel = ({ demo }: DemoPanelProps) => {
                 marginTop={16}
                 marginBottom={8}
             >
-                <Label.Root
-                    label={demo.title}
-                    cssClasses={["title-1"]}
-                    halign={Gtk.Align.START}
-                />
+                <Label.Root label={demo.title} cssClasses={["title-1"]} halign={Gtk.Align.START} />
                 <Label.Root
                     label={demo.description}
                     cssClasses={["dim-label"]}

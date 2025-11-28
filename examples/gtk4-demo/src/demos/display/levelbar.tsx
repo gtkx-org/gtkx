@@ -23,17 +23,9 @@ export const LevelBarDemo = () => {
                 <Label.Root label="Interactive Level Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <LevelBar value={level} minValue={0} maxValue={1} hexpand />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
-                    <Button
-                        label="-"
-                        onClicked={() => setLevel((l) => Math.max(0, l - 0.1))}
-                        widthRequest={48}
-                    />
+                    <Button label="-" onClicked={() => setLevel((l) => Math.max(0, l - 0.1))} widthRequest={48} />
                     <Label.Root label={`${Math.round(level * 100)}%`} widthRequest={60} halign={Gtk.Align.CENTER} />
-                    <Button
-                        label="+"
-                        onClicked={() => setLevel((l) => Math.min(1, l + 0.1))}
-                        widthRequest={48}
-                    />
+                    <Button label="+" onClicked={() => setLevel((l) => Math.min(1, l + 0.1))} widthRequest={48} />
                 </Box>
             </Box>
 

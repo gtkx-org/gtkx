@@ -3,10 +3,26 @@ import { Box, FlowBox, FlowBoxChild, Label, ScrolledWindow } from "@gtkx/gtkx";
 import type { Demo } from "../types.js";
 
 const colors = [
-    "#e01b24", "#ff7800", "#f5c211", "#33d17a", "#3584e4",
-    "#9141ac", "#c64600", "#986a44", "#5e5c64", "#77767b",
-    "#c0bfbc", "#f66151", "#ffbe6f", "#f9f06b", "#8ff0a4",
-    "#99c1f1", "#dc8add", "#e66100", "#cdab8f", "#9a9996",
+    "#e01b24",
+    "#ff7800",
+    "#f5c211",
+    "#33d17a",
+    "#3584e4",
+    "#9141ac",
+    "#c64600",
+    "#986a44",
+    "#5e5c64",
+    "#77767b",
+    "#c0bfbc",
+    "#f66151",
+    "#ffbe6f",
+    "#f9f06b",
+    "#8ff0a4",
+    "#99c1f1",
+    "#dc8add",
+    "#e66100",
+    "#cdab8f",
+    "#9a9996",
 ];
 
 export const FlowBoxDemo = () => {
@@ -40,6 +56,7 @@ export const FlowBoxDemo = () => {
                         homogeneous
                     >
                         {colors.map((_color, index) => (
+                            // biome-ignore lint/suspicious/noArrayIndexKey: demo
                             <FlowBoxChild key={index}>
                                 <Box
                                     orientation={Gtk.Orientation.VERTICAL}

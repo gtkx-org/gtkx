@@ -31,6 +31,7 @@ export const StackDemo = () => {
                     <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER} marginTop={12}>
                         {pages.map((page, index) => (
                             <Button
+                                // biome-ignore lint/suspicious/noArrayIndexKey: demo
                                 key={index}
                                 label={page.label}
                                 cssClasses={currentPage === index ? ["suggested-action"] : []}
@@ -38,7 +39,13 @@ export const StackDemo = () => {
                             />
                         ))}
                     </Box>
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} heightRequest={100} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                    <Box
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={0}
+                        heightRequest={100}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                    >
                         <Label.Root label={pages[currentPage]?.content ?? ""} cssClasses={["title-3"]} />
                     </Box>
                 </Box>

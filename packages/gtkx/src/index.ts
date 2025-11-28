@@ -1,4 +1,4 @@
-export { createRef } from "@gtkx/native";
+export { createRef } from "@gtkx/ffi";
 export * from "./generated/jsx.js";
 export { createPortal } from "./portal.js";
 export { render } from "./render.js";

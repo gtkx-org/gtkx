@@ -4,9 +4,15 @@ import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 
 export const ScaleDemo = () => {
-    const volumeAdjustment = useRef(new Gtk.Adjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 }));
-    const brightnessAdjustment = useRef(new Gtk.Adjustment({ value: 75, lower: 0, upper: 100, stepIncrement: 5, pageIncrement: 10 }));
-    const temperatureAdjustment = useRef(new Gtk.Adjustment({ value: 20, lower: 10, upper: 30, stepIncrement: 0.5, pageIncrement: 2 }));
+    const volumeAdjustment = useRef(
+        new Gtk.Adjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 }),
+    );
+    const brightnessAdjustment = useRef(
+        new Gtk.Adjustment({ value: 75, lower: 0, upper: 100, stepIncrement: 5, pageIncrement: 10 }),
+    );
+    const temperatureAdjustment = useRef(
+        new Gtk.Adjustment({ value: 20, lower: 10, upper: 30, stepIncrement: 0.5, pageIncrement: 2 }),
+    );
 
     const [volume, setVolume] = useState(50);
     const [brightness, setBrightness] = useState(75);

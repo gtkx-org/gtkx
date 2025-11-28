@@ -49,12 +49,7 @@ const AppContent = () => {
 
 export const App = () => (
     <DemoProvider categories={categories}>
-        <ApplicationWindow
-            title="GTK4 Demo"
-            defaultWidth={1400}
-            defaultHeight={900}
-            onCloseRequest={quit}
-        >
+        <ApplicationWindow title="GTK4 Demo" defaultWidth={1400} defaultHeight={900} onCloseRequest={quit}>
             <AppContent />
         </ApplicationWindow>
     </DemoProvider>

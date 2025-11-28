@@ -16,16 +16,19 @@ export const RevealerDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Slide Down" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Button
-                    label={slideDown ? "Hide" : "Show"}
-                    onClicked={() => setSlideDown((v) => !v)}
-                />
+                <Button label={slideDown ? "Hide" : "Show"} onClicked={() => setSlideDown((v) => !v)} />
                 <Revealer
                     revealChild={slideDown}
                     transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
                     transitionDuration={300}
                 >
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} marginTop={8} marginBottom={8}>
+                    <Box
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={0}
+                        cssClasses={["card"]}
+                        marginTop={8}
+                        marginBottom={8}
+                    >
                         <Label.Root
                             label="This content slides down when revealed."
                             marginStart={12}
@@ -39,7 +42,14 @@ export const RevealerDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Slide Up" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} marginTop={8} marginBottom={8} heightRequest={80}>
+                <Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={0}
+                    cssClasses={["card"]}
+                    marginTop={8}
+                    marginBottom={8}
+                    heightRequest={80}
+                >
                     <Revealer
                         revealChild={slideUp}
                         transitionType={Gtk.RevealerTransitionType.SLIDE_UP}
@@ -55,26 +65,26 @@ export const RevealerDemo = () => {
                         />
                     </Revealer>
                 </Box>
-                <Button
-                    label={slideUp ? "Hide" : "Show"}
-                    onClicked={() => setSlideUp((v) => !v)}
-                />
+                <Button label={slideUp ? "Hide" : "Show"} onClicked={() => setSlideUp((v) => !v)} />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Horizontal Slides" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Button
-                        label={slideLeft ? "Hide Left" : "Show Left"}
-                        onClicked={() => setSlideLeft((v) => !v)}
-                    />
+                    <Button label={slideLeft ? "Hide Left" : "Show Left"} onClicked={() => setSlideLeft((v) => !v)} />
                     <Revealer
                         revealChild={slideLeft}
                         transitionType={Gtk.RevealerTransitionType.SLIDE_RIGHT}
                         transitionDuration={300}
                     >
                         <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
-                            <Label.Root label="Left content" marginStart={12} marginEnd={12} marginTop={8} marginBottom={8} />
+                            <Label.Root
+                                label="Left content"
+                                marginStart={12}
+                                marginEnd={12}
+                                marginTop={8}
+                                marginBottom={8}
+                            />
                         </Box>
                     </Revealer>
                     <Revealer
@@ -83,7 +93,13 @@ export const RevealerDemo = () => {
                         transitionDuration={300}
                     >
                         <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
-                            <Label.Root label="Right content" marginStart={12} marginEnd={12} marginTop={8} marginBottom={8} />
+                            <Label.Root
+                                label="Right content"
+                                marginStart={12}
+                                marginEnd={12}
+                                marginTop={8}
+                                marginBottom={8}
+                            />
                         </Box>
                     </Revealer>
                     <Button
@@ -95,10 +111,7 @@ export const RevealerDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Crossfade" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Button
-                    label={crossfade ? "Hide" : "Show"}
-                    onClicked={() => setCrossfade((v) => !v)}
-                />
+                <Button label={crossfade ? "Hide" : "Show"} onClicked={() => setCrossfade((v) => !v)} />
                 <Revealer
                     revealChild={crossfade}
                     transitionType={Gtk.RevealerTransitionType.CROSSFADE}

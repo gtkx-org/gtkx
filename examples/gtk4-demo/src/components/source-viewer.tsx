@@ -1,4 +1,5 @@
 import * as Gdk from "@gtkx/ffi/gdk";
+import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkFfi from "@gtkx/ffi/gtk";
 import { Box, Button, Label, ScrolledWindow, TextView } from "@gtkx/gtkx";
@@ -25,7 +26,11 @@ export const SourceViewer = ({ source, title = "Source Code" }: SourceViewerProp
         const display = Gdk.Display.getDefault();
         if (display) {
             const clipboard = display.getClipboard();
-            clipboard.setText(source);
+            const encoder = new TextEncoder();
+            const data = Array.from(encoder.encode(source));
+            const bytes = new GLib.Bytes(data.length, data);
+            const provider = new Gdk.ContentProvider("text/plain;charset=utf-8", bytes);
+            clipboard.setContent(provider);
         }
     };
 

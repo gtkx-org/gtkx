@@ -3,11 +3,31 @@ import { Box, Label, ListBox, ListBoxRow, ScrolledWindow, SearchEntry } from "@g
 import type { Demo } from "../types.js";
 
 const fruits = [
-    "Apple", "Apricot", "Banana", "Blueberry", "Cherry",
-    "Cranberry", "Date", "Elderberry", "Fig", "Grape",
-    "Honeydew", "Kiwi", "Lemon", "Lime", "Mango",
-    "Nectarine", "Orange", "Papaya", "Peach", "Pear",
-    "Pineapple", "Plum", "Raspberry", "Strawberry", "Watermelon",
+    "Apple",
+    "Apricot",
+    "Banana",
+    "Blueberry",
+    "Cherry",
+    "Cranberry",
+    "Date",
+    "Elderberry",
+    "Fig",
+    "Grape",
+    "Honeydew",
+    "Kiwi",
+    "Lemon",
+    "Lime",
+    "Mango",
+    "Nectarine",
+    "Orange",
+    "Papaya",
+    "Peach",
+    "Pear",
+    "Pineapple",
+    "Plum",
+    "Raspberry",
+    "Strawberry",
+    "Watermelon",
 ];
 
 export const SearchEntryDemo = () => {
@@ -32,11 +52,7 @@ export const SearchEntryDemo = () => {
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <ScrolledWindow
-                    vexpand
-                    heightRequest={200}
-                    hscrollbarPolicy={Gtk.PolicyType.NEVER}
-                >
+                <ScrolledWindow vexpand heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                     <ListBox cssClasses={["boxed-list"]}>
                         {fruits.map((item) => (
                             <ListBoxRow key={item}>

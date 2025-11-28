@@ -4,9 +4,15 @@ import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 
 export const SpinButtonDemo = () => {
-    const intAdjustment = useRef(new Gtk.Adjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 }));
-    const floatAdjustment = useRef(new Gtk.Adjustment({ value: 3.14, lower: 0, upper: 10, stepIncrement: 0.1, pageIncrement: 1 }));
-    const priceAdjustment = useRef(new Gtk.Adjustment({ value: 9.99, lower: 0, upper: 1000, stepIncrement: 0.01, pageIncrement: 1 }));
+    const intAdjustment = useRef(
+        new Gtk.Adjustment({ value: 50, lower: 0, upper: 100, stepIncrement: 1, pageIncrement: 10 }),
+    );
+    const floatAdjustment = useRef(
+        new Gtk.Adjustment({ value: 3.14, lower: 0, upper: 10, stepIncrement: 0.1, pageIncrement: 1 }),
+    );
+    const priceAdjustment = useRef(
+        new Gtk.Adjustment({ value: 9.99, lower: 0, upper: 1000, stepIncrement: 0.01, pageIncrement: 1 }),
+    );
 
     const [intValue, setIntValue] = useState(50);
     const [floatValue, setFloatValue] = useState(3.14);
@@ -58,12 +64,7 @@ export const SpinButtonDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Wrap Around" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <SpinButton
-                    climbRate={1}
-                    adjustment={intAdjustment.current}
-                    digits={0}
-                    wrap
-                />
+                <SpinButton climbRate={1} adjustment={intAdjustment.current} digits={0} wrap />
                 <Label.Root
                     label="This spin button wraps from max to min and vice versa"
                     cssClasses={["dim-label"]}

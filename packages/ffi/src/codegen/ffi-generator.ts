@@ -113,9 +113,22 @@ const METHOD_RENAMES = new Map<string, Map<string, string>>([
         ]),
     ],
     ["PrintUnixDialog", new Map([["getSettings", "getPrintSettings"]])],
+    ["Gdk.AppLaunchContext", new Map([["getDisplay", "getGdkDisplay"]])],
+    ["SocketClient", new Map([["connect", "connectTo"]])],
+    ["SocketConnection", new Map([["connect", "connectTo"]])],
+    ["Socket", new Map([["connect", "connectTo"]])],
 ]);
 
 const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
+
+const getRenamedMethod = (namespace: string, className: string, methodName: string): string | undefined => {
+    const nsRenames = METHOD_RENAMES.get(`${namespace}.${className}`);
+    if (nsRenames?.has(methodName)) {
+        return nsRenames.get(methodName);
+    }
+    const classRenames = METHOD_RENAMES.get(className);
+    return classRenames?.get(methodName);
+};
 
 const toKebabCase = (str: string): string =>
     str
@@ -189,6 +202,50 @@ const normalizeClassName = (name: string): string => {
         return "GObject";
     }
     return pascalName;
+};
+
+type ParentInfo = {
+    hasParent: boolean;
+    isCrossNamespace: boolean;
+    namespace?: string;
+    className: string;
+    importStatement?: string;
+    extendsClause: string;
+};
+
+const parseParentReference = (parent: string | undefined, classMap: Map<string, GirClass>): ParentInfo => {
+    if (!parent) {
+        return { hasParent: false, isCrossNamespace: false, className: "", extendsClause: "" };
+    }
+
+    if (parent.includes(".")) {
+        const [ns, className] = parent.split(".", 2);
+        if (ns && className) {
+            const normalizedClass = normalizeClassName(className);
+            const nsLower = ns.toLowerCase();
+            return {
+                hasParent: true,
+                isCrossNamespace: true,
+                namespace: ns,
+                className: normalizedClass,
+                importStatement: `import * as ${ns} from "../${nsLower}/index.js";`,
+                extendsClause: ` extends ${ns}.${normalizedClass}`,
+            };
+        }
+    }
+
+    if (classMap.has(parent)) {
+        const normalizedClass = normalizeClassName(parent);
+        return {
+            hasParent: true,
+            isCrossNamespace: false,
+            className: normalizedClass,
+            importStatement: `import { ${normalizedClass} } from "./${toKebabCase(parent)}.js";`,
+            extendsClause: ` extends ${normalizedClass}`,
+        };
+    }
+
+    return { hasParent: false, isCrossNamespace: false, className: "", extendsClause: "" };
 };
 
 const hasOutParameter = (params: GirParameter[]): boolean =>
@@ -445,30 +502,28 @@ export class CodeGenerator {
             interfaceMethods.length > 0;
 
         const className = normalizeClassName(cls.name);
-        const hasParent = !!(cls.parent && classMap.has(cls.parent));
-        const parentClassName = cls.parent ? normalizeClassName(cls.parent) : "";
-        const extendsClause = hasParent ? ` extends ${parentClassName}` : "";
+        const parentInfo = parseParentReference(cls.parent, classMap);
 
         const implementsClause = "";
 
         const sections: string[] = [];
 
-        if (hasParent && cls.parent) {
-            sections.push(`import { ${parentClassName} } from "./${toKebabCase(cls.parent)}.js";`);
+        if (parentInfo.importStatement && !parentInfo.isCrossNamespace) {
+            sections.push(parentInfo.importStatement);
         }
         sections.push("");
 
         if (cls.doc) {
             sections.push(formatDoc(cls.doc));
         }
-        sections.push(`export class ${className}${extendsClause}${implementsClause} {`);
+        sections.push(`export class ${className}${parentInfo.extendsClause}${implementsClause} {`);
 
-        if (!extendsClause) {
+        if (!parentInfo.hasParent) {
             sections.push(`  ptr: unknown;\n`);
         }
 
-        sections.push(this.generateConstructors(cls, sharedLibrary, hasParent));
-        sections.push(this.generateCreatePtr(cls, sharedLibrary, hasParent));
+        sections.push(this.generateConstructors(cls, sharedLibrary, parentInfo.hasParent));
+        sections.push(this.generateCreatePtr(cls, sharedLibrary, parentInfo.hasParent));
         sections.push(this.generateStaticFunctions(cls.functions, sharedLibrary, className));
         sections.push(this.generateMethods(filteredClassMethods, sharedLibrary, cls.name));
 
@@ -483,7 +538,11 @@ export class CodeGenerator {
 
         sections.push("}");
 
-        const imports = this.generateImports(className, hasParent ? parentClassName : undefined);
+        const imports = this.generateImports(
+            className,
+            parentInfo.hasParent && !parentInfo.isCrossNamespace ? parentInfo.className : undefined,
+            parentInfo.isCrossNamespace ? parentInfo.namespace : undefined,
+        );
         return this.formatCode(imports + sections.join("\n"));
     }
 
@@ -873,8 +932,7 @@ ${allArgs ? `${allArgs},` : ""}
 
         let methodName = toCamelCase(method.name);
         if (className) {
-            const renames = METHOD_RENAMES.get(className);
-            const renamed = renames?.get(methodName);
+            const renamed = getRenamedMethod(this.options.namespace, className, methodName);
             if (renamed) methodName = renamed;
         }
 
@@ -1129,8 +1187,7 @@ ${allArgs ? `${allArgs},` : ""}
     private generateMethod(method: GirMethod, sharedLibrary: string, className?: string): string {
         let methodName = toCamelCase(method.name);
         if (className) {
-            const renames = METHOD_RENAMES.get(className);
-            const renamed = renames?.get(methodName);
+            const renamed = getRenamedMethod(this.options.namespace, className, methodName);
             if (renamed) {
                 methodName = renamed;
             }
@@ -1919,7 +1976,7 @@ ${indent}  }`;
         return `{ type: "${type.type}" }`;
     }
 
-    private generateImports(currentClassName?: string, parentClassName?: string): string {
+    private generateImports(currentClassName?: string, parentClassName?: string, parentNamespace?: string): string {
         const nativeImports: string[] = [];
         if (this.usesAlloc) nativeImports.push("alloc");
         if (this.usesCall) nativeImports.push("call");
@@ -1991,6 +2048,9 @@ ${indent}  }`;
         }
         if (this.addGioImport && this.options.namespace !== "Gio") {
             externalNamespaces.add("Gio");
+        }
+        if (parentNamespace && parentNamespace !== this.options.namespace) {
+            externalNamespaces.add(parentNamespace);
         }
         for (const namespace of Array.from(externalNamespaces).sort()) {
             const nsLower = namespace.toLowerCase();

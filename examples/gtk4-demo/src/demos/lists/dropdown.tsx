@@ -48,7 +48,14 @@ export const DropDownDemo = () => {
                 </DropDown.Root>
                 {selectedCountry && (
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={4} cssClasses={["card"]} marginTop={8}>
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={4} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                        <Box
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={4}
+                            marginStart={12}
+                            marginEnd={12}
+                            marginTop={12}
+                            marginBottom={12}
+                        >
                             <Label.Root label="Selected Country" cssClasses={["heading"]} halign={Gtk.Align.START} />
                             <Label.Root label={selectedCountry.name} halign={Gtk.Align.START} />
                             <Label.Root

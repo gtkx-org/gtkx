@@ -11,9 +11,20 @@ export const FramesDemo = () => {
                 <Label.Root label="Basic Frame" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Frame.Root label="Section Title">
                     <Frame.Child>
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                        <Box
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={8}
+                            marginStart={12}
+                            marginEnd={12}
+                            marginTop={12}
+                            marginBottom={12}
+                        >
                             <Label.Root label="This content is inside a frame." />
-                            <Label.Root label="Frames provide visual grouping with an optional label." cssClasses={["dim-label"]} wrap />
+                            <Label.Root
+                                label="Frames provide visual grouping with an optional label."
+                                cssClasses={["dim-label"]}
+                                wrap
+                            />
                         </Box>
                     </Frame.Child>
                 </Frame.Root>
@@ -23,9 +34,20 @@ export const FramesDemo = () => {
                 <Label.Root label="Frame without Label" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Frame.Root>
                     <Frame.Child>
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                        <Box
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={8}
+                            marginStart={12}
+                            marginEnd={12}
+                            marginTop={12}
+                            marginBottom={12}
+                        >
                             <Label.Root label="Frames can also be used without a label." wrap />
-                            <Label.Root label="They still provide visual grouping and a border." cssClasses={["dim-label"]} wrap />
+                            <Label.Root
+                                label="They still provide visual grouping and a border."
+                                cssClasses={["dim-label"]}
+                                wrap
+                            />
                         </Box>
                     </Frame.Child>
                 </Frame.Root>
@@ -41,7 +63,14 @@ export const FramesDemo = () => {
                         </Box>
                     </Frame.LabelWidget>
                     <Frame.Child>
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                        <Box
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={8}
+                            marginStart={12}
+                            marginEnd={12}
+                            marginTop={12}
+                            marginBottom={12}
+                        >
                             <Label.Root label="You can use any widget as the frame label." wrap />
                             <Label.Root label="This allows for interactive headers." cssClasses={["dim-label"]} wrap />
                         </Box>
@@ -54,21 +83,42 @@ export const FramesDemo = () => {
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <Frame.Root label="Option A" hexpand>
                         <Frame.Child>
-                            <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                            <Box
+                                orientation={Gtk.Orientation.VERTICAL}
+                                spacing={0}
+                                marginStart={12}
+                                marginEnd={12}
+                                marginTop={12}
+                                marginBottom={12}
+                            >
                                 <Button label="Select A" hexpand />
                             </Box>
                         </Frame.Child>
                     </Frame.Root>
                     <Frame.Root label="Option B" hexpand>
                         <Frame.Child>
-                            <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                            <Box
+                                orientation={Gtk.Orientation.VERTICAL}
+                                spacing={0}
+                                marginStart={12}
+                                marginEnd={12}
+                                marginTop={12}
+                                marginBottom={12}
+                            >
                                 <Button label="Select B" hexpand />
                             </Box>
                         </Frame.Child>
                     </Frame.Root>
                     <Frame.Root label="Option C" hexpand>
                         <Frame.Child>
-                            <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                            <Box
+                                orientation={Gtk.Orientation.VERTICAL}
+                                spacing={0}
+                                marginStart={12}
+                                marginEnd={12}
+                                marginTop={12}
+                                marginBottom={12}
+                            >
                                 <Button label="Select C" hexpand />
                             </Box>
                         </Frame.Child>

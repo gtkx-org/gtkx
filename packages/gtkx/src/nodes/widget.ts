@@ -1,5 +1,5 @@
+import * as GObject from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { call } from "@gtkx/native";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
 import {
@@ -144,15 +144,7 @@ export class WidgetNode implements Node {
 
                 const oldHandlerId = this.signalHandlers.get(eventName);
                 if (oldHandlerId !== undefined) {
-                    call(
-                        "libgobject-2.0.so.0",
-                        "g_signal_handler_disconnect",
-                        [
-                            { type: { type: "gobject" }, value: this.widget.ptr },
-                            { type: { type: "int", size: 64, unsigned: true }, value: oldHandlerId },
-                        ],
-                        { type: "undefined" },
-                    );
+                    GObject.signalHandlerDisconnect(this.widget, oldHandlerId);
                     this.signalHandlers.delete(eventName);
                 }
 

@@ -8,11 +8,8 @@ export const ToggleButtonDemo = () => {
     const [italic, setItalic] = useState(false);
     const [underline, setUnderline] = useState(false);
 
-    const textStyle = [
-        bold && "Bold",
-        italic && "Italic",
-        underline && "Underline",
-    ].filter(Boolean).join(" + ") || "Normal";
+    const textStyle =
+        [bold && "Bold", italic && "Italic", underline && "Underline"].filter(Boolean).join(" + ") || "Normal";
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
@@ -33,22 +30,14 @@ export const ToggleButtonDemo = () => {
                         onToggled={() => setItalic((v) => !v)}
                         cssClasses={["font-italic"]}
                     />
-                    <ToggleButton.Root
-                        label="U"
-                        active={underline}
-                        onToggled={() => setUnderline((v) => !v)}
-                    />
+                    <ToggleButton.Root label="U" active={underline} onToggled={() => setUnderline((v) => !v)} />
                 </Box>
                 <Label.Root label={`Current style: ${textStyle}`} cssClasses={["dim-label"]} />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Standalone Toggle" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <ToggleButton.Root
-                    label="Toggle Me"
-                    active={bold}
-                    onToggled={() => setBold((v) => !v)}
-                />
+                <ToggleButton.Root label="Toggle Me" active={bold} onToggled={() => setBold((v) => !v)} />
             </Box>
         </Box>
     );

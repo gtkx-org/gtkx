@@ -34,11 +34,7 @@ export const TextViewDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Monospace / Code Editor" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
-                    label="Use monospace font for code editing."
-                    wrap
-                    cssClasses={["dim-label"]}
-                />
+                <Label.Root label="Use monospace font for code editing." wrap cssClasses={["dim-label"]} />
                 <ScrolledWindow heightRequest={150} hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
                     <TextView
                         editable

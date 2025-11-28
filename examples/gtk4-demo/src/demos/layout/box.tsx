@@ -9,7 +9,15 @@ export const BoxDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Horizontal Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} cssClasses={["card"]} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8}>
+                <Box
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    spacing={12}
+                    cssClasses={["card"]}
+                    marginTop={8}
+                    marginBottom={8}
+                    marginStart={8}
+                    marginEnd={8}
+                >
                     <Button label="First" />
                     <Button label="Second" />
                     <Button label="Third" />
@@ -18,7 +26,15 @@ export const BoxDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Vertical Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} cssClasses={["card"]} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8}>
+                <Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={8}
+                    cssClasses={["card"]}
+                    marginTop={8}
+                    marginBottom={8}
+                    marginStart={8}
+                    marginEnd={8}
+                >
                     <Button label="Top" />
                     <Button label="Middle" />
                     <Button label="Bottom" />
@@ -27,7 +43,15 @@ export const BoxDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Expand and Fill" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} cssClasses={["card"]} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8}>
+                <Box
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    spacing={12}
+                    cssClasses={["card"]}
+                    marginTop={8}
+                    marginBottom={8}
+                    marginStart={8}
+                    marginEnd={8}
+                >
                     <Button label="Fixed" />
                     <Button label="Expand" hexpand />
                     <Button label="Fixed" />
@@ -36,7 +60,16 @@ export const BoxDemo = () => {
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Alignment" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} cssClasses={["card"]} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8} heightRequest={80}>
+                <Box
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    spacing={12}
+                    cssClasses={["card"]}
+                    marginTop={8}
+                    marginBottom={8}
+                    marginStart={8}
+                    marginEnd={8}
+                    heightRequest={80}
+                >
                     <Button label="Start" valign={Gtk.Align.START} />
                     <Button label="Center" valign={Gtk.Align.CENTER} />
                     <Button label="End" valign={Gtk.Align.END} />
@@ -51,7 +84,16 @@ export const BoxDemo = () => {
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} homogeneous cssClasses={["card"]} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8}>
+                <Box
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    spacing={12}
+                    homogeneous
+                    cssClasses={["card"]}
+                    marginTop={8}
+                    marginBottom={8}
+                    marginStart={8}
+                    marginEnd={8}
+                >
                     <Button label="Short" />
                     <Button label="Medium Text" />
                     <Button label="Longer Button Text" />

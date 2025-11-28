@@ -15,21 +15,13 @@ export const CheckButtonDemo = () => {
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <Label.Root label="Independent Checkboxes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <CheckButton.Root
-                        label="Option 1"
-                        active={option1}
-                        onToggled={() => setOption1((v) => !v)}
-                    />
+                    <CheckButton.Root label="Option 1" active={option1} onToggled={() => setOption1((v) => !v)} />
                     <CheckButton.Root
                         label="Option 2 (initially checked)"
                         active={option2}
                         onToggled={() => setOption2((v) => !v)}
                     />
-                    <CheckButton.Root
-                        label="Option 3"
-                        active={option3}
-                        onToggled={() => setOption3((v) => !v)}
-                    />
+                    <CheckButton.Root label="Option 3" active={option3} onToggled={() => setOption3((v) => !v)} />
                 </Box>
                 <Label.Root
                     label={`Selected: ${[option1 && "1", option2 && "2", option3 && "3"].filter(Boolean).join(", ") || "None"}`}

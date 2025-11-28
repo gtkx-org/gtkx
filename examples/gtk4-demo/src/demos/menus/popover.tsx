@@ -25,7 +25,14 @@ export const PopoverDemo = () => {
                     <MenuButton.Popover>
                         <Popover.Root>
                             <Popover.Child>
-                                <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                                <Box
+                                    orientation={Gtk.Orientation.VERTICAL}
+                                    spacing={8}
+                                    marginStart={12}
+                                    marginEnd={12}
+                                    marginTop={12}
+                                    marginBottom={12}
+                                >
                                     <Label.Root label="Popover Content" cssClasses={["heading"]} />
                                     <Label.Root label="This is inside a popover!" cssClasses={["dim-label"]} />
                                     <Button
@@ -46,7 +53,14 @@ export const PopoverDemo = () => {
                     <MenuButton.Popover>
                         <Popover.Root>
                             <Popover.Child>
-                                <Box orientation={Gtk.Orientation.VERTICAL} spacing={4} marginStart={8} marginEnd={8} marginTop={8} marginBottom={8}>
+                                <Box
+                                    orientation={Gtk.Orientation.VERTICAL}
+                                    spacing={4}
+                                    marginStart={8}
+                                    marginEnd={8}
+                                    marginTop={8}
+                                    marginBottom={8}
+                                >
                                     <Button label="New Document" cssClasses={["flat"]} />
                                     <Button label="Open..." cssClasses={["flat"]} />
                                     <Button label="Save" cssClasses={["flat"]} />

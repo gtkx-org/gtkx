@@ -15,8 +15,16 @@ export const ButtonsDemo = () => {
                 <Label.Root label="Regular Buttons" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <Button label="Normal" onClicked={() => setClickCount((c) => c + 1)} />
-                    <Button label="Suggested" cssClasses={["suggested-action"]} onClicked={() => setClickCount((c) => c + 1)} />
-                    <Button label="Destructive" cssClasses={["destructive-action"]} onClicked={() => setClickCount((c) => c + 1)} />
+                    <Button
+                        label="Suggested"
+                        cssClasses={["suggested-action"]}
+                        onClicked={() => setClickCount((c) => c + 1)}
+                    />
+                    <Button
+                        label="Destructive"
+                        cssClasses={["destructive-action"]}
+                        onClicked={() => setClickCount((c) => c + 1)}
+                    />
                     <Button label="Flat" cssClasses={["flat"]} onClicked={() => setClickCount((c) => c + 1)} />
                 </Box>
                 <Label.Root label={`Clicked ${clickCount} times`} cssClasses={["dim-label"]} />

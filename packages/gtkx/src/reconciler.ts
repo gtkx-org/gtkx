@@ -1,9 +1,17 @@
+import type * as Gtk from "@gtkx/ffi/gtk";
+import type { Application } from "@gtkx/ffi/gtk";
 import React from "react";
 import Reconciler from "react-reconciler";
 import { createNode, type Props } from "./factory.js";
 import type { Node } from "./node.js";
 
 const allInstances = new Set<Node>();
+
+let currentApp: Application | null = null;
+
+export const getCurrentApp = (): Application | null => currentApp;
+
+export const getActiveWindow = (): Gtk.Window | null => currentApp?.getActiveWindow() ?? null;
 
 export const disposeAllInstances = (): void => {
     for (const instance of allInstances) {
@@ -41,8 +49,6 @@ export class GtkReconciler {
         PublicInstance
     >;
 
-    private currentApp: unknown = null;
-
     /** Creates a new GTK reconciler instance. */
     constructor() {
         this.reconciler = Reconciler(this.createHostConfig());
@@ -50,10 +56,10 @@ export class GtkReconciler {
 
     /**
      * Sets the current GTK application instance.
-     * @param app - The GTK Application pointer
+     * @param app - The GTK Application instance
      */
-    setCurrentApp(app: unknown): void {
-        this.currentApp = app;
+    setCurrentApp(app: Application): void {
+        currentApp = app;
     }
 
     /**
@@ -92,7 +98,7 @@ export class GtkReconciler {
             shouldSetTextContent: (): boolean => false,
 
             createInstance: (type: string, props: Props): Node => {
-                const instance = createNode(type, props, this.currentApp);
+                const instance = createNode(type, props, currentApp);
                 allInstances.add(instance);
                 return instance;
             },
@@ -186,6 +192,6 @@ export const reconciler = gtkReconciler.getReconciler();
 
 /**
  * Sets the current GTK application for the reconciler.
- * @param app - The GTK Application pointer
+ * @param app - The GTK Application instance
  */
-export const setCurrentApp = (app: unknown): void => gtkReconciler.setCurrentApp(app);
+export const setCurrentApp = (app: Application): void => gtkReconciler.setCurrentApp(app);

@@ -7,7 +7,8 @@ export const DialogDemo = () => {
     const [result, setResult] = useState<string | null>(null);
 
     const showAlertDialog = async () => {
-        const dialog = Gtk.AlertDialog.dialogNew("Confirm Action");
+        const dialog = new Gtk.AlertDialog();
+        dialog.setMessage("Confirm Action");
         dialog.setDetail("Are you sure you want to proceed with this action?");
         dialog.setButtons(["Cancel", "OK"]);
         dialog.setCancelButton(0);
@@ -22,7 +23,8 @@ export const DialogDemo = () => {
     };
 
     const showDestructiveDialog = async () => {
-        const dialog = Gtk.AlertDialog.dialogNew("Delete Item?");
+        const dialog = new Gtk.AlertDialog();
+        dialog.setMessage("Delete Item?");
         dialog.setDetail("This action cannot be undone. The item will be permanently deleted.");
         dialog.setButtons(["Cancel", "Delete"]);
         dialog.setCancelButton(0);
@@ -37,7 +39,8 @@ export const DialogDemo = () => {
     };
 
     const showInfoDialog = async () => {
-        const dialog = Gtk.AlertDialog.dialogNew("Information");
+        const dialog = new Gtk.AlertDialog();
+        dialog.setMessage("Information");
         dialog.setDetail("This is an informational message to the user.");
         dialog.setButtons(["OK"]);
         dialog.setDefaultButton(0);
@@ -68,9 +71,7 @@ export const DialogDemo = () => {
                     <Button label="Information" onClicked={showInfoDialog} />
                 </Box>
 
-                {result && (
-                    <Label.Root label={`Last result: ${result}`} cssClasses={["dim-label"]} />
-                )}
+                {result && <Label.Root label={`Last result: ${result}`} cssClasses={["dim-label"]} />}
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -92,7 +93,8 @@ export const dialogDemo: Demo = {
     keywords: ["dialog", "alert", "modal", "confirm", "GtkAlertDialog"],
     component: DialogDemo,
     source: `const showAlertDialog = async () => {
-    const dialog = Gtk.AlertDialog.dialogNew("Confirm Action");
+    const dialog = new Gtk.AlertDialog();
+    dialog.setMessage("Confirm Action");
     dialog.setDetail("Are you sure you want to proceed?");
     dialog.setButtons(["Cancel", "OK"]);
     dialog.setCancelButton(0);

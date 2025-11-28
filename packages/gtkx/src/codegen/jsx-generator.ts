@@ -29,7 +29,6 @@ const INTERNALLY_PROVIDED_PARAMS: Record<string, Set<string>> = {
     ApplicationWindow: new Set(["application"]),
 };
 
-
 const isPrimitive = (tsType: string): boolean => {
     const primitives = new Set(["boolean", "number", "string", "void", "unknown", "null", "undefined"]);
     return primitives.has(tsType);
@@ -139,12 +138,8 @@ export class JsxGenerator {
         const containerMetadata = this.buildContainerMetadata(widgets, classMap);
         const widgetClass = classMap.get("Widget");
 
-        this.widgetPropertyNames = new Set(
-            widgetClass?.properties.map((p) => toCamelCase(p.name)) ?? [],
-        );
-        this.widgetSignalNames = new Set(
-            widgetClass?.signals.map((s) => toCamelCase(s.name)) ?? [],
-        );
+        this.widgetPropertyNames = new Set(widgetClass?.properties.map((p) => toCamelCase(p.name)) ?? []);
+        this.widgetSignalNames = new Set(widgetClass?.signals.map((s) => toCamelCase(s.name)) ?? []);
 
         const widgetPropsInterfaces = this.generateWidgetPropsInterfaces(widgets, containerMetadata);
 

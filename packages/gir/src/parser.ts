@@ -162,53 +162,59 @@ export class GirParser {
         if (!methods || !Array.isArray(methods)) {
             return [];
         }
-        return methods.map((method) => ({
-            name: String(method["@_name"] ?? ""),
-            cIdentifier: String(method["@_c:identifier"] ?? ""),
-            returnType: this.parseReturnType(method["return-value"] as Record<string, unknown> | undefined),
-            parameters: this.parseParameters(
-                (method.parameters && typeof method.parameters === "object" && method.parameters !== null
-                    ? method.parameters
-                    : {}) as Record<string, unknown>,
-            ),
-            throws: method["@_throws"] === "1",
-            doc: extractDoc(method),
-        }));
+        return methods
+            .filter((method) => method["@_introspectable"] !== "0")
+            .map((method) => ({
+                name: String(method["@_name"] ?? ""),
+                cIdentifier: String(method["@_c:identifier"] ?? ""),
+                returnType: this.parseReturnType(method["return-value"] as Record<string, unknown> | undefined),
+                parameters: this.parseParameters(
+                    (method.parameters && typeof method.parameters === "object" && method.parameters !== null
+                        ? method.parameters
+                        : {}) as Record<string, unknown>,
+                ),
+                throws: method["@_throws"] === "1",
+                doc: extractDoc(method),
+            }));
     }
 
     private parseConstructors(constructors: Record<string, unknown>[]): GirConstructor[] {
         if (!constructors || !Array.isArray(constructors)) {
             return [];
         }
-        return constructors.map((ctor) => ({
-            name: String(ctor["@_name"] ?? ""),
-            cIdentifier: String(ctor["@_c:identifier"] ?? ""),
-            returnType: this.parseReturnType(ctor["return-value"] as Record<string, unknown> | undefined),
-            parameters: this.parseParameters(
-                (ctor.parameters && typeof ctor.parameters === "object" && ctor.parameters !== null
-                    ? ctor.parameters
-                    : {}) as Record<string, unknown>,
-            ),
-            doc: extractDoc(ctor),
-        }));
+        return constructors
+            .filter((ctor) => ctor["@_introspectable"] !== "0")
+            .map((ctor) => ({
+                name: String(ctor["@_name"] ?? ""),
+                cIdentifier: String(ctor["@_c:identifier"] ?? ""),
+                returnType: this.parseReturnType(ctor["return-value"] as Record<string, unknown> | undefined),
+                parameters: this.parseParameters(
+                    (ctor.parameters && typeof ctor.parameters === "object" && ctor.parameters !== null
+                        ? ctor.parameters
+                        : {}) as Record<string, unknown>,
+                ),
+                doc: extractDoc(ctor),
+            }));
     }
 
     private parseFunctions(functions: Record<string, unknown>[]): GirFunction[] {
         if (!functions || !Array.isArray(functions)) {
             return [];
         }
-        return functions.map((func) => ({
-            name: String(func["@_name"] ?? ""),
-            cIdentifier: String(func["@_c:identifier"] ?? ""),
-            returnType: this.parseReturnType(func["return-value"] as Record<string, unknown> | undefined),
-            parameters: this.parseParameters(
-                (func.parameters && typeof func.parameters === "object" && func.parameters !== null
-                    ? func.parameters
-                    : {}) as Record<string, unknown>,
-            ),
-            throws: func["@_throws"] === "1",
-            doc: extractDoc(func),
-        }));
+        return functions
+            .filter((func) => func["@_introspectable"] !== "0")
+            .map((func) => ({
+                name: String(func["@_name"] ?? ""),
+                cIdentifier: String(func["@_c:identifier"] ?? ""),
+                returnType: this.parseReturnType(func["return-value"] as Record<string, unknown> | undefined),
+                parameters: this.parseParameters(
+                    (func.parameters && typeof func.parameters === "object" && func.parameters !== null
+                        ? func.parameters
+                        : {}) as Record<string, unknown>,
+                ),
+                throws: func["@_throws"] === "1",
+                doc: extractDoc(func),
+            }));
     }
 
     private parseParameters(parametersNode: Record<string, unknown>): GirParameter[] {
