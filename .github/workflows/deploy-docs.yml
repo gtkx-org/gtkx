@@ -36,8 +36,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-4-dev gobject-introspection
 
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/native
+
       - name: Install dependencies
         run: pnpm install
+
+      - name: Setup Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
 
       - name: Build packages
         run: pnpm build

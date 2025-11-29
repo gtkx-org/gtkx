@@ -1,16 +1,19 @@
-name: Publish to npm
+name: CI
 
 on:
-  release:
-    types: [published]
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
-permissions:
-  contents: read
-  id-token: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  publish:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,12 +27,11 @@ jobs:
         with:
           node-version: 24
           cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
 
       - name: Install GTK4 development libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev gobject-introspection
+          sudo apt-get install -y libgtk-4-dev gobject-introspection xvfb
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -53,7 +55,26 @@ jobs:
       - name: Build all packages
         run: pnpm build
 
-      - name: Publish packages
-        run: pnpm -r publish --access public --no-git-checks --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Run tests
+        run: pnpm test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Check unused code
+        run: pnpm knip

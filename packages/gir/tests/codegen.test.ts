@@ -682,7 +682,8 @@ describe("TypeMapper - No Unknown Types", () => {
             };
             const result = typeMapper.mapParameter(param);
             expect(result.ts).toContain("=>");
-            expect(result.ffi.type).toBe("asyncCallback");
+            expect(result.ffi.type).toBe("callback");
+            expect(result.ffi.trampoline).toBe("asyncReady");
         });
 
         it("detects nullable parameters", () => {
