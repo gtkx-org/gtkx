@@ -16,7 +16,7 @@ export const DialogDemo = () => {
         dialog.setDefaultButton(1);
 
         try {
-            const response = await dialog.choose(app.getActiveWindow());
+            const response = await dialog.choose(app.getActiveWindow() ?? undefined);
             setResult(response === 1 ? "Confirmed" : "Cancelled");
         } catch {
             setResult("Dismissed");
@@ -32,7 +32,7 @@ export const DialogDemo = () => {
         dialog.setDefaultButton(0);
 
         try {
-            const response = await dialog.choose(app.getActiveWindow());
+            const response = await dialog.choose(app.getActiveWindow() ?? undefined);
             setResult(response === 1 ? "Deleted" : "Cancelled");
         } catch {
             setResult("Dismissed");
@@ -47,7 +47,7 @@ export const DialogDemo = () => {
         dialog.setDefaultButton(0);
 
         try {
-            await dialog.choose(app.getActiveWindow());
+            await dialog.choose(app.getActiveWindow() ?? undefined);
             setResult("Acknowledged");
         } catch {
             setResult("Dismissed");
