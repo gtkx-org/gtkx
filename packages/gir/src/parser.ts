@@ -249,6 +249,9 @@ export class GirParser {
         if (transferOwnership === "none" || transferOwnership === "full" || transferOwnership === "container") {
             type.transferOwnership = transferOwnership;
         }
+        if (returnValue["@_nullable"] === "1") {
+            type.nullable = true;
+        }
         return type;
     }
 

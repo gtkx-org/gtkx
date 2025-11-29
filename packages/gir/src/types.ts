@@ -206,6 +206,8 @@ export interface GirType {
     elementType?: GirType;
     /** Transfer ownership semantics for return types. */
     transferOwnership?: "none" | "full" | "container";
+    /** Whether this type can be null (for return types). */
+    nullable?: boolean;
 }
 
 /**
@@ -475,8 +477,8 @@ const BASIC_TYPE_MAP = new Map<string, TypeMapping>([
     ["guint64", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
     ["gfloat", { ts: "number", ffi: { type: "float", size: 32 } }],
     ["gdouble", { ts: "number", ffi: { type: "float", size: 64 } }],
-    ["gpointer", { ts: "unknown", ffi: { type: "gobject" } }],
-    ["gconstpointer", { ts: "unknown", ffi: { type: "gobject" } }],
+    ["gpointer", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["gconstpointer", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
     ["gsize", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
     ["gssize", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
     ["goffset", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
@@ -508,6 +510,10 @@ const BASIC_TYPE_MAP = new Map<string, TypeMapping>([
     ["ssize_t", { ts: "number", ffi: { type: "int", size: 64, unsigned: false } }],
     ["double", { ts: "number", ffi: { type: "float", size: 64 } }],
     ["float", { ts: "number", ffi: { type: "float", size: 32 } }],
+    ["GLib.DestroyNotify", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["DestroyNotify", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["GLib.FreeFunc", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
+    ["FreeFunc", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
 ]);
 
 const LIBRARY_MAP: Record<string, string> = {
@@ -532,6 +538,7 @@ export interface MappedType {
     ffi: FfiTypeDescriptor;
     externalType?: ExternalTypeUsage;
     kind?: TypeKind;
+    nullable?: boolean;
 }
 
 /**

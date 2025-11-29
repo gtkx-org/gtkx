@@ -117,6 +117,7 @@ const METHOD_RENAMES = new Map<string, Map<string, string>>([
     ["SocketClient", new Map([["connect", "connectTo"]])],
     ["SocketConnection", new Map([["connect", "connectTo"]])],
     ["Socket", new Map([["connect", "connectTo"]])],
+    ["Cancellable", new Map([["connect", "connectCallback"]])],
 ]);
 
 const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
@@ -1001,10 +1002,11 @@ ${allArgs ? `${allArgs},` : ""}
         const returnTypeMapping = this.typeMapper.mapType(finishMethod.returnType, true);
         const mainReturnType = returnTypeMapping.ts;
         const hasMainReturn = mainReturnType !== "void";
+        const isNullable = finishMethod.returnType.nullable === true;
 
         this.addGioImport = true;
 
-        const promiseType = this.buildAsyncReturnType(hasMainReturn, mainReturnType, outputParams);
+        const promiseType = this.buildAsyncReturnType(hasMainReturn, mainReturnType, outputParams, isNullable);
 
         const lines: string[] = [];
         lines.push(`  /**`);
@@ -1019,7 +1021,7 @@ ${allArgs ? `${allArgs},` : ""}
         lines.push(`  ${methodName}(${params}): Promise<${promiseType}> {`);
         lines.push(`    return new Promise((resolve, reject) => {`);
 
-        const callArgs = this.buildAsyncCallArgs(method, finishMethod, outputParams, sharedLibrary);
+        const callArgs = this.buildAsyncCallArgs(method, finishMethod, outputParams, sharedLibrary, isNullable);
         lines.push(callArgs);
 
         lines.push(`    });`);
@@ -1028,14 +1030,16 @@ ${allArgs ? `${allArgs},` : ""}
         return `${lines.join("\n")}\n`;
     }
 
-    private buildAsyncReturnType(hasMainReturn: boolean, mainReturnType: string, outputParams: GirParameter[]): string {
+    private buildAsyncReturnType(hasMainReturn: boolean, mainReturnType: string, outputParams: GirParameter[], isNullable = false): string {
         if (outputParams.length === 0) {
-            return hasMainReturn ? mainReturnType : "void";
+            if (!hasMainReturn) return "void";
+            return isNullable ? `${mainReturnType} | null` : mainReturnType;
         }
 
         const outputTypes: string[] = [];
         if (hasMainReturn) {
-            outputTypes.push(`result: ${mainReturnType}`);
+            const returnType = isNullable ? `${mainReturnType} | null` : mainReturnType;
+            outputTypes.push(`result: ${returnType}`);
         }
         for (const param of outputParams) {
             const paramName = toValidIdentifier(toCamelCase(param.name));
@@ -1055,6 +1059,7 @@ ${allArgs ? `${allArgs},` : ""}
         finishMethod: GirMethod,
         outputParams: GirParameter[],
         sharedLibrary: string,
+        isNullable = false,
     ): string {
         const returnTypeMapping = this.typeMapper.mapType(finishMethod.returnType, true);
         const hasMainReturn = returnTypeMapping.ts !== "void";
@@ -1135,9 +1140,9 @@ ${allArgs ? `${allArgs},` : ""}
             if (hasMainReturn) {
                 if (needsObjectWrap) {
                     this.usesWrapPtr = true;
-                    lines.push(
-                        `          if (ptr === null) { resolve(null as unknown as ${finishReturnType.ts}); return; }`,
-                    );
+                    if (isNullable) {
+                        lines.push(`          if (ptr === null) { resolve(null); return; }`);
+                    }
                     lines.push(`          resolve(wrapPtr(ptr, ${finishReturnType.ts}));`);
                 } else {
                     lines.push(`          resolve(result);`);
@@ -1150,9 +1155,13 @@ ${allArgs ? `${allArgs},` : ""}
             if (hasMainReturn) {
                 if (needsObjectWrap) {
                     this.usesWrapPtr = true;
-                    lines.push(
-                        `          const result = (ptr === null ? null : wrapPtr(ptr, ${finishReturnType.ts})) as ${finishReturnType.ts};`,
-                    );
+                    if (isNullable) {
+                        lines.push(
+                            `          const result = (ptr === null ? null : wrapPtr(ptr, ${finishReturnType.ts})) as ${finishReturnType.ts} | null;`,
+                        );
+                    } else {
+                        lines.push(`          const result = wrapPtr(ptr, ${finishReturnType.ts});`);
+                    }
                 }
                 resolveFields.push("result");
             }
@@ -1225,7 +1234,9 @@ ${allArgs ? `${allArgs},` : ""}
 
         const params = this.generateParameterList(method.parameters);
         const returnTypeMapping = this.typeMapper.mapType(method.returnType, true);
-        const tsReturnType = returnTypeMapping.ts === "void" ? "void" : returnTypeMapping.ts;
+        const isNullable = method.returnType.nullable === true;
+        const baseReturnType = returnTypeMapping.ts === "void" ? "void" : returnTypeMapping.ts;
+        const tsReturnType = isNullable && baseReturnType !== "void" ? `${baseReturnType} | null` : baseReturnType;
         const returnTypeAnnotation = tsReturnType !== "void" ? `: ${tsReturnType}` : "";
 
         const hasResultParam = method.parameters.some((p) => toValidIdentifier(toCamelCase(p.name)) === "result");
@@ -1233,7 +1244,7 @@ ${allArgs ? `${allArgs},` : ""}
 
         const needsObjectWrap =
             (returnTypeMapping.ffi.type === "gobject" || returnTypeMapping.ffi.type === "boxed") &&
-            tsReturnType !== "unknown" &&
+            baseReturnType !== "unknown" &&
             returnTypeMapping.kind !== "interface";
         const hasReturnValue = returnTypeMapping.ts !== "void";
 
@@ -1269,12 +1280,14 @@ ${allArgs ? `${allArgs},` : ""}
             if (method.throws) {
                 lines.push(this.generateErrorCheck());
             }
-            lines.push(`    if (ptr === null) return null as unknown as ${tsReturnType};`);
+            if (isNullable) {
+                lines.push(`    if (ptr === null) return null;`);
+            }
             if (isCyclic) {
-                lines.push(`    return { ptr } as unknown as ${tsReturnType};`);
+                lines.push(`    return { ptr } as unknown as ${baseReturnType};`);
             } else {
                 this.usesWrapPtr = true;
-                lines.push(`    return wrapPtr(ptr, ${tsReturnType});`);
+                lines.push(`    return wrapPtr(ptr, ${baseReturnType});`);
             }
         } else {
             const callPrefix = method.throws
@@ -1849,7 +1862,10 @@ ${args}
         const funcName = toValidIdentifier(toCamelCase(func.name));
         const params = this.generateParameterList(func.parameters);
         const returnTypeMapping = this.typeMapper.mapType(func.returnType, true);
-        const tsReturnType = returnTypeMapping.ts === "void" ? "" : `: ${returnTypeMapping.ts}`;
+        const isNullable = func.returnType.nullable === true;
+        const baseReturnType = returnTypeMapping.ts;
+        const fullReturnType = isNullable && baseReturnType !== "void" ? `${baseReturnType} | null` : baseReturnType;
+        const tsReturnType = fullReturnType === "void" ? "" : `: ${fullReturnType}`;
 
         const hasResultParam = func.parameters.some((p) => toValidIdentifier(toCamelCase(p.name)) === "result");
         const resultVarName = hasResultParam ? "_result" : "result";
@@ -1883,8 +1899,10 @@ ${allArgs ? `${allArgs},` : ""}
             if (func.throws) {
                 lines.push(this.generateErrorCheck(""));
             }
-            lines.push(`  if (ptr === null) return null as unknown as ${returnTypeMapping.ts};`);
-            lines.push(`  return wrapPtr(ptr, ${returnTypeMapping.ts});`);
+            if (isNullable) {
+                lines.push(`  if (ptr === null) return null;`);
+            }
+            lines.push(`  return wrapPtr(ptr, ${baseReturnType});`);
         } else {
             const callPrefix = func.throws
                 ? hasReturnValue

@@ -37,7 +37,8 @@
     ],
     "scripts": {
         "build": "tsc -b",
-        "codegen": "tsx scripts/codegen.ts"
+        "codegen": "tsx scripts/codegen.ts",
+        "test": "xvfb-run -a vitest run"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",

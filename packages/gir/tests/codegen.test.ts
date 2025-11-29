@@ -546,10 +546,12 @@ describe("TypeMapper - No Unknown Types", () => {
             expect(result.ffi.type).toBe("undefined");
         });
 
-        it("maps gpointer to unknown with gobject FFI type", () => {
+        it("maps gpointer to number with 64-bit unsigned FFI type", () => {
             const result = typeMapper.mapType({ name: "gpointer" });
-            expect(result.ts).toBe("unknown");
-            expect(result.ffi.type).toBe("gobject");
+            expect(result.ts).toBe("number");
+            expect(result.ffi.type).toBe("int");
+            expect(result.ffi.size).toBe(64);
+            expect(result.ffi.unsigned).toBe(true);
         });
 
         it("maps GType to number with 64-bit unsigned", () => {
