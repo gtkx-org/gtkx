@@ -80,3 +80,6 @@ jobs:
 
       - name: Check unused code
         run: pnpm knip
+
+      - name: Run linter
+        run: pnpm lint

@@ -8,9 +8,8 @@
     "scripts": {
         "build": "turbo build",
         "docs": "pnpm --filter website start",
-        "docs:build": "pnpm --filter website build",
         "knip": "knip",
-        "knip:fix": "knip --fix",
+        "lint": "biome check .",
         "test": "turbo test"
     },
     "devDependencies": {

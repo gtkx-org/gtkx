@@ -158,6 +158,30 @@ The `quit` function:
 2. Stops the GTK main loop
 3. Returns `false` (useful as a direct handler)
 
+### Lifecycle Events
+
+For global lifecycle hooks, use the `events` EventEmitter from `@gtkx/ffi`:
+
+```tsx
+import { events } from "@gtkx/ffi";
+
+// Set up listeners before render()
+events.on("start", () => {
+  console.log("GTK initialized");
+  // Initialize global resources, logging, etc.
+});
+
+events.on("stop", () => {
+  console.log("GTK shutting down");
+  // Clean up resources, save state, etc.
+});
+```
+
+| Event | When Emitted |
+|-------|--------------|
+| `start` | After GTK is initialized and the app is running |
+| `stop` | Before GTK shuts down (after `quit()` is called) |
+
 ## Best Practices
 
 ### Use React State

@@ -13,10 +13,33 @@ This is a pnpm monorepo:
 - **`packages/native`**: Rust-based Neon module providing FFI bindings to GTK
 - **`packages/gir`**: GIR (GObject Introspection) XML parser for GTK API definitions
 - **`packages/ffi`**: Generated TypeScript FFI bindings for GTK libraries
-- **`packages/gtkx`**: React integration layer with custom reconciler and JSX types
+- **`packages/react`**: React integration layer with custom reconciler and JSX types
 - **`packages/css`**: Emotion-style CSS-in-JS for styling GTK widgets
 - **`website`**: Docusaurus documentation site
 - **`examples/`**: Demo applications
+
+## Build Commands
+
+```bash
+pnpm install
+pnpm build                                   # Full build (uses turbo)
+turbo build --force                          # Force rebuild (bypass cache)
+cd examples/gtk4-demo && turbo start         # Run demo
+pnpm knip                                    # Find unused code
+pnpm test                                    # Run tests
+```
+
+**Important:** Always use `turbo` for build commands in this monorepo. If you encounter stale cache issues after modifying codegen or generated files, either:
+1. Use `turbo build --force` to bypass the cache, or
+2. Delete `*.tsbuildinfo` files: `find . -name '*.tsbuildinfo' -delete`
+
+## Working with Generated Code
+
+- **Never edit `src/generated/` directories** - they are regenerated on build
+- To modify generated code, edit the generators:
+  - `packages/ffi/src/codegen/ffi-generator.ts` for FFI bindings
+  - `packages/react/src/codegen/jsx-generator.ts` for JSX types
+- GIR files are synced to `/girs/` from `/usr/share/gir-1.0`
 
 ## Usage Examples
 
@@ -305,29 +328,6 @@ try {
     }
 }
 ```
-
-## Build Commands
-
-```bash
-pnpm install
-pnpm build                                   # Full build (uses turbo)
-turbo build --force                          # Force rebuild (bypass cache)
-cd examples/gtk4-demo && turbo start         # Run demo
-pnpm knip                                    # Find unused code
-pnpm test                                    # Run tests
-```
-
-**Important:** Always use `turbo` for build commands in this monorepo. If you encounter stale cache issues after modifying codegen or generated files, either:
-1. Use `turbo build --force` to bypass the cache, or
-2. Delete `*.tsbuildinfo` files: `find . -name '*.tsbuildinfo' -delete`
-
-## Working with Generated Code
-
-- **Never edit `src/generated/` directories** - they are regenerated on build
-- To modify generated code, edit the generators:
-  - `packages/ffi/src/codegen/ffi-generator.ts` for FFI bindings
-  - `packages/react/src/codegen/jsx-generator.ts` for JSX types
-- GIR files are synced to `/girs/` from `/usr/share/gir-1.0`
 
 ## Coding Guidelines
 

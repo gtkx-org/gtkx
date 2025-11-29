@@ -146,18 +146,19 @@ Different GTK widgets require different handling. GTKX uses a node system where 
 
 | Node | Purpose |
 |------|---------|
-| `WidgetNode` | Standard widgets (Button, Box, Entry) - default handler |
-| `TextNode` | String children wrapped in Label widgets |
-| `DialogNode` | Modal dialogs (FileDialog, AlertDialog, AboutDialog) |
-| `SlotNode` | Named child slots (HeaderBar.TitleWidget, CenterBox.StartWidget) |
-| `GridNode` | Grid layout with row/column positioning |
-| `ListViewNode` | Virtualized list with item factory |
-| `DropDownNode` | Dropdown with StringList model |
-| `NotebookNode` | Tabbed container with page management |
-| `OverlayNode` | Overlay widget with layered children |
-| `ActionBarNode` | Action bar with start/center/end sections |
+| `WidgetNode` | Standard widgets (Button, Box, Entry, Window, dialogs) - default fallback |
+| `SlotNode` | Named child slots (HeaderBar.TitleWidget, CenterBox.Start, Frame.LabelWidget) |
+| `GridNode` | Grid layout container |
+| `GridChildNode` | Grid children with row/column positioning (virtual) |
+| `ListViewNode` | Virtualized lists (ListView, ColumnView, GridView) with item factory |
+| `ListItemNode` | List items for ListView (virtual) |
+| `DropDownNode` | Dropdown with StringList model and selection handling |
+| `DropDownItemNode` | Dropdown items (virtual) |
+| `OverlayNode` | Overlay widget with main child + overlay children |
 
-All nodes implement the `Node` interface:
+**Virtual Nodes**: Some nodes (GridChildNode, ListItemNode, DropDownItemNode) are "virtual" - they don't create GTK widgets but manage how their children are attached to parent widgets. This pattern allows React-style composition while respecting GTK's API.
+
+All nodes extend the abstract `Node` class:
 
 ```typescript
 interface Node {
@@ -173,24 +174,23 @@ interface Node {
 
 ### Factory
 
-The factory creates the appropriate node type for each React element:
+The factory creates the appropriate node type for each React element. Node classes are checked in order, and the first matching class is used:
 
 ```typescript
 const NODE_CLASSES = [
-  SlotNode,       // Matches *.TitleWidget, *.Start, etc.
-  ListItemNode,   // Matches ListView.Item
-  DropDownItemNode,
-  DropDownNode,
-  GridChildNode,  // Matches Grid.Child
-  GridNode,
-  NotebookNode,
-  OverlayNode,
-  ActionBarNode,
-  ListViewNode,
-  DialogNode,     // Matches *Dialog
-  WidgetNode,     // Fallback for all other widgets
+  SlotNode,         // Matches *.TitleWidget, *.Start, *.LabelWidget, etc.
+  ListItemNode,     // Matches ListView.Item, ColumnView.Item, GridView.Item
+  DropDownItemNode, // Matches DropDown.Item
+  DropDownNode,     // Matches DropDown.Root
+  GridChildNode,    // Matches Grid.Child
+  GridNode,         // Matches Grid.Root
+  OverlayNode,      // Matches Overlay.Root
+  ListViewNode,     // Matches ListView.Root, ColumnView.Root, GridView.Root
+  WidgetNode,       // Fallback for all other widgets
 ];
 ```
+
+Each node class has a static `matches(type: string)` method that determines if it should handle a given element type.
 
 ## Native Module (@gtkx/native)
 
@@ -293,3 +293,42 @@ GTK signals become `on`-prefixed handlers:
 - **Signal Cleanup**: `dispose()` disconnects signal handlers when components unmount
 - **Application Exit**: `disposeAllInstances()` ensures all handlers are disconnected before quit
 - **Async Calls**: Void-returning FFI calls are dispatched via `g_idle_add_once` to avoid blocking
+
+## GTK Event Loop Integration
+
+### Keep-Alive Mechanism
+
+When you start a GTKX app, Node.js would normally exit because there's nothing keeping the event loop busy. GTKX uses a long-running timeout to prevent this:
+
+```typescript
+// Internal implementation - keeps Node.js alive during GTK event loop
+const keepAlive = () => {
+  keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
+};
+```
+
+This timeout is automatically cleared when `stop()` is called or the app quits.
+
+### Lifecycle Events
+
+The `@gtkx/ffi` package exports an `events` EventEmitter for GTK lifecycle hooks:
+
+```typescript
+import { events } from "@gtkx/ffi";
+
+// Called after GTK is initialized
+events.on("start", () => {
+  console.log("GTK application started");
+});
+
+// Called before GTK shuts down
+events.on("stop", () => {
+  console.log("GTK application stopping");
+  // Perform cleanup here
+});
+```
+
+These events are useful for:
+- Setting up global resources after GTK initializes
+- Cleaning up resources before shutdown
+- Logging application lifecycle

@@ -81,8 +81,9 @@ const [items, setItems] = useState([
     vexpand
     renderItem={(item: { id: number; text: string } | null) => {
       const box = new Gtk.Box();
-      const label = new Gtk.Label(item?.text ?? "");
-      box.append(label.ptr);
+      const label = new Gtk.Label();
+      label.setLabel(item?.text ?? "");
+      box.append(label);
       box.setMarginStart(10);
       box.setMarginEnd(10);
       return box;
