@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const BoxDemo = () => {
@@ -109,50 +110,5 @@ export const boxDemo: Demo = {
     description: "Linear container for arranging widgets horizontally or vertically.",
     keywords: ["box", "layout", "container", "horizontal", "vertical", "GtkBox"],
     component: BoxDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
-
-export const BoxDemo = () => {
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <Label.Root label="Box Layout" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Horizontal Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Button label="First" />
-                    <Button label="Second" />
-                    <Button label="Third" />
-                </Box>
-            </Box>
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Vertical Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <Button label="Top" />
-                    <Button label="Middle" />
-                    <Button label="Bottom" />
-                </Box>
-            </Box>
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Expand and Fill" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Button label="Fixed" />
-                    <Button label="Expand" hexpand />
-                    <Button label="Fixed" />
-                </Box>
-            </Box>
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Homogeneous" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} homogeneous>
-                    <Button label="Short" />
-                    <Button label="Medium Text" />
-                    <Button label="Longer Button Text" />
-                </Box>
-            </Box>
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "box.tsx"),
 };

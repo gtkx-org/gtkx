@@ -1,6 +1,7 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const cardBase = css`
@@ -132,19 +133,5 @@ export const cssShadowsDemo: Demo = {
     description: "Box shadows for depth and elevation effects.",
     keywords: ["css", "shadow", "elevation", "depth", "box-shadow"],
     component: CssShadowsDemo,
-    source: `import { css } from "@gtkx/css";
-
-const shadowStyle = css\`
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19);
-    padding: 24px;
-    border-radius: 12px;
-\`;
-
-const CssShadowsDemo = () => {
-    return (
-        <Box cssClasses={[shadowStyle]}>
-            <Label.Root label="Elevated Card" />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "css-shadows.tsx"),
 };

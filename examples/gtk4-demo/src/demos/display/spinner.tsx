@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label, Spinner } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const SpinnerDemo = () => {
@@ -76,17 +77,5 @@ export const spinnerDemo: Demo = {
     description: "Indefinite loading indicator animation.",
     keywords: ["spinner", "loading", "progress", "animation", "GtkSpinner"],
     component: SpinnerDemo,
-    source: `const SpinnerDemo = () => {
-    const [spinning, setSpinning] = useState(true);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <Spinner spinning={spinning} />
-            <Button
-                label={spinning ? "Stop" : "Start"}
-                onClicked={() => setSpinning(!spinning)}
-            />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "spinner.tsx"),
 };

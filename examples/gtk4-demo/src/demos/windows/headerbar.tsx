@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, HeaderBar, Label, SearchEntry } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const HeaderBarDemo = () => {
@@ -104,22 +105,5 @@ export const headerBarDemo: Demo = {
     description: "Window header bar with title and action buttons.",
     keywords: ["header", "bar", "title", "toolbar", "GtkHeaderBar"],
     component: HeaderBarDemo,
-    source: `const HeaderBarDemo = () => {
-    const [searchVisible, setSearchVisible] = useState(false);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
-            <HeaderBar.Root>
-                <HeaderBar.TitleWidget>
-                    <Label.Root label="Application Title" />
-                </HeaderBar.TitleWidget>
-            </HeaderBar.Root>
-            <Button
-                label={searchVisible ? "Hide Search" : "Show Search"}
-                onClicked={() => setSearchVisible((v) => !v)}
-            />
-            {searchVisible && <SearchEntry placeholderText="Search..." />}
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "headerbar.tsx"),
 };

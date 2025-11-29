@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Image, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const ImageDemo = () => {
@@ -96,13 +97,5 @@ export const imageDemo: Demo = {
     description: "Display images from icons, files, or resources.",
     keywords: ["image", "icon", "picture", "graphics", "GtkImage"],
     component: ImageDemo,
-    source: `const ImageDemo = () => {
-    return (
-        <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-            <Image iconName="document-open-symbolic" iconSize={Gtk.IconSize.LARGE} />
-            <Image iconName="document-save-symbolic" iconSize={Gtk.IconSize.LARGE} />
-            <Image iconName="dialog-information-symbolic" iconSize={Gtk.IconSize.LARGE} />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "image.tsx"),
 };

@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label, LevelBar } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const LevelBarDemo = () => {
@@ -70,17 +71,5 @@ export const levelBarDemo: Demo = {
     description: "Level indicator bar with color offsets.",
     keywords: ["level", "bar", "indicator", "meter", "GtkLevelBar"],
     component: LevelBarDemo,
-    source: `const LevelBarDemo = () => {
-    const [level, setLevel] = useState(0.5);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <LevelBar value={level} minValue={0} maxValue={1} />
-            <Button
-                label="Increase"
-                onClicked={() => setLevel(l => Math.min(1, l + 0.1))}
-            />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "levelbar.tsx"),
 };

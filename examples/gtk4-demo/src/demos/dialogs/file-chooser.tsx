@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const FileChooserDemo = () => {
@@ -87,15 +88,5 @@ export const fileChooserDemo: Demo = {
     description: "Native file and folder selection dialogs.",
     keywords: ["file", "folder", "open", "save", "dialog", "GtkFileDialog"],
     component: FileChooserDemo,
-    source: `const openSingleFile = async () => {
-    const dialog = new Gtk.FileDialog();
-    dialog.setTitle("Open File");
-
-    try {
-        const file = await dialog.open();
-        console.log("Selected:", file.getPath());
-    } catch {
-        console.log("Cancelled");
-    }
-};`,
+    sourcePath: getSourcePath(import.meta.url, "file-chooser.tsx"),
 };

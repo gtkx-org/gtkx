@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const GlShadersOverviewDemo = () => {
@@ -61,33 +62,5 @@ export const glShadersOverviewDemo: Demo = {
     description: "Hardware-accelerated rendering with OpenGL shaders.",
     keywords: ["opengl", "gl", "shaders", "glsl", "gpu", "hardware"],
     component: GlShadersOverviewDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-import * as Gsk from "@gtkx/ffi/gsk";
-
-// GtkGLArea provides an OpenGL rendering surface
-// The GLArea JSX component is available
-
-// Example shader code (GLSL fragment shader):
-const shaderSource = \`
-uniform float u_time;
-uniform vec2 u_resolution;
-
-void main() {
-    vec2 uv = gl_FragCoord.xy / u_resolution;
-    vec3 color = vec3(uv.x, uv.y, sin(u_time));
-    gl_FragColor = vec4(color, 1.0);
-}
-\`;
-
-// GskGLShader for custom effects
-const shader = Gsk.GLShader.newFromBytes(shaderBytes);
-
-// GLArea widget handles the render signal
-<GLArea
-    onRender={(area, context) => {
-        // OpenGL rendering code here
-        // context is the GdkGLContext
-        return true; // Return true to stop signal propagation
-    }}
-/>`,
+    sourcePath: getSourcePath(import.meta.url, "overview.tsx"),
 };

@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label, ProgressBar } from "@gtkx/react";
 import { useEffect, useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const ProgressBarDemo = () => {
@@ -92,21 +93,5 @@ export const progressBarDemo: Demo = {
     description: "Visual indicator for operation progress.",
     keywords: ["progress", "bar", "loading", "percentage", "GtkProgressBar"],
     component: ProgressBarDemo,
-    source: `const ProgressBarDemo = () => {
-    const [progress, setProgress] = useState(0);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <ProgressBar
-                fraction={progress}
-                showText
-                text={\`\${Math.round(progress * 100)}%\`}
-            />
-            <Button
-                label="Increase"
-                onClicked={() => setProgress(p => Math.min(1, p + 0.1))}
-            />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "progressbar.tsx"),
 };

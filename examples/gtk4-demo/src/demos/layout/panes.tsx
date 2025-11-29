@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, Paned, ScrolledWindow } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const PanesDemo = () => {
@@ -106,65 +107,5 @@ export const panesDemo: Demo = {
     description: "Resizable split container with draggable divider.",
     keywords: ["paned", "split", "resize", "divider", "GtkPaned"],
     component: PanesDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, Paned, ScrolledWindow } from "@gtkx/react";
-
-export const PanesDemo = () => {
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <Label.Root label="Paned Container" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Horizontal Paned" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Paned.Root
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    wideHandle
-                    heightRequest={150}
-                    position={200}
-                    cssClasses={["card"]}
-                >
-                    <Paned.StartChild>
-                        <ScrolledWindow>
-                            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} marginStart={12} marginTop={12}>
-                                <Label.Root label="Left Pane" cssClasses={["heading"]} />
-                            </Box>
-                        </ScrolledWindow>
-                    </Paned.StartChild>
-                    <Paned.EndChild>
-                        <ScrolledWindow>
-                            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} marginStart={12} marginTop={12}>
-                                <Label.Root label="Right Pane" cssClasses={["heading"]} />
-                            </Box>
-                        </ScrolledWindow>
-                    </Paned.EndChild>
-                </Paned.Root>
-            </Box>
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Nested Panes" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Paned.Root orientation={Gtk.Orientation.HORIZONTAL} wideHandle heightRequest={200} position={150}>
-                    <Paned.StartChild>
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} marginStart={12} marginTop={12}>
-                            <Label.Root label="Sidebar" cssClasses={["heading"]} />
-                        </Box>
-                    </Paned.StartChild>
-                    <Paned.EndChild>
-                        <Paned.Root orientation={Gtk.Orientation.VERTICAL} wideHandle position={100}>
-                            <Paned.StartChild>
-                                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} marginStart={12} marginTop={12}>
-                                    <Label.Root label="Main Content" />
-                                </Box>
-                            </Paned.StartChild>
-                            <Paned.EndChild>
-                                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} marginStart={12} marginTop={12}>
-                                    <Label.Root label="Details Panel" />
-                                </Box>
-                            </Paned.EndChild>
-                        </Paned.Root>
-                    </Paned.EndChild>
-                </Paned.Root>
-            </Box>
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "panes.tsx"),
 };

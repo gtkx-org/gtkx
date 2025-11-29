@@ -286,7 +286,7 @@ describe("Signal Handler Management", () => {
             const itemLabel = (item: string) => item;
 
             const node = createNode(
-                "DropDown",
+                "DropDown.Root",
                 {
                     itemLabel,
                     onSelectionChanged,
@@ -302,7 +302,7 @@ describe("Signal Handler Management", () => {
             const itemLabel = (item: string) => item;
 
             const node = createNode(
-                "DropDown",
+                "DropDown.Root",
                 {
                     itemLabel,
                     onSelectionChanged,
@@ -478,7 +478,7 @@ describe("Widget Disposal and Memory Management", () => {
 
     it("should handle DropDown with items disposal", () => {
         const itemLabel = (item: { name: string }) => item.name;
-        const dropdown = createNode("DropDown", { itemLabel }, app) as DropDownNode;
+        const dropdown = createNode("DropDown.Root", { itemLabel }, app) as DropDownNode;
 
         for (let i = 0; i < 20; i++) {
             const item = createNode("DropDown.Item", { item: { name: `Item ${i}` } }, null) as DropDownItemNode;

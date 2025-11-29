@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, DropDown, Label } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 interface Country {
@@ -86,22 +87,5 @@ export const dropDownDemo: Demo = {
     description: "Modern replacement for combo boxes with custom items.",
     keywords: ["dropdown", "combo", "select", "list", "GtkDropDown"],
     component: DropDownDemo,
-    source: `const DropDownDemo = () => {
-    const options = [
-        { id: "1", label: "Option 1" },
-        { id: "2", label: "Option 2" },
-        { id: "3", label: "Option 3" },
-    ];
-
-    return (
-        <DropDown.Root
-            itemLabel={(item) => item.label}
-            onSelectionChanged={(item) => console.log(item)}
-        >
-            {options.map((opt) => (
-                <DropDown.Item key={opt.id} item={opt} />
-            ))}
-        </DropDown.Root>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "dropdown.tsx"),
 };

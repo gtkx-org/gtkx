@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const StackDemo = () => {
@@ -78,31 +79,5 @@ export const stackDemo: Demo = {
     description: "Container showing one child at a time with transitions.",
     keywords: ["stack", "pages", "navigation", "transition", "GtkStack"],
     component: StackDemo,
-    source: `const StackDemo = () => {
-    const [currentPage, setCurrentPage] = useState(0);
-    const pages = ["Page 1", "Page 2", "Page 3"];
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                {pages.map((page, index) => (
-                    <Button
-                        key={index}
-                        label={page}
-                        cssClasses={currentPage === index ? ["suggested-action"] : []}
-                        onClicked={() => setCurrentPage(index)}
-                    />
-                ))}
-            </Box>
-            <Stack.Root
-                transitionType={Gtk.StackTransitionType.CROSSFADE}
-                transitionDuration={150}
-            >
-                <Stack.VisibleChild>
-                    <Label.Root label={pages[currentPage]} />
-                </Stack.VisibleChild>
-            </Stack.Root>
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "stack.tsx"),
 };

@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, ListBox, ListBoxRow, ScrolledWindow, SearchEntry } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const fruits = [
@@ -78,18 +79,5 @@ export const searchEntryDemo: Demo = {
     description: "Text entry optimized for search with clear button and search icon.",
     keywords: ["search", "entry", "filter", "find", "GtkSearchEntry"],
     component: SearchEntryDemo,
-    source: `const SearchEntryDemo = () => {
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <SearchEntry placeholderText="Search..." />
-            <ListBox>
-                {items.map((item) => (
-                    <ListBoxRow key={item}>
-                        <Label.Root label={item} />
-                    </ListBoxRow>
-                ))}
-            </ListBox>
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "search-entry.tsx"),
 };

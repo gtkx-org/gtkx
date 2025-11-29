@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
 import { app } from "../../index.js";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const DialogDemo = () => {
@@ -93,19 +94,5 @@ export const dialogDemo: Demo = {
     description: "Modal dialogs for user interaction and confirmations.",
     keywords: ["dialog", "alert", "modal", "confirm", "GtkAlertDialog"],
     component: DialogDemo,
-    source: `const showAlertDialog = async () => {
-    const dialog = new Gtk.AlertDialog();
-    dialog.setMessage("Confirm Action");
-    dialog.setDetail("Are you sure you want to proceed?");
-    dialog.setButtons(["Cancel", "OK"]);
-    dialog.setCancelButton(0);
-    dialog.setDefaultButton(1);
-
-    try {
-        const response = await dialog.choose();
-        console.log(response === 1 ? "Confirmed" : "Cancelled");
-    } catch {
-        console.log("Dismissed");
-    }
-};`,
+    sourcePath: getSourcePath(import.meta.url, "dialog.tsx"),
 };

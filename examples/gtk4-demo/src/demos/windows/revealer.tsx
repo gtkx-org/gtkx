@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label, Revealer } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const RevealerDemo = () => {
@@ -138,52 +139,5 @@ export const revealerDemo: Demo = {
     description: "Animate showing and hiding of child widgets.",
     keywords: ["revealer", "animation", "show", "hide", "transition", "GtkRevealer"],
     component: RevealerDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label, Revealer } from "@gtkx/react";
-import { useState } from "react";
-
-export const RevealerDemo = () => {
-    const [slideDown, setSlideDown] = useState(false);
-    const [crossfade, setCrossfade] = useState(false);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <Label.Root label="Revealer" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Slide Down" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Button
-                    label={slideDown ? "Hide" : "Show"}
-                    onClicked={() => setSlideDown((v) => !v)}
-                />
-                <Revealer
-                    revealChild={slideDown}
-                    transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
-                    transitionDuration={300}
-                >
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} marginTop={8} marginBottom={8}>
-                        <Label.Root label="This content slides down when revealed." margin={12} />
-                    </Box>
-                </Revealer>
-            </Box>
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Crossfade" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Button
-                    label={crossfade ? "Hide" : "Show"}
-                    onClicked={() => setCrossfade((v) => !v)}
-                />
-                <Revealer
-                    revealChild={crossfade}
-                    transitionType={Gtk.RevealerTransitionType.CROSSFADE}
-                    transitionDuration={500}
-                >
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} marginTop={8}>
-                        <Label.Root label="This content fades in and out smoothly." margin={12} />
-                    </Box>
-                </Revealer>
-            </Box>
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "revealer.tsx"),
 };

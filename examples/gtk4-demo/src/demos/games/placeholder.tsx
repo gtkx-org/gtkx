@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const GamesPlaceholderDemo = () => {
@@ -43,19 +44,5 @@ export const gamesPlaceholderDemo: Demo = {
     description: "Interactive games built with GTKX and React.",
     keywords: ["games", "puzzle", "interactive", "react", "state"],
     component: GamesPlaceholderDemo,
-    source: `// Games are built using React state management with GTK widgets
-// Key patterns:
-// - useState for game state (board, moves, etc.)
-// - Box with homogeneous prop for tile-based layouts
-// - useCallback for click handlers
-// - CSS-in-JS for dynamic styling
-
-const [board, setBoard] = useState(initialBoard);
-const [moves, setMoves] = useState(0);
-
-const handleMove = useCallback((index) => {
-    // Update game state
-    setBoard(newBoard);
-    setMoves(m => m + 1);
-}, [board]);`,
+    sourcePath: getSourcePath(import.meta.url, "placeholder.tsx"),
 };

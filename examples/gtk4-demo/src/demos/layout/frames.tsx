@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Frame, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const FramesDemo = () => {
@@ -135,43 +136,5 @@ export const framesDemo: Demo = {
     description: "Decorative container with optional label for grouping widgets.",
     keywords: ["frame", "border", "group", "container", "GtkFrame"],
     component: FramesDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Frame, Label } from "@gtkx/react";
-
-export const FramesDemo = () => {
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <Label.Root label="Frames" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Basic Frame" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Frame.Root label="Section Title">
-                    <Frame.Child>
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} margin={12}>
-                            <Label.Root label="This content is inside a frame." />
-                            <Label.Root label="Frames provide visual grouping with an optional label." cssClasses={["dim-label"]} wrap />
-                        </Box>
-                    </Frame.Child>
-                </Frame.Root>
-            </Box>
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Custom Label Widget" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Frame.Root>
-                    <Frame.LabelWidget>
-                        <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
-                            <Label.Root label="Custom Header" cssClasses={["heading"]} />
-                            <Button label="Action" cssClasses={["flat", "small"]} />
-                        </Box>
-                    </Frame.LabelWidget>
-                    <Frame.Child>
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} margin={12}>
-                            <Label.Root label="You can use any widget as the frame label." wrap />
-                        </Box>
-                    </Frame.Child>
-                </Frame.Root>
-            </Box>
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "frames.tsx"),
 };

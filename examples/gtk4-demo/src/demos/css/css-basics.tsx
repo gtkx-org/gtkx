@@ -1,6 +1,7 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const customButton = css`
@@ -80,18 +81,5 @@ export const cssBasicsDemo: Demo = {
     description: "Introduction to GTK CSS styling with CSS-in-JS.",
     keywords: ["css", "styling", "theme", "design", "colors"],
     component: CssBasicsDemo,
-    source: `import { css } from "@gtkx/css";
-
-const customButton = css\`
-    padding: 16px 32px;
-    border-radius: 24px;
-    background: #33d17a;
-    color: white;
-\`;
-
-const CssBasicsDemo = () => {
-    return (
-        <Button label="Styled Button" cssClasses={[customButton]} />
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "css-basics.tsx"),
 };

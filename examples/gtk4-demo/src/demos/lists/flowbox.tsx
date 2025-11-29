@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, FlowBox, FlowBoxChild, Label, ScrolledWindow } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const colors = [
@@ -89,22 +90,5 @@ export const flowBoxDemo: Demo = {
     description: "Container that reflows children based on available space.",
     keywords: ["flowbox", "flow", "grid", "wrap", "GtkFlowBox"],
     component: FlowBoxDemo,
-    source: `const FlowBoxDemo = () => {
-    const items = Array.from({ length: 20 }, (_, i) => i);
-
-    return (
-        <FlowBox
-            selectionMode={Gtk.SelectionMode.SINGLE}
-            maxChildrenPerLine={5}
-            columnSpacing={8}
-            rowSpacing={8}
-        >
-            {items.map((i) => (
-                <FlowBoxChild key={i}>
-                    <Label.Root label={\`Item \${i + 1}\`} />
-                </FlowBoxChild>
-            ))}
-        </FlowBox>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "flowbox.tsx"),
 };

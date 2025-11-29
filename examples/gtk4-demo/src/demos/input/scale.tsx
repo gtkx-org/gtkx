@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, Scale } from "@gtkx/react";
 import { useMemo, useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const ScaleDemo = () => {
@@ -97,21 +98,5 @@ export const scaleDemo: Demo = {
     description: "Slider widget for selecting a value from a range.",
     keywords: ["scale", "slider", "range", "adjustment", "GtkScale"],
     component: ScaleDemo,
-    source: `const ScaleDemo = () => {
-    // Adjustment args: value, lower, upper, stepIncrement, pageIncrement, pageSize
-    const adjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
-    const [value, setValue] = useState(50);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <Scale
-                hexpand
-                drawValue
-                adjustment={adjustment}
-                onValueChanged={(self) => setValue(self.getValue())}
-            />
-            <Label.Root label={\`Value: \${Math.round(value)}%\`} />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "scale.tsx"),
 };

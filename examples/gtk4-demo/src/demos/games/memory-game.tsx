@@ -2,6 +2,7 @@ import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const SYMBOLS = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -192,47 +193,5 @@ export const memoryGameDemo: Demo = {
     description: "Classic card matching memory game.",
     keywords: ["game", "memory", "cards", "matching", "interactive"],
     component: MemoryGameDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
-import { useState, useCallback, useEffect } from "react";
-
-const SYMBOLS = ["A", "B", "C", "D", "E", "F", "G", "H"];
-
-export const MemoryGameDemo = () => {
-    const [cards, setCards] = useState(createCards());
-    const [flippedCards, setFlippedCards] = useState([]);
-    const [moves, setMoves] = useState(0);
-
-    useEffect(() => {
-        if (flippedCards.length === 2) {
-            // Check if symbols match and update state
-        }
-    }, [flippedCards]);
-
-    const handleCardClick = useCallback((cardId) => {
-        setCards((prev) =>
-            prev.map((c) => (c.id === cardId ? { ...c, isFlipped: true } : c))
-        );
-        setFlippedCards((prev) => [...prev, cardId]);
-        setMoves((m) => m + 1);
-    }, []);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                {[0, 1, 2, 3].map((rowIdx) => (
-                    <Box key={rowIdx} orientation={Gtk.Orientation.HORIZONTAL} spacing={6} homogeneous>
-                        {getRow(rowIdx).map((card) => (
-                            <Button
-                                key={card.id}
-                                label={card.isFlipped ? card.symbol : "?"}
-                                onClicked={() => handleCardClick(card.id)}
-                            />
-                        ))}
-                    </Box>
-                ))}
-            </Box>
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "memory-game.tsx"),
 };

@@ -6,7 +6,7 @@ export interface Demo {
     description: string;
     keywords: string[];
     component: ComponentType;
-    source: string;
+    sourcePath: string;
 }
 
 export interface Category {

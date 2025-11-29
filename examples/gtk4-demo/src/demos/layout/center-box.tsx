@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, CenterBox, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const CenterBoxDemo = () => {
@@ -77,50 +78,5 @@ export const centerBoxDemo: Demo = {
     description: "Three-slot container with start, center, and end positions.",
     keywords: ["center", "box", "layout", "slots", "GtkCenterBox"],
     component: CenterBoxDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, CenterBox, Label } from "@gtkx/react";
-
-export const CenterBoxDemo = () => {
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <Label.Root label="Center Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Horizontal CenterBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <CenterBox.Root hexpand cssClasses={["card"]}>
-                    <CenterBox.StartWidget>
-                        <Button label="Start" marginStart={8} />
-                    </CenterBox.StartWidget>
-                    <CenterBox.CenterWidget>
-                        <Label.Root label="Center" cssClasses={["heading"]} />
-                    </CenterBox.CenterWidget>
-                    <CenterBox.EndWidget>
-                        <Button label="End" marginEnd={8} />
-                    </CenterBox.EndWidget>
-                </CenterBox.Root>
-            </Box>
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Toolbar Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <CenterBox.Root hexpand cssClasses={["toolbar"]}>
-                    <CenterBox.StartWidget>
-                        <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} marginStart={6}>
-                            <Button label="Back" cssClasses={["flat"]} />
-                            <Button label="Forward" cssClasses={["flat"]} />
-                        </Box>
-                    </CenterBox.StartWidget>
-                    <CenterBox.CenterWidget>
-                        <Label.Root label="Document.txt" cssClasses={["title-4"]} />
-                    </CenterBox.CenterWidget>
-                    <CenterBox.EndWidget>
-                        <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} marginEnd={6}>
-                            <Button label="Share" cssClasses={["flat"]} />
-                            <Button label="Menu" cssClasses={["flat"]} />
-                        </Box>
-                    </CenterBox.EndWidget>
-                </CenterBox.Root>
-            </Box>
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "center-box.tsx"),
 };

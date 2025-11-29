@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, ToggleButton } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const ToggleButtonDemo = () => {
@@ -49,25 +50,5 @@ export const toggleButtonDemo: Demo = {
     description: "Buttons that maintain an active/inactive state when clicked.",
     keywords: ["toggle", "button", "state", "GtkToggleButton"],
     component: ToggleButtonDemo,
-    source: `const ToggleButtonDemo = () => {
-    const [bold, setBold] = useState(false);
-    const [italic, setItalic] = useState(false);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} cssClasses={["linked"]}>
-                <ToggleButton.Root
-                    label="B"
-                    active={bold}
-                    onToggled={() => setBold((v) => !v)}
-                />
-                <ToggleButton.Root
-                    label="I"
-                    active={italic}
-                    onToggled={() => setItalic((v) => !v)}
-                />
-            </Box>
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "toggle-button.tsx"),
 };

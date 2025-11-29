@@ -1,18 +1,28 @@
+import { readFileSync } from "node:fs";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import { Box, Button, Label, ScrolledWindow } from "@gtkx/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 interface SourceViewerProps {
-    source: string | null;
+    sourcePath: string | null;
     title?: string;
 }
 
-export const SourceViewer = ({ source, title = "Source Code" }: SourceViewerProps) => {
+export const SourceViewer = ({ sourcePath, title = "Source Code" }: SourceViewerProps) => {
     const scrollWindowRef = useRef<Gtk.ScrolledWindow | null>(null);
     const bufferRef = useRef<GtkSource.Buffer | null>(null);
+
+    const source = useMemo(() => {
+        if (!sourcePath) return null;
+        try {
+            return readFileSync(sourcePath, "utf-8");
+        } catch {
+            return null;
+        }
+    }, [sourcePath]);
 
     useEffect(() => {
         const scrollWindow = scrollWindowRef.current;

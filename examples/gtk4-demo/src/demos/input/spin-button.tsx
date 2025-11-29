@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, SpinButton } from "@gtkx/react";
 import { useMemo, useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const SpinButtonDemo = () => {
@@ -75,20 +76,5 @@ export const spinButtonDemo: Demo = {
     description: "Numeric input with increment/decrement buttons.",
     keywords: ["spin", "button", "number", "input", "adjustment", "GtkSpinButton"],
     component: SpinButtonDemo,
-    source: `const SpinButtonDemo = () => {
-    // Adjustment args: value, lower, upper, stepIncrement, pageIncrement, pageSize
-    const adjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
-    const [value, setValue] = useState(50);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <SpinButton
-                adjustment={adjustment}
-                digits={0}
-                onValueChanged={(self) => setValue(self.getValue())}
-            />
-            <Label.Root label={\`Value: \${value}\`} />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "spin-button.tsx"),
 };

@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, Switch } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const SwitchDemo = () => {
@@ -70,33 +71,5 @@ export const switchDemo: Demo = {
     description: "On/off toggle switches for boolean settings.",
     keywords: ["switch", "toggle", "on", "off", "GtkSwitch"],
     component: SwitchDemo,
-    source: `const SwitchDemo = () => {
-    const [darkMode, setDarkMode] = useState(false);
-    const [notifications, setNotifications] = useState(true);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                <Label.Root label="Dark Mode" hexpand halign={Gtk.Align.START} />
-                <Switch
-                    active={darkMode}
-                    onStateSet={(_self, state) => {
-                        setDarkMode(state);
-                        return true;
-                    }}
-                />
-            </Box>
-            <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                <Label.Root label="Notifications" hexpand halign={Gtk.Align.START} />
-                <Switch
-                    active={notifications}
-                    onStateSet={(_self, state) => {
-                        setNotifications(state);
-                        return true;
-                    }}
-                />
-            </Box>
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "switch.tsx"),
 };

@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Entry, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const EntryDemo = () => {
@@ -50,14 +51,5 @@ export const entryDemo: Demo = {
     description: "Single-line text input widget.",
     keywords: ["entry", "input", "text", "field", "GtkEntry"],
     component: EntryDemo,
-    source: `const EntryDemo = () => {
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <Entry placeholderText="Type something..." />
-            <Entry placeholderText="Max 10 chars" maxLength={10} />
-            <Entry placeholderText="Email" inputPurpose={Gtk.InputPurpose.EMAIL} />
-            <Entry text="Disabled" sensitive={false} />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "entry.tsx"),
 };

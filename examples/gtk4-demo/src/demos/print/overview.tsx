@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const PrintOverviewDemo = () => {
@@ -52,36 +53,5 @@ export const printOverviewDemo: Demo = {
     description: "Document printing with GtkPrintOperation.",
     keywords: ["print", "printer", "document", "paper", "pdf"],
     component: PrintOverviewDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-
-// Create a print operation
-const printOp = new Gtk.PrintOperation();
-printOp.setJobName("My Document");
-printOp.setNPages(1);
-
-// Handle print signals
-printOp.connect("begin-print", (context) => {
-    // Prepare for printing
-    const width = context.getWidth();
-    const height = context.getHeight();
-});
-
-printOp.connect("draw-page", (context, pageNr) => {
-    // Get Cairo context for drawing
-    const cr = context.getCairoContext();
-    // Draw page content...
-});
-
-printOp.connect("done", (result) => {
-    if (result === Gtk.PrintOperationResult.APPLY) {
-        console.log("Printed successfully");
-    }
-});
-
-// Run the print operation (shows dialog)
-printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG);
-
-// Or export directly to PDF
-printOp.setExportFilename("/path/to/output.pdf");
-printOp.run(Gtk.PrintOperationAction.EXPORT);`,
+    sourcePath: getSourcePath(import.meta.url, "overview.tsx"),
 };

@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const DrawingOverviewDemo = () => {
@@ -61,29 +62,5 @@ export const drawingOverviewDemo: Demo = {
     description: "Custom 2D graphics with Cairo and GtkSnapshot.",
     keywords: ["drawing", "cairo", "graphics", "canvas", "vector"],
     component: DrawingOverviewDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-
-// GtkDrawingArea is available for custom drawing
-// The draw function receives a Cairo context
-
-// Example using the FFI directly:
-const drawingArea = new Gtk.DrawingArea();
-drawingArea.setContentWidth(400);
-drawingArea.setContentHeight(300);
-
-// Set the draw function (Cairo context passed to callback)
-drawingArea.setDrawFunc(null, (area, cr, width, height) => {
-    // Cairo drawing operations:
-    // cr.setSourceRgb(1.0, 0, 0);  // Red
-    // cr.rectangle(10, 10, 100, 50);
-    // cr.fill();
-});
-
-// For Print operations, Cairo context is available:
-printOp.connect("draw-page", (context, pageNr) => {
-    const cr = context.getCairoContext();
-    const width = context.getWidth();
-    const height = context.getHeight();
-    // Draw page content with Cairo...
-});`,
+    sourcePath: getSourcePath(import.meta.url, "overview.tsx"),
 };

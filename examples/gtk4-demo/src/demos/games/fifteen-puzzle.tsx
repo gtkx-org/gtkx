@@ -2,6 +2,7 @@ import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { useCallback, useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const GRID_SIZE = 4;
@@ -182,53 +183,5 @@ export const fifteenPuzzleDemo: Demo = {
     description: "Classic sliding tile puzzle game.",
     keywords: ["game", "puzzle", "15", "sliding", "tiles", "interactive"],
     component: FifteenPuzzleDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
-import { useState, useCallback } from "react";
-
-const GRID_SIZE = 4;
-
-export const FifteenPuzzleDemo = () => {
-    const [board, setBoard] = useState(() => shuffleBoard());
-    const [moves, setMoves] = useState(0);
-    const [solved, setSolved] = useState(false);
-
-    const handleTileClick = useCallback((index) => {
-        if (solved) return;
-        const emptyIndex = board.indexOf(null);
-        if (getValidMoves(emptyIndex).includes(index)) {
-            const newBoard = [...board];
-            newBoard[emptyIndex] = newBoard[index];
-            newBoard[index] = null;
-            setBoard(newBoard);
-            setMoves((m) => m + 1);
-        }
-    }, [board, solved]);
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <Label.Root label={\`Moves: \${moves}\`} />
-
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                {[0, 1, 2, 3].map((rowIdx) => (
-                    <Box key={rowIdx} orientation={Gtk.Orientation.HORIZONTAL} spacing={4} homogeneous>
-                        {getRow(rowIdx).map((tile, colIdx) => {
-                            const index = rowIdx * GRID_SIZE + colIdx;
-                            return (
-                                <Button
-                                    key={index}
-                                    label={tile === null ? "" : String(tile)}
-                                    onClicked={() => handleTileClick(index)}
-                                    sensitive={tile !== null}
-                                />
-                            );
-                        })}
-                    </Box>
-                ))}
-            </Box>
-
-            <Button label="New Game" onClicked={handleNewGame} />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "fifteen-puzzle.tsx"),
 };

@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const PathOverviewDemo = () => {
@@ -61,35 +62,5 @@ export const pathOverviewDemo: Demo = {
     description: "Vector path creation and manipulation with GskPath.",
     keywords: ["path", "gsk", "vector", "bezier", "curves", "graphics"],
     component: PathOverviewDemo,
-    source: `import * as Gsk from "@gtkx/ffi/gsk";
-
-// GskPathBuilder for constructing paths
-const builder = new Gsk.PathBuilder();
-
-// Build a star shape
-builder.moveTo(100, 0);
-builder.lineTo(120, 70);
-builder.lineTo(190, 70);
-builder.lineTo(135, 115);
-builder.lineTo(155, 185);
-builder.lineTo(100, 145);
-builder.lineTo(45, 185);
-builder.lineTo(65, 115);
-builder.lineTo(10, 70);
-builder.lineTo(80, 70);
-builder.close();
-
-// Get the immutable path
-const path = builder.freeToPaths();
-
-// Predefined shapes
-const circleBuilder = new Gsk.PathBuilder();
-circleBuilder.addCircle(new Graphene.Point({ x: 50, y: 50 }), 25);
-
-// Parse SVG path string
-const svgPath = Gsk.Path.parse("M 0 0 L 100 0 L 100 100 Z");
-
-// Measure path
-const measure = new Gsk.PathMeasure(path);
-const length = measure.getLength();`,
+    sourcePath: getSourcePath(import.meta.url, "overview.tsx"),
 };

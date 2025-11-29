@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Entry, Label } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const ClipboardDemo = () => {
@@ -44,6 +45,5 @@ export const clipboardDemo: Demo = {
     description: "Copy and paste data between applications.",
     keywords: ["clipboard", "copy", "paste", "cut"],
     component: ClipboardDemo,
-    source: `// Clipboard operations use system shortcuts
-// Ctrl+C to copy, Ctrl+V to paste`,
+    sourcePath: getSourcePath(import.meta.url, "clipboard.tsx"),
 };

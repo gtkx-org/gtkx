@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { AboutDialog, Box, Button, createPortal, Label } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const AboutDialogDemo = () => {
@@ -63,35 +64,5 @@ export const aboutDialogDemo: Demo = {
     description: "Display application information, credits, and license.",
     keywords: ["about", "dialog", "credits", "license", "GtkAboutDialog"],
     component: AboutDialogDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { AboutDialog, Button, createPortal } from "@gtkx/react";
-import { useState } from "react";
-
-const MyComponent = () => {
-    const [showDialog, setShowDialog] = useState(false);
-
-    return (
-        <>
-            <Button label="About" onClicked={() => setShowDialog(true)} />
-            {showDialog &&
-                createPortal(
-                    <AboutDialog
-                        programName="My App"
-                        version="1.0.0"
-                        comments="Application description"
-                        website="https://example.com"
-                        websiteLabel="Website"
-                        copyright="Copyright 2024"
-                        licenseType={Gtk.License.MIT_X11}
-                        authors={["Author One", "Author Two"]}
-                        modal
-                        onCloseRequest={() => {
-                            setShowDialog(false);
-                            return false;
-                        }}
-                    />,
-                )}
-        </>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "about-dialog.tsx"),
 };

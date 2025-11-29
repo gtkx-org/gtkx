@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const ColorChooserDemo = () => {
@@ -56,29 +57,5 @@ export const colorChooserDemo: Demo = {
     description: "Color selection dialog with RGBA support.",
     keywords: ["color", "chooser", "picker", "rgba", "GtkColorDialog"],
     component: ColorChooserDemo,
-    source: `const ColorChooserDemo = () => {
-    const [color, setColor] = useState<string | null>(null);
-
-    const openColorDialog = async () => {
-        const dialog = new Gtk.ColorDialog({
-            title: "Choose a Color",
-            withAlpha: true,
-        });
-
-        try {
-            const rgba = await dialog.chooseRgba();
-            const hex = \`rgba(\${Math.round(rgba.red * 255)}, ...)\`;
-            setColor(hex);
-        } catch {
-            setColor(null);
-        }
-    };
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <Button label="Choose Color..." onClicked={openColorDialog} />
-            {color && <Label.Root label={color} />}
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "color-chooser.tsx"),
 };

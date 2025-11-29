@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, PasswordEntry } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const PasswordEntryDemo = () => {
@@ -44,17 +45,5 @@ export const passwordEntryDemo: Demo = {
     description: "Secure password input with visibility toggle.",
     keywords: ["password", "entry", "secure", "input", "GtkPasswordEntry"],
     component: PasswordEntryDemo,
-    source: `const PasswordEntryDemo = () => {
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <PasswordEntry
-                placeholderText="Enter password..."
-                showPeekIcon
-            />
-            <PasswordEntry
-                placeholderText="Without peek icon"
-            />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "password-entry.tsx"),
 };

@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label, MenuButton, Popover } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const PopoverDemo = () => {
@@ -90,20 +91,5 @@ export const popoverDemo: Demo = {
     description: "Bubble-like context popup for additional content.",
     keywords: ["popover", "popup", "bubble", "tooltip", "GtkPopover"],
     component: PopoverDemo,
-    source: `const PopoverDemo = () => {
-    return (
-        <MenuButton.Root label="Open Menu">
-            <MenuButton.Popover>
-                <Popover.Root>
-                    <Popover.Child>
-                        <Box spacing={8}>
-                            <Button label="Action 1" cssClasses={["flat"]} />
-                            <Button label="Action 2" cssClasses={["flat"]} />
-                        </Box>
-                    </Popover.Child>
-                </Popover.Root>
-            </MenuButton.Popover>
-        </MenuButton.Root>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "popover.tsx"),
 };

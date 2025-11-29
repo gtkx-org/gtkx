@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, ScrolledWindow, TextView } from "@gtkx/react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 export const TextViewDemo = () => {
@@ -83,15 +84,5 @@ export const textViewDemo: Demo = {
     description: "Multi-line text editor with rich formatting support.",
     keywords: ["text", "textview", "editor", "multiline", "GtkTextView"],
     component: TextViewDemo,
-    source: `const TextViewDemo = () => {
-    return (
-        <ScrolledWindow heightRequest={200}>
-            <TextView
-                editable
-                wrapMode={Gtk.WrapMode.WORD}
-                monospace={false}
-            />
-        </ScrolledWindow>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "textview.tsx"),
 };

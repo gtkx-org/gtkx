@@ -38,7 +38,7 @@ const AppContent = () => {
                             <DemoPanel demo={currentDemo} />
                         </Paned.StartChild>
                         <Paned.EndChild>
-                            <SourceViewer source={currentDemo?.source ?? null} />
+                            <SourceViewer sourcePath={currentDemo?.sourcePath ?? null} />
                         </Paned.EndChild>
                     </Paned.Root>
                 </Paned.EndChild>

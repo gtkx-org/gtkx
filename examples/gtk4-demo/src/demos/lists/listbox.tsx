@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, ListBox, ListBoxRow, ScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const items = [
@@ -84,17 +85,5 @@ export const listBoxDemo: Demo = {
     description: "Vertical list with selectable rows and custom layouts.",
     keywords: ["list", "listbox", "selection", "rows", "GtkListBox"],
     component: ListBoxDemo,
-    source: `const ListBoxDemo = () => {
-    const items = ["Inbox", "Starred", "Sent", "Drafts"];
-
-    return (
-        <ListBox selectionMode={Gtk.SelectionMode.SINGLE} cssClasses={["boxed-list"]}>
-            {items.map((item) => (
-                <ListBoxRow key={item}>
-                    <Label.Root label={item} />
-                </ListBoxRow>
-            ))}
-        </ListBox>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "listbox.tsx"),
 };

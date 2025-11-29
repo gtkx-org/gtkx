@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Button, Label } from "@gtkx/react";
 import { useState } from "react";
+import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 type PrintStatus = "idle" | "printing" | "completed" | "cancelled" | "error";
@@ -143,55 +144,5 @@ export const printDialogDemo: Demo = {
     description: "Print documents with native system print dialog.",
     keywords: ["print", "dialog", "pdf", "export", "GtkPrintOperation"],
     component: PrintDialogDemo,
-    source: `import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
-import { useState, useRef } from "react";
-
-export const PrintDialogDemo = () => {
-    const [status, setStatus] = useState("idle");
-    const printSettingsRef = useRef(null);
-
-    const handlePrint = () => {
-        const printOp = new Gtk.PrintOperation();
-        printOp.setJobName("My Document");
-        printOp.setNPages(1);
-        printOp.setShowProgress(true);
-
-        // Restore previous settings if available
-        if (printSettingsRef.current) {
-            printOp.setPrintSettings(printSettingsRef.current);
-        }
-
-        // Handle print signals
-        printOp.connect("begin-print", (context) => {
-            console.log("Preparing print job...");
-        });
-
-        printOp.connect("draw-page", (context, pageNr) => {
-            // Draw page content using Cairo context
-            const cr = context.getCairoContext();
-            // Cairo drawing operations here...
-        });
-
-        printOp.connect("done", (result) => {
-            if (result === Gtk.PrintOperationResult.APPLY) {
-                // Save settings for next time
-                printSettingsRef.current = printOp.getPrintSettings();
-            }
-        });
-
-        // Show print dialog
-        printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG);
-    };
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-            <Button
-                label="Print..."
-                cssClasses={["suggested-action"]}
-                onClicked={handlePrint}
-            />
-        </Box>
-    );
-};`,
+    sourcePath: getSourcePath(import.meta.url, "print-dialog.tsx"),
 };
