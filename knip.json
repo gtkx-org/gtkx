@@ -11,10 +11,10 @@
             "project": ["src/**/*.ts", "scripts/**/*.ts"]
         },
         "packages/native": {
-            "entry": ["index.ts", "types.ts", "vitest.config.ts", "tests/**/*.ts"]
+            "entry": ["types.ts", "tests/**/*.ts"]
         },
         "packages/react": {
-            "entry": ["src/index.ts", "src/types.ts"]
+            "entry": ["src/types.ts"]
         },
         "website": {
             "ignoreDependencies": ["typedoc", "typedoc-plugin-frontmatter"]

@@ -1,6 +1,6 @@
 use std::sync::mpsc;
 
-use gtk4::glib;
+use gtk4::{glib, prelude::*};
 use neon::prelude::*;
 
 use crate::state::GtkThreadState;
@@ -10,7 +10,10 @@ pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     glib::idle_add_once(move || {
         GtkThreadState::with(|state| {
-            let _ = state.app_hold_guard.take().unwrap();
+            state.app_hold_guard.take();
+            if let Some(app) = state.app.take() {
+                app.quit();
+            }
         });
 
         tx.send(()).unwrap();

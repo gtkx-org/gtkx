@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use gtk4::gio::ApplicationHoldGuard;
+use gtk4::{gio::ApplicationHoldGuard, Application};
 use libloading::Library;
 
 use crate::object::Object;
@@ -11,6 +11,7 @@ pub struct GtkThreadState {
     pub next_object_id: usize,
     pub libraries: HashMap<String, Library>,
     pub app_hold_guard: Option<ApplicationHoldGuard>,
+    pub app: Option<Application>,
 }
 
 impl Default for GtkThreadState {
@@ -20,6 +21,7 @@ impl Default for GtkThreadState {
             next_object_id: 1,
             libraries: HashMap::new(),
             app_hold_guard: None,
+            app: None,
         }
     }
 }

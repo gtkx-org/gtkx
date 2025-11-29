@@ -930,11 +930,6 @@ describe("ListView Integration Tests", () => {
             { type: "undefined" },
         );
 
-        call(GTK_LIB, "gtk_widget_set_visible", [
-            { type: { type: "gobject" }, value: window },
-            { type: { type: "boolean" }, value: true },
-        ], { type: "undefined" });
-
         call(GTK_LIB, "gtk_window_present", [{ type: { type: "gobject" }, value: window }], { type: "undefined" });
 
         const startTime = Date.now();

@@ -30,6 +30,7 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
 
         GtkThreadState::with(|state| {
             state.app_hold_guard = Some(app.hold());
+            state.app = Some(app.clone());
         });
 
         app.connect_activate(move |_| {
