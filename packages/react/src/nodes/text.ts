@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
-import { appendChild, removeChild } from "../widget-capabilities.js";
+import { appendChild, removeChild } from "../widget.js";
 
 /**
  * Node implementation for text content.

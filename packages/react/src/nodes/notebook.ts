@@ -8,7 +8,7 @@ import {
     isNotebookLike,
     type NotebookLike,
     removeChild,
-} from "../widget-capabilities.js";
+} from "../widget.js";
 
 interface NotebookWidget extends Gtk.Widget, NotebookLike {}
 

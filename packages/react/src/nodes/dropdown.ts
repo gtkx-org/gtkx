@@ -11,7 +11,7 @@ import {
     type ModelSettable,
     removeChild,
     type Selectable,
-} from "../widget-capabilities.js";
+} from "../widget.js";
 
 type ItemLabelFn<T> = (item: T) => string;
 

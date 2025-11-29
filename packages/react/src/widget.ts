@@ -93,4 +93,4 @@ export const removeChild = (parent: Gtk.Widget, child: Gtk.Widget): void => {
     }
 };
 
-export { disconnectSignalHandlers } from "./signal-utils.js";
+export { disconnectSignalHandlers } from "./signals.js";

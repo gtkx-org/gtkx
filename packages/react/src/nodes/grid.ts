@@ -8,7 +8,7 @@ import {
     isRemovable,
     type Removable,
     removeChild,
-} from "../widget-capabilities.js";
+} from "../widget.js";
 
 interface GridWidget extends Gtk.Widget, GridAttachable, Removable {}
 

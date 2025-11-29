@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { Arg, Ref, Type } from "./types.js";
+import type { Arg, Ref, Type } from "./types.js";
 
 const require = createRequire(import.meta.url);
 const native = require("./index.node");
@@ -63,4 +63,4 @@ export const write = native.write as (objectId: unknown, type: Type, offset: num
  */
 export const alloc = native.alloc as (size: number, glibTypeName: string, lib?: string) => unknown;
 
-export { Ref, Arg, Type };
+export type { Ref, Arg, Type };

@@ -9,7 +9,7 @@ import {
     isDefaultSizable,
     isPresentable,
     removeChild,
-} from "../widget-capabilities.js";
+} from "../widget.js";
 import { ActionBarNode } from "./action-bar.js";
 import { NotebookNode } from "./notebook.js";
 import { OverlayNode } from "./overlay.js";

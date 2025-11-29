@@ -3,7 +3,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
 import { getActiveWindow } from "../reconciler.js";
-import { disconnectSignalHandlers, isConnectable } from "../widget-capabilities.js";
+import { disconnectSignalHandlers, isConnectable } from "../widget.js";
 
 const DIALOG_TYPES = new Set([
     "AboutDialog",

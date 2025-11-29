@@ -10,6 +10,7 @@
         "lib": ["ESNext"],
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
+        "emitDeclarationOnly": true,
         "noUncheckedIndexedAccess": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,

@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../factory.js";
 import type { Node } from "../node.js";
-import { appendChild, disconnectSignalHandlers, isConnectable, removeChild } from "../widget-capabilities.js";
+import { appendChild, disconnectSignalHandlers, isConnectable, removeChild } from "../widget.js";
 
 interface OverlayWidget extends Gtk.Widget {
     setChild(child: unknown): void;
