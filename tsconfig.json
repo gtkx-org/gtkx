@@ -12,6 +12,9 @@
             "path": "packages/native/tsconfig.json"
         },
         {
+            "path": "packages/css/tsconfig.json"
+        },
+        {
             "path": "packages/react/tsconfig.json"
         }
     ]

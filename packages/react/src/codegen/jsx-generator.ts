@@ -162,6 +162,7 @@ export class JsxGenerator {
             .map((ns) => `import type * as ${ns} from "@gtkx/ffi/${ns.toLowerCase()}";`);
 
         return [
+            `import "react";`,
             `import type { ReactNode, Ref } from "react";`,
             ...externalImports,
             `import type * as Gtk from "@gtkx/ffi/gtk";`,
@@ -641,10 +642,12 @@ ${widgetPropsContent}
         }
 
         return `
-declare module "react" {
-\tnamespace JSX {
-\t\tinterface IntrinsicElements {
-\t\t\t${elements.join("\n\t\t\t")}
+declare global {
+\tnamespace React {
+\t\tnamespace JSX {
+\t\t\tinterface IntrinsicElements {
+\t\t\t\t${elements.join("\n\t\t\t\t")}
+\t\t\t}
 \t\t}
 \t}
 }

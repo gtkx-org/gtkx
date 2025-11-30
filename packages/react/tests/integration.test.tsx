@@ -5,11 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import type Reconciler from "react-reconciler";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createNode } from "../src/factory.js";
+import { ApplicationWindow, Box, Button, Label as LabelNS } from "../src/index.js";
 import { DropDownItemNode, DropDownNode } from "../src/nodes/dropdown.js";
 import { GridChildNode, GridNode } from "../src/nodes/grid.js";
 import { ListItemNode, ListViewNode } from "../src/nodes/list.js";
 import { WidgetNode } from "../src/nodes/widget.js";
 import { reconciler, setCurrentApp } from "../src/reconciler.js";
+
+const Label = LabelNS.Root;
 
 const APP_ID = "com.gtkx.test.react";
 
@@ -194,35 +197,37 @@ describe("Node Creation and Matching", () => {
 describe("Signal Handler Management", () => {
     describe("Widget signal connections", () => {
         it("should connect signal handlers on creation", () => {
-            let _clicked = false;
+            let clicked = false;
             const onClicked = () => {
-                _clicked = true;
+                clicked = true;
             };
 
             const node = createNode("Button", { label: "Test", onClicked }, app) as WidgetNode;
             const widget = node.getWidget() as Gtk.Button;
 
             expect(widget).toBeDefined();
+            expect(clicked).toBe(false); // Signal not triggered yet
         });
 
         it("should update signal handlers when props change", () => {
-            let _clickCount = 0;
+            let clickCount = 0;
             const handler1 = () => {
-                _clickCount = 1;
+                clickCount = 1;
             };
             const handler2 = () => {
-                _clickCount = 2;
+                clickCount = 2;
             };
 
             const node = createNode("Button", { label: "Test", onClicked: handler1 }, app) as WidgetNode;
             node.updateProps({ onClicked: handler1 }, { onClicked: handler2 });
+            expect(clickCount).toBe(0); // No clicks yet
         });
 
         it("should disconnect signal handlers on dispose", () => {
             const onClicked = () => {};
 
             const node = createNode("Button", { label: "Test", onClicked }, app) as WidgetNode;
-            const _widget = node.getWidget() as Gtk.Button;
+            expect(node.getWidget()).toBeDefined();
 
             node.dispose?.();
         });
@@ -278,9 +283,9 @@ describe("Signal Handler Management", () => {
 
     describe("DropDown signal connections", () => {
         it("should connect selection changed signal", () => {
-            let _selectedItem: unknown = null;
+            let selectedItem: unknown = null;
             const onSelectionChanged = (item: unknown) => {
-                _selectedItem = item;
+                selectedItem = item;
             };
             const itemLabel = (item: string) => item;
 
@@ -294,6 +299,7 @@ describe("Signal Handler Management", () => {
             ) as DropDownNode;
 
             expect(node.getWidget()).toBeDefined();
+            expect(selectedItem).toBeNull(); // No selection change yet
         });
 
         it("should disconnect selection signal on dispose", () => {
@@ -468,7 +474,7 @@ describe("Widget Disposal and Memory Management", () => {
         const listView = createNode("ListView.Root", { renderItem }, app) as ListViewNode;
 
         for (let i = 0; i < 20; i++) {
-            const item = createNode("ListView.Item", { item: { id: i } }, null) as ListItemNode<{ id: number }>;
+            const item = createNode("ListView.Item", { item: { id: i } }, null) as ListItemNode;
             listView.appendChild(item);
         }
 
@@ -532,7 +538,7 @@ describe("React Reconciler Integration", () => {
 
     it("should render nested components", () => {
         const NestedComponent = () => (
-            <Box spacing={10}>
+            <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
                 <Label label="Title" />
                 <Button label="Click Me" />
             </Box>
@@ -542,7 +548,7 @@ describe("React Reconciler Integration", () => {
     });
 
     it("should handle component updates", () => {
-        let setCount: React.Dispatch<React.SetStateAction<number>> | null = null;
+        let setCount: (value: number) => void = () => {};
 
         const CounterComponent = () => {
             const [count, _setCount] = useState(0);
@@ -552,19 +558,17 @@ describe("React Reconciler Integration", () => {
 
         renderElement(<CounterComponent />);
 
-        if (setCount) {
-            setCount(5);
-        }
+        setCount(5);
     });
 
     it("should handle conditional rendering", () => {
-        let setVisible: React.Dispatch<React.SetStateAction<boolean>> | null = null;
+        let setVisible: (value: boolean) => void = () => {};
 
         const ConditionalComponent = () => {
             const [visible, _setVisible] = useState(true);
             setVisible = _setVisible;
             return (
-                <Box spacing={10}>
+                <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
                     {visible && <Label label="Visible" />}
                     <Button label="Toggle" />
                 </Box>
@@ -573,18 +577,16 @@ describe("React Reconciler Integration", () => {
 
         renderElement(<ConditionalComponent />);
 
-        if (setVisible) {
-            setVisible(false);
-            setVisible(true);
-            setVisible(false);
-        }
+        setVisible(false);
+        setVisible(true);
+        setVisible(false);
     });
 
     it("should handle list rendering", () => {
         const items = [1, 2, 3, 4, 5];
 
         const ListComponent = () => (
-            <Box spacing={5}>
+            <Box spacing={5} orientation={Gtk.Orientation.VERTICAL}>
                 {items.map((item) => (
                     <Label key={item} label={`Item ${item}`} />
                 ))}
@@ -607,17 +609,18 @@ describe("React Reconciler Integration", () => {
     });
 
     it("should handle signal handlers in React components", () => {
-        let _clickCount = 0;
+        let clickCount = 0;
 
         const ClickableComponent = () => {
             const handleClick = useCallback(() => {
-                _clickCount++;
+                clickCount++;
             }, []);
 
             return <Button label="Click Me" onClicked={handleClick} />;
         };
 
         renderElement(<ClickableComponent />);
+        expect(clickCount).toBe(0); // No clicks triggered yet
         unmountAll();
     });
 
@@ -640,7 +643,7 @@ describe("React Reconciler Integration", () => {
     it("should handle dialogs in React", () => {
         const DialogApp = () => (
             <ApplicationWindow title="Main">
-                <Box spacing={10}>
+                <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
                     <Label label="Main Window" />
                 </Box>
             </ApplicationWindow>
@@ -686,14 +689,3 @@ describe("Edge Cases", () => {
         node.dispose?.();
     });
 });
-
-declare global {
-    namespace JSX {
-        interface IntrinsicElements {
-            Button: { label?: string; onClicked?: () => void };
-            Label: { label?: string };
-            Box: { spacing?: number; children?: React.ReactNode };
-            ApplicationWindow: { title?: string; children?: React.ReactNode };
-        }
-    }
-}

@@ -11,7 +11,7 @@
             "project": ["src/**/*.ts", "scripts/**/*.ts"]
         },
         "packages/native": {
-            "entry": ["types.ts", "tests/**/*.ts"]
+            "entry": ["types.ts", "tests/**/*.test.ts"]
         },
         "packages/react": {
             "entry": ["src/types.ts"]

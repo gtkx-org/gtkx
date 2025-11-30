@@ -4,7 +4,7 @@
         "rootDir": "."
     },
     "extends": "../../tsconfig.base.json",
-    "include": ["tests/**/*.ts"],
+    "include": ["tests/**/*.test.ts"],
     "references": [
         {
             "path": "./tsconfig.lib.json"

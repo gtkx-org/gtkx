@@ -27,8 +27,11 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
+            "development": {
+                "types": "./src/index.ts",
+                "default": "./src/index.ts"
+            },
             "types": "./dist/index.d.ts",
-            "development": "./src/index.ts",
             "default": "./dist/index.js"
         }
     },
@@ -48,6 +51,6 @@
         "@gtkx/gir": "workspace:*"
     },
     "peerDependencies": {
-        "react": "19"
+        "react": "^19"
     }
 }
