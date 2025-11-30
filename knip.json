@@ -21,6 +21,5 @@
         }
     },
     "ignore": ["**/dist/**", "**/node_modules/**", "**/*.d.ts", "**/src/generated/**"],
-    "ignoreDependencies": ["@biomejs/biome"],
     "ignoreExportsUsedInFile": true
 }

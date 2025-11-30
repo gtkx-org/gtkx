@@ -31,7 +31,7 @@ type UndefinedType = { type: "undefined" };
 /**
  * Callback type descriptor for signal handlers and callbacks.
  * The trampoline field specifies which native trampoline function to use:
- * - undefined or omitted: Use GClosure directly
+ * - "closure" or omitted: Use GClosure directly
  * - "asyncReady": Use async ready callback trampoline (GAsyncReadyCallback)
  * - "destroy": Use destroy notify trampoline (GDestroyNotify)
  * - "sourceFunc": Use source func trampoline (GSourceFunc)
@@ -39,7 +39,7 @@ type UndefinedType = { type: "undefined" };
  */
 type CallbackType = {
     type: "callback";
-    trampoline?: "asyncReady" | "destroy" | "sourceFunc" | "drawFunc";
+    trampoline?: "closure" | "asyncReady" | "destroy" | "sourceFunc" | "drawFunc";
     argTypes?: Type[];
     sourceType?: Type;
     resultType?: Type;
