@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { call, createRef } from "../index.js";
-import { GDK_LIB, GLIB_LIB, GTK_LIB, setupGtkTests } from "./setup.js";
+import { GDK_LIB, GLIB_LIB, GTK_LIB, setup } from "./integration.js";
 
-setupGtkTests();
+setup();
 
 describe("Ref with Primitive Types", () => {
     it("should handle Ref<i32> out parameters", () => {

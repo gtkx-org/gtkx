@@ -27,11 +27,11 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
+            "types": "./dist/index.d.ts",
             "development": {
                 "types": "./src/index.ts",
                 "default": "./src/index.ts"
             },
-            "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         }
     },

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../index.js";
-import { GLIB_LIB, GOBJECT_LIB, GTK_LIB, setupGtkTests } from "./setup.js";
+import { GLIB_LIB, GOBJECT_LIB, GTK_LIB, setup } from "./integration.js";
 
-setupGtkTests();
+setup();
 
 describe("Callback Types", () => {
     it("should handle signal connection with callback", () => {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { alloc, call, read, write } from "../index.js";
-import { GLIB_LIB, GTK_LIB, setupGtkTests } from "./setup.js";
+import { GLIB_LIB, GTK_LIB, setup } from "./integration.js";
 
-setupGtkTests();
+setup();
 
 describe("Integer Types", () => {
     it("should handle 8-bit signed integers", () => {

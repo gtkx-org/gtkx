@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { alloc, call, write } from "../index.js";
-import { GDK_LIB, GLIB_LIB, GOBJECT_LIB, GTK_LIB, setupGtkTests } from "./setup.js";
+import { GDK_LIB, GLIB_LIB, GOBJECT_LIB, GTK_LIB, setup } from "./integration.js";
 
-setupGtkTests();
+setup();
 
 describe("Stress Tests", () => {
     it("should handle rapid object creation", () => {

@@ -63,7 +63,7 @@ export const setupTests = () => {
     });
 };
 
-export const globalTeardown = () => {
+export const teardown = () => {
     if (app) {
         cleanup();
         stop();

@@ -203,6 +203,10 @@ impl Value {
                     }
                 };
 
+                if object_ptr.is_null() {
+                    return Ok(Value::Null);
+                }
+
                 let object = if type_.is_borrowed {
                     let object = unsafe {
                         glib::Object::from_glib_none(object_ptr as *mut glib::gobject_ffi::GObject)
@@ -476,17 +480,21 @@ impl Value {
                             return Ok(Value::Null);
                         }
 
-                        let object = unsafe {
-                            glib::Object::from_glib_none(
-                                actual_ptr as *mut glib::gobject_ffi::GObject,
-                            )
+                        let object = if gobject_type.is_borrowed {
+                            unsafe {
+                                glib::Object::from_glib_none(
+                                    actual_ptr as *mut glib::gobject_ffi::GObject,
+                                )
+                            }
+                        } else {
+                            unsafe {
+                                glib::Object::from_glib_full(
+                                    actual_ptr as *mut glib::gobject_ffi::GObject,
+                                )
+                            }
                         };
 
-                        if gobject_type.is_borrowed {
-                            Ok(Value::Object(ObjectId::new(Object::GObject(object))))
-                        } else {
-                            Ok(Value::Object(ObjectId::new(Object::GObject(object))))
-                        }
+                        Ok(Value::Object(ObjectId::new(Object::GObject(object))))
                     }
                     Type::Boxed(boxed_type) => {
                         let actual_ptr = unsafe { *(ref_ptr.ptr as *const *mut c_void) };

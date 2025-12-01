@@ -16,6 +16,6 @@ export default mergeConfig(baseConfig, {
         sequence: {
             hooks: "list",
         },
-        globalSetup: "./tests/global-setup.ts",
+        globalSetup: "./tests/setup.ts",
     },
 });

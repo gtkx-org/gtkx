@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../index.js";
-import { GDK_LIB, GIO_LIB, GTK_LIB, setupGtkTests } from "./setup.js";
+import { GDK_LIB, GIO_LIB, GTK_LIB, setup } from "./integration.js";
 
-setupGtkTests();
+setup();
 
 describe("GList/GSList Types", () => {
     it("should handle GList return type with GObject elements", () => {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { alloc, call, read, write } from "../index.js";
-import { GDK_LIB, GOBJECT_LIB, GTK_LIB, setupGtkTests } from "./setup.js";
+import { GDK_LIB, GOBJECT_LIB, GTK_LIB, setup } from "./integration.js";
 
-setupGtkTests();
+setup();
 
 describe("GObject Types", () => {
     it("should handle borrowed GObject (refcount not transferred)", () => {

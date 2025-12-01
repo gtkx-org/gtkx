@@ -121,10 +121,14 @@ sudo apt install libgtk-4-dev gobject-introspection
 
 ### Modern TypeScript
 
+- Use latest ES2024+ features whenever possible
 - Use `const` arrow functions for exports
 - Prefer nullish coalescing (`??`) over logical OR (`||`)
 - Use optional chaining (`?.`) where appropriate
 - Avoid type casts (`as`) - use type guards instead
+- Avoid `as unknown` casts - refactor to use proper types
+- Avoid non-null assertions (`!`) - use proper null checks or type narrowing
+- Ensure there are no TypeScript errors after any code change
 
 ### No Comments
 
