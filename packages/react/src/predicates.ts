@@ -1,14 +1,14 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 
-export interface Appendable extends Gtk.Widget {
+interface Appendable extends Gtk.Widget {
     append(child: unknown): void;
 }
 
-export interface SingleChild extends Gtk.Widget {
+interface SingleChild extends Gtk.Widget {
     setChild(child: unknown): void;
 }
 
-export interface Removable extends Gtk.Widget {
+interface Removable extends Gtk.Widget {
     remove(child: unknown): void;
 }
 

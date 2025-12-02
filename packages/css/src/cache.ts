@@ -22,14 +22,3 @@ export const getGtkCache = (): EmotionCache => {
 
     return gtkCache;
 };
-
-/**
- * Resets the GTK cache, flushing all styles.
- * Useful for cleanup or testing.
- */
-export const resetGtkCache = (): void => {
-    if (gtkCache) {
-        gtkCache.sheet.flush();
-        gtkCache = null;
-    }
-};

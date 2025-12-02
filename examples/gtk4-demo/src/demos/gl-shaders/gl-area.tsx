@@ -145,7 +145,7 @@ function createShaderProgram(vertexSource: string, fragmentSource: string): numb
     return program;
 }
 
-export const GLAreaDemo = () => {
+const GLAreaDemo = () => {
     const [rotationX, setRotationX] = useState(0);
     const [rotationY, setRotationY] = useState(0);
     const [rotationZ, setRotationZ] = useState(0);

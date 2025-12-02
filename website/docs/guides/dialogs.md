@@ -2,52 +2,70 @@
 sidebar_position: 3
 ---
 
-# Working with Dialogs
+# Dialogs
 
-This guide covers how to display dialogs and modal windows in GTKX applications.
+GTK4 provides several dialog types for common interactions. GTKX supports both declarative dialog components and GTK4's promise-based dialog APIs.
 
-## Dialog Types
+## Declarative Dialogs with Portals
 
-GTKX supports several dialog types:
-
-| Dialog | Purpose | API Style |
-|--------|---------|-----------|
-| `AlertDialog` | Alerts and confirmations | Promise-based (imperative) |
-| `FileDialog` | File selection (open/save) | Promise-based (imperative) |
-| `ColorDialog` | Color selection | Promise-based (imperative) |
-| `FontDialog` | Font selection | Promise-based (imperative) |
-| `AboutDialog` | Application information | React component |
-
-## Setting Up the App Instance
-
-To use dialogs with proper parent windows, export your app instance from the entry point:
+Use `createPortal` to render dialogs at the root level of your application:
 
 ```tsx
-// src/index.tsx
-import { render } from "@gtkx/react";
-import { App } from "./app.js";
+import { createPortal, ApplicationWindow, Button, AboutDialog, quit } from "@gtkx/react";
+import { License } from "@gtkx/ffi/gtk";
+import { useState } from "react";
 
-export const app = render(<App />, "com.example.myapp");
+const App = () => {
+  const [showAbout, setShowAbout] = useState(false);
+
+  return (
+    <ApplicationWindow title="My App" onCloseRequest={quit}>
+      <Button label="About" onClicked={() => setShowAbout(true)} />
+
+      {showAbout && createPortal(
+        <AboutDialog
+          programName="My App"
+          version="1.0.0"
+          comments="A GTKX application"
+          website="https://example.com"
+          licenseType={License.MIT_X11}
+          authors={["Your Name"]}
+          onCloseRequest={() => {
+            setShowAbout(false);
+            return false;
+          }}
+        />
+      )}
+    </ApplicationWindow>
+  );
+};
 ```
 
-Then import it in components that need to show dialogs:
+### How Portal Dialogs Work
 
-```tsx
-import { app } from "./index.js";
-```
+1. `createPortal` without a container renders at the application root
+2. Dialog widgets automatically set their transient parent to the active window
+3. `onCloseRequest` handles the close button — return `false` to allow closing
+4. The dialog is presented (shown) when mounted and closed when unmounted
 
-## Promise-Based API (AlertDialog, FileDialog, ColorDialog, FontDialog)
+## Promise-Based Dialogs
 
-These dialogs provide a modern Promise-based API that works seamlessly with async/await.
+GTK4's `AlertDialog` and file dialogs use async/await patterns:
 
 ### AlertDialog
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import { ApplicationWindow, Button, Label, Box, quit } from "@gtkx/react";
+import { AlertDialog } from "@gtkx/ffi/gtk";
 import { app } from "./index.js";
+import { useState } from "react";
+import { Orientation } from "@gtkx/ffi/gtk";
 
-const handleConfirm = async () => {
-    const dialog = new Gtk.AlertDialog();
+const App = () => {
+  const [result, setResult] = useState<string | null>(null);
+
+  const showConfirmDialog = async () => {
+    const dialog = new AlertDialog();
     dialog.setMessage("Confirm Action");
     dialog.setDetail("Are you sure you want to proceed? This cannot be undone.");
     dialog.setButtons(["Cancel", "Delete"]);
@@ -55,330 +73,146 @@ const handleConfirm = async () => {
     dialog.setDefaultButton(1);
 
     try {
-        const choice = await dialog.choose(app.getActiveWindow());
-        if (choice === 1) {
-            console.log("User confirmed deletion");
-        } else {
-            console.log("User cancelled");
-        }
+      const response = await dialog.choose(app.getActiveWindow() ?? undefined);
+      setResult(response === 1 ? "Deleted" : "Cancelled");
     } catch {
-        console.log("Dialog dismissed");
+      // Dialog was dismissed (e.g., Escape key)
+      setResult("Dismissed");
     }
-};
+  };
 
-// Three-button dialog
-const handleSaveChanges = async () => {
-    const dialog = new Gtk.AlertDialog();
-    dialog.setMessage("Save Changes?");
-    dialog.setDetail("You have unsaved changes. What would you like to do?");
-    dialog.setButtons(["Don't Save", "Cancel", "Save"]);
-    dialog.setCancelButton(1);
-    dialog.setDefaultButton(2);
-
-    try {
-        const choice = await dialog.choose(app.getActiveWindow());
-        switch (choice) {
-            case 0: console.log("Discarding changes"); break;
-            case 1: console.log("Cancelled"); break;
-            case 2: console.log("Saving changes"); break;
-        }
-    } catch {
-        console.log("Dialog dismissed");
-    }
+  return (
+    <ApplicationWindow title="Dialogs" onCloseRequest={quit}>
+      <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
+        <Button label="Delete Item" onClicked={showConfirmDialog} />
+        {result && <Label.Root label={`Result: ${result}`} />}
+      </Box>
+    </ApplicationWindow>
+  );
 };
 ```
 
-### FileDialog
+### AlertDialog API
+
+| Method | Description |
+|--------|-------------|
+| `setMessage(text)` | Main dialog message |
+| `setDetail(text)` | Secondary explanation text |
+| `setButtons(labels)` | Array of button labels |
+| `setCancelButton(index)` | Which button is triggered by Escape |
+| `setDefaultButton(index)` | Which button has default focus |
+| `choose(parent)` | Show dialog and return `Promise<number>` with button index |
+
+### File Dialogs
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import { Button, Label } from "@gtkx/react";
+import { FileDialog, FileFilter } from "@gtkx/ffi/gtk";
 import { app } from "./index.js";
+import { useState } from "react";
 
-// Open a single file
-const handleOpen = async () => {
-    const dialog = new Gtk.FileDialog();
+const FilePicker = () => {
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+
+  const openFile = async () => {
+    const dialog = new FileDialog();
     dialog.setTitle("Open File");
 
-    try {
-        const file = await dialog.open(app.getActiveWindow());
-        const path = file.getPath();
-        console.log(`Selected: ${path}`);
-    } catch {
-        console.log("Dialog cancelled");
-    }
-};
-
-// Open multiple files
-const handleOpenMultiple = async () => {
-    const dialog = new Gtk.FileDialog();
-    dialog.setTitle("Open Multiple Files");
+    // Optional: Add file filters
+    const filter = new FileFilter();
+    filter.setName("Text Files");
+    filter.addPattern("*.txt");
+    filter.addMimeType("text/plain");
 
     try {
-        const files = await dialog.openMultiple(app.getActiveWindow());
-        // files is a Gio.ListModel containing Gio.File objects
-        console.log("Multiple files selected");
+      const file = await dialog.open(app.getActiveWindow() ?? undefined);
+      setSelectedFile(file.getPath());
     } catch {
-        console.log("Dialog cancelled");
+      // User cancelled
     }
-};
+  };
 
-// Save a file
-const handleSave = async () => {
-    const dialog = new Gtk.FileDialog();
+  const saveFile = async () => {
+    const dialog = new FileDialog();
     dialog.setTitle("Save File");
-    dialog.setInitialName("untitled.txt");
+    dialog.setInitialName("document.txt");
 
     try {
-        const file = await dialog.save(app.getActiveWindow());
-        const path = file.getPath();
-        console.log(`Save to: ${path}`);
+      const file = await dialog.save(app.getActiveWindow() ?? undefined);
+      setSelectedFile(file.getPath());
     } catch {
-        console.log("Dialog cancelled");
+      // User cancelled
     }
-};
+  };
 
-// Select a folder
-const handleSelectFolder = async () => {
-    const dialog = new Gtk.FileDialog();
-    dialog.setTitle("Select Folder");
-
-    try {
-        const folder = await dialog.selectFolder(app.getActiveWindow());
-        const path = folder.getPath();
-        console.log(`Folder: ${path}`);
-    } catch {
-        console.log("Dialog cancelled");
-    }
+  return (
+    <>
+      <Button label="Open..." onClicked={openFile} />
+      <Button label="Save..." onClicked={saveFile} />
+      {selectedFile && <Label.Root label={selectedFile} />}
+    </>
+  );
 };
 ```
 
-### ColorDialog
+### FileDialog API
+
+| Method | Description |
+|--------|-------------|
+| `setTitle(text)` | Dialog title |
+| `setInitialName(name)` | Default filename for save dialogs |
+| `setInitialFolder(file)` | Starting directory |
+| `open(parent)` | Show open dialog, returns `Promise<Gio.File>` |
+| `save(parent)` | Show save dialog, returns `Promise<Gio.File>` |
+| `selectFolder(parent)` | Show folder picker, returns `Promise<Gio.File>` |
+
+## Color and Font Dialogs
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { app } from "./index.js";
+import { ColorDialog, FontDialog } from "@gtkx/ffi/gtk";
 
-const handleChooseColor = async () => {
-    const dialog = new Gtk.ColorDialog();
-    dialog.setTitle("Choose Color");
-    dialog.setWithAlpha(true);
+// Color picker
+const pickColor = async () => {
+  const dialog = new ColorDialog();
+  dialog.setTitle("Choose Color");
 
-    try {
-        const rgba = await dialog.chooseRgba(app.getActiveWindow());
-        const r = Math.round(rgba.red * 255);
-        const g = Math.round(rgba.green * 255);
-        const b = Math.round(rgba.blue * 255);
-        const a = rgba.alpha;
-        console.log(`RGBA: (${r}, ${g}, ${b}, ${a.toFixed(2)})`);
-    } catch {
-        console.log("Dialog cancelled");
-    }
+  try {
+    const color = await dialog.chooseRgba(app.getActiveWindow() ?? undefined);
+    console.log(`Selected: rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha})`);
+  } catch {
+    // Cancelled
+  }
+};
+
+// Font picker
+const pickFont = async () => {
+  const dialog = new FontDialog();
+  dialog.setTitle("Choose Font");
+
+  try {
+    const font = await dialog.chooseFont(app.getActiveWindow() ?? undefined);
+    console.log(`Selected: ${font.toString()}`);
+  } catch {
+    // Cancelled
+  }
 };
 ```
 
-### FontDialog
+## Modal vs Non-Modal
+
+Dialogs can be modal (block interaction with parent) or non-modal:
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { app } from "./index.js";
+// Modal dialog (default for AlertDialog)
+<AboutDialog modal onCloseRequest={() => { setShow(false); return false; }} />
 
-const handleChooseFont = async () => {
-    const dialog = new Gtk.FontDialog();
-    dialog.setTitle("Choose Font");
-
-    try {
-        const fontDesc = await dialog.chooseFont(app.getActiveWindow());
-        const family = fontDesc.getFamily() ?? "Unknown";
-        const size = fontDesc.getSize() / 1024;
-        console.log(`Font: ${family}, ${size}pt`);
-    } catch {
-        console.log("Dialog cancelled");
-    }
-};
-
-const handleChooseFontFamily = async () => {
-    const dialog = new Gtk.FontDialog();
-    dialog.setTitle("Choose Font Family");
-
-    try {
-        const family = await dialog.chooseFamily(app.getActiveWindow());
-        const name = family.getName();
-        console.log(`Family: ${name}`);
-    } catch {
-        console.log("Dialog cancelled");
-    }
-};
+// Non-modal dialog
+<AboutDialog modal={false} onCloseRequest={() => { setShow(false); return false; }} />
 ```
-
-## Complete Example
-
-Here's a complete component using the Promise-based API:
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
-import { useState } from "react";
-import { app } from "./index.js";
-
-const FileSelector = () => {
-    const [selectedFile, setSelectedFile] = useState<string | null>(null);
-
-    const handleOpen = async () => {
-        const dialog = new Gtk.FileDialog();
-        dialog.setTitle("Open File");
-
-        try {
-            const file = await dialog.open(app.getActiveWindow());
-            setSelectedFile(file.getPath());
-        } catch {
-            // User cancelled - do nothing
-        }
-    };
-
-    return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-            <Button label="Open File" onClicked={handleOpen} />
-            <Label.Root
-                label={selectedFile ?? "No file selected"}
-                xalign={0}
-            />
-        </Box>
-    );
-};
-```
-
-## React Component API (AboutDialog)
-
-AboutDialog uses a different pattern—it's rendered as a React component:
-
-```tsx
-import { AboutDialog, Button, createPortal } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
-
-const AboutButton = () => {
-    const [showAbout, setShowAbout] = useState(false);
-
-    return (
-        <>
-            <Button label="About" onClicked={() => setShowAbout(true)} />
-
-            {showAbout && createPortal(
-                <AboutDialog
-                    programName="My Application"
-                    version="1.0.0"
-                    comments="Built with GTKX"
-                    copyright="Copyright 2024"
-                    licenseType={Gtk.License.MIT_X11}
-                    authors={["Developer Name"]}
-                    website="https://example.com"
-                    websiteLabel="Website"
-                    onCloseRequest={() => {
-                        setShowAbout(false);
-                        return false;
-                    }}
-                />
-            )}
-        </>
-    );
-};
-```
-
-## Dialog Buttons (ColorDialogButton, FontDialogButton)
-
-For simple color or font selection, use the built-in button widgets:
-
-```tsx
-<Box spacing={10}>
-    <Label.Root label="Pick a color:" />
-    <ColorDialogButton />
-</Box>
-
-<Box spacing={10}>
-    <Label.Root label="Pick a font:" />
-    <FontDialogButton />
-</Box>
-```
-
-## Popover (Lightweight Dialog)
-
-For lightweight modal content attached to a widget:
-
-```tsx
-<MenuButton.Root label="Open Menu">
-    <MenuButton.Popover>
-        <Popover.Root>
-            <Popover.Child>
-                <Box spacing={10} marginTop={10} marginBottom={10} marginStart={10} marginEnd={10}>
-                    <Label.Root label="Popover Content" />
-                    <Button label="Action" onClicked={() => {}} />
-                </Box>
-            </Popover.Child>
-        </Popover.Root>
-    </MenuButton.Popover>
-</MenuButton.Root>
-```
-
-## Error Handling
-
-When using the Promise-based API, dialogs throw an error when cancelled. Always wrap dialog calls in try/catch:
-
-```tsx
-try {
-    const result = await dialog.open(app.getActiveWindow());
-    // Handle success
-} catch {
-    // Dialog was cancelled - this is normal user behavior
-}
-```
-
-For more details on how async operations work in GTKX, see the [Async Results](./async-results.md) guide.
 
 ## Best Practices
 
-### Always Pass the Active Window
-
-Pass `app.getActiveWindow()` to dialog methods to ensure proper modal behavior:
-
-```tsx
-// Correct - dialog is modal to the active window
-const file = await dialog.open(app.getActiveWindow());
-
-// Works but may show warnings about transient parent
-const file = await dialog.open();
-```
-
-### Handle Cancellation Gracefully
-
-Users cancelling dialogs is normal behavior, not an error:
-
-```tsx
-try {
-    const file = await dialog.open(app.getActiveWindow());
-    processFile(file);
-} catch {
-    // User cancelled - nothing to do
-}
-```
-
-### Configure Dialogs Before Showing
-
-Set all dialog properties before calling the async method:
-
-```tsx
-const dialog = new Gtk.FileDialog();
-dialog.setTitle("Open Project");
-dialog.setInitialFolder(projectsFolder);
-const file = await dialog.open(app.getActiveWindow());
-```
-
-### Use async/await
-
-The Promise-based API provides cleaner code:
-
-```tsx
-// Recommended
-const file = await dialog.open(app.getActiveWindow());
-
-// Instead of callbacks or complex state management
-```
+1. **Use portals for declarative dialogs** — They render at the correct level in the widget hierarchy
+2. **Use promise APIs for simple confirmations** — `AlertDialog.choose()` is cleaner than managing state
+3. **Always handle cancellation** — Wrap `await` in try/catch for dismissed dialogs
+4. **Set transient parent** — Pass the active window to `choose()`/`open()`/`save()` for proper stacking

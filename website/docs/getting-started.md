@@ -8,71 +8,70 @@ This guide will help you set up GTKX and create your first GTK4 application with
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed:
+Before you begin, make sure you have:
 
-- **Node.js** 20 or later
-- **GTK4** runtime libraries (usually pre-installed on modern Linux desktops)
+- **Node.js 20+** — GTKX uses modern JavaScript features
+- **pnpm, npm, or yarn** — For package management
+- **GTK4 development libraries** — Required for native bindings
+- **Linux** — GTK4 is designed for Linux (GNOME desktop)
 
-### Installing GTK4 on Linux
+### Installing GTK4
 
-GTK4 is typically pre-installed on GNOME-based distributions. If not, install the runtime:
+On Fedora:
 
-**Fedora:**
 ```bash
-sudo dnf install gtk4
+sudo dnf install gtk4-devel
 ```
 
-**Ubuntu/Debian:**
+On Ubuntu/Debian:
+
 ```bash
-sudo apt install libgtk-4-1
+sudo apt install libgtk-4-dev
 ```
 
-**Arch Linux:**
+On Arch Linux:
+
 ```bash
 sudo pacman -S gtk4
 ```
 
 ## Installation
 
-Install the GTKX packages from npm:
+Create a new project and install GTKX:
 
 ```bash
-npm install @gtkx/react @gtkx/ffi react
+mkdir my-gtk-app
+cd my-gtk-app
+pnpm init
+pnpm add @gtkx/react react
 ```
 
-Or with pnpm:
+For styling support:
 
 ```bash
-pnpm add @gtkx/react @gtkx/ffi react
+pnpm add @gtkx/css
 ```
 
-## Creating Your First App
-
-### Project Setup
-
-Create a new directory and initialize your project:
+For testing support:
 
 ```bash
-mkdir my-gtkx-app
-cd my-gtkx-app
-npm init -y
-npm install @gtkx/react @gtkx/ffi react typescript @types/react
+pnpm add -D @gtkx/testing vitest
 ```
 
-### Configuration
+## Project Setup
 
-Create `tsconfig.json`:
+Create a `tsconfig.json`:
 
 ```json
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "jsx": "react-jsx",
     "strict": true,
-    "outDir": "dist",
-    "rootDir": "src"
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
   "include": ["src"]
 }
@@ -82,25 +81,36 @@ Update your `package.json`:
 
 ```json
 {
-  "name": "my-gtkx-app",
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "tsx src/index.tsx"
   }
 }
 ```
 
-### Your First Component
+## Your First App
 
-Create `src/index.tsx`:
+Create the following files in a `src` directory:
+
+### `src/index.tsx`
 
 ```tsx
-import { ApplicationWindow, Button, Box, Label, quit, render } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
+import { render } from "@gtkx/react";
+import { App } from "./app.js";
+
+render(<App />, "org.example.MyApp");
+```
+
+The `render` function initializes GTK and mounts your React tree. The second argument is your application ID (reverse domain notation).
+
+### `src/app.tsx`
+
+```tsx
+import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+import { Orientation } from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
-const App = () => {
+export const App = () => {
   const [count, setCount] = useState(0);
 
   return (
@@ -111,131 +121,77 @@ const App = () => {
       onCloseRequest={quit}
     >
       <Box
-        orientation={Gtk.Orientation.VERTICAL}
-        spacing={10}
+        orientation={Orientation.VERTICAL}
+        spacing={12}
         marginTop={20}
+        marginBottom={20}
         marginStart={20}
         marginEnd={20}
-        valign={Gtk.Align.CENTER}
       >
-        <Label.Root label={`Count: ${count}`} cssClasses={["title-2"]} />
-        <Button
-          label="Increment"
-          cssClasses={["suggested-action"]}
-          onClicked={() => setCount(c => c + 1)}
-        />
-        <Button
-          label="Reset"
-          onClicked={() => setCount(0)}
-        />
+        <Label.Root label={`You clicked ${count} times`} />
+        <Box orientation={Orientation.HORIZONTAL} spacing={8}>
+          <Button
+            label="Decrement"
+            onClicked={() => setCount(c => c - 1)}
+          />
+          <Button
+            label="Increment"
+            onClicked={() => setCount(c => c + 1)}
+          />
+        </Box>
       </Box>
     </ApplicationWindow>
   );
 };
-
-// Export the app instance for use in components that need it (e.g., dialogs)
-export const app = render(<App />, "com.example.myapp");
 ```
 
-### Run Your App
+## Running Your App
+
+Start your application:
 
 ```bash
-npm run build
-npm start
+pnpm start
 ```
 
-## Project Structure
+You should see a native GTK4 window with your counter application!
 
-A typical GTKX project looks like:
+## Understanding the Code
 
-```
-my-gtkx-app/
-├── src/
-│   └── index.tsx      # Entry point (exports app instance)
-├── dist/              # Compiled output
-├── package.json
-└── tsconfig.json
-```
+### `render(element, appId)`
 
-## Key Concepts
+The entry point for GTKX applications. It:
+1. Initializes the GTK main loop
+2. Creates a GTK Application with the given ID
+3. Mounts your React element tree
+4. Starts the event loop
 
-### The App Instance
+### `ApplicationWindow`
 
-Export your app instance from the entry point:
+The main window component. Key props:
+- `title` — Window title
+- `defaultWidth` / `defaultHeight` — Initial window size
+- `onCloseRequest` — Called when the window close button is clicked
 
-```tsx
-export const app = render(<App />, "com.example.myapp");
-```
+### `quit()`
 
-This allows components to access the application object for things like:
-- Getting the active window: `app.getActiveWindow()`
-- Showing dialogs with proper parent windows
+Cleanly shuts down the application by:
+1. Unmounting the React tree
+2. Stopping the GTK main loop
 
-### GTK Enums
+Always use `quit()` in `onCloseRequest` to ensure proper cleanup.
 
-Import GTK enums from `@gtkx/ffi/gtk`:
+### Layout with `Box`
 
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+`Box` is the primary layout container in GTK. Use `orientation` to set horizontal or vertical layout, and `spacing` to add gaps between children.
 
-<Box orientation={Gtk.Orientation.VERTICAL} />
-<Label.Root halign={Gtk.Align.START} />
-```
+### Handling Events
 
-### CSS Classes
-
-Use GTK's built-in style classes and custom CSS:
-
-```tsx
-// Built-in classes
-<Button cssClasses={["suggested-action"]} label="Primary" />
-<Button cssClasses={["destructive-action"]} label="Delete" />
-<Label.Root cssClasses={["title-2", "dim-label"]} label="Title" />
-
-// Custom CSS with @gtkx/css
-import { css } from "@gtkx/css";
-
-const myStyle = css`
-  padding: 16px;
-  border-radius: 8px;
-`;
-
-<Button cssClasses={[myStyle]} label="Styled" />
-```
-
-## Building from Source
-
-If you want to contribute or need the latest development version, you'll need additional build dependencies:
-
-- **Rust toolchain** - For compiling the native FFI module
-- **GTK4 development headers** - For GObject introspection
-
-**Fedora:**
-```bash
-sudo dnf install gtk4-devel gobject-introspection-devel
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo apt install libgtk-4-dev gobject-introspection
-```
-
-Then clone and build:
-
-```bash
-git clone https://github.com/eugeniodepalo/gtkx.git
-cd gtkx
-pnpm install
-pnpm build
-
-# Run the demo
-cd examples/gtk4-demo && turbo start
-```
+GTK signals are exposed as React props with the `on` prefix:
+- `onClicked` — Button clicks
+- `onCloseRequest` — Window close
+- `onChanged` — Text input changes
 
 ## Next Steps
 
-- [Components Guide](/docs/guides/components) - Learn about available widgets
-- [Styling Guide](/docs/guides/styling) - CSS-in-JS styling with @gtkx/css
-- [Event Handling](/docs/guides/events) - Handle user interactions
-- [Dialogs Guide](/docs/guides/dialogs) - Work with file, color, and alert dialogs
-- [Architecture](/docs/architecture) - Understand how GTKX works internally
+- [Styling Guide](./guides/styling) — Add custom styles with CSS-in-JS
+- [Testing Guide](./guides/testing) — Write tests for your components

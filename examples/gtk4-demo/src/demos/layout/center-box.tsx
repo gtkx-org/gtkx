@@ -3,7 +3,7 @@ import { Box, Button, CenterBox, Label } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const CenterBoxDemo = () => {
+const CenterBoxDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
             <Label.Root label="Center Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />

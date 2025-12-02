@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const PopoverDemo = () => {
+const PopoverDemo = () => {
     const [clicks, setClicks] = useState(0);
 
     return (

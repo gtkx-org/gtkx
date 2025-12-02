@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const SpinButtonDemo = () => {
+const SpinButtonDemo = () => {
     const intAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
     const floatAdjustment = useMemo(() => new Gtk.Adjustment(3.14, 0, 10, 0.1, 1, 0), []);
     const priceAdjustment = useMemo(() => new Gtk.Adjustment(9.99, 0, 1000, 0.01, 1, 0), []);

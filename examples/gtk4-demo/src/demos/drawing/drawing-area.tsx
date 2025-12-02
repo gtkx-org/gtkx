@@ -56,7 +56,7 @@ function drawCallback(...args: unknown[]) {
     cairo.restore(cr);
 }
 
-export const DrawingAreaDemo = () => {
+const DrawingAreaDemo = () => {
     const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
 
     const handleRealize = useCallback((self: Gtk.Widget) => {

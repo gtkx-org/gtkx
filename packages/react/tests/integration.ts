@@ -28,7 +28,7 @@ export const render = (element: React.ReactNode): void => {
     instance.flushPassiveEffects();
 };
 
-export const cleanup = (): void => {
+const cleanup = (): void => {
     if (container) {
         const instance = getInstance();
         instance.updateContainer(null, container, null, () => {});

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const ToggleButtonDemo = () => {
+const ToggleButtonDemo = () => {
     const [bold, setBold] = useState(false);
     const [italic, setItalic] = useState(false);
     const [underline, setUnderline] = useState(false);

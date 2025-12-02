@@ -5,7 +5,7 @@ import { app } from "../../index.js";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const DialogDemo = () => {
+const DialogDemo = () => {
     const [result, setResult] = useState<string | null>(null);
 
     const showAlertDialog = async () => {

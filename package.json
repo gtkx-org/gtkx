@@ -7,8 +7,9 @@
     "type": "module",
     "scripts": {
         "build": "turbo build --filter=!website",
-        "docs": "turbo start --filter=website",
-        "knip": "knip",
+        "codegen": "turbo codegen",
+        "docs": "turbo build --filter=website",
+        "knip": "knip --no-gitignore --no-config-hints",
         "lint": "biome check .",
         "test": "turbo test"
     },

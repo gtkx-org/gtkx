@@ -1,25 +1,13 @@
 {
     "$schema": "https://unpkg.com/knip@5/schema.json",
     "workspaces": {
-        "packages/ffi": {
-            "project": ["src/**/*.ts", "scripts/**/*.ts"]
-        },
-        "packages/gir": {
-            "project": ["src/**/*.ts"]
-        },
-        "packages/gtkx": {
-            "project": ["src/**/*.ts", "scripts/**/*.ts"]
-        },
-        "packages/native": {
-            "entry": ["types.ts", "tests/**/*.test.ts"]
-        },
-        "packages/react": {
-            "entry": ["src/types.ts"]
+        "{packages,examples}/*": {
+            "project": ["src/**/*", "tests/**/*"]
         },
         "website": {
-            "ignoreDependencies": ["typedoc", "typedoc-plugin-frontmatter"]
+            "docusaurus": true,
+            "ignore": ["build/**", ".docusaurus/**", "docs/api/**"],
+            "ignoreDependencies": ["typedoc", "@docusaurus/plugin-content-docs"]
         }
-    },
-    "ignore": ["**/dist/**", "**/node_modules/**", "**/*.d.ts", "**/src/generated/**"],
-    "ignoreExportsUsedInFile": true
+    }
 }

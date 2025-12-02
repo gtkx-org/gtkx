@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const CheckButtonDemo = () => {
+const CheckButtonDemo = () => {
     const [option1, setOption1] = useState(false);
     const [option2, setOption2] = useState(true);
     const [option3, setOption3] = useState(false);

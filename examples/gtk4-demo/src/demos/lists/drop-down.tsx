@@ -21,7 +21,7 @@ const countries: Country[] = [
     { id: "ca", name: "Canada", capital: "Ottawa" },
 ];
 
-export const DropDownDemo = () => {
+const DropDownDemo = () => {
     const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
     return (

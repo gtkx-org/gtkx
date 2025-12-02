@@ -6,7 +6,7 @@ import type { Demo } from "../types.js";
 
 type PrintStatus = "idle" | "printing" | "completed" | "cancelled" | "error";
 
-export const PrintDialogDemo = () => {
+const PrintDialogDemo = () => {
     const [status, setStatus] = useState<PrintStatus>("idle");
     const [message, setMessage] = useState<string>("");
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const ProgressBarDemo = () => {
+const ProgressBarDemo = () => {
     const [progress, setProgress] = useState(0);
     const [running, setRunning] = useState(false);
 

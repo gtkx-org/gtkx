@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const HeaderBarDemo = () => {
+const HeaderBarDemo = () => {
     const [searchVisible, setSearchVisible] = useState(false);
 
     return (

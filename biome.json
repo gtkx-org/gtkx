@@ -3,20 +3,16 @@
     "assist": {
         "enabled": true
     },
+    "css": {
+        "parser": {
+            "cssModules": true
+        }
+    },
     "formatter": {
         "enabled": true,
         "indentWidth": 4,
         "indentStyle": "space",
         "lineWidth": 120
-    },
-    "linter": {
-        "enabled": true,
-        "rules": {
-            "recommended": true,
-            "correctness": {
-                "noUnusedPrivateClassMembers": "off"
-            }
-        }
     },
     "vcs": {
         "enabled": true,

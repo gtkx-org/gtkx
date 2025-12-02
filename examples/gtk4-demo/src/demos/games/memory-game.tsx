@@ -78,7 +78,7 @@ const CardButton = ({
     );
 };
 
-export const MemoryGameDemo = () => {
+const MemoryGameDemo = () => {
     const [cards, setCards] = useState<Card[]>(createCards);
     const [flippedCards, setFlippedCards] = useState<number[]>([]);
     const [moves, setMoves] = useState(0);

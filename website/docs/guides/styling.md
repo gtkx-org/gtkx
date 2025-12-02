@@ -1,355 +1,264 @@
 ---
-sidebar_position: 5
+sidebar_position: 2
 ---
 
-# CSS Styling
+# Styling
 
-GTKX provides CSS-in-JS styling through the `@gtkx/css` package, offering an Emotion-like API that outputs to GTK's native CSS system.
+GTKX provides `@gtkx/css` for CSS-in-JS styling, similar to Emotion. GTK widgets can be styled using CSS, and GTKX makes it easy to create and apply custom styles.
 
 ## Installation
 
-The CSS package is separate from the core GTKX package:
-
 ```bash
-npm install @gtkx/css
-# or
 pnpm add @gtkx/css
 ```
 
 ## Basic Usage
 
-Import the styling functions and apply them via the `cssClasses` prop:
+Use the `css` template literal to create style classes:
 
 ```tsx
 import { css } from "@gtkx/css";
-import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/react";
+import { Button } from "@gtkx/react";
 
-const buttonStyle = css`
+const primaryButton = css`
   padding: 16px 32px;
-  border-radius: 12px;
+  border-radius: 24px;
+  background: #3584e4;
+  color: white;
   font-weight: bold;
 `;
 
-const labelStyle = css`
-  font-size: 24px;
-  margin-bottom: 16px;
-`;
-
-render(
-  <ApplicationWindow title="Styled App" onCloseRequest={quit}>
-    <Box>
-      <Label.Root cssClasses={[labelStyle]} label="Hello!" />
-      <Button cssClasses={[buttonStyle]} label="Styled Button" />
-    </Box>
-  </ApplicationWindow>,
-  "com.example.app"
+const MyButton = () => (
+  <Button label="Click me" cssClasses={[primaryButton]} />
 );
 ```
 
-## API Reference
+The `css` function returns a unique class name that you pass to the `cssClasses` prop.
 
-### css
+## Combining Styles
 
-Creates a CSS class from styles and injects them into GTK's CssProvider:
-
-```tsx
-import { css } from "@gtkx/css";
-
-const cardStyle = css`
-  background: @theme_bg_color;
-  padding: 12px;
-  border-radius: 6px;
-`;
-
-<Box cssClasses={[cardStyle]}>
-  {/* Content */}
-</Box>
-```
-
-The `css` function:
-- Accepts template literals or style objects
-- Returns a class name string
-- Automatically deduplicates styles (identical styles create a single CSS rule)
-- Injects rules into GTK's style system via CssProvider
-
-### cx
-
-Merges multiple class names, filtering out falsy values:
+Use `cx` to combine multiple style classes:
 
 ```tsx
 import { css, cx } from "@gtkx/css";
 
-const baseStyle = css`
-  padding: 8px;
+const baseButton = css`
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
 `;
 
-const activeStyle = css`
-  background: @accent_bg_color;
+const successButton = css`
+  background: #33d17a;
+  color: white;
 `;
 
-function MyButton({ isActive }: { isActive: boolean }) {
-  return (
-    <Button
-      cssClasses={[cx(baseStyle, isActive && activeStyle)]}
-      label="Toggle"
-    />
-  );
-}
+const dangerButton = css`
+  background: #e01b24;
+  color: white;
+`;
+
+// Combine base with variant
+<Button cssClasses={[cx(baseButton, successButton)]} label="Success" />
+<Button cssClasses={[cx(baseButton, dangerButton)]} label="Danger" />
 ```
 
-This is useful for:
-- Conditional styling
-- Combining multiple style classes
-- Mixing custom styles with GTK system classes
+## Global Styles
 
-### keyframes
-
-Creates CSS keyframe animations:
-
-```tsx
-import { css, keyframes } from "@gtkx/css";
-
-const fadeIn = keyframes`
-  from { opacity: 0; }
-  to { opacity: 1; }
-`;
-
-const pulse = keyframes`
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-`;
-
-const animatedStyle = css`
-  animation: ${fadeIn} 0.3s ease-in;
-`;
-
-const pulsingStyle = css`
-  animation: ${pulse} 2s infinite;
-`;
-```
-
-### injectGlobal
-
-Injects global CSS styles that apply to all widgets on the display:
+Use `injectGlobal` for global CSS that applies across your app:
 
 ```tsx
 import { injectGlobal } from "@gtkx/css";
 
 injectGlobal`
   window {
-    background: #3584e4;
+    background: #fafafa;
   }
 
   button {
-    border-radius: 6px;
+    transition: background 200ms ease;
   }
 
-  .card {
-    padding: 12px;
-    margin: 6px;
+  button:hover {
+    filter: brightness(1.1);
   }
 `;
 ```
 
-Use `injectGlobal` for:
-- Application-wide theming
-- Base styles for widget types
-- Custom utility classes
+## GTK CSS Properties
 
-## GTK CSS Specifics
+GTK supports a subset of CSS properties. Here are the most commonly used:
 
-### Selectors
+### Colors and Backgrounds
 
-GTK CSS uses widget type names as selectors (similar to HTML element selectors):
+```css
+background: #3584e4;
+background: linear-gradient(135deg, #3584e4, #9141ac);
+color: white;
+opacity: 0.8;
+```
 
-| Selector | Targets |
-|----------|---------|
-| `window` | Application windows |
-| `button` | All buttons |
-| `label` | All labels |
-| `box` | Box containers |
-| `entry` | Text entry fields |
-| `headerbar` | Header bars |
-| `scrolledwindow` | Scroll containers |
+### Spacing and Sizing
 
-### Theme Variables
+```css
+padding: 12px;
+padding: 12px 24px;
+margin: 8px;
+min-width: 100px;
+min-height: 40px;
+```
 
-GTK provides theme color variables that adapt to the system theme:
+### Borders
+
+```css
+border: 1px solid #ddd;
+border-radius: 8px;
+border-radius: 50%; /* circular */
+```
+
+### Typography
+
+```css
+font-size: 16px;
+font-weight: bold;
+font-family: "Inter", sans-serif;
+```
+
+### Effects
+
+```css
+box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+transition: background 200ms ease;
+```
+
+## Built-in CSS Classes
+
+GTK provides built-in CSS classes that follow the GNOME Human Interface Guidelines:
+
+### Button Variants
 
 ```tsx
-const themedStyle = css`
-  background: @theme_bg_color;
-  color: @theme_fg_color;
-  border-color: @borders;
+// Suggested action (blue, prominent)
+<Button label="Save" cssClasses={["suggested-action"]} />
+
+// Destructive action (red, dangerous)
+<Button label="Delete" cssClasses={["destructive-action"]} />
+
+// Flat button (no background)
+<Button label="Cancel" cssClasses={["flat"]} />
+
+// Circular button
+<Button iconName="list-add" cssClasses={["circular"]} />
+```
+
+### Typography Classes
+
+```tsx
+// Headings
+<Label.Root label="Title" cssClasses={["title-1"]} />
+<Label.Root label="Subtitle" cssClasses={["title-2"]} />
+<Label.Root label="Section" cssClasses={["heading"]} />
+
+// Body text
+<Label.Root label="Caption" cssClasses={["caption"]} />
+<Label.Root label="Dimmed" cssClasses={["dim-label"]} />
+```
+
+### Container Classes
+
+```tsx
+// Card with shadow
+<Box cssClasses={["card"]}>
+  <Label.Root label="Card content" />
+</Box>
+
+// Boxed list (for settings-style lists)
+<Box cssClasses={["boxed-list"]}>
+  {/* List items */}
+</Box>
+```
+
+## Theming
+
+GTK respects the system theme. Your app will automatically adapt to light/dark mode and the user's accent color.
+
+### Respecting System Colors
+
+Use GTK's CSS color variables for theme-aware colors:
+
+```tsx
+const themedButton = css`
+  background: @accent_bg_color;
+  color: @accent_fg_color;
+`;
+
+const themedCard = css`
+  background: @card_bg_color;
+  border: 1px solid @card_shade_color;
 `;
 ```
 
-Common theme variables:
+### Common Color Variables
 
 | Variable | Description |
 |----------|-------------|
-| `@theme_bg_color` | Background color |
-| `@theme_fg_color` | Foreground/text color |
-| `@theme_base_color` | Base background for inputs |
-| `@theme_text_color` | Text on base backgrounds |
-| `@theme_selected_bg_color` | Selected item background |
-| `@theme_selected_fg_color` | Selected item foreground |
 | `@accent_bg_color` | Accent background |
 | `@accent_fg_color` | Accent foreground |
-| `@accent_color` | Accent color |
-| `@borders` | Border color |
-| `@warning_color` | Warning indicator |
-| `@error_color` | Error indicator |
-| `@success_color` | Success indicator |
+| `@window_bg_color` | Window background |
+| `@window_fg_color` | Window foreground |
+| `@card_bg_color` | Card background |
+| `@card_shade_color` | Card border/shadow |
+| `@success_color` | Success green |
+| `@warning_color` | Warning yellow |
+| `@error_color` | Error red |
 
-### System Style Classes
-
-GTK provides built-in style classes. Mix them with custom styles using `cx`:
+## Example: Custom Button Styles
 
 ```tsx
 import { css, cx } from "@gtkx/css";
+import { Button, Box } from "@gtkx/react";
+import { Orientation } from "@gtkx/ffi/gtk";
 
-const customPadding = css`
-  padding: 16px;
-`;
-
-// Combine custom style with GTK's "suggested-action" class
-<Button cssClasses={[cx(customPadding, "suggested-action")]} label="Primary" />
-
-// Use system classes directly
-<Button cssClasses={["destructive-action"]} label="Delete" />
-<Box cssClasses={["card"]} />
-<Label.Root cssClasses={["title-1"]} label="Large Title" />
-```
-
-Common GTK style classes:
-
-| Class | Description |
-|-------|-------------|
-| `suggested-action` | Primary/suggested action button |
-| `destructive-action` | Destructive action button |
-| `flat` | Flat button style |
-| `card` | Card-like container |
-| `title-1` through `title-4` | Title text sizes |
-| `heading` | Heading text |
-| `body` | Body text |
-| `caption` | Caption/small text |
-| `monospace` | Monospace font |
-| `dim-label` | Dimmed label |
-| `accent` | Accent colored text |
-| `success`, `warning`, `error` | Semantic colors |
-
-## Complete Example
-
-```tsx
-import { css, cx, injectGlobal, keyframes } from "@gtkx/css";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
-import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/react";
-
-// Global styles
-injectGlobal`
-  window {
-    background: linear-gradient(180deg, @theme_bg_color, shade(@theme_bg_color, 0.9));
-  }
-`;
-
-// Keyframe animation
-const bounce = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-`;
-
-// Component styles
-const containerStyle = css`
-  padding: 24px;
-`;
-
-const titleStyle = css`
-  font-size: 32px;
+const baseButton = css`
+  padding: 16px 32px;
+  border-radius: 24px;
+  font-size: 16px;
   font-weight: bold;
-  margin-bottom: 16px;
-`;
-
-const buttonBase = css`
-  padding: 12px 24px;
-  border-radius: 8px;
   transition: all 200ms ease;
 `;
 
-const buttonActive = css`
-  animation: ${bounce} 0.5s ease;
+const successStyle = css`
+  background: #33d17a;
+  color: white;
+
+  &:hover {
+    background: #2ec27e;
+  }
 `;
 
-function App() {
-  const [active, setActive] = useState(false);
+const warningStyle = css`
+  background: #f5c211;
+  color: #3d3846;
 
-  return (
-    <ApplicationWindow
-      title="Styled GTKX App"
-      defaultWidth={400}
-      defaultHeight={300}
-      onCloseRequest={quit}
-    >
-      <Box
-        cssClasses={[containerStyle]}
-        orientation={Gtk.Orientation.VERTICAL}
-        valign={Gtk.Align.CENTER}
-        halign={Gtk.Align.CENTER}
-        spacing={12}
-      >
-        <Label.Root cssClasses={[titleStyle]} label="Welcome" />
+  &:hover {
+    background: #e5a50a;
+  }
+`;
 
-        <Button
-          cssClasses={[cx(buttonBase, active && buttonActive)]}
-          label={active ? "Active!" : "Click me"}
-          onClicked={() => setActive(a => !a)}
-        />
+const gradientStyle = css`
+  background: linear-gradient(135deg, #3584e4, #9141ac);
+  color: white;
 
-        <Button
-          cssClasses={["suggested-action"]}
-          label="System Style"
-        />
-      </Box>
-    </ApplicationWindow>
-  );
-}
+  &:hover {
+    background: linear-gradient(135deg, #1c71d8, #813d9c);
+  }
+`;
 
-render(<App />, "com.example.styled");
+const ButtonShowcase = () => (
+  <Box orientation={Orientation.HORIZONTAL} spacing={12}>
+    <Button label="Success" cssClasses={[cx(baseButton, successStyle)]} />
+    <Button label="Warning" cssClasses={[cx(baseButton, warningStyle)]} />
+    <Button label="Gradient" cssClasses={[cx(baseButton, gradientStyle)]} />
+  </Box>
+);
 ```
-
-## Supported CSS Properties
-
-GTK CSS supports a subset of web CSS properties. Key supported properties include:
-
-**Layout & Spacing:**
-- `margin`, `margin-top`, `margin-bottom`, `margin-start`, `margin-end`
-- `padding`, `padding-top`, `padding-bottom`, `padding-start`, `padding-end`
-- `min-width`, `min-height`
-
-**Colors & Backgrounds:**
-- `color`, `background`, `background-color`
-- `border-color`, `outline-color`
-- `opacity`
-
-**Borders:**
-- `border`, `border-width`, `border-style`, `border-color`
-- `border-radius`
-- `outline`, `outline-width`, `outline-style`
-
-**Typography:**
-- `font-family`, `font-size`, `font-weight`, `font-style`
-- `text-decoration`, `text-shadow`
-- `letter-spacing`
-
-**Effects:**
-- `box-shadow`
-- `transition`
-- `animation`
-
-**GTK-Specific:**
-- `background-image` with GTK patterns
-- `-gtk-icon-style`, `-gtk-icon-size`
-- `caret-color`
-
-For the complete reference, see the [GTK CSS documentation](https://docs.gtk.org/gtk4/css-properties.html).

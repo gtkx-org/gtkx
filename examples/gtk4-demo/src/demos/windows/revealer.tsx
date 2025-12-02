@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const RevealerDemo = () => {
+const RevealerDemo = () => {
     const [slideDown, setSlideDown] = useState(false);
     const [slideUp, setSlideUp] = useState(false);
     const [slideLeft, setSlideLeft] = useState(false);

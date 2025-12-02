@@ -32,11 +32,10 @@
         }
     },
     "files": [
-        "dist",
-        "index.node"
+        "dist"
     ],
     "scripts": {
-        "build": "tsc -b && cp index.node dist/",
+        "build": "tsc -b && cp index.node dist/ && cp ../../README.md .",
         "native-build": "cargo build --message-format=json-render-diagnostics --release > cargo.log && neon dist < cargo.log",
         "test": "xvfb-run -a vitest run"
     },

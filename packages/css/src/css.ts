@@ -47,36 +47,6 @@ export const cx = (...classNames: (string | boolean | undefined | null)[]): stri
     classNames.filter((cn): cn is string => typeof cn === "string" && cn.length > 0).join(" ");
 
 /**
- * Creates a keyframes animation and returns the animation name.
- *
- * @example
- * ```tsx
- * const fadeIn = keyframes`
- *   from { opacity: 0; }
- *   to { opacity: 1; }
- * `;
- *
- * const animatedStyle = css`
- *   animation: ${fadeIn} 0.3s ease-in;
- * `;
- * ```
- */
-export const keyframes = (...args: CSSInterpolation[]): string => {
-    const cache = getGtkCache();
-    const serialized = serializeStyles(args, cache.registered);
-
-    const name = `animation-${serialized.name}`;
-
-    if (cache.inserted[serialized.name] === undefined) {
-        const keyframeRule = `@keyframes ${name}{${serialized.styles}}`;
-        cache.sheet.insert(keyframeRule);
-        cache.inserted[serialized.name] = serialized.styles;
-    }
-
-    return name;
-};
-
-/**
  * Injects global CSS styles.
  * Note: In GTK, these styles apply to all widgets on the display.
  *

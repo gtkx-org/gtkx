@@ -1,205 +1,174 @@
-/** biome-ignore-all lint/suspicious/noArrayIndexKey: allow */
 import Link from "@docusaurus/Link";
-import useBaseUrl from "@docusaurus/useBaseUrl";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import CodeBlock from "@theme/CodeBlock";
-import Heading from "@theme/Heading";
 import Layout from "@theme/Layout";
 import clsx from "clsx";
 import type { ReactNode } from "react";
-
 import styles from "./index.module.css";
 
-function HomepageHeader() {
+const HomepageHeader = () => {
     const { siteConfig } = useDocusaurusContext();
-    const logoUrl = useBaseUrl("/img/logo.svg");
     return (
         <header className={clsx("hero hero--primary", styles.heroBanner)}>
             <div className="container">
-                <img src={logoUrl} alt="GTKX Logo" className={styles.heroLogo} />
-                <Heading as="h1" className="hero__title">
-                    {siteConfig.title}
-                </Heading>
+                <img src="/gtkx/img/logo.svg" alt="GTKX Logo" className={styles.heroLogo} />
+                <h1 className="hero__title">{siteConfig.title}</h1>
                 <p className="hero__subtitle">{siteConfig.tagline}</p>
                 <div className={styles.buttons}>
-                    <Link className="button button--secondary button--lg" to="/docs">
+                    <Link className="button button--secondary button--lg" to="/docs/introduction">
                         Get Started
-                    </Link>
-                    <Link
-                        className="button button--secondary button--lg"
-                        to="https://github.com/eugeniodepalo/gtkx"
-                        style={{ marginLeft: "1rem" }}
-                    >
-                        GitHub
                     </Link>
                 </div>
             </div>
         </header>
     );
-}
+};
 
 type FeatureItem = {
     title: string;
+    icon: string;
     description: ReactNode;
 };
 
-const FeatureList: FeatureItem[] = [
+const features: FeatureItem[] = [
     {
-        title: "React Patterns",
-        description: (
-            <>
-                Use familiar React patterns like hooks, state management, and component composition to build native GTK4
-                applications.
-            </>
-        ),
+        title: "React Components",
+        icon: "⚛️",
+        description:
+            "Use React hooks, state, and component patterns you already know. Write JSX that renders as native GTK4 widgets.",
     },
     {
-        title: "Type Safe",
-        description: <>Full TypeScript support with auto-generated types from GTK's GObject Introspection files.</>,
+        title: "Type-Safe",
+        icon: "🛡️",
+        description:
+            "Full TypeScript support with auto-generated types from GTK4 introspection data. Catch errors at compile time.",
     },
     {
         title: "Native Performance",
-        description: (
-            <>Direct FFI calls to GTK4 through a Rust native module. No Electron, no WebView - just native widgets.</>
-        ),
+        icon: "🚀",
+        description:
+            "Direct FFI bindings to GTK4 via Rust and libffi. No Electron, no web views — just native widgets.",
+    },
+    {
+        title: "CSS-in-JS Styling",
+        icon: "🎨",
+        description: "Style GTK widgets with an Emotion-style API. Use template literals and compose styles easily.",
+    },
+    {
+        title: "Testing Library",
+        icon: "🧪",
+        description:
+            "Familiar testing APIs with screen, userEvent, and query functions. Test components like you test React web apps.",
+    },
+    {
+        title: "Full GTK4 Access",
+        icon: "🔧",
+        description: "Access all GTK4 widgets, signals, and properties. Use GLib, GIO, Gdk, and other GNOME libraries.",
     },
 ];
 
-function Feature({ title, description }: FeatureItem) {
+const Feature = ({ title, icon, description }: FeatureItem) => {
     return (
         <div className={clsx("col col--4")}>
-            <div className="text--center padding-horiz--md">
-                <Heading as="h3">{title}</Heading>
+            <div className={styles.featureCard}>
+                <div className={styles.featureIcon}>{icon}</div>
+                <h3>{title}</h3>
                 <p>{description}</p>
             </div>
         </div>
     );
-}
+};
 
-function HomepageFeatures(): ReactNode {
+const HomepageFeatures = () => {
     return (
         <section className={styles.features}>
             <div className="container">
                 <div className="row">
-                    {FeatureList.map((props, idx) => (
-                        <Feature key={idx} {...props} />
+                    {features.map((props) => (
+                        <Feature key={props.title} {...props} />
                     ))}
                 </div>
             </div>
         </section>
     );
-}
+};
 
-function ScreenshotSection(): ReactNode {
-    const screenshotUrl = useBaseUrl("/img/screenshot.png");
-    return (
-        <section className={styles.screenshotSection}>
-            <div className="container">
-                <Heading as="h2" className="text--center margin-bottom--lg">
-                    Comprehensive Demo Application
-                </Heading>
-                <div className="row">
-                    <div className="col col--10 col--offset-1">
-                        <img src={screenshotUrl} alt="GTKX Demo Application" className={styles.screenshot} />
-                        <p className="text--center margin-top--md">
-                            The gtk4-demo application showcasing buttons, inputs, lists, dialogs, and more.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
-}
+const codeExample = `import { render, ApplicationWindow, Button, quit } from "@gtkx/react";
+import { css } from "@gtkx/css";
+import { useState } from "react";
 
-function CodeExample(): ReactNode {
+const buttonStyle = css\`
+  padding: 12px 24px;
+  font-size: 18px;
+  background: linear-gradient(135deg, #3584e4, #1a5fb4);
+  color: white;
+  border-radius: 8px;
+
+  &:hover {
+    background: linear-gradient(135deg, #1c71d8, #174e9c);
+  }
+\`;
+
+const App = () => {
+  const [count, setCount] = useState(0);
+
+  return (
+    <ApplicationWindow title="Counter" onCloseRequest={quit}>
+      <Button
+        css={buttonStyle}
+        label={\`Clicked \${count} times\`}
+        onClicked={() => setCount(c => c + 1)}
+      />
+    </ApplicationWindow>
+  );
+};
+
+render(<App />, "org.example.Counter");`;
+
+const CodeExample = () => {
     return (
         <section className={styles.codeExample}>
             <div className="container">
-                <Heading as="h2" className="text--center margin-bottom--lg">
-                    Simple and Familiar
-                </Heading>
-                <div className="row">
-                    <div className="col col--8 col--offset-2">
-                        <CodeBlock language="tsx">
-                            {`import { ApplicationWindow, Button, quit, render } from "@gtkx/react";
-
-render(
-  <ApplicationWindow
-    title="Hello, GTKX!"
-    defaultWidth={400}
-    defaultHeight={300}
-    onCloseRequest={quit}
-  >
-    <Button
-      label="Click me!"
-      onClicked={() => console.log("Clicked!")}
-    />
-  </ApplicationWindow>,
-  "com.example.app"
-);`}
-                        </CodeBlock>
-                    </div>
+                <h2>Simple and Familiar</h2>
+                <p>Write React components that render as native GTK4 widgets</p>
+                <div className={styles.codeBlockWrapper}>
+                    <CodeBlock language="tsx">{codeExample}</CodeBlock>
                 </div>
             </div>
         </section>
     );
-}
+};
 
-function StylingExample(): ReactNode {
+const Screenshot = () => {
     return (
-        <section className={styles.stylingSection}>
+        <section className={styles.screenshot}>
             <div className="container">
-                <Heading as="h2" className="text--center margin-bottom--md">
-                    CSS-in-JS Styling
-                </Heading>
-                <p className="text--center margin-bottom--lg">
-                    Style your widgets with an Emotion-like API. Use template literals, keyframe animations, and GTK
-                    theme variables.
-                </p>
-                <div className="row">
-                    <div className="col col--8 col--offset-2">
-                        <CodeBlock language="tsx">
-                            {`import { css, keyframes, injectGlobal } from "@gtkx/css";
-
-// Global styles
-injectGlobal\`
-  window { background: @theme_bg_color; }
-\`;
-
-// Keyframe animation
-const fadeIn = keyframes\`
-  from { opacity: 0; }
-  to { opacity: 1; }
-\`;
-
-// Component styles
-const cardStyle = css\`
-  padding: 24px;
-  border-radius: 12px;
-  animation: \${fadeIn} 0.3s ease-in;
-\`;
-
-<Box cssClasses={[cardStyle]}>
-  <Label.Root label="Styled with Emotion!" />
-</Box>`}
-                        </CodeBlock>
-                    </div>
+                <h2>Native Desktop Apps</h2>
+                <p>Build beautiful, native GTK4 applications that feel right at home on Linux</p>
+                <div className={styles.screenshotWrapper}>
+                    <img
+                        src="/gtkx/img/screenshot.png"
+                        alt="GTKX Demo Application"
+                        className={styles.screenshotImage}
+                    />
                 </div>
             </div>
         </section>
     );
-}
+};
 
-export default function Home(): ReactNode {
+const Home = () => {
+    const { siteConfig } = useDocusaurusContext();
     return (
-        <Layout title="Home" description="Build GTK4 desktop applications with React and TypeScript">
+        <Layout title={siteConfig.title} description={siteConfig.tagline}>
             <HomepageHeader />
             <main>
                 <HomepageFeatures />
                 <CodeExample />
-                <StylingExample />
-                <ScreenshotSection />
+                <Screenshot />
             </main>
         </Layout>
     );
-}
+};
+
+export default Home;

@@ -1,391 +1,174 @@
-# @gtkx/react
+<p align="center">
+  <img src="logo.svg" alt="GTKX Logo" width="128" height="128">
+</p>
 
-React integration layer for GTKX. This package provides a custom React reconciler that renders React components as native GTK4 widgets.
+<h1 align="center">GTKX</h1>
 
-## Installation
+<p align="center">
+  <strong>Build native GTK4 desktop applications with React and TypeScript</strong>
+</p>
 
-```bash
-pnpm add @gtkx/react react
-```
+<p align="center">
+  <a href="https://eugeniodepalo.github.io/gtkx">Documentation</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#examples">Examples</a>
+</p>
 
-### Peer Dependencies
+---
 
-- `react` ^19.0.0
+GTKX bridges React's component model with GTK4's native widget system. Write familiar React code and render it as native Linux desktop applications with full access to GTK4 widgets, signals, and styling.
 
-### System Requirements
+## Features
 
-- Linux with GTK4 libraries
-- Node.js 20+
-- Rust toolchain (for building `@gtkx/native`)
-
-```bash
-# Fedora
-sudo dnf install gtk4-devel
-
-# Ubuntu/Debian
-sudo apt install libgtk-4-dev
-```
+- **React Components** — Use React hooks, state, and component patterns you already know
+- **Type-Safe** — Full TypeScript support with auto-generated types from GTK4 introspection data
+- **Native Performance** — Direct FFI bindings to GTK4 via Rust and libffi
+- **CSS-in-JS Styling** — Emotion-style `css` template literals for GTK widgets
+- **Testing Library** — Familiar `screen`, `userEvent`, and query APIs for testing components
 
 ## Quick Start
 
+```bash
+# Install dependencies
+pnpm add @gtkx/react react
+
+# For styling (optional)
+pnpm add @gtkx/css
+
+# For testing (optional)
+pnpm add -D @gtkx/testing
+```
+
+Create your first app:
+
 ```tsx
-import { ApplicationWindow, Button, Box, Label, quit, render } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
+// index.tsx
+import { render } from "@gtkx/react";
+import { App } from "./app.js";
+
+render(<App />, "org.example.MyApp");
+```
+
+```tsx
+// app.tsx
+import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+import { Orientation } from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
-const Counter = () => {
+export const App = () => {
   const [count, setCount] = useState(0);
 
   return (
-    <Box valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} spacing={10}>
-      <Label.Root label={`Count: ${count}`} cssClasses={["title-2"]} />
-      <Button label="Increment" onClicked={() => setCount(c => c + 1)} />
-    </Box>
+    <ApplicationWindow
+      title="My App"
+      defaultWidth={400}
+      defaultHeight={300}
+      onCloseRequest={quit}
+    >
+      <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
+        <Label.Root label={`Count: ${count}`} />
+        <Button
+          label="Increment"
+          onClicked={() => setCount((c) => c + 1)}
+        />
+      </Box>
+    </ApplicationWindow>
   );
 };
-
-// Export app instance for use in dialogs
-export const app = render(
-  <ApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
-    <Counter />
-  </ApplicationWindow>,
-  "com.example.myapp"
-);
 ```
 
 Run with:
 
 ```bash
-npx tsx src/index.tsx
+pnpm tsx index.tsx
 ```
 
-## API
+## Styling
 
-### `render(element, applicationId)`
-
-Renders a React element tree as a GTK4 application. Returns the GTK Application instance.
-
-- `element` — Root React element (typically `ApplicationWindow`)
-- `applicationId` — Unique identifier in reverse-DNS format (e.g., `com.example.app`)
+Use `@gtkx/css` for CSS-in-JS styling:
 
 ```tsx
-export const app = render(<App />, "com.example.myapp");
+import { css } from "@gtkx/css";
+import { Button } from "@gtkx/react";
+
+const primaryButton = css`
+  padding: 16px 32px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #3584e4, #9141ac);
+  color: white;
+  font-weight: bold;
+`;
+
+const MyButton = () => (
+  <Button label="Click me" cssClasses={[primaryButton]} />
+);
 ```
 
-### `quit()`
+GTK also provides built-in CSS classes like `suggested-action`, `destructive-action`, `card`, and `heading`.
 
-Signals the application to close. Returns `false` (useful as a direct event handler for `onCloseRequest`).
+## Testing
+
+Use `@gtkx/testing` for Testing Library-style component tests:
 
 ```tsx
-<ApplicationWindow onCloseRequest={quit}>...</ApplicationWindow>
+import { cleanup, render, screen, setup, userEvent } from "@gtkx/testing";
+import { AccessibleRole } from "@gtkx/ffi/gtk";
+import { afterEach, describe, expect, it } from "vitest";
+import { App } from "./app.js";
+
+setup();
+
+describe("Counter", () => {
+  afterEach(() => cleanup());
+
+  it("increments count when clicking button", async () => {
+    render(<App />);
+
+    const button = await screen.findByRole(AccessibleRole.BUTTON, {
+      name: "Increment",
+    });
+    await userEvent.click(button);
+
+    await screen.findByText("Count: 1");
+  });
+});
 ```
 
-### `createPortal(element)`
+## Examples
 
-Renders a React element outside the normal component tree (useful for dialogs).
+### Counter
 
-```tsx
-{showDialog && createPortal(<AboutDialog ... />)}
+A minimal counter app demonstrating state management:
+
+```bash
+turbo start --filter=counter-example
 ```
 
-### `createRef()`
+### GTK4 Demo
 
-Creates a reference for FFI output parameters.
+A comprehensive showcase of GTK4 widgets and features:
 
-```tsx
-import { createRef } from "@gtkx/react";
-
-const ref = createRef();
-someGtkFunction(ref);
-console.log(ref.value);
+```bash
+turbo start --filter=gtk4-demo
 ```
 
-## Widgets
-
-### Container Widgets
-
-**ApplicationWindow** — Main application window
-
-```tsx
-<ApplicationWindow title="Window Title" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
-  {children}
-</ApplicationWindow>
-```
-
-**Box** — Arranges children in a row or column
-
-```tsx
-<Box orientation={Gtk.Orientation.VERTICAL} spacing={10}>
-  <Button label="First" />
-  <Button label="Second" />
-</Box>
-```
-
-**Grid** — Arranges children in a grid layout
-
-```tsx
-<Grid.Root columnSpacing={10} rowSpacing={10}>
-  <Grid.Child column={0} row={0}><Button label="(0,0)" /></Grid.Child>
-  <Grid.Child column={1} row={0}><Button label="(1,0)" /></Grid.Child>
-  <Grid.Child column={0} row={1} columnSpan={2}>
-    <Button label="Spans 2 columns" hexpand />
-  </Grid.Child>
-</Grid.Root>
-```
-
-**ScrolledWindow** — Adds scrollbars to content
-
-```tsx
-<ScrolledWindow vexpand hexpand>
-  <TextView />
-</ScrolledWindow>
-```
-
-**Paned** — Resizable split container
-
-```tsx
-<Paned.Root wideHandle>
-  <Paned.StartChild>
-    <Box>{/* Left */}</Box>
-  </Paned.StartChild>
-  <Paned.EndChild>
-    <Box>{/* Right */}</Box>
-  </Paned.EndChild>
-</Paned.Root>
-```
-
-### Input Widgets
-
-**Button** — Clickable button
-
-```tsx
-<Button label="Click me" onClicked={() => console.log("Clicked!")} />
-```
-
-**ToggleButton** — Button with on/off state
-
-```tsx
-<ToggleButton.Root label={active ? "ON" : "OFF"} active={active} onToggled={() => setActive(a => !a)} />
-```
-
-**CheckButton** — Checkbox with label
-
-```tsx
-<CheckButton.Root label="Accept terms" active={checked} onToggled={() => setChecked(c => !c)} />
-```
-
-**Switch** — On/off toggle (must return `true` from `onStateSet`)
-
-```tsx
-<Switch
-  active={enabled}
-  onStateSet={(self, state) => {
-    setEnabled(state);
-    return true;
-  }}
-/>
-```
-
-**Entry** — Single-line text input
-
-```tsx
-<Entry placeholderText="Enter text..." />
-<PasswordEntry placeholderText="Password..." />
-<SearchEntry placeholderText="Search..." />
-```
-
-**SpinButton** — Numeric input with increment/decrement
-
-```tsx
-// Adjustment args: value, lower, upper, stepIncrement, pageIncrement, pageSize
-const adjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
-<SpinButton adjustment={adjustment} onValueChanged={(self) => setValue(self.getValue())} />
-```
-
-**Scale** — Horizontal or vertical slider
-
-```tsx
-<Scale hexpand drawValue adjustment={adjustment} onValueChanged={(self) => setValue(self.getValue())} />
-```
-
-### Display Widgets
-
-**Label** — Text display
-
-```tsx
-<Label.Root label="Hello, World!" cssClasses={["title-2"]} />
-```
-
-**ProgressBar** — Progress indicator
-
-```tsx
-<ProgressBar fraction={0.5} showText />
-```
-
-**Spinner** — Loading indicator
-
-```tsx
-<Spinner spinning={isLoading} />
-```
-
-### Layout Widgets
-
-**HeaderBar** — Title bar with buttons
-
-```tsx
-<HeaderBar.Root>
-  <HeaderBar.TitleWidget>
-    <Label.Root label="App Title" />
-  </HeaderBar.TitleWidget>
-</HeaderBar.Root>
-```
-
-**CenterBox** — Positions children at start, center, and end
-
-```tsx
-<CenterBox.Root>
-  <CenterBox.StartWidget><Button label="Left" /></CenterBox.StartWidget>
-  <CenterBox.CenterWidget><Label.Root label="Center" /></CenterBox.CenterWidget>
-  <CenterBox.EndWidget><Button label="Right" /></CenterBox.EndWidget>
-</CenterBox.Root>
-```
-
-### List Widgets
-
-**ListBox** — Simple vertical list
-
-```tsx
-<ListBox selectionMode={Gtk.SelectionMode.SINGLE}>
-  <ListBoxRow><Label.Root label="Item 1" /></ListBoxRow>
-  <ListBoxRow><Label.Root label="Item 2" /></ListBoxRow>
-</ListBox>
-```
-
-**DropDown** — Dropdown selector
-
-```tsx
-<DropDown.Root
-  itemLabel={(item) => item.name}
-  onSelectionChanged={(item, index) => setSelected(item)}
->
-  {items.map(item => <DropDown.Item key={item.id} item={item} />)}
-</DropDown.Root>
-```
-
-**ListView** — Virtualized list for large datasets
-
-```tsx
-<ListView.Root renderItem={(item) => {
-  if (!item) return new Gtk.Box();
-  return new Gtk.Label({ label: item.name });
-}}>
-  {items.map(item => <ListView.Item item={item} key={item.id} />)}
-</ListView.Root>
-```
-
-### Dialog Widgets
-
-**AboutDialog** — Application about dialog (React component)
-
-```tsx
-{showAbout && createPortal(
-  <AboutDialog
-    programName="My App"
-    version="1.0.0"
-    onCloseRequest={() => { setShowAbout(false); return false; }}
-  />
-)}
-```
-
-**Async Dialogs** — AlertDialog, FileDialog, ColorDialog, FontDialog (imperative)
-
-```tsx
-import { app } from "./index.js";
-
-const openFile = async () => {
-  const dialog = new Gtk.FileDialog();
-  dialog.setTitle("Open File");
-  try {
-    const file = await dialog.open(app.getActiveWindow());
-    console.log(file.getPath());
-  } catch {
-    // Cancelled
-  }
-};
-```
-
-## Named Slots
-
-Some GTK widgets have named child positions, handled via compound components:
-
-```tsx
-<Frame.Root>
-  <Frame.LabelWidget>
-    <Label.Root label="Custom Label" />
-  </Frame.LabelWidget>
-  <Frame.Child>
-    <Box>{/* Content */}</Box>
-  </Frame.Child>
-</Frame.Root>
-
-<Expander.Root label="Click to expand">
-  <Expander.Child>
-    <Box>Hidden content</Box>
-  </Expander.Child>
-</Expander.Root>
-```
-
-## Using GTK Enums
-
-Import enums from `@gtkx/ffi/gtk`:
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-
-<Box orientation={Gtk.Orientation.VERTICAL} />
-<ListBox selectionMode={Gtk.SelectionMode.SINGLE} />
-<Revealer transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN} />
-```
-
-## Hooks Support
-
-Standard React hooks work as expected:
-
-```tsx
-import { useState, useEffect, useRef } from "react";
-
-const Counter = () => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    console.log(`Count: ${count}`);
-  }, [count]);
-
-  return (
-    <Box spacing={10}>
-      <Label.Root label={`Count: ${count}`} />
-      <Button label="Increment" onClicked={() => setCount(c => c + 1)} />
-    </Box>
-  );
-};
-```
-
-## Architecture
-
-```
-┌─────────────────────────────────┐
-│     Your React Application      │
-├─────────────────────────────────┤
-│   @gtkx/react (React Reconciler) │
-├─────────────────────────────────┤
-│   @gtkx/ffi (TypeScript FFI)    │
-├─────────────────────────────────┤
-│   @gtkx/native (Rust Bridge)    │
-├─────────────────────────────────┤
-│         GTK4 / GLib             │
-└─────────────────────────────────┘
-```
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| [@gtkx/react](packages/react) | React reconciler and JSX components |
+| [@gtkx/ffi](packages/ffi) | TypeScript FFI bindings for GTK4 |
+| [@gtkx/native](packages/native) | Rust native module for FFI bridge |
+| [@gtkx/css](packages/css) | CSS-in-JS styling for GTK widgets |
+| [@gtkx/testing](packages/testing) | Testing utilities for GTKX components |
+| [@gtkx/gir](packages/gir) | GObject Introspection parser for codegen |
+
+## Requirements
+
+- Node.js 20+
+- GTK4 development libraries
+- Linux (GTK4 is Linux-native)
 
 ## License
 
-[MPL-2.0](../../LICENSE)
+[MPL-2.0](LICENSE)

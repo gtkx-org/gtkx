@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const FileChooserDemo = () => {
+const FileChooserDemo = () => {
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [saveLocation, setSaveLocation] = useState<string | null>(null);

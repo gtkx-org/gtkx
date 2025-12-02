@@ -56,33 +56,18 @@ jobs:
       - name: Build all packages
         run: pnpm build
 
+      - name: Build docs
+        run: pnpm run docs
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Lint all packages
+        run: pnpm lint
+
+      - name: Check dead code
+        run: pnpm knip
+
       - name: Run tests
         run: xvfb-run -a pnpm test
         env:
           GTK_A11Y: none
-
-  lint:
-    runs-on: ubuntu-latest
-    container:
-      image: fedora:43
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Check unused code
-        run: pnpm knip
-
-      - name: Run linter
-        run: pnpm lint

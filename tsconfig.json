@@ -3,19 +3,22 @@
     "include": [],
     "references": [
         {
-            "path": "packages/gir/tsconfig.json"
+            "path": "packages/css/tsconfig.json"
         },
         {
             "path": "packages/ffi/tsconfig.json"
         },
         {
+            "path": "packages/gir/tsconfig.json"
+        },
+        {
             "path": "packages/native/tsconfig.json"
         },
         {
-            "path": "packages/css/tsconfig.json"
+            "path": "packages/react/tsconfig.json"
         },
         {
-            "path": "packages/react/tsconfig.json"
+            "path": "packages/testing/tsconfig.json"
         }
     ]
 }

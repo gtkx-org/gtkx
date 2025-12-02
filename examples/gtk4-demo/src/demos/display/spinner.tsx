@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const SpinnerDemo = () => {
+const SpinnerDemo = () => {
     const [spinning, setSpinning] = useState(true);
 
     return (

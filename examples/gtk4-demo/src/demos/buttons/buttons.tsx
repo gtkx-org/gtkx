@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const ButtonsDemo = () => {
+const ButtonsDemo = () => {
     const [clickCount, setClickCount] = useState(0);
     const [toggled, setToggled] = useState(false);
 

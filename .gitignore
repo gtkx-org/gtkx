@@ -1,7 +1,8 @@
 .turbo
 *.log
+*.node
 *.tsbuildinfo
-**/src/generated
+generated
 dist
 node_modules
 out-tsc

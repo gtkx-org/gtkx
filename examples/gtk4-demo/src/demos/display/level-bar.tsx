@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const LevelBarDemo = () => {
+const LevelBarDemo = () => {
     const [level, setLevel] = useState(0.5);
 
     return (

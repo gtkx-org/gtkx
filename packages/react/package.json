@@ -39,7 +39,7 @@
         "dist"
     ],
     "scripts": {
-        "build": "tsc -b",
+        "build": "tsc -b && cp ../../README.md .",
         "codegen": "tsx scripts/codegen.ts",
         "test": "xvfb-run -a vitest run"
     },

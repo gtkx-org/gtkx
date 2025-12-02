@@ -34,7 +34,7 @@
         "dist"
     ],
     "scripts": {
-        "build": "tsc -b"
+        "build": "tsc -b && cp ../../README.md ."
     },
     "dependencies": {
         "@emotion/cache": "11.14.0",

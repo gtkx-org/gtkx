@@ -14,7 +14,7 @@ const items = [
     { id: 7, title: "Trash", subtitle: "Empty" },
 ];
 
-export const ListBoxDemo = () => {
+const ListBoxDemo = () => {
     const [selectedId, setSelectedId] = useState<number | null>(null);
 
     return (

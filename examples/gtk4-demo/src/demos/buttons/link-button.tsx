@@ -3,7 +3,7 @@ import { Box, Label, LinkButton } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const LinkButtonDemo = () => {
+const LinkButtonDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
             <Label.Root label="Link Buttons" cssClasses={["title-2"]} halign={Gtk.Align.START} />

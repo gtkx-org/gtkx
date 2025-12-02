@@ -4,27 +4,17 @@ import { themes as prismThemes } from "prism-react-renderer";
 
 const config: Config = {
     title: "GTKX",
-    tagline: "Build GTK4 desktop applications with React and TypeScript",
-    favicon: "img/favicon.ico",
-
-    future: {
-        v4: true,
-    },
+    tagline: "Build native GTK4 desktop applications with React and TypeScript",
+    favicon: "img/favicon.svg",
 
     url: "https://eugeniodepalo.github.io",
     baseUrl: "/gtkx/",
 
     organizationName: "eugeniodepalo",
     projectName: "gtkx",
-    trailingSlash: false,
 
-    onBrokenLinks: "warn",
-
-    markdown: {
-        hooks: {
-            onBrokenMarkdownLinks: "warn",
-        },
-    },
+    onBrokenLinks: "throw",
+    onBrokenMarkdownLinks: "warn",
 
     i18n: {
         defaultLocale: "en",
@@ -51,36 +41,67 @@ const config: Config = {
         [
             "docusaurus-plugin-typedoc",
             {
+                id: "api-react",
                 entryPoints: ["../packages/react/src/index.ts"],
                 tsconfig: "../packages/react/tsconfig.lib.json",
-                out: "docs/api",
+                out: "docs/api/react",
                 readme: "none",
-                sidebar: {
-                    autoConfiguration: true,
-                    pretty: true,
-                },
-                plugin: ["typedoc-plugin-frontmatter"],
-                frontmatterGlobals: {
-                    displayed_sidebar: "apiSidebar",
-                },
-                textContentMappings: {
-                    "title.indexPage": "API Reference",
-                    "title.memberPage": "{name}",
-                },
+                indexFormat: "table",
                 parametersFormat: "table",
                 enumMembersFormat: "table",
+                typeDeclarationFormat: "table",
+                groupOrder: ["Functions", "Variables", "Interfaces", "*"],
+            },
+        ],
+        [
+            "docusaurus-plugin-typedoc",
+            {
+                id: "api-css",
+                entryPoints: ["../packages/css/src/index.ts"],
+                tsconfig: "../packages/css/tsconfig.lib.json",
+                out: "docs/api/css",
+                readme: "none",
                 indexFormat: "table",
-                expandObjects: true,
-                useCodeBlocks: true,
+                parametersFormat: "table",
+                enumMembersFormat: "table",
+                typeDeclarationFormat: "table",
+                groupOrder: ["Functions", "Variables", "Interfaces", "*"],
+            },
+        ],
+        [
+            "docusaurus-plugin-typedoc",
+            {
+                id: "api-testing",
+                entryPoints: ["../packages/testing/src/index.ts"],
+                tsconfig: "../packages/testing/tsconfig.lib.json",
+                out: "docs/api/testing",
+                readme: "none",
+                indexFormat: "table",
+                parametersFormat: "table",
+                enumMembersFormat: "table",
+                typeDeclarationFormat: "table",
+                groupOrder: ["Functions", "Variables", "Interfaces", "*"],
+            },
+        ],
+        [
+            "docusaurus-plugin-typedoc",
+            {
+                id: "api-ffi",
+                entryPoints: ["../packages/ffi/src/index.ts"],
+                tsconfig: "../packages/ffi/tsconfig.lib.json",
+                out: "docs/api/ffi",
+                readme: "none",
+                indexFormat: "table",
+                parametersFormat: "table",
+                enumMembersFormat: "table",
+                typeDeclarationFormat: "table",
+                groupOrder: ["Functions", "Variables", "Interfaces", "*"],
             },
         ],
     ],
 
     themeConfig: {
         image: "img/social-card.png",
-        colorMode: {
-            respectPrefersColorScheme: true,
-        },
         navbar: {
             title: "GTKX",
             logo: {
@@ -95,9 +116,10 @@ const config: Config = {
                     label: "Docs",
                 },
                 {
-                    to: "/docs/api",
+                    type: "docSidebar",
+                    sidebarId: "apiSidebar",
                     position: "left",
-                    label: "API Reference",
+                    label: "API",
                 },
                 {
                     href: "https://github.com/eugeniodepalo/gtkx",
@@ -113,25 +135,33 @@ const config: Config = {
                     title: "Docs",
                     items: [
                         {
-                            label: "Getting Started",
-                            to: "/docs/getting-started",
+                            label: "Introduction",
+                            to: "/docs/introduction",
                         },
                         {
-                            label: "API Reference",
-                            to: "/docs/api",
+                            label: "Getting Started",
+                            to: "/docs/getting-started",
                         },
                     ],
                 },
                 {
-                    title: "Learn",
+                    title: "API Reference",
                     items: [
                         {
-                            label: "Architecture",
-                            to: "/docs/architecture",
+                            label: "@gtkx/react",
+                            to: "/docs/api/react",
                         },
                         {
-                            label: "Contributing",
-                            to: "/docs/contributing",
+                            label: "@gtkx/css",
+                            to: "/docs/api/css",
+                        },
+                        {
+                            label: "@gtkx/testing",
+                            to: "/docs/api/testing",
+                        },
+                        {
+                            label: "@gtkx/ffi",
+                            to: "/docs/api/ffi",
                         },
                     ],
                 },
@@ -142,19 +172,13 @@ const config: Config = {
                             label: "GitHub",
                             href: "https://github.com/eugeniodepalo/gtkx",
                         },
-                        {
-                            label: "llms.txt",
-                            href: "pathname:///llms.txt",
-                        },
                     ],
                 },
             ],
-            copyright: `Copyright ${new Date().getFullYear()} Eugenio Depalo.`,
         },
         prism: {
             theme: prismThemes.github,
             darkTheme: prismThemes.dracula,
-            additionalLanguages: ["bash", "tsx", "typescript"],
         },
     } satisfies Preset.ThemeConfig,
 };

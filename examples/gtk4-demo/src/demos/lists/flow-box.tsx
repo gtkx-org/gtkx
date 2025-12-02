@@ -26,7 +26,7 @@ const colors = [
     "#9a9996",
 ];
 
-export const FlowBoxDemo = () => {
+const FlowBoxDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
             <Label.Root label="Flow Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />

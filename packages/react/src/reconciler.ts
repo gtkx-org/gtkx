@@ -47,7 +47,7 @@ type ReconcilerInstance = ReactReconciler.Reconciler<
 /**
  * GTKX React reconciler class.
  */
-export class Reconciler {
+class Reconciler {
     private instance: ReconcilerInstance;
     private app: Application | null = null;
 

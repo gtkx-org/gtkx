@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const HelloWorldDemo = () => {
+const HelloWorldDemo = () => {
     const [greeting, setGreeting] = useState("Hello, World!");
 
     return (

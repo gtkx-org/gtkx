@@ -1,6 +1,6 @@
 {
     "name": "gtk4-demo",
-    "version": "0.1.0",
+    "version": "0.0.0",
     "private": true,
     "description": "GTK4 Demo - A comprehensive showcase of GTK4 widgets in GTKX",
     "type": "module",

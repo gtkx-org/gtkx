@@ -20,7 +20,7 @@ import { format } from "prettier";
 /**
  * Configuration options for the FFI code generator.
  */
-export interface GeneratorOptions {
+interface GeneratorOptions {
     /** Output directory for generated files. */
     outputDir: string;
     /** The namespace being generated (e.g., "Gtk"). */
@@ -2162,10 +2162,12 @@ ${indent}  }`;
         }
         const ffiImports: string[] = [];
         if (this.usesNativeError) ffiImports.push("NativeError");
-        if (this.usesSignalMeta) ffiImports.push("SignalMeta");
         if (this.usesWrapPtr) ffiImports.push("wrapPtr");
         if (ffiImports.length > 0) {
             lines.push(`import { ${ffiImports.join(", ")} } from "@gtkx/ffi";`);
+        }
+        if (this.usesSignalMeta) {
+            lines.push(`import type { SignalMeta } from "../../types.js";`);
         }
         if (this.usedEnums.size > 0) {
             const enumList = Array.from(this.usedEnums).sort().join(", ");

@@ -18,38 +18,60 @@ GTKX is a framework for building native GTK4 desktop applications using React an
 - **Vitest** - Testing framework
 - **Turborepo** - Monorepo build system
 
-## Package-specific Commands
+## Commands
 
 ```bash
-turbo build                # Build package
-turbo test                 # Run tests
-turbo start                # Start example app
-turbo codegen              # Run code generation from GIR files
+# Build and run
+turbo build                              # Build all packages
+turbo start                              # Start example app
+turbo start --filter=counter-example     # Start specific example
+
+# Documentation
+pnpm run docs                            # Start documentation site
+
+# Testing
+turbo test                               # Run all tests
+turbo test --filter=@gtkx/react          # Run tests for a specific package
+xvfb-run -a pnpm vitest run tests/file.test.ts  # Run a single test file (requires xvfb)
+
+# Code generation
+turbo codegen                            # Generate FFI bindings from GIR files
+
+# Linting
+pnpm lint                                # Lint with Biome
+pnpm lint --write                        # Auto-fix lint issues
+pnpm knip                                # Check for unused code
 ```
 
-## Root-level Commands
-
-```bash
-pnpm lint                 # Lint with Biome
-pnpm lint --write         # Auto-fix lint issues
-pnpm knip                 # Check for unused code
-```
+Note: Tests require `xvfb-run` because GTK needs a display. Each package's test script wraps vitest with `xvfb-run -a`.
 
 ## Architecture
 
+### Data Flow
+
+```
+React JSX → @gtkx/react (Reconciler) → @gtkx/ffi (TS wrappers) → @gtkx/native (Rust) → libffi → GTK4
+```
+
+1. **@gtkx/gir** parses GIR XML files (GTK's machine-readable API docs)
+2. **@gtkx/ffi** and **@gtkx/react** use codegen to generate TypeScript classes and JSX types from GIR
+3. **@gtkx/react** reconciler converts React elements into `Node` instances that wrap GTK widgets
+4. **@gtkx/ffi** classes marshal TypeScript calls to C via the Rust native module
+5. **@gtkx/native** uses libffi to dynamically invoke C functions at runtime
+
 ### Package Structure
 
-- **@gtkx/react** (`packages/react`) - React reconciler and JSX components
-- **@gtkx/ffi** (`packages/ffi`) - Generated TypeScript FFI bindings for GTK4
-- **@gtkx/native** (`packages/native`) - Rust native module providing FFI bridge via libffi
+- **@gtkx/react** (`packages/react`) - React reconciler and JSX components. Entry: `render()` creates GTK app and mounts React tree. Key files: `reconciler.ts` (HostConfig), `node.ts` (widget wrappers), `factory.ts` (node routing)
+- **@gtkx/ffi** (`packages/ffi`) - Generated TypeScript FFI bindings. Each GTK class becomes a TS class with methods that call native FFI
+- **@gtkx/native** (`packages/native`) - Rust/Neon module exposing `start()`, `stop()`, `call()`, `read()`, `write()`, `alloc()`. Uses libffi for dynamic C invocation
 - **@gtkx/css** (`packages/css`) - Emotion-style CSS-in-JS for GTK widgets
-- **@gtkx/gir** (`packages/gir`) - GObject Introspection XML parser for code generation
-- **@gtkx/testing** (`packages/testing`) - Testing Library-inspired utilities for testing GTKX components
+- **@gtkx/gir** (`packages/gir`) - GIR XML parser. Used at codegen time by ffi and react packages
+- **@gtkx/testing** (`packages/testing`) - Testing Library-inspired utilities
 
 ### Examples
 
 - **counter-example** (`examples/counter`) - Simple counter app demonstrating state and testing
-- **gtk4-demo** (`examples/gtk4-demo`) - Comprehensive GTK4 widget showcase app, based on the official GTK4 demo
+- **gtk4-demo** (`examples/gtk4-demo`) - Comprehensive GTK4 widget showcase
 
 ## Coding Guidelines
 
@@ -79,14 +101,14 @@ pnpm knip                 # Check for unused code
 - Never add inline comments - if code needs explanation, refactor it
 - Use TSDoc only for public APIs
 - Prefer descriptive names over comments
-- Never edit generated files in `src/generated/` directories
+- Never edit generated files in `src/generated/` directories - run `turbo codegen` instead
 
 ### Naming
 
 - Use kebab-case for all files: `my-component.ts`
 - Names should be clear but not overly specific, and they should be consistent across the codebase
 - Prefer generic reusable names: `setup` over `setupTestsForGtk`
-- Use named exports only - never use default exports. Export names should be unique withint a package.
+- Use named exports only - never use default exports. Export names should be unique within a package.
 
 ### Code Reuse
 

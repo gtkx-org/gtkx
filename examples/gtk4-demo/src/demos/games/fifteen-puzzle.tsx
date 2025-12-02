@@ -92,7 +92,7 @@ const TileButton = ({
     );
 };
 
-export const FifteenPuzzleDemo = () => {
+const FifteenPuzzleDemo = () => {
     const [board, setBoard] = useState<TileBoard>(() => shuffleBoard(createSolvedBoard()));
     const [moves, setMoves] = useState(0);
     const [solved, setSolved] = useState(false);

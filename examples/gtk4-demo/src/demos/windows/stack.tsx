@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const StackDemo = () => {
+const StackDemo = () => {
     const [currentPage, setCurrentPage] = useState(0);
 
     const pages = [

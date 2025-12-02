@@ -36,7 +36,7 @@
         "dist"
     ],
     "scripts": {
-        "build": "tsc -b",
+        "build": "tsc -b && cp ../../README.md .",
         "test": "xvfb-run -a vitest run"
     },
     "dependencies": {

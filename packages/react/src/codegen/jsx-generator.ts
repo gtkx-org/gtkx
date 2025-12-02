@@ -5,7 +5,7 @@ import { format } from "prettier";
 /**
  * Configuration options for the JSX type generator.
  */
-export interface JsxGeneratorOptions {
+interface JsxGeneratorOptions {
     /** Optional Prettier configuration for formatting output. */
     prettierConfig?: unknown;
 }

@@ -1,198 +1,209 @@
 ---
-sidebar_position: 4
+sidebar_position: 2
 ---
 
-# Working with Lists
+# Lists and Data Binding
 
-This guide covers how to display and manage lists of data in GTKX applications.
-
-## List Components
-
-GTKX provides several components for displaying lists:
-
-| Component | Use Case |
-|-----------|----------|
-| `ListBox` | Simple selectable lists |
-| `ListView` | Large virtualized lists |
-| `DropDown` | Dropdown selection |
-
-## ListBox
-
-For simple lists where you control the content:
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-
-<ListBox selectionMode={Gtk.SelectionMode.SINGLE}>
-  <ListBoxRow>
-    <Label.Root label="Item 1" />
-  </ListBoxRow>
-  <ListBoxRow>
-    <Label.Root label="Item 2" />
-  </ListBoxRow>
-</ListBox>
-```
-
-### Selection Modes
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-
-<ListBox selectionMode={Gtk.SelectionMode.NONE} />     // No selection
-<ListBox selectionMode={Gtk.SelectionMode.SINGLE} />   // Single selection
-<ListBox selectionMode={Gtk.SelectionMode.MULTIPLE} /> // Multiple selection
-```
-
-### Dynamic Lists
-
-Generate rows from data using map:
-
-```tsx
-const items = [
-  { id: 1, name: "Apple" },
-  { id: 2, name: "Banana" },
-  { id: 3, name: "Cherry" },
-];
-
-<ListBox selectionMode={Gtk.SelectionMode.SINGLE}>
-  {items.map(item => (
-    <ListBoxRow key={item.id}>
-      <Label.Root label={item.name} marginStart={10} />
-    </ListBoxRow>
-  ))}
-</ListBox>
-```
+GTKX provides virtualized list components that efficiently render large datasets. Unlike React's standard array mapping, these use GTK's native list infrastructure with factory-based rendering.
 
 ## ListView
 
-For large lists with virtualization. ListView uses an item factory pattern for performance:
+`ListView` renders a scrollable, virtualized list of items:
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
+import { ListView, Label } from "@gtkx/react";
 
-const [items, setItems] = useState([
-  { id: 1, text: "Task 1" },
-  { id: 2, text: "Task 2" },
-  { id: 3, text: "Task 3" },
-]);
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
 
-<ScrolledWindow vexpand hexpand>
-  <ListView.Root
-    vexpand
-    renderItem={(item: { id: number; text: string } | null) => {
-      const box = new Gtk.Box();
-      const label = new Gtk.Label();
-      label.setLabel(item?.text ?? "");
-      box.append(label);
-      box.setMarginStart(10);
-      box.setMarginEnd(10);
-      return box;
-    }}
-  >
-    {items.map(item => (
-      <ListView.Item item={item} key={item.id} />
+const users: User[] = [
+  { id: "1", name: "Alice", email: "alice@example.com" },
+  { id: "2", name: "Bob", email: "bob@example.com" },
+  // ... hundreds more
+];
+
+const UserList = () => (
+  <ListView.Root renderItem={(user: User) => (
+    <Label.Root label={user.name} />
+  )}>
+    {users.map(user => (
+      <ListView.Item key={user.id} item={user} />
     ))}
   </ListView.Root>
-</ScrolledWindow>
+);
 ```
 
-The `renderItem` function:
-- Receives the item data (typed as `T`, or null during initialization)
-- Must return a `Gtk.Widget` instance
-- Is called for each visible item
-- Uses imperative widget construction via the FFI
+### How It Works
+
+1. **`ListView.Root`** creates a `GtkListView` with a `SignalListItemFactory`
+2. **`ListView.Item`** registers each data item with the internal model
+3. **`renderItem`** is called by GTK's factory system to render visible items
+4. Items outside the viewport are not rendered (virtualization)
+
+### Key Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `renderItem` | `(item: T) => ReactElement` | Required. Returns the widget to display for each item |
+
+## GridView
+
+`GridView` renders items in a grid layout with automatic wrapping:
+
+```tsx
+import { GridView, Box, Label, Image } from "@gtkx/react";
+import { Orientation } from "@gtkx/ffi/gtk";
+
+interface Photo {
+  id: string;
+  title: string;
+  thumbnail: string;
+}
+
+const PhotoGrid = ({ photos }: { photos: Photo[] }) => (
+  <GridView.Root renderItem={(photo: Photo) => (
+    <Box orientation={Orientation.VERTICAL} spacing={4}>
+      <Image.Root file={photo.thumbnail} />
+      <Label.Root label={photo.title} />
+    </Box>
+  )}>
+    {photos.map(photo => (
+      <GridView.Item key={photo.id} item={photo} />
+    ))}
+  </GridView.Root>
+);
+```
 
 ## DropDown
 
-For dropdown selection with typed items:
+`DropDown` creates a selection dropdown with custom item rendering:
 
 ```tsx
-type Option = { id: number; label: string };
+import { DropDown, Label } from "@gtkx/react";
+import { useState } from "react";
 
-const options: Option[] = [
-  { id: 1, label: "Option 1" },
-  { id: 2, label: "Option 2" },
-  { id: 3, label: "Option 3" },
+interface Country {
+  id: string;
+  name: string;
+  capital: string;
+}
+
+const countries: Country[] = [
+  { id: "us", name: "United States", capital: "Washington D.C." },
+  { id: "uk", name: "United Kingdom", capital: "London" },
+  { id: "jp", name: "Japan", capital: "Tokyo" },
 ];
 
-const [selected, setSelected] = useState<Option | null>(null);
+const CountrySelector = () => {
+  const [selected, setSelected] = useState<Country | null>(null);
 
-<DropDown.Root
-  hexpand
-  itemLabel={(item: Option) => item.label}
-  onSelectionChanged={(item: Option) => setSelected(item)}
->
-  {options.map(option => (
-    <DropDown.Item key={option.id} item={option} />
+  return (
+    <>
+      <DropDown.Root
+        itemLabel={(country: Country) => country.name}
+        onSelectionChanged={(country: Country) => setSelected(country)}
+      >
+        {countries.map(country => (
+          <DropDown.Item key={country.id} item={country} />
+        ))}
+      </DropDown.Root>
+
+      {selected && (
+        <Label.Root label={`Capital: ${selected.capital}`} />
+      )}
+    </>
+  );
+};
+```
+
+### DropDown Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `itemLabel` | `(item: T) => string` | Required. Returns the display text for each item |
+| `onSelectionChanged` | `(item: T, index: number) => void` | Called when selection changes |
+
+## Dynamic Updates
+
+List items respond to React state changes:
+
+```tsx
+const [users, setUsers] = useState<User[]>([]);
+
+const addUser = (user: User) => {
+  setUsers(prev => [...prev, user]);
+};
+
+const removeUser = (id: string) => {
+  setUsers(prev => prev.filter(u => u.id !== id));
+};
+
+// Items automatically update in the list
+<ListView.Root renderItem={(user: User) => (
+  <Box orientation={Orientation.HORIZONTAL} spacing={8}>
+    <Label.Root label={user.name} hexpand />
+    <Button label="Remove" onClicked={() => removeUser(user.id)} />
+  </Box>
+)}>
+  {users.map(user => (
+    <ListView.Item key={user.id} item={user} />
   ))}
-</DropDown.Root>
+</ListView.Root>
 ```
 
-### Props
+## When to Use Lists vs Array Mapping
 
-- `itemLabel`: Function to convert item to display string
-- `onSelectionChanged`: Called when selection changes with the selected item
+**Use `ListView`/`GridView` when:**
+- Rendering many items (100+)
+- Items have uniform height/size
+- You need virtualization for performance
 
-## Adding and Removing Items
-
-Use React state to manage list data:
+**Use standard array mapping when:**
+- Rendering few items (fewer than 50)
+- Items have varying sizes
+- You need complex conditional rendering per item
 
 ```tsx
-const [items, setItems] = useState([
-  { id: 1, text: "Item 1" },
-]);
+// Standard React pattern - fine for small lists
+<Box orientation={Orientation.VERTICAL}>
+  {items.map(item => (
+    <Label.Root key={item.id} label={item.name} />
+  ))}
+</Box>
 
-const addItem = () => {
-  setItems(prev => [
-    ...prev,
-    { id: Date.now(), text: `Item ${prev.length + 1}` }
-  ]);
-};
-
-const removeItem = (id: number) => {
-  setItems(prev => prev.filter(item => item.id !== id));
-};
+// GTKX ListView - better for large lists
+<ListView.Root renderItem={(item) => <Label.Root label={item.name} />}>
+  {items.map(item => (
+    <ListView.Item key={item.id} item={item} />
+  ))}
+</ListView.Root>
 ```
 
-## Scrolling
+## ColumnView (Tables)
 
-Wrap lists in ScrolledWindow for scrollable content:
-
-```tsx
-<ScrolledWindow vexpand hexpand minContentHeight={200}>
-  <ListBox>
-    {/* Items */}
-  </ListBox>
-</ScrolledWindow>
-```
-
-## Best Practices
-
-### Always Use Keys
-
-Provide unique `key` props when mapping arrays:
+For tabular data with multiple columns, use `ColumnView`:
 
 ```tsx
-{items.map(item => (
-  <ListBoxRow key={item.id}>  {/* Use a stable unique ID */}
-    <Label.Root label={item.name} />
-  </ListBoxRow>
-))}
-```
+import { ColumnView, Label } from "@gtkx/react";
 
-### Choose the Right Component
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+}
 
-- **ListBox**: Small to medium lists, rich row content, selection handling
-- **ListView**: Large lists (100+ items), virtualization needed, simple item rendering
-
-### Handle Empty States
-
-```tsx
-{items.length === 0 ? (
-  <Label.Root label="No items" cssClasses={["dim-label"]} />
-) : (
-  <ListBox>
-    {items.map(item => /* ... */)}
-  </ListBox>
-)}
+const ProductTable = ({ products }: { products: Product[] }) => (
+  <ColumnView.Root renderItem={(product: Product) => (
+    // This renders the row content
+    <Label.Root label={product.name} />
+  )}>
+    {products.map(product => (
+      <ColumnView.Item key={product.id} item={product} />
+    ))}
+  </ColumnView.Root>
+);
 ```

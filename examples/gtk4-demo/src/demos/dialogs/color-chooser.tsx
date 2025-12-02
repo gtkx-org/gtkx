@@ -4,7 +4,7 @@ import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const ColorChooserDemo = () => {
+const ColorChooserDemo = () => {
     const [color, setColor] = useState<string | null>(null);
 
     const openColorDialog = async () => {

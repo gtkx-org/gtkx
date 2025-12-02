@@ -22,7 +22,7 @@ const traverseApplication = function* (app: Gtk.Application): Generator<Gtk.Widg
     }
 };
 
-export const traverse = function* (container: Container): Generator<Gtk.Widget> {
+const traverse = function* (container: Container): Generator<Gtk.Widget> {
     if (isApplication(container)) {
         yield* traverseApplication(container);
     } else {

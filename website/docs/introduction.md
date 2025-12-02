@@ -1,79 +1,78 @@
 ---
 sidebar_position: 1
-slug: /
+slug: /introduction
 ---
 
 # Introduction
 
-GTKX is a framework for building GTK4 desktop applications using React and TypeScript. It bridges the GTK4 C library with React's component model through FFI (Foreign Function Interface), enabling developers to write native Linux desktop applications using familiar React patterns.
+GTKX is a framework for building native GTK4 desktop applications using React and TypeScript. It bridges React's component model with GTK4's native widget system, allowing you to write familiar React code that renders as native Linux desktop applications.
 
 ## Why GTKX?
 
-- **React Patterns**: Use hooks, state management, and component composition you already know
-- **Type Safety**: Full TypeScript support with auto-generated types from GTK's GObject Introspection
-- **Native Performance**: Direct FFI calls to GTK4 - no Electron, no WebView
-- **Modern GTK4**: Access the latest GTK4 widgets and features
+Building native desktop applications traditionally requires learning platform-specific toolkits and languages. GTKX changes this by letting you use the React skills you already have:
 
-## Quick Example
+- **Familiar React Patterns** — Use hooks, state, props, and components just like you would in a web app
+- **Type Safety** — Full TypeScript support with auto-generated types from GTK4's introspection data
+- **Native Performance** — Direct FFI bindings to GTK4 via Rust and libffi, no Electron overhead
+- **Modern Tooling** — Works with your existing Node.js toolchain, testing frameworks, and build tools
 
-```tsx
-import { ApplicationWindow, Box, Button, Label, quit, render } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
+## How It Works
 
-const Counter = () => {
-  const [count, setCount] = useState(0);
-  return (
-    <Box valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} spacing={12}>
-      <Label.Root label={`Count: ${count}`} cssClasses={["title-2"]} />
-      <Button label="Increment" onClicked={() => setCount(c => c + 1)} />
-    </Box>
-  );
-};
+GTKX uses a custom React Reconciler to translate React's virtual DOM operations into GTK4 widget operations:
 
-// Export app instance for use in dialogs
-export const app = render(
-  <ApplicationWindow title="Hello, GTKX!" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
-    <Counter />
-  </ApplicationWindow>,
-  "com.example.app"
-);
+```
+React JSX → React Reconciler → FFI Bindings → GTK4 Widgets
 ```
 
-## Package Structure
+1. You write React components using JSX
+2. The GTKX reconciler converts React elements into GTK widget nodes
+3. TypeScript FFI bindings marshal calls to native GTK4 via Rust
+4. GTK4 renders native widgets on your Linux desktop
+
+## Packages
 
 GTKX is organized as a monorepo with the following packages:
 
 | Package | Description |
 |---------|-------------|
-| `@gtkx/react` | React integration layer with JSX components |
-| `@gtkx/ffi` | Generated TypeScript FFI bindings for GTK libraries |
-| `@gtkx/gir` | GIR file parser for code generation |
-| `@gtkx/native` | Rust-based Neon module for FFI calls |
-| `@gtkx/css` | Emotion-style CSS-in-JS for styling GTK widgets |
+| `@gtkx/react` | React reconciler and JSX components |
+| `@gtkx/ffi` | TypeScript FFI bindings for GTK4, GLib, GIO, Gdk, and more |
+| `@gtkx/css` | CSS-in-JS styling for GTK widgets (Emotion-style API) |
+| `@gtkx/testing` | Testing utilities with a Testing Library-style API |
+| `@gtkx/native` | Rust native module providing the FFI bridge |
+| `@gtkx/gir` | GObject Introspection parser for code generation |
 
-## How It Works
+## Example
 
-1. **GIR Parsing**: GTK's GObject Introspection files describe the C API
-2. **Code Generation**: TypeScript bindings are generated from GIR files
-3. **React Reconciler**: A custom reconciler translates React elements to GTK widgets
-4. **FFI Bridge**: Rust + libffi enables dynamic calls to GTK's C functions
+Here's a simple counter application:
 
-## Requirements
+```tsx
+import { render, ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+import { Orientation } from "@gtkx/ffi/gtk";
+import { useState } from "react";
 
-- Node.js 20+
-- GTK4 runtime libraries
-- Linux (GTK4 is primarily a Linux toolkit)
+const Counter = () => {
+  const [count, setCount] = useState(0);
 
-For development from source, you also need:
-- pnpm 10+
-- Rust toolchain
-- GTK4 development headers
+  return (
+    <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
+      <Label.Root label={`Count: ${count}`} />
+      <Button label="Increment" onClicked={() => setCount(c => c + 1)} />
+    </Box>
+  );
+};
+
+const App = () => (
+  <ApplicationWindow title="Counter" defaultWidth={300} defaultHeight={150} onCloseRequest={quit}>
+    <Counter />
+  </ApplicationWindow>
+);
+
+render(<App />, "org.example.Counter");
+```
 
 ## Next Steps
 
-- [Getting Started](/docs/getting-started) - Install and create your first app
-- [Components Guide](/docs/guides/components) - Core API and component patterns
-- [Styling Guide](/docs/guides/styling) - CSS-in-JS styling with @gtkx/css
-- [Dialogs Guide](/docs/guides/dialogs) - Working with file, color, and alert dialogs
-- [Architecture](/docs/architecture) - Deep dive into how GTKX works
+- [Getting Started](./getting-started) — Install GTKX and create your first app
+- [Styling Guide](./guides/styling) — Style your app with CSS-in-JS
+- [Testing Guide](./guides/testing) — Write tests for your components

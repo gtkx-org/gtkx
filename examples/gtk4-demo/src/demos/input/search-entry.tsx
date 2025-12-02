@@ -31,7 +31,7 @@ const fruits = [
     "Watermelon",
 ];
 
-export const SearchEntryDemo = () => {
+const SearchEntryDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
             <Label.Root label="Search Entry" cssClasses={["title-2"]} halign={Gtk.Align.START} />

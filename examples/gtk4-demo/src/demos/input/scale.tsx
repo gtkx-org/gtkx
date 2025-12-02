@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-export const ScaleDemo = () => {
+const ScaleDemo = () => {
     const volumeAdjustment = useMemo(() => new Gtk.Adjustment(50, 0, 100, 1, 10, 0), []);
     const brightnessAdjustment = useMemo(() => new Gtk.Adjustment(75, 0, 100, 5, 10, 0), []);
     const temperatureAdjustment = useMemo(() => new Gtk.Adjustment(20, 10, 30, 0.5, 2, 0), []);
