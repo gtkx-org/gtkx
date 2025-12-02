@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/css",
-    "version": "0.1.19",
+    "version": "0.1.20",
     "description": "Emotion-style CSS-in-JS for GTKX applications",
     "keywords": [
         "gtk",
