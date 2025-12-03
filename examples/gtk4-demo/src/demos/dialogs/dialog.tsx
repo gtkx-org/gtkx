@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
+import { Box, Button, getApp, Label } from "@gtkx/react";
 import { useState } from "react";
-import { app } from "../../index.js";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
@@ -17,7 +16,7 @@ const DialogDemo = () => {
         dialog.setDefaultButton(1);
 
         try {
-            const response = await dialog.choose(app.getActiveWindow() ?? undefined);
+            const response = await dialog.choose(getApp().getActiveWindow() ?? undefined);
             setResult(response === 1 ? "Confirmed" : "Cancelled");
         } catch {
             setResult("Dismissed");
@@ -33,7 +32,7 @@ const DialogDemo = () => {
         dialog.setDefaultButton(0);
 
         try {
-            const response = await dialog.choose(app.getActiveWindow() ?? undefined);
+            const response = await dialog.choose(getApp().getActiveWindow() ?? undefined);
             setResult(response === 1 ? "Deleted" : "Cancelled");
         } catch {
             setResult("Dismissed");
@@ -48,7 +47,7 @@ const DialogDemo = () => {
         dialog.setDefaultButton(0);
 
         try {
-            await dialog.choose(app.getActiveWindow() ?? undefined);
+            await dialog.choose(getApp().getActiveWindow() ?? undefined);
             setResult("Acknowledged");
         } catch {
             setResult("Dismissed");

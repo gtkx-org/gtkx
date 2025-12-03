@@ -11,4 +11,4 @@ events.on("stop", () => {
     GtkSource.finalize();
 });
 
-export const app = render(<App />, "org.gtkx.Demo");
+render(<App />, "org.gtkx.Demo");

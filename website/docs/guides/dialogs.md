@@ -57,7 +57,6 @@ GTK4's `AlertDialog` and file dialogs use async/await patterns:
 ```tsx
 import { ApplicationWindow, Button, Label, Box, quit } from "@gtkx/react";
 import { AlertDialog } from "@gtkx/ffi/gtk";
-import { app } from "./index.js";
 import { useState } from "react";
 import { Orientation } from "@gtkx/ffi/gtk";
 
@@ -108,7 +107,6 @@ const App = () => {
 ```tsx
 import { Button, Label } from "@gtkx/react";
 import { FileDialog, FileFilter } from "@gtkx/ffi/gtk";
-import { app } from "./index.js";
 import { useState } from "react";
 
 const FilePicker = () => {

@@ -1,6 +1,5 @@
 import { start } from "@gtkx/ffi";
 import type { ApplicationFlags } from "@gtkx/ffi/gio";
-import type { Application } from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { reconciler } from "./reconciler.js";
@@ -26,7 +25,7 @@ export let container: unknown = null;
  * @param appId - The application ID (e.g., "com.example.myapp")
  * @param flags - Optional GIO application flags
  */
-export const render = (element: ReactNode, appId: string, flags?: ApplicationFlags): Application => {
+export const render = (element: ReactNode, appId: string, flags?: ApplicationFlags): void => {
     const app = start(appId, flags);
     const instance = reconciler.getInstance();
 
@@ -49,6 +48,4 @@ export const render = (element: ReactNode, appId: string, flags?: ApplicationFla
     );
 
     instance.updateContainer(element, container, null, () => {});
-
-    return app;
 };

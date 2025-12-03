@@ -22,3 +22,9 @@ export const quit = () => {
 
     return true;
 };
+
+/**
+ * Gets the current GTK application instance.
+ * @returns The GTK Application instance managed by the React reconciler
+ */
+export const getApp = () => reconciler.getApp();
