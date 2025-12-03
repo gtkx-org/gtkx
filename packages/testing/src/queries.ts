@@ -191,6 +191,14 @@ const formatByRoleError = (role: AccessibleRole, options?: ByRoleOptions): strin
     return parts.join(" and ");
 };
 
+/**
+ * Finds all widgets matching the specified accessible role.
+ * @param container - The container to search within
+ * @param role - The accessible role to match
+ * @param options - Additional filtering options (name, checked, expanded)
+ * @returns Array of matching widgets
+ * @throws If no elements are found
+ */
 export const getAllByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
         const accessible = node as unknown as Accessible;
@@ -204,6 +212,14 @@ export const getAllByRole = (container: Container, role: AccessibleRole, options
     return matches;
 };
 
+/**
+ * Finds a single widget matching the specified accessible role.
+ * @param container - The container to search within
+ * @param role - The accessible role to match
+ * @param options - Additional filtering options (name, checked, expanded)
+ * @returns The matching widget
+ * @throws If no elements or multiple elements are found
+ */
 export const getByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget => {
     const matches = getAllByRole(container, role, options);
 
@@ -213,6 +229,13 @@ export const getByRole = (container: Container, role: AccessibleRole, options?: 
     return matches[0] as Gtk.Widget;
 };
 
+/**
+ * Queries all widgets matching the specified accessible role without throwing.
+ * @param container - The container to search within
+ * @param role - The accessible role to match
+ * @param options - Additional filtering options (name, checked, expanded)
+ * @returns Array of matching widgets (empty if none found)
+ */
 export const queryAllByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
     return findAll(container, (node) => {
         const accessible = node as unknown as Accessible;
@@ -221,6 +244,14 @@ export const queryAllByRole = (container: Container, role: AccessibleRole, optio
     });
 };
 
+/**
+ * Queries a single widget matching the specified accessible role without throwing.
+ * @param container - The container to search within
+ * @param role - The accessible role to match
+ * @param options - Additional filtering options (name, checked, expanded)
+ * @returns The matching widget or null if not found
+ * @throws If multiple elements are found
+ */
 export const queryByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget | null => {
     const matches = queryAllByRole(container, role, options);
 
@@ -230,6 +261,14 @@ export const queryByRole = (container: Container, role: AccessibleRole, options?
     return matches[0] ?? null;
 };
 
+/**
+ * Finds all widgets matching the specified label text.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Array of matching widgets
+ * @throws If no elements are found
+ */
 export const getAllByLabelText = (
     container: Container,
     text: string | RegExp,
@@ -246,6 +285,14 @@ export const getAllByLabelText = (
     return matches;
 };
 
+/**
+ * Finds a single widget matching the specified label text.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns The matching widget
+ * @throws If no elements or multiple elements are found
+ */
 export const getByLabelText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
     const matches = getAllByLabelText(container, text, options);
 
@@ -255,6 +302,13 @@ export const getByLabelText = (container: Container, text: string | RegExp, opti
     return matches[0] as Gtk.Widget;
 };
 
+/**
+ * Queries all widgets matching the specified label text without throwing.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Array of matching widgets (empty if none found)
+ */
 export const queryAllByLabelText = (
     container: Container,
     text: string | RegExp,
@@ -266,6 +320,14 @@ export const queryAllByLabelText = (
     });
 };
 
+/**
+ * Queries a single widget matching the specified label text without throwing.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns The matching widget or null if not found
+ * @throws If multiple elements are found
+ */
 export const queryByLabelText = (
     container: Container,
     text: string | RegExp,
@@ -279,6 +341,14 @@ export const queryByLabelText = (
     return matches[0] ?? null;
 };
 
+/**
+ * Finds all widgets matching the specified text content.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Array of matching widgets
+ * @throws If no elements are found
+ */
 export const getAllByText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
         const widgetText = getWidgetText(node);
@@ -291,6 +361,14 @@ export const getAllByText = (container: Container, text: string | RegExp, option
     return matches;
 };
 
+/**
+ * Finds a single widget matching the specified text content.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns The matching widget
+ * @throws If no elements or multiple elements are found
+ */
 export const getByText = (container: Container, text: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
     const matches = getAllByText(container, text, options);
 
@@ -300,6 +378,13 @@ export const getByText = (container: Container, text: string | RegExp, options?:
     return matches[0] as Gtk.Widget;
 };
 
+/**
+ * Queries all widgets matching the specified text content without throwing.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Array of matching widgets (empty if none found)
+ */
 export const queryAllByText = (
     container: Container,
     text: string | RegExp,
@@ -311,6 +396,14 @@ export const queryAllByText = (
     });
 };
 
+/**
+ * Queries a single widget matching the specified text content without throwing.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns The matching widget or null if not found
+ * @throws If multiple elements are found
+ */
 export const queryByText = (
     container: Container,
     text: string | RegExp,
@@ -324,6 +417,14 @@ export const queryByText = (
     return matches[0] ?? null;
 };
 
+/**
+ * Finds all widgets matching the specified test ID.
+ * @param container - The container to search within
+ * @param testId - The test ID or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Array of matching widgets
+ * @throws If no elements are found
+ */
 export const getAllByTestId = (
     container: Container,
     testId: string | RegExp,
@@ -340,6 +441,14 @@ export const getAllByTestId = (
     return matches;
 };
 
+/**
+ * Finds a single widget matching the specified test ID.
+ * @param container - The container to search within
+ * @param testId - The test ID or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns The matching widget
+ * @throws If no elements or multiple elements are found
+ */
 export const getByTestId = (container: Container, testId: string | RegExp, options?: TextMatchOptions): Gtk.Widget => {
     const matches = getAllByTestId(container, testId, options);
 
@@ -349,6 +458,13 @@ export const getByTestId = (container: Container, testId: string | RegExp, optio
     return matches[0] as Gtk.Widget;
 };
 
+/**
+ * Queries all widgets matching the specified test ID without throwing.
+ * @param container - The container to search within
+ * @param testId - The test ID or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Array of matching widgets (empty if none found)
+ */
 export const queryAllByTestId = (
     container: Container,
     testId: string | RegExp,
@@ -360,6 +476,14 @@ export const queryAllByTestId = (
     });
 };
 
+/**
+ * Queries a single widget matching the specified test ID without throwing.
+ * @param container - The container to search within
+ * @param testId - The test ID or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns The matching widget or null if not found
+ * @throws If multiple elements are found
+ */
 export const queryByTestId = (
     container: Container,
     testId: string | RegExp,
@@ -373,48 +497,104 @@ export const queryByTestId = (
     return matches[0] ?? null;
 };
 
+/**
+ * Waits for and finds a single widget matching the specified accessible role.
+ * @param container - The container to search within
+ * @param role - The accessible role to match
+ * @param options - Additional filtering options (name, checked, expanded)
+ * @returns Promise resolving to the matching widget
+ */
 export const findByRole = async (
     container: Container,
     role: AccessibleRole,
     options?: ByRoleOptions,
 ): Promise<Gtk.Widget> => waitFor(() => getByRole(container, role, options));
 
+/**
+ * Waits for and finds all widgets matching the specified accessible role.
+ * @param container - The container to search within
+ * @param role - The accessible role to match
+ * @param options - Additional filtering options (name, checked, expanded)
+ * @returns Promise resolving to array of matching widgets
+ */
 export const findAllByRole = async (
     container: Container,
     role: AccessibleRole,
     options?: ByRoleOptions,
 ): Promise<Gtk.Widget[]> => waitFor(() => getAllByRole(container, role, options));
 
+/**
+ * Waits for and finds a single widget matching the specified label text.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Promise resolving to the matching widget
+ */
 export const findByLabelText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
 ): Promise<Gtk.Widget> => waitFor(() => getByLabelText(container, text, options));
 
+/**
+ * Waits for and finds all widgets matching the specified label text.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Promise resolving to array of matching widgets
+ */
 export const findAllByLabelText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
 ): Promise<Gtk.Widget[]> => waitFor(() => getAllByLabelText(container, text, options));
 
+/**
+ * Waits for and finds a single widget matching the specified text content.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Promise resolving to the matching widget
+ */
 export const findByText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
 ): Promise<Gtk.Widget> => waitFor(() => getByText(container, text, options));
 
+/**
+ * Waits for and finds all widgets matching the specified text content.
+ * @param container - The container to search within
+ * @param text - The text or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Promise resolving to array of matching widgets
+ */
 export const findAllByText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
 ): Promise<Gtk.Widget[]> => waitFor(() => getAllByText(container, text, options));
 
+/**
+ * Waits for and finds a single widget matching the specified test ID.
+ * @param container - The container to search within
+ * @param testId - The test ID or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Promise resolving to the matching widget
+ */
 export const findByTestId = async (
     container: Container,
     testId: string | RegExp,
     options?: TextMatchOptions,
 ): Promise<Gtk.Widget> => waitFor(() => getByTestId(container, testId, options));
 
+/**
+ * Waits for and finds all widgets matching the specified test ID.
+ * @param container - The container to search within
+ * @param testId - The test ID or pattern to match
+ * @param options - Text matching options (exact, normalizer)
+ * @returns Promise resolving to array of matching widgets
+ */
 export const findAllByTestId = async (
     container: Container,
     testId: string | RegExp,

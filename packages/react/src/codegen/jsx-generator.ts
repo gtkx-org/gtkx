@@ -581,6 +581,8 @@ ${widgetPropsContent}
                 isDropDownWidget(widget.name) ||
                 isGridWidget(widget.name);
 
+            const docComment = widget.doc ? formatDoc(widget.doc).trimEnd() : "";
+
             if (hasMeaningfulSlots) {
                 const valueMembers = [
                     `Root: "${widgetName}.Root" as const`,
@@ -591,9 +593,17 @@ ${widgetPropsContent}
                     ...(isDropDownWidget(widget.name) ? [`Item: "${widgetName}.Item" as const`] : []),
                     ...(isGridWidget(widget.name) ? [`Child: "${widgetName}.Child" as const`] : []),
                 ];
-                lines.push(`export const ${widgetName} = {\n\t${valueMembers.join(",\n\t")},\n};`);
+                if (docComment) {
+                    lines.push(`${docComment}\nexport const ${widgetName} = {\n\t${valueMembers.join(",\n\t")},\n};`);
+                } else {
+                    lines.push(`export const ${widgetName} = {\n\t${valueMembers.join(",\n\t")},\n};`);
+                }
             } else {
-                lines.push(`export const ${widgetName} = "${widgetName}" as const;`);
+                if (docComment) {
+                    lines.push(`${docComment}\nexport const ${widgetName} = "${widgetName}" as const;`);
+                } else {
+                    lines.push(`export const ${widgetName} = "${widgetName}" as const;`);
+                }
             }
         }
 

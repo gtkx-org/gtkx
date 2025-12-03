@@ -22,6 +22,9 @@ export const events = new EventEmitter<NativeEventMap>();
 /**
  * Wraps a native pointer in a class instance without calling the constructor.
  * Used when receiving pointers from FFI calls that need to be wrapped as TypeScript objects.
+ * @param ptr - The native pointer to wrap
+ * @param cls - The class whose prototype should be used
+ * @returns A new instance with the pointer attached
  */
 export const wrapPtr = <T extends object>(ptr: unknown, cls: { prototype: T }): T => {
     const instance = Object.create(cls.prototype) as T & { ptr: unknown };

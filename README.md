@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.svg" alt="GTKX Logo" width="128" height="128">
+  <img src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/HEAD/logo.svg" alt="GTKX Logo" width="128" height="128">
 </p>
 
 <h1 align="center">GTKX</h1>

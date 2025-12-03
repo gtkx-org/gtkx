@@ -14,14 +14,25 @@ const emitSignal = (widget: Gtk.Widget, signalName: string): void => {
     );
 };
 
+/**
+ * Options for configuring user event behavior.
+ */
 export interface UserEventOptions {
+    /** Delay between events in milliseconds */
     delay?: number;
 }
 
+/**
+ * Instance returned by userEvent.setup() with bound options.
+ */
 export interface UserEventInstance {
+    /** Simulates a click on the element */
     click: (element: Gtk.Widget) => Promise<void>;
+    /** Simulates a double-click on the element */
     dblClick: (element: Gtk.Widget) => Promise<void>;
+    /** Types text into an input element */
     type: (element: Gtk.Widget, text: string) => Promise<void>;
+    /** Clears the text content of an input element */
     clear: (element: Gtk.Widget) => Promise<void>;
 }
 
@@ -55,6 +66,11 @@ const createUserEventInstance = (_options?: UserEventOptions): UserEventInstance
     };
 };
 
+/**
+ * Simulates user interactions with GTK widgets. Provides methods that mimic
+ * real user behavior like clicking, typing, and clearing input fields.
+ * Use userEvent.setup() to create an instance with custom options.
+ */
 export const userEvent = {
     setup: (options?: UserEventOptions): UserEventInstance => createUserEventInstance(options),
 

@@ -400,9 +400,18 @@ const normalizeTypeName = (name: string): string => {
     return CLASS_RENAMES.get(pascalName) ?? pascalName;
 };
 
+/**
+ * Registry for tracking all types across GIR namespaces.
+ * Used for cross-namespace type resolution during code generation.
+ */
 export class TypeRegistry {
     private types = new Map<string, RegisteredType>();
 
+    /**
+     * Registers a class type.
+     * @param namespace - The namespace containing the class
+     * @param name - The class name
+     */
     registerClass(namespace: string, name: string): void {
         const transformedName = normalizeTypeName(name);
         this.types.set(`${namespace}.${name}`, {
@@ -413,6 +422,11 @@ export class TypeRegistry {
         });
     }
 
+    /**
+     * Registers an interface type.
+     * @param namespace - The namespace containing the interface
+     * @param name - The interface name
+     */
     registerInterface(namespace: string, name: string): void {
         const transformedName = normalizeTypeName(name);
         this.types.set(`${namespace}.${name}`, {
@@ -423,6 +437,11 @@ export class TypeRegistry {
         });
     }
 
+    /**
+     * Registers an enumeration type.
+     * @param namespace - The namespace containing the enum
+     * @param name - The enum name
+     */
     registerEnum(namespace: string, name: string): void {
         const transformedName = toPascalCase(name);
         this.types.set(`${namespace}.${name}`, {
@@ -433,6 +452,12 @@ export class TypeRegistry {
         });
     }
 
+    /**
+     * Registers a record (struct) type.
+     * @param namespace - The namespace containing the record
+     * @param name - The record name
+     * @param glibTypeName - Optional GLib type name for boxed type handling
+     */
     registerRecord(namespace: string, name: string, glibTypeName?: string): void {
         const transformedName = normalizeTypeName(name);
         this.types.set(`${namespace}.${name}`, {
@@ -444,6 +469,11 @@ export class TypeRegistry {
         });
     }
 
+    /**
+     * Registers a callback type.
+     * @param namespace - The namespace containing the callback
+     * @param name - The callback name
+     */
     registerCallback(namespace: string, name: string): void {
         const transformedName = toPascalCase(name);
         this.types.set(`${namespace}.${name}`, {
@@ -454,10 +484,21 @@ export class TypeRegistry {
         });
     }
 
+    /**
+     * Resolves a type by its fully qualified name (Namespace.TypeName).
+     * @param qualifiedName - The fully qualified type name
+     * @returns The registered type or undefined if not found
+     */
     resolve(qualifiedName: string): RegisteredType | undefined {
         return this.types.get(qualifiedName);
     }
 
+    /**
+     * Resolves a type name within a namespace context.
+     * @param name - The type name (may or may not be qualified)
+     * @param currentNamespace - The namespace to use if name is not qualified
+     * @returns The registered type or undefined if not found
+     */
     resolveInNamespace(name: string, currentNamespace: string): RegisteredType | undefined {
         if (name.includes(".")) {
             return this.resolve(name);
@@ -465,6 +506,11 @@ export class TypeRegistry {
         return this.resolve(`${currentNamespace}.${name}`);
     }
 
+    /**
+     * Creates a TypeRegistry populated with all types from the given namespaces.
+     * @param namespaces - Array of GIR namespaces to register
+     * @returns A new TypeRegistry containing all types
+     */
     static fromNamespaces(namespaces: GirNamespace[]): TypeRegistry {
         const registry = new TypeRegistry();
         for (const ns of namespaces) {
@@ -917,6 +963,11 @@ export class TypeMapper {
         return mapCType(girType.cType);
     }
 
+    /**
+     * Checks if a type name refers to a callback type.
+     * @param typeName - The type name to check
+     * @returns True if the type is a callback
+     */
     isCallback(typeName: string): boolean {
         if (this.typeRegistry) {
             const resolved = this.currentNamespace

@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/testing",
-    "version": "0.1.22",
+    "version": "0.1.23",
     "description": "Testing utilities for GTKX applications",
     "keywords": [
         "gtk",

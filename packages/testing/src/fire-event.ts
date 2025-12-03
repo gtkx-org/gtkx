@@ -22,6 +22,13 @@ type FireEventFunction = {
     changed: (element: Gtk.Widget) => void;
 };
 
+/**
+ * Fires GTK signals on widgets for testing. Can be called directly with a signal
+ * name or using convenience methods like fireEvent.click().
+ * @example
+ * fireEvent(button, "clicked")
+ * fireEvent.click(button)
+ */
 export const fireEvent: FireEventFunction = Object.assign(
     (element: Gtk.Widget, signalName: string): void => {
         emitSignal(element, signalName);

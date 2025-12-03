@@ -92,6 +92,12 @@ const wrapElement = (element: ReactNode, Wrapper?: RenderOptions["wrapper"]): Re
     return <Wrapper>{element}</Wrapper>;
 };
 
+/**
+ * Renders a React element into a GTK application for testing.
+ * @param element - The React element to render
+ * @param options - Render options including wrapper component
+ * @returns Object containing query methods, container, and utility functions
+ */
 export const render = (element: ReactNode, options?: RenderOptions): RenderResult => {
     const { app: application, container: fiberRoot } = ensureInitialized();
     const instance = reconciler.getInstance();
@@ -155,6 +161,10 @@ export const render = (element: ReactNode, options?: RenderOptions): RenderResul
     };
 };
 
+/**
+ * Cleans up the rendered component by unmounting it and destroying windows.
+ * Should be called after each test to reset state.
+ */
 export const cleanup = (): void => {
     if (container && app) {
         const instance = reconciler.getInstance();
@@ -167,6 +177,10 @@ export const cleanup = (): void => {
     setScreenRoot(null);
 };
 
+/**
+ * Tears down the testing environment by cleaning up and stopping GTK.
+ * Used as global teardown in vitest configuration.
+ */
 export const teardown = (): void => {
     if (app) {
         cleanup();

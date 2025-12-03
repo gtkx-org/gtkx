@@ -5,6 +5,10 @@ import type { ByRoleOptions, TextMatchOptions } from "./types.js";
 
 let currentRoot: Gtk.Application | null = null;
 
+/**
+ * Sets the root application for screen queries. Called internally by render().
+ * @param root - The GTK application to use as query root, or null to clear
+ */
 export const setScreenRoot = (root: Gtk.Application | null): void => {
     currentRoot = root;
 };
@@ -16,6 +20,11 @@ const getRoot = (): Gtk.Application => {
     return currentRoot;
 };
 
+/**
+ * Global screen object providing query methods bound to the current render root.
+ * Similar to Testing Library's screen, it provides all query variants without
+ * needing to destructure from render().
+ */
 export const screen = {
     getByRole: (role: AccessibleRole, options?: ByRoleOptions) => queries.getByRole(getRoot(), role, options),
     getByLabelText: (text: string | RegExp, options?: TextMatchOptions) =>

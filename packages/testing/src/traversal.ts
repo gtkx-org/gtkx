@@ -30,6 +30,12 @@ const traverse = function* (container: Container): Generator<Gtk.Widget> {
     }
 };
 
+/**
+ * Traverses the widget tree and returns all widgets matching the predicate.
+ * @param container - The application or widget to search within
+ * @param predicate - Function that returns true for matching widgets
+ * @returns Array of widgets that match the predicate
+ */
 export const findAll = (container: Container, predicate: (node: Gtk.Widget) => boolean): Gtk.Widget[] => {
     const results: Gtk.Widget[] = [];
     for (const node of traverse(container)) {

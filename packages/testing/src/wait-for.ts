@@ -4,6 +4,13 @@ import type { WaitForOptions } from "./types.js";
 const DEFAULT_TIMEOUT = 1000;
 const DEFAULT_INTERVAL = 50;
 
+/**
+ * Waits for a callback to succeed without throwing an error.
+ * @param callback - Function to execute repeatedly until it succeeds
+ * @param options - Wait options (timeout, interval, onTimeout)
+ * @returns Promise resolving to the callback's return value
+ * @throws If the callback keeps failing after the timeout period
+ */
 export const waitFor = async <T>(callback: () => T, options?: WaitForOptions): Promise<T> => {
     const { timeout = DEFAULT_TIMEOUT, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
     const startTime = Date.now();
@@ -45,6 +52,13 @@ const isElementRemoved = (element: Gtk.Widget | null): boolean => {
     }
 };
 
+/**
+ * Waits for an element to be removed from the widget tree.
+ * @param elementOrCallback - The element to watch or a callback returning the element
+ * @param options - Wait options (timeout, interval, onTimeout)
+ * @returns Promise resolving when the element is removed
+ * @throws If the element is already removed when called, or if timeout is reached
+ */
 export const waitForElementToBeRemoved = async (
     elementOrCallback: ElementOrCallback,
     options?: WaitForOptions,
