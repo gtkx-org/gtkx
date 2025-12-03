@@ -1,0 +1,296 @@
+# GTKX
+
+> Build native GTK4 desktop applications with React and TypeScript
+
+GTKX is a framework for building native GTK4 desktop applications using React and TypeScript. It bridges React's component model with GTK4's native widget system via a custom React Reconciler and Rust-based FFI bindings.
+
+## Key Features
+
+- **React Components**: Use React hooks, state, props, and component patterns
+- **Type Safety**: Full TypeScript support with auto-generated types from GTK4 introspection data
+- **Native Performance**: Direct FFI bindings to GTK4 via Rust and libffi (no Electron overhead)
+- **CSS-in-JS Styling**: Emotion-style `css` template literals for GTK widgets
+- **Testing Library**: Familiar `screen`, `userEvent`, and query APIs for testing components
+
+## Documentation
+
+- Homepage: https://eugeniodepalo.github.io/gtkx/
+- Introduction: https://eugeniodepalo.github.io/gtkx/docs/introduction
+- Getting Started: https://eugeniodepalo.github.io/gtkx/docs/getting-started
+- API Reference: https://eugeniodepalo.github.io/gtkx/docs/api/react
+- GitHub: https://github.com/eugeniodepalo/gtkx
+
+## Architecture
+
+```
+React JSX -> @gtkx/react (Reconciler) -> @gtkx/ffi (TS wrappers) -> @gtkx/native (Rust) -> libffi -> GTK4
+```
+
+1. You write React components using JSX
+2. The GTKX reconciler converts React elements into GTK widget nodes
+3. TypeScript FFI bindings marshal calls to native GTK4 via Rust
+4. GTK4 renders native widgets on your Linux desktop
+
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| @gtkx/react | React reconciler and JSX components |
+| @gtkx/ffi | TypeScript FFI bindings for GTK4, GLib, GIO, Gdk |
+| @gtkx/native | Rust native module providing the FFI bridge |
+| @gtkx/css | CSS-in-JS styling for GTK widgets (Emotion-style API) |
+| @gtkx/testing | Testing utilities with a Testing Library-style API |
+| @gtkx/gir | GObject Introspection parser for code generation |
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- GTK4 development libraries (`sudo dnf install gtk4-devel` on Fedora, `sudo apt install libgtk-4-dev` on Ubuntu)
+- Linux (GTK4 is Linux-native)
+
+### Installation
+
+```bash
+pnpm add @gtkx/react react
+pnpm add @gtkx/css        # For styling (optional)
+pnpm add -D @gtkx/testing # For testing (optional)
+```
+
+### Minimal Example
+
+```tsx
+// index.tsx
+import { render } from "@gtkx/react";
+import { App } from "./app.js";
+
+render(<App />, "org.example.MyApp");
+```
+
+```tsx
+// app.tsx
+import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+import { Orientation } from "@gtkx/ffi/gtk";
+import { useState } from "react";
+
+export const App = () => {
+  const [count, setCount] = useState(0);
+
+  return (
+    <ApplicationWindow
+      title="My App"
+      defaultWidth={400}
+      defaultHeight={300}
+      onCloseRequest={quit}
+    >
+      <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
+        <Label.Root label={`Count: ${count}`} />
+        <Button
+          label="Increment"
+          onClicked={() => setCount((c) => c + 1)}
+        />
+      </Box>
+    </ApplicationWindow>
+  );
+};
+```
+
+Run with: `pnpm tsx index.tsx`
+
+## Core Concepts
+
+### Rendering
+
+The `render(element, appId)` function is the entry point:
+- Initializes the GTK main loop
+- Creates a GTK Application with the given ID (reverse domain notation)
+- Mounts your React element tree
+- Starts the event loop
+
+### ApplicationWindow
+
+The main window component with key props:
+- `title`: Window title
+- `defaultWidth` / `defaultHeight`: Initial window size
+- `onCloseRequest`: Called when the window close button is clicked (use `quit()` for cleanup)
+
+### Layout Components
+
+- **Box**: Primary layout container. Use `orientation` (HORIZONTAL/VERTICAL) and `spacing` for gaps
+- **Grid**: Two-dimensional layout with explicit row/column positioning
+- **Stack**: Shows one child at a time, useful for multi-page interfaces
+
+### Widget Slots
+
+GTK widgets often have named child properties. GTKX exposes these as slots:
+
+```tsx
+<Expander.Root label="Click to expand">
+  <Expander.Child>
+    <Label.Root label="Hidden content" />
+  </Expander.Child>
+</Expander.Root>
+
+<HeaderBar.Root>
+  <HeaderBar.TitleWidget>
+    <Label.Root label="Custom Title" />
+  </HeaderBar.TitleWidget>
+</HeaderBar.Root>
+```
+
+### Event Handling
+
+GTK signals are exposed as React props with the `on` prefix:
+- `onClicked`: Button clicks
+- `onCloseRequest`: Window close
+- `onChanged`: Text input changes
+- `onActivate`: Widget activation
+
+### Portals
+
+Render React children into a different part of the GTK widget tree:
+
+```tsx
+import { createPortal, AboutDialog } from "@gtkx/react";
+
+{showDialog && createPortal(
+  <AboutDialog
+    programName="My App"
+    onCloseRequest={() => setShowDialog(false)}
+  />
+)}
+```
+
+## Styling with @gtkx/css
+
+```tsx
+import { css, cx, injectGlobal } from "@gtkx/css";
+import { Button } from "@gtkx/react";
+
+const primaryButton = css`
+  padding: 16px 32px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #3584e4, #9141ac);
+  color: white;
+  font-weight: bold;
+`;
+
+<Button label="Click me" cssClasses={[primaryButton]} />
+```
+
+### Built-in CSS Classes
+
+GTK provides built-in classes following GNOME HIG:
+- Button variants: `suggested-action`, `destructive-action`, `flat`, `circular`
+- Typography: `title-1`, `title-2`, `heading`, `caption`, `dim-label`
+- Containers: `card`, `boxed-list`
+
+### Theme Color Variables
+
+Use GTK CSS variables for theme-aware colors:
+- `@accent_bg_color`, `@accent_fg_color`: Accent colors
+- `@window_bg_color`, `@window_fg_color`: Window colors
+- `@card_bg_color`, `@card_shade_color`: Card colors
+- `@success_color`, `@warning_color`, `@error_color`: Status colors
+
+## Lists and Data Binding
+
+GTKX provides virtualized list components for large datasets:
+
+```tsx
+import { ListView, Label } from "@gtkx/react";
+
+<ListView.Root renderItem={(user: User) => (
+  <Label.Root label={user.name} />
+)}>
+  {users.map(user => (
+    <ListView.Item key={user.id} item={user} />
+  ))}
+</ListView.Root>
+```
+
+Available list components:
+- `ListView`: Scrollable virtualized list
+- `GridView`: Grid layout with automatic wrapping
+- `ColumnView`: Tabular data with columns
+- `DropDown`: Selection dropdown
+
+## Testing with @gtkx/testing
+
+```tsx
+import { cleanup, render, screen, userEvent } from "@gtkx/testing";
+import { AccessibleRole } from "@gtkx/ffi/gtk";
+import { afterEach, describe, expect, it } from "vitest";
+
+describe("Counter", () => {
+  afterEach(() => cleanup());
+
+  it("increments count when clicking button", async () => {
+    render(<App />);
+
+    const button = await screen.findByRole(AccessibleRole.BUTTON, {
+      name: "Increment",
+    });
+    await userEvent.click(button);
+
+    await screen.findByText("Count: 1");
+  });
+});
+```
+
+### Query Types
+
+- `getBy*` / `getAllBy*`: Throws if not found
+- `queryBy*` / `queryAllBy*`: Returns null/empty if not found
+- `findBy*` / `findAllBy*`: Async, waits for element
+
+Query methods: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
+
+### User Interactions
+
+- `userEvent.click(element)`: Simulate click
+- `userEvent.dblClick(element)`: Double click
+- `userEvent.type(element, text)`: Type text
+- `userEvent.clear(element)`: Clear input
+
+## Common Widgets
+
+### Buttons
+```tsx
+<Button label="Click me" onClicked={handleClick} />
+<Button iconName="list-add" cssClasses={["circular"]} />
+```
+
+### Labels
+```tsx
+<Label.Root label="Plain text" />
+<Label.Root label="<b>Bold</b> markup" useMarkup />
+```
+
+### Text Input
+```tsx
+<Entry placeholderText="Enter text" onChanged={handleChange} />
+<PasswordEntry placeholderText="Password" />
+```
+
+### Containers
+```tsx
+<Box orientation={Orientation.VERTICAL} spacing={12}>
+  {/* children */}
+</Box>
+
+<ScrolledWindow>
+  {/* scrollable content */}
+</ScrolledWindow>
+```
+
+### Dialogs
+```tsx
+<AboutDialog programName="My App" version="1.0" />
+<MessageDialog heading="Confirm" body="Are you sure?" />
+```
+
+## License
+
+MPL-2.0

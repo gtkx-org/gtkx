@@ -177,6 +177,10 @@ const config: Config = {
                             label: "GitHub",
                             href: "https://github.com/eugeniodepalo/gtkx",
                         },
+                        {
+                            label: "llms.txt",
+                            href: "https://eugeniodepalo.github.io/gtkx/llms.txt",
+                        },
                     ],
                 },
             ],
