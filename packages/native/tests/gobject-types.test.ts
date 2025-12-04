@@ -50,12 +50,10 @@ describe("GObject Types - Borrowed", () => {
             { type: "undefined" },
         );
 
-        const firstChild = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: { type: "gobject" }, value: box }],
-            { type: "gobject", borrowed: true },
-        );
+        const firstChild = call(GTK_LIB, "gtk_widget_get_first_child", [{ type: { type: "gobject" }, value: box }], {
+            type: "gobject",
+            borrowed: true,
+        });
         expect(firstChild).not.toBeNull();
     });
 });
@@ -121,7 +119,6 @@ describe("GObject Types - Owned", () => {
 });
 
 describe("GObject Types - General", () => {
-
     it("should handle null GObject argument", () => {
         const listView = call(
             GTK_LIB,
@@ -215,12 +212,12 @@ describe("Boxed Types - Borrowed", () => {
             borrowed: true,
         });
 
-        const layout = call(
-            GTK_LIB,
-            "gtk_label_get_layout",
-            [{ type: { type: "gobject" }, value: label }],
-            { type: "boxed", innerType: "PangoLayout", lib: "libpango-1.0.so.0", borrowed: true },
-        );
+        const layout = call(GTK_LIB, "gtk_label_get_layout", [{ type: { type: "gobject" }, value: label }], {
+            type: "boxed",
+            innerType: "PangoLayout",
+            lib: "libpango-1.0.so.0",
+            borrowed: true,
+        });
         expect(layout).not.toBeNull();
     });
 });

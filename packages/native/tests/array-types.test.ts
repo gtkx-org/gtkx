@@ -54,19 +54,16 @@ describe("GList/GSList Types - Owned", () => {
         });
         expect(display).not.toBeNull();
 
-        const monitors = call(
-            GDK_LIB,
-            "gdk_display_get_monitors",
-            [{ type: { type: "gobject" }, value: display }],
-            { type: "gobject", borrowed: true },
-        );
+        const monitors = call(GDK_LIB, "gdk_display_get_monitors", [{ type: { type: "gobject" }, value: display }], {
+            type: "gobject",
+            borrowed: true,
+        });
 
-        const count = call(
-            GIO_LIB,
-            "g_list_model_get_n_items",
-            [{ type: { type: "gobject" }, value: monitors }],
-            { type: "int", size: 32, unsigned: true },
-        ) as number;
+        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: monitors }], {
+            type: "int",
+            size: 32,
+            unsigned: true,
+        }) as number;
         expect(count).toBeGreaterThanOrEqual(1);
     });
 
@@ -89,7 +86,6 @@ describe("GList/GSList Types - Owned", () => {
 });
 
 describe("GList/GSList Types - General", () => {
-
     it("should handle empty GListStore", () => {
         const store = call(
             GIO_LIB,
@@ -266,12 +262,11 @@ describe("Array Input Arguments", () => {
         );
         expect(stringList).not.toBeNull();
 
-        const count = call(
-            GIO_LIB,
-            "g_list_model_get_n_items",
-            [{ type: { type: "gobject" }, value: stringList }],
-            { type: "int", size: 32, unsigned: true },
-        );
+        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: stringList }], {
+            type: "int",
+            size: 32,
+            unsigned: true,
+        });
         expect(count).toBe(3);
     });
 
@@ -289,12 +284,11 @@ describe("Array Input Arguments", () => {
         );
         expect(stringList).not.toBeNull();
 
-        const count = call(
-            GIO_LIB,
-            "g_list_model_get_n_items",
-            [{ type: { type: "gobject" }, value: stringList }],
-            { type: "int", size: 32, unsigned: true },
-        );
+        const count = call(GIO_LIB, "g_list_model_get_n_items", [{ type: { type: "gobject" }, value: stringList }], {
+            type: "int",
+            size: 32,
+            unsigned: true,
+        });
         expect(count).toBe(0);
     });
 
