@@ -43,8 +43,5 @@
         "@gtkx/ffi": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*"
-    },
-    "peerDependencies": {
-        "react": "^19"
     }
 }

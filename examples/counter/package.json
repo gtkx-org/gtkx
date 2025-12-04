@@ -12,11 +12,11 @@
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "react": "19.2.0"
+        "react": "19.2.1"
     },
     "devDependencies": {
         "@gtkx/testing": "workspace:*",
-        "@types/react": "19.2.6",
+        "@types/react": "19.2.7",
         "vitest": "3.2.3"
     }
 }
