@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/ffi",
-    "version": "0.1.31",
+    "version": "0.1.32",
     "description": "Generated TypeScript FFI bindings for GTK4 libraries",
     "keywords": [
         "gtk",
@@ -27,22 +27,18 @@
         "./package.json": "./package.json",
         ".": {
             "types": "./dist/index.d.ts",
-            "development": "./src/index.ts",
             "default": "./dist/index.js"
         },
         "./gl": {
             "types": "./dist/gl/index.d.ts",
-            "development": "./src/gl/index.ts",
             "default": "./dist/gl/index.js"
         },
         "./cairo": {
             "types": "./dist/cairo/index.d.ts",
-            "development": "./src/cairo/index.ts",
             "default": "./dist/cairo/index.js"
         },
         "./*": {
             "types": "./dist/generated/*/index.d.ts",
-            "development": "./src/generated/*/index.ts",
             "default": "./dist/generated/*/index.js"
         }
     },

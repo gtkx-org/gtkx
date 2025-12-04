@@ -2,7 +2,6 @@
     "files": [],
     "compilerOptions": {
         "composite": true,
-        "customConditions": ["development"],
         "declaration": true,
         "forceConsistentCasingInFileNames": true,
         "incremental": true,

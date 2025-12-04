@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/css",
-    "version": "0.1.31",
+    "version": "0.1.32",
     "description": "Emotion-style CSS-in-JS for GTKX applications",
     "keywords": [
         "gtk",
@@ -26,7 +26,6 @@
         "./package.json": "./package.json",
         ".": {
             "types": "./dist/index.d.ts",
-            "development": "./src/index.ts",
             "default": "./dist/index.js"
         }
     },

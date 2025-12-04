@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/native",
-    "version": "0.1.31",
+    "version": "0.1.32",
     "description": "Rust-based native module providing FFI bindings for GTKX",
     "keywords": [
         "gtk",
@@ -27,7 +27,6 @@
         "./package.json": "./package.json",
         ".": {
             "types": "./dist/index.d.ts",
-            "development": "./index.ts",
             "default": "./dist/index.js"
         }
     },
