@@ -1,6 +1,6 @@
 [package]
 name = "native"
-version = "0.1.34"
+version = "0.1.35"
 authors = ["Eugenio Depalo <eugeniodepalo@gmail.com>"]
 license = "MPL-2.0"
 edition = "2024"

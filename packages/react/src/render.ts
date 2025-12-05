@@ -29,8 +29,6 @@ export const render = (element: ReactNode, appId: string, flags?: ApplicationFla
     const app = start(appId, flags);
     const instance = reconciler.getInstance();
 
-    reconciler.setApp(app);
-
     container = instance.createContainer(
         app,
         0,

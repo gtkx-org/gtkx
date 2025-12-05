@@ -224,10 +224,12 @@ import { AccessibleRole } from "@gtkx/ffi/gtk";
 import { afterEach, describe, expect, it } from "vitest";
 
 describe("Counter", () => {
-  afterEach(() => cleanup());
+  afterEach(async () => {
+    await cleanup();
+  });
 
   it("increments count when clicking button", async () => {
-    render(<App />);
+    await render(<App />);
 
     const button = await screen.findByRole(AccessibleRole.BUTTON, {
       name: "Increment",
@@ -241,9 +243,9 @@ describe("Counter", () => {
 
 ### Query Types
 
-- `getBy*` / `getAllBy*`: Throws if not found
-- `queryBy*` / `queryAllBy*`: Returns null/empty if not found
-- `findBy*` / `findAllBy*`: Async, waits for element
+All queries are async and will wait for elements to appear (with a default timeout of 1000ms):
+
+- `findBy*` / `findAllBy*`: Waits for element, throws if not found (or if array is empty)
 
 Query methods: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
 

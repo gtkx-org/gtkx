@@ -1,4 +1,4 @@
-import { start, stop } from "@gtkx/ffi";
+import { getCurrentApp, start, stop } from "@gtkx/ffi";
 import type { Accessible, AccessibleRole } from "@gtkx/ffi/gtk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationWindow, reconciler } from "@gtkx/react";
@@ -10,7 +10,6 @@ import type { ByRoleOptions, RenderOptions, RenderResult, TextMatchOptions } fro
 
 const APP_ID = "com.gtkx.testing";
 
-let app: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
 
 type WidgetWithLabel = { getLabel: () => string | null };
@@ -48,14 +47,7 @@ const update = async (
 };
 
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
-    if (!app) {
-        try {
-            app = reconciler.getApp();
-        } catch {
-            app = start(APP_ID);
-            reconciler.setApp(app);
-        }
-    }
+    const app = start(APP_ID);
 
     if (!container) {
         const instance = reconciler.getInstance();
@@ -134,7 +126,8 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
  * Should be called after each test to reset state.
  */
 export const cleanup = async (): Promise<void> => {
-    if (container && app) {
+    if (container) {
+        const app = getCurrentApp();
         const instance = reconciler.getInstance();
         await update(instance, null, container);
         for (const window of app.getWindows()) {
@@ -150,10 +143,7 @@ export const cleanup = async (): Promise<void> => {
  * Can be used as global teardown in your test runner configuration.
  */
 export const teardown = async (): Promise<void> => {
-    if (app) {
-        await cleanup();
-        stop();
-        app = null;
-        container = null;
-    }
+    await cleanup();
+    stop();
+    container = null;
 };

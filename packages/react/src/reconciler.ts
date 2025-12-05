@@ -1,4 +1,4 @@
-import type { Application } from "@gtkx/ffi/gtk";
+import { getCurrentApp } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import ReactReconciler from "react-reconciler";
@@ -48,31 +48,10 @@ type ReconcilerInstance = ReactReconciler.Reconciler<
  */
 class Reconciler {
     private instance: ReconcilerInstance;
-    private app: Application | null = null;
 
     /** Creates a new GTK reconciler instance. */
     constructor() {
         this.instance = ReactReconciler(this.createHostConfig());
-    }
-
-    /**
-     * Gets the current GTK application instance.
-     * @returns The current GTK Application
-     */
-    getApp(): Application {
-        if (!this.app) {
-            throw new Error("Tried to get GTK Application before it was set.");
-        }
-
-        return this.app;
-    }
-
-    /**
-     * Sets the current GTK application instance.
-     * @param app The GTK Application to set
-     */
-    setApp(app: Application): void {
-        this.app = app;
     }
 
     /**
@@ -93,15 +72,15 @@ class Reconciler {
             getRootHostContext: () => ({}),
             getChildHostContext: (parentHostContext) => parentHostContext,
             shouldSetTextContent: () => false,
-            createInstance: (type, props) => createNode(type, props, this.getApp()),
-            createTextInstance: (text) => createNode("Label.Root", { label: text }, this.getApp()),
+            createInstance: (type, props) => createNode(type, props, getCurrentApp()),
+            createTextInstance: (text) => createNode("Label.Root", { label: text }, getCurrentApp()),
             appendInitialChild: (parent, child) => parent.appendChild(child),
             finalizeInitialChildren: () => true,
             commitUpdate: (instance, _type, oldProps, newProps) => {
                 instance.updateProps(oldProps, newProps);
             },
             commitMount: (instance) => {
-                instance.mount(this.getApp());
+                instance.mount(getCurrentApp());
             },
             appendChild: (parent, child) => parent.appendChild(child),
             removeChild: (parent, child) => parent.removeChild(child),
@@ -144,7 +123,7 @@ class Reconciler {
             prepareScopeUpdate: () => {},
             getInstanceFromScope: () => null,
             detachDeletedInstance: (instance) => {
-                instance.dispose(this.getApp());
+                instance.dispose(getCurrentApp());
             },
             resetFormInstance: () => {},
             requestPostPaintCallback: () => {},
@@ -167,10 +146,10 @@ class Reconciler {
 
     private createNodeFromContainer(container: Container): Node {
         if (container instanceof Gtk.Widget) {
-            return createNode(container.constructor.name, {}, this.getApp(), container);
+            return createNode(container.constructor.name, {}, getCurrentApp(), container);
         }
 
-        return createNode("Application", {}, this.getApp(), container as unknown as Gtk.Widget);
+        return createNode("Application", {}, getCurrentApp(), container as unknown as Gtk.Widget);
     }
 }
 

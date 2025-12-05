@@ -11,6 +11,7 @@ type NativeEventMap = {
     stop: [];
 };
 
+let currentApp: Application | null = null;
 let keepAliveTimeout: NodeJS.Timeout | null = null;
 
 /**
@@ -39,24 +40,47 @@ const keepAlive = (): void => {
 /**
  * Starts the GTK application with the given application ID.
  * Sets up a keep-alive timer to prevent Node.js from exiting.
+ * This function is idempotent - calling it multiple times returns the existing app.
  * @param appId - The application ID (e.g., "com.example.myapp")
  * @param flags - Optional GIO application flags
  * @returns The GTK Application instance
  */
 export const start = (appId: string, flags?: ApplicationFlags): Application => {
+    if (currentApp) {
+        return currentApp;
+    }
+
     const app = nativeStart(appId, flags);
+    currentApp = wrapPtr(app, Application);
     events.emit("start");
 
     keepAlive();
 
-    return wrapPtr(app, Application);
+    return currentApp;
+};
+
+/**
+ * Gets the current GTK application instance.
+ * @returns The GTK Application instance
+ * @throws Error if GTK has not been started yet
+ */
+export const getCurrentApp = (): Application => {
+    if (!currentApp) {
+        throw new Error("GTK application not initialized. Call start() first.");
+    }
+    return currentApp;
 };
 
 /**
  * Stops the GTK application and cleans up the keep-alive timer.
  * Emits the "stop" event before shutting down to allow cleanup.
+ * This function is idempotent - calling it when not started does nothing.
  */
 export const stop = (): void => {
+    if (!currentApp) {
+        return;
+    }
+
     if (keepAliveTimeout) {
         clearTimeout(keepAliveTimeout);
         keepAliveTimeout = null;
@@ -64,4 +88,5 @@ export const stop = (): void => {
 
     events.emit("stop");
     nativeStop();
+    currentApp = null;
 };

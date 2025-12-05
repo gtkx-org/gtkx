@@ -1,21 +1,14 @@
-import { start, stop } from "@gtkx/ffi";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import { getCurrentApp, start, stop } from "@gtkx/ffi";
 import type React from "react";
 import type Reconciler from "react-reconciler";
 import { afterEach, beforeAll } from "vitest";
 import { reconciler } from "../src/reconciler.js";
 
+export { getCurrentApp };
+
 const APP_ID = "com.gtkx.test.react";
 
-let app: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
-
-export const getApp = (): Gtk.Application => {
-    if (!app) {
-        throw new Error("GTK app not initialized. Call setupTests() in your test file.");
-    }
-    return app;
-};
 
 const getInstance = () => reconciler.getInstance();
 
@@ -75,9 +68,8 @@ const cleanup = (): void => {
 
 export const setupTests = () => {
     beforeAll(() => {
-        if (!app) {
-            app = start(APP_ID);
-            reconciler.setApp(app);
+        if (!container) {
+            const app = start(APP_ID);
             const instance = getInstance();
             container = instance.createContainer(
                 app,
@@ -101,10 +93,7 @@ export const setupTests = () => {
 };
 
 export const teardown = () => {
-    if (app) {
-        cleanup();
-        stop();
-        app = null;
-        container = null;
-    }
+    cleanup();
+    stop();
+    container = null;
 };
