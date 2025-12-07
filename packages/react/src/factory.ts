@@ -8,6 +8,7 @@ import { NotebookNode, NotebookPageNode } from "./nodes/notebook.js";
 import { OverlayNode } from "./nodes/overlay.js";
 import { type ROOT_NODE_CONTAINER, RootNode } from "./nodes/root.js";
 import { SlotNode } from "./nodes/slot.js";
+import { TextViewNode } from "./nodes/text-view.js";
 import { WidgetNode } from "./nodes/widget.js";
 
 export type Props = Record<string, unknown>;
@@ -32,6 +33,7 @@ const NODE_CLASSES = [
     GridChildNode,
     NotebookPageNode,
     SlotNode,
+    TextViewNode,
     DropDownNode,
     GridNode,
     OverlayNode,

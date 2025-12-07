@@ -26,6 +26,7 @@ const COLUMN_VIEW_WIDGET = "ColumnView";
 const DROPDOWN_WIDGETS = new Set(["DropDown"]);
 const GRID_WIDGETS = new Set(["Grid"]);
 const NOTEBOOK_WIDGET = "Notebook";
+const TEXT_VIEW_WIDGET = "TextView";
 
 const INTERNALLY_PROVIDED_PARAMS: Record<string, Set<string>> = {
     ApplicationWindow: new Set(["application"]),
@@ -60,6 +61,7 @@ const isColumnViewWidget = (widgetName: string): boolean => widgetName === COLUM
 const isDropDownWidget = (widgetName: string): boolean => DROPDOWN_WIDGETS.has(widgetName);
 const isGridWidget = (widgetName: string): boolean => GRID_WIDGETS.has(widgetName);
 const isNotebookWidget = (widgetName: string): boolean => widgetName === NOTEBOOK_WIDGET;
+const isTextViewWidget = (widgetName: string): boolean => widgetName === TEXT_VIEW_WIDGET;
 
 const sanitizeDoc = (doc: string): string => {
     let result = doc;
@@ -412,6 +414,12 @@ ${widgetPropsContent}
             lines.push(`\titemLabel?: (item: any) => string;`);
             lines.push(`\t/** Called when selection changes */`);
             lines.push(`\tonSelectionChanged?: (item: any, index: number) => void;`);
+        }
+
+        if (isTextViewWidget(widget.name)) {
+            lines.push("");
+            lines.push(`\t/** Called when the text buffer content changes */`);
+            lines.push(`\tonChanged?: (text: string) => void;`);
         }
 
         lines.push("");
