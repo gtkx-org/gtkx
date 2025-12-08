@@ -61,6 +61,9 @@ const extractDoc = (node: Record<string, unknown>): string | undefined => {
     return text?.trim();
 };
 
+const ensureArray = (value: unknown): Record<string, unknown>[] =>
+    Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
+
 /**
  * Parser for GObject Introspection (GIR) XML files.
  * Converts GIR XML into structured TypeScript interfaces.
@@ -143,19 +146,11 @@ export class GirParser {
             implements: this.parseImplements(
                 cls.implements as Record<string, unknown>[] | Record<string, unknown> | undefined,
             ),
-            methods: this.parseMethods(Array.isArray(cls.method) ? (cls.method as Record<string, unknown>[]) : []),
-            constructors: this.parseConstructors(
-                Array.isArray(cls.constructor) ? (cls.constructor as Record<string, unknown>[]) : [],
-            ),
-            functions: this.parseFunctions(
-                Array.isArray(cls.function) ? (cls.function as Record<string, unknown>[]) : [],
-            ),
-            properties: this.parseProperties(
-                Array.isArray(cls.property) ? (cls.property as Record<string, unknown>[]) : [],
-            ),
-            signals: this.parseSignals(
-                Array.isArray(cls["glib:signal"]) ? (cls["glib:signal"] as Record<string, unknown>[]) : [],
-            ),
+            methods: this.parseMethods(ensureArray(cls.method)),
+            constructors: this.parseConstructors(ensureArray(cls.constructor)),
+            functions: this.parseFunctions(ensureArray(cls.function)),
+            properties: this.parseProperties(ensureArray(cls.property)),
+            signals: this.parseSignals(ensureArray(cls["glib:signal"])),
             doc: extractDoc(cls),
         }));
     }
@@ -173,13 +168,9 @@ export class GirParser {
         return interfaces.map((iface) => ({
             name: String(iface["@_name"] ?? ""),
             cType: String(iface["@_c:type"] ?? iface["@_glib:type-name"] ?? ""),
-            methods: this.parseMethods(Array.isArray(iface.method) ? (iface.method as Record<string, unknown>[]) : []),
-            properties: this.parseProperties(
-                Array.isArray(iface.property) ? (iface.property as Record<string, unknown>[]) : [],
-            ),
-            signals: this.parseSignals(
-                Array.isArray(iface["glib:signal"]) ? (iface["glib:signal"] as Record<string, unknown>[]) : [],
-            ),
+            methods: this.parseMethods(ensureArray(iface.method)),
+            properties: this.parseProperties(ensureArray(iface.property)),
+            signals: this.parseSignals(ensureArray(iface["glib:signal"])),
             doc: extractDoc(iface),
         }));
     }
@@ -380,16 +371,10 @@ export class GirParser {
             disguised: record["@_disguised"] === "1",
             glibTypeName: record["@_glib:type-name"] ? String(record["@_glib:type-name"]) : undefined,
             glibGetType: record["@_glib:get-type"] ? String(record["@_glib:get-type"]) : undefined,
-            fields: this.parseFields(Array.isArray(record.field) ? (record.field as Record<string, unknown>[]) : []),
-            methods: this.parseMethods(
-                Array.isArray(record.method) ? (record.method as Record<string, unknown>[]) : [],
-            ),
-            constructors: this.parseConstructors(
-                Array.isArray(record.constructor) ? (record.constructor as Record<string, unknown>[]) : [],
-            ),
-            functions: this.parseFunctions(
-                Array.isArray(record.function) ? (record.function as Record<string, unknown>[]) : [],
-            ),
+            fields: this.parseFields(ensureArray(record.field)),
+            methods: this.parseMethods(ensureArray(record.method)),
+            constructors: this.parseConstructors(ensureArray(record.constructor)),
+            functions: this.parseFunctions(ensureArray(record.function)),
             doc: extractDoc(record),
         }));
     }
@@ -420,9 +405,7 @@ export class GirParser {
         return enumerations.map((enumeration) => ({
             name: String(enumeration["@_name"] ?? ""),
             cType: String(enumeration["@_c:type"] ?? ""),
-            members: this.parseEnumerationMembers(
-                Array.isArray(enumeration.member) ? (enumeration.member as Record<string, unknown>[]) : [],
-            ),
+            members: this.parseEnumerationMembers(ensureArray(enumeration.member)),
             doc: extractDoc(enumeration),
         }));
     }

@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import * as queries from "./queries.js";
 import { setScreenRoot } from "./screen.js";
+import { tick } from "./timing.js";
 import type { ByRoleOptions, RenderOptions, RenderResult, TextMatchOptions } from "./types.js";
 
 const ROOT_NODE_CONTAINER = Symbol.for("ROOT_NODE_CONTAINER");
@@ -18,10 +19,11 @@ type WidgetWithLabel = { getLabel: () => string | null };
 const hasGetLabel = (widget: unknown): widget is WidgetWithLabel =>
     typeof (widget as WidgetWithLabel).getLabel === "function";
 
+const asAccessible = (widget: Gtk.Widget): Accessible => widget as unknown as Accessible;
+
 const printWidgetTree = (root: Gtk.Widget, indent = 0): string => {
-    const accessible = root as unknown as Accessible;
     const prefix = "  ".repeat(indent);
-    const role = Gtk.AccessibleRole[accessible.getAccessibleRole()] ?? "UNKNOWN";
+    const role = Gtk.AccessibleRole[asAccessible(root).getAccessibleRole()] ?? "UNKNOWN";
     const label = hasGetLabel(root) ? ` label="${root.getLabel()}"` : "";
     let result = `${prefix}<${root.constructor.name} role=${role}${label}>\n`;
 
@@ -35,8 +37,6 @@ const printWidgetTree = (root: Gtk.Widget, indent = 0): string => {
 };
 
 type ReconcilerInstance = ReturnType<typeof reconciler.getInstance>;
-
-const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 const update = async (
     instance: ReconcilerInstance,

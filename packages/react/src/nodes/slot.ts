@@ -19,8 +19,8 @@ export class SlotNode extends Node<never> {
     private slotName: string;
     private parentNode: Node | null = null;
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
-        super(type, props, app);
+    constructor(type: string, props: Props) {
+        super(type, props);
 
         const dotIndex = type.indexOf(".");
 

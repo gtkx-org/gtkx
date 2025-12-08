@@ -1,7 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import type { ChildContainer } from "../container-interfaces.js";
 import { Node } from "../node.js";
 
-export class OverlayNode extends Node<Gtk.Overlay> {
+export class OverlayNode extends Node<Gtk.Overlay> implements ChildContainer {
     static matches(type: string): boolean {
         return type === "Overlay" || type === "Overlay.Root";
     }

@@ -1,5 +1,6 @@
 import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { type ItemContainer, isItemContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
 
@@ -43,7 +44,7 @@ class DropDownStore {
     }
 }
 
-export class DropDownNode extends Node<Gtk.DropDown> {
+export class DropDownNode extends Node<Gtk.DropDown> implements ItemContainer<unknown> {
     static matches(type: string): boolean {
         return type === "DropDown.Root";
     }
@@ -51,8 +52,8 @@ export class DropDownNode extends Node<Gtk.DropDown> {
     private store: DropDownStore;
     private onSelectionChanged?: (item: unknown, index: number) => void;
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
-        super(type, props, app);
+    constructor(type: string, props: Props) {
+        super(type, props);
 
         const labelFn = (props.itemLabel as ItemLabelFn) ?? ((item: unknown) => String(item));
         this.onSelectionChanged = props.onSelectionChanged as ((item: unknown, index: number) => void) | undefined;
@@ -70,8 +71,17 @@ export class DropDownNode extends Node<Gtk.DropDown> {
         }
     }
 
-    getStore(): DropDownStore {
-        return this.store;
+    addItem(item: unknown): void {
+        this.store.append(item);
+    }
+
+    insertItemBefore(item: unknown, _beforeItem: unknown): void {
+        // DropDown doesn't support ordered insertion
+        this.store.append(item);
+    }
+
+    removeItem(item: unknown): void {
+        this.store.remove(item);
     }
 
     protected override consumedProps(): Set<string> {
@@ -103,8 +113,8 @@ export class DropDownItemNode extends Node<never> {
 
     private item: unknown;
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
-        super(type, props, app);
+    constructor(type: string, props: Props) {
+        super(type, props);
         this.item = props.item;
     }
 
@@ -113,12 +123,12 @@ export class DropDownItemNode extends Node<never> {
     }
 
     override attachToParent(parent: Node): void {
-        if (!(parent instanceof DropDownNode)) return;
-        parent.getStore().append(this.item);
+        if (!isItemContainer(parent)) return;
+        parent.addItem(this.item);
     }
 
     override detachFromParent(parent: Node): void {
-        if (!(parent instanceof DropDownNode)) return;
-        parent.getStore().remove(this.item);
+        if (!isItemContainer(parent)) return;
+        parent.removeItem(this.item);
     }
 }

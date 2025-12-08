@@ -1,10 +1,20 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { type GridContainer, isGridContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
+import { getNumberProp } from "../prop-utils.js";
 
-export class GridNode extends Node<Gtk.Grid> {
+export class GridNode extends Node<Gtk.Grid> implements GridContainer {
     static matches(type: string): boolean {
         return type === "Grid.Root";
+    }
+
+    attachToGrid(child: Gtk.Widget, column: number, row: number, colSpan: number, rowSpan: number): void {
+        this.widget.attach(child, column, row, colSpan, rowSpan);
+    }
+
+    removeFromGrid(child: Gtk.Widget): void {
+        this.widget.remove(child);
     }
 }
 
@@ -22,14 +32,14 @@ export class GridChildNode extends Node<never> {
     private columnSpan: number;
     private rowSpan: number;
     private childWidget: Gtk.Widget | null = null;
-    private parentGrid: GridNode | null = null;
+    private parentContainer: (Node & GridContainer) | null = null;
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
-        super(type, props, app);
-        this.column = (props.column as number) ?? 0;
-        this.row = (props.row as number) ?? 0;
-        this.columnSpan = (props.columnSpan as number) ?? 1;
-        this.rowSpan = (props.rowSpan as number) ?? 1;
+    constructor(type: string, props: Props) {
+        super(type, props);
+        this.column = getNumberProp(props, "column", 0);
+        this.row = getNumberProp(props, "row", 0);
+        this.columnSpan = getNumberProp(props, "columnSpan", 1);
+        this.rowSpan = getNumberProp(props, "rowSpan", 1);
     }
 
     override appendChild(child: Node): void {
@@ -38,7 +48,7 @@ export class GridChildNode extends Node<never> {
         if (widget) {
             this.childWidget = widget;
 
-            if (this.parentGrid) {
+            if (this.parentContainer) {
                 this.attachChildToGrid();
             }
         }
@@ -54,22 +64,18 @@ export class GridChildNode extends Node<never> {
     }
 
     private attachChildToGrid(): void {
-        if (!this.parentGrid || !this.childWidget) return;
-        const grid = this.parentGrid.getWidget();
-        if (!grid) return;
-        grid.attach(this.childWidget, this.column, this.row, this.columnSpan, this.rowSpan);
+        if (!this.parentContainer || !this.childWidget) return;
+        this.parentContainer.attachToGrid(this.childWidget, this.column, this.row, this.columnSpan, this.rowSpan);
     }
 
     private detachChildFromGrid(): void {
-        if (!this.parentGrid || !this.childWidget) return;
-        const grid = this.parentGrid.getWidget();
-        if (!grid) return;
-        grid.remove(this.childWidget);
+        if (!this.parentContainer || !this.childWidget) return;
+        this.parentContainer.removeFromGrid(this.childWidget);
     }
 
     override attachToParent(parent: Node): void {
-        if (parent instanceof GridNode) {
-            this.parentGrid = parent;
+        if (isGridContainer(parent)) {
+            this.parentContainer = parent;
 
             if (this.childWidget) {
                 this.attachChildToGrid();
@@ -78,9 +84,9 @@ export class GridChildNode extends Node<never> {
     }
 
     override detachFromParent(parent: Node): void {
-        if (parent instanceof GridNode) {
+        if (isGridContainer(parent)) {
             this.detachChildFromGrid();
-            this.parentGrid = null;
+            this.parentContainer = null;
         }
     }
 
@@ -93,10 +99,10 @@ export class GridChildNode extends Node<never> {
 
         if (positionChanged) {
             this.detachChildFromGrid();
-            this.column = (newProps.column as number) ?? 0;
-            this.row = (newProps.row as number) ?? 0;
-            this.columnSpan = (newProps.columnSpan as number) ?? 1;
-            this.rowSpan = (newProps.rowSpan as number) ?? 1;
+            this.column = getNumberProp(newProps, "column", 0);
+            this.row = getNumberProp(newProps, "row", 0);
+            this.columnSpan = getNumberProp(newProps, "columnSpan", 1);
+            this.rowSpan = getNumberProp(newProps, "rowSpan", 1);
             this.attachChildToGrid();
         }
     }

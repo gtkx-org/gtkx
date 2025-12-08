@@ -990,9 +990,34 @@ export class TypeMapper {
      */
     mapParameter(param: GirParameter): MappedType {
         if (param.direction === "out" || param.direction === "inout") {
+            // Temporarily disable callbacks while mapping the inner type,
+            // since Ref<unknown> doesn't need the type import
+            const savedRecordCallback = this.onRecordUsed;
+            const savedExternalCallback = this.onExternalTypeUsed;
+            const savedClassCallback = this.onSameNamespaceClassUsed;
+            this.onRecordUsed = undefined;
+            this.onExternalTypeUsed = undefined;
+            this.onSameNamespaceClassUsed = undefined;
+
             const innerType = this.mapType(param.type);
+
+            // Restore callbacks
+            this.onRecordUsed = savedRecordCallback;
+            this.onExternalTypeUsed = savedExternalCallback;
+            this.onSameNamespaceClassUsed = savedClassCallback;
+
+            // For boxed/gobject types, Ref wraps the raw ptr (unknown), not the wrapper class
+            const isBoxedOrGObject = innerType.ffi.type === "boxed" || innerType.ffi.type === "gobject";
+            const tsType = isBoxedOrGObject ? "unknown" : innerType.ts;
+
+            // Only trigger callbacks for non-boxed/gobject types that will actually appear in TS
+            if (!isBoxedOrGObject) {
+                // Re-map with callbacks enabled to register the type usage
+                this.mapType(param.type);
+            }
+
             return {
-                ts: `Ref<${innerType.ts}>`,
+                ts: `Ref<${tsType}>`,
                 ffi: {
                     type: "ref",
                     innerType: innerType.ffi,

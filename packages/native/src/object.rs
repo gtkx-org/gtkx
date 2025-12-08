@@ -35,7 +35,10 @@ impl ObjectId {
 
     pub fn as_ptr(&self) -> *mut c_void {
         GtkThreadState::with(|state| {
-            let object = state.object_map.get(&self.0).unwrap();
+            let object = state
+                .object_map
+                .get(&self.0)
+                .expect("ObjectId references a non-existent object (possibly already garbage collected)");
 
             match object {
                 Object::GObject(obj) => obj.as_ptr() as *mut c_void,

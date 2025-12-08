@@ -709,7 +709,12 @@ impl Value {
                 Value::Object(object_id)
             }
             Type::Null | Type::Undefined => Value::Null,
-            _ => panic!("Unsupported type for glib value conversion: {:?}", type_),
+            Type::Array(_) | Type::Ref(_) | Type::Callback(_) => {
+                unreachable!(
+                    "Type {:?} should not appear in glib value conversion - this indicates a bug in the type mapping",
+                    type_
+                )
+            }
         }
     }
 
@@ -766,8 +771,30 @@ impl From<&glib::Value> for Value {
         } else if value.type_().is_a(glib::types::Type::PARAM_SPEC) {
             let param_spec: glib::ParamSpec = value.get().unwrap();
             Value::String(param_spec.name().to_string())
+        } else if value.type_().is_a(glib::types::Type::ENUM) {
+            let enum_value = unsafe {
+                glib::gobject_ffi::g_value_get_enum(
+                    glib::translate::ToGlibPtr::to_glib_none(value).0 as *const _,
+                )
+            };
+            Value::Number(enum_value as f64)
+        } else if value.type_().is_a(glib::types::Type::FLAGS) {
+            let flags_value = unsafe {
+                glib::gobject_ffi::g_value_get_flags(
+                    glib::translate::ToGlibPtr::to_glib_none(value).0 as *const _,
+                )
+            };
+            Value::Number(flags_value as f64)
+        } else if value.type_().is_a(glib::types::Type::OBJECT) {
+            value
+                .get::<Option<glib::Object>>()
+                .ok()
+                .flatten()
+                .map_or(Value::Null, |obj| {
+                    Value::Object(ObjectId::new(Object::GObject(obj)))
+                })
         } else {
-            panic!("Unsupported glib value type: {:?}", value.type_());
+            Value::Null
         }
     }
 }

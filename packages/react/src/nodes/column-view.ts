@@ -4,13 +4,19 @@ import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type Reconciler from "react-reconciler";
 import { scheduleFlush } from "../batch.js";
+import {
+    type ColumnContainer,
+    type ItemContainer,
+    isColumnContainer,
+    isItemContainer,
+} from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { createFiberRoot } from "../fiber-root.js";
 import { Node } from "../node.js";
 import { reconciler } from "../reconciler.js";
 import type { ColumnSortFn, RenderItemFn } from "../types.js";
 
-export class ColumnViewNode extends Node<Gtk.ColumnView> {
+export class ColumnViewNode extends Node<Gtk.ColumnView> implements ItemContainer<unknown>, ColumnContainer {
     static matches(type: string): boolean {
         return type === "ColumnView.Root";
     }
@@ -30,8 +36,8 @@ export class ColumnViewNode extends Node<Gtk.ColumnView> {
     private lastNotifiedColumn: string | null = null;
     private lastNotifiedOrder: Gtk.SortType = Gtk.SortType.ASCENDING;
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
-        super(type, props, app);
+    constructor(type: string, props: Props) {
+        super(type, props);
 
         this.stringList = new Gtk.StringList([]);
         this.sortListModel = new Gtk.SortListModel(
@@ -276,8 +282,8 @@ export class ColumnViewColumnNode extends Node {
     private columnId: string | null = null;
     private sorter: Gtk.CustomSorter | null = null;
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
-        super(type, props, app);
+    constructor(type: string, props: Props) {
+        super(type, props);
 
         this.factory = new Gtk.SignalListItemFactory();
         this.column = new Gtk.ColumnViewColumn(props.title as string | undefined, this.factory);
@@ -406,13 +412,13 @@ export class ColumnViewColumnNode extends Node {
     }
 
     override attachToParent(parent: Node): void {
-        if (parent instanceof ColumnViewNode) {
+        if (isColumnContainer(parent)) {
             parent.addColumn(this);
         }
     }
 
     override attachToParentBefore(parent: Node, before: Node): void {
-        if (parent instanceof ColumnViewNode && before instanceof ColumnViewColumnNode) {
+        if (isColumnContainer(parent) && before instanceof ColumnViewColumnNode) {
             parent.insertColumnBefore(this, before);
         } else {
             this.attachToParent(parent);
@@ -420,7 +426,7 @@ export class ColumnViewColumnNode extends Node {
     }
 
     override detachFromParent(parent: Node): void {
-        if (parent instanceof ColumnViewNode) {
+        if (isColumnContainer(parent)) {
             parent.removeColumn(this);
         }
     }
@@ -473,8 +479,8 @@ export class ColumnViewItemNode extends Node {
 
     private item: unknown;
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
-        super(type, props, app);
+    constructor(type: string, props: Props) {
+        super(type, props);
         this.item = props.item as unknown;
     }
 
@@ -483,13 +489,13 @@ export class ColumnViewItemNode extends Node {
     }
 
     override attachToParent(parent: Node): void {
-        if (parent instanceof ColumnViewNode) {
+        if (isItemContainer(parent)) {
             parent.addItem(this.item);
         }
     }
 
     override attachToParentBefore(parent: Node, before: Node): void {
-        if (parent instanceof ColumnViewNode && before instanceof ColumnViewItemNode) {
+        if (isItemContainer(parent) && before instanceof ColumnViewItemNode) {
             parent.insertItemBefore(this.item, before.getItem());
         } else {
             this.attachToParent(parent);
@@ -497,7 +503,7 @@ export class ColumnViewItemNode extends Node {
     }
 
     override detachFromParent(parent: Node): void {
-        if (parent instanceof ColumnViewNode) {
+        if (isItemContainer(parent)) {
             parent.removeItem(this.item);
         }
     }

@@ -3,6 +3,7 @@ import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type Reconciler from "react-reconciler";
 import { scheduleFlush } from "../batch.js";
+import { type ItemContainer, isItemContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { createFiberRoot } from "../fiber-root.js";
 import { Node } from "../node.js";
@@ -14,7 +15,7 @@ interface ListItemInfo {
     fiberRoot: Reconciler.FiberRoot;
 }
 
-export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
+export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> implements ItemContainer<unknown> {
     static matches(type: string): boolean {
         return type === "ListView.Root" || type === "GridView.Root";
     }
@@ -27,8 +28,8 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView> {
     private listItemCache = new Map<number, ListItemInfo>();
     private committedLength = 0;
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
-        super(type, props, app);
+    constructor(type: string, props: Props) {
+        super(type, props);
 
         this.stringList = new Gtk.StringList([]);
         this.selectionModel = new Gtk.SingleSelection(this.stringList as unknown as Gio.ListModel);
@@ -147,8 +148,8 @@ export class ListItemNode extends Node {
 
     private item: unknown;
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
-        super(type, props, app);
+    constructor(type: string, props: Props) {
+        super(type, props);
         this.item = props.item as unknown;
     }
 
@@ -157,13 +158,13 @@ export class ListItemNode extends Node {
     }
 
     override attachToParent(parent: Node): void {
-        if (parent instanceof ListViewNode) {
+        if (isItemContainer(parent)) {
             parent.addItem(this.item);
         }
     }
 
     override attachToParentBefore(parent: Node, before: Node): void {
-        if (parent instanceof ListViewNode && before instanceof ListItemNode) {
+        if (isItemContainer(parent) && before instanceof ListItemNode) {
             parent.insertItemBefore(this.item, before.getItem());
         } else {
             this.attachToParent(parent);
@@ -171,7 +172,7 @@ export class ListItemNode extends Node {
     }
 
     override detachFromParent(parent: Node): void {
-        if (parent instanceof ListViewNode) {
+        if (isItemContainer(parent)) {
             parent.removeItem(this.item);
         }
     }

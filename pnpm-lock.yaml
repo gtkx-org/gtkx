@@ -45,28 +45,6 @@ importers:
         specifier: 4.0.15
         version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
-  examples/counter:
-    dependencies:
-      '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:../../packages/ffi
-      '@gtkx/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      react:
-        specifier: 19.2.1
-        version: 19.2.1
-    devDependencies:
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
-      '@types/react':
-        specifier: 19.2.7
-        version: 19.2.7
-      vitest:
-        specifier: 4.0.15
-        version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
-
   examples/gtk4-demo:
     dependencies:
       '@gtkx/css':
@@ -85,28 +63,6 @@ importers:
       '@types/react':
         specifier: 19.2.7
         version: 19.2.7
-
-  examples/list:
-    dependencies:
-      '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:../../packages/ffi
-      '@gtkx/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      react:
-        specifier: 19.2.1
-        version: 19.2.1
-    devDependencies:
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
-      '@types/react':
-        specifier: 19.2.7
-        version: 19.2.7
-      vitest:
-        specifier: 4.0.15
-        version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/css:
     dependencies:

@@ -182,6 +182,19 @@ fn handle_call(
 
     for (i, arg) in args.iter().enumerate() {
         if let Value::Ref(r#ref) = &arg.value {
+            // For Ref<Boxed> and Ref<GObject> out parameters, the original ObjectId
+            // already points to the memory that was modified by the FFI call.
+            // We don't need to update the ref - the JS side can use the original
+            // object which now contains the initialized data.
+            if let Type::Ref(ref_type) = &arg.type_ {
+                match &*ref_type.inner_type {
+                    Type::Boxed(_) | Type::GObject(_) => {
+                        // Skip ref update - the original ObjectId is still valid
+                        continue;
+                    }
+                    _ => {}
+                }
+            }
             let new_value = Value::from_cif_value(&cif_args[i], &arg.type_)?;
             ref_updates.push((r#ref.js_obj.clone(), new_value));
         }

@@ -27,6 +27,7 @@ const matchText = (actual: string | null, expected: string | RegExp, options?: T
     return expected.test(normalizedActual);
 };
 
+const asAccessible = (widget: Gtk.Widget): Accessible => widget as unknown as Accessible;
 const asButton = (widget: Gtk.Widget): Button => getObject(widget.ptr, Button);
 const asLabel = (widget: Gtk.Widget): Label => getObject(widget.ptr, Label);
 const asCheckButton = (widget: Gtk.Widget): CheckButton => getObject(widget.ptr, CheckButton);
@@ -34,14 +35,13 @@ const asToggleButton = (widget: Gtk.Widget): ToggleButton => getObject(widget.pt
 const asExpander = (widget: Gtk.Widget): Expander => getObject(widget.ptr, Expander);
 
 const isInternalLabel = (widget: Gtk.Widget): boolean => {
-    const accessible = widget as unknown as Accessible;
+    const accessible = asAccessible(widget);
     if (accessible.getAccessibleRole() !== AccessibleRole.LABEL) return false;
 
     const parent = widget.getParent();
     if (!parent) return false;
 
-    const parentAccessible = parent as unknown as Accessible;
-    const parentRole = parentAccessible.getAccessibleRole();
+    const parentRole = asAccessible(parent).getAccessibleRole();
 
     return (
         parentRole === AccessibleRole.BUTTON ||
@@ -57,8 +57,7 @@ const isInternalLabel = (widget: Gtk.Widget): boolean => {
 const getWidgetText = (widget: Gtk.Widget): string | null => {
     if (isInternalLabel(widget)) return null;
 
-    const accessible = widget as unknown as Accessible;
-    const role = accessible.getAccessibleRole();
+    const role = asAccessible(widget).getAccessibleRole();
 
     switch (role) {
         case AccessibleRole.BUTTON:
@@ -85,8 +84,7 @@ const getWidgetTestId = (widget: Gtk.Widget): string | null => {
 };
 
 const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
-    const accessible = widget as unknown as Accessible;
-    const role = accessible.getAccessibleRole();
+    const role = asAccessible(widget).getAccessibleRole();
 
     if (role === AccessibleRole.CHECKBOX || role === AccessibleRole.RADIO) {
         return asCheckButton(widget).getActive();
@@ -100,8 +98,7 @@ const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
 };
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | undefined => {
-    const accessible = widget as unknown as Accessible;
-    const role = accessible.getAccessibleRole();
+    const role = asAccessible(widget).getAccessibleRole();
 
     if (role === AccessibleRole.BUTTON) {
         const parent = widget.getParent();
@@ -148,8 +145,7 @@ const formatByRoleError = (role: AccessibleRole, options?: ByRoleOptions): strin
 
 const getAllByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
-        const accessible = node as unknown as Accessible;
-        if (accessible.getAccessibleRole() !== role) return false;
+        if (asAccessible(node).getAccessibleRole() !== role) return false;
         return matchByRoleOptions(node, options);
     });
 

@@ -7,11 +7,13 @@ import { Node } from "../node.js";
 type OnChangedHandler = (text: string) => void;
 
 const getBufferText = (buffer: Gtk.TextBuffer): string => {
-    const startRef = createRef(new Gtk.TextIter());
-    const endRef = createRef(new Gtk.TextIter());
+    const startIter = new Gtk.TextIter();
+    const endIter = new Gtk.TextIter();
+    const startRef = createRef(startIter.ptr);
+    const endRef = createRef(endIter.ptr);
     buffer.getStartIter(startRef);
     buffer.getEndIter(endRef);
-    return buffer.getText(startRef.value, endRef.value, true);
+    return buffer.getText(startIter, endIter, true);
 };
 
 const setBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
@@ -27,8 +29,8 @@ export class TextViewNode extends Node<Gtk.TextView> {
     private onChanged?: OnChangedHandler;
     private bufferChangedHandlerId?: number;
 
-    constructor(type: string, props: Props, app: Gtk.Application) {
-        super(type, props, app);
+    constructor(type: string, props: Props) {
+        super(type, props);
 
         this.buffer = this.widget.getBuffer();
         this.onChanged = props.onChanged as OnChangedHandler | undefined;

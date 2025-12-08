@@ -260,7 +260,7 @@ impl Value {
             Value::Ptr(ptr) => ptr as *const *mut c_void as *mut c_void,
             Value::OwnedPtr(owned_ptr) => owned_ptr as *const OwnedPtr as *mut c_void,
             Value::TrampolineCallback(_) => {
-                panic!("TrampolineCallback should not be converted to a single pointer")
+                unreachable!("TrampolineCallback should not be converted to a single pointer - it requires special handling in call.rs")
             }
             Value::Void => std::ptr::null_mut(),
         }
@@ -630,14 +630,44 @@ impl Value {
             _ => bail!("Expected a Ref for ref type, got {:?}", arg.value),
         };
 
-        let ref_arg = Arg::new(*type_.inner_type.clone(), *r#ref.value.clone());
-        let ref_value = Box::new(Value::try_from(ref_arg)?);
-        let ref_ptr = ref_value.as_ptr();
+        // For Boxed and GObject types, check if caller allocated the memory.
+        // - If value is an ObjectId: caller-allocates, pass pointer directly (GTK writes INTO memory)
+        // - If value is null/undefined: GTK-allocates, pass pointer-to-pointer (GTK writes pointer back)
+        match &*type_.inner_type {
+            Type::Boxed(_) | Type::GObject(_) => {
+                match &*r#ref.value {
+                    value::Value::Object(id) => {
+                        // Caller-allocates: pass the pointer directly
+                        let ptr = id.as_ptr();
+                        Ok(Value::Ptr(ptr))
+                    }
+                    value::Value::Null | value::Value::Undefined => {
+                        // GTK-allocates: need pointer-to-pointer semantics
+                        // OwnedPtr.ptr will be passed by address to FFI (&owned_ptr.ptr)
+                        // GTK writes the allocated pointer into that location
+                        Ok(Value::OwnedPtr(OwnedPtr {
+                            ptr: std::ptr::null_mut(),
+                            value: Box::new(()), // Just need to keep OwnedPtr alive
+                        }))
+                    }
+                    _ => bail!(
+                        "Expected an Object or Null for Ref<Boxed/GObject>, got {:?}",
+                        r#ref.value
+                    ),
+                }
+            }
+            _ => {
+                // For primitive types, create storage and pass pointer to it
+                let ref_arg = Arg::new(*type_.inner_type.clone(), *r#ref.value.clone());
+                let ref_value = Box::new(Value::try_from(ref_arg)?);
+                let ref_ptr = ref_value.as_ptr();
 
-        Ok(Value::OwnedPtr(OwnedPtr {
-            value: ref_value,
-            ptr: ref_ptr,
-        }))
+                Ok(Value::OwnedPtr(OwnedPtr {
+                    value: ref_value,
+                    ptr: ref_ptr,
+                }))
+            }
+        }
     }
 }
 
@@ -657,7 +687,7 @@ impl<'a> From<&'a Value> for ffi::Arg<'a> {
             Value::Ptr(ptr) => ffi::arg(ptr),
             Value::OwnedPtr(owned_ptr) => ffi::arg(&owned_ptr.ptr),
             Value::TrampolineCallback(_) => {
-                panic!("TrampolineCallback should be handled specially in call.rs")
+                unreachable!("TrampolineCallback should be handled specially in call.rs")
             }
             Value::Void => ffi::arg(&()),
         }

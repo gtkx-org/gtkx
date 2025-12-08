@@ -47,7 +47,7 @@ const getChildLabels = (widget: Gtk.Widget): string[] =>
 describe("React Reconciler", () => {
     describe("node factory", () => {
         it("creates Button with correct props", () => {
-            const node = createNode("Button", { label: "Click me" }, getCurrentApp());
+            const node = createNode("Button", { label: "Click me" });
             const widget = node.getWidget() as Gtk.Button;
 
             expect(widget).toBeInstanceOf(Gtk.Button);
@@ -55,7 +55,7 @@ describe("React Reconciler", () => {
         });
 
         it("creates Box with orientation", () => {
-            const node = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 10 }, getCurrentApp());
+            const node = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 10 });
             const widget = node.getWidget() as Gtk.Box;
 
             expect(widget).toBeInstanceOf(Gtk.Box);
@@ -63,7 +63,7 @@ describe("React Reconciler", () => {
         });
 
         it("creates Label with text", () => {
-            const node = createNode("Label", { label: "Hello" }, getCurrentApp());
+            const node = createNode("Label", { label: "Hello" });
             const widget = node.getWidget() as Gtk.Label;
 
             expect(widget).toBeInstanceOf(Gtk.Label);
@@ -71,7 +71,7 @@ describe("React Reconciler", () => {
         });
 
         it("creates ApplicationWindow with title", () => {
-            const node = createNode("ApplicationWindow", { title: "Test Window" }, getCurrentApp());
+            const node = createNode("ApplicationWindow", { title: "Test Window" });
             const widget = node.getWidget() as Gtk.ApplicationWindow;
 
             expect(widget).toBeInstanceOf(Gtk.ApplicationWindow);
@@ -81,7 +81,7 @@ describe("React Reconciler", () => {
 
     describe("prop updates", () => {
         it("updates string props", () => {
-            const node = createNode("Button", { label: "Initial" }, getCurrentApp());
+            const node = createNode("Button", { label: "Initial" });
             const widget = node.getWidget() as Gtk.Button;
 
             expect(widget.getLabel()).toBe("Initial");
@@ -91,7 +91,7 @@ describe("React Reconciler", () => {
         });
 
         it("updates boolean props", () => {
-            const node = createNode("Button", { label: "Test", sensitive: true }, getCurrentApp());
+            const node = createNode("Button", { label: "Test", sensitive: true });
             const widget = node.getWidget() as Gtk.Button;
 
             expect(widget.getSensitive()).toBe(true);
@@ -101,7 +101,7 @@ describe("React Reconciler", () => {
         });
 
         it("updates numeric props", () => {
-            const node = createNode("Box", { spacing: 5, orientation: Gtk.Orientation.VERTICAL }, getCurrentApp());
+            const node = createNode("Box", { spacing: 5, orientation: Gtk.Orientation.VERTICAL });
             const widget = node.getWidget() as Gtk.Box;
 
             expect(widget.getSpacing()).toBe(5);
@@ -113,10 +113,10 @@ describe("React Reconciler", () => {
 
     describe("child management - Box", () => {
         it("appends children in order", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const child1 = createNode("Label", { label: "First" }, getCurrentApp());
-            const child2 = createNode("Label", { label: "Second" }, getCurrentApp());
-            const child3 = createNode("Label", { label: "Third" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const child1 = createNode("Label", { label: "First" });
+            const child2 = createNode("Label", { label: "Second" });
+            const child3 = createNode("Label", { label: "Third" });
 
             parent.appendChild(child1);
             parent.appendChild(child2);
@@ -127,10 +127,10 @@ describe("React Reconciler", () => {
         });
 
         it("removes child from beginning", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const child1 = createNode("Label", { label: "First" }, getCurrentApp());
-            const child2 = createNode("Label", { label: "Second" }, getCurrentApp());
-            const child3 = createNode("Label", { label: "Third" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const child1 = createNode("Label", { label: "First" });
+            const child2 = createNode("Label", { label: "Second" });
+            const child3 = createNode("Label", { label: "Third" });
 
             parent.appendChild(child1);
             parent.appendChild(child2);
@@ -142,10 +142,10 @@ describe("React Reconciler", () => {
         });
 
         it("removes child from middle", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const child1 = createNode("Label", { label: "First" }, getCurrentApp());
-            const child2 = createNode("Label", { label: "Second" }, getCurrentApp());
-            const child3 = createNode("Label", { label: "Third" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const child1 = createNode("Label", { label: "First" });
+            const child2 = createNode("Label", { label: "Second" });
+            const child3 = createNode("Label", { label: "Third" });
 
             parent.appendChild(child1);
             parent.appendChild(child2);
@@ -157,10 +157,10 @@ describe("React Reconciler", () => {
         });
 
         it("removes child from end", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const child1 = createNode("Label", { label: "First" }, getCurrentApp());
-            const child2 = createNode("Label", { label: "Second" }, getCurrentApp());
-            const child3 = createNode("Label", { label: "Third" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const child1 = createNode("Label", { label: "First" });
+            const child2 = createNode("Label", { label: "Second" });
+            const child3 = createNode("Label", { label: "Third" });
 
             parent.appendChild(child1);
             parent.appendChild(child2);
@@ -172,9 +172,9 @@ describe("React Reconciler", () => {
         });
 
         it("removes all children", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const child1 = createNode("Label", { label: "First" }, getCurrentApp());
-            const child2 = createNode("Label", { label: "Second" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const child1 = createNode("Label", { label: "First" });
+            const child2 = createNode("Label", { label: "Second" });
 
             parent.appendChild(child1);
             parent.appendChild(child2);
@@ -186,10 +186,10 @@ describe("React Reconciler", () => {
         });
 
         it("inserts child before first", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const first = createNode("Label", { label: "First" }, getCurrentApp());
-            const second = createNode("Label", { label: "Second" }, getCurrentApp());
-            const newFirst = createNode("Label", { label: "NewFirst" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const first = createNode("Label", { label: "First" });
+            const second = createNode("Label", { label: "Second" });
+            const newFirst = createNode("Label", { label: "NewFirst" });
 
             parent.appendChild(first);
             parent.appendChild(second);
@@ -200,11 +200,11 @@ describe("React Reconciler", () => {
         });
 
         it("inserts child before middle", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const first = createNode("Label", { label: "First" }, getCurrentApp());
-            const second = createNode("Label", { label: "Second" }, getCurrentApp());
-            const third = createNode("Label", { label: "Third" }, getCurrentApp());
-            const middle = createNode("Label", { label: "Middle" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const first = createNode("Label", { label: "First" });
+            const second = createNode("Label", { label: "Second" });
+            const third = createNode("Label", { label: "Third" });
+            const middle = createNode("Label", { label: "Middle" });
 
             parent.appendChild(first);
             parent.appendChild(second);
@@ -216,10 +216,10 @@ describe("React Reconciler", () => {
         });
 
         it("inserts child before last", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const first = createNode("Label", { label: "First" }, getCurrentApp());
-            const second = createNode("Label", { label: "Second" }, getCurrentApp());
-            const beforeLast = createNode("Label", { label: "BeforeLast" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const first = createNode("Label", { label: "First" });
+            const second = createNode("Label", { label: "Second" });
+            const beforeLast = createNode("Label", { label: "BeforeLast" });
 
             parent.appendChild(first);
             parent.appendChild(second);
@@ -230,11 +230,11 @@ describe("React Reconciler", () => {
         });
 
         it("handles multiple insertBefore operations", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const a = createNode("Label", { label: "A" }, getCurrentApp());
-            const b = createNode("Label", { label: "B" }, getCurrentApp());
-            const c = createNode("Label", { label: "C" }, getCurrentApp());
-            const d = createNode("Label", { label: "D" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const a = createNode("Label", { label: "A" });
+            const b = createNode("Label", { label: "B" });
+            const c = createNode("Label", { label: "C" });
+            const d = createNode("Label", { label: "D" });
 
             parent.appendChild(a);
             parent.appendChild(d);
@@ -246,10 +246,10 @@ describe("React Reconciler", () => {
         });
 
         it("moves existing child to new position using insertBefore", () => {
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const a = createNode("Label", { label: "A" }, getCurrentApp());
-            const b = createNode("Label", { label: "B" }, getCurrentApp());
-            const c = createNode("Label", { label: "C" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const a = createNode("Label", { label: "A" });
+            const b = createNode("Label", { label: "B" });
+            const c = createNode("Label", { label: "C" });
 
             parent.appendChild(a);
             parent.appendChild(b);
@@ -266,10 +266,10 @@ describe("React Reconciler", () => {
         it("simulates React reorder using appendChild", () => {
             // This simulates how React reorders: [A,B,C] -> [C,A,B]
             // React doesn't move C (it stays in place), then appends A and B
-            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 }, getCurrentApp());
-            const a = createNode("Label", { label: "A" }, getCurrentApp());
-            const b = createNode("Label", { label: "B" }, getCurrentApp());
-            const c = createNode("Label", { label: "C" }, getCurrentApp());
+            const parent = createNode("Box", { orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+            const a = createNode("Label", { label: "A" });
+            const b = createNode("Label", { label: "B" });
+            const c = createNode("Label", { label: "C" });
 
             parent.appendChild(a);
             parent.appendChild(b);
@@ -290,8 +290,8 @@ describe("React Reconciler", () => {
 
     describe("child management - Overlay", () => {
         it("sets first child as main child", () => {
-            const parent = createNode("Overlay.Root", {}, getCurrentApp());
-            const main = createNode("Label", { label: "Main" }, getCurrentApp());
+            const parent = createNode("Overlay.Root", {});
+            const main = createNode("Label", { label: "Main" });
 
             parent.appendChild(main);
 
@@ -303,10 +303,10 @@ describe("React Reconciler", () => {
         });
 
         it("adds subsequent children as overlays", () => {
-            const parent = createNode("Overlay.Root", {}, getCurrentApp());
-            const main = createNode("Label", { label: "Main" }, getCurrentApp());
-            const overlay1 = createNode("Label", { label: "Overlay1" }, getCurrentApp());
-            const overlay2 = createNode("Label", { label: "Overlay2" }, getCurrentApp());
+            const parent = createNode("Overlay.Root", {});
+            const main = createNode("Label", { label: "Main" });
+            const overlay1 = createNode("Label", { label: "Overlay1" });
+            const overlay2 = createNode("Label", { label: "Overlay2" });
 
             parent.appendChild(main);
             parent.appendChild(overlay1);
@@ -318,9 +318,9 @@ describe("React Reconciler", () => {
         });
 
         it("removes main child", () => {
-            const parent = createNode("Overlay.Root", {}, getCurrentApp());
-            const main = createNode("Label", { label: "Main" }, getCurrentApp());
-            const overlay1 = createNode("Label", { label: "Overlay1" }, getCurrentApp());
+            const parent = createNode("Overlay.Root", {});
+            const main = createNode("Label", { label: "Main" });
+            const overlay1 = createNode("Label", { label: "Overlay1" });
 
             parent.appendChild(main);
             parent.appendChild(overlay1);
@@ -331,10 +331,10 @@ describe("React Reconciler", () => {
         });
 
         it("removes overlay child", () => {
-            const parent = createNode("Overlay.Root", {}, getCurrentApp());
-            const main = createNode("Label", { label: "Main" }, getCurrentApp());
-            const overlay1 = createNode("Label", { label: "Overlay1" }, getCurrentApp());
-            const overlay2 = createNode("Label", { label: "Overlay2" }, getCurrentApp());
+            const parent = createNode("Overlay.Root", {});
+            const main = createNode("Label", { label: "Main" });
+            const overlay1 = createNode("Label", { label: "Overlay1" });
+            const overlay2 = createNode("Label", { label: "Overlay2" });
 
             parent.appendChild(main);
             parent.appendChild(overlay1);
@@ -346,11 +346,11 @@ describe("React Reconciler", () => {
         });
 
         it("inserts overlay before another overlay", () => {
-            const parent = createNode("Overlay.Root", {}, getCurrentApp());
-            const main = createNode("Label", { label: "Main" }, getCurrentApp());
-            const overlay1 = createNode("Label", { label: "Overlay1" }, getCurrentApp());
-            const overlay2 = createNode("Label", { label: "Overlay2" }, getCurrentApp());
-            const middle = createNode("Label", { label: "Middle" }, getCurrentApp());
+            const parent = createNode("Overlay.Root", {});
+            const main = createNode("Label", { label: "Main" });
+            const overlay1 = createNode("Label", { label: "Overlay1" });
+            const overlay2 = createNode("Label", { label: "Overlay2" });
+            const middle = createNode("Label", { label: "Middle" });
 
             parent.appendChild(main);
             parent.appendChild(overlay1);
@@ -364,9 +364,9 @@ describe("React Reconciler", () => {
 
     describe("child management - Grid", () => {
         it("positions child at specified column and row", () => {
-            const grid = createNode("Grid.Root", {}, getCurrentApp());
-            const gridChild = createNode("Grid.Child", { column: 1, row: 2 }, getCurrentApp());
-            const label = createNode("Label", { label: "Cell" }, getCurrentApp());
+            const grid = createNode("Grid.Root", {});
+            const gridChild = createNode("Grid.Child", { column: 1, row: 2 });
+            const label = createNode("Label", { label: "Cell" });
 
             gridChild.appendChild(label);
             grid.appendChild(gridChild);
@@ -377,7 +377,7 @@ describe("React Reconciler", () => {
         });
 
         it("positions multiple children at different positions", () => {
-            const grid = createNode("Grid.Root", {}, getCurrentApp());
+            const grid = createNode("Grid.Root", {});
 
             const positions = [
                 { column: 0, row: 0, label: "A" },
@@ -387,8 +387,8 @@ describe("React Reconciler", () => {
             ];
 
             for (const pos of positions) {
-                const gridChild = createNode("Grid.Child", { column: pos.column, row: pos.row }, getCurrentApp());
-                const label = createNode("Label", { label: pos.label }, getCurrentApp());
+                const gridChild = createNode("Grid.Child", { column: pos.column, row: pos.row });
+                const label = createNode("Label", { label: pos.label });
                 gridChild.appendChild(label);
                 grid.appendChild(gridChild);
             }
@@ -399,9 +399,9 @@ describe("React Reconciler", () => {
         });
 
         it("removes grid child", () => {
-            const grid = createNode("Grid.Root", {}, getCurrentApp());
-            const gridChild = createNode("Grid.Child", { column: 0, row: 0 }, getCurrentApp());
-            const label = createNode("Label", { label: "Cell" }, getCurrentApp());
+            const grid = createNode("Grid.Root", {});
+            const gridChild = createNode("Grid.Child", { column: 0, row: 0 });
+            const label = createNode("Label", { label: "Cell" });
 
             gridChild.appendChild(label);
             grid.appendChild(gridChild);
@@ -414,13 +414,9 @@ describe("React Reconciler", () => {
         });
 
         it("handles column and row span", () => {
-            const grid = createNode("Grid.Root", {}, getCurrentApp());
-            const gridChild = createNode(
-                "Grid.Child",
-                { column: 0, row: 0, columnSpan: 2, rowSpan: 3 },
-                getCurrentApp(),
-            );
-            const label = createNode("Label", { label: "Spanning" }, getCurrentApp());
+            const grid = createNode("Grid.Root", {});
+            const gridChild = createNode("Grid.Child", { column: 0, row: 0, columnSpan: 2, rowSpan: 3 });
+            const label = createNode("Label", { label: "Spanning" });
 
             gridChild.appendChild(label);
             grid.appendChild(gridChild);
@@ -432,10 +428,10 @@ describe("React Reconciler", () => {
 
     describe("child management - Notebook", () => {
         it("appends pages in order", () => {
-            const notebook = createNode("Notebook", {}, getCurrentApp());
-            const page1 = createNode("Label", { label: "Page1" }, getCurrentApp());
-            const page2 = createNode("Label", { label: "Page2" }, getCurrentApp());
-            const page3 = createNode("Label", { label: "Page3" }, getCurrentApp());
+            const notebook = createNode("Notebook", {});
+            const page1 = createNode("Label", { label: "Page1" });
+            const page2 = createNode("Label", { label: "Page2" });
+            const page3 = createNode("Label", { label: "Page3" });
 
             notebook.appendChild(page1);
             notebook.appendChild(page2);
@@ -449,10 +445,10 @@ describe("React Reconciler", () => {
         });
 
         it("removes page from beginning", () => {
-            const notebook = createNode("Notebook", {}, getCurrentApp());
-            const page1 = createNode("Label", { label: "Page1" }, getCurrentApp());
-            const page2 = createNode("Label", { label: "Page2" }, getCurrentApp());
-            const page3 = createNode("Label", { label: "Page3" }, getCurrentApp());
+            const notebook = createNode("Notebook", {});
+            const page1 = createNode("Label", { label: "Page1" });
+            const page2 = createNode("Label", { label: "Page2" });
+            const page3 = createNode("Label", { label: "Page3" });
 
             notebook.appendChild(page1);
             notebook.appendChild(page2);
@@ -466,10 +462,10 @@ describe("React Reconciler", () => {
         });
 
         it("removes page from middle", () => {
-            const notebook = createNode("Notebook", {}, getCurrentApp());
-            const page1 = createNode("Label", { label: "Page1" }, getCurrentApp());
-            const page2 = createNode("Label", { label: "Page2" }, getCurrentApp());
-            const page3 = createNode("Label", { label: "Page3" }, getCurrentApp());
+            const notebook = createNode("Notebook", {});
+            const page1 = createNode("Label", { label: "Page1" });
+            const page2 = createNode("Label", { label: "Page2" });
+            const page3 = createNode("Label", { label: "Page3" });
 
             notebook.appendChild(page1);
             notebook.appendChild(page2);
@@ -483,10 +479,10 @@ describe("React Reconciler", () => {
         });
 
         it("inserts page before another", () => {
-            const notebook = createNode("Notebook", {}, getCurrentApp());
-            const page1 = createNode("Label", { label: "Page1" }, getCurrentApp());
-            const page2 = createNode("Label", { label: "Page2" }, getCurrentApp());
-            const middle = createNode("Label", { label: "Middle" }, getCurrentApp());
+            const notebook = createNode("Notebook", {});
+            const page1 = createNode("Label", { label: "Page1" });
+            const page2 = createNode("Label", { label: "Page2" });
+            const middle = createNode("Label", { label: "Middle" });
 
             notebook.appendChild(page1);
             notebook.appendChild(page2);
@@ -500,10 +496,10 @@ describe("React Reconciler", () => {
         });
 
         it("inserts page at beginning", () => {
-            const notebook = createNode("Notebook", {}, getCurrentApp());
-            const page1 = createNode("Label", { label: "Page1" }, getCurrentApp());
-            const page2 = createNode("Label", { label: "Page2" }, getCurrentApp());
-            const newFirst = createNode("Label", { label: "NewFirst" }, getCurrentApp());
+            const notebook = createNode("Notebook", {});
+            const page1 = createNode("Label", { label: "Page1" });
+            const page2 = createNode("Label", { label: "Page2" });
+            const newFirst = createNode("Label", { label: "NewFirst" });
 
             notebook.appendChild(page1);
             notebook.appendChild(page2);
@@ -519,10 +515,10 @@ describe("React Reconciler", () => {
 
     describe("child management - DropDown", () => {
         it("adds items to dropdown", () => {
-            const dropdown = createNode("DropDown.Root", { itemLabel: (item: string) => item }, getCurrentApp());
-            const item1 = createNode("DropDown.Item", { item: "Option1" }, getCurrentApp());
-            const item2 = createNode("DropDown.Item", { item: "Option2" }, getCurrentApp());
-            const item3 = createNode("DropDown.Item", { item: "Option3" }, getCurrentApp());
+            const dropdown = createNode("DropDown.Root", { itemLabel: (item: string) => item });
+            const item1 = createNode("DropDown.Item", { item: "Option1" });
+            const item2 = createNode("DropDown.Item", { item: "Option2" });
+            const item3 = createNode("DropDown.Item", { item: "Option3" });
 
             dropdown.appendChild(item1);
             dropdown.appendChild(item2);
@@ -535,9 +531,9 @@ describe("React Reconciler", () => {
         });
 
         it("removes items from dropdown", () => {
-            const dropdown = createNode("DropDown.Root", { itemLabel: (item: string) => item }, getCurrentApp());
-            const item1 = createNode("DropDown.Item", { item: "Option1" }, getCurrentApp());
-            const item2 = createNode("DropDown.Item", { item: "Option2" }, getCurrentApp());
+            const dropdown = createNode("DropDown.Root", { itemLabel: (item: string) => item });
+            const item1 = createNode("DropDown.Item", { item: "Option1" });
+            const item2 = createNode("DropDown.Item", { item: "Option2" });
 
             dropdown.appendChild(item1);
             dropdown.appendChild(item2);
@@ -556,10 +552,10 @@ describe("React Reconciler", () => {
         };
 
         it("adds items to list view", () => {
-            const list = createNode("ListView.Root", { renderItem }, getCurrentApp());
-            const item1 = createNode("ListView.Item", { item: { id: 1 } }, getCurrentApp());
-            const item2 = createNode("ListView.Item", { item: { id: 2 } }, getCurrentApp());
-            const item3 = createNode("ListView.Item", { item: { id: 3 } }, getCurrentApp());
+            const list = createNode("ListView.Root", { renderItem });
+            const item1 = createNode("ListView.Item", { item: { id: 1 } });
+            const item2 = createNode("ListView.Item", { item: { id: 2 } });
+            const item3 = createNode("ListView.Item", { item: { id: 3 } });
 
             list.appendChild(item1);
             list.appendChild(item2);
@@ -571,9 +567,9 @@ describe("React Reconciler", () => {
         });
 
         it("removes items from list view", () => {
-            const list = createNode("ListView.Root", { renderItem }, getCurrentApp());
-            const item1 = createNode("ListView.Item", { item: { id: 1 } }, getCurrentApp());
-            const item2 = createNode("ListView.Item", { item: { id: 2 } }, getCurrentApp());
+            const list = createNode("ListView.Root", { renderItem });
+            const item1 = createNode("ListView.Item", { item: { id: 1 } });
+            const item2 = createNode("ListView.Item", { item: { id: 2 } });
 
             list.appendChild(item1);
             list.appendChild(item2);
@@ -585,10 +581,10 @@ describe("React Reconciler", () => {
         });
 
         it("inserts item before another", () => {
-            const list = createNode("ListView.Root", { renderItem }, getCurrentApp());
-            const item1 = createNode("ListView.Item", { item: { id: 1, name: "First" } }, getCurrentApp());
-            const item2 = createNode("ListView.Item", { item: { id: 2, name: "Second" } }, getCurrentApp());
-            const middle = createNode("ListView.Item", { item: { id: 3, name: "Middle" } }, getCurrentApp());
+            const list = createNode("ListView.Root", { renderItem });
+            const item1 = createNode("ListView.Item", { item: { id: 1, name: "First" } });
+            const item2 = createNode("ListView.Item", { item: { id: 2, name: "Second" } });
+            const middle = createNode("ListView.Item", { item: { id: 3, name: "Middle" } });
 
             list.appendChild(item1);
             list.appendChild(item2);
@@ -606,9 +602,9 @@ describe("React Reconciler", () => {
         };
 
         it("adds columns to column view", () => {
-            const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
-            const column1 = createNode("ColumnView.Column", { title: "Name", renderCell }, getCurrentApp());
-            const column2 = createNode("ColumnView.Column", { title: "Age", renderCell }, getCurrentApp());
+            const columnView = createNode("ColumnView.Root", {});
+            const column1 = createNode("ColumnView.Column", { title: "Name", renderCell });
+            const column2 = createNode("ColumnView.Column", { title: "Age", renderCell });
 
             columnView.appendChild(column1);
             columnView.appendChild(column2);
@@ -619,10 +615,10 @@ describe("React Reconciler", () => {
         });
 
         it("adds items to column view", () => {
-            const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
-            const column = createNode("ColumnView.Column", { title: "Name", renderCell }, getCurrentApp());
-            const item1 = createNode("ColumnView.Item", { item: { name: "John" } }, getCurrentApp());
-            const item2 = createNode("ColumnView.Item", { item: { name: "Jane" } }, getCurrentApp());
+            const columnView = createNode("ColumnView.Root", {});
+            const column = createNode("ColumnView.Column", { title: "Name", renderCell });
+            const item1 = createNode("ColumnView.Item", { item: { name: "John" } });
+            const item2 = createNode("ColumnView.Item", { item: { name: "Jane" } });
 
             columnView.appendChild(column);
             columnView.appendChild(item1);
@@ -634,9 +630,9 @@ describe("React Reconciler", () => {
         });
 
         it("removes columns from column view", () => {
-            const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
-            const column1 = createNode("ColumnView.Column", { title: "Name", renderCell }, getCurrentApp());
-            const column2 = createNode("ColumnView.Column", { title: "Age", renderCell }, getCurrentApp());
+            const columnView = createNode("ColumnView.Root", {});
+            const column1 = createNode("ColumnView.Column", { title: "Name", renderCell });
+            const column2 = createNode("ColumnView.Column", { title: "Age", renderCell });
 
             columnView.appendChild(column1);
             columnView.appendChild(column2);
@@ -648,9 +644,9 @@ describe("React Reconciler", () => {
         });
 
         it("removes items from column view", () => {
-            const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
-            const item1 = createNode("ColumnView.Item", { item: { name: "John" } }, getCurrentApp());
-            const item2 = createNode("ColumnView.Item", { item: { name: "Jane" } }, getCurrentApp());
+            const columnView = createNode("ColumnView.Root", {});
+            const item1 = createNode("ColumnView.Item", { item: { name: "John" } });
+            const item2 = createNode("ColumnView.Item", { item: { name: "Jane" } });
 
             columnView.appendChild(item1);
             columnView.appendChild(item2);
@@ -662,12 +658,8 @@ describe("React Reconciler", () => {
         });
 
         it("sets column id via props", () => {
-            const columnView = createNode("ColumnView.Root", {}, getCurrentApp());
-            const column = createNode(
-                "ColumnView.Column",
-                { title: "Name", id: "name-column", renderCell },
-                getCurrentApp(),
-            );
+            const columnView = createNode("ColumnView.Root", {});
+            const column = createNode("ColumnView.Column", { title: "Name", id: "name-column", renderCell });
 
             columnView.appendChild(column);
 
@@ -680,12 +672,8 @@ describe("React Reconciler", () => {
         it("sets sorter on column when root sortFn is provided", () => {
             const sortFn = (a: { name: string }, b: { name: string }, _columnId: string) =>
                 a.name.localeCompare(b.name);
-            const columnView = createNode("ColumnView.Root", { sortFn }, getCurrentApp());
-            const column = createNode(
-                "ColumnView.Column",
-                { title: "Name", id: "name-column", renderCell },
-                getCurrentApp(),
-            );
+            const columnView = createNode("ColumnView.Root", { sortFn });
+            const column = createNode("ColumnView.Column", { title: "Name", id: "name-column", renderCell });
 
             columnView.appendChild(column);
 
@@ -698,16 +686,12 @@ describe("React Reconciler", () => {
         it("sets initial sort column from props", () => {
             const sortFn = (a: { name: string }, b: { name: string }, _columnId: string) =>
                 a.name.localeCompare(b.name);
-            const columnView = createNode(
-                "ColumnView.Root",
-                { sortColumn: "name-column", sortOrder: Gtk.SortType.ASCENDING, sortFn },
-                getCurrentApp(),
-            );
-            const column = createNode(
-                "ColumnView.Column",
-                { title: "Name", id: "name-column", renderCell },
-                getCurrentApp(),
-            );
+            const columnView = createNode("ColumnView.Root", {
+                sortColumn: "name-column",
+                sortOrder: Gtk.SortType.ASCENDING,
+                sortFn,
+            });
+            const column = createNode("ColumnView.Column", { title: "Name", id: "name-column", renderCell });
 
             columnView.appendChild(column);
 
@@ -720,17 +704,9 @@ describe("React Reconciler", () => {
         it("updates sort column via updateProps", () => {
             const sortFn = (a: { name: string }, b: { name: string }, _columnId: string) =>
                 a.name.localeCompare(b.name);
-            const columnView = createNode("ColumnView.Root", { sortFn }, getCurrentApp());
-            const column1 = createNode(
-                "ColumnView.Column",
-                { title: "Name", id: "name-column", renderCell },
-                getCurrentApp(),
-            );
-            const column2 = createNode(
-                "ColumnView.Column",
-                { title: "Age", id: "age-column", renderCell },
-                getCurrentApp(),
-            );
+            const columnView = createNode("ColumnView.Root", { sortFn });
+            const column1 = createNode("ColumnView.Column", { title: "Name", id: "name-column", renderCell });
+            const column2 = createNode("ColumnView.Column", { title: "Age", id: "age-column", renderCell });
 
             columnView.appendChild(column1);
             columnView.appendChild(column2);
@@ -750,9 +726,9 @@ describe("React Reconciler", () => {
 
     describe("child management - Slots", () => {
         it("sets child slot on parent widget", () => {
-            const expander = createNode("Expander", { label: "Expand" }, getCurrentApp());
-            const childSlot = createNode("Expander.Child", {}, getCurrentApp());
-            const label = createNode("Label", { label: "Content" }, getCurrentApp());
+            const expander = createNode("Expander", { label: "Expand" });
+            const childSlot = createNode("Expander.Child", {});
+            const label = createNode("Label", { label: "Content" });
 
             childSlot.appendChild(label);
             expander.appendChild(childSlot);
@@ -765,9 +741,9 @@ describe("React Reconciler", () => {
         });
 
         it("removes child slot from parent widget", () => {
-            const expander = createNode("Expander", { label: "Expand" }, getCurrentApp());
-            const childSlot = createNode("Expander.Child", {}, getCurrentApp());
-            const label = createNode("Label", { label: "Content" }, getCurrentApp());
+            const expander = createNode("Expander", { label: "Expand" });
+            const childSlot = createNode("Expander.Child", {});
+            const label = createNode("Label", { label: "Content" });
 
             childSlot.appendChild(label);
             expander.appendChild(childSlot);
@@ -781,16 +757,12 @@ describe("React Reconciler", () => {
     describe("signal handlers", () => {
         it("connects signal handlers on creation", () => {
             let clicked = false;
-            const node = createNode(
-                "Button",
-                {
-                    label: "Click",
-                    onClicked: () => {
-                        clicked = true;
-                    },
+            const node = createNode("Button", {
+                label: "Click",
+                onClicked: () => {
+                    clicked = true;
                 },
-                getCurrentApp(),
-            );
+            });
 
             expect(node.getWidget()).toBeInstanceOf(Gtk.Button);
             expect(clicked).toBe(false);
@@ -807,7 +779,7 @@ describe("React Reconciler", () => {
                 handler2Called = true;
             };
 
-            const node = createNode("Button", { label: "Click", onClicked: handler1 }, getCurrentApp());
+            const node = createNode("Button", { label: "Click", onClicked: handler1 });
             node.updateProps({ onClicked: handler1 }, { onClicked: handler2 });
 
             expect(handler1Called).toBe(false);
@@ -817,8 +789,8 @@ describe("React Reconciler", () => {
 
     describe("window management", () => {
         it("attaches child to ApplicationWindow", () => {
-            const window = createNode("ApplicationWindow", { title: "Test" }, getCurrentApp());
-            const child = createNode("Label", { label: "Content" }, getCurrentApp());
+            const window = createNode("ApplicationWindow", { title: "Test" });
+            const child = createNode("Label", { label: "Content" });
 
             window.appendChild(child);
 

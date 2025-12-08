@@ -1,3 +1,4 @@
+import { getCurrentApp } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props, ROOT_NODE_CONTAINER } from "./factory.js";
@@ -13,7 +14,7 @@ const extractConstructorArgs = (type: string, props: Props): unknown[] => {
 };
 
 export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undefined> {
-    static matches(_type: string, _props: Props, _existingWidget?: Gtk.Widget | typeof ROOT_NODE_CONTAINER): boolean {
+    static matches(_type: string, _existingWidget?: Gtk.Widget | typeof ROOT_NODE_CONTAINER): boolean {
         return false;
     }
 
@@ -25,7 +26,7 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         return false;
     }
 
-    constructor(type: string, props: Props, app: Gtk.Application, existingWidget?: Gtk.Widget) {
+    constructor(type: string, props: Props, existingWidget?: Gtk.Widget) {
         this.widgetType = type.split(".")[0] || type;
 
         if (existingWidget) {
@@ -33,11 +34,11 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
             return;
         }
 
-        this.widget = (this.isVirtual() ? undefined : this.createWidget(type, props, app)) as T;
+        this.widget = (this.isVirtual() ? undefined : this.createWidget(type, props)) as T;
         this.updateProps({}, props);
     }
 
-    protected createWidget(type: string, props: Props, app: Gtk.Application): T {
+    protected createWidget(type: string, props: Props): T {
         const normalizedType = type.split(".")[0] || type;
         // biome-ignore lint/performance/noDynamicNamespaceImportAccess: dynamic widget creation
         const WidgetClass = Gtk[normalizedType as keyof typeof Gtk] as WidgetConstructor | undefined;
@@ -47,7 +48,7 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         }
 
         if (WidgetClass === Gtk.ApplicationWindow) {
-            return new WidgetClass(app) as T;
+            return new WidgetClass(getCurrentApp()) as T;
         }
 
         return new WidgetClass(...extractConstructorArgs(normalizedType, props)) as T;
@@ -198,5 +199,5 @@ export abstract class Node<T extends Gtk.Widget | undefined = Gtk.Widget | undef
         (setter as (value: unknown) => void).call(widget, value);
     }
 
-    mount(_app: Gtk.Application): void {}
+    mount(): void {}
 }

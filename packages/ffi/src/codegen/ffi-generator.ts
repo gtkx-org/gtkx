@@ -928,7 +928,7 @@ ${allArgs ? `${allArgs},` : ""}
         return `${lines.join("\n")}\n`;
     }
 
-    private generateMethods(methods: GirMethod[], sharedLibrary: string, className?: string): string {
+    private generateMethods(methods: GirMethod[], sharedLibrary: string, className?: string, isRecord = false): string {
         const generatedMethods = new Set<string>();
         const sections: string[] = [];
 
@@ -954,7 +954,7 @@ ${allArgs ? `${allArgs},` : ""}
                 continue;
             }
 
-            sections.push(this.generateMethod(method, sharedLibrary, className));
+            sections.push(this.generateMethod(method, sharedLibrary, className, isRecord));
         }
 
         return sections.join("\n");
@@ -1247,7 +1247,7 @@ ${allArgs ? `${allArgs},` : ""}
             .join(",\n");
     }
 
-    private generateMethod(method: GirMethod, sharedLibrary: string, className?: string): string {
+    private generateMethod(method: GirMethod, sharedLibrary: string, className?: string, isRecord = false): string {
         let methodName = toCamelCase(method.name);
         if (className) {
             const renamed = getRenamedMethod(this.options.namespace, className, methodName);
@@ -1276,6 +1276,11 @@ ${allArgs ? `${allArgs},` : ""}
             baseReturnType.endsWith("[]");
         const hasReturnValue = returnTypeMapping.ts !== "void";
 
+        // For records (boxed types), use "boxed" type with innerType; for classes, use "gobject"
+        const selfTypeDescriptor = isRecord && className
+            ? `{ type: "boxed", borrowed: true, innerType: "${className}", lib: "${sharedLibrary}" }`
+            : `{ type: "gobject" }`;
+
         const lines: string[] = [];
         const methodDoc = formatMethodDoc(method.doc, method.parameters);
         if (methodDoc) {
@@ -1298,7 +1303,7 @@ ${allArgs ? `${allArgs},` : ""}
       "${method.cIdentifier}",
       [
         {
-          type: { type: "gobject" },
+          type: ${selfTypeDescriptor},
           value: this.ptr,
         },
 ${allArgs ? `${allArgs},` : ""}
@@ -1325,7 +1330,7 @@ ${allArgs ? `${allArgs},` : ""}
       "${method.cIdentifier}",
       [
         {
-          type: { type: "gobject" },
+          type: ${selfTypeDescriptor},
           value: this.ptr,
         },
 ${allArgs ? `${allArgs},` : ""}
@@ -1352,7 +1357,7 @@ ${allArgs ? `${allArgs},` : ""}
       "${method.cIdentifier}",
       [
         {
-          type: { type: "gobject" },
+          type: ${selfTypeDescriptor},
           value: this.ptr,
         },
 ${allArgs ? `${allArgs},` : ""}
@@ -1616,7 +1621,7 @@ ${allArgs ? `${allArgs},` : ""}
 
         sections.push(this.generateRecordConstructors(record, sharedLibrary));
         sections.push(this.generateRecordStaticFunctions(record.functions, sharedLibrary, recordName));
-        sections.push(this.generateRecordMethods(record.methods, sharedLibrary, record.name));
+        sections.push(this.generateRecordMethods(record.methods, sharedLibrary, record.name, record.glibTypeName));
         sections.push(this.generateRecordFields(record.fields, record.methods));
 
         sections.push("}");
@@ -1786,7 +1791,6 @@ ${args}
     private calculateStructSize(fields: GirField[]): number {
         let currentOffset = 0;
         for (const field of fields) {
-            if (field.private) continue;
             const fieldSize = this.getFieldSize(field.type);
             const alignment = this.getFieldAlignment(field.type);
             currentOffset = Math.ceil(currentOffset / alignment) * alignment;
@@ -1829,8 +1833,8 @@ ${args}
         return this.generateStaticFunctions(functions, sharedLibrary, recordName);
     }
 
-    private generateRecordMethods(methods: GirMethod[], sharedLibrary: string, recordName?: string): string {
-        return this.generateMethods(methods, sharedLibrary, recordName);
+    private generateRecordMethods(methods: GirMethod[], sharedLibrary: string, recordName?: string, glibTypeName?: string): string {
+        return this.generateMethods(methods, sharedLibrary, glibTypeName ?? recordName, true);
     }
 
     private generateRecordFields(fields: GirField[], methods: GirMethod[]): string {

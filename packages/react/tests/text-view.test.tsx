@@ -1,19 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { TextView } from "../src/index.js";
 import { flushSync, render, setupTests } from "./utils.js";
-
-// Mock TextIter to avoid allocation failures in test environment
-vi.mock("@gtkx/ffi/gtk", async (importOriginal) => {
-    const original = await importOriginal<typeof Gtk>();
-    return {
-        ...original,
-        TextIter: class MockTextIter {
-            ptr = Symbol("mock-ptr");
-        },
-    };
-});
 
 setupTests();
 
@@ -31,11 +20,6 @@ beforeEach(() => {
         setTextCallCount++;
         return originalSetText.call(this, text, len);
     };
-
-    // Mock buffer methods to avoid needing real TextIter
-    Gtk.TextBuffer.prototype.getStartIter = vi.fn();
-    Gtk.TextBuffer.prototype.getEndIter = vi.fn();
-    Gtk.TextBuffer.prototype.getText = vi.fn(() => lastSetText ?? "");
 });
 
 describe("TextView widget", () => {

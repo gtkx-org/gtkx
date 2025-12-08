@@ -27,9 +27,12 @@ pub fn get_event_loop<'a, C: Context<'a>>(cx: &C) -> *mut UvLoop {
     let mut uv_loop: *mut UvLoop = std::ptr::null_mut();
     let status = unsafe { napi_get_uv_event_loop(env, &mut uv_loop) };
 
-    if status != napi::Status::Ok {
-        panic!("Failed to get uv event loop: {:?}", status);
-    }
+    assert_eq!(
+        status,
+        napi::Status::Ok,
+        "Failed to get uv event loop (N-API status: {:?}) - this indicates a Node.js runtime error",
+        status
+    );
 
     uv_loop
 }
@@ -48,7 +51,7 @@ pub fn wait_for_result<T>(uv_loop: *mut UvLoop, rx: &Receiver<T>, error_message:
                 run_nowait(uv_loop);
             }
             Err(TryRecvError::Disconnected) => {
-                panic!("{}", error_message);
+                panic!("Channel disconnected: {}", error_message);
             }
         }
     }

@@ -1,4 +1,3 @@
-import { getCurrentApp } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import ReactReconciler from "react-reconciler";
@@ -74,16 +73,16 @@ class Reconciler {
             getChildHostContext: (parentHostContext) => parentHostContext,
             shouldSetTextContent: () => false,
             createInstance: (type, props) => {
-                return createNode(type, props, getCurrentApp());
+                return createNode(type, props);
             },
-            createTextInstance: (text) => createNode("Label.Root", { label: text }, getCurrentApp()),
+            createTextInstance: (text) => createNode("Label.Root", { label: text }),
             appendInitialChild: (parent, child) => parent.appendChild(child),
             finalizeInitialChildren: () => true,
             commitUpdate: (instance, _type, oldProps, newProps) => {
                 instance.updateProps(oldProps, newProps);
             },
             commitMount: (instance) => {
-                instance.mount(getCurrentApp());
+                instance.mount();
             },
             appendChild: (parent, child) => parent.appendChild(child),
             removeChild: (parent, child) => parent.removeChild(child),
@@ -151,7 +150,7 @@ class Reconciler {
     }
 
     private createNodeFromContainer(container: Container): Node {
-        return createNode(container.constructor.name, {}, getCurrentApp(), container);
+        return createNode(container.constructor.name, {}, container);
     }
 }
 

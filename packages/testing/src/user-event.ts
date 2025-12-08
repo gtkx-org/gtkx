@@ -1,8 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { fireEvent } from "./fire-event.js";
+import { tick } from "./timing.js";
 import { hasGetText, hasSetText } from "./widget.js";
-
-const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 /**
  * Options for configuring user event behavior.
