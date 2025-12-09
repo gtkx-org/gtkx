@@ -4,6 +4,25 @@
     "description": "CLI for GTKX - create and develop GTK4 React applications",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "homepage": "https://eugeniodepalo.github.io/gtkx",
+    "bugs": {
+        "url": "https://github.com/eugeniodepalo/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eugeniodepalo/gtkx.git",
+        "directory": "packages/cli"
+    },
+    "keywords": [
+        "gtk",
+        "react",
+        "native",
+        "linux",
+        "cli",
+        "scaffold",
+        "hmr",
+        "vite"
+    ],
     "type": "module",
     "exports": {
         "./package.json": "./package.json",
