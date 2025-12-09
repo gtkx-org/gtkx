@@ -84,5 +84,5 @@ export const textViewDemo: Demo = {
     description: "Multi-line text editor with rich formatting support.",
     keywords: ["text", "textview", "editor", "multiline", "GtkTextView"],
     component: TextViewDemo,
-    sourcePath: getSourcePath(import.meta.url, "textview.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "text-view.tsx"),
 };

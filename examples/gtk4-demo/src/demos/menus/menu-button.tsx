@@ -174,5 +174,5 @@ export const menuButtonDemo: Demo = {
     description: "Button that shows a popover menu when clicked.",
     keywords: ["menu", "button", "popover", "dropdown", "GtkMenuButton"],
     component: MenuButtonDemo,
-    sourcePath: getSourcePath(import.meta.url, "menubutton.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "menu-button.tsx"),
 };

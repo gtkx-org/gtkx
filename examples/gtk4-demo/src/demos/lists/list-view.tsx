@@ -75,5 +75,5 @@ export const listViewDemo: Demo = {
     description: "High-performance scrollable list with virtual scrolling.",
     keywords: ["listview", "list", "scroll", "virtual", "performance", "GtkListView"],
     component: ListViewDemo,
-    sourcePath: getSourcePath(import.meta.url, "listview.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "list-view.tsx"),
 };

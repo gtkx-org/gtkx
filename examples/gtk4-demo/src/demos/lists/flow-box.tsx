@@ -95,5 +95,5 @@ export const flowBoxDemo: Demo = {
     description: "Container that reflows children based on available space.",
     keywords: ["flowbox", "flow", "grid", "wrap", "GtkFlowBox"],
     component: FlowBoxDemo,
-    sourcePath: getSourcePath(import.meta.url, "flowbox.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "flow-box.tsx"),
 };

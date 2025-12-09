@@ -11,6 +11,9 @@ import type { Demo } from "../types.js";
  */
 function drawCallback(...args: unknown[]) {
     const [_self, cr, width, height] = args as [Gtk.DrawingArea, unknown, number, number];
+
+    if (width <= 0 || height <= 0) return;
+
     // White background
     cairo.setSourceRgb(cr, 1, 1, 1);
     cairo.paint(cr);
@@ -67,6 +70,10 @@ const DrawingAreaDemo = () => {
         area.setDrawFunc(drawCallback);
     }, []);
 
+    const handleResize = useCallback((self: Gtk.DrawingArea) => {
+        self.queueDraw();
+    }, []);
+
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
             <Label.Root label="Drawing Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
@@ -76,7 +83,14 @@ const DrawingAreaDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            <DrawingArea contentWidth={300} contentHeight={300} vexpand hexpand onRealize={handleRealize} />
+            <DrawingArea
+                contentWidth={300}
+                contentHeight={300}
+                vexpand
+                hexpand
+                onRealize={handleRealize}
+                onResize={handleResize}
+            />
         </Box>
     );
 };
@@ -87,5 +101,5 @@ export const drawingAreaDemo: Demo = {
     description: "Custom 2D drawing with Cairo in a GtkDrawingArea widget.",
     keywords: ["drawing", "cairo", "graphics", "canvas", "vector", "shapes", "custom"],
     component: DrawingAreaDemo,
-    sourcePath: getSourcePath(import.meta.url, "drawingarea.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "drawing-area.tsx"),
 };

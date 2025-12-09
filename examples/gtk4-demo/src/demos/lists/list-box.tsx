@@ -85,5 +85,5 @@ export const listBoxDemo: Demo = {
     description: "Vertical list with selectable rows and custom layouts.",
     keywords: ["list", "listbox", "selection", "rows", "GtkListBox"],
     component: ListBoxDemo,
-    sourcePath: getSourcePath(import.meta.url, "listbox.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "list-box.tsx"),
 };

@@ -87,5 +87,5 @@ export const dropDownDemo: Demo = {
     description: "Modern replacement for combo boxes with custom items.",
     keywords: ["dropdown", "combo", "select", "list", "GtkDropDown"],
     component: DropDownDemo,
-    sourcePath: getSourcePath(import.meta.url, "dropdown.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "drop-down.tsx"),
 };

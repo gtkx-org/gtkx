@@ -71,5 +71,5 @@ export const levelBarDemo: Demo = {
     description: "Level indicator bar with color offsets.",
     keywords: ["level", "bar", "indicator", "meter", "GtkLevelBar"],
     component: LevelBarDemo,
-    sourcePath: getSourcePath(import.meta.url, "levelbar.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "level-bar.tsx"),
 };

@@ -93,5 +93,5 @@ export const progressBarDemo: Demo = {
     description: "Visual indicator for operation progress.",
     keywords: ["progress", "bar", "loading", "percentage", "GtkProgressBar"],
     component: ProgressBarDemo,
-    sourcePath: getSourcePath(import.meta.url, "progressbar.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "progress-bar.tsx"),
 };

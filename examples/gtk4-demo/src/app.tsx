@@ -51,7 +51,25 @@ export const App = () => (
     <DemoProvider categories={categories}>
         <ApplicationMenu>
             <Menu.Submenu label="File">
-                <Menu.Item label="Quit" onActivate={quit} accels="<Control>q" />
+                <Menu.Item label="New Document" onActivate={() => console.log("New Document")} accels="<Control>n" />
+                <Menu.Item label="Open..." onActivate={() => console.log("Open")} accels="<Control>o" />
+                <Menu.Item label="Save" onActivate={() => console.log("Save")} accels="<Control>s" />
+                <Menu.Section>
+                    <Menu.Item label="Quit" onActivate={quit} accels="<Control>q" />
+                </Menu.Section>
+            </Menu.Submenu>
+            <Menu.Submenu label="Edit">
+                <Menu.Item label="Undo" onActivate={() => console.log("Undo")} accels="<Control>z" />
+                <Menu.Item label="Redo" onActivate={() => console.log("Redo")} accels="<Control><Shift>z" />
+                <Menu.Section>
+                    <Menu.Item label="Cut" onActivate={() => console.log("Cut")} accels="<Control>x" />
+                    <Menu.Item label="Copy" onActivate={() => console.log("Copy")} accels="<Control>c" />
+                    <Menu.Item label="Paste" onActivate={() => console.log("Paste")} accels="<Control>v" />
+                </Menu.Section>
+            </Menu.Submenu>
+            <Menu.Submenu label="Help">
+                <Menu.Item label="Documentation" onActivate={() => console.log("Documentation")} accels="F1" />
+                <Menu.Item label="About" onActivate={() => console.log("About")} />
             </Menu.Submenu>
         </ApplicationMenu>
         <ApplicationWindow title="GTK4 Demo" defaultWidth={1400} defaultHeight={900} showMenubar onCloseRequest={quit}>

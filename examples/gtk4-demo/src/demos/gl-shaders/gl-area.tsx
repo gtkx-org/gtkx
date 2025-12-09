@@ -372,5 +372,5 @@ export const glAreaDemo: Demo = {
     description: "OpenGL rendering with shaders in a GtkGLArea widget.",
     keywords: ["opengl", "gl", "glarea", "shader", "3d", "graphics", "rendering", "triangle"],
     component: GLAreaDemo,
-    sourcePath: getSourcePath(import.meta.url, "glarea.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "gl-area.tsx"),
 };

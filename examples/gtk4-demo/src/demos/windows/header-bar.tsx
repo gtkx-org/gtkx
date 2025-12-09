@@ -105,5 +105,5 @@ export const headerBarDemo: Demo = {
     description: "Window header bar with title and action buttons.",
     keywords: ["header", "bar", "title", "toolbar", "GtkHeaderBar"],
     component: HeaderBarDemo,
-    sourcePath: getSourcePath(import.meta.url, "headerbar.tsx"),
+    sourcePath: getSourcePath(import.meta.url, "header-bar.tsx"),
 };
