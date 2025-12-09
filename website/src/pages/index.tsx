@@ -38,10 +38,10 @@ const features: FeatureItem[] = [
             "Use React hooks, state, and component patterns you already know. Write JSX that renders as native GTK4 widgets.",
     },
     {
-        title: "Type-Safe",
-        icon: "🛡️",
+        title: "Hot Module Replacement",
+        icon: "🔥",
         description:
-            "Full TypeScript support with auto-generated types from GTK4 introspection data. Catch errors at compile time.",
+            "Edit your code and see changes instantly. The gtkx CLI provides HMR powered by Vite — no app restart needed.",
     },
     {
         title: "Native Performance",
@@ -50,15 +50,15 @@ const features: FeatureItem[] = [
             "Direct FFI bindings to GTK4 via Rust and libffi. No Electron, no web views — just native widgets.",
     },
     {
+        title: "CLI & Scaffolding",
+        icon: "⚡",
+        description:
+            "Get started in seconds with npx @gtkx/cli create. Interactive project setup with your preferred package manager.",
+    },
+    {
         title: "CSS-in-JS Styling",
         icon: "🎨",
         description: "Style GTK widgets with an Emotion-style API. Use template literals and compose styles easily.",
-    },
-    {
-        title: "Testing Library",
-        icon: "🧪",
-        description:
-            "Familiar testing APIs with screen, userEvent, and query functions. Test components like you test React web apps.",
     },
     {
         title: "Full GTK4 Access",

@@ -1,7 +1,10 @@
 {
     "$schema": "https://unpkg.com/knip@5/schema.json",
     "ignoreIssues": {
-        "**/src/generated/**": ["enumMembers"]
+        "**/src/generated/**": ["enumMembers"],
+        "examples/*/src/app.tsx": ["exports", "duplicates"],
+        "packages/cli/src/create.ts": ["exports", "types"],
+        "packages/cli/src/dev-server.tsx": ["exports", "types"]
     },
     "workspaces": {
         "website": {

@@ -21,25 +21,44 @@ GTKX bridges React's component model with GTK4's native widget system. Write fam
 ## Features
 
 - **React Components** — Use React hooks, state, and component patterns you already know
-- **Type-Safe** — Full TypeScript support with auto-generated types from GTK4 introspection data
+- **Hot Module Replacement** — Edit your code and see changes instantly, powered by Vite
 - **Native Performance** — Direct FFI bindings to GTK4 via Rust and libffi
+- **CLI & Scaffolding** — Get started in seconds with `npx @gtkx/cli create`
 - **CSS-in-JS Styling** — Emotion-style `css` template literals for GTK widgets
 - **Testing Library** — Familiar `screen`, `userEvent`, and query APIs for testing components
 
 ## Quick Start
 
+Create a new GTKX app with a single command:
+
 ```bash
-# Install dependencies
-npm install @gtkx/react @gtkx/ffi react
+npx @gtkx/cli create
+```
 
-# For TypeScript (recommended)
-npm install -D @types/react tsx typescript
+This launches an interactive wizard that sets up your project with TypeScript, your preferred package manager, and optional testing support.
 
-# For styling (optional)
-npm install @gtkx/css
+You can also pass options directly:
 
-# For testing (optional)
-npm install -D @gtkx/testing
+```bash
+npx @gtkx/cli create my-app --app-id com.example.myapp --pm pnpm --testing vitest
+```
+
+Then start developing with HMR:
+
+```bash
+cd my-app
+npm run dev
+```
+
+Edit your code and see changes instantly without restarting the app!
+
+### Manual Setup
+
+Alternatively, install packages directly:
+
+```bash
+npm install @gtkx/cli @gtkx/react @gtkx/ffi react
+npm install -D @types/react typescript
 ```
 
 Create your first app:
@@ -80,7 +99,13 @@ export const App = () => {
 };
 ```
 
-Run with:
+Run with HMR:
+
+```bash
+npx gtkx dev src/app.tsx
+```
+
+Or without HMR:
 
 ```bash
 npx tsx index.tsx
@@ -177,7 +202,8 @@ Query types: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
 A comprehensive showcase of GTK4 widgets and features:
 
 ```bash
-turbo start --filter=gtk4-demo
+cd examples/gtk4-demo
+pnpm dev
 ```
 
 ### Todo App
@@ -185,14 +211,16 @@ turbo start --filter=gtk4-demo
 A todo app demonstrating `@gtkx/testing` with realistic component tests:
 
 ```bash
-turbo start --filter=todo
-turbo test --filter=todo
+cd examples/todo
+pnpm dev
+pnpm test
 ```
 
 ## Packages
 
 | Package | Description |
 |---------|-------------|
+| [@gtkx/cli](packages/cli) | CLI for creating and developing GTKX apps with HMR |
 | [@gtkx/react](packages/react) | React reconciler and JSX components |
 | [@gtkx/ffi](packages/ffi) | TypeScript FFI bindings for GTK4 |
 | [@gtkx/native](packages/native) | Rust native module for FFI bridge |

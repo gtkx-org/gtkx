@@ -4,14 +4,13 @@ sidebar_position: 2
 
 # Getting Started
 
-This guide will help you set up GTKX and create your first GTK4 application with React.
+Get up and running with GTKX in under a minute.
 
 ## Prerequisites
 
 Before you begin, make sure you have:
 
 - **Node.js 20+** — GTKX uses modern JavaScript features
-- **npm, yarn, or pnpm** — For package management
 - **GTK4 development libraries** — Required for native bindings
 - **Linux** — GTK4 is designed for Linux (GNOME desktop)
 
@@ -35,131 +34,84 @@ On Arch Linux:
 sudo pacman -S gtk4
 ```
 
-## Installation
+## Create Your App
 
-Create a new project and install GTKX:
-
-```bash
-mkdir my-gtk-app
-cd my-gtk-app
-npm init -y
-npm install @gtkx/react @gtkx/ffi react
-```
-
-For TypeScript (recommended):
+The fastest way to start is with the GTKX CLI:
 
 ```bash
-npm install -D @types/react tsx typescript
+npx @gtkx/cli create
 ```
 
-For styling support:
+This launches an interactive wizard that will:
+
+1. Ask for your project name
+2. Ask for your app ID (e.g., `com.example.myapp`)
+3. Let you choose your package manager (pnpm, npm, yarn, or bun)
+4. Create the project and install dependencies
+
+You can also pass options directly:
 
 ```bash
-npm install @gtkx/css
+npx @gtkx/cli create my-app --app-id com.example.myapp --pm pnpm
 ```
 
-For testing support:
+## Start Development
+
+Navigate to your project and start the dev server:
 
 ```bash
-npm install -D @gtkx/testing
+cd my-app
+npm run dev
 ```
 
-## Project Setup
+This starts the GTKX development server with **Hot Module Replacement** — edit your code and see changes instantly without restarting the app!
 
-Create a `tsconfig.json`:
+## Project Structure
 
-```json
-{
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "jsx": "react-jsx",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true
-  },
-  "include": ["src"]
+The CLI creates a ready-to-go project:
+
+```
+my-app/
+├── package.json
+├── tsconfig.json
+├── .gitignore
+└── src/
+    ├── app.tsx      # Your main component
+    └── index.tsx    # Entry point
+```
+
+### `src/app.tsx`
+
+```tsx
+import { useState } from "react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+
+export default function App() {
+    const [count, setCount] = useState(0);
+
+    return (
+        <ApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+            <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginTop={40} marginStart={40} marginEnd={40}>
+                <Label.Root label="Welcome to GTKX!" />
+                <Label.Root label={`Count: ${count}`} />
+                <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
+            </Box>
+        </ApplicationWindow>
+    );
 }
+
+export const appId = "com.example.myapp";
 ```
-
-Update your `package.json`:
-
-```json
-{
-  "type": "module",
-  "scripts": {
-    "start": "tsx src/index.tsx"
-  }
-}
-```
-
-## Your First App
-
-Create the following files in a `src` directory:
 
 ### `src/index.tsx`
 
 ```tsx
 import { render } from "@gtkx/react";
-import { App } from "./app.js";
+import App, { appId } from "./app.js";
 
-render(<App />, "org.example.MyApp");
+render(<App />, appId);
 ```
-
-The `render` function initializes GTK and mounts your React tree. The second argument is your application ID (reverse domain notation).
-
-### `src/app.tsx`
-
-```tsx
-import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
-import { Orientation } from "@gtkx/ffi/gtk";
-import { useState } from "react";
-
-export const App = () => {
-  const [count, setCount] = useState(0);
-
-  return (
-    <ApplicationWindow
-      title="My First GTKX App"
-      defaultWidth={400}
-      defaultHeight={300}
-      onCloseRequest={quit}
-    >
-      <Box
-        orientation={Orientation.VERTICAL}
-        spacing={12}
-        marginTop={20}
-        marginBottom={20}
-        marginStart={20}
-        marginEnd={20}
-      >
-        <Label.Root label={`You clicked ${count} times`} />
-        <Box orientation={Orientation.HORIZONTAL} spacing={8}>
-          <Button
-            label="Decrement"
-            onClicked={() => setCount(c => c - 1)}
-          />
-          <Button
-            label="Increment"
-            onClicked={() => setCount(c => c + 1)}
-          />
-        </Box>
-      </Box>
-    </ApplicationWindow>
-  );
-};
-```
-
-## Running Your App
-
-Start your application:
-
-```bash
-npm start
-```
-
-You should see a native GTK4 window with your counter application!
 
 ## Understanding the Code
 
@@ -197,7 +149,19 @@ GTK signals are exposed as React props with the `on` prefix:
 - `onCloseRequest` — Window close
 - `onChanged` — Text input changes
 
+## Building for Production
+
+Build your app for production:
+
+```bash
+npm run build
+npm start
+```
+
+This compiles TypeScript and runs the built application without HMR.
+
 ## Next Steps
 
+- [CLI Guide](./guides/cli) — Learn more about the gtkx CLI
 - [Styling Guide](./guides/styling) — Add custom styles with CSS-in-JS
 - [Testing Guide](./guides/testing) — Write tests for your components

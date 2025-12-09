@@ -12,9 +12,9 @@ GTKX is a framework for building native GTK4 desktop applications using React an
 Building native desktop applications traditionally requires learning platform-specific toolkits and languages. GTKX changes this by letting you use the React skills you already have:
 
 - **Familiar React Patterns** — Use hooks, state, props, and components just like you would in a web app
-- **Type Safety** — Full TypeScript support with auto-generated types from GTK4's introspection data
+- **Hot Module Replacement** — Edit your code and see changes instantly, powered by Vite
 - **Native Performance** — Direct FFI bindings to GTK4 via Rust and libffi, no Electron overhead
-- **Modern Tooling** — Works with your existing Node.js toolchain, testing frameworks, and build tools
+- **CLI & Scaffolding** — Get started in seconds with `npx @gtkx/cli create`
 
 ## How It Works
 
@@ -35,6 +35,7 @@ GTKX is organized as a monorepo with the following packages:
 
 | Package | Description |
 |---------|-------------|
+| `@gtkx/cli` | CLI for creating and developing GTKX apps with HMR |
 | `@gtkx/react` | React reconciler and JSX components |
 | `@gtkx/ffi` | TypeScript FFI bindings for GTK4, GLib, GIO, Gdk, and more |
 | `@gtkx/css` | CSS-in-JS styling for GTK widgets (Emotion-style API) |
@@ -73,7 +74,7 @@ render(<App />, "org.example.Counter");
 
 ## Next Steps
 
-- [Getting Started](./getting-started) — Install GTKX and create your first app
-- [Menus Guide](./guides/menus) — Add application menus and keyboard shortcuts
+- [Getting Started](./getting-started) — Create your first app with the CLI
+- [CLI Guide](./guides/cli) — Learn about dev server, HMR, and project scaffolding
 - [Styling Guide](./guides/styling) — Style your app with CSS-in-JS
 - [Testing Guide](./guides/testing) — Write tests for your components

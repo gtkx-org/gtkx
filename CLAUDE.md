@@ -11,6 +11,7 @@ GTKX is a framework for building native GTK4 desktop applications using React an
 - **TypeScript** - Main programming language for all packages
 - **React** - UI library for building component-based interfaces
 - **Rust** - Native module for FFI bridge and performance-critical code
+- **Vite** - Powers the HMR development server in @gtkx/cli
 - **GObject Introspection (GIR)** - XML metadata for generating FFI bindings
 - **pnpm** - Monorepo package manager
 - **Biome** - Linter and code formatter
@@ -23,8 +24,15 @@ GTKX is a framework for building native GTK4 desktop applications using React an
 ```bash
 # Build and run
 turbo build                              # Build all packages
-turbo start                              # Start example app
-turbo start --filter=gtk4-demo           # Start specific example
+pnpm --filter=gtk4-demo dev              # Start example with HMR
+pnpm --filter=gtk4-demo start            # Start example (production mode)
+
+# Create new apps
+npx @gtkx/cli create                     # Interactive project wizard
+npx @gtkx/cli create my-app --pm pnpm    # With options
+
+# Development server
+gtkx dev src/app.tsx                     # Start dev server with HMR
 
 # Documentation
 pnpm run docs                            # Start documentation site
@@ -61,7 +69,8 @@ React JSX → @gtkx/react (Reconciler) → @gtkx/ffi (TS wrappers) → @gtkx/nat
 
 ### Package Structure
 
-- **@gtkx/react** (`packages/react`) - React reconciler and JSX components. Key exports: `render()` creates GTK app and mounts React tree, `quit()` cleanly shuts down, `createPortal()` for dialogs. Key files: `reconciler.ts` (HostConfig), `node.ts` (widget wrappers), `factory.ts` (node routing)
+- **@gtkx/cli** (`packages/cli`) - CLI for creating and developing GTKX apps. Provides `gtkx create` for project scaffolding and `gtkx dev` for HMR-enabled development using Vite. Key exports: `createDevServer`, `createApp`
+- **@gtkx/react** (`packages/react`) - React reconciler and JSX components. Key exports: `render()` creates GTK app and mounts React tree, `update()` for HMR re-renders, `quit()` cleanly shuts down, `createPortal()` for dialogs. Key files: `reconciler.ts` (HostConfig), `node.ts` (widget wrappers), `factory.ts` (node routing)
 - **@gtkx/ffi** (`packages/ffi`) - Generated TypeScript FFI bindings. Each GTK class becomes a TS class with methods that call native FFI. Key exports: `start()`, `stop()`, `getCurrentApp()`, `getObject()`, `events` (EventEmitter for lifecycle), `createRef`, `getObjectId`
 - **@gtkx/native** (`packages/native`) - Rust/Neon module exposing `start()`, `stop()`, `call()`, `read()`, `write()`, `alloc()`. Uses libffi for dynamic C invocation
 - **@gtkx/css** (`packages/css`) - Emotion-style CSS-in-JS for GTK widgets. Key exports: `css`, `cx`, `injectGlobal`
@@ -108,7 +117,7 @@ React JSX → @gtkx/react (Reconciler) → @gtkx/ffi (TS wrappers) → @gtkx/nat
 - Use kebab-case for all files: `my-component.ts`
 - Names should be clear but not overly specific, and they should be consistent across the codebase
 - Prefer generic reusable names: `setup` over `setupTestsForGtk`
-- Use named exports only - never use default exports. Export names should be unique within a package.
+- Prefer named exports over default exports. Exception: app entry files (e.g., `app.tsx`) should export `default` for compatibility with `gtkx dev`.
 
 ### Code Reuse
 

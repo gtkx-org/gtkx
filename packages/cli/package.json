@@ -1,0 +1,40 @@
+{
+    "name": "@gtkx/cli",
+    "version": "0.2.0",
+    "description": "CLI for GTKX - create and develop GTK4 React applications",
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./dev-server": {
+            "types": "./dist/dev-server.d.ts",
+            "default": "./dist/dev-server.js"
+        }
+    },
+    "bin": {
+        "gtkx": "dist/cli.js"
+    },
+    "files": [
+        "dist",
+        "templates"
+    ],
+    "scripts": {
+        "build": "tsc -b"
+    },
+    "dependencies": {
+        "@clack/prompts": "0.11.0",
+        "@gtkx/ffi": "workspace:*",
+        "@gtkx/react": "workspace:*",
+        "@vitejs/plugin-react": "4.5.2",
+        "citty": "0.1.6",
+        "vite": "6.3.5"
+    },
+    "peerDependencies": {
+        "react": "^19"
+    }
+}

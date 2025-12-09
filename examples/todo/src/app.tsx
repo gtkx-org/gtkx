@@ -68,3 +68,7 @@ export const App = () => {
         </ApplicationWindow>
     );
 };
+
+export default App;
+
+export const appId = "com.gtkx.todo";

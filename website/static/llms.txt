@@ -7,8 +7,9 @@ GTKX is a framework for building native GTK4 desktop applications using React an
 ## Key Features
 
 - **React Components**: Use React hooks, state, props, and component patterns
-- **Type Safety**: Full TypeScript support with auto-generated types from GTK4 introspection data
+- **Hot Module Replacement**: Edit your code and see changes instantly, powered by Vite
 - **Native Performance**: Direct FFI bindings to GTK4 via Rust and libffi (no Electron overhead)
+- **CLI & Scaffolding**: Get started in seconds with `npx @gtkx/cli create`
 - **CSS-in-JS Styling**: Emotion-style `css` template literals for GTK widgets
 - **Testing Library**: Familiar `screen`, `userEvent`, and query APIs for testing components
 
@@ -35,6 +36,7 @@ React JSX -> @gtkx/react (Reconciler) -> @gtkx/ffi (TS wrappers) -> @gtkx/native
 
 | Package | Description |
 |---------|-------------|
+| @gtkx/cli | CLI for creating and developing GTKX apps with HMR |
 | @gtkx/react | React reconciler and JSX components |
 | @gtkx/ffi | TypeScript FFI bindings for GTK4, GLib, GIO, Gdk |
 | @gtkx/native | Rust native module providing the FFI bridge |
@@ -57,54 +59,41 @@ React JSX -> @gtkx/react (Reconciler) -> @gtkx/ffi (TS wrappers) -> @gtkx/native
 - GTK4 development libraries (`sudo dnf install gtk4-devel` on Fedora, `sudo apt install libgtk-4-dev` on Ubuntu, `sudo pacman -S gtk4` on Arch)
 - Linux (GTK4 is Linux-native)
 
-### Installation
+### Create a New App
 
 ```bash
-mkdir my-gtk-app && cd my-gtk-app
-npm init -y
-npm install @gtkx/react @gtkx/ffi react
-npm install -D @types/react tsx typescript  # For TypeScript
+npx @gtkx/cli create
+```
+
+This launches an interactive wizard that sets up your project with TypeScript, your preferred package manager, and optional testing support.
+
+You can also pass options directly:
+
+```bash
+npx @gtkx/cli create my-app --app-id com.example.myapp --pm pnpm --testing vitest
+```
+
+Then start developing with HMR:
+
+```bash
+cd my-app
+npm run dev
+```
+
+Edit your code and see changes instantly without restarting the app!
+
+### Manual Setup
+
+Alternatively, install packages directly:
+
+```bash
+npm install @gtkx/cli @gtkx/react @gtkx/ffi react
+npm install -D @types/react typescript
 npm install @gtkx/css                        # For styling (optional)
 npm install -D @gtkx/testing                 # For testing (optional)
 ```
 
-### Project Setup
-
-tsconfig.json:
-```json
-{
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "jsx": "react-jsx",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true
-  },
-  "include": ["src"]
-}
-```
-
-package.json (add):
-```json
-{
-  "type": "module",
-  "scripts": {
-    "start": "tsx src/index.tsx"
-  }
-}
-```
-
-### Minimal Example
-
-```tsx
-// src/index.tsx
-import { render } from "@gtkx/react";
-import { App } from "./app.js";
-
-render(<App />, "org.example.MyApp");
-```
+Create your first app:
 
 ```tsx
 // src/app.tsx
@@ -132,9 +121,17 @@ export const App = () => {
     </ApplicationWindow>
   );
 };
+
+export default App;
+
+export const appId = "org.example.MyApp";
 ```
 
-Run with: `npm start`
+Run with HMR:
+
+```bash
+npx gtkx dev src/app.tsx
+```
 
 ## Core Concepts
 
@@ -839,12 +836,27 @@ Differences: `ApplicationMenu` shows in window titlebar (requires `showMenubar`)
 
 ## API Reference
 
+### @gtkx/cli
+
+Commands:
+- `gtkx create [name]`: Create a new GTKX project with interactive wizard
+  - `--app-id`: GTK application ID (reverse domain notation)
+  - `--pm`: Package manager (npm, pnpm, yarn, bun)
+  - `--testing`: Testing framework (vitest, jest, node, none)
+- `gtkx dev <entry>`: Start development server with Hot Module Replacement
+
+App file requirements for `gtkx dev`:
+- Must export a default function component
+- Should export `appId` constant (falls back to "org.gtkx.dev")
+- Can export `appFlags` for GIO ApplicationFlags (optional)
+
 ### @gtkx/react
 
 Functions:
 - `render(element, appId)`: Render React element as GTK application
 - `quit()`: Quit application and cleanup
 - `createPortal(children, container?, key?)`: Render into different container
+- `update(element)`: Re-render with new element (used internally by HMR)
 
 100+ widget components including: AboutDialog, ActionBar, ApplicationMenu, ApplicationWindow, Box, Button, Calendar, CheckButton, ColumnView, DropDown, Entry, Expander, Frame, Grid, GridView, HeaderBar, Image, Label, ListView, Menu (with Item, Section, Submenu), MenuButton, Notebook, Overlay, Paned, PasswordEntry, Picture, Popover, PopoverMenu, ProgressBar, Revealer, Scale, ScrolledWindow, SearchEntry, Spinner, Stack, Switch, TextView, ToggleButton, Video, Window, and more.
 

@@ -77,3 +77,7 @@ export const App = () => (
         </ApplicationWindow>
     </DemoProvider>
 );
+
+export default App;
+
+export const appId = "org.gtkx.Demo";
