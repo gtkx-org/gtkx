@@ -9,9 +9,9 @@ const native = require("./index.node");
  * @param value - The initial value to wrap
  * @returns A reference object whose value property can be mutated by native calls
  */
-export const createRef = <T>(value: T): Ref<T> => {
+export function createRef<T>(value: T): Ref<T> {
     return { value };
-};
+}
 
 /**
  * Calls a native GTK function via FFI.
@@ -70,6 +70,8 @@ export const alloc = native.alloc as (size: number, glibTypeName: string, lib?: 
  * @param objectId - The object pointer from an FFI call or signal callback
  * @returns The native pointer address as a number
  */
-export const getObjectId = native.getObjectId as (objectId: unknown) => number;
+export function getObjectId(objectId: unknown): number {
+    return native.getObjectId(objectId);
+}
 
 export type { Ref, Arg, Type };

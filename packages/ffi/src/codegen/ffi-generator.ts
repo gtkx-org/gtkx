@@ -500,7 +500,7 @@ export class CodeGenerator {
 
         if (cls.glibTypeName) {
             const override = parentInfo.hasParent ? "override " : "";
-            sections.push(`  static ${override}readonly gtkTypeName: string = "${cls.glibTypeName}";\n`);
+            sections.push(`  static ${override}readonly glibTypeName: string = "${cls.glibTypeName}";\n`);
         }
 
         if (!parentInfo.hasParent) {

@@ -75,29 +75,29 @@ describe("native module", () => {
         });
     });
 
-    describe("gtkTypeName static property", () => {
+    describe("glibTypeName static property", () => {
         it("is defined on Widget", () => {
-            expect(Gtk.Widget.gtkTypeName).toBe("GtkWidget");
+            expect(Gtk.Widget.glibTypeName).toBe("GtkWidget");
         });
 
         it("is defined on Button", () => {
-            expect(Gtk.Button.gtkTypeName).toBe("GtkButton");
+            expect(Gtk.Button.glibTypeName).toBe("GtkButton");
         });
 
         it("is defined on Label", () => {
-            expect(Gtk.Label.gtkTypeName).toBe("GtkLabel");
+            expect(Gtk.Label.glibTypeName).toBe("GtkLabel");
         });
 
         it("is defined on ApplicationWindow", () => {
-            expect(Gtk.ApplicationWindow.gtkTypeName).toBe("GtkApplicationWindow");
+            expect(Gtk.ApplicationWindow.glibTypeName).toBe("GtkApplicationWindow");
         });
 
         it("is defined on Box", () => {
-            expect(Gtk.Box.gtkTypeName).toBe("GtkBox");
+            expect(Gtk.Box.glibTypeName).toBe("GtkBox");
         });
 
         it("is defined on Entry", () => {
-            expect(Gtk.Entry.gtkTypeName).toBe("GtkEntry");
+            expect(Gtk.Entry.glibTypeName).toBe("GtkEntry");
         });
     });
 });

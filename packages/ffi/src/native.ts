@@ -23,13 +23,14 @@ export const events = new EventEmitter<NativeEventMap>();
  * Used when receiving pointers from FFI calls that need to be wrapped as TypeScript objects.
  * @param ptr - The native pointer to wrap
  * @param cls - The class whose prototype should be used
+ * @param cls.prototype - The prototype object to assign to the new instance
  * @returns A new instance with the pointer attached
  */
-export const getObject = <T extends object>(ptr: unknown, cls: { prototype: T }): T => {
+export function getObject<T extends object>(ptr: unknown, cls: { prototype: T }): T {
     const instance = Object.create(cls.prototype) as T & { ptr: unknown };
     instance.ptr = ptr;
     return instance;
-};
+}
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
@@ -94,8 +95,11 @@ export { createRef, getObjectId } from "@gtkx/native";
 /**
  * Type guard that checks if an object is an instance of a specific GTK class.
  * Uses GLib's type system to check the actual runtime type.
- * @param obj - The object to check (must have a `ptr` property)
- * @param cls - The class to check against (must have a static `gtkTypeName` property)
+ * @param obj - The object to check
+ * @param obj.ptr - The native pointer to the GObject instance
+ * @param cls - The class to check against
+ * @param cls.glibTypeName - The GLib type name (e.g., "GtkButton")
+ * @param cls.prototype - The class prototype used for type narrowing
  * @returns True if the object is an instance of the class
  * @example
  * ```ts
@@ -104,10 +108,10 @@ export { createRef, getObjectId } from "@gtkx/native";
  * }
  * ```
  */
-export const isInstanceOf = <T extends { ptr: unknown }>(
+export function isInstanceOf<T extends { ptr: unknown }>(
     obj: { ptr: unknown },
-    cls: { gtkTypeName: string; prototype: T },
-): obj is T => {
+    cls: { glibTypeName: string; prototype: T },
+): obj is T {
     const typeName = typeNameFromInstance(getObjectId(obj.ptr));
-    return typeName === cls.gtkTypeName;
-};
+    return typeName === cls.glibTypeName;
+}
