@@ -516,7 +516,7 @@ dependencies = [
 
 [[package]]
 name = "native"
-version = "0.1.54"
+version = "0.1.55"
 dependencies = [
  "anyhow",
  "gtk4",

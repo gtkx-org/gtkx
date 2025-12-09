@@ -113,5 +113,9 @@ export function isInstanceOf<T extends { ptr: unknown }>(
     cls: { glibTypeName: string; prototype: T },
 ): obj is T {
     const typeName = typeNameFromInstance(getObjectId(obj.ptr));
-    return typeName === cls.glibTypeName;
+    const isInstance = typeName === cls.glibTypeName;
+    if (isInstance) {
+        Object.setPrototypeOf(obj, cls.prototype);
+    }
+    return isInstance;
 }
