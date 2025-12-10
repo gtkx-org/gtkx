@@ -35,6 +35,7 @@ const isToggleable = (widget: Gtk.Widget): boolean => {
 const click = async (element: Gtk.Widget): Promise<void> => {
     if (isToggleable(element)) {
         const role = getInterface(element, Accessible).getAccessibleRole();
+
         if (role === AccessibleRole.CHECKBOX || role === AccessibleRole.RADIO) {
             const checkButton = element as CheckButton;
             checkButton.setActive(!checkButton.getActive());
@@ -42,27 +43,22 @@ const click = async (element: Gtk.Widget): Promise<void> => {
             const toggleButton = element as ToggleButton;
             toggleButton.setActive(!toggleButton.getActive());
         }
-        // Note: setActive() automatically emits the "toggled" signal, so we don't need to emit it manually
+
+        await tick();
     } else {
-        fireEvent(element, "clicked");
+        await fireEvent(element, "clicked");
     }
-    await tick();
 };
 
 const dblClick = async (element: Gtk.Widget): Promise<void> => {
-    fireEvent(element, "clicked");
-    await tick();
-    fireEvent(element, "clicked");
-    await tick();
+    await fireEvent(element, "clicked");
+    await fireEvent(element, "clicked");
 };
 
 const tripleClick = async (element: Gtk.Widget): Promise<void> => {
-    fireEvent(element, "clicked");
-    await tick();
-    fireEvent(element, "clicked");
-    await tick();
-    fireEvent(element, "clicked");
-    await tick();
+    await fireEvent(element, "clicked");
+    await fireEvent(element, "clicked");
+    await fireEvent(element, "clicked");
 };
 
 const activate = async (element: Gtk.Widget): Promise<void> => {
@@ -73,9 +69,11 @@ const activate = async (element: Gtk.Widget): Promise<void> => {
 const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => {
     const direction = options?.shift ? DirectionType.TAB_BACKWARD : DirectionType.TAB_FORWARD;
     const root = element.getRoot();
+
     if (root) {
         getInterface(root, Widget).childFocus(direction);
     }
+
     await tick();
 };
 
@@ -87,6 +85,7 @@ const type = async (element: Gtk.Widget, text: string): Promise<void> => {
     const editable = getInterface(element, Editable);
     const currentText = editable.getText();
     editable.setText(currentText + text);
+
     await tick();
 };
 
@@ -118,12 +117,15 @@ const selectOptions = async (element: Gtk.Widget, values: string | string[] | nu
         if (valueArray.length > 1) {
             throw new Error("Cannot select multiple options on a ComboBox/DropDown");
         }
+
         const value = valueArray[0];
+
         if (typeof value !== "number") {
             throw new Error("ComboBox/DropDown selection requires a numeric index");
         }
 
         const isDropDown = element.constructor.name === "DropDown";
+
         if (isDropDown) {
             (element as DropDown).setSelected(value);
         } else {
@@ -131,11 +133,14 @@ const selectOptions = async (element: Gtk.Widget, values: string | string[] | nu
         }
     } else if (role === AccessibleRole.LIST) {
         const listBox = element as ListBox;
+
         for (const value of valueArray) {
             if (typeof value !== "number") {
                 throw new Error("ListBox selection requires numeric indices");
             }
+
             const row = listBox.getRowAtIndex(value);
+
             if (row) {
                 listBox.selectRow(row);
             }
@@ -157,6 +162,7 @@ const deselectOptions = async (element: Gtk.Widget, values: number | number[]): 
 
     for (const value of valueArray) {
         const row = listBox.getRowAtIndex(value);
+
         if (row) {
             listBox.unselectRow(row as ListBoxRow);
         }

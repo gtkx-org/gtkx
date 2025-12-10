@@ -13,7 +13,7 @@ describe("fireEvent", () => {
         await render(<Button label="Test Button" />);
 
         const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Test Button" });
-        fireEvent(button, "clicked");
+        await fireEvent(button, "clicked");
         expect(button).toBeDefined();
     });
 
@@ -28,8 +28,8 @@ describe("fireEvent", () => {
         const first = await screen.findByRole(AccessibleRole.BUTTON, { name: "First" });
         const second = await screen.findByRole(AccessibleRole.BUTTON, { name: "Second" });
 
-        fireEvent(first, "clicked");
-        fireEvent(second, "clicked");
+        await fireEvent(first, "clicked");
+        await fireEvent(second, "clicked");
 
         expect(first).toBeDefined();
         expect(second).toBeDefined();

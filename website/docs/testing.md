@@ -52,10 +52,10 @@ GTK is automatically initialized on the first `render()` call—no manual setup 
 
 GTKX testing provides async query functions to find elements:
 
-| Variant | Returns | Throws if not found? |
-|---------|---------|----------------------|
-| `findBy*` | Single element | Yes |
-| `findAllBy*` | Array of elements | Yes (if empty) |
+| Variant      | Returns           | Throws if not found? |
+| ------------ | ----------------- | -------------------- |
+| `findBy*`    | Single element    | Yes                  |
+| `findAllBy*` | Array of elements | Yes (if empty)       |
 
 All queries are async and will wait for elements to appear (with a default timeout of 1000ms).
 
@@ -88,13 +88,18 @@ const button = await screen.findByRole(AccessibleRole.BUTTON, {
 const anyButton = await screen.findByRole(AccessibleRole.BUTTON);
 
 // Find a checked checkbox
-const checked = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: true });
+const checked = await screen.findByRole(AccessibleRole.CHECKBOX, {
+  checked: true,
+});
 
 // Find an expanded expander
-const expanded = await screen.findByRole(AccessibleRole.BUTTON, { expanded: true });
+const expanded = await screen.findByRole(AccessibleRole.BUTTON, {
+  expanded: true,
+});
 ```
 
 Common roles:
+
 - `AccessibleRole.BUTTON` — Buttons
 - `AccessibleRole.LABEL` — Labels
 - `AccessibleRole.TEXT_BOX` — Text inputs
@@ -119,7 +124,7 @@ Find elements by their widget name (test ID). Set the `name` prop on a widget to
 
 ```tsx
 // In your component
-<Button name="submit-btn">Submit</Button>
+<Button name="submit-btn">Submit</Button>;
 
 // In your test
 const button = await screen.findByTestId("submit-btn");
@@ -161,12 +166,15 @@ For more control, use `fireEvent` to emit GTK signals directly:
 import { fireEvent } from "@gtkx/testing";
 
 // Fire any signal by name
-fireEvent(button, "clicked");
-fireEvent(entry, "activate");
-fireEvent(checkbox, "toggled");
+await fireEvent(button, "clicked");
+await fireEvent(entry, "activate");
+await fireEvent(checkbox, "toggled");
 
 // Pass additional arguments to signal handlers
-fireEvent(widget, "custom-signal", { type: { type: "int", size: 32 }, value: 42 });
+await fireEvent(widget, "custom-signal", {
+  type: { type: "int", size: 32 },
+  value: 42,
+});
 ```
 
 For common user interactions like clicking or typing, prefer `userEvent` instead.
@@ -229,7 +237,9 @@ const dialog = await screen.findByRole(AccessibleRole.DIALOG);
 const { findByRole, findByText } = within(dialog);
 
 // These queries only search within the dialog
-const confirmButton = await findByRole(AccessibleRole.BUTTON, { name: "Confirm" });
+const confirmButton = await findByRole(AccessibleRole.BUTTON, {
+  name: "Confirm",
+});
 const message = await findByText("Are you sure?");
 ```
 
@@ -412,34 +422,34 @@ await render(
 
 ### Lifecycle Functions
 
-| Function | Description |
-|----------|-------------|
+| Function                    | Description                                                                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | `render(element, options?)` | Render a React element for testing. Wraps in `ApplicationWindow` by default. Returns `Promise<RenderResult>`. |
-| `cleanup()` | Unmount rendered components. Returns `Promise<void>`. Call after each test. |
-| `teardown()` | Clean up GTK entirely. Returns `Promise<void>`. Used in global teardown. |
+| `cleanup()`                 | Unmount rendered components. Returns `Promise<void>`. Call after each test.                                   |
+| `teardown()`                | Clean up GTK entirely. Returns `Promise<void>`. Used in global teardown.                                      |
 
 ### RenderResult
 
 The object returned by `render()`:
 
-| Property/Method | Description |
-|-----------------|-------------|
-| `container` | The GTK Application instance |
-| `rerender(element)` | Re-render with a new element. Returns `Promise<void>`. |
-| `unmount()` | Unmount the rendered component. Returns `Promise<void>`. |
-| `debug()` | Print the widget tree to console |
-| `findBy*`, `findAllBy*` | Query methods bound to the container |
+| Property/Method         | Description                                              |
+| ----------------------- | -------------------------------------------------------- |
+| `container`             | The GTK Application instance                             |
+| `rerender(element)`     | Re-render with a new element. Returns `Promise<void>`.   |
+| `unmount()`             | Unmount the rendered component. Returns `Promise<void>`. |
+| `debug()`               | Print the widget tree to console                         |
+| `findBy*`, `findAllBy*` | Query methods bound to the container                     |
 
 ### Screen Queries
 
 All queries are available on the `screen` object and on `RenderResult`:
 
-| Query Type | Variants | Description |
-|------------|----------|-------------|
-| `*ByRole` | find, findAll | Find by accessible role |
-| `*ByText` | find, findAll | Find by text content |
-| `*ByLabelText` | find, findAll | Find by label text |
-| `*ByTestId` | find, findAll | Find by widget name |
+| Query Type     | Variants      | Description             |
+| -------------- | ------------- | ----------------------- |
+| `*ByRole`      | find, findAll | Find by accessible role |
+| `*ByText`      | find, findAll | Find by text content    |
+| `*ByLabelText` | find, findAll | Find by label text      |
+| `*ByTestId`    | find, findAll | Find by widget name     |
 
 ### Query Options
 
@@ -467,36 +477,36 @@ await screen.findByRole(AccessibleRole.BUTTON, {
 
 ### User Events
 
-| Function | Description |
-|----------|-------------|
-| `userEvent.click(element)` | Click an element |
-| `userEvent.dblClick(element)` | Double-click an element |
-| `userEvent.tripleClick(element)` | Triple-click an element |
-| `userEvent.activate(element)` | Activate an element (e.g., press Enter in input) |
-| `userEvent.type(element, text)` | Type text into an input |
-| `userEvent.clear(element)` | Clear an input field |
-| `userEvent.tab(element, options?)` | Simulate Tab navigation |
-| `userEvent.selectOptions(element, values)` | Select options in ComboBox/ListBox |
-| `userEvent.deselectOptions(element, values)` | Deselect options in ListBox |
+| Function                                     | Description                                      |
+| -------------------------------------------- | ------------------------------------------------ |
+| `userEvent.click(element)`                   | Click an element                                 |
+| `userEvent.dblClick(element)`                | Double-click an element                          |
+| `userEvent.tripleClick(element)`             | Triple-click an element                          |
+| `userEvent.activate(element)`                | Activate an element (e.g., press Enter in input) |
+| `userEvent.type(element, text)`              | Type text into an input                          |
+| `userEvent.clear(element)`                   | Clear an input field                             |
+| `userEvent.tab(element, options?)`           | Simulate Tab navigation                          |
+| `userEvent.selectOptions(element, values)`   | Select options in ComboBox/ListBox               |
+| `userEvent.deselectOptions(element, values)` | Deselect options in ListBox                      |
 
 ### Fire Event
 
-| Function | Description |
-|----------|-------------|
+| Function                                  | Description                                 |
+| ----------------------------------------- | ------------------------------------------- |
 | `fireEvent(element, signalName, ...args)` | Fire any GTK signal with optional arguments |
 
 ### Scoped Queries
 
-| Function | Description |
-|----------|-------------|
+| Function            | Description                                           |
+| ------------------- | ----------------------------------------------------- |
 | `within(container)` | Returns query functions scoped to a container element |
 
 ### Async Utilities
 
-| Function | Description |
-|----------|-------------|
-| `waitFor(callback, options?)` | Wait for a condition to be true |
-| `waitForElementToBeRemoved(element, options?)` | Wait for element removal |
+| Function                                       | Description                     |
+| ---------------------------------------------- | ------------------------------- |
+| `waitFor(callback, options?)`                  | Wait for a condition to be true |
+| `waitForElementToBeRemoved(element, options?)` | Wait for element removal        |
 
 #### WaitForOptions
 

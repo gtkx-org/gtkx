@@ -1,6 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Arg } from "@gtkx/native";
 import { call } from "@gtkx/native";
+import { tick } from "./timing.js";
 
 /**
  * Low-level utility to emit GTK signals on widgets. For common interactions
@@ -11,16 +12,18 @@ import { call } from "@gtkx/native";
  * @param args - Additional arguments to pass to the signal handlers
  *
  * @example
- * fireEvent(button, "clicked")
+ * await fireEvent(button, "clicked")
  *
  * @example
- * fireEvent(widget, "custom-signal", { type: { type: "int", size: 32 }, value: 42 })
+ * await fireEvent(widget, "custom-signal", { type: { type: "int", size: 32 }, value: 42 })
  */
-export const fireEvent = (element: Gtk.Widget, signalName: string, ...args: Arg[]): void => {
+export const fireEvent = async (element: Gtk.Widget, signalName: string, ...args: Arg[]): Promise<void> => {
     call(
         "libgobject-2.0.so.0",
         "g_signal_emit_by_name",
         [{ type: { type: "gobject" }, value: element.id }, { type: { type: "string" }, value: signalName }, ...args],
         { type: "undefined" },
     );
+
+    await tick();
 };
