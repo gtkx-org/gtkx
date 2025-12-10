@@ -2,10 +2,10 @@
     "name": "gtkx",
     "version": "0.0.0",
     "private": true,
+    "homepage": "https://eugeniodepalo.github.io/gtkx/",
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
-    "homepage": "https://eugeniodepalo.github.io/gtkx/",
     "scripts": {
         "build": "turbo build --filter=!website",
         "codegen": "turbo codegen",

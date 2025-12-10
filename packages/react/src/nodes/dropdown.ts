@@ -1,10 +1,16 @@
-import type * as Gio from "@gtkx/ffi/gio";
+import { getInterface } from "@gtkx/ffi";
+import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { type ItemContainer, isItemContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
 
 type ItemLabelFn = (item: unknown) => string;
+
+interface DropDownState {
+    store: DropDownStore;
+    onSelectionChanged?: (item: unknown, index: number) => void;
+}
 
 class DropDownStore {
     private stringList: Gtk.StringList;
@@ -44,27 +50,27 @@ class DropDownStore {
     }
 }
 
-export class DropDownNode extends Node<Gtk.DropDown> implements ItemContainer<unknown> {
+export class DropDownNode extends Node<Gtk.DropDown, DropDownState> implements ItemContainer<unknown> {
     static matches(type: string): boolean {
         return type === "DropDown.Root";
     }
 
-    private store!: DropDownStore;
-    private onSelectionChanged?: (item: unknown, index: number) => void;
-
     override initialize(props: Props): void {
+        const labelFn = (props.itemLabel as ItemLabelFn) ?? ((item: unknown) => String(item));
+        const store = new DropDownStore(labelFn);
+        const onSelectionChanged = props.onSelectionChanged as ((item: unknown, index: number) => void) | undefined;
+
+        this.state = { store, onSelectionChanged };
+
         super.initialize(props);
 
-        const labelFn = (props.itemLabel as ItemLabelFn) ?? ((item: unknown) => String(item));
-        this.onSelectionChanged = props.onSelectionChanged as ((item: unknown, index: number) => void) | undefined;
-        this.store = new DropDownStore(labelFn);
-        this.widget.setModel(this.store.getModel() as unknown as Gio.ListModel);
+        this.widget.setModel(getInterface(store.getModel(), Gio.ListModel));
 
-        if (this.onSelectionChanged) {
+        if (onSelectionChanged) {
             const handler = () => {
                 const index = this.widget.getSelected();
-                const item = this.store.getItem(index);
-                this.onSelectionChanged?.(item, index);
+                const item = this.state.store.getItem(index);
+                this.state.onSelectionChanged?.(item, index);
             };
 
             this.connectSignal(this.widget, "notify::selected", handler);
@@ -72,7 +78,7 @@ export class DropDownNode extends Node<Gtk.DropDown> implements ItemContainer<un
     }
 
     addItem(item: unknown): void {
-        this.store.append(item);
+        this.state.store.append(item);
     }
 
     insertItemBefore(item: unknown, _beforeItem: unknown): void {
@@ -80,7 +86,7 @@ export class DropDownNode extends Node<Gtk.DropDown> implements ItemContainer<un
     }
 
     removeItem(item: unknown): void {
-        this.store.remove(item);
+        this.state.store.remove(item);
     }
 
     protected override consumedProps(): Set<string> {
@@ -92,7 +98,7 @@ export class DropDownNode extends Node<Gtk.DropDown> implements ItemContainer<un
 
     override updateProps(oldProps: Props, newProps: Props): void {
         if (oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
-            this.onSelectionChanged = newProps.onSelectionChanged as
+            this.state.onSelectionChanged = newProps.onSelectionChanged as
                 | ((item: unknown, index: number) => void)
                 | undefined;
         }

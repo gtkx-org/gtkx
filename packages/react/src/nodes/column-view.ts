@@ -1,5 +1,5 @@
-import { getObject, getObjectId } from "@gtkx/ffi";
-import type * as Gio from "@gtkx/ffi/gio";
+import { getInterface, getObject, getObjectId } from "@gtkx/ffi";
+import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type Reconciler from "react-reconciler";
@@ -42,7 +42,9 @@ export class ColumnViewNode
     }
 
     override initialize(props: Props): void {
-        // Initialize state before super.initialize() since updateProps accesses this.state
+        // State must be initialized before super.initialize() since updateProps accesses this.state.
+        // GTK objects can't be created yet because this.widget doesn't exist until super.initialize().
+        // The null placeholders are immediately replaced after super.initialize() completes.
         this.state = {
             stringList: null as unknown as Gtk.StringList,
             selectionModel: null as unknown as Gtk.SingleSelection,
@@ -63,9 +65,9 @@ export class ColumnViewNode
         super.initialize(props);
 
         const stringList = new Gtk.StringList([]);
-        const sortListModel = new Gtk.SortListModel(stringList as unknown as Gio.ListModel, this.widget.getSorter());
+        const sortListModel = new Gtk.SortListModel(getInterface(stringList, Gio.ListModel), this.widget.getSorter());
         sortListModel.setIncremental(true);
-        const selectionModel = new Gtk.SingleSelection(sortListModel as unknown as Gio.ListModel);
+        const selectionModel = new Gtk.SingleSelection(getInterface(sortListModel, Gio.ListModel));
         this.widget.setModel(selectionModel);
 
         this.state.stringList = stringList;
@@ -298,7 +300,8 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
     private columnView: ColumnViewNode | null = null;
 
     override initialize(props: Props): void {
-        // Initialize state before super.initialize() since updateProps accesses this.state
+        // Unlike ColumnViewNode, we can create GTK objects before super.initialize() here
+        // since this is a virtual node (no widget created by parent class).
         const factory = new Gtk.SignalListItemFactory();
         const column = new Gtk.ColumnViewColumn(props.title as string | undefined, factory);
         const columnId = (props.id as string | null) ?? null;

@@ -1,7 +1,7 @@
 import { getCurrentApp, getInterface, start, stop } from "@gtkx/ffi";
 import type { AccessibleRole } from "@gtkx/ffi/gtk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationWindow, reconciler } from "@gtkx/react";
+import { ApplicationWindow, ROOT_NODE_CONTAINER, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import * as queries from "./queries.js";
@@ -10,7 +10,6 @@ import { tick } from "./timing.js";
 import type { ByRoleOptions, RenderOptions, RenderResult, TextMatchOptions } from "./types.js";
 import { hasLabel } from "./widget.js";
 
-const ROOT_NODE_CONTAINER = Symbol.for("ROOT_NODE_CONTAINER");
 const APP_ID = "com.gtkx.testing";
 
 let container: Reconciler.FiberRoot | null = null;
@@ -58,7 +57,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
     if (!container) {
         const instance = reconciler.getInstance();
         container = instance.createContainer(
-            ROOT_NODE_CONTAINER as unknown as Gtk.Widget,
+            ROOT_NODE_CONTAINER,
             0,
             null,
             false,

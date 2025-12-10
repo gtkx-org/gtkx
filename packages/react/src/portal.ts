@@ -20,6 +20,8 @@ import { ROOT_NODE_CONTAINER } from "./factory.js";
  * ```
  */
 export const createPortal = (children: ReactNode, container?: unknown, key?: string | null): ReactPortal => {
+    // ReactPortal is an opaque type but we need to construct it manually for custom reconcilers.
+    // The shape matches React's internal portal representation.
     return {
         $$typeof: Symbol.for("react.portal"),
         key: key ?? null,

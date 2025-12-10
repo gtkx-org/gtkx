@@ -144,6 +144,11 @@ class Reconciler {
         };
     }
 
+    /**
+     * Creates a React context compatible with the reconciler's internal type.
+     * Cast is necessary because React.Context and ReactReconciler.ReactContext
+     * are structurally identical at runtime but declared as separate types.
+     */
     private createReconcilerContext(value: TransitionStatus): ReactReconciler.ReactContext<TransitionStatus> {
         const context = React.createContext<TransitionStatus>(value);
         return context as unknown as ReactReconciler.ReactContext<TransitionStatus>;

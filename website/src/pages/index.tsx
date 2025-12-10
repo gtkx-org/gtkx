@@ -32,38 +32,35 @@ type FeatureItem = {
 
 const features: FeatureItem[] = [
     {
-        title: "React Components",
+        title: "React",
         icon: "⚛️",
         description:
-            "Use React hooks, state, and component patterns you already know. Write JSX that renders as native GTK4 widgets.",
+            "Hooks, state, props, and components you already know. Write JSX that renders as native GTK4 widgets.",
     },
     {
-        title: "Hot Module Replacement",
+        title: "Hot Reload",
         icon: "🔥",
-        description:
-            "Edit your code and see changes instantly. The gtkx CLI provides HMR powered by Vite — no app restart needed.",
+        description: "Edit code and see changes instantly. Vite-powered HMR with no app restart needed.",
     },
     {
-        title: "Native Performance",
+        title: "Native",
         icon: "🚀",
-        description:
-            "Direct FFI bindings to GTK4 via Rust and libffi. No Electron, no web views — just native widgets.",
+        description: "Direct FFI bindings to GTK4 via Rust and libffi. No Electron, no web views.",
     },
     {
-        title: "CLI & Scaffolding",
+        title: "CLI",
         icon: "⚡",
-        description:
-            "Get started in seconds with npx @gtkx/cli@latest create. Interactive project setup with your preferred package manager.",
+        description: "npx @gtkx/cli@latest create scaffolds a project with TypeScript, testing, and HMR ready to go.",
     },
     {
-        title: "CSS-in-JS Styling",
+        title: "CSS-in-JS",
         icon: "🎨",
-        description: "Style GTK widgets with an Emotion-style API. Use template literals and compose styles easily.",
+        description: "Emotion-style css template literals for GTK widgets. Compose and reuse styles easily.",
     },
     {
-        title: "Full GTK4 Access",
-        icon: "🔧",
-        description: "Access all GTK4 widgets, signals, and properties. Use GLib, GIO, Gdk, and other GNOME libraries.",
+        title: "Testing",
+        icon: "🧪",
+        description: "Testing Library-style API with screen, userEvent, and queries for GTK widgets.",
     },
 ];
 
@@ -93,20 +90,16 @@ const HomepageFeatures = () => {
     );
 };
 
-const codeExample = `import { render, ApplicationWindow, Button, quit } from "@gtkx/react";
+const codeExample = `import { render, ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+import { Orientation } from "@gtkx/ffi/gtk";
 import { css } from "@gtkx/css";
 import { useState } from "react";
 
-const buttonStyle = css\`
+const primary = css\`
   padding: 12px 24px;
-  font-size: 18px;
+  border-radius: 8px;
   background: linear-gradient(135deg, #3584e4, #1a5fb4);
   color: white;
-  border-radius: 8px;
-
-  &:hover {
-    background: linear-gradient(135deg, #1c71d8, #174e9c);
-  }
 \`;
 
 const App = () => {
@@ -114,11 +107,14 @@ const App = () => {
 
   return (
     <ApplicationWindow title="Counter" onCloseRequest={quit}>
-      <Button
-        css={buttonStyle}
-        label={\`Clicked \${count} times\`}
-        onClicked={() => setCount(c => c + 1)}
-      />
+      <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
+        <Label.Root label={\`Count: \${count}\`} cssClasses={["title-1"]} />
+        <Button
+          label="Increment"
+          cssClasses={[primary]}
+          onClicked={() => setCount(c => c + 1)}
+        />
+      </Box>
     </ApplicationWindow>
   );
 };

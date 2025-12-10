@@ -5,8 +5,8 @@
     "description": "Todo App - A realistic example with comprehensive testing",
     "type": "module",
     "scripts": {
-        "dev": "gtkx dev src/app.tsx",
         "build": "tsc -b",
+        "dev": "gtkx dev src/app.tsx",
         "start": "node dist/index.js",
         "test": "GDK_BACKEND=x11 xvfb-run -a vitest run"
     },

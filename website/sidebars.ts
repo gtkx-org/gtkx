@@ -4,21 +4,15 @@ const sidebars: SidebarsConfig = {
     docsSidebar: [
         "introduction",
         "getting-started",
+        "cli",
         {
             type: "category",
-            label: "Guides",
-            items: [
-                "cli",
-                "slots",
-                "lists",
-                "dialogs",
-                "portals",
-                "grid-layout",
-                "styling",
-                "menus",
-                "testing",
-            ],
+            label: "Components",
+            collapsed: false,
+            items: ["slots", "lists", "grid-layout", "menus", "dialogs", "portals"],
         },
+        "styling",
+        "testing",
     ],
     apiSidebar: [
         {

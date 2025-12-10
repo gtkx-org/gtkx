@@ -1,4 +1,4 @@
-import { getCurrentApp } from "@gtkx/ffi";
+import { getCurrentApp, getInterface } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -226,7 +226,7 @@ export class MenuItemNode extends Node<never> {
         });
 
         const app = getCurrentApp();
-        app.addAction(this.action as unknown as Gio.Action);
+        app.addAction(getInterface(this.action, Gio.Action));
 
         this.entry.action = `app.${this.actionName}`;
 

@@ -1,5 +1,6 @@
 ---
-sidebar_position: 10
+sidebar_position: 6
+sidebar_label: Portals
 ---
 
 # Portals

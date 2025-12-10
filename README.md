@@ -5,7 +5,7 @@
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-  <strong>Build native GTK4 desktop applications with React and TypeScript</strong>
+  <strong>Build native GTK4 desktop apps with React</strong>
 </p>
 
 <p align="center">
@@ -16,228 +16,118 @@
 
 ---
 
-GTKX bridges React's component model with GTK4's native widget system. Write familiar React code and render it as native Linux desktop applications with full access to GTK4 widgets, signals, and styling.
+GTKX lets you build native Linux desktop applications using React and TypeScript. Write familiar React code that renders as native GTK4 widgets—no Electron, no web views.
 
 ## Features
 
-- **React Components** — Use React hooks, state, and component patterns you already know
-- **Hot Module Replacement** — Edit your code and see changes instantly, powered by Vite
-- **Native Performance** — Direct FFI bindings to GTK4 via Rust and libffi
-- **CLI & Scaffolding** — Get started in seconds with `npx @gtkx/cli@latest create`
-- **CSS-in-JS Styling** — Emotion-style `css` template literals for GTK widgets
-- **Testing Library** — Familiar `screen`, `userEvent`, and query APIs for testing components
+- **React** — Hooks, state, props, and components you already know
+- **Hot Reload** — Edit code and see changes instantly via Vite
+- **Native** — Direct FFI bindings to GTK4 via Rust and libffi
+- **CLI** — `npx @gtkx/cli@latest create` scaffolds a ready-to-go project
+- **CSS-in-JS** — Emotion-style `css` template literals for GTK styling
+- **Testing** — Testing Library-style `screen`, `userEvent`, and queries
 
 ## Quick Start
 
-Create a new GTKX app with a single command:
-
 ```bash
-npx @gtkx/cli@latest create
-```
-
-This launches an interactive wizard that sets up your project with TypeScript, your preferred package manager, and optional testing support.
-
-You can also pass options directly:
-
-```bash
-npx @gtkx/cli@latest create my-app --app-id com.example.myapp --pm pnpm --testing vitest
-```
-
-Then start developing with HMR:
-
-```bash
+npx @gtkx/cli@latest create my-app
 cd my-app
 npm run dev
 ```
 
-Edit your code and see changes instantly without restarting the app!
+Edit your code and see changes instantly—no restart needed.
 
-### Manual Setup
-
-Alternatively, install packages directly:
-
-```bash
-npm install @gtkx/cli @gtkx/react @gtkx/ffi react
-npm install -D @types/react typescript
-```
-
-Create your first app:
+### Example
 
 ```tsx
+import { render, ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+import { Orientation } from "@gtkx/ffi/gtk";
 import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
 
-export default function App() {
+const App = () => {
   const [count, setCount] = useState(0);
 
   return (
-    <ApplicationWindow
-      title="My App"
-      defaultWidth={400}
-      defaultHeight={300}
-      onCloseRequest={quit}
-    >
-      <Box
-        orientation={Gtk.Orientation.VERTICAL}
-        spacing={12}
-        marginStart={20}
-        marginEnd={20}
-        marginTop={20}
-        marginBottom={20}
-      >
+    <ApplicationWindow title="Counter" onCloseRequest={quit}>
+      <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
         <Label.Root label={`Count: ${count}`} />
         <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
       </Box>
     </ApplicationWindow>
   );
-}
+};
 
-export const appId = "org.example.MyApp";
-```
-
-```tsx
-import { render } from "@gtkx/react";
-import App, { appId } from "./app.js";
-
-render(<App />, appId);
-```
-
-Run with HMR:
-
-```bash
-npx gtkx dev src/app.tsx
-```
-
-Or without HMR (production):
-
-```bash
-npx tsc -b && node dist/index.js
+render(<App />, "org.example.Counter");
 ```
 
 ## Styling
-
-Use `@gtkx/css` for CSS-in-JS styling:
 
 ```tsx
 import { css } from "@gtkx/css";
 import { Button } from "@gtkx/react";
 
-const primaryButton = css`
+const primary = css`
   padding: 16px 32px;
   border-radius: 24px;
   background: linear-gradient(135deg, #3584e4, #9141ac);
   color: white;
-  font-weight: bold;
 `;
 
-const MyButton = () => <Button label="Click me" cssClasses={[primaryButton]} />;
+<Button label="Click me" cssClasses={[primary]} />
 ```
 
-GTK also provides built-in CSS classes like `suggested-action`, `destructive-action`, `card`, and `heading`.
+GTK also provides built-in classes like `suggested-action`, `destructive-action`, `card`, and `heading`.
 
 ## Testing
 
-Use `@gtkx/testing` for Testing Library-style component tests:
-
 ```tsx
-import { cleanup, render, screen, userEvent, fireEvent } from "@gtkx/testing";
+import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { AccessibleRole } from "@gtkx/ffi/gtk";
-import { App } from "./app.js";
 
-afterEach(async () => {
-  await cleanup();
-});
+afterEach(() => cleanup());
 
-test("increments count when clicking button", async () => {
+test("increments count", async () => {
   await render(<App />);
 
-  const button = await screen.findByRole(AccessibleRole.BUTTON, {
-    name: "Increment",
-  });
+  const button = await screen.findByRole(AccessibleRole.BUTTON, { name: "Increment" });
   await userEvent.click(button);
 
   await screen.findByText("Count: 1");
 });
-
-test("can also use fireEvent for low-level signals", async () => {
-  await render(<App />);
-
-  const button = await screen.findByRole(AccessibleRole.BUTTON, {
-    name: "Increment",
-  });
-  fireEvent(button, "clicked");
-
-  await screen.findByText("Count: 1");
-});
 ```
 
-### Available APIs
+Queries: `findByRole`, `findByText`, `findByLabelText`, `findByTestId`
 
-**Queries** - Find elements in the rendered tree (all async):
-
-- `findBy*` / `findAllBy*` - Waits for element to appear
-
-Query types: `ByRole`, `ByText`, `ByLabelText`, `ByTestId`
-
-**User Interactions**:
-
-- `userEvent.click(element)` - Simulate click
-- `userEvent.dblClick(element)` - Simulate double click
-- `userEvent.activate(element)` - Activate element (e.g., press Enter in input)
-- `userEvent.type(element, text)` - Type text into input
-- `userEvent.clear(element)` - Clear input text
-- `userEvent.tab(element, options?)` - Simulate Tab navigation
-- `userEvent.selectOptions(element, values)` - Select options in ComboBox/ListBox
-- `userEvent.deselectOptions(element, values)` - Deselect options in ListBox
-
-**Low-level Events**:
-
-- `fireEvent(element, signalName, ...args)` - Emit any GTK signal with optional arguments
-
-**Utilities**:
-
-- `waitFor(callback)` - Wait for condition
-- `waitForElementToBeRemoved(element)` - Wait for element removal
+User events: `click`, `dblClick`, `type`, `clear`, `tab`, `selectOptions`
 
 ## Examples
 
-### GTK4 Demo
-
-A comprehensive showcase of GTK4 widgets and features:
-
-```bash
-cd examples/gtk4-demo
-pnpm dev
-```
-
-### Todo App
-
-A todo app demonstrating `@gtkx/testing` with realistic component tests:
+| Example | Description |
+| ------- | ----------- |
+| [gtk4-demo](examples/gtk4-demo) | Widget showcase |
+| [todo](examples/todo) | Todo app with tests |
 
 ```bash
-cd examples/todo
-pnpm dev
-pnpm test
+cd examples/gtk4-demo && pnpm dev
 ```
 
 ## Packages
 
-| Package                           | Description                                        |
-| --------------------------------- | -------------------------------------------------- |
-| [@gtkx/cli](packages/cli)         | CLI for creating and developing GTKX apps with HMR |
-| [@gtkx/react](packages/react)     | React reconciler and JSX components                |
-| [@gtkx/ffi](packages/ffi)         | TypeScript FFI bindings for GTK4                   |
-| [@gtkx/native](packages/native)   | Rust native module for FFI bridge                  |
-| [@gtkx/css](packages/css)         | CSS-in-JS styling for GTK widgets                  |
-| [@gtkx/testing](packages/testing) | Testing utilities for GTKX components              |
-| [@gtkx/gir](packages/gir)         | GObject Introspection parser for codegen           |
+| Package | Description |
+| ------- | ----------- |
+| [@gtkx/cli](packages/cli) | CLI with HMR dev server |
+| [@gtkx/react](packages/react) | React reconciler and JSX components |
+| [@gtkx/ffi](packages/ffi) | TypeScript bindings for GTK4/GLib/GIO |
+| [@gtkx/native](packages/native) | Rust native module (libffi bridge) |
+| [@gtkx/css](packages/css) | CSS-in-JS styling |
+| [@gtkx/testing](packages/testing) | Testing utilities |
+| [@gtkx/gir](packages/gir) | GObject Introspection parser |
 
 ## Requirements
 
 - Node.js 20+
-- GTK4
-- Linux (GTK4 is Linux-native)
+- GTK4 (`gtk4-devel` on Fedora, `libgtk-4-dev` on Ubuntu)
+- Linux
 
 ## License
 

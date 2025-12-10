@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as p from "@clack/prompts";
 
-type PackageManager = "pnpm" | "npm" | "yarn" | "bun";
-type TestingFramework = "vitest" | "jest" | "node" | "none";
+export type PackageManager = "pnpm" | "npm" | "yarn" | "bun";
+export type TestingFramework = "vitest" | "jest" | "node" | "none";
 
 export interface CreateOptions {
     name?: string;
@@ -23,7 +23,7 @@ const TESTING_DEV_DEPENDENCIES: Record<Exclude<TestingFramework, "none">, string
     node: ["@gtkx/testing", "@types/node"],
 };
 
-const getTestScript = (testing: TestingFramework): string | undefined => {
+export const getTestScript = (testing: TestingFramework): string | undefined => {
     switch (testing) {
         case "vitest":
             return "GDK_BACKEND=x11 xvfb-run -a vitest";
@@ -36,7 +36,7 @@ const getTestScript = (testing: TestingFramework): string | undefined => {
     }
 };
 
-const generatePackageJson = (name: string, appId: string, testing: TestingFramework): string => {
+export const generatePackageJson = (name: string, appId: string, testing: TestingFramework): string => {
     const testScript = getTestScript(testing);
     const scripts: Record<string, string> = {
         dev: "gtkx dev src/app.tsx",
@@ -64,7 +64,7 @@ const generatePackageJson = (name: string, appId: string, testing: TestingFramew
     );
 };
 
-const generateTsConfig = (): string => {
+export const generateTsConfig = (): string => {
     return JSON.stringify(
         {
             compilerOptions: {
@@ -198,7 +198,7 @@ export default {
 `;
 };
 
-const getAddCommand = (pm: PackageManager, deps: string[], dev: boolean): string => {
+export const getAddCommand = (pm: PackageManager, deps: string[], dev: boolean): string => {
     const devFlag = dev ? (pm === "npm" ? "--save-dev" : "-D") : "";
     const packages = deps.join(" ");
 
@@ -214,7 +214,7 @@ const getAddCommand = (pm: PackageManager, deps: string[], dev: boolean): string
     }
 };
 
-const getRunCommand = (pm: PackageManager): string => {
+export const getRunCommand = (pm: PackageManager): string => {
     switch (pm) {
         case "npm":
             return "npm run dev";
@@ -227,11 +227,11 @@ const getRunCommand = (pm: PackageManager): string => {
     }
 };
 
-const isValidProjectName = (name: string): boolean => {
+export const isValidProjectName = (name: string): boolean => {
     return /^[a-z0-9-]+$/.test(name);
 };
 
-const isValidAppId = (appId: string): boolean => {
+export const isValidAppId = (appId: string): boolean => {
     return /^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)+$/.test(appId);
 };
 

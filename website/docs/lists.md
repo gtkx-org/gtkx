@@ -1,8 +1,9 @@
 ---
-sidebar_position: 8
+sidebar_position: 2
+sidebar_label: Lists & Tables
 ---
 
-# Lists
+# Lists & Tables
 
 GTKX provides virtualized list components that efficiently render large datasets. These use GTK's native list infrastructure with a declarative JSX-based rendering approach.
 

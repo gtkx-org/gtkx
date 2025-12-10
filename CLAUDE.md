@@ -2,145 +2,109 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
-
-GTKX is a framework for building native GTK4 desktop applications using React and TypeScript. It bridges React's component model with GTK4's native widget system via a custom React Reconciler and Rust-based FFI bindings using libffi.
-
-## Tech Stack
-
-- **TypeScript** - Main programming language for all packages
-- **React** - UI library for building component-based interfaces
-- **Rust** - Native module for FFI bridge and performance-critical code
-- **Vite** - Powers the HMR development server in @gtkx/cli
-- **GObject Introspection (GIR)** - XML metadata for generating FFI bindings
-- **pnpm** - Monorepo package manager
-- **Biome** - Linter and code formatter
-- **Knip** - Dead code detection
-- **Vitest** - Testing framework
-- **Turborepo** - Monorepo build system
-
-## Commands
+## Build Commands
 
 ```bash
-# Build and run
-turbo build                              # Build all packages
-pnpm --filter=gtk4-demo dev              # Start example with HMR
-pnpm --filter=gtk4-demo start            # Start example (production mode)
-
-# Create new apps
-npx @gtkx/cli@latest create                     # Interactive project wizard
-npx @gtkx/cli@latest create my-app --pm pnpm    # With options
-
-# Development server
-gtkx dev src/app.tsx                     # Start dev server with HMR
-
-# Documentation
-pnpm run docs                            # Start documentation site
-
-# Testing
-turbo test                               # Run all tests
-turbo test --filter=@gtkx/react          # Run tests for a specific package
-GDK_BACKEND=x11 xvfb-run -a pnpm vitest run tests/file.test.ts  # Run a single test file (requires xvfb)
-
-# Code generation
-turbo codegen                            # Generate FFI bindings from GIR files
-
-# Linting
-pnpm lint                                # Lint with Biome
-pnpm lint --write                        # Auto-fix lint issues
-pnpm knip                                # Check for unused code
+pnpm install          # Install dependencies
+pnpm build            # Build all packages (turbo)
+pnpm codegen          # Regenerate FFI/JSX bindings from GIR files
+pnpm test             # Run tests (concurrency=1 due to GTK/X11 constraints)
+pnpm lint             # Run biome check
+pnpm knip             # Check for unused code
 ```
 
-Note: Tests require `xvfb-run` because GTK needs a display. Each package's test script wraps vitest with `xvfb-run -a`.
+### Per-Package Commands
+
+```bash
+cd packages/<package>
+pnpm build            # Build single package
+pnpm test             # Run package tests
+pnpm codegen          # Regenerate bindings (ffi, react only)
+pnpm native-build     # Build Rust module (native only)
+```
+
+### Running Examples
+
+```bash
+cd examples/gtk4-demo && pnpm dev   # GTK4 widget showcase
+cd examples/todo && pnpm dev        # Todo app with tests
+```
 
 ## Architecture
 
-### Data Flow
+GTKX is a monorepo (pnpm workspaces + Turbo) that enables building native GTK4 desktop applications with React.
+
+### Package Dependency Graph
 
 ```
-React JSX → @gtkx/react (Reconciler) → @gtkx/ffi (TS wrappers) → @gtkx/native (Rust) → libffi → GTK4
+@gtkx/cli → @gtkx/react → @gtkx/ffi → @gtkx/native (Rust/libffi)
+             ↓
+          @gtkx/css (also → @gtkx/ffi)
+
+@gtkx/testing → @gtkx/react + @gtkx/ffi + @gtkx/native
+@gtkx/gir → Used for codegen in @gtkx/ffi & @gtkx/react
 ```
 
-1. **@gtkx/gir** parses GIR XML files (GTK's machine-readable API docs)
-2. **@gtkx/ffi** and **@gtkx/react** use codegen to generate TypeScript classes and JSX types from GIR
-3. **@gtkx/react** reconciler converts React elements into `Node` instances that wrap GTK widgets
-4. **@gtkx/ffi** classes marshal TypeScript calls to C via the Rust native module
-5. **@gtkx/native** uses libffi to dynamically invoke C functions at runtime
+### Core Packages
 
-### Package Structure
+- **@gtkx/native** - Rust native module (Neon/N-API) wrapping libffi for GTK4 function calls
+- **@gtkx/ffi** - Auto-generated TypeScript bindings for GTK4/GDK/GLib (from GIR files in `girs/`)
+- **@gtkx/react** - React 19 reconciler implementation + JSX components for GTK widgets
+- **@gtkx/cli** - Vite-based dev server with HMR, project scaffolding
+- **@gtkx/css** - Emotion-compatible CSS-in-JS for GTK styling
+- **@gtkx/testing** - Testing Library-style utilities (render, screen, userEvent, queries)
+- **@gtkx/gir** - GObject Introspection XML parser for codegen
 
-- **@gtkx/cli** (`packages/cli`) - CLI for creating and developing GTKX apps. Provides `gtkx create` for project scaffolding and `gtkx dev` for HMR-enabled development using Vite. Key exports: `createDevServer`, `createApp`
-- **@gtkx/react** (`packages/react`) - React reconciler and JSX components. Key exports: `render()` creates GTK app and mounts React tree, `update()` for HMR re-renders, `quit()` cleanly shuts down, `createPortal()` for dialogs. Key files: `reconciler.ts` (HostConfig), `node.ts` (widget wrappers), `factory.ts` (node routing)
-- **@gtkx/ffi** (`packages/ffi`) - Generated TypeScript FFI bindings. Each GTK class becomes a TS class with methods that call native FFI. Key exports: `start()`, `stop()`, `getCurrentApp()`, `getObject()`, `getInterface()`, `events` (EventEmitter for lifecycle), `createRef`, `getObjectId`, `NativeObject`, `registerClass`
-- **@gtkx/native** (`packages/native`) - Rust/Neon module exposing `start()`, `stop()`, `call()`, `read()`, `write()`, `alloc()`. Uses libffi for dynamic C invocation
-- **@gtkx/css** (`packages/css`) - Emotion-style CSS-in-JS for GTK widgets. Key exports: `css`, `cx`, `injectGlobal`
-- **@gtkx/gir** (`packages/gir`) - GIR XML parser. Used at codegen time by ffi and react packages
-- **@gtkx/testing** (`packages/testing`) - Testing Library-inspired utilities. Key exports: `render`, `cleanup`, `teardown`, `screen`, `userEvent`, `fireEvent`, `waitFor`, `waitForElementToBeRemoved`, `within`
+### React Reconciler Architecture
 
-### Examples
+The reconciler (`packages/react/src/reconciler.ts`) creates a Node tree that manages GTK widgets:
 
-- **gtk4-demo** (`examples/gtk4-demo`) - Comprehensive GTK4 widget showcase
-- **todo** (`examples/todo`) - Todo app demonstrating @gtkx/testing with realistic component tests
+```
+JSX → React Element → Reconciler → Node Factory → Node Tree → GTK Widgets
+```
 
-## Coding Guidelines
+Key files:
+- `factory.ts` - NODE_CLASSES map, switch-based type matching
+- `node.ts` - Base Node class
+- `nodes/` - Specialized nodes (WindowNode, GridNode, ListViewNode, etc.)
 
-### Monorepo Practices
+Virtual nodes (MenuItemNode, StackPageNode, etc.) don't create widgets but manage parent relationships.
 
-- Dev-only dependencies should go in the root level `devDependencies`
-- Package-specific dependencies should go in each package's `dependencies` or `devDependencies`
-- Use workspace protocol (`"workspace:*"`) for inter-package dependencies
-- Install packages with `pnpm add <package> -w` to add to root `devDependencies`, or `pnpm add <package>` for package-specific dependencies
+### Codegen System
 
-### Functional Programming
+Two generators parse GIR files to produce TypeScript:
 
-- Prefer functional programming over imperative/OOP
-- Only use classes when encapsulation is necessary
+1. **FFI Generator** (`packages/ffi/src/codegen/ffi-generator.ts`) → `packages/ffi/src/generated/`
+2. **JSX Generator** (`packages/react/src/codegen/jsx-generator.ts`) → `packages/react/src/generated/jsx.ts`
 
-### Modern TypeScript
+Never edit generated code directly. Run `pnpm codegen` after modifying generators or GIR files.
 
-- Use latest ESNext/NodeNext features as much as possible
-- Avoid `any` - for unknown types, use `unknown` instead, then narrow the type
-- Avoid type casts (especially `as unknown as T`) - refactor to use proper types
-- Absolutely avoid non-null assertions (`!`) - use proper null checks or type narrowing
-- Use project references: each package should have a main `tsconfig.json` that references a `tsconfig.{app,lib}.json` + an optional `tsconfig.test.json`. The test config should then reference the app/lib config. `app` is for examples, `lib` for packages. And they should both extend from `tsconfig.base.json` at the root.
+## Testing Notes
 
-### Comments
+- Tests require GTK4/X11. CI uses Xvfb on Fedora 43.
+- Tests run serially (`--concurrency=1`) due to GTK's single-threaded nature.
+- Each GTK-dependent package uses `pool: "forks"` with `singleFork: true` in vitest config.
+- `GTK_A11Y=none` is set in test configs.
 
-- Code should be self-documenting
-- Never add inline comments - if code needs explanation, refactor it
-- Use TSDoc only for public APIs
-- Prefer descriptive names over comments
-- Never edit generated files in `src/generated/` directories - run `turbo codegen` instead
+Run a single test file:
+```bash
+cd packages/react && pnpm test tests/specific.test.tsx
+```
 
-### Naming
+## TypeScript Configuration
 
-- Use kebab-case for all files: `my-component.ts`
-- Names should be clear but not overly specific, and they should be consistent across the codebase
-- Prefer generic reusable names: `setup` over `setupTestsForGtk`
-- Prefer named exports over default exports. Exception: app entry files (e.g., `app.tsx`) should export `default` for compatibility with `gtkx dev`.
+- `tsconfig.base.json` - Shared config (strict mode, ESNext, composite builds)
+- Per-package: `tsconfig.json` references `tsconfig.lib.json` (library) and `tsconfig.test.json` (tests)
 
-### Code Reuse
+## Key Patterns
 
-- DRY (Don't Repeat Yourself) is top priority
-- If code is copied more than once, extract it
-- Never create a `utils` or `helpers` file - instead, prefer domain-named modules, e.g. `auth.ts`, `formatting.ts`, etc.
-- Never compromise on quality to save time - refactor properly, ensure the original goal is met
+### Adding Widget Support
 
-### Dead Code
+1. Create Node class in `packages/react/src/nodes/`
+2. Add to `NODE_CLASSES` in `factory.ts`
+3. Implement: `matches()`, `initialize()`, `appendChild()`, `removeChild()`
+4. Run `pnpm codegen` to regenerate JSX types
 
-- Always check for and eliminate dead code after refactors
-- Run `pnpm knip` to detect unused exports
-- Remove unused imports, variables, and functions immediately
-- Never leave commented-out code in the codebase
+### FFI Object Management
 
-### Testing
-
-- All packages must have tests covering core functionality, in `tests/` directories at the package root
-- The tests should mirror the naming inside the `src/` directory
-- There should be one test file per source file, e.g. `src/button.ts` -> `tests/button.test.ts`
-- For the most part, the focus should be on unit testing. Integration tests should be reserved for cases where the testable outcome is not the result of a single unit (function/method). For example, React Reconciler behavior should be tested with integration tests.
-- If needed, a `tests/setup.ts` file can be created for shared test setup code (`beforeEach`, mocks, etc.) for each package.
-- Other necessary functions (such as shared utilities, e.g. `render`) can be placed in a `tests/utils.ts` file.
-- Tests should be thorough, exercising all possible permutations of the function/method arguments.
-- Tests should assert/expect specific outcomes, not just that no errors are thrown (unless that is the specific behavior being tested).
-- Only mock external dependencies when absolutely necessary. Prefer testing with real instances where possible.
+Objects use GLib type system walking. Wrapping uses `Object.create(ClassPrototype)` without constructors. Reference tracking via `getObjectId()` in native module.

@@ -14,6 +14,11 @@ let container: Reconciler.FiberRoot | null = null;
 
 const getInstance = () => reconciler.getInstance();
 
+/**
+ * Internal React reconciler type that exposes flushSyncFromReconciler.
+ * This method exists but is not part of the public type definitions.
+ * Cast is necessary to access this internal API for synchronous test rendering.
+ */
 type ReconcilerWithFlushSync = { flushSyncFromReconciler: (fn: () => void) => void };
 
 const renderSync = (element: React.ReactNode, fiberRoot: Reconciler.FiberRoot): void => {

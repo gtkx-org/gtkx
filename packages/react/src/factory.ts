@@ -33,9 +33,7 @@ interface NodeClass {
     new (type: string, existingWidget?: Gtk.Widget | typeof ROOT_NODE_CONTAINER): Node;
 }
 
-const NODE_CLASSES = [
-    RootNode,
-    // Virtual nodes (no widget)
+const VIRTUAL_NODES = [
     ColumnViewColumnNode,
     ColumnViewItemNode,
     ListItemNode,
@@ -47,14 +45,18 @@ const NODE_CLASSES = [
     MenuSectionNode,
     MenuSubmenuNode,
     SlotNode,
-    // Specialized widget nodes
+] as NodeClass[];
+
+const SPECIALIZED_NODES = [
     WindowNode,
     AboutDialogNode,
     TextViewNode,
     ApplicationMenuNode,
     PopoverMenuRootNode,
     PopoverMenuBarNode,
-    // Container nodes
+] as NodeClass[];
+
+const CONTAINER_NODES = [
     ActionBarNode,
     FlowBoxNode,
     ListBoxNode,
@@ -65,9 +67,10 @@ const NODE_CLASSES = [
     ListViewNode,
     NotebookNode,
     StackNode,
-    // Catch-all (must be last)
-    WidgetNode,
 ] as NodeClass[];
+
+// WidgetNode must be last as it's the catch-all fallback for unknown widget types.
+const NODE_CLASSES = [RootNode, ...VIRTUAL_NODES, ...SPECIALIZED_NODES, ...CONTAINER_NODES, WidgetNode] as NodeClass[];
 
 export const createNode = (
     type: string,

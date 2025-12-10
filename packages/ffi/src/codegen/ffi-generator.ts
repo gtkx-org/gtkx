@@ -1330,6 +1330,8 @@ ${allArgs ? `${allArgs},` : ""}
                 lines.push(`    if (ptr === null) return null;`);
             }
             if (isCyclic) {
+                // For cyclic types, return a minimal NativeObject wrapper. Cast is necessary
+                // because the full type interface isn't available without circular imports.
                 lines.push(`    return { id: ptr } as unknown as ${baseReturnType};`);
             } else {
                 this.usesGetObject = true;
@@ -1501,6 +1503,8 @@ ${allArgs ? `${allArgs},` : ""}
             });
         }
 
+        // Signal handler catch-all overload must use `any` for compatibility with typed overloads.
+        // The typed overloads have specific return types, and unknown is not assignable to them.
         signalOverloads.push(
             `  ${methodName}(signal: string, handler: (...args: any[]) => any, after?: boolean): number;`,
         );

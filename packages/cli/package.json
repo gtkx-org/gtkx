@@ -2,17 +2,6 @@
     "name": "@gtkx/cli",
     "version": "0.3.2",
     "description": "CLI for GTKX - create and develop GTK4 React applications",
-    "license": "MPL-2.0",
-    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
-    "homepage": "https://eugeniodepalo.github.io/gtkx",
-    "bugs": {
-        "url": "https://github.com/eugeniodepalo/gtkx/issues"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/eugeniodepalo/gtkx.git",
-        "directory": "packages/cli"
-    },
     "keywords": [
         "gtk",
         "react",
@@ -23,6 +12,17 @@
         "hmr",
         "vite"
     ],
+    "homepage": "https://eugeniodepalo.github.io/gtkx",
+    "bugs": {
+        "url": "https://github.com/eugeniodepalo/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eugeniodepalo/gtkx.git",
+        "directory": "packages/cli"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
     "exports": {
         "./package.json": "./package.json",
@@ -43,7 +43,8 @@
         "templates"
     ],
     "scripts": {
-        "build": "tsc -b"
+        "build": "tsc -b",
+        "test": "vitest run"
     },
     "dependencies": {
         "@clack/prompts": "0.11.0",

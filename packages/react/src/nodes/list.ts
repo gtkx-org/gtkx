@@ -1,5 +1,5 @@
-import { getObject, getObjectId } from "@gtkx/ffi";
-import type * as Gio from "@gtkx/ffi/gio";
+import { getInterface, getObject, getObjectId } from "@gtkx/ffi";
+import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type Reconciler from "react-reconciler";
 import { scheduleFlush } from "../batch.js";
@@ -31,7 +31,9 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView, ListViewStat
     }
 
     override initialize(props: Props): void {
-        // Initialize state before super.initialize() since updateProps accesses this.state
+        // State must be initialized before super.initialize() since updateProps accesses this.state.
+        // GTK objects can't be created yet because this.widget doesn't exist until super.initialize().
+        // The null placeholders are immediately replaced after super.initialize() completes.
         this.state = {
             stringList: null as unknown as Gtk.StringList,
             selectionModel: null as unknown as Gtk.SingleSelection,
@@ -45,7 +47,7 @@ export class ListViewNode extends Node<Gtk.ListView | Gtk.GridView, ListViewStat
         super.initialize(props);
 
         const stringList = new Gtk.StringList([]);
-        const selectionModel = new Gtk.SingleSelection(stringList as unknown as Gio.ListModel);
+        const selectionModel = new Gtk.SingleSelection(getInterface(stringList, Gio.ListModel));
         const factory = new Gtk.SignalListItemFactory();
 
         this.state.stringList = stringList;

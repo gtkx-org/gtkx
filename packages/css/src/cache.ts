@@ -17,6 +17,8 @@ export const getGtkCache = (): EmotionCache => {
             container: null,
         });
 
+        // Emotion's internal sheet type is not publicly exported, but our StyleSheet
+        // implements the required interface (key, insert, flush, hydrate).
         gtkCache.sheet = sheet as unknown as typeof gtkCache.sheet;
     }
 

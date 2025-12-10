@@ -1,5 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
-import { AccessibleRole, Orientation } from "@gtkx/ffi/gtk";
+import { AccessibleRole, Orientation, type Window } from "@gtkx/ffi/gtk";
 import { ApplicationWindow, Box, Button, Label } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "../src/index.js";
@@ -21,8 +20,7 @@ describe("findAll", () => {
             );
 
             const buttons = findAll(container, (node) => {
-                const accessible = node as unknown as Gtk.Accessible;
-                return accessible.getAccessibleRole() === AccessibleRole.BUTTON;
+                return node.getAccessibleRole() === AccessibleRole.BUTTON;
             });
 
             // Should find at least 2 buttons (our explicit ones, plus GTK may add internal buttons)
@@ -34,8 +32,7 @@ describe("findAll", () => {
 
             // Use MENU role which we know won't exist in a simple label window
             const menus = findAll(container, (node) => {
-                const accessible = node as unknown as Gtk.Accessible;
-                return accessible.getAccessibleRole() === AccessibleRole.MENU;
+                return node.getAccessibleRole() === AccessibleRole.MENU;
             });
 
             expect(menus).toEqual([]);
@@ -51,8 +48,7 @@ describe("findAll", () => {
             );
 
             const buttons = findAll(container, (node) => {
-                const accessible = node as unknown as Gtk.Accessible;
-                return accessible.getAccessibleRole() === AccessibleRole.BUTTON;
+                return node.getAccessibleRole() === AccessibleRole.BUTTON;
             });
 
             // At least 1 button (GTK may create additional internal buttons)
@@ -73,8 +69,7 @@ describe("findAll", () => {
             );
 
             const windows = findAll(container, (node) => {
-                const accessible = node as unknown as Gtk.Accessible;
-                return accessible.getAccessibleRole() === AccessibleRole.WINDOW;
+                return node.getAccessibleRole() === AccessibleRole.WINDOW;
             });
 
             // Should find at least 2 windows
@@ -117,9 +112,8 @@ describe("findAll", () => {
             const activeWindow = container.getActiveWindow();
             expect(activeWindow).not.toBeNull();
 
-            const labels = findAll(activeWindow as Gtk.Window, (node) => {
-                const accessible = node as unknown as Gtk.Accessible;
-                return accessible.getAccessibleRole() === AccessibleRole.LABEL;
+            const labels = findAll(activeWindow as Window, (node) => {
+                return node.getAccessibleRole() === AccessibleRole.LABEL;
             });
 
             expect(labels.length).toBeGreaterThan(0);
@@ -138,8 +132,7 @@ describe("findAll", () => {
             );
 
             findAll(container, (node) => {
-                const accessible = node as unknown as Gtk.Accessible;
-                visitedRoles.push(accessible.getAccessibleRole());
+                visitedRoles.push(node.getAccessibleRole());
                 return false;
             });
 
@@ -158,8 +151,7 @@ describe("findAll", () => {
 
             // Custom criteria: find widgets that have the LABEL role
             const labels = findAll(container, (node) => {
-                const accessible = node as unknown as Gtk.Accessible;
-                return accessible.getAccessibleRole() === AccessibleRole.LABEL;
+                return node.getAccessibleRole() === AccessibleRole.LABEL;
             });
 
             // Should find at least the 2 explicit labels (may include button's internal label)

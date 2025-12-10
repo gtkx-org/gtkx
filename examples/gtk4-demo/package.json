@@ -5,8 +5,8 @@
     "description": "GTK4 Demo - A comprehensive showcase of GTK4 widgets in GTKX",
     "type": "module",
     "scripts": {
-        "dev": "gtkx dev src/app.tsx",
         "build": "tsc -b",
+        "dev": "gtkx dev src/app.tsx",
         "start": "node dist/index.js"
     },
     "dependencies": {
