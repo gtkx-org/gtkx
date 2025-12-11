@@ -21,7 +21,9 @@ export function createRef<T>(value: T): Ref<T> {
  * @param returnType - Type descriptor for the return value
  * @returns The return value from the native function
  */
-export const call = native.call as (library: string, symbol: string, args: Arg[], returnType: Type) => unknown;
+export function call(library: string, symbol: string, args: Arg[], returnType: Type): unknown {
+    return native.call(library, symbol, args, returnType);
+}
 
 /**
  * Descriptor for a batched FFI call.
@@ -36,7 +38,9 @@ export type CallDescriptor = {
  * Executes multiple void FFI calls in a single native dispatch.
  * @param calls - Array of call descriptors to execute
  */
-export const batchCall = native.batchCall as (calls: CallDescriptor[]) => void;
+export function batchCall(calls: CallDescriptor[]): void {
+    native.batchCall(calls);
+}
 
 /**
  * Starts the GTK application main loop.
@@ -44,12 +48,16 @@ export const batchCall = native.batchCall as (calls: CallDescriptor[]) => void;
  * @param flags - Optional GIO application flags
  * @returns The GTK Application instance pointer
  */
-export const start = native.start as (appId: string, flags?: number) => unknown;
+export function start(appId: string, flags?: number): unknown {
+    return native.start(appId, flags);
+}
 
 /**
  * Stops the GTK application and exits the main loop.
  */
-export const stop = native.stop as () => void;
+export function stop(): void {
+    native.stop();
+}
 
 /**
  * Reads a field from a boxed record at the specified offset.
@@ -58,7 +66,9 @@ export const stop = native.stop as () => void;
  * @param offset - Memory offset in bytes from the start of the struct
  * @returns The field value
  */
-export const read = native.read as (objectId: unknown, type: Type, offset: number) => unknown;
+export function read(objectId: unknown, type: Type, offset: number): unknown {
+    return native.read(objectId, type, offset);
+}
 
 /**
  * Writes a value to a field in a boxed record at the specified offset.
@@ -67,7 +77,9 @@ export const read = native.read as (objectId: unknown, type: Type, offset: numbe
  * @param offset - Memory offset in bytes from the start of the struct
  * @param value - The value to write
  */
-export const write = native.write as (objectId: unknown, type: Type, offset: number, value: unknown) => void;
+export function write(objectId: unknown, type: Type, offset: number, value: unknown): void {
+    native.write(objectId, type, offset, value);
+}
 
 /**
  * Allocates a zeroed struct of the specified size and registers it as a boxed type.
@@ -76,7 +88,9 @@ export const write = native.write as (objectId: unknown, type: Type, offset: num
  * @param lib - Optional library name to look up the type registration function
  * @returns The allocated boxed object pointer
  */
-export const alloc = native.alloc as (size: number, glibTypeName: string, lib?: string) => unknown;
+export function alloc(size: number, glibTypeName: string, lib?: string): unknown {
+    return native.alloc(size, glibTypeName, lib);
+}
 
 /**
  * Gets the unique identifier for a GObject/boxed pointer.
