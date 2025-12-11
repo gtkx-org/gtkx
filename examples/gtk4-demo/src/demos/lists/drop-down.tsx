@@ -41,7 +41,7 @@ const DropDownDemo = () => {
                 <Label.Root label="Country Selector" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <DropDown.Root
                     itemLabel={(item: Country) => item.name}
-                    onSelectionChanged={(item: Country) => setSelectedCountry(item)}
+                    onSelectionChanged={(item: Country | null) => setSelectedCountry(item)}
                 >
                     {countries.map((country) => (
                         <DropDown.Item key={country.id} item={country} />

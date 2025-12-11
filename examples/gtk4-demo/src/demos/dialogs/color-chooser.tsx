@@ -9,10 +9,9 @@ const ColorChooserDemo = () => {
     const [color, setColor] = useState<string | null>(null);
 
     const openColorDialog = async () => {
-        const dialog = new Gtk.ColorDialog({
-            title: "Choose a Color",
-            withAlpha: true,
-        });
+        const dialog = new Gtk.ColorDialog();
+        dialog.setTitle("Choose a Color");
+        dialog.setWithAlpha(true);
 
         try {
             const rgba = await dialog.chooseRgba(getCurrentApp().getActiveWindow() ?? undefined);

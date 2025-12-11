@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/native",
-    "version": "0.4.3",
+    "version": "0.5.0",
     "description": "Rust-based native module providing FFI bindings for GTKX",
     "keywords": [
         "gtk",
