@@ -286,7 +286,7 @@ const CountrySelector = () => {
 | Prop | Type | Description |
 |------|------|-------------|
 | `itemLabel` | `(item: T) => string` | Required. Returns the display text for each item |
-| `onSelectionChanged` | `(item: T, index: number) => void` | Called when selection changes |
+| `onSelectionChanged` | `(item: T | null, index: number) => void` | Called when selection changes |
 
 ## Dynamic Updates
 

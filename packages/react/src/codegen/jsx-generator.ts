@@ -882,7 +882,7 @@ export const Menu = {
             lines.push(`\t/** Function to convert an item to its display label. */`);
             lines.push(`\titemLabel?: (item: T) => string;`);
             lines.push(`\t/** Called when the selected item changes. */`);
-            lines.push(`\tonSelectionChanged?: (item: T, index: number) => void;`);
+            lines.push(`\tonSelectionChanged?: (item: T | null, index: number) => void;`);
             lines.push(`}`);
             lines.push(``);
             lines.push(`function ${name}Root<T>(props: ${name}RootProps<T>): import("react").ReactElement {`);
