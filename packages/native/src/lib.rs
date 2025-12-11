@@ -23,6 +23,7 @@ use neon::prelude::*;
 /// - `start`: Initialize GTK application and start the main loop
 /// - `stop`: Stop the GTK main loop
 /// - `call`: Invoke a native function via FFI
+/// - `batchCall`: Execute multiple void FFI calls in a single dispatch
 /// - `read`: Read a field from a native object
 /// - `write`: Write a field to a native object
 /// - `alloc`: Allocate memory for a boxed type
@@ -32,6 +33,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("start", module::start)?;
     cx.export_function("stop", module::stop)?;
     cx.export_function("call", module::call)?;
+    cx.export_function("batchCall", module::batch_call)?;
     cx.export_function("read", module::read)?;
     cx.export_function("write", module::write)?;
     cx.export_function("alloc", module::alloc)?;

@@ -22,6 +22,7 @@ import { type ROOT_NODE_CONTAINER, RootNode } from "./nodes/root.js";
 import { SlotNode } from "./nodes/slot.js";
 import { StackNode, StackPageNode } from "./nodes/stack.js";
 import { TextViewNode } from "./nodes/text-view.js";
+import { ToggleButtonNode } from "./nodes/toggle-button.js";
 import { WidgetNode } from "./nodes/widget.js";
 import { WindowNode } from "./nodes/window.js";
 
@@ -55,6 +56,7 @@ const SPECIALIZED_NODES = [
     WindowNode,
     AboutDialogNode,
     TextViewNode,
+    ToggleButtonNode,
     ApplicationMenuNode,
     PopoverMenuRootNode,
     PopoverMenuBarNode,

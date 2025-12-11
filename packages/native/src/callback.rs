@@ -29,12 +29,13 @@ unsafe extern "C" fn draw_func_trampoline(
     height: i32,
     user_data: *mut c_void,
 ) {
-    unsafe {
-        let closure_ptr = user_data as *mut gobject_ffi::GClosure;
-        if closure_ptr.is_null() {
-            return;
-        }
+    let closure_ptr = user_data as *mut gobject_ffi::GClosure;
 
+    if closure_ptr.is_null() {
+        return;
+    }
+
+    unsafe {
         let mut args: [glib::Value; 4] = [
             glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
             glib::Value::from_type_unchecked(glib::types::Type::U64),
@@ -73,12 +74,13 @@ pub fn get_draw_func_trampoline_ptr() -> *mut c_void {
 /// This function is called from C code. The `user_data` pointer must be a valid
 /// pointer to a `GClosure`.
 unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
-    unsafe {
-        let closure_ptr = user_data as *mut gobject_ffi::GClosure;
-        if closure_ptr.is_null() {
-            return;
-        }
+    let closure_ptr = user_data as *mut gobject_ffi::GClosure;
 
+    if closure_ptr.is_null() {
+        return;
+    }
+
+    unsafe {
         gobject_ffi::g_closure_invoke(
             closure_ptr,
             std::ptr::null_mut(),
@@ -105,13 +107,13 @@ pub fn get_destroy_trampoline_ptr() -> *mut c_void {
 /// This function is called from C code. The `user_data` pointer must be a valid
 /// pointer to a `GClosure`.
 unsafe extern "C" fn unref_closure_trampoline(user_data: *mut c_void) {
+    let closure_ptr = user_data as *mut gobject_ffi::GClosure;
+
+    if closure_ptr.is_null() {
+        return;
+    }
+
     unsafe {
-        let closure_ptr = user_data as *mut gobject_ffi::GClosure;
-
-        if closure_ptr.is_null() {
-            return;
-        }
-
         gobject_ffi::g_closure_unref(closure_ptr);
     }
 }
@@ -130,13 +132,13 @@ pub fn get_unref_closure_trampoline_ptr() -> *mut c_void {
 /// This function is called from C code. The `user_data` pointer must be a valid
 /// pointer to a `GClosure`.
 unsafe extern "C" fn source_func_trampoline(user_data: *mut c_void) -> i32 {
+    let closure_ptr = user_data as *mut gobject_ffi::GClosure;
+
+    if closure_ptr.is_null() {
+        return 0;
+    }
+
     unsafe {
-        let closure_ptr = user_data as *mut gobject_ffi::GClosure;
-
-        if closure_ptr.is_null() {
-            return 0;
-        }
-
         let mut return_value = glib::Value::from_type_unchecked(glib::types::Type::BOOL);
 
         gobject_ffi::g_closure_invoke(
@@ -173,13 +175,13 @@ unsafe extern "C" fn async_ready_trampoline(
     res: *mut GAsyncResult,
     user_data: *mut c_void,
 ) {
-    unsafe {
-        let closure_ptr = user_data as *mut gobject_ffi::GClosure;
-        if closure_ptr.is_null() {
-            eprintln!("async_ready_trampoline: user_data (closure) is null");
-            return;
-        }
+    let closure_ptr = user_data as *mut gobject_ffi::GClosure;
 
+    if closure_ptr.is_null() {
+        return;
+    }
+
+    unsafe {
         let source_obj: Option<glib::Object> =
             std::ptr::NonNull::new(source_object).map(|p| glib::Object::from_glib_none(p.as_ptr()));
 
@@ -221,12 +223,13 @@ unsafe extern "C" fn compare_data_func_trampoline(
     b: *mut gobject_ffi::GObject,
     user_data: *mut c_void,
 ) -> i32 {
-    unsafe {
-        let closure_ptr = user_data as *mut gobject_ffi::GClosure;
-        if closure_ptr.is_null() {
-            return 0;
-        }
+    let closure_ptr = user_data as *mut gobject_ffi::GClosure;
 
+    if closure_ptr.is_null() {
+        return 0;
+    }
+
+    unsafe {
         let mut args: [glib::Value; 2] = [
             glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
             glib::Value::from_type_unchecked(glib::types::Type::OBJECT),

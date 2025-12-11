@@ -11,7 +11,7 @@ export const TodoInput = ({ onAdd }: TodoInputProps) => {
     const [text, setText] = useState("");
 
     const handleChange = (entry: GtkEntry) => {
-        setText(getInterface(entry, Editable).getText());
+        setText(getInterface(entry, Editable)?.getText() ?? "");
     };
 
     const handleAdd = () => {

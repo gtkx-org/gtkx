@@ -1,4 +1,4 @@
-import { AccessibleRole, type CheckButton } from "@gtkx/ffi/gtk";
+import { AccessibleRole, type CheckButton, type Switch } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { buttonsDemo } from "../src/demos/buttons/buttons.js";
@@ -187,6 +187,43 @@ describe("Buttons Demo", () => {
             expect(disabledUnchecked?.getActive()).toBe(false);
             expect(disabledChecked?.getActive()).toBe(true);
         });
+
+        it("can uncheck initially checked option", async () => {
+            await render(<CheckButtonDemo />);
+
+            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
+            const option2 = checkboxes.find(
+                (cb) => (cb as CheckButton).getLabel() === "Option 2 (initially checked)",
+            ) as CheckButton | undefined;
+
+            if (!option2) throw new Error("Option 2 checkbox not found");
+
+            await userEvent.click(option2);
+
+            expect(option2.getActive()).toBe(false);
+            const selectedLabel = await screen.findByText("Selected: None");
+            expect(selectedLabel).toBeDefined();
+        });
+
+        it("can select all options", async () => {
+            await render(<CheckButtonDemo />);
+
+            const checkboxes = await screen.findAllByRole(AccessibleRole.CHECKBOX);
+            const option1 = checkboxes.find((cb) => (cb as CheckButton).getLabel() === "Option 1") as
+                | CheckButton
+                | undefined;
+            const option3 = checkboxes.find((cb) => (cb as CheckButton).getLabel() === "Option 3") as
+                | CheckButton
+                | undefined;
+
+            if (!option1 || !option3) throw new Error("Checkboxes not found");
+
+            await userEvent.click(option1);
+            await userEvent.click(option3);
+
+            const selectedLabel = await screen.findByText("Selected: 1, 2, 3");
+            expect(selectedLabel).toBeDefined();
+        });
     });
 
     describe("toggle button demo", () => {
@@ -235,6 +272,74 @@ describe("Buttons Demo", () => {
             const styleLabel = await screen.findByText("Current style: Normal");
             expect(styleLabel).toBeDefined();
         });
+
+        it("updates style label when Bold is toggled", async () => {
+            await render(<ToggleButtonDemo />);
+
+            const boldBtn = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "B" });
+            await userEvent.click(boldBtn);
+
+            const styleLabel = await screen.findByText("Current style: Bold");
+            expect(styleLabel).toBeDefined();
+        });
+
+        it("updates style label when Italic is toggled", async () => {
+            await render(<ToggleButtonDemo />);
+
+            const italicBtn = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "I" });
+            await userEvent.click(italicBtn);
+
+            const styleLabel = await screen.findByText("Current style: Italic");
+            expect(styleLabel).toBeDefined();
+        });
+
+        it("updates style label when Underline is toggled", async () => {
+            await render(<ToggleButtonDemo />);
+
+            const underlineBtn = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "U" });
+            await userEvent.click(underlineBtn);
+
+            const styleLabel = await screen.findByText("Current style: Underline");
+            expect(styleLabel).toBeDefined();
+        });
+
+        it("combines multiple styles", async () => {
+            await render(<ToggleButtonDemo />);
+
+            const boldBtn = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "B" });
+            const italicBtn = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "I" });
+
+            await userEvent.click(boldBtn);
+            await userEvent.click(italicBtn);
+
+            const styleLabel = await screen.findByText("Current style: Bold + Italic");
+            expect(styleLabel).toBeDefined();
+        });
+
+        it("combines all three styles", async () => {
+            await render(<ToggleButtonDemo />);
+
+            const boldBtn = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "B" });
+            const italicBtn = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "I" });
+            const underlineBtn = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "U" });
+
+            await userEvent.click(boldBtn);
+            await userEvent.click(italicBtn);
+            await userEvent.click(underlineBtn);
+
+            const styleLabel = await screen.findByText("Current style: Bold + Italic + Underline");
+            expect(styleLabel).toBeDefined();
+        });
+
+        it("standalone toggle syncs with Bold button", async () => {
+            await render(<ToggleButtonDemo />);
+
+            const standaloneToggle = await screen.findByRole(AccessibleRole.TOGGLE_BUTTON, { name: "Toggle Me" });
+            await userEvent.click(standaloneToggle);
+
+            const styleLabel = await screen.findByText("Current style: Bold");
+            expect(styleLabel).toBeDefined();
+        });
     });
 
     describe("switch demo", () => {
@@ -261,6 +366,64 @@ describe("Buttons Demo", () => {
 
             const disabledSwitches = switches.filter((sw) => !sw.getSensitive());
             expect(disabledSwitches.length).toBe(2);
+        });
+
+        it("can toggle dark mode switch on", async () => {
+            await render(<SwitchDemo />);
+
+            const switches = await screen.findAllByRole(AccessibleRole.SWITCH);
+            const enabledSwitches = switches.filter((sw) => sw.getSensitive());
+            const darkModeSwitch = enabledSwitches[0] as Switch | undefined;
+
+            if (!darkModeSwitch) throw new Error("Dark mode switch not found");
+
+            expect(darkModeSwitch.getActive()).toBe(false);
+            await userEvent.click(darkModeSwitch);
+            expect(darkModeSwitch.getActive()).toBe(true);
+        });
+
+        it("can toggle notifications switch off", async () => {
+            await render(<SwitchDemo />);
+
+            const switches = await screen.findAllByRole(AccessibleRole.SWITCH);
+            const enabledSwitches = switches.filter((sw) => sw.getSensitive());
+            const notificationsSwitch = enabledSwitches[1] as Switch | undefined;
+
+            if (!notificationsSwitch) throw new Error("Notifications switch not found");
+
+            expect(notificationsSwitch.getActive()).toBe(true);
+            await userEvent.click(notificationsSwitch);
+            expect(notificationsSwitch.getActive()).toBe(false);
+        });
+
+        it("can toggle auto-save switch off", async () => {
+            await render(<SwitchDemo />);
+
+            const switches = await screen.findAllByRole(AccessibleRole.SWITCH);
+            const enabledSwitches = switches.filter((sw) => sw.getSensitive());
+            const autoSaveSwitch = enabledSwitches[2] as Switch | undefined;
+
+            if (!autoSaveSwitch) throw new Error("Auto-save switch not found");
+
+            expect(autoSaveSwitch.getActive()).toBe(true);
+            await userEvent.click(autoSaveSwitch);
+            expect(autoSaveSwitch.getActive()).toBe(false);
+        });
+
+        it("can toggle switch multiple times", async () => {
+            await render(<SwitchDemo />);
+
+            const switches = await screen.findAllByRole(AccessibleRole.SWITCH);
+            const enabledSwitches = switches.filter((sw) => sw.getSensitive());
+            const darkModeSwitch = enabledSwitches[0] as Switch | undefined;
+
+            if (!darkModeSwitch) throw new Error("Dark mode switch not found");
+
+            expect(darkModeSwitch.getActive()).toBe(false);
+            await userEvent.click(darkModeSwitch);
+            expect(darkModeSwitch.getActive()).toBe(true);
+            await userEvent.click(darkModeSwitch);
+            expect(darkModeSwitch.getActive()).toBe(false);
         });
     });
 });

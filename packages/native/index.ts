@@ -24,6 +24,21 @@ export function createRef<T>(value: T): Ref<T> {
 export const call = native.call as (library: string, symbol: string, args: Arg[], returnType: Type) => unknown;
 
 /**
+ * Descriptor for a batched FFI call.
+ */
+export type CallDescriptor = {
+    library: string;
+    symbol: string;
+    args: Arg[];
+};
+
+/**
+ * Executes multiple void FFI calls in a single native dispatch.
+ * @param calls - Array of call descriptors to execute
+ */
+export const batchCall = native.batchCall as (calls: CallDescriptor[]) => void;
+
+/**
  * Starts the GTK application main loop.
  * @param appId - The application ID (e.g., "com.example.myapp")
  * @param flags - Optional GIO application flags

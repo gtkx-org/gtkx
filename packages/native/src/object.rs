@@ -53,32 +53,19 @@ impl ObjectId {
         })
     }
 
-    /// Returns the raw pointer to this object.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the object has already been garbage collected.
-    pub fn as_ptr(&self) -> *mut c_void {
+    /// Returns the raw pointer to this object, or `None` if garbage collected.
+    pub fn as_ptr(&self) -> Option<*mut c_void> {
         GtkThreadState::with(|state| {
-            let object = state.object_map.get(&self.0).expect(
-                "ObjectId references a non-existent object (possibly already garbage collected)",
-            );
-
-            match object {
+            state.object_map.get(&self.0).map(|object| match object {
                 Object::GObject(obj) => obj.as_ptr() as *mut c_void,
                 Object::Boxed(boxed) => *boxed.as_ref(),
-            }
+            })
         })
     }
 
-    /// Returns the raw pointer as a usize, or None if the object was garbage collected.
+    /// Returns the raw pointer as a usize, or `None` if garbage collected.
     pub fn try_as_ptr(&self) -> Option<usize> {
-        GtkThreadState::with(|state| {
-            state.object_map.get(&self.0).map(|object| match object {
-                Object::GObject(obj) => obj.as_ptr() as usize,
-                Object::Boxed(boxed) => *boxed.as_ref() as usize,
-            })
-        })
+        self.as_ptr().map(|ptr| ptr as usize)
     }
 }
 

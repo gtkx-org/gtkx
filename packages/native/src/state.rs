@@ -4,7 +4,10 @@
 //! including the object map for tracking native objects, loaded dynamic
 //! libraries, and the application hold guard.
 
-use std::{cell::RefCell, collections::HashMap};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, hash_map::Entry},
+};
 
 use gtk4::gio::ApplicationHoldGuard;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
@@ -63,33 +66,30 @@ impl GtkThreadState {
     ///
     /// Returns an error if no library variant could be loaded.
     pub fn get_library(&mut self, name: &str) -> anyhow::Result<&Library> {
-        if !self.libraries.contains_key(name) {
-            let lib_names: Vec<&str> = name.split(',').collect();
-            let mut last_error = None;
+        match self.libraries.entry(name.to_string()) {
+            Entry::Occupied(entry) => Ok(entry.into_mut()),
+            Entry::Vacant(entry) => {
+                let lib_names: Vec<&str> = name.split(',').collect();
+                let mut last_error = None;
 
-            for lib_name in &lib_names {
-                match unsafe { Library::open(Some(*lib_name), RTLD_NOW | RTLD_GLOBAL) } {
-                    Ok(lib) => {
-                        self.libraries.insert(name.to_string(), lib);
-                        break;
-                    }
-                    Err(err) => {
-                        last_error = Some(err);
+                for lib_name in &lib_names {
+                    match unsafe { Library::open(Some(*lib_name), RTLD_NOW | RTLD_GLOBAL) } {
+                        Ok(lib) => {
+                            return Ok(entry.insert(lib));
+                        }
+                        Err(err) => {
+                            last_error = Some(err);
+                        }
                     }
                 }
-            }
 
-            if !self.libraries.contains_key(name) {
-                if let Some(err) = last_error {
-                    anyhow::bail!("Failed to load library '{}': {}", name, err);
-                } else {
-                    anyhow::bail!("Failed to load library '{}': no libraries specified", name);
+                match last_error {
+                    Some(err) => anyhow::bail!("Failed to load library '{}': {}", name, err),
+                    None => {
+                        anyhow::bail!("Failed to load library '{}': no libraries specified", name)
+                    }
                 }
             }
         }
-
-        self.libraries
-            .get(name)
-            .ok_or(anyhow::anyhow!("Library '{}' not loaded", name))
     }
 }

@@ -67,7 +67,7 @@ describe("Input Demos", () => {
 
             if (!disabledEntry) throw new Error("Disabled entry not found");
 
-            expect(getInterface(disabledEntry, Editable).getText()).toBe("Cannot edit this");
+            expect(getInterface(disabledEntry, Editable)?.getText()).toBe("Cannot edit this");
         });
 
         it("allows typing in entries", async () => {
@@ -84,8 +84,47 @@ describe("Input Demos", () => {
             await userEvent.type(basicEntry, "Hello World");
 
             await waitFor(() => {
-                const text = getInterface(basicEntry, Editable).getText();
+                const text = getInterface(basicEntry, Editable)?.getText();
                 if (text !== "Hello World") throw new Error(`Expected "Hello World", got "${text}"`);
+            });
+        });
+
+        it("enforces max length on entry", async () => {
+            await render(<EntryDemo />);
+
+            const entries = await screen.findAllByRole(AccessibleRole.TEXT_BOX);
+            const maxLengthEntry = entries.find((e) => {
+                const entry = e as Entry;
+                return entry.getMaxLength() === 10;
+            }) as Entry | undefined;
+
+            if (!maxLengthEntry) throw new Error("Max length entry not found");
+
+            await userEvent.type(maxLengthEntry, "This is a very long text");
+
+            await waitFor(() => {
+                const text = getInterface(maxLengthEntry, Editable)?.getText() ?? "";
+                expect(text.length).toBeLessThanOrEqual(10);
+            });
+        });
+
+        it("clears entry content", async () => {
+            await render(<EntryDemo />);
+
+            const entries = await screen.findAllByRole(AccessibleRole.TEXT_BOX);
+            const basicEntry = entries.find((e) => {
+                const entry = e as Entry;
+                return entry.getPlaceholderText() === "Type something..." && e.getSensitive();
+            }) as Entry | undefined;
+
+            if (!basicEntry) throw new Error("Basic entry not found");
+
+            await userEvent.type(basicEntry, "Test");
+            await userEvent.clear(basicEntry);
+
+            await waitFor(() => {
+                const text = getInterface(basicEntry, Editable)?.getText();
+                expect(text).toBe("");
             });
         });
     });

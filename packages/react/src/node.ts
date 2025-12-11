@@ -168,8 +168,16 @@ export abstract class Node<
             this.disconnectSignal(this.propKeyToEventName(key));
         }
 
+        if (propertyUpdates.length > 0) {
+            widget.freezeNotify();
+        }
+
         for (const { key, newValue } of propertyUpdates) {
             this.setProperty(widget, key, newValue);
+        }
+
+        if (propertyUpdates.length > 0) {
+            widget.thawNotify();
         }
 
         for (const { key, newValue } of signalUpdates) {

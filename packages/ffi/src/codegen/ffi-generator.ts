@@ -2211,7 +2211,6 @@ ${indent}  }`;
     private generateImports(currentClassName?: string, parentClassName?: string, parentNamespace?: string): string {
         const nativeImports: string[] = [];
         if (this.usesAlloc) nativeImports.push("alloc");
-        if (this.usesCall) nativeImports.push("call");
         if (this.usesRead) nativeImports.push("read");
         if (this.usesWrite) nativeImports.push("write");
         if (this.usesRef) nativeImports.push("Ref");
@@ -2222,6 +2221,7 @@ ${indent}  }`;
             lines.push(`import { ${nativeImports.join(", ")} } from "@gtkx/native";`);
         }
         const ffiImports: string[] = [];
+        if (this.usesCall) ffiImports.push("call");
         if (this.usesNativeError) ffiImports.push("NativeError");
         if (this.usesGetObject) ffiImports.push("getObject");
         if (this.usesRegisterType) ffiImports.push("registerType");

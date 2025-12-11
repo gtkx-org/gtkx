@@ -10,6 +10,7 @@ import {
     Editable,
     type ListBox,
     type ListBoxRow,
+    type Switch,
     type ToggleButton,
     Widget,
 } from "@gtkx/ffi/gtk";
@@ -25,20 +26,29 @@ export interface TabOptions {
     shift?: boolean;
 }
 
-const TOGGLEABLE_ROLES = new Set([AccessibleRole.CHECKBOX, AccessibleRole.RADIO, AccessibleRole.TOGGLE_BUTTON]);
+const TOGGLEABLE_ROLES = new Set([
+    AccessibleRole.CHECKBOX,
+    AccessibleRole.RADIO,
+    AccessibleRole.TOGGLE_BUTTON,
+    AccessibleRole.SWITCH,
+]);
 
 const isToggleable = (widget: Gtk.Widget): boolean => {
-    const role = getInterface(widget, Accessible).getAccessibleRole();
-    return TOGGLEABLE_ROLES.has(role);
+    const accessible = getInterface(widget, Accessible);
+    if (!accessible) return false;
+    return TOGGLEABLE_ROLES.has(accessible.getAccessibleRole());
 };
 
 const click = async (element: Gtk.Widget): Promise<void> => {
     if (isToggleable(element)) {
-        const role = getInterface(element, Accessible).getAccessibleRole();
+        const role = getInterface(element, Accessible)?.getAccessibleRole();
 
         if (role === AccessibleRole.CHECKBOX || role === AccessibleRole.RADIO) {
             const checkButton = element as CheckButton;
             checkButton.setActive(!checkButton.getActive());
+        } else if (role === AccessibleRole.SWITCH) {
+            const switchWidget = element as Switch;
+            switchWidget.setActive(!switchWidget.getActive());
         } else {
             const toggleButton = element as ToggleButton;
             toggleButton.setActive(!toggleButton.getActive());
@@ -71,7 +81,7 @@ const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => 
     const root = element.getRoot();
 
     if (root) {
-        getInterface(root, Widget).childFocus(direction);
+        getInterface(root, Widget)?.childFocus(direction);
     }
 
     await tick();
@@ -83,6 +93,8 @@ const type = async (element: Gtk.Widget, text: string): Promise<void> => {
     }
 
     const editable = getInterface(element, Editable);
+    if (!editable) return;
+
     const currentText = editable.getText();
     editable.setText(currentText + text);
 
@@ -94,15 +106,16 @@ const clear = async (element: Gtk.Widget): Promise<void> => {
         throw new Error("Cannot clear element: element is not editable (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
     }
 
-    getInterface(element, Editable).setText("");
+    getInterface(element, Editable)?.setText("");
     await tick();
 };
 
 const SELECTABLE_ROLES = new Set([AccessibleRole.COMBO_BOX, AccessibleRole.LIST]);
 
 const isSelectable = (widget: Gtk.Widget): boolean => {
-    const role = getInterface(widget, Accessible).getAccessibleRole();
-    return SELECTABLE_ROLES.has(role);
+    const accessible = getInterface(widget, Accessible);
+    if (!accessible) return false;
+    return SELECTABLE_ROLES.has(accessible.getAccessibleRole());
 };
 
 const selectOptions = async (element: Gtk.Widget, values: string | string[] | number | number[]): Promise<void> => {
@@ -110,7 +123,7 @@ const selectOptions = async (element: Gtk.Widget, values: string | string[] | nu
         throw new Error("Cannot select options: element is not a selectable widget (COMBO_BOX or LIST)");
     }
 
-    const role = getInterface(element, Accessible).getAccessibleRole();
+    const role = getInterface(element, Accessible)?.getAccessibleRole();
     const valueArray = Array.isArray(values) ? values : [values];
 
     if (role === AccessibleRole.COMBO_BOX) {
@@ -151,7 +164,7 @@ const selectOptions = async (element: Gtk.Widget, values: string | string[] | nu
 };
 
 const deselectOptions = async (element: Gtk.Widget, values: number | number[]): Promise<void> => {
-    const role = getInterface(element, Accessible).getAccessibleRole();
+    const role = getInterface(element, Accessible)?.getAccessibleRole();
 
     if (role !== AccessibleRole.LIST) {
         throw new Error("Cannot deselect options: only ListBox supports deselection");

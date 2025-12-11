@@ -60,6 +60,56 @@ describe("Lists Demos", () => {
             expect(selectedLabel).toBeDefined();
         });
 
+        it("shows Inbox when first row is activated", async () => {
+            await render(<ListBoxDemo />);
+
+            const listRows = await screen.findAllByRole(AccessibleRole.LIST_ITEM);
+            if (listRows.length === 0) throw new Error("No list items found");
+
+            const firstRow = listRows[0];
+            if (!firstRow) throw new Error("First row not found");
+
+            await userEvent.activate(firstRow);
+
+            const selectedLabel = await screen.findByText("Selected: Inbox");
+            expect(selectedLabel).toBeDefined();
+        });
+
+        it("can select different items", async () => {
+            await render(<ListBoxDemo />);
+
+            const listRows = await screen.findAllByRole(AccessibleRole.LIST_ITEM);
+            if (listRows.length < 2) throw new Error("Not enough list items found");
+
+            const secondRow = listRows[1];
+            if (!secondRow) throw new Error("Second row not found");
+
+            await userEvent.activate(secondRow);
+
+            const selectedLabel = await screen.findByText("Selected: Starred");
+            expect(selectedLabel).toBeDefined();
+        });
+
+        it("can change selection between items", async () => {
+            await render(<ListBoxDemo />);
+
+            const listRows = await screen.findAllByRole(AccessibleRole.LIST_ITEM);
+            if (listRows.length < 3) throw new Error("Not enough list items found");
+
+            const firstRow = listRows[0];
+            const thirdRow = listRows[2];
+
+            if (!firstRow || !thirdRow) throw new Error("Rows not found");
+
+            await userEvent.activate(firstRow);
+            const inboxSelected = await screen.findByText("Selected: Inbox");
+            expect(inboxSelected).toBeDefined();
+
+            await userEvent.activate(thirdRow);
+            const sentSelected = await screen.findByText("Selected: Sent");
+            expect(sentSelected).toBeDefined();
+        });
+
         it("describes selection modes", async () => {
             await render(<ListBoxDemo />);
 

@@ -1,4 +1,4 @@
-import { getInterface, tryGetInterface } from "@gtkx/ffi";
+import { getInterface } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import {
     Accessible,
@@ -55,47 +55,47 @@ const ROLES_WITH_INTERNAL_LABELS = new Set([
 
 const isInternalLabel = (widget: Gtk.Widget): boolean => {
     const accessible = getInterface(widget, Accessible);
-    if (accessible.getAccessibleRole() !== AccessibleRole.LABEL) return false;
+    if (!accessible || accessible.getAccessibleRole() !== AccessibleRole.LABEL) return false;
 
     const parent = widget.getParent();
     if (!parent) return false;
 
-    const parentRole = getInterface(parent, Accessible).getAccessibleRole();
-    return ROLES_WITH_INTERNAL_LABELS.has(parentRole);
+    const parentAccessible = getInterface(parent, Accessible);
+    if (!parentAccessible) return false;
+
+    return ROLES_WITH_INTERNAL_LABELS.has(parentAccessible.getAccessibleRole());
 };
 
 const getWidgetText = (widget: Gtk.Widget): string | null => {
     if (isInternalLabel(widget)) return null;
 
-    const role = getInterface(widget, Accessible).getAccessibleRole();
+    const role = getInterface(widget, Accessible)?.getAccessibleRole();
+    if (role === undefined) return null;
 
     switch (role) {
         case AccessibleRole.BUTTON:
         case AccessibleRole.LINK:
         case AccessibleRole.TAB:
-            return (
-                tryGetInterface(widget, Button)?.getLabel() ?? tryGetInterface(widget, MenuButton)?.getLabel() ?? null
-            );
-
+            return getInterface(widget, Button)?.getLabel() ?? getInterface(widget, MenuButton)?.getLabel() ?? null;
         case AccessibleRole.TOGGLE_BUTTON:
-            return getInterface(widget, ToggleButton).getLabel();
+            return getInterface(widget, ToggleButton)?.getLabel() ?? null;
         case AccessibleRole.CHECKBOX:
         case AccessibleRole.RADIO:
-            return getInterface(widget, CheckButton).getLabel();
+            return getInterface(widget, CheckButton)?.getLabel() ?? null;
         case AccessibleRole.LABEL:
-            return getInterface(widget, Label).getLabel();
+            return getInterface(widget, Label)?.getLabel() ?? null;
         case AccessibleRole.TEXT_BOX:
         case AccessibleRole.SEARCH_BOX:
         case AccessibleRole.SPIN_BUTTON:
-            return getInterface(widget, Editable).getText();
+            return getInterface(widget, Editable)?.getText() ?? null;
         case AccessibleRole.GROUP:
-            return tryGetInterface(widget, Frame)?.getLabel() ?? null;
+            return getInterface(widget, Frame)?.getLabel() ?? null;
         case AccessibleRole.WINDOW:
         case AccessibleRole.DIALOG:
         case AccessibleRole.ALERT_DIALOG:
-            return getInterface(widget, Window).getTitle();
+            return getInterface(widget, Window)?.getTitle() ?? null;
         case AccessibleRole.TAB_PANEL:
-            return tryGetInterface(widget, StackPage)?.getTitle() ?? null;
+            return getInterface(widget, StackPage)?.getTitle() ?? null;
         case AccessibleRole.SWITCH:
             return null;
         default:
@@ -108,28 +108,34 @@ const getWidgetTestId = (widget: Gtk.Widget): string | null => {
 };
 
 const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
-    const role = getInterface(widget, Accessible).getAccessibleRole();
+    const accessible = getInterface(widget, Accessible);
+    if (!accessible) return undefined;
+
+    const role = accessible.getAccessibleRole();
 
     switch (role) {
         case AccessibleRole.CHECKBOX:
         case AccessibleRole.RADIO:
-            return getInterface(widget, CheckButton).getActive();
+            return getInterface(widget, CheckButton)?.getActive();
         case AccessibleRole.TOGGLE_BUTTON:
-            return getInterface(widget, ToggleButton).getActive();
+            return getInterface(widget, ToggleButton)?.getActive();
         case AccessibleRole.SWITCH:
-            return getInterface(widget, Switch).getActive();
+            return getInterface(widget, Switch)?.getActive();
         default:
             return undefined;
     }
 };
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | undefined => {
-    const role = getInterface(widget, Accessible).getAccessibleRole();
+    const accessible = getInterface(widget, Accessible);
+    if (!accessible) return undefined;
+
+    const role = accessible.getAccessibleRole();
 
     if (role === AccessibleRole.BUTTON) {
         const parent = widget.getParent();
         if (!parent) return undefined;
-        return getInterface(parent, Expander).getExpanded();
+        return getInterface(parent, Expander)?.getExpanded();
     }
 
     return undefined;
@@ -171,7 +177,8 @@ const formatByRoleError = (role: AccessibleRole, options?: ByRoleOptions): strin
 
 const getAllByRole = (container: Container, role: AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] => {
     const matches = findAll(container, (node) => {
-        if (getInterface(node, Accessible).getAccessibleRole() !== role) return false;
+        const accessible = getInterface(node, Accessible);
+        if (!accessible || accessible.getAccessibleRole() !== role) return false;
         return matchByRoleOptions(node, options);
     });
 
@@ -272,7 +279,10 @@ export const findByRole = async (
     container: Container,
     role: AccessibleRole,
     options?: ByRoleOptions,
-): Promise<Gtk.Widget> => waitFor(() => getByRole(container, role, options), { timeout: options?.timeout });
+): Promise<Gtk.Widget> =>
+    waitFor(() => getByRole(container, role, options), {
+        timeout: options?.timeout,
+    });
 
 /**
  * Waits for and finds all widgets matching the specified accessible role.
@@ -285,7 +295,10 @@ export const findAllByRole = async (
     container: Container,
     role: AccessibleRole,
     options?: ByRoleOptions,
-): Promise<Gtk.Widget[]> => waitFor(() => getAllByRole(container, role, options), { timeout: options?.timeout });
+): Promise<Gtk.Widget[]> =>
+    waitFor(() => getAllByRole(container, role, options), {
+        timeout: options?.timeout,
+    });
 
 /**
  * Waits for and finds a single widget matching the specified label text.
@@ -298,7 +311,10 @@ export const findByLabelText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget> => waitFor(() => getByLabelText(container, text, options), { timeout: options?.timeout });
+): Promise<Gtk.Widget> =>
+    waitFor(() => getByLabelText(container, text, options), {
+        timeout: options?.timeout,
+    });
 
 /**
  * Waits for and finds all widgets matching the specified label text.
@@ -311,7 +327,10 @@ export const findAllByLabelText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget[]> => waitFor(() => getAllByLabelText(container, text, options), { timeout: options?.timeout });
+): Promise<Gtk.Widget[]> =>
+    waitFor(() => getAllByLabelText(container, text, options), {
+        timeout: options?.timeout,
+    });
 
 /**
  * Waits for and finds a single widget matching the specified text content.
@@ -324,7 +343,10 @@ export const findByText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget> => waitFor(() => getByText(container, text, options), { timeout: options?.timeout });
+): Promise<Gtk.Widget> =>
+    waitFor(() => getByText(container, text, options), {
+        timeout: options?.timeout,
+    });
 
 /**
  * Waits for and finds all widgets matching the specified text content.
@@ -337,7 +359,10 @@ export const findAllByText = async (
     container: Container,
     text: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget[]> => waitFor(() => getAllByText(container, text, options), { timeout: options?.timeout });
+): Promise<Gtk.Widget[]> =>
+    waitFor(() => getAllByText(container, text, options), {
+        timeout: options?.timeout,
+    });
 
 /**
  * Waits for and finds a single widget matching the specified test ID.
@@ -350,7 +375,10 @@ export const findByTestId = async (
     container: Container,
     testId: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget> => waitFor(() => getByTestId(container, testId, options), { timeout: options?.timeout });
+): Promise<Gtk.Widget> =>
+    waitFor(() => getByTestId(container, testId, options), {
+        timeout: options?.timeout,
+    });
 
 /**
  * Waits for and finds all widgets matching the specified test ID.
@@ -363,4 +391,7 @@ export const findAllByTestId = async (
     container: Container,
     testId: string | RegExp,
     options?: TextMatchOptions,
-): Promise<Gtk.Widget[]> => waitFor(() => getAllByTestId(container, testId, options), { timeout: options?.timeout });
+): Promise<Gtk.Widget[]> =>
+    waitFor(() => getAllByTestId(container, testId, options), {
+        timeout: options?.timeout,
+    });

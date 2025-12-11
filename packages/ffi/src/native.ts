@@ -75,36 +75,13 @@ type TypeWithGlibTypeName<T extends NativeObject> = {
 };
 
 /**
- * Gets an interface view of a native object with runtime validation.
- * Use this when you need to access interface methods (like Editable or Accessible)
- * that are not available on the widget's static type.
- * @param obj - The object to get the interface from
- * @param targetType - The interface or class type to cast to
- * @returns The object typed as the target type
- * @throws Error if the object does not implement the interface/class
- */
-export const getInterface = <T extends NativeObject>(obj: NativeObject, targetType: TypeWithGlibTypeName<T>): T => {
-    const targetGType = typeFromName(targetType.glibTypeName);
-    if (targetGType === 0) {
-        throw new Error(`Unknown type: ${targetType.glibTypeName}`);
-    }
-
-    const objId = getObjectId(obj.id);
-    if (!typeCheckInstanceIsA(objId, targetGType)) {
-        throw new Error(`Object does not implement ${targetType.glibTypeName}`);
-    }
-
-    return obj as T;
-};
-
-/**
  * Attempts to cast an object to a specific interface or class type.
  * Returns null if the object does not implement the requested interface.
  * @param obj - The object to get the interface from
  * @param targetType - The interface or class type to cast to
  * @returns The object typed as the target type, or null if not implemented
  */
-export const tryGetInterface = <T extends NativeObject>(
+export const getInterface = <T extends NativeObject>(
     obj: NativeObject,
     targetType: TypeWithGlibTypeName<T>,
 ): T | null => {
@@ -176,4 +153,5 @@ export const stop = (): void => {
 };
 
 export { createRef, getObjectId } from "@gtkx/native";
+export { beginBatch, call, endBatch, isBatching } from "./batch.js";
 export { type NativeObject, registerType } from "./registry.js";

@@ -219,5 +219,38 @@ describe("Games Demos", () => {
             const movesLabel = await screen.findByText("Moves: 2");
             expect(movesLabel).toBeDefined();
         });
+
+        it("reveals symbol when card is clicked", async () => {
+            await render(<MemoryGameDemo />);
+
+            const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
+            const hiddenCards = buttons.filter((btn) => (btn as Button).getLabel() === "?");
+
+            if (hiddenCards.length === 0) throw new Error("No hidden cards found");
+
+            const firstCard = hiddenCards[0];
+            if (!firstCard) throw new Error("First card not found");
+
+            await userEvent.click(firstCard);
+
+            const label = (firstCard as Button).getLabel();
+            expect(label).toMatch(/^[A-H]$/);
+        });
+
+        it("cannot click already flipped card", async () => {
+            await render(<MemoryGameDemo />);
+
+            const buttons = await screen.findAllByRole(AccessibleRole.BUTTON);
+            const hiddenCards = buttons.filter((btn) => (btn as Button).getLabel() === "?");
+
+            if (hiddenCards.length === 0) throw new Error("No hidden cards found");
+
+            const firstCard = hiddenCards[0];
+            if (!firstCard) throw new Error("First card not found");
+
+            await userEvent.click(firstCard);
+
+            expect(firstCard.getSensitive()).toBe(false);
+        });
     });
 });

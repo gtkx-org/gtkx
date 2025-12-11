@@ -1,6 +1,5 @@
 //! Field writing to native objects.
 
-use std::ffi::c_void;
 use std::sync::mpsc;
 
 use anyhow::bail;
@@ -46,48 +45,50 @@ fn handle_write(
     offset: usize,
     value: &Value,
 ) -> anyhow::Result<()> {
-    let ptr = object_id.as_ptr();
+    let ptr = object_id
+        .as_ptr()
+        .ok_or_else(|| anyhow::anyhow!("Object has been garbage collected"))?;
 
     if ptr.is_null() {
         bail!("Cannot write field to null pointer");
     }
 
-    let field_ptr = unsafe { (ptr as *mut u8).add(offset) as *mut c_void };
+    let field_ptr = unsafe { (ptr as *mut u8).add(offset) };
 
     match (type_, value) {
         (Type::Integer(int_type), Value::Number(n)) => match (int_type.size, int_type.sign) {
-            (IntegerSize::_8, IntegerSign::Signed) => {
-                unsafe { *(field_ptr as *mut i8) = *n as i8 };
-            }
-            (IntegerSize::_8, IntegerSign::Unsigned) => {
-                unsafe { *(field_ptr as *mut u8) = *n as u8 };
-            }
-            (IntegerSize::_16, IntegerSign::Signed) => {
-                unsafe { *(field_ptr as *mut i16) = *n as i16 };
-            }
-            (IntegerSize::_16, IntegerSign::Unsigned) => {
-                unsafe { *(field_ptr as *mut u16) = *n as u16 };
-            }
-            (IntegerSize::_32, IntegerSign::Signed) => {
-                unsafe { *(field_ptr as *mut i32) = *n as i32 };
-            }
-            (IntegerSize::_32, IntegerSign::Unsigned) => {
-                unsafe { *(field_ptr as *mut u32) = *n as u32 };
-            }
-            (IntegerSize::_64, IntegerSign::Signed) => {
-                unsafe { *(field_ptr as *mut i64) = *n as i64 };
-            }
-            (IntegerSize::_64, IntegerSign::Unsigned) => {
-                unsafe { *(field_ptr as *mut u64) = *n as u64 };
-            }
+            (IntegerSize::_8, IntegerSign::Signed) => unsafe {
+                field_ptr.cast::<i8>().write_unaligned(*n as i8);
+            },
+            (IntegerSize::_8, IntegerSign::Unsigned) => unsafe {
+                field_ptr.cast::<u8>().write_unaligned(*n as u8);
+            },
+            (IntegerSize::_16, IntegerSign::Signed) => unsafe {
+                field_ptr.cast::<i16>().write_unaligned(*n as i16);
+            },
+            (IntegerSize::_16, IntegerSign::Unsigned) => unsafe {
+                field_ptr.cast::<u16>().write_unaligned(*n as u16);
+            },
+            (IntegerSize::_32, IntegerSign::Signed) => unsafe {
+                field_ptr.cast::<i32>().write_unaligned(*n as i32);
+            },
+            (IntegerSize::_32, IntegerSign::Unsigned) => unsafe {
+                field_ptr.cast::<u32>().write_unaligned(*n as u32);
+            },
+            (IntegerSize::_64, IntegerSign::Signed) => unsafe {
+                field_ptr.cast::<i64>().write_unaligned(*n as i64);
+            },
+            (IntegerSize::_64, IntegerSign::Unsigned) => unsafe {
+                field_ptr.cast::<u64>().write_unaligned(*n as u64);
+            },
         },
         (Type::Float(float_type), Value::Number(n)) => match float_type.size {
-            FloatSize::_32 => unsafe { *(field_ptr as *mut f32) = *n as f32 },
-            FloatSize::_64 => unsafe { *(field_ptr as *mut f64) = *n },
+            FloatSize::_32 => unsafe { field_ptr.cast::<f32>().write_unaligned(*n as f32) },
+            FloatSize::_64 => unsafe { field_ptr.cast::<f64>().write_unaligned(*n) },
         },
-        (Type::Boolean, Value::Boolean(b)) => {
-            unsafe { *(field_ptr as *mut u8) = u8::from(*b) };
-        }
+        (Type::Boolean, Value::Boolean(b)) => unsafe {
+            field_ptr.cast::<u8>().write_unaligned(u8::from(*b));
+        },
         _ => bail!("Unsupported field type for write: {:?}", type_),
     }
 

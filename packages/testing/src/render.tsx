@@ -17,16 +17,20 @@ let container: Reconciler.FiberRoot | null = null;
 const getWidgetLabel = (widget: Gtk.Widget): string | null => {
     if (!hasLabel(widget)) return null;
 
-    const role = getInterface(widget, Gtk.Accessible).getAccessibleRole();
+    const accessible = getInterface(widget, Gtk.Accessible);
+    if (!accessible) return null;
+
+    const role = accessible.getAccessibleRole();
     if (role === Gtk.AccessibleRole.LABEL) {
-        return getInterface(widget, Gtk.Label).getLabel();
+        return getInterface(widget, Gtk.Label)?.getLabel() ?? null;
     }
-    return getInterface(widget, Gtk.Button).getLabel();
+    return getInterface(widget, Gtk.Button)?.getLabel() ?? null;
 };
 
 const printWidgetTree = (root: Gtk.Widget, indent = 0): string => {
     const prefix = "  ".repeat(indent);
-    const role = Gtk.AccessibleRole[getInterface(root, Gtk.Accessible).getAccessibleRole()] ?? "UNKNOWN";
+    const accessibleRole = getInterface(root, Gtk.Accessible)?.getAccessibleRole();
+    const role = accessibleRole !== undefined ? (Gtk.AccessibleRole[accessibleRole] ?? "UNKNOWN") : "UNKNOWN";
     const labelText = getWidgetLabel(root);
     const label = labelText ? ` label="${labelText}"` : "";
     let result = `${prefix}<${root.constructor.name} role=${role}${label}>\n`;

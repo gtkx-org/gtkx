@@ -19,6 +19,15 @@
         },
         {
             "path": "packages/testing/tsconfig.json"
+        },
+        {
+            "path": "packages/cli/tsconfig.json"
+        },
+        {
+            "path": "examples/todo/tsconfig.json"
+        },
+        {
+            "path": "examples/gtk4-demo/tsconfig.json"
         }
     ]
 }

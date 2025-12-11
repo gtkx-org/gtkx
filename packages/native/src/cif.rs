@@ -102,12 +102,12 @@ impl OwnedPtr {
 }
 
 fn wait_for_js_result<T, F>(
-    rx: std::sync::mpsc::Receiver<Result<value::Value, neon::result::Throw>>,
+    rx: std::sync::mpsc::Receiver<Result<value::Value, ()>>,
     error_message: &str,
     on_result: F,
 ) -> T
 where
-    F: FnOnce(Result<value::Value, neon::result::Throw>) -> T,
+    F: FnOnce(Result<value::Value, ()>) -> T,
 {
     let main_context = glib::MainContext::default();
 
@@ -124,14 +124,14 @@ where
     }
 }
 
-fn create_trampoline_closure_ptr(closure: &glib::Closure) -> *mut c_void {
-    unsafe {
-        use glib::translate::ToGlibPtr as _;
-        let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_none().0;
-        glib::gobject_ffi::g_closure_ref(ptr);
-        glib::gobject_ffi::g_closure_sink(ptr);
-        ptr as *mut c_void
-    }
+/// Transfers ownership of a closure to C, returning a raw pointer.
+///
+/// This adds a reference to the closure (and sinks any floating reference),
+/// returning a pointer that the caller is responsible for eventually unreffing.
+fn closure_to_glib_full(closure: &glib::Closure) -> *mut c_void {
+    use glib::translate::ToGlibPtr as _;
+    let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
+    ptr as *mut c_void
 }
 
 fn convert_glib_args(args: &[glib::Value], arg_types: &Option<Vec<Type>>) -> Vec<value::Value> {
@@ -150,11 +150,12 @@ fn invoke_js_callback(
     callback: &Arc<Root<JsFunction>>,
     args_values: Vec<value::Value>,
     capture_result: bool,
-) -> std::sync::mpsc::Receiver<Result<value::Value, neon::result::Throw>> {
+) -> std::sync::mpsc::Receiver<Result<value::Value, ()>> {
+    let (tx, rx) = std::sync::mpsc::channel();
     let callback = callback.clone();
 
-    let result = channel.send(move |mut cx| {
-        (|| {
+    channel.send(move |mut cx| {
+        let result = (|| {
             let js_args: Vec<Handle<JsValue>> = args_values
                 .into_iter()
                 .map(|v| v.to_js_value(&mut cx))
@@ -170,10 +171,13 @@ fn invoke_js_callback(
                 js_callback.call(&mut cx, js_this, js_args)?;
                 Ok(value::Value::Undefined)
             }
-        })()
+        })();
+
+        let _ = tx.send(result.map_err(|_| ()));
+        Ok(())
     });
 
-    unsafe { std::mem::transmute(result) }
+    rx
 }
 
 impl TryFrom<arg::Arg> for Value {
@@ -246,7 +250,13 @@ impl TryFrom<arg::Arg> for Value {
                     _ => bail!("Expected an Object for gobject type, got {:?}", arg.value),
                 };
 
-                let ptr = object_id.map_or(std::ptr::null_mut(), |id| id.as_ptr());
+                let ptr = match object_id {
+                    Some(id) => id
+                        .as_ptr()
+                        .ok_or_else(|| anyhow::anyhow!("GObject has been garbage collected"))?,
+                    None => std::ptr::null_mut(),
+                };
+
                 let is_transfer_full = !type_.is_borrowed && !ptr.is_null();
 
                 if is_transfer_full {
@@ -264,7 +274,13 @@ impl TryFrom<arg::Arg> for Value {
                     _ => bail!("Expected an Object for boxed type, got {:?}", arg.value),
                 };
 
-                let ptr = object_id.map_or(std::ptr::null_mut(), |id| id.as_ptr());
+                let ptr = match object_id {
+                    Some(id) => id.as_ptr().ok_or_else(|| {
+                        anyhow::anyhow!("Boxed object has been garbage collected")
+                    })?,
+                    None => std::ptr::null_mut(),
+                };
+
                 let is_transfer_full = !type_.is_borrowed && !ptr.is_null();
 
                 if is_transfer_full && let Some(gtype) = type_.get_gtype() {
@@ -438,7 +454,10 @@ impl Value {
                     }
                 }
 
-                let ptrs: Vec<*mut c_void> = ids.iter().map(|id| id.as_ptr()).collect();
+                let ptrs: Vec<*mut c_void> = ids
+                    .iter()
+                    .map(|id| id.as_ptr().unwrap_or(std::ptr::null_mut()))
+                    .collect();
                 let ptr = ptrs.as_ptr() as *mut c_void;
 
                 Ok(Value::OwnedPtr(OwnedPtr::new((ids, ptrs), ptr)))
@@ -492,19 +511,16 @@ impl Value {
                                 value,
                                 Some(&return_type),
                             ),
-                            Err(_) => {
-                                eprintln!("JS callback threw an error");
-                                value::Value::into_glib_value_with_default(
-                                    value::Value::Undefined,
-                                    Some(&return_type),
-                                )
-                            }
+                            Err(_) => value::Value::into_glib_value_with_default(
+                                value::Value::Undefined,
+                                Some(&return_type),
+                            ),
                         },
                     )
                 });
 
-                let ptr = closure.as_ptr() as *mut c_void;
-                Ok(Value::OwnedPtr(OwnedPtr::new(closure, ptr)))
+                let closure_ptr = closure_to_glib_full(&closure);
+                Ok(Value::OwnedPtr(OwnedPtr::new(closure, closure_ptr)))
             }
 
             CallbackTrampoline::AsyncReady => {
@@ -528,16 +544,11 @@ impl Value {
                     wait_for_js_result(
                         rx,
                         "JS thread disconnected while waiting for async callback",
-                        |result| {
-                            if result.is_err() {
-                                eprintln!("JS async callback threw an error");
-                            }
-                            None::<glib::Value>
-                        },
+                        |_| None::<glib::Value>,
                     )
                 });
 
-                let closure_ptr = create_trampoline_closure_ptr(&closure);
+                let closure_ptr = closure_to_glib_full(&closure);
                 let trampoline_ptr = callback::get_async_ready_trampoline_ptr();
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
@@ -554,16 +565,11 @@ impl Value {
                     wait_for_js_result(
                         rx,
                         "JS thread disconnected while waiting for destroy callback",
-                        |result| {
-                            if result.is_err() {
-                                eprintln!("JS destroy callback threw an error");
-                            }
-                            None::<glib::Value>
-                        },
+                        |_| None::<glib::Value>,
                     )
                 });
 
-                let closure_ptr = create_trampoline_closure_ptr(&closure);
+                let closure_ptr = closure_to_glib_full(&closure);
                 let trampoline_ptr = callback::get_destroy_trampoline_ptr();
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
@@ -582,15 +588,12 @@ impl Value {
                         "JS thread disconnected while waiting for source func callback",
                         |result| match result {
                             Ok(value) => value.into(),
-                            Err(_) => {
-                                eprintln!("JS source func callback threw an error");
-                                Some(false.into())
-                            }
+                            Err(_) => Some(false.into()),
                         },
                     )
                 });
 
-                let closure_ptr = create_trampoline_closure_ptr(&closure);
+                let closure_ptr = closure_to_glib_full(&closure);
                 let trampoline_ptr = callback::get_source_func_trampoline_ptr();
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
@@ -610,22 +613,23 @@ impl Value {
                     wait_for_js_result(
                         rx,
                         "JS thread disconnected while waiting for draw func callback",
-                        |result| {
-                            if result.is_err() {
-                                eprintln!("JS draw func callback threw an error");
-                            }
-                            None::<glib::Value>
-                        },
+                        |_| None::<glib::Value>,
                     )
                 });
 
-                let closure_ptr = create_trampoline_closure_ptr(&closure);
+                let closure_ptr = closure_to_glib_full(&closure);
                 let trampoline_ptr = callback::get_draw_func_trampoline_ptr();
                 let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
 
+                // Transfer full ownership to GTK. The closure_to_glib_full() call added a ref,
+                // and we prevent Rust's Drop from running so GTK becomes the sole owner.
+                // The destroy callback (unref_closure_trampoline) will call g_closure_unref
+                // when GTK no longer needs the closure.
+                std::mem::forget(closure);
+
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
-                    closure: OwnedPtr::new(closure, closure_ptr),
+                    closure: OwnedPtr::new((), closure_ptr),
                     destroy_ptr: Some(destroy_ptr),
                 }))
             }
@@ -648,21 +652,24 @@ impl Value {
                                 };
                                 Some(ordering.into())
                             }
-                            Err(_) => {
-                                eprintln!("JS compare func callback threw an error");
-                                Some(0i32.into())
-                            }
+                            Err(_) => Some(0i32.into()),
                         },
                     )
                 });
 
-                let closure_ptr = create_trampoline_closure_ptr(&closure);
+                let closure_ptr = closure_to_glib_full(&closure);
                 let trampoline_ptr = callback::get_compare_data_func_trampoline_ptr();
                 let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
 
+                // Transfer full ownership to GTK. The closure_to_glib_full() call added a ref,
+                // and we prevent Rust's Drop from running so GTK becomes the sole owner.
+                // The destroy callback (unref_closure_trampoline) will call g_closure_unref
+                // when GTK no longer needs the closure.
+                std::mem::forget(closure);
+
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,
-                    closure: OwnedPtr::new(closure, closure_ptr),
+                    closure: OwnedPtr::new((), closure_ptr),
                     destroy_ptr: Some(destroy_ptr),
                 }))
             }
@@ -686,7 +693,9 @@ impl Value {
                 match &*r#ref.value {
                     value::Value::Object(id) => {
                         // Caller-allocates: pass the pointer directly
-                        let ptr = id.as_ptr();
+                        let ptr = id.as_ptr().ok_or_else(|| {
+                            anyhow::anyhow!("Ref object has been garbage collected")
+                        })?;
                         Ok(Value::Ptr(ptr))
                     }
                     value::Value::Null | value::Value::Undefined => {

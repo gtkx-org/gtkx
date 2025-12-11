@@ -226,7 +226,13 @@ export class MenuItemNode extends Node<never> {
         });
 
         const app = getCurrentApp();
-        app.addAction(getInterface(this.action, Gio.Action));
+        const action = getInterface(this.action, Gio.Action);
+
+        if (!action) {
+            throw new Error("Failed to get Gio.Action interface from SimpleAction");
+        }
+
+        app.addAction(action);
 
         this.entry.action = `app.${this.actionName}`;
 

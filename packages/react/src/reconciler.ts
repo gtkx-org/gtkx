@@ -1,3 +1,4 @@
+import { beginBatch, endBatch } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import ReactReconciler from "react-reconciler";
@@ -100,11 +101,13 @@ class Reconciler {
                 parent.insertBefore(child, beforeChild);
             },
             prepareForCommit: () => {
+                beginBatch();
                 beginCommit();
                 return null;
             },
             resetAfterCommit: () => {
                 endCommit();
+                endBatch();
             },
             commitTextUpdate: (textInstance, oldText, newText) => {
                 textInstance.updateProps({ label: oldText }, { label: newText });

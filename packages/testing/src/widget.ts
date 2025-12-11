@@ -8,8 +8,9 @@ const EDITABLE_ROLES = new Set([AccessibleRole.TEXT_BOX, AccessibleRole.SEARCH_B
  * Checks if a widget has an editable accessible role (text box, search box, or spin button).
  */
 export const isEditable = (widget: Gtk.Widget): boolean => {
-    const role = getInterface(widget, Accessible).getAccessibleRole();
-    return EDITABLE_ROLES.has(role);
+    const accessible = getInterface(widget, Accessible);
+    if (!accessible) return false;
+    return EDITABLE_ROLES.has(accessible.getAccessibleRole());
 };
 
 const LABEL_ROLES = new Set([
@@ -27,6 +28,7 @@ const LABEL_ROLES = new Set([
  * Checks if a widget has an accessible role that supports labels.
  */
 export const hasLabel = (widget: Gtk.Widget): boolean => {
-    const role = getInterface(widget, Accessible).getAccessibleRole();
-    return LABEL_ROLES.has(role);
+    const accessible = getInterface(widget, Accessible);
+    if (!accessible) return false;
+    return LABEL_ROLES.has(accessible.getAccessibleRole());
 };

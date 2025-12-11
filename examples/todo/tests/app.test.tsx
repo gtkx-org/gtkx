@@ -69,7 +69,7 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             await waitFor(() => {
-                const currentText = getInterface(input, Editable).getText();
+                const currentText = getInterface(input, Editable)?.getText() ?? "";
                 if (currentText !== "") throw new Error("Input not cleared");
             });
         });

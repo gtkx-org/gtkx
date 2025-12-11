@@ -41,58 +41,60 @@ pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
 }
 
 fn handle_read(object_id: ObjectId, type_: &Type, offset: usize) -> anyhow::Result<Value> {
-    let ptr = object_id.as_ptr();
+    let ptr = object_id
+        .as_ptr()
+        .ok_or_else(|| anyhow::anyhow!("Object has been garbage collected"))?;
 
     if ptr.is_null() {
         bail!("Cannot read field from null pointer");
     }
 
-    let field_ptr = unsafe { (ptr as *const u8).add(offset) as *const c_void };
+    let field_ptr = unsafe { (ptr as *const u8).add(offset) };
 
     match type_ {
         Type::Integer(int_type) => {
             let number = match (int_type.size, int_type.sign) {
                 (IntegerSize::_8, IntegerSign::Signed) => unsafe {
-                    *(field_ptr as *const i8) as f64
+                    field_ptr.cast::<i8>().read_unaligned() as f64
                 },
                 (IntegerSize::_8, IntegerSign::Unsigned) => unsafe {
-                    *(field_ptr as *const u8) as f64
+                    field_ptr.cast::<u8>().read_unaligned() as f64
                 },
                 (IntegerSize::_16, IntegerSign::Signed) => unsafe {
-                    *(field_ptr as *const i16) as f64
+                    field_ptr.cast::<i16>().read_unaligned() as f64
                 },
                 (IntegerSize::_16, IntegerSign::Unsigned) => unsafe {
-                    *(field_ptr as *const u16) as f64
+                    field_ptr.cast::<u16>().read_unaligned() as f64
                 },
                 (IntegerSize::_32, IntegerSign::Signed) => unsafe {
-                    *(field_ptr as *const i32) as f64
+                    field_ptr.cast::<i32>().read_unaligned() as f64
                 },
                 (IntegerSize::_32, IntegerSign::Unsigned) => unsafe {
-                    *(field_ptr as *const u32) as f64
+                    field_ptr.cast::<u32>().read_unaligned() as f64
                 },
                 (IntegerSize::_64, IntegerSign::Signed) => unsafe {
-                    *(field_ptr as *const i64) as f64
+                    field_ptr.cast::<i64>().read_unaligned() as f64
                 },
                 (IntegerSize::_64, IntegerSign::Unsigned) => unsafe {
-                    *(field_ptr as *const u64) as f64
+                    field_ptr.cast::<u64>().read_unaligned() as f64
                 },
             };
             Ok(Value::Number(number))
         }
         Type::Float(float_type) => {
             let number = match float_type.size {
-                FloatSize::_32 => unsafe { *(field_ptr as *const f32) as f64 },
-                FloatSize::_64 => unsafe { *(field_ptr as *const f64) },
+                FloatSize::_32 => unsafe { field_ptr.cast::<f32>().read_unaligned() as f64 },
+                FloatSize::_64 => unsafe { field_ptr.cast::<f64>().read_unaligned() },
             };
 
             Ok(Value::Number(number))
         }
         Type::Boolean => {
-            let value = unsafe { *(field_ptr as *const u8) != 0 };
+            let value = unsafe { field_ptr.cast::<u8>().read_unaligned() != 0 };
             Ok(Value::Boolean(value))
         }
         Type::String(_) => {
-            let str_ptr = unsafe { *(field_ptr as *const *const i8) };
+            let str_ptr = unsafe { field_ptr.cast::<*const i8>().read_unaligned() };
 
             if str_ptr.is_null() {
                 return Ok(Value::Null);
@@ -103,7 +105,11 @@ fn handle_read(object_id: ObjectId, type_: &Type, offset: usize) -> anyhow::Resu
             Ok(Value::String(string))
         }
         Type::GObject(_) => {
-            let obj_ptr = unsafe { *(field_ptr as *const *mut glib::gobject_ffi::GObject) };
+            let obj_ptr = unsafe {
+                field_ptr
+                    .cast::<*mut glib::gobject_ffi::GObject>()
+                    .read_unaligned()
+            };
 
             if obj_ptr.is_null() {
                 return Ok(Value::Null);
@@ -113,7 +119,7 @@ fn handle_read(object_id: ObjectId, type_: &Type, offset: usize) -> anyhow::Resu
             Ok(Value::Object(ObjectId::new(Object::GObject(object))))
         }
         Type::Boxed(boxed_type) => {
-            let boxed_ptr = unsafe { *(field_ptr as *const *mut c_void) };
+            let boxed_ptr = unsafe { field_ptr.cast::<*mut c_void>().read_unaligned() };
 
             if boxed_ptr.is_null() {
                 return Ok(Value::Null);

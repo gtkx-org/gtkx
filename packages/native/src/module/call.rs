@@ -22,6 +22,12 @@ use crate::{
 
 type RefUpdate = (Arc<Root<JsObject>>, Value);
 
+struct BatchCallDescriptor {
+    library_name: String,
+    symbol_name: String,
+    args: Vec<Arg>,
+}
+
 /// Calls a native function via FFI.
 ///
 /// JavaScript signature: `call(library: string, symbol: string, args: Arg[], returnType: Type) => Value`
@@ -35,6 +41,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let js_result_type = cx.argument::<JsObject>(3)?;
     let args = Arg::from_js_array(&mut cx, js_args)?;
     let result_type = Type::from_js_value(&mut cx, js_result_type.upcast())?;
+
     let (tx, rx) = mpsc::channel::<anyhow::Result<(Value, Vec<RefUpdate>)>>();
 
     glib::idle_add_once(move || {
@@ -202,4 +209,69 @@ fn handle_call(
     }
 
     Ok((Value::from_cif_value(&result, &result_type)?, ref_updates))
+}
+
+/// Executes multiple void FFI calls in a single GTK thread dispatch.
+///
+/// JavaScript signature: `batchCall(calls: { library: string, symbol: string, args: Arg[] }[]) => void`
+///
+/// All calls are dispatched together to the GTK thread, reducing synchronization overhead.
+/// Only supports void return types since batched calls are typically property setters.
+pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    let js_calls = cx.argument::<JsArray>(0)?;
+    let len = js_calls.len(&mut cx);
+
+    if len == 0 {
+        return Ok(cx.undefined());
+    }
+
+    let mut descriptors = Vec::with_capacity(len as usize);
+
+    for i in 0..len {
+        let js_call = js_calls.get::<JsObject, _, _>(&mut cx, i)?;
+
+        let library_name = js_call
+            .get::<JsString, _, _>(&mut cx, "library")?
+            .value(&mut cx);
+        let symbol_name = js_call
+            .get::<JsString, _, _>(&mut cx, "symbol")?
+            .value(&mut cx);
+        let js_args = js_call.get::<JsArray, _, _>(&mut cx, "args")?;
+        let args = Arg::from_js_array(&mut cx, js_args)?;
+
+        descriptors.push(BatchCallDescriptor {
+            library_name,
+            symbol_name,
+            args,
+        });
+    }
+
+    let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
+
+    glib::idle_add_once(move || {
+        let result = handle_batch_calls(descriptors);
+        let _ = tx.send(result);
+    });
+
+    uv::wait_for_result(
+        uv::get_event_loop(&cx),
+        &rx,
+        "GTK thread disconnected while waiting for batch call result",
+    )
+    .or_else(|err| cx.throw_error(format!("Error during batch FFI call: {err}")))?;
+
+    Ok(cx.undefined())
+}
+
+fn handle_batch_calls(descriptors: Vec<BatchCallDescriptor>) -> anyhow::Result<()> {
+    for descriptor in descriptors {
+        handle_call(
+            descriptor.library_name,
+            descriptor.symbol_name,
+            descriptor.args,
+            Type::Undefined,
+        )?;
+    }
+
+    Ok(())
 }
