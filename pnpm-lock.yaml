@@ -48,27 +48,30 @@ importers:
   examples/flatpak:
     dependencies:
       '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:../../packages/ffi
+        specifier: 0.5.0
+        version: 0.5.0
       '@gtkx/react':
-        specifier: workspace:*
-        version: link:../../packages/react
+        specifier: 0.5.0
+        version: 0.5.0(react@19.2.3)
       react:
         specifier: 19.2.3
         version: 19.2.3
     devDependencies:
-      '@gtkx/cli':
-        specifier: workspace:*
-        version: link:../../packages/cli
       '@types/react':
         specifier: 19.2.7
         version: 19.2.7
       esbuild:
-        specifier: 0.25.0
-        version: 0.25.0
+        specifier: 0.27.1
+        version: 0.27.1
       postject:
         specifier: 1.0.0-alpha.6
         version: 1.0.0-alpha.6
+      tsx:
+        specifier: 4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
 
   examples/gtk4-demo:
     dependencies:
@@ -1875,6 +1878,17 @@ packages:
 
   '@gerrit0/mini-shiki@3.19.0':
     resolution: {integrity: sha512-ZSlWfLvr8Nl0T4iA3FF/8VH8HivYF82xQts2DY0tJxZd4wtXJ8AA0nmdW9lmO4hlrh3f9xNwEPtOgqETPqKwDA==}
+
+  '@gtkx/ffi@0.5.0':
+    resolution: {integrity: sha512-Z0Slz5Orbt9EjNyHQ8tYBqLW5zGKZb+bP9fWcbL4U0tzmxsqrvA+d0xH48NLcno8uthGur/Qv8ueek5uCYOyMg==}
+
+  '@gtkx/native@0.5.0':
+    resolution: {integrity: sha512-e+50Tv2E3IQ2YVZ3/lqnndn7FJ0awiC1UOO65Y0Kd+6RavSuiUA9DIAyT8Jr7U5vncIUAL89YvqkiBgciKLr5A==}
+
+  '@gtkx/react@0.5.0':
+    resolution: {integrity: sha512-bsJjiqxhP+TpPiAZr1y83oJZ4cQgGZMxHO0p3540F016pwZVvO1TefBlX1uj0sTLdygDSVYKka8Ed0PvrBa8lw==}
+    peerDependencies:
+      react: ^19
 
   '@hapi/hoek@9.3.0':
     resolution: {integrity: sha512-/c6rf4UJlmHlC9b5BaNvzAcFv7HZ2QHaV0D4/HNlBdvFnvQq8RI4kYdhyPCl7Xj+oWvTWQ8ujhqS53LIgAe6KQ==}
@@ -8529,6 +8543,18 @@ snapshots:
       '@shikijs/themes': 3.19.0
       '@shikijs/types': 3.19.0
       '@shikijs/vscode-textmate': 10.0.2
+
+  '@gtkx/ffi@0.5.0':
+    dependencies:
+      '@gtkx/native': 0.5.0
+
+  '@gtkx/native@0.5.0': {}
+
+  '@gtkx/react@0.5.0(react@19.2.3)':
+    dependencies:
+      '@gtkx/ffi': 0.5.0
+      react: 19.2.3
+      react-reconciler: 0.33.0(react@19.2.3)
 
   '@hapi/hoek@9.3.0': {}
 
