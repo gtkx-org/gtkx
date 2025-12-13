@@ -1,5 +1,5 @@
 import { getInterface } from "@gtkx/ffi";
-import { AccessibleRole, Editable, type Label, type Widget } from "@gtkx/ffi/gtk";
+import { AccessibleRole, Editable, type Label, type ToggleButton, type Widget } from "@gtkx/ffi/gtk";
 import { cleanup, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
@@ -13,14 +13,14 @@ describe("Todo App", () => {
         it("renders with title", async () => {
             await render(<App />, { wrapper: false });
 
-            const title = await screen.findByRole(AccessibleRole.LABEL, { name: "Todo App" });
+            const title = await screen.findByText("Tasks");
             expect(title).toBeDefined();
         });
 
         it("shows empty message when no todos", async () => {
             await render(<App />, { wrapper: false });
 
-            const emptyMessage = await screen.findByText("No todos to display");
+            const emptyMessage = await screen.findByText("No tasks yet");
             expect(emptyMessage).toBeDefined();
         });
 
@@ -34,7 +34,7 @@ describe("Todo App", () => {
         it("has an add button", async () => {
             await render(<App />, { wrapper: false });
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             expect(addButton).toBeDefined();
         });
 
@@ -52,7 +52,7 @@ describe("Todo App", () => {
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Buy groceries");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
             const todoText = await screen.findByText("Buy groceries");
@@ -65,7 +65,7 @@ describe("Todo App", () => {
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Buy groceries");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
             await waitFor(() => {
@@ -78,7 +78,7 @@ describe("Todo App", () => {
             await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
 
             await userEvent.type(input, "First todo");
             await userEvent.click(addButton);
@@ -101,10 +101,10 @@ describe("Todo App", () => {
         it("does not add empty todos", async () => {
             await render(<App />, { wrapper: false });
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
-            const emptyMessage = await screen.findByText("No todos to display");
+            const emptyMessage = await screen.findByText("No tasks yet");
             expect(emptyMessage).toBeDefined();
         });
 
@@ -114,10 +114,10 @@ describe("Todo App", () => {
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "   ");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
-            const emptyMessage = await screen.findByText("No todos to display");
+            const emptyMessage = await screen.findByText("No tasks yet");
             expect(emptyMessage).toBeDefined();
         });
 
@@ -127,7 +127,7 @@ describe("Todo App", () => {
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "New todo");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
             const filterAll = await screen.findByTestId("filter-all");
@@ -147,7 +147,7 @@ describe("Todo App", () => {
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Test todo");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
             const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: false });
@@ -163,7 +163,7 @@ describe("Todo App", () => {
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Test todo");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
             const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX, { checked: false });
@@ -180,7 +180,7 @@ describe("Todo App", () => {
             await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
 
             await userEvent.type(input, "Todo 1");
             await userEvent.click(addButton);
@@ -208,16 +208,16 @@ describe("Todo App", () => {
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Todo to delete");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
             const todoText = await screen.findByText("Todo to delete");
             expect(todoText).toBeDefined();
 
-            const deleteButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Delete" });
+            const deleteButton = await screen.findByTestId(/^delete-\d+$/);
             await userEvent.click(deleteButton);
 
-            const emptyMessage = await screen.findByText("No todos to display");
+            const emptyMessage = await screen.findByText("No tasks yet");
             expect(emptyMessage).toBeDefined();
         });
 
@@ -225,14 +225,14 @@ describe("Todo App", () => {
             await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
 
             await userEvent.type(input, "Keep this");
             await userEvent.click(addButton);
             await userEvent.type(input, "Delete this");
             await userEvent.click(addButton);
 
-            const deleteButtons = await screen.findAllByRole(AccessibleRole.BUTTON, { name: "Delete" });
+            const deleteButtons = await screen.findAllByTestId(/^delete-\d+$/);
             expect(deleteButtons.length).toBeGreaterThanOrEqual(2);
             const secondDeleteButton = deleteButtons[1] as Widget;
             expect(secondDeleteButton).toBeDefined();
@@ -250,7 +250,7 @@ describe("Todo App", () => {
             await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
 
             await userEvent.type(input, "Active todo");
             await userEvent.click(addButton);
@@ -314,17 +314,17 @@ describe("Todo App", () => {
             expect(completed).toBeDefined();
         });
 
-        it("disables the active filter button", async () => {
+        it("marks the active filter button as active", async () => {
             await setupTodosWithMixedState();
 
             const filterAll = await screen.findByTestId("filter-all");
-            expect(filterAll.getSensitive()).toBe(false);
+            expect((filterAll as ToggleButton).getActive()).toBe(true);
 
             const filterActive = await screen.findByTestId("filter-active");
             await userEvent.click(filterActive);
 
-            expect(filterActive.getSensitive()).toBe(false);
-            expect(filterAll.getSensitive()).toBe(true);
+            expect((filterActive as ToggleButton).getActive()).toBe(true);
+            expect((filterAll as ToggleButton).getActive()).toBe(false);
         });
     });
 
@@ -333,7 +333,7 @@ describe("Todo App", () => {
             await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
 
             await userEvent.type(input, "Keep active");
             await userEvent.click(addButton);
@@ -367,7 +367,7 @@ describe("Todo App", () => {
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Active todo");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
             const clearButton = await screen.findByTestId("clear-completed");
@@ -380,7 +380,7 @@ describe("Todo App", () => {
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Todo");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
             const clearButton = await screen.findByTestId("clear-completed");
@@ -394,24 +394,24 @@ describe("Todo App", () => {
     });
 
     describe("item count", () => {
-        it("shows singular 'item' for one todo", async () => {
+        it("shows singular 'task' for one todo", async () => {
             await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Single todo");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
             const itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Label).getLabel()).toBe("1 item left");
+            expect((itemsLeft as Label).getLabel()).toBe("1 task remaining");
         });
 
-        it("shows plural 'items' for multiple todos", async () => {
+        it("shows plural 'tasks' for multiple todos", async () => {
             await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
 
             await userEvent.type(input, "First");
             await userEvent.click(addButton);
@@ -419,23 +419,23 @@ describe("Todo App", () => {
             await userEvent.click(addButton);
 
             const itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Label).getLabel()).toBe("2 items left");
+            expect((itemsLeft as Label).getLabel()).toBe("2 tasks remaining");
         });
 
-        it("shows plural 'items' for zero todos", async () => {
+        it("shows plural 'tasks' for zero todos", async () => {
             await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
             await userEvent.type(input, "Todo");
 
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
             await userEvent.click(addButton);
 
             const checkbox = await screen.findByRole(AccessibleRole.CHECKBOX);
             await userEvent.click(checkbox);
 
             const itemsLeft = await screen.findByTestId("items-left");
-            expect((itemsLeft as Label).getLabel()).toBe("0 items left");
+            expect((itemsLeft as Label).getLabel()).toBe("0 tasks remaining");
         });
     });
 
@@ -444,7 +444,7 @@ describe("Todo App", () => {
             await render(<App />, { wrapper: false });
 
             const input = await screen.findByTestId("todo-input");
-            const addButton = await screen.findByRole(AccessibleRole.BUTTON, { name: "Add" });
+            const addButton = await screen.findByTestId("add-button");
 
             await userEvent.type(input, "First");
             await userEvent.click(addButton);

@@ -3,9 +3,9 @@ import { Editable, type Entry as GtkEntry, Orientation } from "@gtkx/ffi/gtk";
 import { Box, Button, Entry } from "@gtkx/react";
 import { useState } from "react";
 
-interface TodoInputProps {
+type TodoInputProps = {
     onAdd: (text: string) => void;
-}
+};
 
 export const TodoInput = ({ onAdd }: TodoInputProps) => {
     const [text, setText] = useState("");
@@ -16,14 +16,11 @@ export const TodoInput = ({ onAdd }: TodoInputProps) => {
 
     const handleAdd = () => {
         const trimmed = text.trim();
+
         if (trimmed) {
             onAdd(trimmed);
             setText("");
         }
-    };
-
-    const handleActivate = () => {
-        handleAdd();
     };
 
     return (
@@ -31,12 +28,18 @@ export const TodoInput = ({ onAdd }: TodoInputProps) => {
             <Entry
                 text={text}
                 onChanged={handleChange}
-                onActivate={handleActivate}
-                placeholderText="What needs to be done?"
-                hexpand={true}
+                onActivate={handleAdd}
+                placeholderText="Add a new task…"
+                hexpand
                 name="todo-input"
             />
-            <Button label="Add" onClicked={handleAdd} name="add-button" />
+            <Button
+                iconName="list-add-symbolic"
+                tooltipText="Add task"
+                cssClasses={["suggested-action"]}
+                onClicked={handleAdd}
+                name="add-button"
+            />
         </Box>
     );
 };

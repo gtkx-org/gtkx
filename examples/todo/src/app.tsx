@@ -1,10 +1,10 @@
-import { Orientation } from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Box, Label, quit } from "@gtkx/react";
+import { Align, Orientation, SelectionMode } from "@gtkx/ffi/gtk";
+import { ApplicationWindow, Box, Button, HeaderBar, Label, ListBox, quit, ScrolledWindow } from "@gtkx/react";
 import { useCallback, useMemo, useState } from "react";
-import { TodoFilters } from "./todo-filters.js";
 import { TodoInput } from "./todo-input.js";
-import { TodoList } from "./todo-list.js";
+import { TodoRow } from "./todo-row.js";
 import type { Filter, Todo } from "./types.js";
+import { ViewSwitcher } from "./view-switcher.js";
 
 let nextId = 1;
 
@@ -40,29 +40,75 @@ export const App = () => {
     }, [todos, filter]);
 
     const activeCount = useMemo(() => todos.filter((todo) => !todo.completed).length, [todos]);
+
     const completedCount = useMemo(() => todos.filter((todo) => todo.completed).length, [todos]);
 
+    const itemText = activeCount === 1 ? "task" : "tasks";
+
     return (
-        <ApplicationWindow title="Todo App" defaultWidth={400} defaultHeight={500} onCloseRequest={quit}>
+        <ApplicationWindow title="Tasks" defaultWidth={400} defaultHeight={500} onCloseRequest={quit}>
+            <HeaderBar.Root>
+                <HeaderBar.TitleWidget>
+                    <Label.Root label="Tasks" cssClasses={["title"]} />
+                </HeaderBar.TitleWidget>
+            </HeaderBar.Root>
+
             <Box
                 orientation={Orientation.VERTICAL}
-                spacing={16}
-                marginTop={16}
-                marginBottom={16}
-                marginStart={16}
-                marginEnd={16}
+                spacing={12}
+                marginTop={12}
+                marginBottom={12}
+                marginStart={12}
+                marginEnd={12}
             >
-                <Label.Root label="Todo App" name="app-title" />
                 <TodoInput onAdd={addTodo} />
-                <TodoList todos={filteredTodos} onToggle={toggleTodo} onDelete={deleteTodo} />
+
+                {todos.length > 0 && <ViewSwitcher filter={filter} onFilterChange={setFilter} />}
+
+                {filteredTodos.length === 0 ? (
+                    <Box
+                        orientation={Orientation.VERTICAL}
+                        vexpand
+                        valign={Align.CENTER}
+                        halign={Align.CENTER}
+                        spacing={12}
+                    >
+                        <Label.Root
+                            label={todos.length === 0 ? "No tasks yet" : "No tasks to display"}
+                            cssClasses={["dim-label", "title-3"]}
+                            name="empty-message"
+                        />
+                        {todos.length === 0 && (
+                            <Label.Root label="Add a task above to get started" cssClasses={["dim-label"]} />
+                        )}
+                    </Box>
+                ) : (
+                    <ScrolledWindow vexpand hscrollbarPolicy={2} name="todo-list">
+                        <ListBox cssClasses={["boxed-list"]} selectionMode={SelectionMode.NONE}>
+                            {filteredTodos.map((todo) => (
+                                <TodoRow key={todo.id} todo={todo} onToggle={toggleTodo} onDelete={deleteTodo} />
+                            ))}
+                        </ListBox>
+                    </ScrolledWindow>
+                )}
+
                 {todos.length > 0 && (
-                    <TodoFilters
-                        filter={filter}
-                        onFilterChange={setFilter}
-                        activeCount={activeCount}
-                        completedCount={completedCount}
-                        onClearCompleted={clearCompleted}
-                    />
+                    <Box orientation={Orientation.HORIZONTAL} spacing={8}>
+                        <Label.Root
+                            label={`${activeCount} ${itemText} remaining`}
+                            cssClasses={["dim-label"]}
+                            halign={Align.START}
+                            hexpand
+                            name="items-left"
+                        />
+                        <Button
+                            label="Clear Completed"
+                            cssClasses={["flat"]}
+                            sensitive={completedCount > 0}
+                            onClicked={clearCompleted}
+                            name="clear-completed"
+                        />
+                    </Box>
                 )}
             </Box>
         </ApplicationWindow>
