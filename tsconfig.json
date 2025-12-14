@@ -28,6 +28,12 @@
         },
         {
             "path": "examples/gtk4-demo/tsconfig.json"
+        },
+        {
+            "path": "examples/flatpak/tsconfig.json"
+        },
+        {
+            "path": "examples/adwaita/tsconfig.json"
         }
     ]
 }

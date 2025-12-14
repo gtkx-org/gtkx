@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { getObjectId, start as nativeStart, stop as nativeStop } from "@gtkx/native";
 import { init as initAdwaita } from "./generated/adw/functions.js";
 import type { ApplicationFlags } from "./generated/gio/enums.js";
+import { finalize as finalizeGtkSource, init as initGtkSource } from "./generated/gtksource/functions.js";
 import {
     typeCheckInstanceIsA,
     typeFromName,
@@ -112,13 +113,17 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
         return currentApp;
     }
 
+    const app = nativeStart(appId, flags);
+    currentApp = getObject<Application>(app);
+    events.emit("start");
+
     try {
         initAdwaita();
     } catch {}
 
-    const app = nativeStart(appId, flags);
-    currentApp = getObject<Application>(app);
-    events.emit("start");
+    try {
+        initGtkSource();
+    } catch {}
 
     keepAlive();
 
@@ -153,6 +158,11 @@ export const stop = (): void => {
     }
 
     events.emit("stop");
+
+    try {
+        finalizeGtkSource();
+    } catch {}
+
     nativeStop();
     currentApp = null;
 };

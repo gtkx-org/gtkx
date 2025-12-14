@@ -118,7 +118,10 @@ Some files are auto-generated from GIR (GObject Introspection) files:
 To add support for a new GTK widget:
 
 1. Create a Node class in `packages/react/src/nodes/`
-2. Add it to `NODE_CLASSES` in `packages/react/src/factory.ts`
+2. Add it to the appropriate array in `packages/react/src/factory.ts`:
+   - `VIRTUAL_NODES` — For nodes without a GTK widget (e.g., list items, menu items, slots)
+   - `SPECIALIZED_NODES` — For nodes with custom behavior (e.g., windows, dialogs)
+   - `CONTAINER_NODES` — For nodes that manage children specially (e.g., grids, lists)
 3. Implement the required methods:
    - `matches()` — Type matching
    - `initialize()` — Widget creation

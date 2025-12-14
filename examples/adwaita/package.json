@@ -1,13 +1,12 @@
 {
-    "name": "adwaita-demo",
+    "name": "adwaita",
     "version": "0.0.0",
     "private": true,
     "description": "Adwaita Demo - A showcase of libadwaita widgets in GTKX",
     "type": "module",
     "scripts": {
         "build": "tsc -b",
-        "dev": "gtkx dev src/app.tsx",
-        "start": "node dist/index.js"
+        "dev": "gtkx dev src/app.tsx"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
