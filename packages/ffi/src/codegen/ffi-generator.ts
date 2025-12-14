@@ -129,6 +129,11 @@ const METHOD_RENAMES = new Map<string, Map<string, string>>([
             ["setDirection", "setArrowDirection"],
         ]),
     ],
+    ["Secret.Collection", new Map([["getFlags", "getCollectionFlags"]])],
+    ["Secret.Item", new Map([["getFlags", "getItemFlags"]])],
+    ["Secret.Service", new Map([["getFlags", "getServiceFlags"]])],
+    ["WebKit.WebResource", new Map([["getData", "getResourceData"]])],
+    ["WebKit.WebView", new Map([["getSettings", "getWebSettings"]])],
 ]);
 
 const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
@@ -292,6 +297,7 @@ export class CodeGenerator {
     private typeMapper: TypeMapper;
     private usesRef = false;
     private usesCall = false;
+    private usesInstantiating = false;
     private addGioImport = false;
     private usesType = false;
     private usesRead = false;
@@ -432,6 +438,7 @@ export class CodeGenerator {
     private resetState(): void {
         this.usesRef = false;
         this.usesCall = false;
+        this.usesInstantiating = false;
         this.addGioImport = false;
         this.usesType = false;
         this.usesRead = false;
@@ -736,7 +743,7 @@ export class CodeGenerator {
         const sections: string[] = [];
 
         if (mainConstructor && hasParent) {
-            sections.push(this.generateConstructor(mainConstructor, sharedLibrary));
+            sections.push(this.generateConstructorWithFlag(mainConstructor, sharedLibrary));
             for (const ctor of cls.constructors) {
                 if (ctor !== mainConstructor) {
                     sections.push(this.generateStaticFactoryMethod(ctor, cls.name, sharedLibrary));
@@ -748,92 +755,73 @@ export class CodeGenerator {
             }
 
             if (hasParent && cls.glibGetType && !cls.abstract) {
-                sections.push(this.generateGObjectNewConstructor(cls.glibGetType, sharedLibrary));
+                sections.push(this.generateGObjectNewConstructorWithFlag(cls.glibGetType, sharedLibrary));
             } else if (hasParent) {
                 sections.push(`  constructor() {\n    super();\n  }\n`);
             } else {
-                sections.push(`  constructor() {}\n`);
+                sections.push(`  constructor() {\n    this.create();\n  }\n`);
+                sections.push(`  protected create() {}\n`);
             }
         }
 
         return sections.join("\n");
     }
 
-    private generateGObjectNewConstructor(getTypeFunc: string, sharedLibrary: string): string {
-        return `  constructor() {
-    super();
-    const gtype = call(
-      "${sharedLibrary}",
-      "${getTypeFunc}",
-      [],
-      { type: "int", size: 64, unsigned: true }
-    );
-    this.id = call(
-      "libgobject-2.0.so.0",
-      "g_object_new",
-      [
-        { type: { type: "int", size: 64, unsigned: true }, value: gtype },
-        { type: { type: "null" }, value: null },
-      ],
-      { type: "gobject", borrowed: true }
-    );
-  }
-`;
-    }
-
-    private generateConstructor(ctor: GirConstructor, sharedLibrary: string): string {
+    private generateConstructorWithFlag(ctor: GirConstructor, sharedLibrary: string): string {
+        this.usesInstantiating = true;
         const ctorDoc = formatMethodDoc(ctor.doc, ctor.parameters);
-        const filteredParams = ctor.parameters.filter(
-            (p, i) => !isVararg(p) && !this.typeMapper.isClosureTarget(i, ctor.parameters),
-        );
-        const typedParams = this.generateParameterList(ctor.parameters, true);
-        const callArgs = this.generateCallArguments(ctor.parameters);
-        const borrowed = ctor.returnType.transferOwnership !== "full";
+        const params = this.generateParameterList(ctor.parameters);
+        const args = this.generateCallArguments(ctor.parameters);
+        const docComment = ctorDoc ? `${ctorDoc.trimEnd()}\n` : "";
 
-        if (filteredParams.length === 0) {
-            return `${ctorDoc}  constructor() {
-    super();
-    this.id = call(
-      "${sharedLibrary}",
-      "${ctor.cIdentifier}",
-      [],
-      { type: "gobject", borrowed: ${borrowed} }
-    );
-  }
-`;
-        }
-
-        const firstParam = filteredParams[0];
-        const firstParamName = toValidIdentifier(toCamelCase(firstParam?.name ?? ""));
-        const firstParamNullable = firstParam ? this.typeMapper.isNullable(firstParam) : false;
-
-        if (firstParamNullable) {
-            return `${ctorDoc}  constructor(${typedParams}) {
-    super();
-    this.id = call(
-      "${sharedLibrary}",
-      "${ctor.cIdentifier}",
-      [
-${callArgs}
-      ],
-      { type: "gobject", borrowed: ${borrowed} }
-    );
-  }
-`;
-        }
-
-        return `${ctorDoc}  constructor(${typedParams}) {
-    super();
-
-    if (${firstParamName} !== undefined) {
+        return `${docComment}  constructor(${params}) {
+    if (!isInstantiating) {
+      setInstantiating(true);
+      // @ts-ignore
+      super();
+      setInstantiating(false);
       this.id = call(
         "${sharedLibrary}",
         "${ctor.cIdentifier}",
         [
-${callArgs}
+${args ? `${args},` : ""}
         ],
-        { type: "gobject", borrowed: ${borrowed} }
+        { type: "gobject", borrowed: true }
       );
+    } else {
+      // @ts-ignore
+      super();
+    }
+  }
+`;
+    }
+
+    private generateGObjectNewConstructorWithFlag(getTypeFunc: string, sharedLibrary: string): string {
+        this.usesInstantiating = true;
+        return `  constructor() {
+    if (!isInstantiating) {
+      setInstantiating(true);
+      // @ts-ignore
+      super();
+      setInstantiating(false);
+      const gtype = call(
+        "${sharedLibrary}",
+        "${getTypeFunc}",
+        [],
+        { type: "int", size: 64, unsigned: true }
+      );
+      this.id = call(
+        "libgobject-2.0.so.0",
+        "g_object_new",
+        [
+          { type: { type: "int", size: 64, unsigned: true }, value: gtype },
+          { type: { type: "null" }, value: null },
+        ],
+        { type: "gobject", borrowed: true }
+      );
+    } else {
+      // @ts-ignore
+      super();
     }
   }
 `;
@@ -2293,6 +2281,7 @@ ${indent}  }`;
         if (this.usesCall) ffiImports.push("call");
         if (this.usesNativeError) ffiImports.push("NativeError");
         if (this.usesGetObject) ffiImports.push("getObject");
+        if (this.usesInstantiating) ffiImports.push("isInstantiating", "setInstantiating");
         if (this.usesRegisterType) ffiImports.push("registerType");
         if (ffiImports.length > 0) {
             lines.push(`import { ${ffiImports.join(", ")} } from "@gtkx/ffi";`);

@@ -17,8 +17,12 @@
             "ignore": ["build/**", ".docusaurus/**", "docs/api/**"],
             "ignoreDependencies": ["typedoc", "@docusaurus/*", "@theme/*"]
         },
-        "{packages,examples}/*": {
+        "packages/*": {
             "project": ["src/**/*", "tests/**/*"]
+        },
+        "examples/*": {
+            "project": ["src/**/*", "tests/**/*"],
+            "entry": ["src/app.tsx", "src/index.tsx"]
         },
         "packages/ffi": {
             "project": ["src/**/*", "tests/**/*"],

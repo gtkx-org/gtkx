@@ -7,6 +7,7 @@
 use std::{
     cell::RefCell,
     collections::{HashMap, hash_map::Entry},
+    mem::ManuallyDrop,
 };
 
 use gtk4::gio::ApplicationHoldGuard;
@@ -24,7 +25,10 @@ pub struct GtkThreadState {
     /// Counter for generating unique ObjectId values.
     pub next_object_id: usize,
     /// Cache of loaded dynamic libraries by name.
-    pub libraries: HashMap<String, Library>,
+    ///
+    /// Wrapped in ManuallyDrop to prevent unloading libraries when the thread
+    /// exits. This avoids crashes from TLS destructors in unloaded libraries.
+    libraries: ManuallyDrop<HashMap<String, Library>>,
     /// Hold guard that keeps the GTK application alive.
     pub app_hold_guard: Option<ApplicationHoldGuard>,
 }
@@ -34,7 +38,7 @@ impl Default for GtkThreadState {
         GtkThreadState {
             object_map: HashMap::new(),
             next_object_id: 1,
-            libraries: HashMap::new(),
+            libraries: ManuallyDrop::new(HashMap::new()),
             app_hold_guard: None,
         }
     }

@@ -26,6 +26,9 @@ const IMPORTANT_GIRS = new Set([
     "HarfBuzz-0.0.gir",
     "Pango-1.0.gir",
     "PangoCairo-1.0.gir",
+    "Secret-1.gir",
+    "Vte-3.91.gir",
+    "WebKit-6.0.gir",
     "cairo-1.0.gir",
     "freetype2-2.0.gir",
 ]);

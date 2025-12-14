@@ -16,6 +16,11 @@ runs:
           gtk4-devel \
           gobject-introspection-devel \
           gtksourceview5-devel \
+          libadwaita-devel \
+          webkitgtk6.0-devel \
+          vte291-gtk4-devel \
+          gstreamer1-devel \
+          libsoup3-devel \
           mesa-libGLES \
           ${{ inputs.install-xvfb == 'true' && 'xorg-x11-server-Xvfb' || '' }}
 

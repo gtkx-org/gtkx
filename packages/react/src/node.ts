@@ -1,4 +1,3 @@
-import { getCurrentApp } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -92,10 +91,6 @@ export abstract class Node<
 
         if (!WidgetClass) {
             throw new Error(`Unknown GTK widget type: ${normalizedType}`);
-        }
-
-        if (WidgetClass === Gtk.ApplicationWindow || WidgetClass === Adw.ApplicationWindow) {
-            return new WidgetClass(getCurrentApp()) as T;
         }
 
         return new WidgetClass(...extractConstructorArgs(normalizedType, props)) as T;

@@ -433,9 +433,8 @@ ${widgetPropsContent}
             emittedProps.add(prop.name);
             const typeMapping = this.typeMapper.mapType(prop.type);
             const tsType = this.toJsxPropertyType(typeMapping.ts, this.currentNamespace);
-            const isRequiredByProperty = prop.constructOnly && !prop.hasDefault;
             const isRequiredByConstructor = requiredCtorParams.has(prop.name);
-            const isRequired = isRequiredByProperty || isRequiredByConstructor;
+            const isRequired = isRequiredByConstructor;
             if (prop.doc) {
                 lines.push(formatDoc(prop.doc, "\t").trimEnd());
             }
@@ -534,10 +533,14 @@ ${widgetPropsContent}
         const mainCtor = widget.constructors.find((c) => c.name === "new");
         if (!mainCtor) return [];
 
-        return mainCtor.parameters.map((param) => ({
+        const params = mainCtor.parameters.map((param) => ({
             name: toCamelCase(param.name),
             hasDefault: param.nullable || param.optional || false,
         }));
+
+        const required = params.filter((p) => !p.hasDefault);
+        const optional = params.filter((p) => p.hasDefault);
+        return [...required, ...optional];
     }
 
     private generateConstructorArgsMetadata(widgets: WidgetInfo[]): string {

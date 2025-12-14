@@ -2,7 +2,6 @@ import { EventEmitter } from "node:events";
 import { getObjectId, start as nativeStart, stop as nativeStop } from "@gtkx/native";
 import { init as initAdwaita } from "./generated/adw/functions.js";
 import type { ApplicationFlags } from "./generated/gio/enums.js";
-import { finalize as finalizeGtkSource, init as initGtkSource } from "./generated/gtksource/functions.js";
 import {
     typeCheckInstanceIsA,
     typeFromName,
@@ -11,6 +10,7 @@ import {
     typeParent,
 } from "./generated/gobject/functions.js";
 import type { Application } from "./generated/gtk/application.js";
+import { finalize as finalizeGtkSource, init as initGtkSource } from "./generated/gtksource/functions.js";
 import { getClassByTypeName, type NativeObject } from "./registry.js";
 
 type NativeEventMap = {
@@ -170,3 +170,15 @@ export const stop = (): void => {
 export { createRef, getObjectId } from "@gtkx/native";
 export { beginBatch, call, endBatch, isBatching } from "./batch.js";
 export { type NativeObject, registerType } from "./registry.js";
+
+/**
+ * Flag to prevent intermediate base class constructors from creating objects.
+ * When a subclass is being instantiated, this flag is set to true to skip
+ * object creation in parent constructors. Only the outermost constructor
+ * will create the actual native object.
+ */
+export let isInstantiating = false;
+
+export const setInstantiating = (value: boolean): void => {
+    isInstantiating = value;
+};
