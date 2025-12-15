@@ -6,11 +6,11 @@ import type { Demo } from "../types.js";
 const TextViewDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Text View" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Text View" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About TextView" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About TextView" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="GtkTextView is a multi-line text editor widget. It supports rich text formatting, undo/redo, and can be used for code editors, notes, and more."
                     wrap
                     cssClasses={["dim-label"]}
@@ -18,7 +18,7 @@ const TextViewDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Basic Text Editor" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Basic Text Editor" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <ScrolledWindow heightRequest={150} hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
                     <TextView
                         editable
@@ -34,8 +34,8 @@ const TextViewDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Monospace / Code Editor" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root label="Use monospace font for code editing." wrap cssClasses={["dim-label"]} />
+                <Label label="Monospace / Code Editor" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Use monospace font for code editing." wrap cssClasses={["dim-label"]} />
                 <ScrolledWindow heightRequest={150} hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
                     <TextView
                         editable
@@ -51,7 +51,7 @@ const TextViewDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Read-Only Text" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Read-Only Text" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <ScrolledWindow heightRequest={100} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                     <TextView
                         editable={false}
@@ -67,8 +67,8 @@ const TextViewDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Key properties: editable, wrapMode (NONE, CHAR, WORD, WORD_CHAR), monospace, cursorVisible, leftMargin, rightMargin."
                     wrap
                     cssClasses={["dim-label"]}

@@ -14,10 +14,10 @@ const ToggleButtonDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Toggle Buttons" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Toggle Buttons" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Text Formatting Toolbar" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Text Formatting Toolbar" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} cssClasses={["linked"]}>
                     <ToggleButton.Root
                         label="B"
@@ -33,11 +33,11 @@ const ToggleButtonDemo = () => {
                     />
                     <ToggleButton.Root label="U" active={underline} onToggled={() => setUnderline((v) => !v)} />
                 </Box>
-                <Label.Root label={`Current style: ${textStyle}`} cssClasses={["dim-label"]} />
+                <Label label={`Current style: ${textStyle}`} cssClasses={["dim-label"]} />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Standalone Toggle" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Standalone Toggle" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <ToggleButton.Root label="Toggle Me" active={bold} onToggled={() => setBold((v) => !v)} />
             </Box>
         </Box>

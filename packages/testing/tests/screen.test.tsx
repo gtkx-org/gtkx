@@ -44,7 +44,7 @@ describe("screen", () => {
         });
 
         it("findByText finds elements", async () => {
-            await render(<Label.Root label="Hello World" />);
+            await render(<Label label="Hello World" />);
 
             const label = await screen.findByText("Hello World");
             expect(label).toBeDefined();
@@ -84,7 +84,7 @@ describe("screen", () => {
         });
 
         it("findByText with regex matches partial text", async () => {
-            await render(<Label.Root label="Welcome to the application" />);
+            await render(<Label label="Welcome to the application" />);
 
             const label = await screen.findByText(/Welcome/);
             expect(label).toBeDefined();
@@ -100,7 +100,7 @@ describe("screen", () => {
 
     describe("error cases", () => {
         it("findByRole throws when element not found with name filter", async () => {
-            await render(<Label.Root label="No buttons here" />);
+            await render(<Label label="No buttons here" />);
 
             await expect(screen.findByRole(AccessibleRole.BUTTON, { name: "Nonexistent Button" })).rejects.toThrow(
                 /Unable to find any elements with role/,
@@ -108,7 +108,7 @@ describe("screen", () => {
         });
 
         it("findByText throws when text not found", async () => {
-            await render(<Label.Root label="Different text" />);
+            await render(<Label label="Different text" />);
 
             await expect(screen.findByText("Nonexistent")).rejects.toThrow(/Unable to find any elements with text/);
         });
@@ -132,7 +132,7 @@ describe("setScreenRoot", () => {
     });
 
     it("allows setting root to null", async () => {
-        await render(<Label.Root label="Test" />);
+        await render(<Label label="Test" />);
 
         setScreenRoot(null);
 
@@ -142,7 +142,7 @@ describe("setScreenRoot", () => {
     });
 
     it("allows setting root to application", async () => {
-        const { container } = await render(<Label.Root label="Test Label" />);
+        const { container } = await render(<Label label="Test Label" />);
 
         setScreenRoot(null);
         setScreenRoot(container);

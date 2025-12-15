@@ -19,7 +19,7 @@ import { ROOT_NODE_CONTAINER } from "./factory.js";
  * {createPortal(<AboutDialog programName="My App" />)}
  *
  * // Render into a specific container
- * {createPortal(<Label.Root label="This is in the Box" />, boxRef.current)}
+ * {createPortal(<Label label="This is in the Box" />, boxRef.current)}
  * ```
  */
 export const createPortal = (children: ReactNode, container?: unknown, key?: string | null): ReactPortal => {

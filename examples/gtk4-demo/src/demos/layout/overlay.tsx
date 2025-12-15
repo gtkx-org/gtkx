@@ -9,11 +9,11 @@ const OverlayDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Overlay" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Overlay" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About Overlay" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About Overlay" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Overlay stacks widgets on top of each other. The first child is the main content, and subsequent children are overlaid on top."
                     wrap
                     cssClasses={["dim-label"]}
@@ -21,11 +21,11 @@ const OverlayDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Badge Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Badge Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.START}>
                     <Overlay>
                         <Button label="Notifications" widthRequest={120} heightRequest={40} />
-                        <Label.Root
+                        <Label
                             label={String(badgeCount)}
                             cssClasses={["badge"]}
                             halign={Gtk.Align.END}
@@ -40,7 +40,7 @@ const OverlayDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Corner Labels" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Corner Labels" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={0}
@@ -59,30 +59,24 @@ const OverlayDemo = () => {
                             halign={Gtk.Align.CENTER}
                             valign={Gtk.Align.CENTER}
                         >
-                            <Label.Root label="Main Content" cssClasses={["dim-label"]} />
+                            <Label label="Main Content" cssClasses={["dim-label"]} />
                         </Box>
-                        <Label.Root
+                        <Label
                             label="TL"
                             halign={Gtk.Align.START}
                             valign={Gtk.Align.START}
                             marginStart={8}
                             marginTop={8}
                         />
-                        <Label.Root
-                            label="TR"
-                            halign={Gtk.Align.END}
-                            valign={Gtk.Align.START}
-                            marginEnd={8}
-                            marginTop={8}
-                        />
-                        <Label.Root
+                        <Label label="TR" halign={Gtk.Align.END} valign={Gtk.Align.START} marginEnd={8} marginTop={8} />
+                        <Label
                             label="BL"
                             halign={Gtk.Align.START}
                             valign={Gtk.Align.END}
                             marginStart={8}
                             marginBottom={8}
                         />
-                        <Label.Root
+                        <Label
                             label="BR"
                             halign={Gtk.Align.END}
                             valign={Gtk.Align.END}
@@ -94,8 +88,8 @@ const OverlayDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Usage" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Usage" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Use halign and valign props on overlay children to position them. The first child becomes the base layer."
                     wrap
                     cssClasses={["dim-label"]}

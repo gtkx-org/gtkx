@@ -83,10 +83,10 @@ const PrintDialogDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Print Dialog" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Print Dialog" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root
+                <Label
                     label="GtkPrintOperation provides a high-level API for printing documents. It handles printer selection, page setup, and integrates with the system print dialog."
                     wrap
                     cssClasses={["dim-label"]}
@@ -94,7 +94,7 @@ const PrintDialogDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Print Actions" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Print Actions" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <Button label="Print..." cssClasses={["suggested-action"]} onClicked={handlePrint} />
                     <Button label="Export PDF" onClicked={handleExportPdf} />
@@ -102,7 +102,7 @@ const PrintDialogDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Status" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Status" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
@@ -112,14 +112,14 @@ const PrintDialogDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <Label.Root label={getStatusIcon()} />
-                    <Label.Root label={message || "Ready to print"} wrap hexpand />
+                    <Label label={getStatusIcon()} />
+                    <Label label={message || "Ready to print"} wrap hexpand />
                 </Box>
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Note" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Note" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Print functionality requires Cairo context integration for page rendering. The print dialog will open but pages will be blank without custom draw-page signal handling."
                     wrap
                     cssClasses={["dim-label"]}
@@ -127,8 +127,8 @@ const PrintDialogDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="- Native print dialog integration\n- Page setup configuration\n- Print preview support\n- PDF export capability\n- Multiple pages support\n- Print settings persistence"
                     wrap
                     cssClasses={["dim-label"]}

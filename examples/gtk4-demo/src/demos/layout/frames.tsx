@@ -6,10 +6,10 @@ import type { Demo } from "../types.js";
 const FramesDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Frames" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Frames" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Basic Frame" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Basic Frame" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Frame.Root label="Section Title">
                     <Frame.Child>
                         <Box
@@ -20,8 +20,8 @@ const FramesDemo = () => {
                             marginTop={12}
                             marginBottom={12}
                         >
-                            <Label.Root label="This content is inside a frame." />
-                            <Label.Root
+                            <Label label="This content is inside a frame." />
+                            <Label
                                 label="Frames provide visual grouping with an optional label."
                                 cssClasses={["dim-label"]}
                                 wrap
@@ -32,7 +32,7 @@ const FramesDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Frame without Label" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Frame without Label" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Frame.Root>
                     <Frame.Child>
                         <Box
@@ -43,8 +43,8 @@ const FramesDemo = () => {
                             marginTop={12}
                             marginBottom={12}
                         >
-                            <Label.Root label="Frames can also be used without a label." wrap />
-                            <Label.Root
+                            <Label label="Frames can also be used without a label." wrap />
+                            <Label
                                 label="They still provide visual grouping and a border."
                                 cssClasses={["dim-label"]}
                                 wrap
@@ -55,11 +55,11 @@ const FramesDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Custom Label Widget" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Custom Label Widget" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Frame.Root>
                     <Frame.LabelWidget>
                         <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
-                            <Label.Root label="Custom Header" cssClasses={["heading"]} />
+                            <Label label="Custom Header" cssClasses={["heading"]} />
                             <Button label="Action" cssClasses={["flat", "small"]} />
                         </Box>
                     </Frame.LabelWidget>
@@ -72,15 +72,15 @@ const FramesDemo = () => {
                             marginTop={12}
                             marginBottom={12}
                         >
-                            <Label.Root label="You can use any widget as the frame label." wrap />
-                            <Label.Root label="This allows for interactive headers." cssClasses={["dim-label"]} wrap />
+                            <Label label="You can use any widget as the frame label." wrap />
+                            <Label label="This allows for interactive headers." cssClasses={["dim-label"]} wrap />
                         </Box>
                     </Frame.Child>
                 </Frame.Root>
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Multiple Frames" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Multiple Frames" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <Frame.Root label="Option A" hexpand>
                         <Frame.Child>

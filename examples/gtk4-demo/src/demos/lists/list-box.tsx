@@ -19,11 +19,11 @@ const ListBoxDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="List Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="List Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About ListBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About ListBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="GtkListBox is a vertical container that displays selectable rows. It's ideal for lists with custom row layouts and supports selection, activation, and keyboard navigation."
                     wrap
                     cssClasses={["dim-label"]}
@@ -31,7 +31,7 @@ const ListBoxDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Selectable List" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Selectable List" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <ScrolledWindow heightRequest={250} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                     <ListBox selectionMode={Gtk.SelectionMode.SINGLE} cssClasses={["boxed-list"]}>
                         {items.map((item) => (
@@ -48,8 +48,8 @@ const ListBoxDemo = () => {
                                     marginTop={10}
                                     marginBottom={10}
                                 >
-                                    <Label.Root label={item.title} halign={Gtk.Align.START} cssClasses={["heading"]} />
-                                    <Label.Root
+                                    <Label label={item.title} halign={Gtk.Align.START} cssClasses={["heading"]} />
+                                    <Label
                                         label={item.subtitle}
                                         halign={Gtk.Align.START}
                                         cssClasses={["dim-label", "caption"]}
@@ -60,7 +60,7 @@ const ListBoxDemo = () => {
                     </ListBox>
                 </ScrolledWindow>
                 {selectedId && (
-                    <Label.Root
+                    <Label
                         label={`Selected: ${items.find((i) => i.id === selectedId)?.title ?? ""}`}
                         cssClasses={["dim-label"]}
                     />
@@ -68,8 +68,8 @@ const ListBoxDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Selection Modes" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Selection Modes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="ListBox supports NONE, SINGLE, BROWSE, and MULTIPLE selection modes."
                     wrap
                     cssClasses={["dim-label"]}

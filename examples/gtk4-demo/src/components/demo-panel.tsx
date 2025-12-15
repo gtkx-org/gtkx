@@ -17,7 +17,7 @@ export const DemoPanel = ({ demo }: DemoPanelProps) => {
                 vexpand
                 hexpand
             >
-                <Label.Root label="Select a demo from the sidebar" cssClasses={["dim-label"]} />
+                <Label label="Select a demo from the sidebar" cssClasses={["dim-label"]} />
             </Box>
         );
     }
@@ -34,8 +34,8 @@ export const DemoPanel = ({ demo }: DemoPanelProps) => {
                 marginTop={16}
                 marginBottom={8}
             >
-                <Label.Root label={demo.title} cssClasses={["title-1"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label={demo.title} cssClasses={["title-1"]} halign={Gtk.Align.START} />
+                <Label
                     label={demo.description}
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}

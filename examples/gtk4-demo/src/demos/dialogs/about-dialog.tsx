@@ -9,10 +9,10 @@ const AboutDialogDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="About Dialog" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="About Dialog" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root
+                <Label
                     label="AboutDialog displays information about your application including version, copyright, license, and credits."
                     wrap
                     cssClasses={["dim-label"]}
@@ -26,8 +26,8 @@ const AboutDialogDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="- Program name and version\n- Application description\n- Website link\n- Copyright notice\n- License type\n- Credits (authors, artists, documenters)"
                     wrap
                     cssClasses={["dim-label"]}

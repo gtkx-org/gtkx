@@ -15,7 +15,7 @@ describe("findAll", () => {
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Button label="Button 1" />
                     <Button label="Button 2" />
-                    <Label.Root label="Not a button" />
+                    <Label label="Not a button" />
                 </Box>,
             );
 
@@ -28,7 +28,7 @@ describe("findAll", () => {
         });
 
         it("returns empty array when no widgets with MENU role exist", async () => {
-            const { container } = await render(<Label.Root label="Just a label" />);
+            const { container } = await render(<Label label="Just a label" />);
 
             const menus = findAll(container, (node) => {
                 return node.getAccessibleRole() === AccessibleRole.MENU;
@@ -77,7 +77,7 @@ describe("findAll", () => {
         it("returns all widgets when predicate always returns true", async () => {
             const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label.Root label="Label" />
+                    <Label label="Label" />
                     <Button label="Button" />
                 </Box>,
             );
@@ -105,7 +105,7 @@ describe("findAll", () => {
 
             const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label.Root label="Start here" />
+                    <Label label="Start here" />
                     <Button label="Child button" />
                 </Box>,
             );
@@ -127,7 +127,7 @@ describe("findAll", () => {
 
             const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label.Root label="Label" />
+                    <Label label="Label" />
                     <Button label="Button" />
                 </Box>,
             );
@@ -144,8 +144,8 @@ describe("findAll", () => {
         it("can match by custom criteria", async () => {
             const { container } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label.Root label="First Label" />
-                    <Label.Root label="Second Label" />
+                    <Label label="First Label" />
+                    <Label label="Second Label" />
                     <Button label="Button" />
                 </Box>,
             );

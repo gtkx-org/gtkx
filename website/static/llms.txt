@@ -30,7 +30,7 @@ function App() {
     return (
         <ApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={20}>
-                <Label.Root label={`Count: ${count}`} />
+                <Label label={`Count: ${count}`} />
                 <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
             </Box>
         </ApplicationWindow>
@@ -46,8 +46,8 @@ render(<App />, "com.example.myapp");
 
 ```tsx
 <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-    <Label.Root label="First" />
-    <Label.Root label="Second" />
+    <Label label="First" />
+    <Label label="Second" />
 </Box>
 ```
 
@@ -56,10 +56,10 @@ render(<App />, "com.example.myapp");
 ```tsx
 <Grid.Root rowSpacing={8} columnSpacing={8}>
     <Grid.Child column={0} row={0}>
-        <Label.Root label="Top-left" />
+        <Label label="Top-left" />
     </Grid.Child>
     <Grid.Child column={1} row={0} columnSpan={2}>
-        <Label.Root label="Spans 2 columns" />
+        <Label label="Spans 2 columns" />
     </Grid.Child>
 </Grid.Root>
 ```
@@ -69,10 +69,10 @@ render(<App />, "com.example.myapp");
 ```tsx
 <Stack.Root visibleChildName="page1">
     <Stack.Page name="page1" title="Page 1">
-        <Label.Root label="Content 1" />
+        <Label label="Content 1" />
     </Stack.Page>
     <Stack.Page name="page2" title="Page 2">
-        <Label.Root label="Content 2" />
+        <Label label="Content 2" />
     </Stack.Page>
 </Stack.Root>
 ```
@@ -111,7 +111,7 @@ render(<App />, "com.example.myapp");
 <ListView.Root
     vexpand
     renderItem={(item: Item | null) => (
-        <Label.Root label={item?.text ?? ""} />
+        <Label label={item?.text ?? ""} />
     )}
 >
     {items.map(item => (
@@ -133,7 +133,7 @@ render(<App />, "com.example.myapp");
         id="name"
         expand
         renderCell={(item: Item | null) => (
-            <Label.Root label={item?.name ?? ""} />
+            <Label label={item?.name ?? ""} />
         )}
     />
     {items.map(item => (

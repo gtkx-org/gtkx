@@ -11,10 +11,10 @@ const CheckButtonDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Check Buttons" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Check Buttons" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Independent Checkboxes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Independent Checkboxes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <CheckButton.Root label="Option 1" active={option1} onToggled={() => setOption1((v) => !v)} />
                     <CheckButton.Root
@@ -24,14 +24,14 @@ const CheckButtonDemo = () => {
                     />
                     <CheckButton.Root label="Option 3" active={option3} onToggled={() => setOption3((v) => !v)} />
                 </Box>
-                <Label.Root
+                <Label
                     label={`Selected: ${[option1 && "1", option2 && "2", option3 && "3"].filter(Boolean).join(", ") || "None"}`}
                     cssClasses={["dim-label"]}
                 />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Disabled State" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Disabled State" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <CheckButton.Root label="Disabled unchecked" active={false} sensitive={false} />
                     <CheckButton.Root label="Disabled checked" active={true} sensitive={false} />

@@ -31,13 +31,10 @@ const UserList = () => (
   <ScrolledWindow vexpand>
     <ListView.Root
       renderItem={(user: User | null) => (
-        <Label.Root
-          label={user?.name ?? ""}
-          halign={Gtk.Align.START}
-        />
+        <Label label={user?.name ?? ""} halign={Gtk.Align.START} />
       )}
     >
-      {users.map(user => (
+      {users.map((user) => (
         <ListView.Item key={user.id} item={user} />
       ))}
     </ListView.Root>
@@ -84,13 +81,13 @@ const PhotoGrid = () => (
   <ScrolledWindow vexpand>
     <GridView.Root
       renderItem={(photo: Photo | null) => (
-        <Label.Root
+        <Label
           label={photo ? `${photo.emoji}\n${photo.title}` : ""}
           cssClasses={["title-1"]}
         />
       )}
     >
-      {photos.map(photo => (
+      {photos.map((photo) => (
         <GridView.Item key={photo.id} item={photo} />
       ))}
     </GridView.Root>
@@ -125,27 +122,24 @@ const ProductTable = () => (
         title="Name"
         expand
         renderCell={(product: Product | null) => (
-          <Label.Root
-            label={product?.name ?? ""}
-            halign={Gtk.Align.START}
-          />
+          <Label label={product?.name ?? ""} halign={Gtk.Align.START} />
         )}
       />
       <ColumnView.Column
         title="Price"
         fixedWidth={100}
         renderCell={(product: Product | null) => (
-          <Label.Root label={product ? `$${product.price.toFixed(2)}` : ""} />
+          <Label label={product ? `$${product.price.toFixed(2)}` : ""} />
         )}
       />
       <ColumnView.Column
         title="Stock"
         fixedWidth={80}
         renderCell={(product: Product | null) => (
-          <Label.Root label={product?.stock.toString() ?? ""} />
+          <Label label={product?.stock.toString() ?? ""} />
         )}
       />
-      {products.map(product => (
+      {products.map((product) => (
         <ColumnView.Item key={product.id} item={product} />
       ))}
     </ColumnView.Root>
@@ -183,7 +177,9 @@ const sortFn = (a: Product, b: Product, columnId: ColumnId): number => {
 
 const SortableTable = () => {
   const [sortColumn, setSortColumn] = useState<ColumnId | null>("name");
-  const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
+  const [sortOrder, setSortOrder] = useState<Gtk.SortType>(
+    Gtk.SortType.ASCENDING
+  );
 
   return (
     <ScrolledWindow vexpand>
@@ -200,19 +196,17 @@ const SortableTable = () => {
           id="name"
           title="Name"
           expand
-          renderCell={(product) => (
-            <Label.Root label={product?.name ?? ""} />
-          )}
+          renderCell={(product) => <Label label={product?.name ?? ""} />}
         />
         <ColumnView.Column<Product>
           id="price"
           title="Price"
           fixedWidth={100}
           renderCell={(product) => (
-            <Label.Root label={product ? `$${product.price}` : ""} />
+            <Label label={product ? `$${product.price}` : ""} />
           )}
         />
-        {products.map(product => (
+        {products.map((product) => (
           <ColumnView.Item key={product.id} item={product} />
         ))}
       </ColumnView.Root>
@@ -221,23 +215,23 @@ const SortableTable = () => {
 };
 ```
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `sortColumn` | `string \| null` | The column id currently sorted by (controlled) |
-| `sortOrder` | `Gtk.SortType` | `ASCENDING` or `DESCENDING` |
-| `onSortChange` | `(column: string \| null, order: Gtk.SortType) => void` | Called when user clicks column headers |
-| `sortFn` | `(a: T, b: T, columnId: string) => number` | Comparison function for sorting |
+| Prop           | Type                                                    | Description                                    |
+| -------------- | ------------------------------------------------------- | ---------------------------------------------- |
+| `sortColumn`   | `string \| null`                                        | The column id currently sorted by (controlled) |
+| `sortOrder`    | `Gtk.SortType`                                          | `ASCENDING` or `DESCENDING`                    |
+| `onSortChange` | `(column: string \| null, order: Gtk.SortType) => void` | Called when user clicks column headers         |
+| `sortFn`       | `(a: T, b: T, columnId: string) => number`              | Comparison function for sorting                |
 
 ### ColumnView.Column Props
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `id` | `string` | Column identifier (required for sorting) |
-| `title` | `string` | Column header text |
-| `renderCell` | `(item: T \| null) => ReactElement` | Renders the cell content |
-| `expand` | `boolean` | Whether the column should expand to fill space |
-| `resizable` | `boolean` | Whether the column can be resized |
-| `fixedWidth` | `number` | Fixed width in pixels |
+| Prop         | Type                                | Description                                    |
+| ------------ | ----------------------------------- | ---------------------------------------------- |
+| `id`         | `string`                            | Column identifier (required for sorting)       |
+| `title`      | `string`                            | Column header text                             |
+| `renderCell` | `(item: T \| null) => ReactElement` | Renders the cell content                       |
+| `expand`     | `boolean`                           | Whether the column should expand to fill space |
+| `resizable`  | `boolean`                           | Whether the column can be resized              |
+| `fixedWidth` | `number`                            | Fixed width in pixels                          |
 
 ## DropDown
 
@@ -268,14 +262,12 @@ const CountrySelector = () => {
         itemLabel={(country: Country) => country.name}
         onSelectionChanged={(country: Country) => setSelected(country)}
       >
-        {countries.map(country => (
+        {countries.map((country) => (
           <DropDown.Item key={country.id} item={country} />
         ))}
       </DropDown.Root>
 
-      {selected && (
-        <Label.Root label={`Capital: ${selected.capital}`} />
-      )}
+      {selected && <Label label={`Capital: ${selected.capital}`} />}
     </>
   );
 };
@@ -283,10 +275,10 @@ const CountrySelector = () => {
 
 ### DropDown Props
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `itemLabel` | `(item: T) => string` | Required. Returns the display text for each item |
-| `onSelectionChanged` | `(item: T | null, index: number) => void` | Called when selection changes |
+| Prop                 | Type                  | Description                                      |
+| -------------------- | --------------------- | ------------------------------------------------ | ----------------------------- |
+| `itemLabel`          | `(item: T) => string` | Required. Returns the display text for each item |
+| `onSelectionChanged` | `(item: T             | null, index: number) => void`                    | Called when selection changes |
 
 ## Dynamic Updates
 
@@ -309,18 +301,15 @@ const UserListWithRemove = () => {
   ]);
 
   const removeUser = (id: string) => {
-    setUsers(prev => prev.filter(u => u.id !== id));
+    setUsers((prev) => prev.filter((u) => u.id !== id));
   };
 
   return (
     <ScrolledWindow vexpand>
       <ListView.Root
         renderItem={(user: User | null) => (
-          <Box
-            orientation={Gtk.Orientation.HORIZONTAL}
-            spacing={8}
-          >
-            <Label.Root label={user?.name ?? ""} hexpand />
+          <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+            <Label label={user?.name ?? ""} hexpand />
             <Button
               label="Remove"
               onClicked={() => user && removeUser(user.id)}
@@ -328,7 +317,7 @@ const UserListWithRemove = () => {
           </Box>
         )}
       >
-        {users.map(user => (
+        {users.map((user) => (
           <ListView.Item key={user.id} item={user} />
         ))}
       </ListView.Root>
@@ -340,11 +329,13 @@ const UserListWithRemove = () => {
 ## When to Use Lists vs Array Mapping
 
 **Use `ListView`/`GridView` when:**
+
 - Rendering many items (100+)
 - Items have uniform height/size
 - You need virtualization for performance
 
 **Use standard array mapping when:**
+
 - Rendering few items (fewer than 50)
 - Items have varying sizes
 - You need complex conditional rendering per item
@@ -353,7 +344,7 @@ const UserListWithRemove = () => {
 // Standard React pattern - fine for small lists
 <Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
   {items.map(item => (
-    <Label.Root key={item.id} label={item.name} />
+    <Label key={item.id} label={item.name} />
   ))}
 </Box>
 
@@ -361,7 +352,7 @@ const UserListWithRemove = () => {
 <ScrolledWindow vexpand>
   <ListView.Root
     renderItem={(item: Item | null) => (
-      <Label.Root label={item?.name ?? ""} />
+      <Label label={item?.name ?? ""} />
     )}
   >
     {items.map(item => (

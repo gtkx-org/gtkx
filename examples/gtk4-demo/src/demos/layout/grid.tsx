@@ -6,11 +6,11 @@ import type { Demo } from "../types.js";
 const GridDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Grid Layout" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Grid Layout" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Basic Grid" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Basic Grid" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Grid arranges widgets in rows and columns. Use Grid.Child to specify position and span."
                     wrap
                     cssClasses={["dim-label"]}
@@ -55,8 +55,8 @@ const GridDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Column and Row Spanning" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Column and Row Spanning" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Widgets can span multiple columns or rows using columnSpan and rowSpan props."
                     wrap
                     cssClasses={["dim-label"]}
@@ -95,8 +95,8 @@ const GridDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Form Layout" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Form Layout" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Grid is great for form layouts with labels and inputs aligned."
                     wrap
                     cssClasses={["dim-label"]}
@@ -119,13 +119,13 @@ const GridDemo = () => {
                         marginEnd={12}
                     >
                         <Grid.Child column={0} row={0}>
-                            <Label.Root label="Name:" halign={Gtk.Align.END} />
+                            <Label label="Name:" halign={Gtk.Align.END} />
                         </Grid.Child>
                         <Grid.Child column={1} row={0}>
                             <Button label="Text Entry Here" hexpand />
                         </Grid.Child>
                         <Grid.Child column={0} row={1}>
-                            <Label.Root label="Email:" halign={Gtk.Align.END} />
+                            <Label label="Email:" halign={Gtk.Align.END} />
                         </Grid.Child>
                         <Grid.Child column={1} row={1}>
                             <Button label="Email Entry Here" hexpand />

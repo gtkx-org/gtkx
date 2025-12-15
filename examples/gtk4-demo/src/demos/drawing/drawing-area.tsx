@@ -76,8 +76,8 @@ const DrawingAreaDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Drawing Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-            <Label.Root
+            <Label label="Drawing Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label
                 label="GtkDrawingArea provides a canvas for custom drawing with Cairo. This demo shows basic shapes: a filled circle, a stroked ring, a rectangle, a triangle, and a dashed arc."
                 wrap
                 cssClasses={["dim-label"]}

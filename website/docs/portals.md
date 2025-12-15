@@ -15,11 +15,9 @@ import { Orientation } from "@gtkx/ffi/gtk";
 
 const MyComponent = () => (
   <Box orientation={Orientation.VERTICAL} spacing={8}>
-    <Label.Root label="This is in the box" />
+    <Label label="This is in the box" />
 
-    {createPortal(
-      <Label.Root label="This renders at the root level" />
-    )}
+    {createPortal(<Label label="This renders at the root level" />)}
   </Box>
 );
 ```
@@ -34,18 +32,24 @@ createPortal(
 ): ReactPortal
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `children` | `ReactNode` | The React elements to render |
-| `container` | `Widget` | Optional. The GTK widget to render into. Defaults to application root |
-| `key` | `string \| null` | Optional. React key for the portal |
+| Parameter   | Type             | Description                                                           |
+| ----------- | ---------------- | --------------------------------------------------------------------- |
+| `children`  | `ReactNode`      | The React elements to render                                          |
+| `container` | `Widget`         | Optional. The GTK widget to render into. Defaults to application root |
+| `key`       | `string \| null` | Optional. React key for the portal                                    |
 
 ## Root-Level Portals
 
 When called without a container, `createPortal` renders at the application root level. This is the most common use case for dialogs:
 
 ```tsx
-import { createPortal, ApplicationWindow, Button, AboutDialog, quit } from "@gtkx/react";
+import {
+  createPortal,
+  ApplicationWindow,
+  Button,
+  AboutDialog,
+  quit,
+} from "@gtkx/react";
 import { useState } from "react";
 
 const App = () => {
@@ -55,15 +59,16 @@ const App = () => {
     <ApplicationWindow title="My App" onCloseRequest={quit}>
       <Button label="Show Dialog" onClicked={() => setShowDialog(true)} />
 
-      {showDialog && createPortal(
-        <AboutDialog
-          programName="My App"
-          onCloseRequest={() => {
-            setShowDialog(false);
-            return false;
-          }}
-        />
-      )}
+      {showDialog &&
+        createPortal(
+          <AboutDialog
+            programName="My App"
+            onCloseRequest={() => {
+              setShowDialog(false);
+              return false;
+            }}
+          />
+        )}
     </ApplicationWindow>
   );
 };
@@ -93,17 +98,29 @@ const App = () => {
       />
 
       <Box orientation={Orientation.HORIZONTAL} spacing={12}>
-        <Box orientation={Orientation.VERTICAL} spacing={8} ref={targetRef} cssClasses={["card"]} hexpand>
-          <Label.Root label="Target container" />
+        <Box
+          orientation={Orientation.VERTICAL}
+          spacing={8}
+          ref={targetRef}
+          cssClasses={["card"]}
+          hexpand
+        >
+          <Label label="Target container" />
           {/* Portal content appears here */}
         </Box>
 
-        <Box orientation={Orientation.VERTICAL} spacing={8} cssClasses={["card"]} hexpand>
-          <Label.Root label="Source container" />
-          {showInTarget && createPortal(
-            <Label.Root label="I'm rendered in the target!" />,
-            targetRef.current ?? undefined
-          )}
+        <Box
+          orientation={Orientation.VERTICAL}
+          spacing={8}
+          cssClasses={["card"]}
+          hexpand
+        >
+          <Label label="Source container" />
+          {showInTarget &&
+            createPortal(
+              <Label label="I'm rendered in the target!" />,
+              targetRef.current ?? undefined
+            )}
         </Box>
       </Box>
     </Box>
@@ -125,11 +142,14 @@ const App = () => {
 The primary use case — render dialogs outside the main window hierarchy:
 
 ```tsx
-{showConfirm && createPortal(
-  <Dialog title="Confirm" modal>
-    <Button label="OK" onClicked={handleConfirm} />
-  </Dialog>
-)}
+{
+  showConfirm &&
+    createPortal(
+      <Dialog title="Confirm" modal>
+        <Button label="OK" onClicked={handleConfirm} />
+      </Dialog>
+    );
+}
 ```
 
 ### Popovers
@@ -137,13 +157,16 @@ The primary use case — render dialogs outside the main window hierarchy:
 Render content that overlays other widgets:
 
 ```tsx
-{showPopover && createPortal(
-  <Popover.Root pointing={buttonRef.current}>
-    <Popover.Child>
-      <Label.Root label="Popover content" />
-    </Popover.Child>
-  </Popover.Root>
-)}
+{
+  showPopover &&
+    createPortal(
+      <Popover.Root pointing={buttonRef.current}>
+        <Popover.Child>
+          <Label label="Popover content" />
+        </Popover.Child>
+      </Popover.Root>
+    );
+}
 ```
 
 ### Dynamic Content Injection
@@ -153,12 +176,13 @@ Move content between containers based on state:
 ```tsx
 const [inSidebar, setInSidebar] = useState(true);
 
-const content = <Label.Root label="Movable content" />;
+const content = <Label label="Movable content" />;
 
 // Renders in sidebar or main area based on state
-{inSidebar
-  ? createPortal(content, sidebarRef.current)
-  : createPortal(content, mainRef.current)
+{
+  inSidebar
+    ? createPortal(content, sidebarRef.current)
+    : createPortal(content, mainRef.current);
 }
 ```
 
@@ -175,10 +199,12 @@ Don't confuse portals with slots:
   <Expander.Child>
     <Content />
   </Expander.Child>
-</Expander.Root>
+</Expander.Root>;
 
 // Portal: Renders content in a completely different container
-{createPortal(<Content />, otherContainer)}
+{
+  createPortal(<Content />, otherContainer);
+}
 ```
 
 ## Tips

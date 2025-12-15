@@ -9,11 +9,11 @@ const PopoverDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Popover" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Popover" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About Popover" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About Popover" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="GtkPopover is a bubble-like context popup. It appears relative to a parent widget and can contain any content."
                     wrap
                     cssClasses={["dim-label"]}
@@ -21,7 +21,7 @@ const PopoverDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Menu Button with Popover" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Menu Button with Popover" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <MenuButton.Root label="Open Popover" halign={Gtk.Align.CENTER}>
                     <MenuButton.Popover>
                         <Popover.Root>
@@ -34,8 +34,8 @@ const PopoverDemo = () => {
                                     marginTop={12}
                                     marginBottom={12}
                                 >
-                                    <Label.Root label="Popover Content" cssClasses={["heading"]} />
-                                    <Label.Root label="This is inside a popover!" cssClasses={["dim-label"]} />
+                                    <Label label="Popover Content" cssClasses={["heading"]} />
+                                    <Label label="This is inside a popover!" cssClasses={["dim-label"]} />
                                     <Button
                                         label={`Clicked ${clicks} times`}
                                         onClicked={() => setClicks((c) => c + 1)}
@@ -49,7 +49,7 @@ const PopoverDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Actions Menu" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Actions Menu" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <MenuButton.Root label="Actions" iconName="view-more-symbolic" halign={Gtk.Align.CENTER}>
                     <MenuButton.Popover>
                         <Popover.Root>
@@ -74,8 +74,8 @@ const PopoverDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Popovers support custom positioning, autohide behavior, and can be triggered by any widget using MenuButton."
                     wrap
                     cssClasses={["dim-label"]}

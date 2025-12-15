@@ -29,9 +29,7 @@ const primaryButton = css`
   font-weight: bold;
 `;
 
-const MyButton = () => (
-  <Button label="Click me" cssClasses={[primaryButton]} />
-);
+const MyButton = () => <Button label="Click me" cssClasses={[primaryButton]} />;
 ```
 
 The `css` function returns a unique class name that you pass to the `cssClasses` prop.
@@ -156,13 +154,13 @@ GTK provides built-in CSS classes that follow the GNOME Human Interface Guidelin
 
 ```tsx
 // Headings
-<Label.Root label="Title" cssClasses={["title-1"]} />
-<Label.Root label="Subtitle" cssClasses={["title-2"]} />
-<Label.Root label="Section" cssClasses={["heading"]} />
+<Label label="Title" cssClasses={["title-1"]} />
+<Label label="Subtitle" cssClasses={["title-2"]} />
+<Label label="Section" cssClasses={["heading"]} />
 
 // Body text
-<Label.Root label="Caption" cssClasses={["caption"]} />
-<Label.Root label="Dimmed" cssClasses={["dim-label"]} />
+<Label label="Caption" cssClasses={["caption"]} />
+<Label label="Dimmed" cssClasses={["dim-label"]} />
 ```
 
 ### Container Classes
@@ -170,7 +168,7 @@ GTK provides built-in CSS classes that follow the GNOME Human Interface Guidelin
 ```tsx
 // Card with shadow
 <Box orientation={Orientation.VERTICAL} spacing={8} cssClasses={["card"]}>
-  <Label.Root label="Card content" />
+  <Label label="Card content" />
 </Box>
 
 // Boxed list (for settings-style lists)
@@ -201,17 +199,17 @@ const themedCard = css`
 
 ### Common Color Variables
 
-| Variable | Description |
-|----------|-------------|
-| `@accent_bg_color` | Accent background |
-| `@accent_fg_color` | Accent foreground |
-| `@window_bg_color` | Window background |
-| `@window_fg_color` | Window foreground |
-| `@card_bg_color` | Card background |
+| Variable            | Description        |
+| ------------------- | ------------------ |
+| `@accent_bg_color`  | Accent background  |
+| `@accent_fg_color`  | Accent foreground  |
+| `@window_bg_color`  | Window background  |
+| `@window_fg_color`  | Window foreground  |
+| `@card_bg_color`    | Card background    |
 | `@card_shade_color` | Card border/shadow |
-| `@success_color` | Success green |
-| `@warning_color` | Warning yellow |
-| `@error_color` | Error red |
+| `@success_color`    | Success green      |
+| `@warning_color`    | Warning yellow     |
+| `@error_color`      | Error red          |
 
 ## Example: Custom Button Styles
 

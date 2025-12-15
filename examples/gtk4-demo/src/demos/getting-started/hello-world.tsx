@@ -9,7 +9,7 @@ const HelloWorldDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-            <Label.Root label={greeting} cssClasses={["title-1"]} />
+            <Label label={greeting} cssClasses={["title-1"]} />
             <Button
                 label="Say Hello"
                 cssClasses={["suggested-action"]}

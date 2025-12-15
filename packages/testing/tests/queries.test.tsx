@@ -30,7 +30,7 @@ describe("Queries", () => {
         });
 
         it("throws when element not found", async () => {
-            await render(<Label.Root label="No buttons here" />);
+            await render(<Label label="No buttons here" />);
 
             await expect(screen.findByRole(AccessibleRole.BUTTON, { name: "NonExistent" })).rejects.toThrow(
                 /Unable to find any elements with role/,
@@ -77,21 +77,21 @@ describe("Queries", () => {
 
     describe("findByText", () => {
         it("finds element by text content", async () => {
-            await render(<Label.Root label="Hello World" />);
+            await render(<Label label="Hello World" />);
 
             const label = await screen.findByText("Hello World");
             expect(label).toBeDefined();
         });
 
         it("finds element by regex", async () => {
-            await render(<Label.Root label="Hello World" />);
+            await render(<Label label="Hello World" />);
 
             const label = await screen.findByText(/Hello/);
             expect(label).toBeDefined();
         });
 
         it("throws when text not found", async () => {
-            await render(<Label.Root label="Different" />);
+            await render(<Label label="Different" />);
 
             await expect(screen.findByText("NotFound")).rejects.toThrow(/Unable to find any elements with text/);
         });
@@ -101,8 +101,8 @@ describe("Queries", () => {
         it("returns all matching elements", async () => {
             await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
-                    <Label.Root label="Same" />
-                    <Label.Root label="Same" />
+                    <Label label="Same" />
+                    <Label label="Same" />
                 </Box>,
             );
 
@@ -145,7 +145,7 @@ describe("Queries", () => {
             const { findByRole, findByText } = await render(
                 <Box spacing={0} orientation={Orientation.VERTICAL}>
                     <Button label="Click" />
-                    <Label.Root label="Text" />
+                    <Label label="Text" />
                 </Box>,
             );
 
@@ -195,20 +195,20 @@ describe("Queries", () => {
 
     describe("TextMatchOptions", () => {
         it("supports exact: false for partial matching", async () => {
-            await render(<Label.Root label="Hello World" />);
+            await render(<Label label="Hello World" />);
 
             const result = await screen.findByText("Hello", { exact: false });
             expect(result).toBeDefined();
         });
 
         it("supports exact: true (default) for exact matching", async () => {
-            await render(<Label.Root label="Hello World" />);
+            await render(<Label label="Hello World" />);
 
             await expect(screen.findByText("Hello", { exact: true })).rejects.toThrow(/Unable to find any elements/);
         });
 
         it("supports custom normalizer", async () => {
-            await render(<Label.Root label="  Spaced  Text  " />);
+            await render(<Label label="  Spaced  Text  " />);
 
             const result = await screen.findByText("Spaced Text", {
                 normalizer: (text) => text.trim().replace(/\s+/g, " "),
@@ -217,34 +217,34 @@ describe("Queries", () => {
         });
 
         it("supports regex matching", async () => {
-            await render(<Label.Root label="Count: 42" />);
+            await render(<Label label="Count: 42" />);
 
             const result = await screen.findByText(/Count: \d+/);
             expect(result).toBeDefined();
         });
 
         it("supports function matcher", async () => {
-            await render(<Label.Root label="Hello World" />);
+            await render(<Label label="Hello World" />);
 
             const result = await screen.findByText((content) => content.startsWith("Hello"));
             expect(result).toBeDefined();
         });
 
         it("function matcher receives normalized text", async () => {
-            await render(<Label.Root label="  Spaced  Text  " />);
+            await render(<Label label="  Spaced  Text  " />);
 
             const result = await screen.findByText((content) => content === "Spaced Text");
             expect(result).toBeDefined();
         });
 
         it("supports trim: false to preserve leading/trailing whitespace", async () => {
-            await render(<Label.Root label="  Hello  " />);
+            await render(<Label label="  Hello  " />);
 
             await expect(screen.findByText("Hello", { trim: false })).rejects.toThrow(/Unable to find any elements/);
         });
 
         it("supports collapseWhitespace: false to preserve multiple spaces", async () => {
-            await render(<Label.Root label="Hello   World" />);
+            await render(<Label label="Hello   World" />);
 
             await expect(screen.findByText("Hello World", { collapseWhitespace: false })).rejects.toThrow(
                 /Unable to find any elements/,
@@ -252,7 +252,7 @@ describe("Queries", () => {
         });
 
         it("trims and collapses whitespace by default", async () => {
-            await render(<Label.Root label="  Hello   World  " />);
+            await render(<Label label="  Hello   World  " />);
 
             const result = await screen.findByText("Hello World");
             expect(result).toBeDefined();

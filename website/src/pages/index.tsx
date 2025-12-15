@@ -108,7 +108,7 @@ const App = () => {
   return (
     <ApplicationWindow title="Counter" onCloseRequest={quit}>
       <Box orientation={Orientation.VERTICAL} spacing={12} margin={20}>
-        <Label.Root label={\`Count: \${count}\`} cssClasses={["title-1"]} />
+        <Label label={\`Count: \${count}\`} cssClasses={["title-1"]} />
         <Button
           label="Increment"
           cssClasses={[primary]}

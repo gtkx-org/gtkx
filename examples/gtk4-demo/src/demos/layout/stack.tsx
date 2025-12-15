@@ -9,11 +9,11 @@ const StackDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Stack Container" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Stack Container" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Stack with StackSwitcher" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Stack with StackSwitcher" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Stack shows one child at a time with animated transitions. Use StackSwitcher for navigation."
                     wrap
                     cssClasses={["dim-label"]}
@@ -42,8 +42,8 @@ const StackDemo = () => {
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <Label.Root label="First Page" cssClasses={["title-3"]} />
-                                <Label.Root label="This is the content of the first page." cssClasses={["dim-label"]} />
+                                <Label label="First Page" cssClasses={["title-3"]} />
+                                <Label label="This is the content of the first page." cssClasses={["dim-label"]} />
                             </Box>
                         </Stack.Page>
                         <Stack.Page name="page2" title="Second">
@@ -53,11 +53,8 @@ const StackDemo = () => {
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <Label.Root label="Second Page" cssClasses={["title-3"]} />
-                                <Label.Root
-                                    label="This is the content of the second page."
-                                    cssClasses={["dim-label"]}
-                                />
+                                <Label label="Second Page" cssClasses={["title-3"]} />
+                                <Label label="This is the content of the second page." cssClasses={["dim-label"]} />
                             </Box>
                         </Stack.Page>
                         <Stack.Page name="page3" title="Third">
@@ -67,8 +64,8 @@ const StackDemo = () => {
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <Label.Root label="Third Page" cssClasses={["title-3"]} />
-                                <Label.Root label="This is the content of the third page." cssClasses={["dim-label"]} />
+                                <Label label="Third Page" cssClasses={["title-3"]} />
+                                <Label label="This is the content of the third page." cssClasses={["dim-label"]} />
                             </Box>
                         </Stack.Page>
                     </Stack.Root>
@@ -76,7 +73,7 @@ const StackDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Stack with StackSidebar" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Stack with StackSidebar" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={["card"]} heightRequest={180}>
                     <StackSidebar.Root
                         widthRequest={120}
@@ -100,8 +97,8 @@ const StackDemo = () => {
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <Label.Root label="Home" cssClasses={["title-3"]} />
-                                <Label.Root label="Welcome to the home page." cssClasses={["dim-label"]} />
+                                <Label label="Home" cssClasses={["title-3"]} />
+                                <Label label="Welcome to the home page." cssClasses={["dim-label"]} />
                             </Box>
                         </Stack.Page>
                         <Stack.Page name="settings" title="Settings" iconName="emblem-system-symbolic">
@@ -111,8 +108,8 @@ const StackDemo = () => {
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <Label.Root label="Settings" cssClasses={["title-3"]} />
-                                <Label.Root label="Configure your preferences here." cssClasses={["dim-label"]} />
+                                <Label label="Settings" cssClasses={["title-3"]} />
+                                <Label label="Configure your preferences here." cssClasses={["dim-label"]} />
                             </Box>
                         </Stack.Page>
                         <Stack.Page name="about" title="About" iconName="help-about-symbolic">
@@ -122,8 +119,8 @@ const StackDemo = () => {
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <Label.Root label="About" cssClasses={["title-3"]} />
-                                <Label.Root label="Learn more about this application." cssClasses={["dim-label"]} />
+                                <Label label="About" cssClasses={["title-3"]} />
+                                <Label label="Learn more about this application." cssClasses={["dim-label"]} />
                             </Box>
                         </Stack.Page>
                     </Stack.Root>
@@ -131,8 +128,8 @@ const StackDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Programmatic Control" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root label="Control the visible page with React state." wrap cssClasses={["dim-label"]} />
+                <Label label="Programmatic Control" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Control the visible page with React state." wrap cssClasses={["dim-label"]} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                     <Button
                         label="Page 1"
@@ -164,7 +161,7 @@ const StackDemo = () => {
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <Label.Root label="Page 1" cssClasses={["title-3"]} />
+                                <Label label="Page 1" cssClasses={["title-3"]} />
                             </Box>
                         </Stack.Page>
                         <Stack.Page name="page2">
@@ -174,7 +171,7 @@ const StackDemo = () => {
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <Label.Root label="Page 2" cssClasses={["title-3"]} />
+                                <Label label="Page 2" cssClasses={["title-3"]} />
                             </Box>
                         </Stack.Page>
                         <Stack.Page name="page3">
@@ -184,7 +181,7 @@ const StackDemo = () => {
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <Label.Root label="Page 3" cssClasses={["title-3"]} />
+                                <Label label="Page 3" cssClasses={["title-3"]} />
                             </Box>
                         </Stack.Page>
                     </Stack.Root>

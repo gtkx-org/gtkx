@@ -76,7 +76,7 @@ class Reconciler {
             createInstance: (type, props) => {
                 return createNode(type, props);
             },
-            createTextInstance: (text) => createNode("Label.Root", { label: text }),
+            createTextInstance: (text) => createNode("Label", { label: text }),
             appendInitialChild: (parent, child) => parent.appendChild(child),
             finalizeInitialChildren: () => true,
             commitUpdate: (instance, _type, oldProps, newProps) => {

@@ -25,7 +25,7 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
                     name={`toggle-${todo.id}`}
                     valign={Align.CENTER}
                 />
-                <Label.Root
+                <Label
                     label={todo.text}
                     hexpand
                     xalign={0}

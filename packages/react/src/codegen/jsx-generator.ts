@@ -49,6 +49,8 @@ const INTERNALLY_PROVIDED_PARAMS: Record<string, Set<string>> = {
     ApplicationWindow: new Set(["application"]),
 };
 
+const WIDGET_REFERENCE_PROPERTIES = new Set(["mnemonic-widget"]);
+
 const isPrimitive = (tsType: string): boolean => {
     const primitives = new Set(["boolean", "number", "string", "void", "unknown", "null", "undefined"]);
     return primitives.has(tsType);
@@ -333,6 +335,7 @@ ${widgetPropsContent}
         const namedChildSlots: WidgetChildInfo[] = widget.properties
             .filter((prop) => {
                 if (!prop.writable) return false;
+                if (WIDGET_REFERENCE_PROPERTIES.has(prop.name)) return false;
                 const typeName = prop.type.name;
                 return typeName === "Gtk.Widget" || typeName === "Widget" || isWidgetSubclass(typeName, this.classMap);
             })

@@ -9,14 +9,14 @@ const HeaderBarDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Header Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Header Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Basic Header Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Basic Header Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
                     <HeaderBar.Root>
                         <HeaderBar.TitleWidget>
-                            <Label.Root label="Application Title" />
+                            <Label label="Application Title" />
                         </HeaderBar.TitleWidget>
                     </HeaderBar.Root>
                     <Box
@@ -26,19 +26,19 @@ const HeaderBarDemo = () => {
                         halign={Gtk.Align.CENTER}
                         valign={Gtk.Align.CENTER}
                     >
-                        <Label.Root label="Window content" cssClasses={["dim-label"]} />
+                        <Label label="Window content" cssClasses={["dim-label"]} />
                     </Box>
                 </Box>
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Header Bar with Custom Title" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Header Bar with Custom Title" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
                     <HeaderBar.Root showTitleButtons={false}>
                         <HeaderBar.TitleWidget>
                             <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} valign={Gtk.Align.CENTER}>
-                                <Label.Root label="My Application" cssClasses={["title"]} />
-                                <Label.Root label="Version 1.0.0" cssClasses={["subtitle"]} />
+                                <Label label="My Application" cssClasses={["title"]} />
+                                <Label label="Version 1.0.0" cssClasses={["subtitle"]} />
                             </Box>
                         </HeaderBar.TitleWidget>
                     </HeaderBar.Root>
@@ -49,17 +49,17 @@ const HeaderBarDemo = () => {
                         halign={Gtk.Align.CENTER}
                         valign={Gtk.Align.CENTER}
                     >
-                        <Label.Root label="Content area" cssClasses={["dim-label"]} />
+                        <Label label="Content area" cssClasses={["dim-label"]} />
                     </Box>
                 </Box>
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Search Toggle Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Search Toggle Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
                     <HeaderBar.Root showTitleButtons={false}>
                         <HeaderBar.TitleWidget>
-                            <Label.Root label="Document Viewer" />
+                            <Label label="Document Viewer" />
                         </HeaderBar.TitleWidget>
                     </HeaderBar.Root>
                     <Box
@@ -91,7 +91,7 @@ const HeaderBarDemo = () => {
                         halign={Gtk.Align.CENTER}
                         valign={Gtk.Align.CENTER}
                     >
-                        <Label.Root label="Content" cssClasses={["dim-label"]} />
+                        <Label label="Content" cssClasses={["dim-label"]} />
                     </Box>
                 </Box>
             </Box>

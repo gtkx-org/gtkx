@@ -34,11 +34,11 @@ const fruits = [
 const SearchEntryDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Search Entry" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Search Entry" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Search Input" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Search Input" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="SearchEntry is optimized for search with a built-in clear button and search icon."
                     wrap
                     cssClasses={["dim-label"]}
@@ -47,8 +47,8 @@ const SearchEntryDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Sample List" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Sample List" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Here's a list of fruits that could be filtered by a search."
                     wrap
                     cssClasses={["dim-label"]}
@@ -57,7 +57,7 @@ const SearchEntryDemo = () => {
                     <ListBox cssClasses={["boxed-list"]}>
                         {fruits.map((item) => (
                             <ListBoxRow key={item}>
-                                <Label.Root
+                                <Label
                                     label={item}
                                     halign={Gtk.Align.START}
                                     marginStart={12}

@@ -58,7 +58,7 @@ const App = () => {
   return (
     <ApplicationWindow title="Counter" onCloseRequest={quit}>
       <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-        <Label.Root label={`Count: ${count}`} />
+        <Label label={`Count: ${count}`} />
         <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
       </Box>
     </ApplicationWindow>

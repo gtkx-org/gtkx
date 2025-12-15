@@ -14,9 +14,9 @@ describe("within", () => {
         await render(
             <Box spacing={0} orientation={V} name="outer">
                 <Box spacing={0} orientation={V} name="container">
-                    <Label.Root label="Inside" />
+                    <Label label="Inside" />
                 </Box>
-                <Label.Root label="Outside" />
+                <Label label="Outside" />
             </Box>,
         );
 
@@ -31,9 +31,9 @@ describe("within", () => {
         await render(
             <Box spacing={0} orientation={V} name="outer">
                 <Box spacing={0} orientation={V} name="container">
-                    <Label.Root label="Shared" />
+                    <Label label="Shared" />
                 </Box>
-                <Label.Root label="Shared" />
+                <Label label="Shared" />
             </Box>,
         );
 
@@ -85,9 +85,9 @@ describe("within", () => {
         await render(
             <Box spacing={0} orientation={V} name="outer">
                 <Box spacing={0} orientation={V} name="container">
-                    <Label.Root label="Target" name="target-label" />
+                    <Label label="Target" name="target-label" />
                 </Box>
-                <Label.Root label="Other" name="other-label" />
+                <Label label="Other" name="other-label" />
             </Box>,
         );
 
@@ -120,10 +120,10 @@ describe("within", () => {
         await render(
             <Box spacing={0} orientation={V} name="outer">
                 <Box spacing={0} orientation={V} name="container">
-                    <Label.Root label="Item" />
-                    <Label.Root label="Item" />
+                    <Label label="Item" />
+                    <Label label="Item" />
                 </Box>
-                <Label.Root label="Item" />
+                <Label label="Item" />
             </Box>,
         );
 
@@ -156,10 +156,10 @@ describe("within", () => {
         await render(
             <Box spacing={0} orientation={V} name="outer">
                 <Box spacing={0} orientation={V} name="container">
-                    <Label.Root label="A" name="item" />
-                    <Label.Root label="B" name="item" />
+                    <Label label="A" name="item" />
+                    <Label label="B" name="item" />
                 </Box>
-                <Label.Root label="C" name="item" />
+                <Label label="C" name="item" />
             </Box>,
         );
 
@@ -175,7 +175,7 @@ describe("within", () => {
             <Box spacing={0} orientation={V} name="outer">
                 <Box spacing={0} orientation={V} name="level1">
                     <Box spacing={0} orientation={V} name="level2">
-                        <Label.Root label="Deep" />
+                        <Label label="Deep" />
                     </Box>
                 </Box>
             </Box>,
@@ -194,7 +194,7 @@ describe("within", () => {
     it("uses text match options", async () => {
         await render(
             <Box spacing={0} orientation={V} name="container">
-                <Label.Root label="Hello World" />
+                <Label label="Hello World" />
             </Box>,
         );
 

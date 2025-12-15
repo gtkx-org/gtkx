@@ -15,10 +15,10 @@ const SpinButtonDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Spin Button" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Spin Button" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Integer Values (0-100)" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Integer Values (0-100)" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <SpinButton
                         climbRate={1}
@@ -26,12 +26,12 @@ const SpinButtonDemo = () => {
                         digits={0}
                         onValueChanged={(self) => setIntValue(self.getValue())}
                     />
-                    <Label.Root label={`Value: ${intValue}`} />
+                    <Label label={`Value: ${intValue}`} />
                 </Box>
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Floating Point (0-10, step 0.1)" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Floating Point (0-10, step 0.1)" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <SpinButton
                         climbRate={1}
@@ -39,32 +39,28 @@ const SpinButtonDemo = () => {
                         digits={2}
                         onValueChanged={(self) => setFloatValue(self.getValue())}
                     />
-                    <Label.Root label={`Value: ${floatValue.toFixed(2)}`} />
+                    <Label label={`Value: ${floatValue.toFixed(2)}`} />
                 </Box>
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Price Input (step 0.01)" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Price Input (step 0.01)" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label.Root label="$" />
+                    <Label label="$" />
                     <SpinButton
                         climbRate={1}
                         adjustment={priceAdjustment}
                         digits={2}
                         onValueChanged={(self) => setPriceValue(self.getValue())}
                     />
-                    <Label.Root label={`Total: $${priceValue.toFixed(2)}`} />
+                    <Label label={`Total: $${priceValue.toFixed(2)}`} />
                 </Box>
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Wrap Around" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Wrap Around" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <SpinButton climbRate={1} adjustment={intAdjustment} digits={0} wrap />
-                <Label.Root
-                    label="This spin button wraps from max to min and vice versa"
-                    cssClasses={["dim-label"]}
-                    wrap
-                />
+                <Label label="This spin button wraps from max to min and vice versa" cssClasses={["dim-label"]} wrap />
             </Box>
         </Box>
     );

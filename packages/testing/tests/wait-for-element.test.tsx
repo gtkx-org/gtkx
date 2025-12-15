@@ -19,7 +19,7 @@ describe("waitForElementToBeRemoved", () => {
 
                 return (
                     <Box spacing={0} orientation={Orientation.VERTICAL}>
-                        {showLabel && <Label.Root label="Removable" />}
+                        {showLabel && <Label label="Removable" />}
                         <Button label="Keep" />
                     </Box>
                 );
@@ -48,7 +48,7 @@ describe("waitForElementToBeRemoved", () => {
                 return (
                     <Box spacing={0} orientation={Orientation.VERTICAL}>
                         {showButton && <Button label="ToRemove" />}
-                        <Label.Root label="Static" />
+                        <Label label="Static" />
                     </Box>
                 );
             };
@@ -72,7 +72,7 @@ describe("waitForElementToBeRemoved", () => {
 
     describe("error cases", () => {
         it("throws when element is not removed before timeout", async () => {
-            await render(<Label.Root label="Permanent" />);
+            await render(<Label label="Permanent" />);
 
             const label = await screen.findByText("Permanent");
 
@@ -84,7 +84,7 @@ describe("waitForElementToBeRemoved", () => {
 
     describe("options handling", () => {
         it("uses custom timeout", async () => {
-            await render(<Label.Root label="Stays" />);
+            await render(<Label label="Stays" />);
 
             const label = await screen.findByText("Stays");
             const start = Date.now();
@@ -97,7 +97,7 @@ describe("waitForElementToBeRemoved", () => {
         });
 
         it("calls onTimeout when provided", async () => {
-            await render(<Label.Root label="Timeout Test" />);
+            await render(<Label label="Timeout Test" />);
 
             const label = await screen.findByText("Timeout Test");
             const customError = new Error("Custom timeout error");

@@ -34,11 +34,11 @@ const gradientStyle = css`
 const CssBasicsDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="CSS Basics" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="CSS Basics" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About CSS Styling" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About CSS Styling" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="GTK widgets can be styled using CSS. GTKX provides @gtkx/css for CSS-in-JS styling similar to Emotion."
                     wrap
                     cssClasses={["dim-label"]}
@@ -46,7 +46,7 @@ const CssBasicsDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Custom Button Styles" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Custom Button Styles" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
                     <Button label="Success" cssClasses={[customButton, successStyle]} />
                     <Button label="Warning" cssClasses={[customButton, warningStyle]} />
@@ -55,13 +55,13 @@ const CssBasicsDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Gradient Backgrounds" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Gradient Backgrounds" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Button label="Gradient Button" cssClasses={[customButton, gradientStyle]} halign={Gtk.Align.CENTER} />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="System CSS Classes" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="System CSS Classes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="GTK provides built-in CSS classes: suggested-action, destructive-action, card, boxed-list, heading, dim-label, etc."
                     wrap
                     cssClasses={["dim-label"]}

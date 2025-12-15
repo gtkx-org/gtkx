@@ -11,14 +11,14 @@ describe("render", () => {
 
     describe("return value", () => {
         it("returns an object with container", async () => {
-            const result = await render(<Label.Root label="Test" />);
+            const result = await render(<Label label="Test" />);
 
             expect(result.container).toBeDefined();
             expect(typeof result.container.getActiveWindow).toBe("function");
         });
 
         it("returns query functions", async () => {
-            const result = await render(<Label.Root label="Test" />);
+            const result = await render(<Label label="Test" />);
 
             expect(typeof result.findByRole).toBe("function");
             expect(typeof result.findByText).toBe("function");
@@ -29,19 +29,19 @@ describe("render", () => {
         });
 
         it("returns unmount function", async () => {
-            const result = await render(<Label.Root label="Test" />);
+            const result = await render(<Label label="Test" />);
 
             expect(typeof result.unmount).toBe("function");
         });
 
         it("returns rerender function", async () => {
-            const result = await render(<Label.Root label="Test" />);
+            const result = await render(<Label label="Test" />);
 
             expect(typeof result.rerender).toBe("function");
         });
 
         it("returns debug function", async () => {
-            const result = await render(<Label.Root label="Test" />);
+            const result = await render(<Label label="Test" />);
 
             expect(typeof result.debug).toBe("function");
         });
@@ -56,7 +56,7 @@ describe("render", () => {
         });
 
         it("findByText finds element", async () => {
-            const { findByText } = await render(<Label.Root label="Hello World" />);
+            const { findByText } = await render(<Label label="Hello World" />);
 
             const label = await findByText("Hello World");
             expect(label).toBeDefined();
@@ -84,11 +84,11 @@ describe("render", () => {
 
     describe("rerender", () => {
         it("updates the rendered content", async () => {
-            const { rerender, findByText } = await render(<Label.Root label="Initial" />);
+            const { rerender, findByText } = await render(<Label label="Initial" />);
 
             await findByText("Initial");
 
-            await rerender(<Label.Root label="Updated" />);
+            await rerender(<Label label="Updated" />);
 
             const label = await findByText("Updated");
             expect(label).toBeDefined();
@@ -100,7 +100,7 @@ describe("render", () => {
             const Counter = () => {
                 const [count, _setCount] = useState(0);
                 setCount = _setCount;
-                return <Label.Root label={`Count: ${count}`} />;
+                return <Label label={`Count: ${count}`} />;
             };
 
             const { findByText, rerender } = await render(<Counter />);
@@ -117,7 +117,7 @@ describe("render", () => {
 
     describe("unmount", () => {
         it("removes rendered content", async () => {
-            const { unmount, findByText } = await render(<Label.Root label="Will be removed" />);
+            const { unmount, findByText } = await render(<Label label="Will be removed" />);
 
             await findByText("Will be removed");
 
@@ -129,7 +129,7 @@ describe("render", () => {
 
     describe("container", () => {
         it("provides access to application", async () => {
-            const { container } = await render(<Label.Root label="Test" />);
+            const { container } = await render(<Label label="Test" />);
 
             const windows = container.getWindows();
             expect(windows.length).toBeGreaterThan(0);
@@ -138,7 +138,7 @@ describe("render", () => {
         it("provides access to active window", async () => {
             const { container, findAllByText } = await render(
                 <ApplicationWindow title="Test Window">
-                    <Label.Root label="Window Content" />
+                    <Label label="Window Content" />
                 </ApplicationWindow>,
             );
 
@@ -153,7 +153,7 @@ describe("render", () => {
 
 describe("cleanup", () => {
     it("removes windows after cleanup", async () => {
-        const { container, findByText } = await render(<Label.Root label="Before cleanup" />);
+        const { container, findByText } = await render(<Label label="Before cleanup" />);
 
         await findByText("Before cleanup");
         const windowsBefore = container.getWindows();
@@ -166,11 +166,11 @@ describe("cleanup", () => {
     });
 
     it("allows rendering again after cleanup", async () => {
-        await render(<Label.Root label="First render" />);
+        await render(<Label label="First render" />);
 
         await cleanup();
 
-        const { findByText } = await render(<Label.Root label="Second render" />);
+        const { findByText } = await render(<Label label="Second render" />);
 
         const label = await findByText("Second render");
         expect(label).toBeDefined();
@@ -183,9 +183,9 @@ describe("multiple renders", () => {
     });
 
     it("subsequent renders update the same container", async () => {
-        const result1 = await render(<Label.Root label="First" />);
+        const result1 = await render(<Label label="First" />);
 
-        const result2 = await render(<Label.Root label="Second" />);
+        const result2 = await render(<Label label="Second" />);
 
         expect(result1.container).toBe(result2.container);
     });
@@ -193,12 +193,12 @@ describe("multiple renders", () => {
     it("can render complex nested components", async () => {
         const { findByRole, findByText } = await render(
             <Box spacing={10} orientation={Orientation.VERTICAL}>
-                <Label.Root label="Header" />
+                <Label label="Header" />
                 <Box spacing={5} orientation={Orientation.HORIZONTAL}>
                     <Button label="Action 1" />
                     <Button label="Action 2" />
                 </Box>
-                <Label.Root label="Footer" />
+                <Label label="Footer" />
             </Box>,
         );
 

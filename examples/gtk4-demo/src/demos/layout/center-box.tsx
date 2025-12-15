@@ -6,11 +6,11 @@ import type { Demo } from "../types.js";
 const CenterBoxDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Center Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Center Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Horizontal CenterBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Horizontal CenterBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="CenterBox has three slots: start, center, and end. The center widget is always centered."
                     wrap
                     cssClasses={["dim-label"]}
@@ -20,7 +20,7 @@ const CenterBoxDemo = () => {
                         <Button label="Start" marginStart={8} />
                     </CenterBox.StartWidget>
                     <CenterBox.CenterWidget>
-                        <Label.Root label="Center" cssClasses={["heading"]} />
+                        <Label label="Center" cssClasses={["heading"]} />
                     </CenterBox.CenterWidget>
                     <CenterBox.EndWidget>
                         <Button label="End" marginEnd={8} />
@@ -29,7 +29,7 @@ const CenterBoxDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Toolbar Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Toolbar Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <CenterBox.Root hexpand cssClasses={["toolbar"]}>
                     <CenterBox.StartWidget>
                         <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} marginStart={6}>
@@ -38,7 +38,7 @@ const CenterBoxDemo = () => {
                         </Box>
                     </CenterBox.StartWidget>
                     <CenterBox.CenterWidget>
-                        <Label.Root label="Document.txt" cssClasses={["title-4"]} />
+                        <Label label="Document.txt" cssClasses={["title-4"]} />
                     </CenterBox.CenterWidget>
                     <CenterBox.EndWidget>
                         <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} marginEnd={6}>
@@ -50,7 +50,7 @@ const CenterBoxDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Vertical CenterBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Vertical CenterBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <CenterBox.Root
                     orientation={Gtk.Orientation.VERTICAL}
                     vexpand
@@ -58,13 +58,13 @@ const CenterBoxDemo = () => {
                     cssClasses={["card"]}
                 >
                     <CenterBox.StartWidget>
-                        <Label.Root label="Top" marginTop={12} />
+                        <Label label="Top" marginTop={12} />
                     </CenterBox.StartWidget>
                     <CenterBox.CenterWidget>
                         <Button label="Centered Content" cssClasses={["suggested-action"]} />
                     </CenterBox.CenterWidget>
                     <CenterBox.EndWidget>
-                        <Label.Root label="Bottom" marginBottom={12} />
+                        <Label label="Bottom" marginBottom={12} />
                     </CenterBox.EndWidget>
                 </CenterBox.Root>
             </Box>

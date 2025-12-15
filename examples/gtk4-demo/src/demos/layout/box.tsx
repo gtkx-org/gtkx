@@ -6,10 +6,10 @@ import type { Demo } from "../types.js";
 const BoxDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Box Layout" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Box Layout" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Horizontal Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Horizontal Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
@@ -26,7 +26,7 @@ const BoxDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Vertical Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Vertical Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={8}
@@ -43,7 +43,7 @@ const BoxDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Expand and Fill" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Expand and Fill" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
@@ -60,7 +60,7 @@ const BoxDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Alignment" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Alignment" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
@@ -79,8 +79,8 @@ const BoxDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Homogeneous" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Homogeneous" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="When homogeneous is true, all children get the same size."
                     wrap
                     cssClasses={["dim-label"]}

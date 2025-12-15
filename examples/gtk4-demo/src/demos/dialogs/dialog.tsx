@@ -57,11 +57,11 @@ const DialogDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Dialogs" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Dialogs" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Alert Dialogs" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Alert Dialogs" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="AlertDialog provides a simple way to show messages and get user confirmation."
                     wrap
                     cssClasses={["dim-label"]}
@@ -73,12 +73,12 @@ const DialogDemo = () => {
                     <Button label="Information" onClicked={showInfoDialog} />
                 </Box>
 
-                {result && <Label.Root label={`Last result: ${result}`} cssClasses={["dim-label"]} />}
+                {result && <Label label={`Last result: ${result}`} cssClasses={["dim-label"]} />}
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="How It Works" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="How It Works" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Use AlertDialog.dialogNew(message) to create the dialog, then configure with setDetail(), setButtons(), etc. Call dialog.choose() and await the response index."
                     wrap
                     cssClasses={["dim-label"]}

@@ -12,7 +12,13 @@ GTK4 provides several dialog types for common interactions. GTKX supports both d
 Use `createPortal` to render dialogs at the root level of your application:
 
 ```tsx
-import { createPortal, ApplicationWindow, Button, AboutDialog, quit } from "@gtkx/react";
+import {
+  createPortal,
+  ApplicationWindow,
+  Button,
+  AboutDialog,
+  quit,
+} from "@gtkx/react";
 import { License } from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -23,20 +29,21 @@ const App = () => {
     <ApplicationWindow title="My App" onCloseRequest={quit}>
       <Button label="About" onClicked={() => setShowAbout(true)} />
 
-      {showAbout && createPortal(
-        <AboutDialog
-          programName="My App"
-          version="1.0.0"
-          comments="A GTKX application"
-          website="https://example.com"
-          licenseType={License.MIT_X11}
-          authors={["Your Name"]}
-          onCloseRequest={() => {
-            setShowAbout(false);
-            return false;
-          }}
-        />
-      )}
+      {showAbout &&
+        createPortal(
+          <AboutDialog
+            programName="My App"
+            version="1.0.0"
+            comments="A GTKX application"
+            website="https://example.com"
+            licenseType={License.MIT_X11}
+            authors={["Your Name"]}
+            onCloseRequest={() => {
+              setShowAbout(false);
+              return false;
+            }}
+          />
+        )}
     </ApplicationWindow>
   );
 };
@@ -68,7 +75,9 @@ const App = () => {
     const app = getCurrentApp();
     const dialog = new AlertDialog();
     dialog.setMessage("Confirm Action");
-    dialog.setDetail("Are you sure you want to proceed? This cannot be undone.");
+    dialog.setDetail(
+      "Are you sure you want to proceed? This cannot be undone."
+    );
     dialog.setButtons(["Cancel", "Delete"]);
     dialog.setCancelButton(0);
     dialog.setDefaultButton(1);
@@ -84,9 +93,15 @@ const App = () => {
 
   return (
     <ApplicationWindow title="Dialogs" onCloseRequest={quit}>
-      <Box orientation={Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
+      <Box
+        orientation={Orientation.VERTICAL}
+        spacing={12}
+        marginStart={20}
+        marginEnd={20}
+        marginTop={20}
+      >
         <Button label="Delete Item" onClicked={showConfirmDialog} />
-        {result && <Label.Root label={`Result: ${result}`} />}
+        {result && <Label label={`Result: ${result}`} />}
       </Box>
     </ApplicationWindow>
   );
@@ -95,14 +110,14 @@ const App = () => {
 
 ### AlertDialog API
 
-| Method | Description |
-|--------|-------------|
-| `setMessage(text)` | Main dialog message |
-| `setDetail(text)` | Secondary explanation text |
-| `setButtons(labels)` | Array of button labels |
-| `setCancelButton(index)` | Which button is triggered by Escape |
-| `setDefaultButton(index)` | Which button has default focus |
-| `choose(parent)` | Show dialog and return `Promise<number>` with button index |
+| Method                    | Description                                                |
+| ------------------------- | ---------------------------------------------------------- |
+| `setMessage(text)`        | Main dialog message                                        |
+| `setDetail(text)`         | Secondary explanation text                                 |
+| `setButtons(labels)`      | Array of button labels                                     |
+| `setCancelButton(index)`  | Which button is triggered by Escape                        |
+| `setDefaultButton(index)` | Which button has default focus                             |
+| `choose(parent)`          | Show dialog and return `Promise<number>` with button index |
 
 ### File Dialogs
 
@@ -152,7 +167,7 @@ const FilePicker = () => {
     <>
       <Button label="Open..." onClicked={openFile} />
       <Button label="Save..." onClicked={saveFile} />
-      {selectedFile && <Label.Root label={selectedFile} />}
+      {selectedFile && <Label label={selectedFile} />}
     </>
   );
 };
@@ -160,14 +175,14 @@ const FilePicker = () => {
 
 ### FileDialog API
 
-| Method | Description |
-|--------|-------------|
-| `setTitle(text)` | Dialog title |
-| `setInitialName(name)` | Default filename for save dialogs |
-| `setInitialFolder(file)` | Starting directory |
-| `open(parent)` | Show open dialog, returns `Promise<Gio.File>` |
-| `save(parent)` | Show save dialog, returns `Promise<Gio.File>` |
-| `selectFolder(parent)` | Show folder picker, returns `Promise<Gio.File>` |
+| Method                   | Description                                     |
+| ------------------------ | ----------------------------------------------- |
+| `setTitle(text)`         | Dialog title                                    |
+| `setInitialName(name)`   | Default filename for save dialogs               |
+| `setInitialFolder(file)` | Starting directory                              |
+| `open(parent)`           | Show open dialog, returns `Promise<Gio.File>`   |
+| `save(parent)`           | Show save dialog, returns `Promise<Gio.File>`   |
+| `selectFolder(parent)`   | Show folder picker, returns `Promise<Gio.File>` |
 
 ## Color and Font Dialogs
 
@@ -183,7 +198,9 @@ const pickColor = async () => {
 
   try {
     const color = await dialog.chooseRgba(app.getActiveWindow() ?? undefined);
-    console.log(`Selected: rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha})`);
+    console.log(
+      `Selected: rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha})`
+    );
   } catch {
     // Cancelled
   }

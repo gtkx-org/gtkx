@@ -49,7 +49,7 @@ export const App = () => {
         <ApplicationWindow title="Tasks" defaultWidth={400} defaultHeight={500} onCloseRequest={quit}>
             <HeaderBar.Root>
                 <HeaderBar.TitleWidget>
-                    <Label.Root label="Tasks" cssClasses={["title"]} />
+                    <Label label="Tasks" cssClasses={["title"]} />
                 </HeaderBar.TitleWidget>
             </HeaderBar.Root>
 
@@ -73,13 +73,13 @@ export const App = () => {
                         halign={Align.CENTER}
                         spacing={12}
                     >
-                        <Label.Root
+                        <Label
                             label={todos.length === 0 ? "No tasks yet" : "No tasks to display"}
                             cssClasses={["dim-label", "title-3"]}
                             name="empty-message"
                         />
                         {todos.length === 0 && (
-                            <Label.Root label="Add a task above to get started" cssClasses={["dim-label"]} />
+                            <Label label="Add a task above to get started" cssClasses={["dim-label"]} />
                         )}
                     </Box>
                 ) : (
@@ -94,7 +94,7 @@ export const App = () => {
 
                 {todos.length > 0 && (
                     <Box orientation={Orientation.HORIZONTAL} spacing={8}>
-                        <Label.Root
+                        <Label
                             label={`${activeCount} ${itemText} remaining`}
                             cssClasses={["dim-label"]}
                             halign={Align.START}

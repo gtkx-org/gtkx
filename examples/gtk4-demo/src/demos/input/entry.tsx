@@ -6,11 +6,11 @@ import type { Demo } from "../types.js";
 const EntryDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Entry" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Entry" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Basic Entry" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Basic Entry" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Entry is a single-line text input widget. Type in the entries below."
                     wrap
                     cssClasses={["dim-label"]}
@@ -19,13 +19,13 @@ const EntryDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Max Length (10 characters)" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Max Length (10 characters)" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Entry placeholderText="Max 10 chars" maxLength={10} />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Entry Purposes" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Entry Purposes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Input purpose helps mobile keyboards show appropriate layouts."
                     wrap
                     cssClasses={["dim-label"]}
@@ -38,7 +38,7 @@ const EntryDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Disabled Entry" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Disabled Entry" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Entry text="Cannot edit this" sensitive={false} />
             </Box>
         </Box>

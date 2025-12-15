@@ -303,16 +303,16 @@ const GLAreaDemo = () => {
     if (error) {
         return (
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
-                <Label.Root label="GLArea Error" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-                <Label.Root label={error} wrap cssClasses={["error"]} />
+                <Label label="GLArea Error" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+                <Label label={error} wrap cssClasses={["error"]} />
             </Box>
         );
     }
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="OpenGL Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-            <Label.Root
+            <Label label="OpenGL Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label
                 label="GtkGLArea is a widget that allows drawing with OpenGL. This demo renders a rotating colored triangle using vertex and fragment shaders."
                 wrap
                 cssClasses={["dim-label"]}
@@ -331,10 +331,10 @@ const GLAreaDemo = () => {
             />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label.Root label="Rotation Controls" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Rotation Controls" cssClasses={["heading"]} halign={Gtk.Align.START} />
 
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label.Root label="X:" widthRequest={30} />
+                    <Label label="X:" widthRequest={30} />
                     <Scale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
@@ -345,7 +345,7 @@ const GLAreaDemo = () => {
                 </Box>
 
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label.Root label="Y:" widthRequest={30} />
+                    <Label label="Y:" widthRequest={30} />
                     <Scale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
@@ -356,7 +356,7 @@ const GLAreaDemo = () => {
                 </Box>
 
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label.Root label="Z:" widthRequest={30} />
+                    <Label label="Z:" widthRequest={30} />
                     <Scale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand

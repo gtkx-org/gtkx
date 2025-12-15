@@ -16,14 +16,14 @@ import { Align } from "@gtkx/ffi/gtk";
 const LoginForm = () => (
   <Grid.Root columnSpacing={12} rowSpacing={8}>
     <Grid.Child row={0} column={0}>
-      <Label.Root label="Username:" halign={Align.END} />
+      <Label label="Username:" halign={Align.END} />
     </Grid.Child>
     <Grid.Child row={0} column={1}>
       <Entry hexpand />
     </Grid.Child>
 
     <Grid.Child row={1} column={0}>
-      <Label.Root label="Password:" halign={Align.END} />
+      <Label label="Password:" halign={Align.END} />
     </Grid.Child>
     <Grid.Child row={1} column={1}>
       <Entry visibility={false} hexpand />
@@ -38,25 +38,26 @@ const LoginForm = () => (
 
 ## Grid.Root Props
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `columnSpacing` | `number` | Gap between columns in pixels |
-| `rowSpacing` | `number` | Gap between rows in pixels |
+| Prop                | Type      | Description                           |
+| ------------------- | --------- | ------------------------------------- |
+| `columnSpacing`     | `number`  | Gap between columns in pixels         |
+| `rowSpacing`        | `number`  | Gap between rows in pixels            |
 | `columnHomogeneous` | `boolean` | If true, all columns have equal width |
-| `rowHomogeneous` | `boolean` | If true, all rows have equal height |
+| `rowHomogeneous`    | `boolean` | If true, all rows have equal height   |
 
 ## Grid.Child Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `row` | `number` | `0` | Row position (0-indexed) |
-| `column` | `number` | `0` | Column position (0-indexed) |
-| `rowSpan` | `number` | `1` | Number of rows to span |
-| `columnSpan` | `number` | `1` | Number of columns to span |
+| Prop         | Type     | Default | Description                 |
+| ------------ | -------- | ------- | --------------------------- |
+| `row`        | `number` | `0`     | Row position (0-indexed)    |
+| `column`     | `number` | `0`     | Column position (0-indexed) |
+| `rowSpan`    | `number` | `1`     | Number of rows to span      |
+| `columnSpan` | `number` | `1`     | Number of columns to span   |
 
 ## How It Works
 
 `Grid.Child` is a virtual node that:
+
 1. Stores the row, column, and span metadata
 2. Calls `grid.attach(widget, column, row, columnSpan, rowSpan)` when mounted
 3. Calls `grid.remove(widget)` when unmounted
@@ -70,22 +71,27 @@ Use `rowSpan` and `columnSpan` to create cells that span multiple rows or column
 <Grid.Root columnSpacing={8} rowSpacing={8}>
   {/* Header spanning all 3 columns */}
   <Grid.Child row={0} column={0} columnSpan={3}>
-    <Label.Root label="Settings" cssClasses={["title-2"]} />
+    <Label label="Settings" cssClasses={["title-2"]} />
   </Grid.Child>
 
   {/* Sidebar spanning 2 rows */}
   <Grid.Child row={1} column={0} rowSpan={2}>
-    <Box orientation={Orientation.VERTICAL} spacing={8} cssClasses={["card"]} vexpand>
-      <Label.Root label="Navigation" />
+    <Box
+      orientation={Orientation.VERTICAL}
+      spacing={8}
+      cssClasses={["card"]}
+      vexpand
+    >
+      <Label label="Navigation" />
     </Box>
   </Grid.Child>
 
   {/* Content areas */}
   <Grid.Child row={1} column={1} columnSpan={2}>
-    <Label.Root label="Main content" />
+    <Label label="Main content" />
   </Grid.Child>
   <Grid.Child row={2} column={1} columnSpan={2}>
-    <Label.Root label="Secondary content" />
+    <Label label="Secondary content" />
   </Grid.Child>
 </Grid.Root>
 ```
@@ -106,9 +112,9 @@ interface Cell {
 
 const DynamicGrid = ({ cells }: { cells: Cell[] }) => (
   <Grid.Root columnSpacing={8} rowSpacing={8}>
-    {cells.map(cell => (
+    {cells.map((cell) => (
       <Grid.Child key={cell.id} row={cell.row} column={cell.column}>
-        <Label.Root label={cell.content} />
+        <Label label={cell.content} />
       </Grid.Child>
     ))}
   </Grid.Root>
@@ -127,7 +133,7 @@ const SettingsForm = () => (
   <Grid.Root columnSpacing={16} rowSpacing={12}>
     {/* Row 0: Name */}
     <Grid.Child row={0} column={0}>
-      <Label.Root label="Display Name" halign={Align.END} />
+      <Label label="Display Name" halign={Align.END} />
     </Grid.Child>
     <Grid.Child row={0} column={1}>
       <Entry hexpand placeholderText="Enter your name" />
@@ -135,7 +141,7 @@ const SettingsForm = () => (
 
     {/* Row 1: Email */}
     <Grid.Child row={1} column={0}>
-      <Label.Root label="Email" halign={Align.END} />
+      <Label label="Email" halign={Align.END} />
     </Grid.Child>
     <Grid.Child row={1} column={1}>
       <Entry hexpand placeholderText="you@example.com" />
@@ -143,7 +149,7 @@ const SettingsForm = () => (
 
     {/* Row 2: Notifications toggle */}
     <Grid.Child row={2} column={0}>
-      <Label.Root label="Notifications" halign={Align.END} />
+      <Label label="Notifications" halign={Align.END} />
     </Grid.Child>
     <Grid.Child row={2} column={1}>
       <Switch halign={Align.START} />
@@ -162,11 +168,11 @@ const SettingsForm = () => (
 
 ## Grid vs Box
 
-| Feature | Grid | Box |
-|---------|------|-----|
-| Dimensions | 2D (rows and columns) | 1D (horizontal or vertical) |
-| Positioning | Explicit row/column | Sequential order |
-| Spanning | Supports rowSpan/columnSpan | Not applicable |
-| Use case | Forms, complex layouts | Simple lists, toolbars |
+| Feature     | Grid                        | Box                         |
+| ----------- | --------------------------- | --------------------------- |
+| Dimensions  | 2D (rows and columns)       | 1D (horizontal or vertical) |
+| Positioning | Explicit row/column         | Sequential order            |
+| Spanning    | Supports rowSpan/columnSpan | Not applicable              |
+| Use case    | Forms, complex layouts      | Simple lists, toolbars      |
 
 Use `Box` for simple sequential layouts and `Grid` when you need precise 2D positioning.

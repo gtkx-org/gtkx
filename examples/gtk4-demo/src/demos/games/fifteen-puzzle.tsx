@@ -135,10 +135,10 @@ const FifteenPuzzleDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="15 Puzzle" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="15 Puzzle" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root
+                <Label
                     label="Slide the tiles to arrange them in numerical order. Click a tile adjacent to the empty space to move it."
                     wrap
                     cssClasses={["dim-label"]}
@@ -146,8 +146,8 @@ const FifteenPuzzleDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                <Label.Root label={`Moves: ${moves}`} cssClasses={["heading"]} />
-                {solved && <Label.Root label="Solved!" cssClasses={["success"]} />}
+                <Label label={`Moves: ${moves}`} cssClasses={["heading"]} />
+                {solved && <Label label="Solved!" cssClasses={["success"]} />}
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER} spacing={4}>

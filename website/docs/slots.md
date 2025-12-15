@@ -19,8 +19,8 @@ const ExpandableSection = () => (
   <Expander.Root label="Click to expand">
     <Expander.Child>
       <Box orientation={Orientation.VERTICAL} spacing={8}>
-        <Label.Root label="This content is inside the expander" />
-        <Label.Root label="It shows when expanded" />
+        <Label label="This content is inside the expander" />
+        <Label label="It shows when expanded" />
       </Box>
     </Expander.Child>
   </Expander.Root>
@@ -48,9 +48,9 @@ import { Frame, Label } from "@gtkx/react";
 
 <Frame.Root label="Settings">
   <Frame.Child>
-    <Label.Root label="Frame content goes here" />
+    <Label label="Frame content goes here" />
   </Frame.Child>
-</Frame.Root>
+</Frame.Root>;
 ```
 
 ### HeaderBar with Title Widget
@@ -62,11 +62,11 @@ import { Orientation } from "@gtkx/ffi/gtk";
 <HeaderBar.Root>
   <HeaderBar.TitleWidget>
     <Box orientation={Orientation.HORIZONTAL} spacing={8}>
-      <Label.Root label="My App" cssClasses={["heading"]} />
-      <Label.Root label="v1.0" cssClasses={["dim-label"]} />
+      <Label label="My App" cssClasses={["heading"]} />
+      <Label label="v1.0" cssClasses={["dim-label"]} />
     </Box>
   </HeaderBar.TitleWidget>
-</HeaderBar.Root>
+</HeaderBar.Root>;
 ```
 
 ### Window with Titlebar
@@ -80,10 +80,8 @@ import { Window, HeaderBar, Button, quit } from "@gtkx/react";
       <Button label="Menu" />
     </HeaderBar.Root>
   </Window.Titlebar>
-  <Window.Child>
-    {/* Main content */}
-  </Window.Child>
-</Window.Root>
+  <Window.Child>{/* Main content */}</Window.Child>
+</Window.Root>;
 ```
 
 ### Adwaita Toolbar View
@@ -92,10 +90,10 @@ import { Window, HeaderBar, Button, quit } from "@gtkx/react";
 
 ```tsx
 import {
-    AdwToolbarView,
-    AdwHeaderBar,
-    AdwWindowTitle,
-    Label,
+  AdwToolbarView,
+  AdwHeaderBar,
+  AdwWindowTitle,
+  Label,
 } from "@gtkx/react";
 
 <AdwToolbarView.Root>
@@ -107,12 +105,10 @@ import {
     </AdwHeaderBar.Root>
   </AdwToolbarView.Top>
   <AdwToolbarView.Content>
-    <Label.Root label="Main content" />
+    <Label label="Main content" />
   </AdwToolbarView.Content>
-  <AdwToolbarView.Bottom>
-    {/* Optional bottom toolbar */}
-  </AdwToolbarView.Bottom>
-</AdwToolbarView.Root>
+  <AdwToolbarView.Bottom>{/* Optional bottom toolbar */}</AdwToolbarView.Bottom>
+</AdwToolbarView.Root>;
 ```
 
 ### Adwaita Application Window
@@ -126,7 +122,7 @@ import { AdwApplicationWindow, quit } from "@gtkx/react";
   <AdwApplicationWindow.Content>
     {/* Your app content */}
   </AdwApplicationWindow.Content>
-</AdwApplicationWindow.Root>
+</AdwApplicationWindow.Root>;
 ```
 
 ## Root vs Slot Components
@@ -148,18 +144,18 @@ Every widget with slots has two component types:
 
 ## Labels as Slots
 
-`Label.Root` is a special case — it's both a widget and commonly used as a slot value:
+`Label` is a special case — it's both a widget and commonly used as a slot value:
 
 ```tsx
 import { Label, Button } from "@gtkx/react";
 
 // Label as a standalone widget
-<Label.Root label="Hello, World!" />
+<Label label="Hello, World!" />
 
 // Button with custom label widget (uses Label internally)
 <Button>
   <Button.Child>
-    <Label.Root label="<b>Bold</b> button" useMarkup />
+    <Label label="<b>Bold</b> button" useMarkup />
   </Button.Child>
 </Button>
 ```
@@ -174,11 +170,7 @@ import { Expander, Label, Spinner } from "@gtkx/react";
 const LoadingExpander = ({ loading, data }) => (
   <Expander.Root label="Data">
     <Expander.Child>
-      {loading ? (
-        <Spinner spinning />
-      ) : (
-        <Label.Root label={data} />
-      )}
+      {loading ? <Spinner spinning /> : <Label label={data} />}
     </Expander.Child>
   </Expander.Root>
 );

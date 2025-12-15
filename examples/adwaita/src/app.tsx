@@ -97,7 +97,7 @@ const ListsSection = () => (
                     <AdwButtonRow title="Button Row" startIconName="list-add-symbolic" />
 
                     <AdwActionRow.Root title="With Badge" subtitle="Shows additional info">
-                        <Label.Root label="3" cssClasses={["accent", "badge"]} valign={Gtk.Align.CENTER} />
+                        <Label label="3" cssClasses={["accent", "badge"]} valign={Gtk.Align.CENTER} />
                     </AdwActionRow.Root>
                 </ListBox>
 
@@ -209,7 +209,7 @@ const App = () => {
                         >
                             <AdwClamp maximumSize={400}>
                                 <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                                    <Label.Root
+                                    <Label
                                         label="Explore the different pages using the buttons below."
                                         wrap
                                         justify={Gtk.Justification.CENTER}

@@ -35,11 +35,11 @@ const colorBox = (color: string) => css`
 const FlowBoxDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Flow Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Flow Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About FlowBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About FlowBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="GtkFlowBox is a container that positions child widgets in sequence according to its orientation. It reflows children when the container size changes."
                     wrap
                     cssClasses={["dim-label"]}
@@ -47,8 +47,8 @@ const FlowBoxDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Color Palette" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Color Palette" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="Resize the window to see the colors reflow. FlowBox automatically adjusts the layout based on available space."
                     wrap
                     cssClasses={["dim-label"]}
@@ -78,8 +78,8 @@ const FlowBoxDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="FlowBox properties include: min/max-children-per-line, column-spacing, row-spacing, homogeneous, and selection-mode."
                     wrap
                     cssClasses={["dim-label"]}

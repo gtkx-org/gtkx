@@ -49,31 +49,29 @@ const FileChooserDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="File Chooser" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="File Chooser" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Open File" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Open File" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Button label="Open File..." onClicked={openSingleFile} />
-                {selectedFile && <Label.Root label={`Selected: ${selectedFile}`} cssClasses={["dim-label"]} wrap />}
+                {selectedFile && <Label label={`Selected: ${selectedFile}`} cssClasses={["dim-label"]} wrap />}
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Select Folder" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Select Folder" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Button label="Select Folder..." onClicked={selectFolder} />
-                {selectedFolder && <Label.Root label={`Selected: ${selectedFolder}`} cssClasses={["dim-label"]} wrap />}
+                {selectedFolder && <Label label={`Selected: ${selectedFolder}`} cssClasses={["dim-label"]} wrap />}
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Save File" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Save File" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Button label="Save As..." onClicked={saveFile} />
-                {saveLocation && (
-                    <Label.Root label={`Would save to: ${saveLocation}`} cssClasses={["dim-label"]} wrap />
-                )}
+                {saveLocation && <Label label={`Would save to: ${saveLocation}`} cssClasses={["dim-label"]} wrap />}
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About FileDialog" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About FileDialog" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="FileDialog is the modern GTK4 file chooser. It uses async/await and returns Gio.File objects that can be used to read or write file contents."
                     wrap
                     cssClasses={["dim-label"]}

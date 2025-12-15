@@ -539,7 +539,7 @@ describe("React Reconciler", () => {
 
     describe("child management - ListView", () => {
         const renderItem = (item: { id: number } | null) => {
-            return <Label.Root label={item ? `Item ${item.id}` : ""} />;
+            return <Label label={item ? `Item ${item.id}` : ""} />;
         };
 
         it("adds items to list view", () => {
@@ -589,7 +589,7 @@ describe("React Reconciler", () => {
 
     describe("child management - ColumnView", () => {
         const renderCell = (item: { name: string } | null) => {
-            return <Label.Root label={item?.name ?? ""} />;
+            return <Label label={item?.name ?? ""} />;
         };
 
         it("adds columns to column view", () => {
@@ -800,7 +800,7 @@ describe("React Reconciler", () => {
         it("renders nested components", () => {
             render(
                 <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
-                    <Label.Root label="Title" />
+                    <Label label="Title" />
                     <Button label="Click Me" />
                 </Box>,
             );
@@ -814,7 +814,7 @@ describe("React Reconciler", () => {
             const Counter = () => {
                 const [count, _setCount] = useState(0);
                 setCount = _setCount;
-                return <Label.Root label={`Count: ${count}`} />;
+                return <Label label={`Count: ${count}`} />;
             };
 
             render(<Counter />);
@@ -834,7 +834,7 @@ describe("React Reconciler", () => {
                 setVisible = _setVisible;
                 return (
                     <Box spacing={10} orientation={Gtk.Orientation.VERTICAL}>
-                        {visible && <Label.Root label="Visible" />}
+                        {visible && <Label label="Visible" />}
                     </Box>
                 );
             };
@@ -855,7 +855,7 @@ describe("React Reconciler", () => {
             render(
                 <Box spacing={5} orientation={Gtk.Orientation.VERTICAL}>
                     {items.map((item) => (
-                        <Label.Root key={item} label={item} />
+                        <Label key={item} label={item} />
                     ))}
                 </Box>,
             );
@@ -868,10 +868,10 @@ describe("React Reconciler", () => {
             render(
                 <>
                     <ApplicationWindow title="Window 1">
-                        <Label.Root label="Content 1" />
+                        <Label label="Content 1" />
                     </ApplicationWindow>
                     <ApplicationWindow title="Window 2">
-                        <Label.Root label="Content 2" />
+                        <Label label="Content 2" />
                     </ApplicationWindow>
                 </>,
             );
@@ -884,16 +884,16 @@ describe("React Reconciler", () => {
             render(
                 <Grid.Root>
                     <Grid.Child column={0} row={0}>
-                        <Label.Root label="A" />
+                        <Label label="A" />
                     </Grid.Child>
                     <Grid.Child column={1} row={0}>
-                        <Label.Root label="B" />
+                        <Label label="B" />
                     </Grid.Child>
                     <Grid.Child column={0} row={1}>
-                        <Label.Root label="C" />
+                        <Label label="C" />
                     </Grid.Child>
                     <Grid.Child column={1} row={1}>
-                        <Label.Root label="D" />
+                        <Label label="D" />
                     </Grid.Child>
                 </Grid.Root>,
             );
@@ -905,7 +905,7 @@ describe("React Reconciler", () => {
         it("renders Overlay with main child and overlays", () => {
             render(
                 <Overlay>
-                    <Label.Root label="Main Content" />
+                    <Label label="Main Content" />
                     <Button label="Overlay Button" />
                 </Overlay>,
             );
@@ -918,13 +918,13 @@ describe("React Reconciler", () => {
             render(
                 <Notebook.Root>
                     <Notebook.Page label="Page 1">
-                        <Label.Root label="Page 1 Content" />
+                        <Label label="Page 1 Content" />
                     </Notebook.Page>
                     <Notebook.Page label="Page 2">
-                        <Label.Root label="Page 2 Content" />
+                        <Label label="Page 2 Content" />
                     </Notebook.Page>
                     <Notebook.Page label="Page 3">
-                        <Label.Root label="Page 3 Content" />
+                        <Label label="Page 3 Content" />
                     </Notebook.Page>
                 </Notebook.Root>,
             );
@@ -951,7 +951,7 @@ describe("React Reconciler", () => {
                         }}
                     >
                         {items.map((item) => (
-                            <Label.Root key={item} label={item} />
+                            <Label key={item} label={item} />
                         ))}
                     </Box>
                 );
@@ -982,7 +982,7 @@ describe("React Reconciler", () => {
                         }}
                     >
                         {items.map((item) => (
-                            <Label.Root key={item} label={item} />
+                            <Label key={item} label={item} />
                         ))}
                     </Box>
                 );
@@ -1013,7 +1013,7 @@ describe("React Reconciler", () => {
                         }}
                     >
                         {items.map((item) => (
-                            <Label.Root key={item} label={item} />
+                            <Label key={item} label={item} />
                         ))}
                     </Box>
                 );
@@ -1044,7 +1044,7 @@ describe("React Reconciler", () => {
                         }}
                     >
                         {items.map((item) => (
-                            <Label.Root key={item} label={item} />
+                            <Label key={item} label={item} />
                         ))}
                     </Box>
                 );
@@ -1075,7 +1075,7 @@ describe("React Reconciler", () => {
                         }}
                     >
                         {items.map((item) => (
-                            <Label.Root key={item} label={item} />
+                            <Label key={item} label={item} />
                         ))}
                     </Box>
                 );
@@ -1106,7 +1106,7 @@ describe("React Reconciler", () => {
                         }}
                     >
                         {items.map((item) => (
-                            <Label.Root key={item} label={item} />
+                            <Label key={item} label={item} />
                         ))}
                     </Box>
                 );
@@ -1140,7 +1140,7 @@ describe("React Reconciler", () => {
                         }}
                     >
                         {items.map((item) => (
-                            <Label.Root key={item} label={item} />
+                            <Label key={item} label={item} />
                         ))}
                     </Box>
                 );
@@ -1170,7 +1170,7 @@ describe("React Reconciler", () => {
                                     windowRef = ref ?? undefined;
                                 }}
                             >
-                                <Label.Root label="Portal Content" />
+                                <Label label="Portal Content" />
                             </ApplicationWindow>,
                         )}
                     </>
@@ -1201,7 +1201,7 @@ describe("React Reconciler", () => {
                                             windowRef = ref ?? undefined;
                                         }}
                                     >
-                                        <Label.Root label="Portal Content" />
+                                        <Label label="Portal Content" />
                                     </ApplicationWindow>,
                                 )}
                         </>
@@ -1235,7 +1235,7 @@ describe("React Reconciler", () => {
                                         windowRef = ref ?? undefined;
                                     }}
                                 >
-                                    <Label.Root label="Content" />
+                                    <Label label="Content" />
                                 </ApplicationWindow>,
                             )}
                         </>
@@ -1267,7 +1267,7 @@ describe("React Reconciler", () => {
                             />
                             {containerRef &&
                                 createPortal(
-                                    <Label.Root
+                                    <Label
                                         label="Portaled Label"
                                         ref={(ref: Gtk.Label | null) => {
                                             portalLabelRef = ref ?? undefined;
@@ -1302,13 +1302,13 @@ describe("React Reconciler", () => {
                                     containerRef = ref ?? undefined;
                                 }}
                             >
-                                <Label.Root label="Direct Child" />
+                                <Label label="Direct Child" />
                             </Box>
                             {containerRef &&
                                 createPortal(
                                     <>
-                                        <Label.Root label="Portal Child 1" />
-                                        <Label.Root label="Portal Child 2" />
+                                        <Label label="Portal Child 1" />
+                                        <Label label="Portal Child 2" />
                                     </>,
                                     containerRef,
                                 )}
@@ -1344,9 +1344,9 @@ describe("React Reconciler", () => {
                                     containerRef = ref ?? undefined;
                                 }}
                             >
-                                <Label.Root label="Stays" />
+                                <Label label="Stays" />
                             </Box>
-                            {containerRef && showPortal && createPortal(<Label.Root label="Goes Away" />, containerRef)}
+                            {containerRef && showPortal && createPortal(<Label label="Goes Away" />, containerRef)}
                         </ApplicationWindow>
                     );
                 };
@@ -1383,7 +1383,7 @@ describe("React Reconciler", () => {
                             />
                             {containerRef &&
                                 createPortal(
-                                    items.map((item) => <Label.Root key={item} label={item} />),
+                                    items.map((item) => <Label key={item} label={item} />),
                                     containerRef,
                                 )}
                         </ApplicationWindow>

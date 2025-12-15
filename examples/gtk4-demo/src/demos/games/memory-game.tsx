@@ -148,10 +148,10 @@ const MemoryGameDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Memory Game" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Memory Game" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root
+                <Label
                     label="Find all matching pairs! Click cards to flip them and try to remember where each symbol is located."
                     wrap
                     cssClasses={["dim-label"]}
@@ -159,9 +159,9 @@ const MemoryGameDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={20}>
-                <Label.Root label={`Moves: ${moves}`} cssClasses={["heading"]} />
-                <Label.Root label={`Matches: ${matches}/${TOTAL_PAIRS}`} cssClasses={["heading"]} />
-                {isGameWon && <Label.Root label="You Win!" cssClasses={["success"]} />}
+                <Label label={`Moves: ${moves}`} cssClasses={["heading"]} />
+                <Label label={`Matches: ${matches}/${TOTAL_PAIRS}`} cssClasses={["heading"]} />
+                {isGameWon && <Label label="You Win!" cssClasses={["success"]} />}
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER} spacing={6}>

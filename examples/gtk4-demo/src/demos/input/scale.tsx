@@ -15,12 +15,12 @@ const ScaleDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Scale" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Scale" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Horizontal Scale with Value" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Horizontal Scale with Value" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label.Root label="Volume:" widthRequest={80} />
+                    <Label label="Volume:" widthRequest={80} />
                     <Scale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
@@ -29,13 +29,13 @@ const ScaleDemo = () => {
                         onValueChanged={(self) => setVolume(self.getValue())}
                     />
                 </Box>
-                <Label.Root label={`Current volume: ${Math.round(volume)}%`} cssClasses={["dim-label"]} />
+                <Label label={`Current volume: ${Math.round(volume)}%`} cssClasses={["dim-label"]} />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Scale with Marks" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Scale with Marks" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label.Root label="Brightness:" widthRequest={80} />
+                    <Label label="Brightness:" widthRequest={80} />
                     <Scale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
@@ -44,13 +44,13 @@ const ScaleDemo = () => {
                         onValueChanged={(self) => setBrightness(self.getValue())}
                     />
                 </Box>
-                <Label.Root label={`Current brightness: ${Math.round(brightness)}%`} cssClasses={["dim-label"]} />
+                <Label label={`Current brightness: ${Math.round(brightness)}%`} cssClasses={["dim-label"]} />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Fine-grained Control" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Fine-grained Control" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label.Root label="Temp:" widthRequest={80} />
+                    <Label label="Temp:" widthRequest={80} />
                     <Scale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
@@ -60,11 +60,11 @@ const ScaleDemo = () => {
                         onValueChanged={(self) => setTemperature(self.getValue())}
                     />
                 </Box>
-                <Label.Root label={`Temperature: ${temperature.toFixed(1)}°C`} cssClasses={["dim-label"]} />
+                <Label label={`Temperature: ${temperature.toFixed(1)}°C`} cssClasses={["dim-label"]} />
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Vertical Scale" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Vertical Scale" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={20} halign={Gtk.Align.CENTER}>
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={4} halign={Gtk.Align.CENTER}>
                         <Scale
@@ -74,7 +74,7 @@ const ScaleDemo = () => {
                             drawValue
                             adjustment={volumeAdjustment}
                         />
-                        <Label.Root label="Vol" cssClasses={["dim-label"]} />
+                        <Label label="Vol" cssClasses={["dim-label"]} />
                     </Box>
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={4} halign={Gtk.Align.CENTER}>
                         <Scale
@@ -84,7 +84,7 @@ const ScaleDemo = () => {
                             drawValue
                             adjustment={brightnessAdjustment}
                         />
-                        <Label.Root label="Bright" cssClasses={["dim-label"]} />
+                        <Label label="Bright" cssClasses={["dim-label"]} />
                     </Box>
                 </Box>
             </Box>

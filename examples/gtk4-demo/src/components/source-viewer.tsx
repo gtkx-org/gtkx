@@ -71,7 +71,7 @@ export const SourceViewer = ({ sourcePath, title = "Source Code" }: SourceViewer
                 vexpand
                 hexpand
             >
-                <Label.Root label="No source available" cssClasses={["dim-label"]} />
+                <Label label="No source available" cssClasses={["dim-label"]} />
             </Box>
         );
     }
@@ -86,7 +86,7 @@ export const SourceViewer = ({ sourcePath, title = "Source Code" }: SourceViewer
                 marginTop={8}
                 marginBottom={8}
             >
-                <Label.Root label={title} cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
+                <Label label={title} cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
                 <Button
                     iconName="edit-copy-symbolic"
                     cssClasses={["flat"]}

@@ -26,11 +26,11 @@ const DropDownDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Drop Down" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Drop Down" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About DropDown" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About DropDown" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="GtkDropDown is a modern replacement for combo boxes. It displays a single selected item and reveals a list of options when clicked."
                     wrap
                     cssClasses={["dim-label"]}
@@ -38,7 +38,7 @@ const DropDownDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Country Selector" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Country Selector" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <DropDown.Root
                     itemLabel={(item: Country) => item.name}
                     onSelectionChanged={(item: Country | null) => setSelectedCountry(item)}
@@ -57,9 +57,9 @@ const DropDownDemo = () => {
                             marginTop={12}
                             marginBottom={12}
                         >
-                            <Label.Root label="Selected Country" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                            <Label.Root label={selectedCountry.name} halign={Gtk.Align.START} />
-                            <Label.Root
+                            <Label label="Selected Country" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                            <Label label={selectedCountry.name} halign={Gtk.Align.START} />
+                            <Label
                                 label={`Capital: ${selectedCountry.capital}`}
                                 halign={Gtk.Align.START}
                                 cssClasses={["dim-label"]}
@@ -70,8 +70,8 @@ const DropDownDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="DropDown supports custom item rendering, search/filter, and keyboard navigation. Use DropDown.Root with DropDown.Item children."
                     wrap
                     cssClasses={["dim-label"]}

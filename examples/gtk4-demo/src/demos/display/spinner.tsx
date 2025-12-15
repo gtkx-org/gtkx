@@ -9,11 +9,11 @@ const SpinnerDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Spinner" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Spinner" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About Spinners" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About Spinners" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="GtkSpinner displays an indefinite loading animation. It's useful for indicating that an operation is in progress."
                     wrap
                     cssClasses={["dim-label"]}
@@ -21,7 +21,7 @@ const SpinnerDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Interactive Spinner" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Interactive Spinner" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={12}
@@ -47,23 +47,23 @@ const SpinnerDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Different Sizes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Different Sizes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                         <Spinner spinning widthRequest={16} heightRequest={16} />
-                        <Label.Root label="16px" cssClasses={["dim-label", "caption"]} />
+                        <Label label="16px" cssClasses={["dim-label", "caption"]} />
                     </Box>
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                         <Spinner spinning widthRequest={32} heightRequest={32} />
-                        <Label.Root label="32px" cssClasses={["dim-label", "caption"]} />
+                        <Label label="32px" cssClasses={["dim-label", "caption"]} />
                     </Box>
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                         <Spinner spinning widthRequest={48} heightRequest={48} />
-                        <Label.Root label="48px" cssClasses={["dim-label", "caption"]} />
+                        <Label label="48px" cssClasses={["dim-label", "caption"]} />
                     </Box>
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                         <Spinner spinning widthRequest={64} heightRequest={64} />
-                        <Label.Root label="64px" cssClasses={["dim-label", "caption"]} />
+                        <Label label="64px" cssClasses={["dim-label", "caption"]} />
                     </Box>
                 </Box>
             </Box>

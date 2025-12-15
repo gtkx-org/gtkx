@@ -54,7 +54,7 @@ describe("userEvent", () => {
 
     describe("type", () => {
         it("throws when element is not editable (label)", async () => {
-            await render(<Label.Root label="Not editable" />);
+            await render(<Label label="Not editable" />);
 
             const label = await screen.findByText("Not editable");
 
@@ -114,7 +114,7 @@ describe("userEvent", () => {
 
     describe("clear", () => {
         it("throws when element is not editable (label)", async () => {
-            await render(<Label.Root label="Not clearable" />);
+            await render(<Label label="Not clearable" />);
 
             const label = await screen.findByText("Not clearable");
 

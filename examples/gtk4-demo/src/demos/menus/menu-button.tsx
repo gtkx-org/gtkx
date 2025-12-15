@@ -6,11 +6,11 @@ import type { Demo } from "../types.js";
 const MenuButtonDemo = () => {
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Menu Button" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Menu Button" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About MenuButton" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About MenuButton" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="GtkMenuButton is a button that displays a popover or menu when clicked. It's commonly used in toolbars and header bars."
                     wrap
                     cssClasses={["dim-label"]}
@@ -18,7 +18,7 @@ const MenuButtonDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Button Styles" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Button Styles" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
                     <MenuButton.Root label="Text Only">
                         <MenuButton.Popover>
@@ -32,7 +32,7 @@ const MenuButtonDemo = () => {
                                         marginTop={8}
                                         marginBottom={8}
                                     >
-                                        <Label.Root label="Menu content" />
+                                        <Label label="Menu content" />
                                     </Box>
                                 </Popover.Child>
                             </Popover.Root>
@@ -51,7 +51,7 @@ const MenuButtonDemo = () => {
                                         marginTop={8}
                                         marginBottom={8}
                                     >
-                                        <Label.Root label="Icon menu" />
+                                        <Label label="Icon menu" />
                                     </Box>
                                 </Popover.Child>
                             </Popover.Root>
@@ -61,7 +61,7 @@ const MenuButtonDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="File Menu Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="File Menu Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
                     <MenuButton.Root label="File">
                         <MenuButton.Popover>
@@ -133,7 +133,7 @@ const MenuButtonDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Rich Menu Items" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Rich Menu Items" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <MenuButton.Root label="Options" halign={Gtk.Align.CENTER}>
                     <MenuButton.Popover>
                         <Popover.Root>
@@ -148,15 +148,15 @@ const MenuButtonDemo = () => {
                                 >
                                     <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                                         <Image iconName="document-new-symbolic" />
-                                        <Label.Root label="New Document" halign={Gtk.Align.START} />
+                                        <Label label="New Document" halign={Gtk.Align.START} />
                                     </Box>
                                     <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                                         <Image iconName="folder-open-symbolic" />
-                                        <Label.Root label="Open Folder" halign={Gtk.Align.START} />
+                                        <Label label="Open Folder" halign={Gtk.Align.START} />
                                     </Box>
                                     <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                                         <Image iconName="preferences-system-symbolic" />
-                                        <Label.Root label="Settings" halign={Gtk.Align.START} />
+                                        <Label label="Settings" halign={Gtk.Align.START} />
                                     </Box>
                                 </Box>
                             </Popover.Child>

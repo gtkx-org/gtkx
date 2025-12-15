@@ -35,8 +35,8 @@ export const Sidebar = () => {
                                                 marginTop={4}
                                                 marginBottom={4}
                                             >
-                                                <Label.Root label={demo.title} halign={Gtk.Align.START} />
-                                                <Label.Root
+                                                <Label label={demo.title} halign={Gtk.Align.START} />
+                                                <Label
                                                     label={demo.description}
                                                     halign={Gtk.Align.START}
                                                     cssClasses={["dim-label", "caption"]}

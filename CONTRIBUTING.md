@@ -54,9 +54,7 @@ gtkx/
 │   ├── css/        # CSS-in-JS styling
 │   ├── testing/    # Testing utilities
 │   └── gir/        # GObject Introspection parser
-├── examples/
-│   ├── gtk4-demo/  # Widget showcase
-│   └── todo/       # Todo app with tests
+├── examples/       # Example applications
 └── website/        # Documentation site
 ```
 

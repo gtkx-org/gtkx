@@ -112,8 +112,8 @@ export default function App() {
     return (
         <ApplicationWindow title="${title}" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginTop={40} marginStart={40} marginEnd={40}>
-                <Label.Root label="Welcome to GTKX!" />
-                <Label.Root label={\`Count: \${count}\`} />
+                <Label label="Welcome to GTKX!" />
+                <Label label={\`Count: \${count}\`} />
                 <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
             </Box>
         </ApplicationWindow>
@@ -159,7 +159,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 const App = () => (
     <ApplicationWindow title="My App" defaultWidth={800} defaultHeight={600}>
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <Label.Root label="Hello, GTKX!" />
+            <Label label="Hello, GTKX!" />
             <Button label="Quit" onClicked={quit} />
         </Box>
     </ApplicationWindow>
@@ -175,8 +175,8 @@ render(<App />, "com.example.myapp");
 **Box** - Linear layout:
 \`\`\`tsx
 <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-    <Label.Root label="First" />
-    <Label.Root label="Second" />
+    <Label label="First" />
+    <Label label="Second" />
 </Box>
 \`\`\`
 
@@ -184,10 +184,10 @@ render(<App />, "com.example.myapp");
 \`\`\`tsx
 <Grid.Root spacing={10}>
     <Grid.Child column={0} row={0}>
-        <Label.Root label="Top-left" />
+        <Label label="Top-left" />
     </Grid.Child>
     <Grid.Child column={1} row={0} columnSpan={2}>
-        <Label.Root label="Spans 2 columns" />
+        <Label label="Spans 2 columns" />
     </Grid.Child>
 </Grid.Root>
 \`\`\`
@@ -196,10 +196,10 @@ render(<App />, "com.example.myapp");
 \`\`\`tsx
 <Stack.Root visibleChildName="page1">
     <Stack.Page name="page1" title="Page 1">
-        <Label.Root label="Content 1" />
+        <Label label="Content 1" />
     </Stack.Page>
     <Stack.Page name="page2" title="Page 2">
-        <Label.Root label="Content 2" />
+        <Label label="Content 2" />
     </Stack.Page>
 </Stack.Root>
 \`\`\`
@@ -235,7 +235,7 @@ render(<App />, "com.example.myapp");
 <ListView.Root
     vexpand
     renderItem={(item: Item | null) => (
-        <Label.Root label={item?.text ?? ""} />
+        <Label label={item?.text ?? ""} />
     )}
 >
     {items.map(item => (
@@ -256,7 +256,7 @@ render(<App />, "com.example.myapp");
         id="name"
         expand
         renderCell={(item: Item | null) => (
-            <Label.Root label={item?.name ?? ""} />
+            <Label label={item?.name ?? ""} />
         )}
     />
     {items.map(item => (
@@ -355,8 +355,8 @@ Linear layout container.
 
 \`\`\`tsx
 <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-    <Label.Root label="Child 1" />
-    <Label.Root label="Child 2" />
+    <Label label="Child 1" />
+    <Label label="Child 2" />
 </Box>
 \`\`\`
 
@@ -371,10 +371,10 @@ Props:
 \`\`\`tsx
 <Grid.Root spacing={10} rowSpacing={5} columnSpacing={5}>
     <Grid.Child column={0} row={0}>
-        <Label.Root label="Top-left" />
+        <Label label="Top-left" />
     </Grid.Child>
     <Grid.Child column={1} row={0} columnSpan={2}>
-        <Label.Root label="Spans 2 columns" />
+        <Label label="Spans 2 columns" />
     </Grid.Child>
 </Grid.Root>
 \`\`\`
@@ -455,7 +455,7 @@ High-performance scrollable list with virtual rendering.
 <ListView.Root
     vexpand
     renderItem={(item: Item | null) => (
-        <Label.Root label={item?.text ?? ""} />
+        <Label label={item?.text ?? ""} />
     )}
 >
     {items.map(item => (
@@ -483,7 +483,7 @@ Table with sortable columns.
         expand
         resizable
         renderCell={(item: Item | null) => (
-            <Label.Root label={item?.name ?? ""} />
+            <Label label={item?.name ?? ""} />
         )}
     />
     {items.map(item => (
@@ -536,9 +536,9 @@ const [active, setActive] = useState(false);
 
 ## Display Widgets
 
-### Label.Root
+### Label
 \`\`\`tsx
-<Label.Root label="Hello World" halign={Gtk.Align.START} wrap useMarkup />
+<Label label="Hello World" halign={Gtk.Align.START} wrap useMarkup />
 \`\`\`
 
 ### Button
@@ -648,7 +648,7 @@ export const App = () => {
     return (
         <ApplicationWindow title="Todo App" defaultWidth={400} defaultHeight={500} onCloseRequest={quit}>
             <Box orientation={Orientation.VERTICAL} spacing={16} marginTop={16} marginStart={16} marginEnd={16}>
-                <Label.Root label="Todo App" />
+                <Label label="Todo App" />
             </Box>
         </ApplicationWindow>
     );
@@ -673,13 +673,13 @@ const FormLayout = () => {
     return (
         <Grid.Root rowSpacing={8} columnSpacing={12}>
             <Grid.Child column={0} row={0}>
-                <Label.Root label="Name:" halign={Gtk.Align.END} />
+                <Label label="Name:" halign={Gtk.Align.END} />
             </Grid.Child>
             <Grid.Child column={1} row={0}>
                 <Entry text={name} onChanged={(e) => setName(e.getText())} hexpand />
             </Grid.Child>
             <Grid.Child column={0} row={1}>
-                <Label.Root label="Email:" halign={Gtk.Align.END} />
+                <Label label="Email:" halign={Gtk.Align.END} />
             </Grid.Child>
             <Grid.Child column={1} row={1}>
                 <Entry text={email} onChanged={(e) => setEmail(e.getText())} hexpand />
@@ -710,10 +710,10 @@ const TabContainer = () => (
         />
         <Stack.Root transitionType={Gtk.StackTransitionType.SLIDE_LEFT_RIGHT} transitionDuration={200}>
             <Stack.Page name="page1" title="First">
-                <Label.Root label="First Page Content" />
+                <Label label="First Page Content" />
             </Stack.Page>
             <Stack.Page name="page2" title="Second">
-                <Label.Root label="Second Page Content" />
+                <Label label="Second Page Content" />
             </Stack.Page>
         </Stack.Root>
     </Box>
@@ -744,7 +744,7 @@ const TaskList = () => (
         <ListView.Root
             vexpand
             renderItem={(task: Task | null) => (
-                <Label.Root
+                <Label
                     label={task?.title ?? ""}
                     cssClasses={task?.completed ? ["dim-label"] : []}
                     halign={Gtk.Align.START}
@@ -776,7 +776,7 @@ const MenuDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <Label.Root label={\`Last action: \${lastAction ?? "(none)"}\`} />
+            <Label label={\`Last action: \${lastAction ?? "(none)"}\`} />
             <MenuButton.Root label="Actions">
                 <MenuButton.Popover>
                     <PopoverMenu.Root>
@@ -814,7 +814,7 @@ interface TodoItemProps {
 export const TodoItem = ({ todo, onToggle, onDelete }: TodoItemProps) => (
     <Box orientation={Orientation.HORIZONTAL} spacing={8}>
         <CheckButton active={todo.completed} onToggled={() => onToggle(todo.id)} />
-        <Label.Root label={todo.text} hexpand cssClasses={todo.completed ? ["dim-label"] : []} />
+        <Label label={todo.text} hexpand cssClasses={todo.completed ? ["dim-label"] : []} />
         <Button iconName="edit-delete-symbolic" onClicked={() => onDelete(todo.id)} cssClasses={["flat"]} />
     </Box>
 );

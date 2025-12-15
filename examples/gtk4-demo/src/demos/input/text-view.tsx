@@ -36,11 +36,11 @@ const TextViewDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="TextView" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="TextView" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Multi-line Text Editor" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Multi-line Text Editor" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="TextView is a multi-line text editing widget. Type in the text area below to see the character and word count update."
                     wrap
                     cssClasses={["dim-label"]}
@@ -58,14 +58,14 @@ const TextViewDemo = () => {
                     </ScrolledWindow>
                 </Frame.Root>
                 <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
-                    <Label.Root label={`Characters: ${charCount}`} cssClasses={["dim-label"]} />
-                    <Label.Root label={`Words: ${wordCount}`} cssClasses={["dim-label"]} />
+                    <Label label={`Characters: ${charCount}`} cssClasses={["dim-label"]} />
+                    <Label label={`Words: ${wordCount}`} cssClasses={["dim-label"]} />
                 </Box>
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Read-only TextView" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="Read-only TextView" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="A non-editable TextView can be used to display formatted text."
                     wrap
                     cssClasses={["dim-label"]}
@@ -86,8 +86,8 @@ const TextViewDemo = () => {
             </Box>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Monospace TextView" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root label="Useful for code editing or displaying logs." wrap cssClasses={["dim-label"]} />
+                <Label label="Monospace TextView" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Useful for code editing or displaying logs." wrap cssClasses={["dim-label"]} />
                 <Frame.Root>
                     <ScrolledWindow minContentHeight={100} hexpand>
                         <TextView

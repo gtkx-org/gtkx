@@ -23,8 +23,8 @@ export const App = () => {
                 valign={Align.CENTER}
                 halign={Align.CENTER}
             >
-                <Label.Root label="Hello from Flatpak!" cssClasses={["title-1"]} />
-                <Label.Root label={`Count: ${count}`} cssClasses={["title-2"]} name="count-label" />
+                <Label label="Hello from Flatpak!" cssClasses={["title-1"]} />
+                <Label label={`Count: ${count}`} cssClasses={["title-2"]} name="count-label" />
                 <Button label="Increment" onClicked={increment} cssClasses={["suggested-action", "pill"]} />
             </Box>
         </ApplicationWindow>

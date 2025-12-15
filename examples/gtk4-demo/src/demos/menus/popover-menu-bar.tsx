@@ -13,11 +13,11 @@ const PopoverMenuBarDemo = () => {
 
     return (
         <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label.Root label="Popover Menu Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <Label label="Popover Menu Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="About PopoverMenuBar" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label.Root
+                <Label label="About PopoverMenuBar" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label
                     label="GtkPopoverMenuBar displays a traditional horizontal menu bar as an inline widget. Unlike ApplicationMenu which appears in the window titlebar, PopoverMenuBar can be placed anywhere in your layout. It uses the same Menu.Item, Menu.Section, and Menu.Submenu components."
                     wrap
                     cssClasses={["dim-label"]}
@@ -33,13 +33,13 @@ const PopoverMenuBarDemo = () => {
                     marginTop={8}
                     marginBottom={8}
                 >
-                    <Label.Root label="Last action:" cssClasses={["dim-label"]} />
-                    <Label.Root label={lastAction ?? "(none)"} cssClasses={lastAction ? ["accent"] : ["dim-label"]} />
+                    <Label label="Last action:" cssClasses={["dim-label"]} />
+                    <Label label={lastAction ?? "(none)"} cssClasses={lastAction ? ["accent"] : ["dim-label"]} />
                 </Box>
             </Frame.Root>
 
             <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label.Root label="Inline Menu Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <Label label="Inline Menu Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <Frame.Root>
                     <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
                         <PopoverMenuBar>
@@ -131,8 +131,8 @@ const PopoverMenuBarDemo = () => {
                             hexpand
                             vexpand
                         >
-                            <Label.Root label="Content Area" cssClasses={["title-3"]} halign={Gtk.Align.CENTER} />
-                            <Label.Root
+                            <Label label="Content Area" cssClasses={["title-3"]} halign={Gtk.Align.CENTER} />
+                            <Label
                                 label="The menu bar above is part of the content, not the window titlebar."
                                 cssClasses={["dim-label"]}
                                 halign={Gtk.Align.CENTER}

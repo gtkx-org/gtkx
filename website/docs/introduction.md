@@ -33,13 +33,13 @@ React JSX → React Reconciler → FFI Bindings → GTK4 Widgets
 
 GTKX provides the following packages:
 
-| Package         | Description                                                |
-| --------------- | ---------------------------------------------------------- |
-| `@gtkx/cli`     | CLI for creating and developing GTKX apps with HMR         |
-| `@gtkx/react`   | React reconciler and JSX components                        |
-| `@gtkx/ffi`     | TypeScript FFI bindings for GTK4, libadwaita, and more     |
-| `@gtkx/css`     | CSS-in-JS styling for GTK widgets (Emotion-style API)      |
-| `@gtkx/testing` | Testing utilities with a Testing Library-style API         |
+| Package         | Description                                            |
+| --------------- | ------------------------------------------------------ |
+| `@gtkx/cli`     | CLI for creating and developing GTKX apps with HMR     |
+| `@gtkx/react`   | React reconciler and JSX components                    |
+| `@gtkx/ffi`     | TypeScript FFI bindings for GTK4, libadwaita, and more |
+| `@gtkx/css`     | CSS-in-JS styling for GTK widgets (Emotion-style API)  |
+| `@gtkx/testing` | Testing utilities with a Testing Library-style API     |
 
 ## Supported Libraries
 
@@ -72,7 +72,7 @@ const Counter = () => {
       marginEnd={20}
       marginTop={20}
     >
-      <Label.Root label={`Count: ${count}`} />
+      <Label label={`Count: ${count}`} />
       <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
     </Box>
   );
