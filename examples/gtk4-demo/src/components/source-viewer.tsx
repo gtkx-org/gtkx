@@ -45,7 +45,11 @@ export const SourceViewer = ({ sourcePath, title = "Source Code" }: SourceViewer
     }, [sourcePath]);
 
     useEffect(() => {
-        buffer.setText(source ?? "", -1);
+        const timeoutId = setTimeout(() => {
+            buffer.setText(source ?? "", -1);
+        }, 0);
+
+        return () => clearTimeout(timeoutId);
     }, [source, buffer]);
 
     const handleCopy = () => {

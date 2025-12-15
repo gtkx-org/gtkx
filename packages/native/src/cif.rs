@@ -110,10 +110,11 @@ where
     F: FnOnce(Result<value::Value, ()>) -> T,
 {
     loop {
+        gtk_dispatch::dispatch_pending();
+
         match rx.try_recv() {
             Ok(result) => return on_result(result),
             Err(std::sync::mpsc::TryRecvError::Empty) => {
-                gtk_dispatch::dispatch_pending();
                 std::thread::yield_now();
             }
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {

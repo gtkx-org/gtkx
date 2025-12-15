@@ -602,11 +602,18 @@ ${widgetPropsContent}
             this.currentNamespace = namespace;
             const setterGetterPairs: string[] = [];
             const allProps = this.collectAllProperties(widget);
+            const parentMethodNames = this.collectParentMethodNames(widget);
+            const widgetClassName = toPascalCase(widget.name);
 
             for (const prop of allProps) {
                 if (prop.setter && prop.getter) {
                     const setterName = toCamelCase(prop.setter);
-                    const getterName = toCamelCase(prop.getter);
+                    let getterName = toCamelCase(prop.getter);
+
+                    if (parentMethodNames.has(prop.getter)) {
+                        getterName = `${getterName}${widgetClassName}`;
+                    }
+
                     setterGetterPairs.push(`"${setterName}": "${getterName}"`);
                 }
             }
@@ -622,6 +629,40 @@ ${widgetPropsContent}
         }
 
         return `export const SETTER_GETTERS: Record<string, Record<string, string>> = {\n${widgetEntries.join(",\n")},\n};\n`;
+    }
+
+    private collectParentMethodNames(widget: GirClass): Set<string> {
+        const names = new Set<string>();
+        const visited = new Set<string>();
+
+        let parentRef = widget.parent;
+        while (parentRef && !visited.has(parentRef)) {
+            visited.add(parentRef);
+
+            const current =
+                this.classMap.get(parentRef) ??
+                this.classMap.get(`${this.currentNamespace}.${parentRef}`) ??
+                this.classMap.get(`Gtk.${parentRef}`);
+
+            if (!current) break;
+
+            for (const method of current.methods) {
+                names.add(method.name);
+            }
+
+            for (const ifaceName of current.implements) {
+                const iface = this.interfaceMap.get(ifaceName);
+                if (iface) {
+                    for (const method of iface.methods) {
+                        names.add(method.name);
+                    }
+                }
+            }
+
+            parentRef = current.parent;
+        }
+
+        return names;
     }
 
     private collectAllProperties(widget: GirClass): { name: string; setter?: string; getter?: string }[] {
