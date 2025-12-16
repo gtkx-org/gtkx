@@ -117,6 +117,28 @@ importers:
         specifier: 19.2.7
         version: 19.2.7
 
+  examples/lists:
+    dependencies:
+      '@gtkx/css':
+        specifier: workspace:*
+        version: link:../../packages/css
+      '@gtkx/ffi':
+        specifier: workspace:*
+        version: link:../../packages/ffi
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
+    devDependencies:
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@types/react':
+        specifier: 19.2.7
+        version: 19.2.7
+
   examples/todo:
     dependencies:
       '@gtkx/ffi':

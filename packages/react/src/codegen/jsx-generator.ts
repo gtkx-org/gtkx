@@ -41,7 +41,7 @@ const COLUMN_VIEW_WIDGET = "ColumnView";
 const DROPDOWN_WIDGETS = new Set(["DropDown"]);
 const GRID_WIDGETS = new Set(["Grid"]);
 const NOTEBOOK_WIDGET = "Notebook";
-const STACK_WIDGET = "Stack";
+const STACK_WIDGETS = new Set(["Stack", "ViewStack", "AdwViewStack"]);
 const POPOVER_MENU_WIDGET = "PopoverMenu";
 const TOOLBAR_VIEW_WIDGET = "ToolbarView";
 
@@ -80,7 +80,7 @@ const isColumnViewWidget = (widgetName: string): boolean => widgetName === COLUM
 const isDropDownWidget = (widgetName: string): boolean => DROPDOWN_WIDGETS.has(widgetName);
 const isGridWidget = (widgetName: string): boolean => GRID_WIDGETS.has(widgetName);
 const isNotebookWidget = (widgetName: string): boolean => widgetName === NOTEBOOK_WIDGET;
-const isStackWidget = (widgetName: string): boolean => widgetName === STACK_WIDGET;
+const isStackWidget = (widgetName: string): boolean => STACK_WIDGETS.has(widgetName);
 const isPopoverMenuWidget = (widgetName: string): boolean => widgetName === POPOVER_MENU_WIDGET;
 const isToolbarViewWidget = (widgetName: string): boolean => widgetName === TOOLBAR_VIEW_WIDGET;
 

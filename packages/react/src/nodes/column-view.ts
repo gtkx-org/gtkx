@@ -7,11 +7,7 @@ import { type ColumnContainer, type ItemContainer, isColumnContainer } from "../
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
 import type { ColumnSortFn, RenderItemFn } from "../types.js";
-import {
-    connectListItemFactorySignals,
-    type ListItemFactoryHandlers,
-    type ListItemInfo,
-} from "./list-item-factory.js";
+import { connectListItemFactorySignals, type ListItemFactoryHandlers, type ListItemInfo } from "./list-item-factory.js";
 import { VirtualItemNode } from "./virtual-item.js";
 
 type ColumnViewState = {

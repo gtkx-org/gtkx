@@ -6,11 +6,7 @@ import type { ItemContainer } from "../container-interfaces.js";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
 import type { RenderItemFn } from "../types.js";
-import {
-    connectListItemFactorySignals,
-    type ListItemFactoryHandlers,
-    type ListItemInfo,
-} from "./list-item-factory.js";
+import { connectListItemFactorySignals, type ListItemFactoryHandlers, type ListItemInfo } from "./list-item-factory.js";
 import { VirtualItemNode } from "./virtual-item.js";
 
 type ListViewState = {

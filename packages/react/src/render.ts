@@ -15,9 +15,7 @@ function validateAppId(appId: string): void {
         throw new Error("appId must be a non-empty string");
     }
     if (!APP_ID_PATTERN.test(appId)) {
-        throw new Error(
-            `Invalid appId "${appId}". App ID must be in reverse-DNS format (e.g., "com.example.myapp")`,
-        );
+        throw new Error(`Invalid appId "${appId}". App ID must be in reverse-DNS format (e.g., "com.example.myapp")`);
     }
 }
 

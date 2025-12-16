@@ -1,0 +1,22 @@
+{
+    "name": "lists",
+    "version": "0.0.0",
+    "private": true,
+    "description": "GTK4 List Types - Showcasing all GTK4 list widgets including ColumnView with sorting",
+    "type": "module",
+    "scripts": {
+        "build": "tsc -b",
+        "dev": "gtkx dev src/app.tsx",
+        "start": "node dist/index.js"
+    },
+    "dependencies": {
+        "@gtkx/css": "workspace:*",
+        "@gtkx/ffi": "workspace:*",
+        "@gtkx/react": "workspace:*",
+        "react": "19.2.3"
+    },
+    "devDependencies": {
+        "@gtkx/cli": "workspace:*",
+        "@types/react": "19.2.7"
+    }
+}
