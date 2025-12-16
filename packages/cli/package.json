@@ -52,7 +52,7 @@
         "@gtkx/react": "workspace:*",
         "@vitejs/plugin-react": "5.1.2",
         "citty": "0.1.6",
-        "vite": "7.2.7"
+        "vite": "7.3.0"
     },
     "peerDependencies": {
         "react": "^19"
