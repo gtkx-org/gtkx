@@ -15,7 +15,7 @@
         "test": "turbo test --concurrency=1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.3.8",
+        "@biomejs/biome": "2.3.9",
         "@types/node": "25.0.1",
         "@types/react": "19.2.7",
         "@types/react-reconciler": "0.32.3",
