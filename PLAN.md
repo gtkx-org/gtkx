@@ -12,6 +12,11 @@ Rewrite all tests in the codebase with a consistent approach: one test file per 
 - **Never test internal/private functions** - If it's not exported or is an implementation detail, don't test it directly
 - **Test through the public interface** - Internal behavior should be verified through the public API that uses it
 
+### Test File Organization
+
+- **One test file per unit** - Each publicly exported unit (function, class, or component) should have its own dedicated test file
+- **Naming convention** - Test files should use kebab-case and be named after the unit they test (e.g., `get-object.test.ts` for `getObject`, `native-error.test.ts` for `NativeError`)
+
 ### Test Structure
 
 Each test file should follow this structure:
@@ -104,13 +109,65 @@ TODO: Plan test files
 
 ### Public API
 
-TODO: Document public exports (note: mostly auto-generated)
+The FFI package exposes:
+1. `start` - Starts the GTK application with the given application ID
+2. `stop` - Stops the GTK application and cleans up
+3. `getCurrentApp` - Gets the current GTK application instance
+4. `events` - EventEmitter for GTK lifecycle events ("start", "stop")
+5. `getObject` - Wraps a native pointer in a class instance using GLib type system
+6. `getBoxed` - Wraps a native boxed type pointer in a class instance
+7. `getInterface` - Wraps a native pointer as an interface instance
+8. `registerType` - Registers a class in the global GObject type registry
+9. `call` - Calls a native GTK function via FFI
+10. `beginBatch` - Begins batching mode for FFI calls
+11. `endBatch` - Ends the current batch level and executes queued calls
+12. `isBatching` - Checks if batching mode is active
+13. `isInstantiating` - Flag to prevent intermediate base class constructors from creating objects
+14. `setInstantiating` - Sets the instantiation flag
+15. `createRef` - Creates a ref object (re-exported from @gtkx/native)
+16. `getObjectId` - Returns the native pointer from an object (re-exported from @gtkx/native)
+17. `NativeError` - Error class that wraps a GLib GError
+
+Note: Generated bindings in `./gtk`, `./gdk`, `./gio`, etc. are auto-generated and tested through the public API.
 
 ### Test Files
 
-TODO: Plan test files
+```
+packages/ffi/tests/
+├── start.test.ts           # start()
+├── get-current-app.test.ts # getCurrentApp()
+├── events.test.ts          # events
+├── get-object.test.ts      # getObject()
+├── get-boxed.test.ts       # getBoxed()
+├── get-interface.test.ts   # getInterface()
+├── register-type.test.ts   # registerType()
+├── call.test.ts            # call()
+├── batch.test.ts           # beginBatch(), endBatch(), isBatching()
+├── instantiating.test.ts   # isInstantiating, setInstantiating()
+├── create-ref.test.ts      # createRef()
+├── get-object-id.test.ts   # getObjectId()
+├── native-error.test.ts    # NativeError
+└── codegen/                        # Tests for generated FFI bindings
+    ├── class-construction.test.ts  # GObject class instantiation
+    ├── methods.test.ts             # Instance and static methods
+    ├── properties.test.ts          # Getter/setter properties
+    ├── signals.test.ts             # Signal connection
+    ├── boxed-types.test.ts         # Stack-allocated boxed types
+    ├── interfaces.test.ts          # GObject interfaces
+    ├── enums.test.ts               # Enum and flags types
+    ├── functions.test.ts           # Namespace-level functions
+    ├── constants.test.ts           # Generated constants
+    ├── cross-namespace.test.ts     # Cross-namespace type usage
+    ├── ref-parameters.test.ts      # Ref<T> output parameters
+    ├── async-methods.test.ts       # Promise-returning async methods
+    ├── error-handling.test.ts      # NativeError and GError handling
+    ├── static-factory-methods.test.ts  # Static factory constructors
+    ├── nullable-returns.test.ts    # Nullable return types
+    ├── array-returns.test.ts       # Array return types
+    └── callbacks.test.ts           # Callback parameters
+```
 
-### Status: ⏳ Pending
+### Status: ✅ Complete (202 tests)
 
 ---
 
