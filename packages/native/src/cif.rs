@@ -229,7 +229,7 @@ impl TryFrom<arg::Arg> for Value {
             }
             Type::Null => Ok(Value::Ptr(std::ptr::null_mut())),
             Type::Undefined => Ok(Value::Ptr(std::ptr::null_mut())),
-            Type::GObject(type_) => {
+            Type::GObject(_) => {
                 let object_id = match &arg.value {
                     value::Value::Object(id) => Some(id),
                     value::Value::Null | value::Value::Undefined => None,
@@ -242,14 +242,6 @@ impl TryFrom<arg::Arg> for Value {
                         .ok_or_else(|| anyhow::anyhow!("GObject has been garbage collected"))?,
                     None => std::ptr::null_mut(),
                 };
-
-                let is_transfer_full = !type_.is_borrowed && !ptr.is_null();
-
-                if is_transfer_full {
-                    unsafe {
-                        glib::gobject_ffi::g_object_ref(ptr as *mut glib::gobject_ffi::GObject);
-                    }
-                }
 
                 Ok(Value::Ptr(ptr))
             }
@@ -637,6 +629,37 @@ impl Value {
 
                 let closure_ptr = closure_to_glib_full(&closure);
                 let trampoline_ptr = callback::get_compare_data_func_trampoline_ptr();
+                let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
+
+                Ok(Value::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr,
+                    closure: OwnedPtr::new(closure, closure_ptr),
+                    destroy_ptr: Some(destroy_ptr),
+                    data_first: false,
+                }))
+            }
+
+            CallbackTrampoline::TickFunc => {
+                let arg_types = type_.arg_types.clone();
+
+                let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    let args_values = convert_glib_args(args, &arg_types)
+                        .expect("Failed to convert GLib tick callback arguments");
+
+                    invoke_and_wait_for_js_result(
+                        &channel,
+                        &callback,
+                        args_values,
+                        true,
+                        |result| match result {
+                            Ok(value) => value.into(),
+                            Err(_) => Some(false.into()),
+                        },
+                    )
+                });
+
+                let closure_ptr = closure_to_glib_full(&closure);
+                let trampoline_ptr = callback::get_tick_func_trampoline_ptr();
                 let destroy_ptr = callback::get_unref_closure_trampoline_ptr();
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {

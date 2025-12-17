@@ -123,6 +123,61 @@ pub fn get_unref_closure_trampoline_ptr() -> *mut c_void {
     unref_closure_trampoline as *mut c_void
 }
 
+/// Trampoline for GtkTickCallback (frame clock tick callbacks).
+///
+/// Returns 1 (TRUE) to keep the callback active, 0 (FALSE) to remove it.
+/// The closure is cleaned up by the destroy notify callback, not here.
+///
+/// # Safety
+///
+/// This function is called from C code. The `user_data` pointer must be a valid
+/// pointer to a `GClosure`, and `widget` and `frame_clock` must be valid GTK objects.
+unsafe extern "C" fn tick_func_trampoline(
+    widget: *mut c_void,
+    frame_clock: *mut c_void,
+    user_data: *mut c_void,
+) -> i32 {
+    let closure_ptr = user_data as *mut gobject_ffi::GClosure;
+
+    if closure_ptr.is_null() {
+        return 0;
+    }
+
+    unsafe {
+        let mut args: [glib::Value; 2] = [
+            glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
+            glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
+        ];
+
+        gobject_ffi::g_value_set_object(
+            args[0].to_glib_none_mut().0,
+            widget as *mut gobject_ffi::GObject,
+        );
+        gobject_ffi::g_value_set_object(
+            args[1].to_glib_none_mut().0,
+            frame_clock as *mut gobject_ffi::GObject,
+        );
+
+        let mut return_value = glib::Value::from_type_unchecked(glib::types::Type::BOOL);
+
+        gobject_ffi::g_closure_invoke(
+            closure_ptr,
+            return_value.to_glib_none_mut().0,
+            2,
+            args[0].to_glib_none_mut().0,
+            std::ptr::null_mut(),
+        );
+
+        let result = return_value.get::<bool>().unwrap_or(false);
+        i32::from(result)
+    }
+}
+
+/// Returns the function pointer to the tick function trampoline.
+pub fn get_tick_func_trampoline_ptr() -> *mut c_void {
+    tick_func_trampoline as *mut c_void
+}
+
 /// Trampoline for GSourceFunc callbacks (e.g., idle_add_full, timeout_add_full).
 ///
 /// Returns 1 (TRUE) to keep the source active, 0 (FALSE) to remove it.

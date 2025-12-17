@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { batchCall, call } from "../index.js";
-import { GTK_LIB } from "./setup.js";
+import { GTK_LIB } from "./utils.js";
 
 describe("batchCall", () => {
     it("executes multiple void calls in a single dispatch", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../index.js";
-import { BOOLEAN, createButton, createLabel, GOBJECT, GOBJECT_BORROWED, GTK_LIB, UNDEFINED } from "./test-helpers.js";
+import { BOOLEAN, createButton, createLabel, GOBJECT, GOBJECT_BORROWED, GTK_LIB, UNDEFINED } from "../utils.js";
 
 describe("call - boolean type", () => {
     it("passes true and returns true", () => {

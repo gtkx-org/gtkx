@@ -10,8 +10,9 @@ import {
     GTK_LIB,
     INT32,
     STRING,
+    STRING_BORROWED,
     UNDEFINED,
-} from "./test-helpers.js";
+} from "../utils.js";
 
 describe("call - undefined type", () => {
     it("returns undefined for void functions", () => {
@@ -184,7 +185,12 @@ describe("call - undefined type", () => {
 
             expect(result).toBeUndefined();
 
-            const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const text = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(text).toBe("Modified");
         });

@@ -8,12 +8,34 @@ use std::{
     cell::RefCell,
     collections::{HashMap, hash_map::Entry},
     mem::ManuallyDrop,
+    sync::{Mutex, OnceLock},
+    thread::JoinHandle,
 };
 
 use gtk4::gio::ApplicationHoldGuard;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
 use crate::object::Object;
+
+static GTK_THREAD_HANDLE: OnceLock<Mutex<Option<JoinHandle<()>>>> = OnceLock::new();
+
+pub fn set_gtk_thread_handle(handle: JoinHandle<()>) {
+    GTK_THREAD_HANDLE
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .expect("GTK thread handle mutex poisoned")
+        .replace(handle);
+}
+
+pub fn join_gtk_thread() {
+    if let Some(mutex) = GTK_THREAD_HANDLE.get() {
+        if let Ok(mut guard) = mutex.lock() {
+            if let Some(handle) = guard.take() {
+                let _ = handle.join();
+            }
+        }
+    }
+}
 
 /// Thread-local state for the GTK thread.
 ///

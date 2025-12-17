@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../index.js";
-import { createLabel, forceGC, GOBJECT, GOBJECT_BORROWED, GTK_LIB, STRING, UNDEFINED } from "./test-helpers.js";
+import {
+    createLabel,
+    forceGC,
+    GOBJECT,
+    GOBJECT_BORROWED,
+    GTK_LIB,
+    getRefCount,
+    STRING,
+    startMemoryMeasurement,
+    UNDEFINED,
+} from "../utils.js";
 
 const STRING_ARRAY = { type: "array" as const, itemType: { type: "string" as const } };
 
@@ -236,6 +246,7 @@ describe("call - array types", () => {
     describe("memory leaks", () => {
         it("does not leak string array elements", () => {
             const label = createLabel("Test");
+            const labelRefCount = getRefCount(label);
 
             for (let i = 0; i < 500; i++) {
                 call(
@@ -251,6 +262,8 @@ describe("call - array types", () => {
 
             forceGC();
 
+            expect(getRefCount(label)).toBe(labelRefCount);
+
             const result = call(
                 GTK_LIB,
                 "gtk_widget_get_css_classes",
@@ -262,7 +275,7 @@ describe("call - array types", () => {
         });
 
         it("does not leak when creating many arrays in loop", () => {
-            const initialMemory = process.memoryUsage().heapUsed;
+            const mem = startMemoryMeasurement();
 
             for (let i = 0; i < 500; i++) {
                 const label = createLabel(`Label ${i}`);
@@ -279,16 +292,13 @@ describe("call - array types", () => {
                 call(GTK_LIB, "gtk_widget_get_css_classes", [{ type: GOBJECT_BORROWED, value: label }], STRING_ARRAY);
             }
 
-            forceGC();
-
-            const finalMemory = process.memoryUsage().heapUsed;
-            const memoryGrowth = finalMemory - initialMemory;
-
-            expect(memoryGrowth).toBeLessThan(100 * 1024 * 1024);
+            expect(mem.measure()).toBeLessThan(10 * 1024 * 1024);
         });
 
         it("does not leak returned arrays", () => {
             const label = createLabel("Test");
+            const labelRefCount = getRefCount(label);
+            const mem = startMemoryMeasurement();
 
             call(
                 GTK_LIB,
@@ -304,7 +314,8 @@ describe("call - array types", () => {
                 call(GTK_LIB, "gtk_widget_get_css_classes", [{ type: GOBJECT_BORROWED, value: label }], STRING_ARRAY);
             }
 
-            forceGC();
+            expect(getRefCount(label)).toBe(labelRefCount);
+            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
         });
     });
 

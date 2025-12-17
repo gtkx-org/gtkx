@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { alloc, call, getObjectId } from "../index.js";
-import { GDK_LIB, GTK_LIB } from "./setup.js";
+import { GDK_LIB, GTK_LIB } from "./utils.js";
 
 describe("getObjectId", () => {
     it("returns a number identifier for a GObject", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../index.js";
-import { GTK_LIB } from "./setup.js";
+import { GTK_LIB } from "./utils.js";
 
 describe("start", () => {
     it("starts the GTK application and allows FFI calls", () => {

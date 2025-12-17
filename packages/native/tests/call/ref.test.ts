@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../index.js";
-import { createLabel, createRef, forceGC, GOBJECT, GTK_LIB, INT32, NULL, UNDEFINED } from "./test-helpers.js";
+import {
+    createLabel,
+    createRef,
+    GOBJECT,
+    GTK_LIB,
+    getRefCount,
+    INT32,
+    NULL,
+    startMemoryMeasurement,
+    UNDEFINED,
+} from "../utils.js";
 
 describe("call - ref types", () => {
     describe("integer refs", () => {
@@ -194,6 +204,8 @@ describe("call - ref types", () => {
     describe("memory leaks", () => {
         it("does not leak when using many refs in loop", () => {
             const label = createLabel("Test Label for Memory Leak Check");
+            const labelRefCount = getRefCount(label);
+            const mem = startMemoryMeasurement();
 
             for (let i = 0; i < 500; i++) {
                 const minRef = createRef(0);
@@ -215,11 +227,14 @@ describe("call - ref types", () => {
                 );
             }
 
-            forceGC();
+            expect(getRefCount(label)).toBe(labelRefCount);
+            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
         });
 
         it("does not leak with mixed null and real refs", () => {
             const label = createLabel("Test");
+            const labelRefCount = getRefCount(label);
+            const mem = startMemoryMeasurement();
 
             for (let i = 0; i < 500; i++) {
                 const ref = createRef(0);
@@ -246,7 +261,8 @@ describe("call - ref types", () => {
                 );
             }
 
-            forceGC();
+            expect(getRefCount(label)).toBe(labelRefCount);
+            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
         });
     });
 

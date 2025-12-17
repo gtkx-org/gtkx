@@ -111,6 +111,7 @@ fn handle_call(
                 if cb.trampoline == CallbackTrampoline::SourceFunc
                     || cb.trampoline == CallbackTrampoline::DrawFunc
                     || cb.trampoline == CallbackTrampoline::CompareDataFunc
+                    || cb.trampoline == CallbackTrampoline::TickFunc
                 {
                     arg_types.push(libffi::Type::pointer());
                 }

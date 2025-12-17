@@ -9,15 +9,15 @@ import {
     GTK_LIB,
     INT32,
     NULL,
-    STRING,
+    STRING_BORROWED,
     UNDEFINED,
-} from "./test-helpers.js";
+} from "../utils.js";
 
 describe("call - null type", () => {
     it("passes null as optional argument", () => {
         const label = call(GTK_LIB, "gtk_label_new", [{ type: NULL, value: null }], GOBJECT);
 
-        const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+        const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
 
         expect(text).toBe("");
     });

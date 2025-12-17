@@ -1,6 +1,8 @@
-import { call, createRef } from "../../index.js";
+import { call, createRef, read } from "../index.js";
 
 export { createRef };
+
+const GOBJECT_REF_COUNT_OFFSET = 8;
 
 export const GTK_LIB = "libgtk-4.so.1";
 export const GDK_LIB = "libgtk-4.so.1";
@@ -9,10 +11,10 @@ export const GLIB_LIB = "libglib-2.0.so.0";
 export const GIO_LIB = "libgio-2.0.so.0";
 export const PANGO_LIB = "libpango-1.0.so.0";
 
-export const INT8 = { type: "int" as const, size: 8 as const };
-export const INT16 = { type: "int" as const, size: 16 as const };
-export const INT32 = { type: "int" as const, size: 32 as const };
-export const INT64 = { type: "int" as const, size: 64 as const };
+export const INT8 = { type: "int" as const, size: 8 as const, unsigned: false as const };
+export const INT16 = { type: "int" as const, size: 16 as const, unsigned: false as const };
+export const INT32 = { type: "int" as const, size: 32 as const, unsigned: false as const };
+export const INT64 = { type: "int" as const, size: 64 as const, unsigned: false as const };
 export const UINT8 = { type: "int" as const, size: 8 as const, unsigned: true as const };
 export const UINT16 = { type: "int" as const, size: 16 as const, unsigned: true as const };
 export const UINT32 = { type: "int" as const, size: 32 as const, unsigned: true as const };
@@ -77,9 +79,31 @@ export function createCancellable(): unknown {
 }
 
 export function forceGC(): void {
-    if (global.gc) {
-        global.gc();
+    if (!global.gc) {
+        throw new Error("global.gc is not available. Run tests with --expose-gc flag.");
     }
+    global.gc();
+}
+
+export function getRefCount(obj: unknown): number {
+    return read(obj, { type: "int", size: 32, unsigned: true }, GOBJECT_REF_COUNT_OFFSET) as number;
+}
+
+export interface MemoryMeasurement {
+    initial: number;
+    measure: () => number;
+}
+
+export function startMemoryMeasurement(): MemoryMeasurement {
+    forceGC();
+    const initial = process.memoryUsage().heapUsed;
+    return {
+        initial,
+        measure: () => {
+            forceGC();
+            return process.memoryUsage().heapUsed - initial;
+        },
+    };
 }
 
 export function connectSignal(obj: unknown, signalName: string, callback: (...args: unknown[]) => void): number {

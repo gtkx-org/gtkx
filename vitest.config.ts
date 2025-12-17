@@ -6,5 +6,8 @@ export default defineConfig({
         typecheck: {
             tsconfig: "tsconfig.test.json",
         },
+        setupFiles: [import.meta.resolve("./vitest.setup.ts")],
+        pool: "forks",
+        bail: 1,
     },
 });

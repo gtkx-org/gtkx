@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
-        "outDir": "out-tsc/test",
-        "rootDir": "."
+        "outDir": "out-tsc/test"
     },
     "extends": "../../tsconfig.base.json",
     "include": ["tests/**/*.ts"],

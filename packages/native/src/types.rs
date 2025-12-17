@@ -44,6 +44,8 @@ pub enum CallbackTrampoline {
     DrawFunc,
     /// GCompareDataFunc for sorting callbacks.
     CompareDataFunc,
+    /// GtkTickCallback for frame clock tick callbacks.
+    TickFunc,
 }
 
 /// Type descriptor for a callback function.
@@ -129,6 +131,7 @@ impl Type {
                     Some("sourceFunc") => CallbackTrampoline::SourceFunc,
                     Some("drawFunc") => CallbackTrampoline::DrawFunc,
                     Some("compareDataFunc") => CallbackTrampoline::CompareDataFunc,
+                    Some("tickFunc") => CallbackTrampoline::TickFunc,
                     _ => CallbackTrampoline::Closure,
                 };
 

@@ -12,7 +12,7 @@
         "docs": "turbo build --filter=website",
         "knip": "knip --no-gitignore --no-config-hints",
         "lint": "biome check .",
-        "test": "turbo test --concurrency=1"
+        "test": "turbo test"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.3.9",

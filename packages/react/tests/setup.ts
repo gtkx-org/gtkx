@@ -4,15 +4,12 @@ import type { Arg } from "@gtkx/native";
 import { call } from "@gtkx/native";
 import type React from "react";
 import type Reconciler from "react-reconciler";
-import { afterEach, beforeAll } from "vitest";
+import { afterAll, afterEach } from "vitest";
 import { endCommit } from "../src/batch.js";
-import { render as libraryRender } from "../src/index.js";
 import { reconciler } from "../src/reconciler.js";
 import { getContainer } from "../src/render.js";
 
 export { getCurrentApp };
-
-const APP_ID = "com.gtkx.test.react";
 
 const getInstance = () => reconciler.getInstance();
 
@@ -52,24 +49,15 @@ const cleanup = (): void => {
     }
 };
 
-const setupTests = () => {
-    beforeAll(() => {
-        const container = getContainer();
-        if (!container) {
-            libraryRender(null, APP_ID);
-        }
-    });
+afterEach(() => {
+    endCommit();
+    cleanup();
+});
 
-    afterEach(() => {
-        endCommit();
-        cleanup();
-    });
-};
-
-const teardown = () => {
+afterAll(() => {
     cleanup();
     stop();
-};
+});
 
 export const flushMicrotasks = (): Promise<void> => new Promise((resolve) => queueMicrotask(resolve));
 
@@ -83,11 +71,3 @@ export const fireEvent = async (element: Gtk.Widget, signalName: string, ...args
 
     await flushMicrotasks();
 };
-
-setupTests();
-
-export default async function globalSetup() {
-    return async () => {
-        teardown();
-    };
-}

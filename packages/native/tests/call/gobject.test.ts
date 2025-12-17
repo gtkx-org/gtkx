@@ -8,9 +8,12 @@ import {
     GOBJECT,
     GOBJECT_BORROWED,
     GTK_LIB,
+    getRefCount,
     STRING,
+    STRING_BORROWED,
+    startMemoryMeasurement,
     UNDEFINED,
-} from "./test-helpers.js";
+} from "../utils.js";
 
 describe("call - gobject types", () => {
     describe("owned gobjects", () => {
@@ -119,7 +122,12 @@ describe("call - gobject types", () => {
         it("passes GObject as borrowed argument", () => {
             const label = createLabel("Test");
 
-            const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const text = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(text).toBe("Test");
         });
@@ -321,9 +329,10 @@ describe("call - gobject types", () => {
     });
 
     describe("refcount management", () => {
-        it("maintains correct refcount after multiple passes", () => {
+        it("container adds ref when child is appended", () => {
             const box = createBox();
             const label = createLabel("Test");
+            const initialRefCount = getRefCount(label);
 
             call(
                 GTK_LIB,
@@ -335,9 +344,7 @@ describe("call - gobject types", () => {
                 UNDEFINED,
             );
 
-            for (let i = 0; i < 10; i++) {
-                call(GTK_LIB, "gtk_widget_get_first_child", [{ type: GOBJECT_BORROWED, value: box }], GOBJECT_BORROWED);
-            }
+            expect(getRefCount(label)).toBe(initialRefCount + 1);
 
             const child = call(
                 GTK_LIB,
@@ -348,26 +355,64 @@ describe("call - gobject types", () => {
 
             expect(child).toBeDefined();
         });
+
+        it("does not increase refcount when passing borrowed GObject", () => {
+            const label = createLabel("Test");
+            const initialRefCount = getRefCount(label);
+
+            for (let i = 0; i < 100; i++) {
+                call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
+            }
+
+            expect(getRefCount(label)).toBe(initialRefCount);
+        });
+
+        it("container releases ref when child is removed", () => {
+            const box = createBox();
+            const label = createLabel("Test");
+            const initialRefCount = getRefCount(label);
+
+            call(
+                GTK_LIB,
+                "gtk_box_append",
+                [
+                    { type: GOBJECT, value: box },
+                    { type: GOBJECT, value: label },
+                ],
+                UNDEFINED,
+            );
+
+            expect(getRefCount(label)).toBe(initialRefCount + 1);
+
+            call(
+                GTK_LIB,
+                "gtk_box_remove",
+                [
+                    { type: GOBJECT, value: box },
+                    { type: GOBJECT, value: label },
+                ],
+                UNDEFINED,
+            );
+
+            expect(getRefCount(label)).toBe(initialRefCount);
+        });
     });
 
     describe("memory leaks", () => {
         it("does not leak when creating many GObjects in loop", () => {
-            const initialMemory = process.memoryUsage().heapUsed;
+            const mem = startMemoryMeasurement();
 
             for (let i = 0; i < 1000; i++) {
                 createLabel(`Label ${i}`);
             }
 
-            forceGC();
-
-            const finalMemory = process.memoryUsage().heapUsed;
-            const memoryGrowth = finalMemory - initialMemory;
-
-            expect(memoryGrowth).toBeLessThan(50 * 1024 * 1024);
+            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
         });
 
         it("does not leak when passing GObject to container", () => {
             const box = createBox();
+            const boxRefCount = getRefCount(box);
+            const mem = startMemoryMeasurement();
 
             for (let i = 0; i < 100; i++) {
                 const label = createLabel(`Label ${i}`);
@@ -382,7 +427,8 @@ describe("call - gobject types", () => {
                 );
             }
 
-            forceGC();
+            expect(getRefCount(box)).toBe(boxRefCount);
+            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
 
             const firstChild = call(
                 GTK_LIB,
@@ -396,6 +442,7 @@ describe("call - gobject types", () => {
 
         it("does not leak when removing GObject from container", () => {
             const box = createBox();
+            const boxRefCount = getRefCount(box);
             const labels: unknown[] = [];
 
             for (let i = 0; i < 50; i++) {
@@ -423,6 +470,8 @@ describe("call - gobject types", () => {
                     UNDEFINED,
                 );
             }
+
+            expect(getRefCount(box)).toBe(boxRefCount);
 
             forceGC();
 
@@ -475,7 +524,12 @@ describe("call - gobject types", () => {
                 UNDEFINED,
             );
 
-            const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const text = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(text).toBe("Updated");
         });

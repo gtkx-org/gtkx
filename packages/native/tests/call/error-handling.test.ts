@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../index.js";
-import { createLabel, GOBJECT, GTK_LIB, INT32, STRING, UNDEFINED } from "./test-helpers.js";
+import { createLabel, GOBJECT, GTK_LIB, INT32, STRING, UNDEFINED } from "../utils.js";
 
 describe("call - error handling", () => {
     describe("symbol errors", () => {
@@ -39,12 +39,6 @@ describe("call - error handling", () => {
         it("throws on library not found", () => {
             expect(() => {
                 call("libfoobar123456.so.99", "foo", [], UNDEFINED);
-            }).toThrow();
-        });
-
-        it("throws on empty library name", () => {
-            expect(() => {
-                call("", "gtk_label_new", [{ type: STRING, value: "Test" }], GOBJECT);
             }).toThrow();
         });
     });

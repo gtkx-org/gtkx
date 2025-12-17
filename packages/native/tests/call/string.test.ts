@@ -7,10 +7,12 @@ import {
     GOBJECT,
     GOBJECT_BORROWED,
     GTK_LIB,
+    getRefCount,
     STRING,
     STRING_BORROWED,
+    startMemoryMeasurement,
     UNDEFINED,
-} from "./test-helpers.js";
+} from "../utils.js";
 
 describe("call - string types", () => {
     describe("owned strings", () => {
@@ -27,7 +29,12 @@ describe("call - string types", () => {
                 UNDEFINED,
             );
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toBe("Updated");
         });
@@ -35,7 +42,12 @@ describe("call - string types", () => {
         it("creates widget with owned string", () => {
             const label = call(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Created with string" }], GOBJECT);
 
-            const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const text = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(text).toBe("Created with string");
         });
@@ -43,7 +55,12 @@ describe("call - string types", () => {
         it("handles empty strings", () => {
             const label = call(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "" }], GOBJECT);
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toBe("");
         });
@@ -51,7 +68,12 @@ describe("call - string types", () => {
         it("handles unicode strings", () => {
             const label = call(GTK_LIB, "gtk_label_new", [{ type: STRING, value: "Hello 世界 🎉" }], GOBJECT);
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toBe("Hello 世界 🎉");
         });
@@ -69,7 +91,12 @@ describe("call - string types", () => {
             for (const testString of testStrings) {
                 const label = call(GTK_LIB, "gtk_label_new", [{ type: STRING, value: testString }], GOBJECT);
 
-                const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+                const result = call(
+                    GTK_LIB,
+                    "gtk_label_get_text",
+                    [{ type: GOBJECT_BORROWED, value: label }],
+                    STRING_BORROWED,
+                );
 
                 expect(result).toBe(testString);
             }
@@ -80,7 +107,12 @@ describe("call - string types", () => {
 
             const label = call(GTK_LIB, "gtk_label_new", [{ type: STRING, value: longString }], GOBJECT);
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toBe(longString);
             expect((result as string).length).toBe(10000);
@@ -89,7 +121,12 @@ describe("call - string types", () => {
         it("handles button labels", () => {
             const button = call(GTK_LIB, "gtk_button_new_with_label", [{ type: STRING, value: "Click Me" }], GOBJECT);
 
-            const label = call(GTK_LIB, "gtk_button_get_label", [{ type: GOBJECT_BORROWED, value: button }], STRING);
+            const label = call(
+                GTK_LIB,
+                "gtk_button_get_label",
+                [{ type: GOBJECT_BORROWED, value: button }],
+                STRING_BORROWED,
+            );
 
             expect(label).toBe("Click Me");
         });
@@ -107,7 +144,12 @@ describe("call - string types", () => {
                 UNDEFINED,
             );
 
-            const label = call(GTK_LIB, "gtk_button_get_label", [{ type: GOBJECT_BORROWED, value: button }], STRING);
+            const label = call(
+                GTK_LIB,
+                "gtk_button_get_label",
+                [{ type: GOBJECT_BORROWED, value: button }],
+                STRING_BORROWED,
+            );
 
             expect(label).toBe("Updated Label");
         });
@@ -152,6 +194,7 @@ describe("call - string types", () => {
     describe("memory leaks", () => {
         it("does not leak owned strings passed as arguments", () => {
             const label = createLabel("Test");
+            const labelRefCount = getRefCount(label);
 
             for (let i = 0; i < 1000; i++) {
                 call(
@@ -167,29 +210,33 @@ describe("call - string types", () => {
 
             forceGC();
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            expect(getRefCount(label)).toBe(labelRefCount);
+
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toBe("String 999");
         });
 
         it("does not leak when creating many labels with strings", () => {
-            const initialMemory = process.memoryUsage().heapUsed;
+            const mem = startMemoryMeasurement();
 
             for (let i = 0; i < 1000; i++) {
                 createLabel(`Label ${i}`);
             }
 
-            forceGC();
-
-            const finalMemory = process.memoryUsage().heapUsed;
-            const memoryGrowth = finalMemory - initialMemory;
-
-            expect(memoryGrowth).toBeLessThan(50 * 1024 * 1024);
+            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
         });
 
         it("does not leak when setting many strings in loop", () => {
             const label = createLabel("Initial");
+            const labelRefCount = getRefCount(label);
             const longString = "x".repeat(1000);
+            const mem = startMemoryMeasurement();
 
             for (let i = 0; i < 500; i++) {
                 call(
@@ -203,9 +250,15 @@ describe("call - string types", () => {
                 );
             }
 
-            forceGC();
+            expect(getRefCount(label)).toBe(labelRefCount);
+            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toContain("_499");
         });
@@ -217,7 +270,12 @@ describe("call - string types", () => {
 
             const label = createLabel(complexUnicode);
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toBe(complexUnicode);
         });
@@ -227,7 +285,12 @@ describe("call - string types", () => {
 
             const label = createLabel(rtlText);
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toBe(rtlText);
         });
@@ -237,7 +300,12 @@ describe("call - string types", () => {
 
             const label = createLabel(combining);
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toBe(combining);
         });
@@ -247,7 +315,12 @@ describe("call - string types", () => {
 
             const label = createLabel(zeroWidth);
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toBe(zeroWidth);
         });
@@ -257,7 +330,12 @@ describe("call - string types", () => {
 
             const label = createLabel(surrogatePair);
 
-            const result = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const result = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(result).toBe(surrogatePair);
         });
@@ -275,7 +353,12 @@ describe("call - string types", () => {
                 UNDEFINED,
             );
 
-            const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING);
+            const text = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(text).toBe("Bold and italic");
         });

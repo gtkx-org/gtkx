@@ -1,5 +1,7 @@
-import { events } from "@gtkx/ffi";
+import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mockEvents = new EventEmitter();
 
 const mockModule = {
     default: vi.fn(() => null),
@@ -30,14 +32,27 @@ vi.mock("vite", () => ({
     createServer: vi.fn().mockResolvedValue(mockViteServer),
 }));
 
+vi.mock("@vitejs/plugin-react", () => ({
+    default: vi.fn(() => ({ name: "vite:react-babel" })),
+}));
+
+vi.mock("@gtkx/react", () => ({
+    update: vi.fn(),
+}));
+
+vi.mock("@gtkx/ffi", () => ({
+    events: mockEvents,
+}));
+
 describe("createDevServer", () => {
     beforeEach(() => {
+        vi.resetModules();
         vi.clearAllMocks();
     });
 
     afterEach(() => {
         vi.restoreAllMocks();
-        events.removeAllListeners("stop");
+        mockEvents.removeAllListeners("stop");
     });
 
     it("creates a vite server with correct configuration", async () => {
@@ -110,7 +125,7 @@ describe("createDevServer", () => {
             entry: "/path/to/app.tsx",
         });
 
-        expect(events.listenerCount("stop")).toBeGreaterThan(0);
+        expect(mockEvents.listenerCount("stop")).toBeGreaterThan(0);
     });
 
     it("loads entry module via ssrLoadModule", async () => {
@@ -194,7 +209,7 @@ describe("createDevServer", () => {
             entry: "/path/to/app.tsx",
         });
 
-        events.emit("stop");
+        mockEvents.emit("stop");
 
         expect(mockViteServer.close).toHaveBeenCalled();
     });

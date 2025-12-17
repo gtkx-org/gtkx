@@ -8,7 +8,7 @@
         "build": "tsc -b",
         "dev": "gtkx dev src/app.tsx",
         "start": "node dist/index.js",
-        "test": "f() { if [ -n \"$CI\" ]; then vitest run \"$@\"; else GDK_BACKEND=x11 xvfb-run -a vitest run \"$@\"; fi; }; f"
+        "test": "if [ -n \"$CI\" ]; then vitest run; else GDK_BACKEND=x11 xvfb-run -a vitest run; fi"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",

@@ -20,7 +20,7 @@ import {
     UINT32,
     UINT64,
     UNDEFINED,
-} from "./test-helpers.js";
+} from "../utils.js";
 
 describe("call - integer types", () => {
     describe("8-bit signed", () => {

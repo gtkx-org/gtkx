@@ -3,14 +3,14 @@ import { alloc, call, read, write } from "../../index.js";
 import {
     BOOLEAN,
     FLOAT32,
-    forceGC,
     GDK_LIB,
     INT32,
     PANGO_LIB,
     STRING,
     STRING_BORROWED,
+    startMemoryMeasurement,
     UNDEFINED,
-} from "./test-helpers.js";
+} from "../utils.js";
 
 const RGBA_BOXED_BORROWED = { type: "boxed" as const, innerType: "GdkRGBA", lib: GDK_LIB, borrowed: true as const };
 const RECTANGLE_BOXED_BORROWED = {
@@ -357,7 +357,7 @@ describe("call - boxed types", () => {
 
     describe("memory leaks", () => {
         it("does not leak when creating many boxed in loop", () => {
-            const initialMemory = process.memoryUsage().heapUsed;
+            const mem = startMemoryMeasurement();
 
             for (let i = 0; i < 500; i++) {
                 const rgba = alloc(16, "GdkRGBA", GDK_LIB);
@@ -367,15 +367,12 @@ describe("call - boxed types", () => {
                 write(rgba, FLOAT32, 12, 1.0);
             }
 
-            forceGC();
-
-            const finalMemory = process.memoryUsage().heapUsed;
-            const memoryGrowth = finalMemory - initialMemory;
-
-            expect(memoryGrowth).toBeLessThan(50 * 1024 * 1024);
+            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
         });
 
         it("does not leak font descriptions", () => {
+            const mem = startMemoryMeasurement();
+
             for (let i = 0; i < 200; i++) {
                 const fontDesc = call(
                     PANGO_LIB,
@@ -392,10 +389,12 @@ describe("call - boxed types", () => {
                 );
             }
 
-            forceGC();
+            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
         });
 
         it("does not leak rectangles in loop", () => {
+            const mem = startMemoryMeasurement();
+
             for (let i = 0; i < 500; i++) {
                 const rect = alloc(16, "GdkRectangle", GDK_LIB);
                 write(rect, INT32, 0, i);
@@ -404,7 +403,7 @@ describe("call - boxed types", () => {
                 write(rect, INT32, 12, 100);
             }
 
-            forceGC();
+            expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
         });
     });
 

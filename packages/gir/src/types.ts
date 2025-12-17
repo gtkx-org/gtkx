@@ -348,8 +348,8 @@ export type FfiTypeDescriptor = {
     itemType?: FfiTypeDescriptor;
     /** List type for arrays (glist, gslist) - indicates native GList/GSList iteration. */
     listType?: "glist" | "gslist";
-    /** Trampoline type for callbacks (asyncReady, destroy, sourceFunc, drawFunc, compareDataFunc). Default is "closure". */
-    trampoline?: "asyncReady" | "destroy" | "sourceFunc" | "drawFunc" | "compareDataFunc";
+    /** Trampoline type for callbacks (asyncReady, destroy, sourceFunc, drawFunc, compareDataFunc, tickFunc). Default is "closure". */
+    trampoline?: "asyncReady" | "destroy" | "sourceFunc" | "drawFunc" | "compareDataFunc" | "tickFunc";
     /** Source type for asyncReady callback (the GObject source). */
     sourceType?: FfiTypeDescriptor;
     /** Result type for asyncReady callback (the GAsyncResult). */
@@ -1191,6 +1191,20 @@ export class TypeMapper {
                 ffi: {
                     type: "callback",
                     trampoline: "compareDataFunc",
+                    argTypes: [
+                        { type: "gobject", borrowed: true },
+                        { type: "gobject", borrowed: true },
+                    ],
+                },
+            };
+        }
+
+        if (param.type.name === "Gtk.TickCallback" || param.type.name === "TickCallback") {
+            return {
+                ts: "(widget: unknown, frameClock: unknown) => boolean",
+                ffi: {
+                    type: "callback",
+                    trampoline: "tickFunc",
                     argTypes: [
                         { type: "gobject", borrowed: true },
                         { type: "gobject", borrowed: true },

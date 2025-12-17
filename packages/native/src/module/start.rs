@@ -7,7 +7,7 @@ use neon::prelude::*;
 
 use crate::{
     object::{Object, ObjectId},
-    state::GtkThreadState,
+    state::{set_gtk_thread_handle, GtkThreadState},
 };
 
 /// Starts the GTK application and main loop.
@@ -32,7 +32,7 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     let (tx, rx) = mpsc::channel::<ObjectId>();
 
-    std::thread::spawn(move || {
+    let handle = std::thread::spawn(move || {
         let app = gtk4::Application::builder()
             .application_id(app_id)
             .flags(flags)
@@ -52,6 +52,8 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
 
         app.run_with_args::<&str>(&[]);
     });
+
+    set_gtk_thread_handle(handle);
 
     let app_object_id = rx
         .recv()
