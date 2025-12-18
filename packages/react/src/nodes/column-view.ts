@@ -1,6 +1,7 @@
 import { getObject } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { StringSorter } from "@gtkx/ffi/gtk";
 import type { ColumnContainer } from "../containers.js";
 import type { Props } from "../factory.js";
 import { Node } from "../node.js";
@@ -206,10 +207,11 @@ type ColumnViewColumnState = {
     renderCell: RenderItemFn<unknown>;
     columnId: string | null;
     listItemCache: Map<number, ListItemInfo>;
+    sorter: StringSorter | null;
 };
 
 export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
-    static override consumedPropNames = ["renderCell", "title", "expand", "resizable", "fixedWidth", "id"];
+    static override consumedPropNames = ["renderCell", "title", "expand", "resizable", "fixedWidth", "id", "sortable"];
 
     static matches(type: string): boolean {
         return type === "ColumnView.Column";
@@ -226,6 +228,9 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
         const column = new Gtk.ColumnViewColumn(props.title as string | undefined, factory);
         const columnId = (props.id as string | null) ?? null;
 
+        const sortable = props.sortable as boolean | undefined;
+        const sorter = sortable ? new StringSorter() : null;
+
         this.state = {
             column,
             factory,
@@ -233,7 +238,12 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
             renderCell: props.renderCell as RenderItemFn<unknown>,
             columnId,
             listItemCache: new Map(),
+            sorter,
         };
+
+        if (sorter) {
+            column.setSorter(sorter);
+        }
 
         super.initialize(props);
 
@@ -298,6 +308,16 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
         if (oldProps.id !== newProps.id) {
             this.state.columnId = (newProps.id as string | null) ?? null;
             this.state.column.setId(this.state.columnId);
+        }
+        if (oldProps.sortable !== newProps.sortable) {
+            const sortable = newProps.sortable as boolean | undefined;
+            if (sortable && !this.state.sorter) {
+                this.state.sorter = new StringSorter();
+                this.state.column.setSorter(this.state.sorter);
+            } else if (!sortable && this.state.sorter) {
+                this.state.column.setSorter(null);
+                this.state.sorter = null;
+            }
         }
     }
 }

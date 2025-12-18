@@ -68,6 +68,8 @@ export type ColumnViewColumnProps<T = unknown> = {
     fixedWidth?: number;
     /** Unique identifier for the column. Used for sorting. */
     id?: string;
+    /** Whether this column header can be clicked to trigger sorting. */
+    sortable?: boolean;
     /**
      * Render function for column cells.
      * Called with null during setup (for loading state) and with the actual item during bind.

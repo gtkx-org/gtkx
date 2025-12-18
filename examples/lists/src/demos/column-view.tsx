@@ -200,6 +200,7 @@ export const ColumnViewDemo = () => {
                             title="Name"
                             expand
                             resizable
+                            sortable
                             renderCell={(emp: Employee | null) => (
                                 <Label
                                     label={emp?.name ?? ""}
@@ -215,6 +216,7 @@ export const ColumnViewDemo = () => {
                             id="department"
                             title="Department"
                             resizable
+                            sortable
                             renderCell={(emp: Employee | null) => (
                                 <Label
                                     label={emp?.department ?? ""}
@@ -230,6 +232,7 @@ export const ColumnViewDemo = () => {
                             id="salary"
                             title="Salary"
                             resizable
+                            sortable
                             renderCell={(emp: Employee | null) => (
                                 <Label
                                     label={emp ? formatSalary(emp.salary) : ""}
@@ -245,6 +248,7 @@ export const ColumnViewDemo = () => {
                             id="startDate"
                             title="Start Date"
                             resizable
+                            sortable
                             renderCell={(emp: Employee | null) => (
                                 <Label
                                     label={emp ? formatDate(emp.startDate) : ""}
