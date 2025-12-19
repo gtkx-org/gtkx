@@ -127,7 +127,12 @@ function parseGirLink(type: string, reference: string): GirLink | undefined {
     };
 }
 
-function formatGirLinkForTsDoc(link: GirLink): string {
+interface LinkFormatOptions {
+    linkStyle: "namespaced" | "prefixed";
+    currentNamespace: string | undefined;
+}
+
+function formatGirLinkForTsDoc(link: GirLink, options: LinkFormatOptions): string {
     let displayText: string;
     if (link.member) {
         displayText = `${link.target}.${link.member}`;
@@ -135,7 +140,17 @@ function formatGirLinkForTsDoc(link: GirLink): string {
         displayText = link.target;
     }
 
-    const linkTarget = link.namespace ? `${link.namespace}.${displayText}` : displayText;
+    let linkTarget: string;
+    if (options.linkStyle === "prefixed") {
+        const effectiveNamespace = link.namespace ?? options.currentNamespace;
+        if (effectiveNamespace && effectiveNamespace !== "Gtk") {
+            linkTarget = `${effectiveNamespace}${displayText}`;
+        } else {
+            linkTarget = displayText;
+        }
+    } else {
+        linkTarget = link.namespace ? `${link.namespace}.${displayText}` : displayText;
+    }
 
     switch (link.type) {
         case "class":
@@ -171,37 +186,37 @@ function formatGirLinkForTsDoc(link: GirLink): string {
     }
 }
 
-function convertGirLinks(text: string): string {
+function convertGirLinks(text: string, options: LinkFormatOptions): string {
     return text.replace(GIR_LINK_PATTERN, (_, type: string, reference: string) => {
         const link = parseGirLink(type, reference);
         if (!link) {
             return `\`${reference}\``;
         }
-        return formatGirLinkForTsDoc(link);
+        return formatGirLinkForTsDoc(link, options);
     });
 }
 
-const NAMESPACE_TO_DOCS_PATH: Record<string, string> = {
-    Gtk: "gtk4",
-    Gdk: "gdk4",
-    Gsk: "gsk4",
-    Adw: "adw1",
-    GLib: "glib",
-    GObject: "gobject",
-    Gio: "gio",
-    Pango: "Pango",
-    PangoCairo: "PangoCairo",
-    GdkPixbuf: "gdk-pixbuf",
-    Cairo: "cairo",
+const GTK_DOCS_BASE_URLS: Record<string, string> = {
+    Gtk: "https://docs.gtk.org/gtk4",
+    Gdk: "https://docs.gtk.org/gdk4",
+    Gsk: "https://docs.gtk.org/gsk4",
+    GLib: "https://docs.gtk.org/glib",
+    GObject: "https://docs.gtk.org/gobject",
+    Gio: "https://docs.gtk.org/gio",
+    Pango: "https://docs.gtk.org/Pango",
+    PangoCairo: "https://docs.gtk.org/PangoCairo",
+    GdkPixbuf: "https://docs.gtk.org/gdk-pixbuf",
+    Cairo: "https://docs.gtk.org/cairo",
+    Adw: "https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest",
 };
 
 function getDocsBaseUrl(namespace: string | undefined): string {
     if (!namespace) {
         return "https://docs.gtk.org/gtk4";
     }
-    const docsPath = NAMESPACE_TO_DOCS_PATH[namespace];
-    if (docsPath) {
-        return `https://docs.gtk.org/${docsPath}`;
+    const baseUrl = GTK_DOCS_BASE_URLS[namespace];
+    if (baseUrl) {
+        return baseUrl;
     }
     return `https://docs.gtk.org/${namespace.toLowerCase()}`;
 }
@@ -273,7 +288,21 @@ function convertAtAnnotations(text: string): string {
 }
 
 function escapeXmlStyleTags(text: string): string {
-    return text.replace(/<(\/?)(child|object|property|signal|template|style|item|attribute)>/gi, "`<$1$2>`");
+    const codeBlockPattern = /```[\s\S]*?```/g;
+    const codeBlocks: string[] = [];
+
+    let processed = text.replace(codeBlockPattern, (match) => {
+        codeBlocks.push(match);
+        return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+    });
+
+    processed = processed.replace(/<(\/?)(child|object|property|signal|template|style|item|attribute)>/gi, "`<$1$2>`");
+
+    for (let i = 0; i < codeBlocks.length; i++) {
+        processed = processed.replace(`__CODE_BLOCK_${i}__`, codeBlocks[i] ?? "");
+    }
+
+    return processed;
 }
 
 function cleanupWhitespace(text: string): string {
@@ -285,6 +314,7 @@ function cleanupWhitespace(text: string): string {
 export interface SanitizeDocOptions {
     escapeXmlTags?: boolean;
     namespace?: string;
+    linkStyle?: "namespaced" | "prefixed";
 }
 
 export function sanitizeDoc(doc: string, options: SanitizeDocOptions = {}): string {
@@ -295,7 +325,12 @@ export function sanitizeDoc(doc: string, options: SanitizeDocOptions = {}): stri
     result = convertMarkdownImageUrls(result, baseUrl);
     result = convertKbdElements(result);
     result = stripHtmlLinks(result);
-    result = convertGirLinks(result);
+
+    const linkFormatOptions: LinkFormatOptions = {
+        linkStyle: options.linkStyle ?? "namespaced",
+        currentNamespace: options.namespace,
+    };
+    result = convertGirLinks(result, linkFormatOptions);
     result = convertAtAnnotations(result);
 
     if (options.escapeXmlTags) {

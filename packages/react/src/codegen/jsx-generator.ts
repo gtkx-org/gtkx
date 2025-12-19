@@ -110,6 +110,7 @@ export class JsxGenerator {
         return formatDocBase(doc, indent, {
             namespace: this.currentNamespace,
             escapeXmlTags: true,
+            linkStyle: "prefixed",
         });
     }
 
