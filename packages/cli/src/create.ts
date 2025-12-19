@@ -222,21 +222,41 @@ render(<App />, "com.example.myapp");
 
 ### Virtual Scrolling Lists
 
-**ListView** - High-performance scrollable list:
+**ListView** - High-performance scrollable list with selection:
 \`\`\`tsx
 <ListView.Root
     vexpand
+    selected={[selectedId]}
+    selectionMode={Gtk.SelectionMode.SINGLE}
+    onSelectionChanged={(ids) => setSelectedId(ids[0])}
     renderItem={(item: Item | null) => (
         <Label label={item?.text ?? ""} />
     )}
 >
     {items.map(item => (
-        <ListView.Item key={item.id} item={item} />
+        <ListView.Item key={item.id} id={item.id} item={item} />
     ))}
 </ListView.Root>
 \`\`\`
 
-**ColumnView** - Table with columns:
+**GridView** - Grid-based virtual scrolling:
+\`\`\`tsx
+<GridView.Root
+    vexpand
+    renderItem={(item: Item | null) => (
+        <Box orientation={Gtk.Orientation.VERTICAL}>
+            <Image iconName={item?.icon ?? "image-missing"} />
+            <Label label={item?.name ?? ""} />
+        </Box>
+    )}
+>
+    {items.map(item => (
+        <GridView.Item key={item.id} id={item.id} item={item} />
+    ))}
+</GridView.Root>
+\`\`\`
+
+**ColumnView** - Table with sortable columns:
 \`\`\`tsx
 <ColumnView.Root
     sortColumn="name"
@@ -247,26 +267,52 @@ render(<App />, "com.example.myapp");
         title="Name"
         id="name"
         expand
+        sortable
         renderCell={(item: Item | null) => (
             <Label label={item?.name ?? ""} />
         )}
     />
     {items.map(item => (
-        <ColumnView.Item key={item.id} item={item} />
+        <ColumnView.Item key={item.id} id={item.id} item={item} />
     ))}
 </ColumnView.Root>
 \`\`\`
 
-**DropDown** - Selection widget:
+**DropDown** - String selection widget:
 \`\`\`tsx
-<DropDown.Root
-    itemLabel={(opt: Option) => opt.label}
-    onSelectionChanged={(item, index) => setSelected(item.value)}
->
+<DropDown.Root>
     {options.map(opt => (
-        <DropDown.Item key={opt.value} item={opt} />
+        <DropDown.Item key={opt.value} id={opt.value} label={opt.label} />
     ))}
 </DropDown.Root>
+\`\`\`
+
+### HeaderBar
+
+Pack widgets at start and end of the title bar:
+\`\`\`tsx
+<HeaderBar.Root>
+    <HeaderBar.Start>
+        <Button iconName="go-previous-symbolic" />
+    </HeaderBar.Start>
+    <HeaderBar.End>
+        <MenuButton.Root iconName="open-menu-symbolic" />
+    </HeaderBar.End>
+</HeaderBar.Root>
+\`\`\`
+
+### ActionBar
+
+Bottom bar with packed widgets:
+\`\`\`tsx
+<ActionBar.Root>
+    <ActionBar.Start>
+        <Button label="Cancel" />
+    </ActionBar.Start>
+    <ActionBar.End>
+        <Button label="Save" cssClasses={["suggested-action"]} />
+    </ActionBar.End>
+</ActionBar.Root>
 \`\`\`
 
 ### Controlled Input
@@ -441,24 +487,52 @@ Props:
 ## Virtual Scrolling Widgets
 
 ### ListView
-High-performance scrollable list with virtual rendering.
+High-performance scrollable list with virtual rendering and selection support.
 
 \`\`\`tsx
 <ListView.Root
     vexpand
+    selected={[selectedId]}
+    selectionMode={Gtk.SelectionMode.SINGLE}
+    onSelectionChanged={(ids) => setSelectedId(ids[0])}
     renderItem={(item: Item | null) => (
         <Label label={item?.text ?? ""} />
     )}
 >
     {items.map(item => (
-        <ListView.Item key={item.id} item={item} />
+        <ListView.Item key={item.id} id={item.id} item={item} />
     ))}
 </ListView.Root>
 \`\`\`
 
 Props:
 - \`renderItem\`: \`(item: T | null) => ReactElement\` (required)
-- Standard scrollable props
+- \`selected\`: string[] (array of selected item IDs)
+- \`selectionMode\`: \`Gtk.SelectionMode.SINGLE\` | \`MULTIPLE\` | \`NONE\`
+- \`onSelectionChanged\`: \`(ids: string[]) => void\`
+
+ListView.Item props:
+- \`id\`: string (required, unique identifier for selection)
+- \`item\`: T (the data item)
+
+### GridView
+Grid-based virtual scrolling. Same API as ListView but renders items in a grid.
+
+\`\`\`tsx
+<GridView.Root
+    vexpand
+    renderItem={(item: Item | null) => (
+        <Box orientation={Gtk.Orientation.VERTICAL}>
+            <Image iconName={item?.icon ?? "image-missing"} />
+            <Label label={item?.name ?? ""} />
+        </Box>
+    )}
+>
+    {items.map(item => (
+        <GridView.Item key={item.id} id={item.id} item={item} />
+    ))}
+</GridView.Root>
+\`\`\`
 
 ### ColumnView
 Table with sortable columns.
@@ -474,28 +548,69 @@ Table with sortable columns.
         id="name"
         expand
         resizable
+        sortable
         renderCell={(item: Item | null) => (
             <Label label={item?.name ?? ""} />
         )}
     />
     {items.map(item => (
-        <ColumnView.Item key={item.id} item={item} />
+        <ColumnView.Item key={item.id} id={item.id} item={item} />
     ))}
 </ColumnView.Root>
 \`\`\`
 
+ColumnView.Column props:
+- \`title\`: string (column header)
+- \`id\`: string (used for sorting)
+- \`expand\`: boolean (fill available space)
+- \`resizable\`: boolean (user can resize)
+- \`sortable\`: boolean (clicking header triggers sort)
+- \`fixedWidth\`: number (fixed width in pixels)
+- \`renderCell\`: \`(item: T | null) => ReactElement\`
+
 ### DropDown
-Selection dropdown with custom rendering.
+String selection dropdown.
 
 \`\`\`tsx
-<DropDown.Root
-    itemLabel={(opt: Option) => opt.label}
-    onSelectionChanged={(item, index) => setSelected(item.value)}
->
+<DropDown.Root>
     {options.map(opt => (
-        <DropDown.Item key={opt.value} item={opt} />
+        <DropDown.Item key={opt.value} id={opt.value} label={opt.label} />
     ))}
 </DropDown.Root>
+\`\`\`
+
+DropDown.Item props:
+- \`id\`: string (unique identifier)
+- \`label\`: string (display text)
+
+## Header Widgets
+
+### HeaderBar
+Title bar with packed widgets at start and end.
+
+\`\`\`tsx
+<HeaderBar.Root>
+    <HeaderBar.Start>
+        <Button iconName="go-previous-symbolic" />
+    </HeaderBar.Start>
+    <HeaderBar.End>
+        <MenuButton.Root iconName="open-menu-symbolic" />
+    </HeaderBar.End>
+</HeaderBar.Root>
+\`\`\`
+
+### ActionBar
+Bottom action bar with start/end packing.
+
+\`\`\`tsx
+<ActionBar.Root>
+    <ActionBar.Start>
+        <Button label="Cancel" />
+    </ActionBar.Start>
+    <ActionBar.End>
+        <Button label="Save" cssClasses={["suggested-action"]} />
+    </ActionBar.End>
+</ActionBar.Root>
 \`\`\`
 
 ## Input Widgets
@@ -714,11 +829,12 @@ const TabContainer = () => (
 
 ## Virtual Scrolling Lists
 
-### ListView with Custom Rendering
+### ListView with Selection
 
 \`\`\`tsx
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Box, Label, ListView } from "@gtkx/react";
+import { useState } from "react";
 
 interface Task {
     id: string;
@@ -731,27 +847,63 @@ const tasks: Task[] = [
     { id: "2", title: "Build React app", completed: false },
 ];
 
-const TaskList = () => (
-    <Box cssClasses={["card"]} heightRequest={250}>
-        <ListView.Root
-            vexpand
-            renderItem={(task: Task | null) => (
-                <Label
-                    label={task?.title ?? ""}
-                    cssClasses={task?.completed ? ["dim-label"] : []}
-                    halign={Gtk.Align.START}
-                    marginStart={12}
-                    marginTop={8}
-                    marginBottom={8}
-                />
-            )}
-        >
-            {tasks.map((task) => (
-                <ListView.Item key={task.id} item={task} />
-            ))}
-        </ListView.Root>
-    </Box>
-);
+const TaskList = () => {
+    const [selectedId, setSelectedId] = useState<string | undefined>();
+
+    return (
+        <Box cssClasses={["card"]} heightRequest={250}>
+            <ListView.Root
+                vexpand
+                selected={selectedId ? [selectedId] : []}
+                onSelectionChanged={(ids) => setSelectedId(ids[0])}
+                renderItem={(task: Task | null) => (
+                    <Label
+                        label={task?.title ?? ""}
+                        cssClasses={task?.completed ? ["dim-label"] : []}
+                        halign={Gtk.Align.START}
+                        marginStart={12}
+                        marginTop={8}
+                        marginBottom={8}
+                    />
+                )}
+            >
+                {tasks.map((task) => (
+                    <ListView.Item key={task.id} id={task.id} item={task} />
+                ))}
+            </ListView.Root>
+        </Box>
+    );
+};
+\`\`\`
+
+### HeaderBar with Navigation
+
+\`\`\`tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { ApplicationWindow, Box, Button, HeaderBar, Label, quit } from "@gtkx/react";
+import { useState } from "react";
+
+const AppWithHeaderBar = () => {
+    const [page, setPage] = useState("home");
+
+    return (
+        <ApplicationWindow title="My App" defaultWidth={600} defaultHeight={400} onCloseRequest={quit}>
+            <Box orientation={Gtk.Orientation.VERTICAL}>
+                <HeaderBar.Root>
+                    <HeaderBar.Start>
+                        {page !== "home" && (
+                            <Button iconName="go-previous-symbolic" onClicked={() => setPage("home")} />
+                        )}
+                    </HeaderBar.Start>
+                    <HeaderBar.End>
+                        <Button iconName="emblem-system-symbolic" onClicked={() => setPage("settings")} />
+                    </HeaderBar.End>
+                </HeaderBar.Root>
+                <Label label={page === "home" ? "Home Page" : "Settings Page"} vexpand />
+            </Box>
+        </ApplicationWindow>
+    );
+};
 \`\`\`
 
 ## Menus
