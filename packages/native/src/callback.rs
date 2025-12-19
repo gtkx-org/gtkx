@@ -38,7 +38,7 @@ unsafe extern "C" fn draw_func_trampoline(
     unsafe {
         let mut args: [glib::Value; 4] = [
             glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
-            glib::Value::from_type_unchecked(glib::types::Type::U64),
+            glib::Value::from_type_unchecked(glib::types::Type::POINTER),
             glib::Value::from_type_unchecked(glib::types::Type::I32),
             glib::Value::from_type_unchecked(glib::types::Type::I32),
         ];
@@ -48,7 +48,7 @@ unsafe extern "C" fn draw_func_trampoline(
             drawing_area as *mut gobject_ffi::GObject,
         );
 
-        gobject_ffi::g_value_set_uint64(args[1].to_glib_none_mut().0, cr as u64);
+        gobject_ffi::g_value_set_pointer(args[1].to_glib_none_mut().0, cr as *mut c_void);
         gobject_ffi::g_value_set_int(args[2].to_glib_none_mut().0, width);
         gobject_ffi::g_value_set_int(args[3].to_glib_none_mut().0, height);
 

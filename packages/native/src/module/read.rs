@@ -30,8 +30,7 @@ pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
     let (tx, rx) = mpsc::channel::<anyhow::Result<Value>>();
 
     gtk_dispatch::schedule(move || {
-        tx.send(handle_read(object_id, &type_, offset))
-            .expect("Read result channel disconnected");
+        let _ = tx.send(handle_read(object_id, &type_, offset));
     });
 
     let value = rx

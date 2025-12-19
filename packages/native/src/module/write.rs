@@ -29,8 +29,7 @@ pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
 
     gtk_dispatch::schedule(move || {
-        tx.send(handle_write(object_id, &type_, offset, &value))
-            .expect("Write result channel disconnected");
+        let _ = tx.send(handle_write(object_id, &type_, offset, &value));
     });
 
     rx.recv()

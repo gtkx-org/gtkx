@@ -77,8 +77,7 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     gtk_dispatch::enter_js_wait();
     gtk_dispatch::schedule(move || {
-        tx.send(handle_call(library_name, symbol_name, args, result_type))
-            .expect("FFI call result channel disconnected");
+        let _ = tx.send(handle_call(library_name, symbol_name, args, result_type));
     });
 
     let (value, ref_updates) = wait_for_result(&mut cx, &rx)
@@ -283,7 +282,7 @@ pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     gtk_dispatch::enter_js_wait();
     gtk_dispatch::schedule(move || {
         let result = handle_batch_calls(descriptors);
-        tx.send(result).expect("Batch FFI call result channel disconnected");
+        let _ = tx.send(result);
     });
 
     wait_for_result(&mut cx, &rx)

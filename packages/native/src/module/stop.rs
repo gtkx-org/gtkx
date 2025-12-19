@@ -27,7 +27,7 @@ pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             state.app_hold_guard.take();
         });
 
-        tx.send(()).expect("Stop completion channel disconnected");
+        let _ = tx.send(());
     });
 
     rx.recv()
