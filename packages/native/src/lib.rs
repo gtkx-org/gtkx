@@ -35,6 +35,7 @@ use neon::prelude::*;
 /// - `write`: Write a field to a native object
 /// - `alloc`: Allocate memory for a boxed type
 /// - `getObjectId`: Get the native pointer address for an object
+/// - `poll`: Process pending JS callbacks (for runtimes without proper channel support)
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("start", module::start)?;
@@ -45,5 +46,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("write", module::write)?;
     cx.export_function("alloc", module::alloc)?;
     cx.export_function("getObjectId", module::get_object_id)?;
+    cx.export_function("poll", module::poll)?;
     Ok(())
 }

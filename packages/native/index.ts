@@ -103,4 +103,14 @@ export function getObjectId(id: unknown): number {
     return native.getObjectId(id);
 }
 
+/**
+ * Processes pending JS callbacks from GTK signals.
+ * This is a workaround for runtimes like Deno where Neon's channel wake-up
+ * mechanism may not work correctly. Call this periodically to ensure
+ * callbacks are processed even when the event loop isn't being woken up.
+ */
+export function poll(): void {
+    native.poll();
+}
+
 export type { Ref, Arg, Type };

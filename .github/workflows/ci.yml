@@ -57,6 +57,3 @@ jobs:
           pnpm test
         env:
           DISPLAY: ":99"
-          GSK_RENDERER: cairo
-          GTK_BACKEND: x11
-          LIBGL_ALWAYS_SOFTWARE: 1

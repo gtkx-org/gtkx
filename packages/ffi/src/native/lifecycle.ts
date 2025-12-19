@@ -1,4 +1,4 @@
-import { start as nativeStart, stop as nativeStop } from "@gtkx/native";
+import { poll as nativePoll, start as nativeStart, stop as nativeStop } from "@gtkx/native";
 import { init as initAdwaita } from "../generated/adw/functions.js";
 import type { ApplicationFlags } from "../generated/gio/enums.js";
 import { Application } from "../generated/gtk/application.js";
@@ -6,11 +6,27 @@ import { finalize as finalizeGtkSource, init as initGtkSource } from "../generat
 import { events } from "./events.js";
 import { getObject } from "./object.js";
 
+declare const Deno: unknown;
+const isDeno = typeof Deno !== "undefined";
+
 let currentApp: Application | null = null;
-let keepAliveTimeout: NodeJS.Timeout | null = null;
+let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
+let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
+};
+
+const startPolling = (): void => {
+    if (pollInterval) return;
+    pollInterval = setInterval(() => nativePoll(), 0);
+};
+
+const stopPolling = (): void => {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+    }
 };
 
 /**
@@ -49,6 +65,10 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
 
     keepAlive();
 
+    if (isDeno) {
+        startPolling();
+    }
+
     if (!currentApp) {
         throw new Error("Failed to initialize GTK Application.");
     }
@@ -70,6 +90,8 @@ export const stop = (): void => {
         clearTimeout(keepAliveTimeout);
         keepAliveTimeout = null;
     }
+
+    stopPolling();
 
     events.emit("stop");
 

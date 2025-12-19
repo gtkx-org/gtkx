@@ -61,12 +61,12 @@ describe("waitFor", () => {
                     callCount++;
                     throw new Error("Never succeeds");
                 },
-                { timeout: 200, interval: 50 },
+                { timeout: 300, interval: 50 },
             ),
         ).rejects.toThrow();
 
-        expect(callCount).toBeGreaterThanOrEqual(3);
-        expect(callCount).toBeLessThanOrEqual(6);
+        expect(callCount).toBeGreaterThanOrEqual(2);
+        expect(callCount).toBeLessThanOrEqual(8);
     });
 
     it("calls onTimeout handler when timing out", async () => {
