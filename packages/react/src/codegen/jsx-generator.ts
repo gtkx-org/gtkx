@@ -155,6 +155,7 @@ export class JsxGenerator {
             this.generateConstructorArgsMetadata(allWidgets),
             this.generatePropSettersMap(allWidgets),
             this.generateSetterGetterMap(allWidgets),
+            this.generateSignalNamesMap(allWidgets),
         ];
 
         return {
@@ -596,6 +597,27 @@ ${widgetPropsContent}
         return `export const SETTER_GETTERS: Record<string, Record<string, string>> = {\n${widgetEntries.join(",\n")},\n};\n`;
     }
 
+    private generateSignalNamesMap(widgets: WidgetInfo[]): string {
+        const widgetEntries: string[] = [];
+
+        for (const { widget, namespace } of widgets) {
+            this.currentNamespace = namespace;
+            const signals = this.collectAllSignals(widget);
+
+            if (signals.length > 0) {
+                const widgetName = this.getWidgetExportName(widget);
+                const signalList = signals.map((s) => `"${s}"`).join(", ");
+                widgetEntries.push(`\t${widgetName}: new Set([${signalList}])`);
+            }
+        }
+
+        if (widgetEntries.length === 0) {
+            return `export const SIGNALS: Record<string, Set<string>> = {};\n`;
+        }
+
+        return `export const SIGNALS: Record<string, Set<string>> = {\n${widgetEntries.join(",\n")},\n};\n`;
+    }
+
     private collectParentMethodNames(widget: GirClass): Set<string> {
         const names = new Set<string>();
         const visited = new Set<string>();
@@ -666,6 +688,44 @@ ${widgetPropsContent}
         }
 
         return props;
+    }
+
+    private collectAllSignals(widget: GirClass): string[] {
+        const signals: string[] = [];
+        const seen = new Set<string>();
+
+        let current: GirClass | undefined = widget;
+        while (current) {
+            for (const signal of current.signals) {
+                if (!seen.has(signal.name)) {
+                    seen.add(signal.name);
+                    signals.push(signal.name);
+                }
+            }
+
+            for (const ifaceName of current.implements) {
+                const iface = this.interfaceMap.get(ifaceName);
+                if (iface) {
+                    for (const signal of iface.signals) {
+                        if (!seen.has(signal.name)) {
+                            seen.add(signal.name);
+                            signals.push(signal.name);
+                        }
+                    }
+                }
+            }
+
+            if (current.parent) {
+                current =
+                    this.classMap.get(current.parent) ??
+                    this.classMap.get(`${this.currentNamespace}.${current.parent}`) ??
+                    this.classMap.get(`Gtk.${current.parent}`);
+            } else {
+                current = undefined;
+            }
+        }
+
+        return signals;
     }
 
     private getAncestorInterfaces(widget: GirClass): Set<string> {

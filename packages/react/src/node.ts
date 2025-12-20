@@ -5,7 +5,7 @@ import * as GtkSource from "@gtkx/ffi/gtksource";
 import * as Vte from "@gtkx/ffi/vte";
 import * as WebKit from "@gtkx/ffi/webkit";
 import type { Props, ROOT_NODE_CONTAINER } from "./factory.js";
-import { CONSTRUCTOR_PARAMS, PROP_SETTERS, SETTER_GETTERS } from "./generated/internal.js";
+import { CONSTRUCTOR_PARAMS, PROP_SETTERS, SETTER_GETTERS, SIGNALS } from "./generated/internal.js";
 import { isAddable, isAppendable, isChildContainer, isRemovable, isSingleChild } from "./predicates.js";
 
 type WidgetConstructor = new (...args: unknown[]) => Gtk.Widget;
@@ -201,6 +201,7 @@ export abstract class Node<
 
         const consumed = this.consumedProps();
         const allKeys = new Set([...Object.keys(oldProps), ...Object.keys(newProps)]);
+        const widgetSignals = SIGNALS[this.widgetType];
 
         const signalUpdates: { key: string; newValue: unknown }[] = [];
         const propertyUpdates: { key: string; newValue: unknown }[] = [];
@@ -213,7 +214,9 @@ export abstract class Node<
 
             if (oldValue === newValue) continue;
 
-            if (key.startsWith("on")) {
+            const isSignal = widgetSignals?.has(this.propKeyToEventName(key)) ?? false;
+
+            if (isSignal) {
                 signalUpdates.push({ key, newValue });
             } else if (newValue !== undefined) {
                 propertyUpdates.push({ key, newValue });

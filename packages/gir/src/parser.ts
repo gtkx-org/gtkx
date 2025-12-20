@@ -173,11 +173,22 @@ export class GirParser {
             name: String(iface["@_name"] ?? ""),
             cType: String(iface["@_c:type"] ?? iface["@_glib:type-name"] ?? ""),
             glibTypeName: iface["@_glib:type-name"] ? String(iface["@_glib:type-name"]) : undefined,
+            prerequisites: this.parsePrerequisites(
+                iface.prerequisite as Record<string, unknown>[] | Record<string, unknown> | undefined,
+            ),
             methods: this.parseMethods(ensureArray(iface.method)),
             properties: this.parseProperties(ensureArray(iface.property)),
             signals: this.parseSignals(ensureArray(iface["glib:signal"])),
             doc: extractDoc(iface),
         }));
+    }
+
+    private parsePrerequisites(
+        prerequisites: Record<string, unknown>[] | Record<string, unknown> | undefined,
+    ): string[] {
+        if (!prerequisites) return [];
+        const arr = Array.isArray(prerequisites) ? prerequisites : [prerequisites];
+        return arr.map((prereq) => String(prereq["@_name"] ?? "")).filter(Boolean);
     }
 
     private parseMethods(methods: Record<string, unknown>[]): GirMethod[] {

@@ -72,6 +72,8 @@ export type GirInterface = {
     cType: string;
     /** The GLib type name. */
     glibTypeName?: string;
+    /** List of prerequisite interface names this interface requires. */
+    prerequisites: string[];
     /** Methods defined on this interface. */
     methods: GirMethod[];
     /** Properties defined on this interface. */

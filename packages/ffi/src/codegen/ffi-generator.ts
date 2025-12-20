@@ -87,23 +87,6 @@ const RESERVED_WORDS = new Set([
 
 const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
 
-const METHOD_RENAMES = new Map<string, Map<string, string>>([
-    ["SocketClient", new Map([["connect", "connectTo"]])],
-    ["SocketConnection", new Map([["connect", "connectTo"]])],
-    ["Socket", new Map([["connect", "connectTo"]])],
-    ["Cancellable", new Map([["connect", "connectCallback"]])],
-    ["SignalGroup", new Map([["connect", "connectSignal"]])],
-]);
-
-const getStaticRenamedMethod = (namespace: string, className: string, methodName: string): string | undefined => {
-    const nsRenames = METHOD_RENAMES.get(`${namespace}.${className}`);
-    if (nsRenames?.has(methodName)) {
-        return nsRenames.get(methodName);
-    }
-    const classRenames = METHOD_RENAMES.get(className);
-    return classRenames?.get(methodName);
-};
-
 const toKebabCase = (str: string): string =>
     str
         .replace(/([a-z])([A-Z])/g, "$1-$2")
@@ -293,7 +276,7 @@ export class CodeGenerator {
         for (const iface of namespace.interfaces) {
             files.set(
                 `${toKebabCase(iface.name)}.ts`,
-                await this.generateInterface(iface, namespace.sharedLibrary, classMap),
+                await this.generateInterface(iface, namespace.sharedLibrary, classMap, interfaceMap),
             );
         }
 
@@ -432,8 +415,8 @@ export class CodeGenerator {
 
         const filteredClassMethods = cls.methods.filter((m) => {
             if (!parentMethodNames.has(m.name)) return true;
-            const camelMethodName = toCamelCase(m.name);
-            const renamedMethod = `${camelMethodName}${className}`;
+            const pascalMethodName = toPascalCase(m.name);
+            const renamedMethod = `${className.charAt(0).toLowerCase()}${className.slice(1)}${pascalMethodName}`;
             this.methodRenames.set(m.cIdentifier, renamedMethod);
             return true;
         });
@@ -457,9 +440,9 @@ export class CodeGenerator {
                 if (classMethodNames.has(method.name) || parentMethodNames.has(method.name)) continue;
 
                 if (seenInterfaceMethodNames.has(method.name)) {
-                    const camelMethodName = toCamelCase(method.name);
-                    const ifaceShortName = toPascalCase(iface.name);
-                    const renamedMethod = `${camelMethodName}${ifaceShortName}`;
+                    const pascalMethodName = toPascalCase(method.name);
+                    const ifaceName = toPascalCase(iface.name);
+                    const renamedMethod = `${ifaceName.charAt(0).toLowerCase()}${ifaceName.slice(1)}${pascalMethodName}`;
                     this.methodRenames.set(method.cIdentifier, renamedMethod);
                     interfaceMethods.push(method);
                 } else {
@@ -1025,7 +1008,7 @@ ${allArgs ? `${allArgs},` : ""}
         method: GirMethod,
         allMethods: GirMethod[],
         sharedLibrary: string,
-        className?: string,
+        _className?: string,
     ): string | null {
         if (!this.hasAsyncCallback(method)) return null;
 
@@ -1052,10 +1035,7 @@ ${allArgs ? `${allArgs},` : ""}
 
         const dynamicRename = this.methodRenames.get(method.cIdentifier);
         const camelName = toCamelCase(method.name);
-        const staticRename = className
-            ? getStaticRenamedMethod(this.options.namespace, className, camelName)
-            : undefined;
-        const methodName = dynamicRename ?? staticRename ?? camelName;
+        const methodName = dynamicRename ?? camelName;
 
         const params = paramsWithoutCallback
             .map((p) => {
@@ -1323,10 +1303,7 @@ ${allArgs ? `${allArgs},` : ""}
     private generateMethod(method: GirMethod, sharedLibrary: string, className?: string, isRecord = false): string {
         const dynamicRename = this.methodRenames.get(method.cIdentifier);
         const camelName = toCamelCase(method.name);
-        const staticRename = className
-            ? getStaticRenamedMethod(this.options.namespace, className, camelName)
-            : undefined;
-        const methodName = dynamicRename ?? staticRename ?? camelName;
+        const methodName = dynamicRename ?? camelName;
 
         const params = this.generateParameterList(method.parameters);
         const returnTypeMapping = this.typeMapper.mapType(method.returnType, true);
@@ -1508,7 +1485,9 @@ ${allArgs ? `${allArgs},` : ""}
         classMap: Map<string, GirClass>,
         className: string,
     ): { moduleLevel: string; method: string } {
-        const methodName = hasConnectMethod ? "on" : "connect";
+        const methodName = hasConnectMethod
+            ? `${className.charAt(0).toLowerCase()}${className.slice(1)}Connect`
+            : "connect";
 
         const savedEnumCallback = this.typeMapper.getEnumUsageCallback();
         const savedRecordCallback = this.typeMapper.getRecordUsageCallback();
@@ -1664,14 +1643,20 @@ ${allArgs ? `${allArgs},` : ""}
         iface: GirInterface,
         sharedLibrary: string,
         _classMap: Map<string, GirClass>,
+        interfaceMap: Map<string, GirInterface>,
     ): Promise<string> {
         this.resetState();
 
         const interfaceName = toPascalCase(iface.name);
         const sections: string[] = [];
 
-        this.usesCall = iface.methods.length > 0;
-        this.usesRef = iface.methods.some((m) => hasRefParameter(m.parameters, this.typeMapper));
+        const interfaceMethodNames = new Set(iface.methods.map((m) => m.name));
+        const prerequisiteMethods = this.collectPrerequisiteMethods(iface, interfaceMap, interfaceMethodNames);
+
+        const allMethods = [...iface.methods, ...prerequisiteMethods];
+
+        this.usesCall = allMethods.length > 0;
+        this.usesRef = allMethods.some((m) => hasRefParameter(m.parameters, this.typeMapper));
 
         if (iface.doc) {
             sections.push(this.formatDoc(iface.doc));
@@ -1687,10 +1672,65 @@ ${allArgs ? `${allArgs},` : ""}
             sections.push(this.generateMethods(iface.methods, sharedLibrary, interfaceName));
         }
 
+        if (prerequisiteMethods.length > 0) {
+            sections.push(this.generateMethods(prerequisiteMethods, sharedLibrary, interfaceName));
+        }
+
         sections.push("}");
 
         const imports = this.generateImports(interfaceName);
         return this.formatCode(imports + sections.join("\n"));
+    }
+
+    private collectPrerequisiteMethods(
+        iface: GirInterface,
+        interfaceMap: Map<string, GirInterface>,
+        existingMethodNames: Set<string>,
+    ): GirMethod[] {
+        const methods: GirMethod[] = [];
+        const seenMethodNames = new Set(existingMethodNames);
+        const visitedInterfaces = new Set<string>();
+
+        const collectFromPrerequisite = (prereqName: string) => {
+            if (visitedInterfaces.has(prereqName)) return;
+            visitedInterfaces.add(prereqName);
+
+            let prereq: GirInterface | undefined;
+            if (prereqName.includes(".")) {
+                const [ns, prereqIfaceName] = prereqName.split(".", 2);
+                const prereqNs = this.options.allNamespaces?.get(ns ?? "");
+                if (prereqNs && prereqIfaceName) {
+                    prereq = prereqNs.interfaces.find((i) => i.name === prereqIfaceName);
+                }
+            } else {
+                prereq = interfaceMap.get(prereqName);
+            }
+
+            if (!prereq) return;
+
+            for (const prereqPrereq of prereq.prerequisites) {
+                collectFromPrerequisite(prereqPrereq);
+            }
+
+            for (const method of prereq.methods) {
+                if (seenMethodNames.has(method.name)) {
+                    const pascalMethodName = toPascalCase(method.name);
+                    const prereqName = toPascalCase(prereq.name);
+                    const renamedMethod = `${prereqName.charAt(0).toLowerCase()}${prereqName.slice(1)}${pascalMethodName}`;
+                    this.methodRenames.set(method.cIdentifier, renamedMethod);
+                    methods.push(method);
+                } else {
+                    seenMethodNames.add(method.name);
+                    methods.push(method);
+                }
+            }
+        };
+
+        for (const prereqName of iface.prerequisites) {
+            collectFromPrerequisite(prereqName);
+        }
+
+        return methods;
     }
 
     private async generateRecord(record: GirRecord, sharedLibrary: string): Promise<string> {
