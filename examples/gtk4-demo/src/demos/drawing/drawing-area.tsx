@@ -1,6 +1,6 @@
 import * as cairo from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, DrawingArea, Label } from "@gtkx/react";
+import { GtkBox, GtkDrawingArea, GtkLabel } from "@gtkx/react";
 import { useCallback, useRef } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -73,15 +73,15 @@ const DrawingAreaDemo = () => {
     }, []);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Drawing Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-            <Label
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Drawing Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel
                 label="GtkDrawingArea provides a canvas for custom drawing with Cairo. This demo shows basic shapes: a filled circle, a stroked ring, a rectangle, a triangle, and a dashed arc."
                 wrap
                 cssClasses={["dim-label"]}
             />
 
-            <DrawingArea
+            <GtkDrawingArea
                 contentWidth={300}
                 contentHeight={300}
                 vexpand
@@ -89,7 +89,7 @@ const DrawingAreaDemo = () => {
                 onRealize={handleRealize}
                 onResize={handleResize}
             />
-        </Box>
+        </GtkBox>
     );
 };
 

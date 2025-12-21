@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Frame, Label, Menu, MenuButton, PopoverMenu } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkLabel, GtkMenuButton, GtkPopoverMenu, Menu } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -12,20 +12,20 @@ const PopoverMenuDemo = () => {
     };
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Popover Menu" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="<GtkPopover Menu" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="About PopoverMenu" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="About PopoverMenu" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GtkPopoverMenu displays a menu in a popover. The declarative Menu components (Menu.Item, Menu.Section, Menu.Submenu) allow building menus without imperative Gio.Menu construction. Menu.Item accepts onActivate callbacks and accels for keyboard shortcuts."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Frame.Root>
-                <Box
+            <GtkFrame.Root>
+                <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     marginStart={12}
@@ -33,29 +33,29 @@ const PopoverMenuDemo = () => {
                     marginTop={8}
                     marginBottom={8}
                 >
-                    <Label label="Last action:" cssClasses={["dim-label"]} />
-                    <Label label={lastAction ?? "(none)"} cssClasses={lastAction ? ["accent"] : ["dim-label"]} />
-                </Box>
-            </Frame.Root>
+                    <GtkLabel label="Last action:" cssClasses={["dim-label"]} />
+                    <GtkLabel label={lastAction ?? "(none)"} cssClasses={lastAction ? ["accent"] : ["dim-label"]} />
+                </GtkBox>
+            </GtkFrame.Root>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Simple Menu" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <MenuButton.Root label="Actions" halign={Gtk.Align.CENTER}>
-                    <MenuButton.Popover>
-                        <PopoverMenu.Root>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Simple Menu" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkMenuButton.Root label="Actions" halign={Gtk.Align.CENTER}>
+                    <GtkMenuButton.Popover>
+                        <GtkPopoverMenu.Root>
                             <Menu.Item label="New" onActivate={() => handleAction("New")} accels="<Control>n" />
                             <Menu.Item label="Open" onActivate={() => handleAction("Open")} accels="<Control>o" />
                             <Menu.Item label="Save" onActivate={() => handleAction("Save")} accels="<Control>s" />
-                        </PopoverMenu.Root>
-                    </MenuButton.Popover>
-                </MenuButton.Root>
-            </Box>
+                        </GtkPopoverMenu.Root>
+                    </GtkMenuButton.Popover>
+                </GtkMenuButton.Root>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Menu with Sections" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <MenuButton.Root label="Edit" halign={Gtk.Align.CENTER}>
-                    <MenuButton.Popover>
-                        <PopoverMenu.Root>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Menu with Sections" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkMenuButton.Root label="Edit" halign={Gtk.Align.CENTER}>
+                    <GtkMenuButton.Popover>
+                        <GtkPopoverMenu.Root>
                             <Menu.Section label="History">
                                 <Menu.Item label="Undo" onActivate={() => handleAction("Undo")} accels="<Control>z" />
                                 <Menu.Item
@@ -69,16 +69,16 @@ const PopoverMenuDemo = () => {
                                 <Menu.Item label="Copy" onActivate={() => handleAction("Copy")} accels="<Control>c" />
                                 <Menu.Item label="Paste" onActivate={() => handleAction("Paste")} accels="<Control>v" />
                             </Menu.Section>
-                        </PopoverMenu.Root>
-                    </MenuButton.Popover>
-                </MenuButton.Root>
-            </Box>
+                        </GtkPopoverMenu.Root>
+                    </GtkMenuButton.Popover>
+                </GtkMenuButton.Root>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Menu with Submenus" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <MenuButton.Root label="File" halign={Gtk.Align.CENTER}>
-                    <MenuButton.Popover>
-                        <PopoverMenu.Root>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Menu with Submenus" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkMenuButton.Root label="File" halign={Gtk.Align.CENTER}>
+                    <GtkMenuButton.Popover>
+                        <GtkPopoverMenu.Root>
                             <Menu.Item label="New" onActivate={() => handleAction("New")} />
                             <Menu.Item label="Open" onActivate={() => handleAction("Open")} />
                             <Menu.Submenu label="Recent Files">
@@ -92,16 +92,16 @@ const PopoverMenuDemo = () => {
                                 <Menu.Item label="HTML" onActivate={() => handleAction("Export HTML")} />
                                 <Menu.Item label="Markdown" onActivate={() => handleAction("Export Markdown")} />
                             </Menu.Submenu>
-                        </PopoverMenu.Root>
-                    </MenuButton.Popover>
-                </MenuButton.Root>
-            </Box>
+                        </GtkPopoverMenu.Root>
+                    </GtkMenuButton.Popover>
+                </GtkMenuButton.Root>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Complex Menu" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <MenuButton.Root iconName="open-menu-symbolic" halign={Gtk.Align.CENTER}>
-                    <MenuButton.Popover>
-                        <PopoverMenu.Root>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Complex Menu" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkMenuButton.Root iconName="open-menu-symbolic" halign={Gtk.Align.CENTER}>
+                    <GtkMenuButton.Popover>
+                        <GtkPopoverMenu.Root>
                             <Menu.Section>
                                 <Menu.Item
                                     label="Preferences"
@@ -124,18 +124,18 @@ const PopoverMenuDemo = () => {
                             <Menu.Section>
                                 <Menu.Item label="Quit" onActivate={() => handleAction("Quit")} accels="<Control>q" />
                             </Menu.Section>
-                        </PopoverMenu.Root>
-                    </MenuButton.Popover>
-                </MenuButton.Root>
-            </Box>
-        </Box>
+                        </GtkPopoverMenu.Root>
+                    </GtkMenuButton.Popover>
+                </GtkMenuButton.Root>
+            </GtkBox>
+        </GtkBox>
     );
 };
 
 export const popoverMenuDemo: Demo = {
     id: "popovermenu",
-    title: "Popover Menu",
-    description: "Declarative menu building with PopoverMenu, Menu.Item, Menu.Section, and Menu.Submenu.",
+    title: "<GtkPopover Menu",
+    description: "Declarative menu building with GtkPopoverMenu, Menu.Item, Menu.Section, and Menu.Submenu.",
     keywords: ["menu", "popover", "section", "submenu", "GtkPopoverMenu", "declarative"],
     component: PopoverMenuDemo,
     sourcePath: getSourcePath(import.meta.url, "popover-menu.tsx"),

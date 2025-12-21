@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { Button, Label, Overlay } from "@gtkx/react";
+import { GtkButton, GtkLabel, GtkOverlay } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -11,9 +11,9 @@ describe("render - Overlay", () => {
             const labelRef = createRef<Gtk.Label>();
 
             await render(
-                <Overlay ref={overlayRef}>
-                    <Label ref={labelRef} label="Main Child" />
-                </Overlay>,
+                <GtkOverlay ref={overlayRef}>
+                    <GtkLabel ref={labelRef} label="Main Child" />
+                </GtkOverlay>,
                 { wrapper: false },
             );
 
@@ -24,7 +24,7 @@ describe("render - Overlay", () => {
             const overlayRef = createRef<Gtk.Overlay>();
 
             function App({ showMain }: { showMain: boolean }) {
-                return <Overlay ref={overlayRef}>{showMain && <Label label="Main" />}</Overlay>;
+                return <GtkOverlay ref={overlayRef}>{showMain && <GtkLabel label="Main" />}</GtkOverlay>;
             }
 
             await render(<App showMain={true} />, { wrapper: false });
@@ -45,11 +45,11 @@ describe("render - Overlay", () => {
             const overlay2Ref = createRef<Gtk.Button>();
 
             await render(
-                <Overlay ref={overlayRef}>
-                    <Label ref={mainRef} label="Main" />
-                    <Button ref={overlay1Ref} label="Overlay 1" />
-                    <Button ref={overlay2Ref} label="Overlay 2" />
-                </Overlay>,
+                <GtkOverlay ref={overlayRef}>
+                    <GtkLabel ref={mainRef} label="Main" />
+                    <GtkButton ref={overlay1Ref} label="Overlay 1" />
+                    <GtkButton ref={overlay2Ref} label="Overlay 2" />
+                </GtkOverlay>,
                 { wrapper: false },
             );
 
@@ -63,12 +63,12 @@ describe("render - Overlay", () => {
 
             function App({ overlays }: { overlays: string[] }) {
                 return (
-                    <Overlay ref={overlayRef}>
-                        <Label label="Main" />
+                    <GtkOverlay ref={overlayRef}>
+                        <GtkLabel label="Main" />
                         {overlays.map((label) => (
-                            <Button key={label} label={label} />
+                            <GtkButton key={label} label={label} />
                         ))}
-                    </Overlay>
+                    </GtkOverlay>
                 );
             }
 
@@ -86,10 +86,10 @@ describe("render - Overlay", () => {
 
             function App({ insertFirst }: { insertFirst: boolean }) {
                 return (
-                    <Overlay ref={overlayRef}>
-                        {insertFirst && <Button ref={buttonRef} key="button" label="Inserted" />}
-                        <Label ref={labelRef} key="label" label="Original Main" />
-                    </Overlay>
+                    <GtkOverlay ref={overlayRef}>
+                        {insertFirst && <GtkButton ref={buttonRef} key="button" label="Inserted" />}
+                        <GtkLabel ref={labelRef} key="label" label="Original Main" />
+                    </GtkOverlay>
                 );
             }
 
@@ -105,12 +105,12 @@ describe("render - Overlay", () => {
 
             function App({ overlays }: { overlays: string[] }) {
                 return (
-                    <Overlay ref={overlayRef}>
-                        <Label label="Main" />
+                    <GtkOverlay ref={overlayRef}>
+                        <GtkLabel label="Main" />
                         {overlays.map((label) => (
-                            <Button key={label} label={label} />
+                            <GtkButton key={label} label={label} />
                         ))}
-                    </Overlay>
+                    </GtkOverlay>
                 );
             }
 

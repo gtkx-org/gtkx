@@ -4,7 +4,7 @@ import { Node } from "../node.js";
 
 export class AboutDialogNode extends Node<Gtk.AboutDialog> {
     static matches(type: string): boolean {
-        return type === "AboutDialog";
+        return type === "GtkAboutDialog";
     }
 
     protected override isStandalone(): boolean {

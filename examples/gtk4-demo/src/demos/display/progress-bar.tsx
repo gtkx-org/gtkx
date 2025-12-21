@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label, ProgressBar } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkProgressBar } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -25,61 +25,65 @@ const ProgressBarDemo = () => {
     }, [running]);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Progress Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Progress Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Determinate Progress" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label label="Shows progress with a specific value between 0 and 1." wrap cssClasses={["dim-label"]} />
-                <ProgressBar fraction={progress} showText text={`${Math.round(progress * 100)}%`} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
-                    <Button
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Determinate Progress" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="Shows progress with a specific value between 0 and 1."
+                    wrap
+                    cssClasses={["dim-label"]}
+                />
+                <GtkProgressBar fraction={progress} showText text={`${Math.round(progress * 100)}%`} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkButton
                         label={running ? "Running..." : "Start"}
                         onClicked={() => setRunning(true)}
                         sensitive={!running}
                         cssClasses={["suggested-action"]}
                     />
-                    <Button
+                    <GtkButton
                         label="Reset"
                         onClicked={() => {
                             setRunning(false);
                             setProgress(0);
                         }}
                     />
-                </Box>
-            </Box>
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Progress Levels" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <Label label="0%" widthRequest={40} halign={Gtk.Align.END} />
-                        <ProgressBar fraction={0} hexpand />
-                    </Box>
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <Label label="25%" widthRequest={40} halign={Gtk.Align.END} />
-                        <ProgressBar fraction={0.25} hexpand />
-                    </Box>
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <Label label="50%" widthRequest={40} halign={Gtk.Align.END} />
-                        <ProgressBar fraction={0.5} hexpand />
-                    </Box>
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <Label label="75%" widthRequest={40} halign={Gtk.Align.END} />
-                        <ProgressBar fraction={0.75} hexpand />
-                    </Box>
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <Label label="100%" widthRequest={40} halign={Gtk.Align.END} />
-                        <ProgressBar fraction={1} hexpand />
-                    </Box>
-                </Box>
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Progress Levels" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkLabel label="0%" widthRequest={40} halign={Gtk.Align.END} />
+                        <GtkProgressBar fraction={0} hexpand />
+                    </GtkBox>
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkLabel label="25%" widthRequest={40} halign={Gtk.Align.END} />
+                        <GtkProgressBar fraction={0.25} hexpand />
+                    </GtkBox>
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkLabel label="50%" widthRequest={40} halign={Gtk.Align.END} />
+                        <GtkProgressBar fraction={0.5} hexpand />
+                    </GtkBox>
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkLabel label="75%" widthRequest={40} halign={Gtk.Align.END} />
+                        <GtkProgressBar fraction={0.75} hexpand />
+                    </GtkBox>
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkLabel label="100%" widthRequest={40} halign={Gtk.Align.END} />
+                        <GtkProgressBar fraction={1} hexpand />
+                    </GtkBox>
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="With Text" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <ProgressBar fraction={0.65} showText text="Downloading..." />
-            </Box>
-        </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="With Text" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkProgressBar fraction={0.65} showText text="Downloading..." />
+            </GtkBox>
+        </GtkBox>
     );
 };
 

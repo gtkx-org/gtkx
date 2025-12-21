@@ -5,7 +5,7 @@ import { IndexedChildContainerNode } from "./indexed-child-container.js";
 
 export class FlowBoxNode extends IndexedChildContainerNode<Gtk.FlowBox> {
     static matches(type: string): boolean {
-        return type === "FlowBox";
+        return type === "GtkFlowBox";
     }
 
     protected getInsertionIndex(before: Gtk.Widget): number {

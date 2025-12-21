@@ -7,7 +7,7 @@ import { VirtualSlotNode } from "./virtual-slot.js";
 
 export class NotebookNode extends Node<Gtk.Notebook> implements PageContainer, ChildContainer {
     static matches(type: string): boolean {
-        return type === "Notebook" || type === "Notebook.Root";
+        return type === "GtkNotebook" || type === "GtkNotebook.Root";
     }
 
     addPage(child: Gtk.Widget, label: string): void {
@@ -115,7 +115,7 @@ export class NotebookPageNode extends VirtualSlotNode<PageContainer, NotebookPag
     static override consumedPropNames = ["label"];
 
     static matches(type: string): boolean {
-        return type === "Notebook.Page";
+        return type === "GtkNotebook.Page";
     }
 
     protected isValidContainer(parent: Node): parent is Node & PageContainer {

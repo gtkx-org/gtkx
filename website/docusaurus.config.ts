@@ -14,6 +14,7 @@ const config: Config = {
     projectName: "gtkx",
 
     onBrokenLinks: "throw",
+    onBrokenAnchors: "ignore",
 
     markdown: {
         hooks: {

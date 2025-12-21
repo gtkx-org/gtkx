@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, CheckButton, Label, ListBox, ScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkCheckButton, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/react";
 import { useCallback, useState } from "react";
 
 interface Task {
@@ -34,7 +34,7 @@ export const ListBoxDemo = () => {
     const activeCount = tasks.filter((t) => !t.completed).length;
 
     return (
-        <Box
+        <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             spacing={16}
             marginStart={20}
@@ -44,26 +44,26 @@ export const ListBoxDemo = () => {
             hexpand
             vexpand
         >
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="ListBox" cssClasses={["title-1"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="ListBox" cssClasses={["title-1"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GtkListBox is a vertical container for rows that can be dynamically sorted and filtered. It's ideal for small to medium lists where each row can have complex widgets."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                    <Label label="Task List" cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
-                    <Label label={`${activeCount} remaining`} cssClasses={["dim-label"]} />
-                </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkLabel label="Task List" cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
+                    <GtkLabel label={`${activeCount} remaining`} cssClasses={["dim-label"]} />
+                </GtkBox>
 
-                <ScrolledWindow vexpand cssClasses={["card"]}>
-                    <ListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
+                <GtkScrolledWindow vexpand cssClasses={["card"]}>
+                    <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
                         {tasks.map((task) => (
-                            <Box
+                            <GtkBox
                                 key={task.id}
                                 orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={12}
@@ -72,23 +72,26 @@ export const ListBoxDemo = () => {
                                 marginTop={8}
                                 marginBottom={8}
                             >
-                                <CheckButton.Root active={task.completed} onToggled={() => toggleTask(task.id)} />
-                                <Label
+                                <GtkCheckButton.Root active={task.completed} onToggled={() => toggleTask(task.id)} />
+                                <GtkLabel
                                     label={task.title}
                                     hexpand
                                     halign={Gtk.Align.START}
                                     cssClasses={task.completed ? ["dim-label"] : []}
                                 />
-                                <Label label={task.priority} cssClasses={["caption", priorityColors[task.priority]]} />
-                            </Box>
+                                <GtkLabel
+                                    label={task.priority}
+                                    cssClasses={["caption", priorityColors[task.priority]]}
+                                />
+                            </GtkBox>
                         ))}
-                    </ListBox>
-                </ScrolledWindow>
-            </Box>
+                    </GtkListBox>
+                </GtkScrolledWindow>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={
                         "• Supports selection modes: none, single, browse, multiple\n• Rows can contain any widgets\n• Built-in keyboard navigation\n• Supports placeholder for empty state"
                     }
@@ -96,7 +99,7 @@ export const ListBoxDemo = () => {
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };

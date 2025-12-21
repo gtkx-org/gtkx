@@ -1,6 +1,5 @@
-import { getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Entry } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkEntry } from "@gtkx/react";
 import { useState } from "react";
 
 type TodoInputProps = {
@@ -11,7 +10,7 @@ export const TodoInput = ({ onAdd }: TodoInputProps) => {
     const [text, setText] = useState("");
 
     const handleChange = (entry: Gtk.Entry) => {
-        setText(getNativeObject(entry.id, Gtk.Editable)?.getText() ?? "");
+        setText(entry.getText() ?? "");
     };
 
     const handleAdd = () => {
@@ -24,8 +23,8 @@ export const TodoInput = ({ onAdd }: TodoInputProps) => {
     };
 
     return (
-        <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-            <Entry
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+            <GtkEntry
                 text={text}
                 onChanged={handleChange}
                 onActivate={handleAdd}
@@ -33,13 +32,13 @@ export const TodoInput = ({ onAdd }: TodoInputProps) => {
                 hexpand
                 name="todo-input"
             />
-            <Button
+            <GtkButton
                 iconName="list-add-symbolic"
                 tooltipText="Add task"
                 cssClasses={["suggested-action"]}
                 onClicked={handleAdd}
                 name="add-button"
             />
-        </Box>
+        </GtkBox>
     );
 };

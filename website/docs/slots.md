@@ -13,17 +13,17 @@ Slots follow the pattern `<Widget.SlotName>`:
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Expander, Box, Label } from "@gtkx/react";
+import { GtkExpander, GtkBox, GtkLabel } from "@gtkx/react";
 
 const ExpandableSection = () => (
-  <Expander.Root label="Click to expand">
-    <Expander.Child>
-      <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+  <GtkExpander.Root label="Click to expand">
+    <GtkExpander.Child>
+      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
         This content is inside the expander
         It shows when expanded
-      </Box>
-    </Expander.Child>
-  </Expander.Root>
+      </GtkBox>
+    </GtkExpander.Child>
+  </GtkExpander.Root>
 );
 ```
 
@@ -44,42 +44,42 @@ This maps React's composition model to GTK's property-based child management.
 ### Frame with Child
 
 ```tsx
-import { Frame } from "@gtkx/react";
+import { GtkFrame } from "@gtkx/react";
 
-<Frame.Root label="Settings">
-  <Frame.Child>Frame content goes here</Frame.Child>
-</Frame.Root>;
+<GtkFrame.Root label="Settings">
+  <GtkFrame.Child>Frame content goes here</GtkFrame.Child>
+</GtkFrame.Root>;
 ```
 
 ### HeaderBar with Title Widget
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { HeaderBar, Label, Box } from "@gtkx/react";
+import { GtkHeaderBar, GtkLabel, GtkBox } from "@gtkx/react";
 
-<HeaderBar.Root>
-  <HeaderBar.TitleWidget>
-    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-      <Label label="My App" cssClasses={["heading"]} />
-      <Label label="v1.0" cssClasses={["dim-label"]} />
-    </Box>
-  </HeaderBar.TitleWidget>
-</HeaderBar.Root>;
+<GtkHeaderBar.Root>
+  <GtkHeaderBar.TitleWidget>
+    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+      <GtkLabel label="My App" cssClasses={["heading"]} />
+      <GtkLabel label="v1.0" cssClasses={["dim-label"]} />
+    </GtkBox>
+  </GtkHeaderBar.TitleWidget>
+</GtkHeaderBar.Root>;
 ```
 
 ### Window with Titlebar
 
 ```tsx
-import { Window, HeaderBar, Button, quit } from "@gtkx/react";
+import { GtkWindow, GtkHeaderBar, GtkButton, quit } from "@gtkx/react";
 
-<Window.Root onCloseRequest={quit}>
-  <Window.Titlebar>
-    <HeaderBar.Root>
-      <Button label="Menu" />
-    </HeaderBar.Root>
-  </Window.Titlebar>
-  <Window.Child>{/* Main content */}</Window.Child>
-</Window.Root>;
+<GtkWindow.Root onCloseRequest={quit}>
+  <GtkWindow.Titlebar>
+    <GtkHeaderBar.Root>
+      <GtkButton label="Menu" />
+    </GtkHeaderBar.Root>
+  </GtkWindow.Titlebar>
+  <GtkWindow.Child>{/* Main content */}</GtkWindow.Child>
+</GtkWindow.Root>;
 ```
 
 ### Adwaita Toolbar View
@@ -91,7 +91,7 @@ import {
   AdwToolbarView,
   AdwHeaderBar,
   AdwWindowTitle,
-  Label,
+  GtkLabel,
 } from "@gtkx/react";
 
 <AdwToolbarView.Root>
@@ -144,19 +144,19 @@ Every widget with slots has two component types:
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Expander, Label, Box } from "@gtkx/react";
+import { GtkExpander, GtkLabel, GtkBox } from "@gtkx/react";
 
 // Expander with a custom label widget using markup
-<Expander.Root>
-  <Expander.LabelWidget>
-    <Label label="<b>Bold</b> title" useMarkup />
-  </Expander.LabelWidget>
-  <Expander.Child>
-    <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+<GtkExpander.Root>
+  <GtkExpander.LabelWidget>
+    <GtkLabel label="<b>Bold</b> title" useMarkup />
+  </GtkExpander.LabelWidget>
+  <GtkExpander.Child>
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
       Content inside the expander
-    </Box>
-  </Expander.Child>
-</Expander.Root>
+    </GtkBox>
+  </GtkExpander.Child>
+</GtkExpander.Root>
 ```
 
 ## Dynamic Slot Content
@@ -164,14 +164,14 @@ import { Expander, Label, Box } from "@gtkx/react";
 Slots work with React's conditional rendering:
 
 ```tsx
-import { Expander, Label, Spinner } from "@gtkx/react";
+import { GtkExpander, GtkLabel, GtkSpinner } from "@gtkx/react";
 
 const LoadingExpander = ({ loading, data }) => (
-  <Expander.Root label="Data">
-    <Expander.Child>
-      {loading ? <Spinner spinning /> : <Label label={data} />}
-    </Expander.Child>
-  </Expander.Root>
+  <GtkExpander.Root label="Data">
+    <GtkExpander.Child>
+      {loading ? <GtkSpinner spinning /> : <GtkLabel label={data} />}
+    </GtkExpander.Child>
+  </GtkExpander.Root>
 );
 ```
 

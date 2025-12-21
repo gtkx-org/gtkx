@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -8,14 +8,14 @@ const HelloWorldDemo = () => {
     const [greeting, setGreeting] = useState("Hello, World!");
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-            <Label label={greeting} cssClasses={["title-1"]} />
-            <Button
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+            <GtkLabel label={greeting} cssClasses={["title-1"]} />
+            <GtkButton
                 label="Say Hello"
                 cssClasses={["suggested-action"]}
                 onClicked={() => setGreeting("Hello from GTKX!")}
             />
-        </Box>
+        </GtkBox>
     );
 };
 

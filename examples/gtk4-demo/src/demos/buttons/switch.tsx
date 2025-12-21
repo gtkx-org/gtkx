@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, Switch } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkSwitch } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -10,58 +10,58 @@ const SwitchDemo = () => {
     const [autoSave, setAutoSave] = useState(true);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Switch" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Switch" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Settings Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Settings Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
 
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="Dark Mode" hexpand halign={Gtk.Align.START} />
-                    <Switch
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="Dark Mode" hexpand halign={Gtk.Align.START} />
+                    <GtkSwitch
                         active={darkMode}
                         onStateSet={(_self, state) => {
                             setDarkMode(state);
                             return true;
                         }}
                     />
-                </Box>
+                </GtkBox>
 
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="Notifications" hexpand halign={Gtk.Align.START} />
-                    <Switch
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="Notifications" hexpand halign={Gtk.Align.START} />
+                    <GtkSwitch
                         active={notifications}
                         onStateSet={(_self, state) => {
                             setNotifications(state);
                             return true;
                         }}
                     />
-                </Box>
+                </GtkBox>
 
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="Auto-save" hexpand halign={Gtk.Align.START} />
-                    <Switch
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="Auto-save" hexpand halign={Gtk.Align.START} />
+                    <GtkSwitch
                         active={autoSave}
                         onStateSet={(_self, state) => {
                             setAutoSave(state);
                             return true;
                         }}
                     />
-                </Box>
-            </Box>
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Disabled State" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="Disabled Off" hexpand halign={Gtk.Align.START} />
-                    <Switch active={false} sensitive={false} />
-                </Box>
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="Disabled On" hexpand halign={Gtk.Align.START} />
-                    <Switch active={true} sensitive={false} />
-                </Box>
-            </Box>
-        </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Disabled State" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="Disabled Off" hexpand halign={Gtk.Align.START} />
+                    <GtkSwitch active={false} sensitive={false} />
+                </GtkBox>
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="Disabled On" hexpand halign={Gtk.Align.START} />
+                    <GtkSwitch active={true} sensitive={false} />
+                </GtkBox>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

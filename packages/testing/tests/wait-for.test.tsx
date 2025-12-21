@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "../src/index.js";
@@ -104,10 +104,10 @@ describe("waitForElementToBeRemoved", () => {
         const DynamicComponent = () => {
             const [showLabel, setShowLabel] = useState(true);
             return (
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                    <Button label="Remove" onClicked={() => setShowLabel(false)} />
-                    {showLabel && <Label label="Temporary" />}
-                </Box>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                    <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
+                    {showLabel && <GtkLabel label="Temporary" />}
+                </GtkBox>
             );
         };
 
@@ -126,10 +126,10 @@ describe("waitForElementToBeRemoved", () => {
         const DynamicComponent = () => {
             const [showLabel, setShowLabel] = useState(true);
             return (
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                    <Button label="Remove" onClicked={() => setShowLabel(false)} />
-                    {showLabel && <Label label="ToRemove" name="removable" />}
-                </Box>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                    <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
+                    {showLabel && <GtkLabel label="ToRemove" name="removable" />}
+                </GtkBox>
             );
         };
 
@@ -153,7 +153,7 @@ describe("waitForElementToBeRemoved", () => {
     });
 
     it("respects custom timeout", async () => {
-        await render(<Label label="Permanent" />);
+        await render(<GtkLabel label="Permanent" />);
 
         const label = await screen.findByText("Permanent");
 
@@ -162,13 +162,13 @@ describe("waitForElementToBeRemoved", () => {
 
     describe("error handling", () => {
         it("throws immediately if element is already removed", async () => {
-            await render(<Label label="Test" />);
+            await render(<GtkLabel label="Test" />);
 
             await expect(waitForElementToBeRemoved(null as never)).rejects.toThrow("already removed");
         });
 
         it("throws if callback returns null initially", async () => {
-            await render(<Label label="Test" />);
+            await render(<GtkLabel label="Test" />);
 
             await expect(waitForElementToBeRemoved(() => null)).rejects.toThrow("already removed");
         });

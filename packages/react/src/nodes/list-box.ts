@@ -5,7 +5,7 @@ import { IndexedChildContainerNode } from "./indexed-child-container.js";
 
 export class ListBoxNode extends IndexedChildContainerNode<Gtk.ListBox> {
     static matches(type: string): boolean {
-        return type === "ListBox";
+        return type === "GtkListBox";
     }
 
     protected getInsertionIndex(before: Gtk.Widget): number {

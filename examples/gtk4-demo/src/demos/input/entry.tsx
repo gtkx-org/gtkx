@@ -1,47 +1,47 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Entry, Label } from "@gtkx/react";
+import { GtkBox, GtkEntry, GtkLabel } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const EntryDemo = () => {
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Entry" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Entry" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Basic Entry" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
-                    label="Entry is a single-line text input widget. Type in the entries below."
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Basic Entry" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="<GtkEntry is a single-line text input widget. Type in the entries below."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Entry placeholderText="Type something..." />
-            </Box>
+                <GtkEntry placeholderText="Type something..." />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Max Length (10 characters)" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Entry placeholderText="Max 10 chars" maxLength={10} />
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Max Length (10 characters)" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkEntry placeholderText="Max 10 chars" maxLength={10} />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Entry Purposes" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="<GtkEntry Purposes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="Input purpose helps mobile keyboards show appropriate layouts."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Entry placeholderText="Free form text" inputPurpose={Gtk.InputPurpose.FREE_FORM} />
-                <Entry placeholderText="Email address" inputPurpose={Gtk.InputPurpose.EMAIL} />
-                <Entry placeholderText="Phone number" inputPurpose={Gtk.InputPurpose.PHONE} />
-                <Entry placeholderText="URL" inputPurpose={Gtk.InputPurpose.URL} />
-                <Entry placeholderText="Number" inputPurpose={Gtk.InputPurpose.NUMBER} />
-            </Box>
+                <GtkEntry placeholderText="Free form text" inputPurpose={Gtk.InputPurpose.FREE_FORM} />
+                <GtkEntry placeholderText="Email address" inputPurpose={Gtk.InputPurpose.EMAIL} />
+                <GtkEntry placeholderText="Phone number" inputPurpose={Gtk.InputPurpose.PHONE} />
+                <GtkEntry placeholderText="URL" inputPurpose={Gtk.InputPurpose.URL} />
+                <GtkEntry placeholderText="Number" inputPurpose={Gtk.InputPurpose.NUMBER} />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Disabled Entry" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Entry text="Cannot edit this" sensitive={false} />
-            </Box>
-        </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Disabled Entry" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkEntry text="Cannot edit this" sensitive={false} />
+            </GtkBox>
+        </GtkBox>
     );
 };
 

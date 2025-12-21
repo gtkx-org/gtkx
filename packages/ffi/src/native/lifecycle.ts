@@ -1,7 +1,7 @@
 import { poll as nativePoll, start as nativeStart, stop as nativeStop } from "@gtkx/native";
 import { init as initAdwaita } from "../generated/adw/functions.js";
 import type { ApplicationFlags } from "../generated/gio/enums.js";
-import { Application } from "../generated/gtk/application.js";
+import type { Application } from "../generated/gtk/application.js";
 import { finalize as finalizeGtkSource, init as initGtkSource } from "../generated/gtksource/functions.js";
 import { events } from "./events.js";
 import { getNativeObject } from "./object.js";
@@ -55,7 +55,7 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
     }
 
     const app = nativeStart(appId, flags);
-    currentApp = getNativeObject(app, Application);
+    currentApp = getNativeObject(app);
     events.emit("start");
 
     try {

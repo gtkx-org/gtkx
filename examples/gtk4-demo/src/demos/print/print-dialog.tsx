@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -82,28 +82,28 @@ const PrintDialogDemo = () => {
     };
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Print Dialog" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Print Dialog" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel
                     label="GtkPrintOperation provides a high-level API for printing documents. It handles printer selection, page setup, and integrates with the system print dialog."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Print Actions" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Button label="Print..." cssClasses={["suggested-action"]} onClicked={handlePrint} />
-                    <Button label="Export PDF" onClicked={handleExportPdf} />
-                </Box>
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Print Actions" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkButton label="Print..." cssClasses={["suggested-action"]} onClicked={handlePrint} />
+                    <GtkButton label="Export PDF" onClicked={handleExportPdf} />
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Status" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Status" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     cssClasses={["card"]}
@@ -112,23 +112,23 @@ const PrintDialogDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <Label label={getStatusIcon()} />
-                    <Label label={message || "Ready to print"} wrap hexpand />
-                </Box>
-            </Box>
+                    <GtkLabel label={getStatusIcon()} />
+                    <GtkLabel label={message || "Ready to print"} wrap hexpand />
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Note" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Note" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="Print functionality requires Cairo context integration for page rendering. The print dialog will open but pages will be blank without custom draw-page signal handling."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={`- Native print dialog integration
 - Page setup configuration
 - Print preview support
@@ -138,8 +138,8 @@ const PrintDialogDemo = () => {
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

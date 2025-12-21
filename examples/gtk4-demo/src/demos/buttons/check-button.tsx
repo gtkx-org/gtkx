@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, CheckButton, Label } from "@gtkx/react";
+import { GtkBox, GtkCheckButton, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -10,40 +10,40 @@ const CheckButtonDemo = () => {
     const [option3, setOption3] = useState(false);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Check Buttons" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Check GtkButtons" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Independent Checkboxes" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <CheckButton.Root label="Option 1" active={option1} onToggled={() => setOption1((v) => !v)} />
-                    <CheckButton.Root
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Independent Checkboxes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                    <GtkCheckButton.Root label="Option 1" active={option1} onToggled={() => setOption1((v) => !v)} />
+                    <GtkCheckButton.Root
                         label="Option 2 (initially checked)"
                         active={option2}
                         onToggled={() => setOption2((v) => !v)}
                     />
-                    <CheckButton.Root label="Option 3" active={option3} onToggled={() => setOption3((v) => !v)} />
-                </Box>
-                <Label
+                    <GtkCheckButton.Root label="Option 3" active={option3} onToggled={() => setOption3((v) => !v)} />
+                </GtkBox>
+                <GtkLabel
                     label={`Selected: ${[option1 && "1", option2 && "2", option3 && "3"].filter(Boolean).join(", ") || "None"}`}
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Disabled State" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <CheckButton.Root label="Disabled unchecked" active={false} sensitive={false} />
-                    <CheckButton.Root label="Disabled checked" active={true} sensitive={false} />
-                </Box>
-            </Box>
-        </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Disabled State" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                    <GtkCheckButton.Root label="Disabled unchecked" active={false} sensitive={false} />
+                    <GtkCheckButton.Root label="Disabled checked" active={true} sensitive={false} />
+                </GtkBox>
+            </GtkBox>
+        </GtkBox>
     );
 };
 
 export const checkButtonDemo: Demo = {
     id: "check-button",
-    title: "Check Button",
+    title: "Check GtkButton",
     description: "Checkbox widgets for toggling boolean options.",
     keywords: ["check", "checkbox", "toggle", "GtkCheckButton"],
     component: CheckButtonDemo,

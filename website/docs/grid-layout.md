@@ -11,32 +11,32 @@ The `Grid` component provides a two-dimensional layout system where you can posi
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Grid, Label, Entry, Button } from "@gtkx/react";
+import { GtkGrid, GtkLabel, GtkEntry, GtkButton } from "@gtkx/react";
 
 const LoginForm = () => (
-  <Grid.Root columnSpacing={12} rowSpacing={8}>
-    <Grid.Child row={0} column={0}>
-      <Label label="Username:" halign={Gtk.Align.END} />
-    </Grid.Child>
-    <Grid.Child row={0} column={1}>
-      <Entry hexpand />
-    </Grid.Child>
+  <GtkGrid.Root columnSpacing={12} rowSpacing={8}>
+    <GtkGrid.Child row={0} column={0}>
+      <GtkLabel label="Username:" halign={Gtk.Align.END} />
+    </GtkGrid.Child>
+    <GtkGrid.Child row={0} column={1}>
+      <GtkEntry hexpand />
+    </GtkGrid.Child>
 
-    <Grid.Child row={1} column={0}>
-      <Label label="Password:" halign={Gtk.Align.END} />
-    </Grid.Child>
-    <Grid.Child row={1} column={1}>
-      <Entry visibility={false} hexpand />
-    </Grid.Child>
+    <GtkGrid.Child row={1} column={0}>
+      <GtkLabel label="Password:" halign={Gtk.Align.END} />
+    </GtkGrid.Child>
+    <GtkGrid.Child row={1} column={1}>
+      <GtkEntry visibility={false} hexpand />
+    </GtkGrid.Child>
 
-    <Grid.Child row={2} column={0} columnSpan={2}>
-      <Button label="Login" cssClasses={["suggested-action"]} />
-    </Grid.Child>
-  </Grid.Root>
+    <GtkGrid.Child row={2} column={0} columnSpan={2}>
+      <GtkButton label="Login" cssClasses={["suggested-action"]} />
+    </GtkGrid.Child>
+  </GtkGrid.Root>
 );
 ```
 
-## Grid.Root Props
+## GtkGrid.Root Props
 
 | Prop                | Type      | Description                           |
 | ------------------- | --------- | ------------------------------------- |
@@ -45,7 +45,7 @@ const LoginForm = () => (
 | `columnHomogeneous` | `boolean` | If true, all columns have equal width |
 | `rowHomogeneous`    | `boolean` | If true, all rows have equal height   |
 
-## Grid.Child Props
+## GtkGrid.Child Props
 
 | Prop         | Type     | Default | Description                 |
 | ------------ | -------- | ------- | --------------------------- |
@@ -56,7 +56,7 @@ const LoginForm = () => (
 
 ## How It Works
 
-`Grid.Child` is a virtual node that:
+`GtkGrid.Child` is a virtual node that:
 
 1. Stores the row, column, and span metadata
 2. Calls `grid.attach(widget, column, row, columnSpan, rowSpan)` when mounted
@@ -68,32 +68,32 @@ const LoginForm = () => (
 Use `rowSpan` and `columnSpan` to create cells that span multiple rows or columns:
 
 ```tsx
-<Grid.Root columnSpacing={8} rowSpacing={8}>
+<GtkGrid.Root columnSpacing={8} rowSpacing={8}>
   {/* Header spanning all 3 columns */}
-  <Grid.Child row={0} column={0} columnSpan={3}>
-    <Label label="Settings" cssClasses={["title-2"]} />
-  </Grid.Child>
+  <GtkGrid.Child row={0} column={0} columnSpan={3}>
+    <GtkLabel label="Settings" cssClasses={["title-2"]} />
+  </GtkGrid.Child>
 
   {/* Sidebar spanning 2 rows */}
-  <Grid.Child row={1} column={0} rowSpan={2}>
-    <Box
+  <GtkGrid.Child row={1} column={0} rowSpan={2}>
+    <GtkBox
       orientation={Orientation.VERTICAL}
       spacing={8}
       cssClasses={["card"]}
       vexpand
     >
       Navigation
-    </Box>
-  </Grid.Child>
+    </GtkBox>
+  </GtkGrid.Child>
 
   {/* Content areas */}
-  <Grid.Child row={1} column={1} columnSpan={2}>
+  <GtkGrid.Child row={1} column={1} columnSpan={2}>
     Main content
-  </Grid.Child>
-  <Grid.Child row={2} column={1} columnSpan={2}>
+  </GtkGrid.Child>
+  <GtkGrid.Child row={2} column={1} columnSpan={2}>
     Secondary content
-  </Grid.Child>
-</Grid.Root>
+  </GtkGrid.Child>
+</GtkGrid.Root>
 ```
 
 ## Dynamic Grid Content
@@ -101,7 +101,7 @@ Use `rowSpan` and `columnSpan` to create cells that span multiple rows or column
 Grid children can be rendered conditionally or from arrays:
 
 ```tsx
-import { Grid, Label } from "@gtkx/react";
+import { GtkGrid, GtkLabel } from "@gtkx/react";
 
 interface Cell {
   id: string;
@@ -111,13 +111,13 @@ interface Cell {
 }
 
 const DynamicGrid = ({ cells }: { cells: Cell[] }) => (
-  <Grid.Root columnSpacing={8} rowSpacing={8}>
+  <GtkGrid.Root columnSpacing={8} rowSpacing={8}>
     {cells.map((cell) => (
-      <Grid.Child key={cell.id} row={cell.row} column={cell.column}>
-        <Label label={cell.content} />
-      </Grid.Child>
+      <GtkGrid.Child key={cell.id} row={cell.row} column={cell.column}>
+        <GtkLabel label={cell.content} />
+      </GtkGrid.Child>
     ))}
-  </Grid.Root>
+  </GtkGrid.Root>
 );
 ```
 
@@ -127,48 +127,48 @@ Grids are ideal for form layouts with aligned labels and inputs:
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Grid, Label, Entry, Switch, Button, Box } from "@gtkx/react";
+import { GtkGrid, GtkLabel, GtkEntry, GtkSwitch, GtkButton, GtkBox } from "@gtkx/react";
 
 const SettingsForm = () => (
-  <Grid.Root columnSpacing={16} rowSpacing={12}>
-    <Grid.Child row={0} column={0}>
-      <Label label="Display Name" halign={Gtk.Align.END} />
-    </Grid.Child>
-    <Grid.Child row={0} column={1}>
-      <Entry hexpand placeholderText="Enter your name" />
-    </Grid.Child>
+  <GtkGrid.Root columnSpacing={16} rowSpacing={12}>
+    <GtkGrid.Child row={0} column={0}>
+      <GtkLabel label="Display Name" halign={Gtk.Align.END} />
+    </GtkGrid.Child>
+    <GtkGrid.Child row={0} column={1}>
+      <GtkEntry hexpand placeholderText="Enter your name" />
+    </GtkGrid.Child>
 
-    <Grid.Child row={1} column={0}>
-      <Label label="Email" halign={Gtk.Align.END} />
-    </Grid.Child>
-    <Grid.Child row={1} column={1}>
-      <Entry hexpand placeholderText="you@example.com" />
-    </Grid.Child>
+    <GtkGrid.Child row={1} column={0}>
+      <GtkLabel label="Email" halign={Gtk.Align.END} />
+    </GtkGrid.Child>
+    <GtkGrid.Child row={1} column={1}>
+      <GtkEntry hexpand placeholderText="you@example.com" />
+    </GtkGrid.Child>
 
-    <Grid.Child row={2} column={0}>
-      <Label label="Notifications" halign={Gtk.Align.END} />
-    </Grid.Child>
-    <Grid.Child row={2} column={1}>
-      <Switch halign={Gtk.Align.START} />
-    </Grid.Child>
+    <GtkGrid.Child row={2} column={0}>
+      <GtkLabel label="Notifications" halign={Gtk.Align.END} />
+    </GtkGrid.Child>
+    <GtkGrid.Child row={2} column={1}>
+      <GtkSwitch halign={Gtk.Align.START} />
+    </GtkGrid.Child>
 
-    <Grid.Child row={3} column={1}>
-      <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.END}>
-        <Button label="Cancel" />
-        <Button label="Save" cssClasses={["suggested-action"]} />
-      </Box>
-    </Grid.Child>
-  </Grid.Root>
+    <GtkGrid.Child row={3} column={1}>
+      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.END}>
+        <GtkButton label="Cancel" />
+        <GtkButton label="Save" cssClasses={["suggested-action"]} />
+      </GtkBox>
+    </GtkGrid.Child>
+  </GtkGrid.Root>
 );
 ```
 
-## Grid vs Box
+## GtkGrid vs GtkBox
 
-| Feature     | Grid                        | Box                         |
+| Feature     | GtkGrid                     | GtkBox                      |
 | ----------- | --------------------------- | --------------------------- |
 | Dimensions  | 2D (rows and columns)       | 1D (horizontal or vertical) |
 | Positioning | Explicit row/column         | Sequential order            |
 | Spanning    | Supports rowSpan/columnSpan | Not applicable              |
 | Use case    | Forms, complex layouts      | Simple lists, toolbars      |
 
-Use `Box` for simple sequential layouts and `Grid` when you need precise 2D positioning.
+Use `GtkBox` for simple sequential layouts and `GtkGrid` when you need precise 2D positioning.

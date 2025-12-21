@@ -19,7 +19,7 @@ Use the `css` template literal to create style classes:
 
 ```tsx
 import { css } from "@gtkx/css";
-import { Button } from "@gtkx/react";
+import { GtkButton } from "@gtkx/react";
 
 const primaryButton = css`
   padding: 16px 32px;
@@ -29,7 +29,7 @@ const primaryButton = css`
   font-weight: bold;
 `;
 
-const MyButton = () => <Button label="Click me" cssClasses={[primaryButton]} />;
+const MyButton = () => <GtkButton label="Click me" cssClasses={[primaryButton]} />;
 ```
 
 The `css` function returns a unique class name that you pass to the `cssClasses` prop.
@@ -58,8 +58,8 @@ const dangerButton = css`
 `;
 
 // Combine base with variant
-<Button cssClasses={[cx(baseButton, successButton)]} label="Success" />
-<Button cssClasses={[cx(baseButton, dangerButton)]} label="Danger" />
+<GtkButton cssClasses={[cx(baseButton, successButton)]} label="Success" />
+<GtkButton cssClasses={[cx(baseButton, dangerButton)]} label="Danger" />
 ```
 
 ## Global Styles
@@ -89,7 +89,7 @@ injectGlobal`
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
 import { css, cx } from "@gtkx/css";
-import { Button, Box } from "@gtkx/react";
+import { GtkButton, GtkBox } from "@gtkx/react";
 
 const baseButton = css`
   padding: 16px 32px;
@@ -127,10 +127,10 @@ const gradientStyle = css`
 `;
 
 const ButtonShowcase = () => (
-  <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-    <Button label="Success" cssClasses={[cx(baseButton, successStyle)]} />
-    <Button label="Warning" cssClasses={[cx(baseButton, warningStyle)]} />
-    <Button label="Gradient" cssClasses={[cx(baseButton, gradientStyle)]} />
-  </Box>
+  <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+    <GtkButton label="Success" cssClasses={[cx(baseButton, successStyle)]} />
+    <GtkButton label="Warning" cssClasses={[cx(baseButton, warningStyle)]} />
+    <GtkButton label="Gradient" cssClasses={[cx(baseButton, gradientStyle)]} />
+  </GtkBox>
 );
 ```

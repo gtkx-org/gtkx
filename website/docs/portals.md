@@ -11,13 +11,13 @@ Portals let you render React children into a different part of the GTK widget tr
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { createPortal, Box, Label } from "@gtkx/react";
+import { createPortal, GtkBox, GtkLabel } from "@gtkx/react";
 
 const MyComponent = () => (
-  <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+  <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
     This is in the box
     {createPortal("This renders at the root level")}
-  </Box>
+  </GtkBox>
 );
 ```
 
@@ -44,9 +44,9 @@ When called without a container, `createPortal` renders at the application root 
 ```tsx
 import {
   createPortal,
-  ApplicationWindow,
-  Button,
-  AboutDialog,
+  GtkApplicationWindow,
+  GtkButton,
+  GtkAboutDialog,
   quit,
 } from "@gtkx/react";
 import { useState } from "react";
@@ -55,12 +55,12 @@ const App = () => {
   const [showDialog, setShowDialog] = useState(false);
 
   return (
-    <ApplicationWindow title="My App" onCloseRequest={quit}>
-      <Button label="Show Dialog" onClicked={() => setShowDialog(true)} />
+    <GtkApplicationWindow title="My App" onCloseRequest={quit}>
+      <GtkButton label="Show Dialog" onClicked={() => setShowDialog(true)} />
 
       {showDialog &&
         createPortal(
-          <AboutDialog
+          <GtkAboutDialog
             programName="My App"
             onCloseRequest={() => {
               setShowDialog(false);
@@ -68,7 +68,7 @@ const App = () => {
             }}
           />
         )}
-    </ApplicationWindow>
+    </GtkApplicationWindow>
   );
 };
 ```
@@ -81,7 +81,7 @@ You can also render into a specific widget container using refs:
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { createPortal, Box, Label, Button } from "@gtkx/react";
+import { createPortal, GtkBox, GtkLabel, GtkButton } from "@gtkx/react";
 import { useState, useRef } from "react";
 
 const App = () => {
@@ -89,14 +89,14 @@ const App = () => {
   const [showInTarget, setShowInTarget] = useState(false);
 
   return (
-    <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <Button
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+      <GtkButton
         label="Toggle Portal"
         onClicked={() => setShowInTarget(!showInTarget)}
       />
 
-      <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-        <Box
+      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+        <GtkBox
           orientation={Gtk.Orientation.VERTICAL}
           spacing={8}
           ref={targetRef}
@@ -105,9 +105,9 @@ const App = () => {
         >
           Target container
           {/* Portal content appears here */}
-        </Box>
+        </GtkBox>
 
-        <Box
+        <GtkBox
           orientation={Gtk.Orientation.VERTICAL}
           spacing={8}
           cssClasses={["card"]}
@@ -119,9 +119,9 @@ const App = () => {
               "I'm rendered in the target!",
               targetRef.current ?? undefined
             )}
-        </Box>
-      </Box>
-    </Box>
+        </GtkBox>
+      </GtkBox>
+    </GtkBox>
   );
 };
 ```
@@ -143,9 +143,9 @@ The primary use case — render dialogs outside the main window hierarchy:
 {
   showConfirm &&
     createPortal(
-      <Dialog title="Confirm" modal>
-        <Button label="OK" onClicked={handleConfirm} />
-      </Dialog>
+      <GtkDialog title="Confirm" modal>
+        <GtkButton label="OK" onClicked={handleConfirm} />
+      </GtkDialog>
     );
 }
 ```
@@ -158,9 +158,9 @@ Render additional windows alongside your main window:
 {
   showSecondWindow &&
     createPortal(
-      <ApplicationWindow title="Second Window" defaultWidth={400} defaultHeight={300}>
+      <GtkApplicationWindow title="Second Window" defaultWidth={400} defaultHeight={300}>
         This is a second window
-      </ApplicationWindow>
+      </GtkApplicationWindow>
     );
 }
 ```

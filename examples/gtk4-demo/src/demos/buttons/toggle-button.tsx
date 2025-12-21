@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, ToggleButton } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkToggleButton } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -13,40 +13,40 @@ const ToggleButtonDemo = () => {
         [bold && "Bold", italic && "Italic", underline && "Underline"].filter(Boolean).join(" + ") || "Normal";
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Toggle Buttons" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Toggle GtkButtons" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Text Formatting Toolbar" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} cssClasses={["linked"]}>
-                    <ToggleButton.Root
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Text Formatting Toolbar" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6} cssClasses={["linked"]}>
+                    <GtkToggleButton.Root
                         label="B"
                         active={bold}
                         onToggled={() => setBold((v) => !v)}
                         cssClasses={["font-bold"]}
                     />
-                    <ToggleButton.Root
+                    <GtkToggleButton.Root
                         label="I"
                         active={italic}
                         onToggled={() => setItalic((v) => !v)}
                         cssClasses={["font-italic"]}
                     />
-                    <ToggleButton.Root label="U" active={underline} onToggled={() => setUnderline((v) => !v)} />
-                </Box>
-                <Label label={`Current style: ${textStyle}`} cssClasses={["dim-label"]} />
-            </Box>
+                    <GtkToggleButton.Root label="U" active={underline} onToggled={() => setUnderline((v) => !v)} />
+                </GtkBox>
+                <GtkLabel label={`Current style: ${textStyle}`} cssClasses={["dim-label"]} />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Standalone Toggle" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <ToggleButton.Root label="Toggle Me" active={bold} onToggled={() => setBold((v) => !v)} />
-            </Box>
-        </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Standalone Toggle" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkToggleButton.Root label="Toggle Me" active={bold} onToggled={() => setBold((v) => !v)} />
+            </GtkBox>
+        </GtkBox>
     );
 };
 
 export const toggleButtonDemo: Demo = {
     id: "toggle-button",
-    title: "Toggle Button",
+    title: "Toggle GtkButton",
     description: "Buttons that maintain an active/inactive state when clicked.",
     keywords: ["toggle", "button", "state", "GtkToggleButton"],
     component: ToggleButtonDemo,

@@ -115,7 +115,7 @@ Find elements by their widget name (test ID). Set the `name` prop on a widget to
 
 ```tsx
 // In your component
-<Button name="submit-btn">Submit</Button>;
+<GtkButton name="submit-btn">Submit</GtkButton>;
 
 // In your test
 const button = await screen.findByTestId("submit-btn");
@@ -253,14 +253,14 @@ const username = await findByText("John Doe");
 ```tsx
 // Render a UI with multiple sections
 await render(
-  <Box orientation={Orientation.VERTICAL} spacing={8}>
-    <Box orientation={Orientation.VERTICAL} spacing={0} name="section-a">
-      <Button label="Save" />
-    </Box>
-    <Box orientation={Orientation.VERTICAL} spacing={0} name="section-b">
-      <Button label="Save" />
-    </Box>
-  </Box>
+  <GtkBox orientation={Orientation.VERTICAL} spacing={8}>
+    <GtkBox orientation={Orientation.VERTICAL} spacing={0} name="section-a">
+      <GtkButton label="Save" />
+    </GtkBox>
+    <GtkBox orientation={Orientation.VERTICAL} spacing={0} name="section-b">
+      <GtkButton label="Save" />
+    </GtkBox>
+  </GtkBox>
 );
 
 // Global query finds all matching elements
@@ -340,36 +340,36 @@ test("resets count when clicking reset button", async () => {
 
 The `render` function is async and accepts an options object.
 
-### Default ApplicationWindow Wrapper
+### Default GtkApplicationWindow Wrapper
 
-By default, `render` wraps your component in an `ApplicationWindow`. This means you don't need to manually wrap your test content:
+By default, `render` wraps your component in a `GtkApplicationWindow`. This means you don't need to manually wrap your test content:
 
 ```tsx
 import { render } from "@gtkx/testing";
 
-// This works out of the box - no ApplicationWindow needed
-await render(<Button label="Click me" />);
+// This works out of the box - no GtkApplicationWindow needed
+await render(<GtkButton label="Click me" />);
 
 // Equivalent to:
 await render(
-  <ApplicationWindow>
-    <Button label="Click me" />
-  </ApplicationWindow>
+  <GtkApplicationWindow>
+    <GtkButton label="Click me" />
+  </GtkApplicationWindow>
 );
 ```
 
 ### Custom Wrapper
 
-You can provide a custom wrapper component, which replaces the default `ApplicationWindow` wrapper:
+You can provide a custom wrapper component, which replaces the default `GtkApplicationWindow` wrapper:
 
 ```tsx
 import { render } from "@gtkx/testing";
 
 // With a wrapper component (useful for providers)
 const Wrapper = ({ children }) => (
-  <ApplicationWindow>
+  <GtkApplicationWindow>
     <ThemeProvider theme="dark">{children}</ThemeProvider>
-  </ApplicationWindow>
+  </GtkApplicationWindow>
 );
 
 const { container, rerender, unmount, debug } = await render(<MyComponent />, {
@@ -396,12 +396,12 @@ import { render } from "@gtkx/testing";
 // Render multiple windows without the default wrapper
 await render(
   <>
-    <ApplicationWindow>
-      <Button label="Window 1" />
-    </ApplicationWindow>
-    <ApplicationWindow>
-      <Button label="Window 2" />
-    </ApplicationWindow>
+    <GtkApplicationWindow>
+      <GtkButton label="Window 1" />
+    </GtkApplicationWindow>
+    <GtkApplicationWindow>
+      <GtkButton label="Window 2" />
+    </GtkApplicationWindow>
   </>,
   { wrapper: false }
 );
@@ -413,7 +413,7 @@ await render(
 
 | Function                    | Description                                                                                                   |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `render(element, options?)` | Render a React element for testing. Wraps in `ApplicationWindow` by default. Returns `Promise<RenderResult>`. |
+| `render(element, options?)` | Render a React element for testing. Wraps in `GtkApplicationWindow` by default. Returns `Promise<RenderResult>`. |
 | `cleanup()`                 | Unmount rendered components. Returns `Promise<void>`. Call after each test.                                   |
 | `teardown()`                | Clean up GTK entirely. Returns `Promise<void>`. Used in global teardown.                                      |
 

@@ -1,3 +1,6 @@
+import type { GirClass, GirInterface, GirNamespace, GirSignal, TypeMapper, TypeRegistry } from "@gtkx/gir";
+import { formatDoc as formatDocBase, toCamelCase, toPascalCase } from "@gtkx/gir";
+import { format } from "prettier";
 import {
     COLUMN_VIEW_WIDGET,
     DROPDOWN_WIDGETS,
@@ -9,10 +12,7 @@ import {
     STACK_WIDGETS,
     TOOLBAR_VIEW_WIDGET,
     WIDGET_REFERENCE_PROPERTIES,
-} from "@gtkx/config";
-import type { GirClass, GirInterface, GirNamespace, GirSignal, TypeMapper, TypeRegistry } from "@gtkx/gir";
-import { formatDoc as formatDocBase, toCamelCase, toPascalCase } from "@gtkx/gir";
-import { format } from "prettier";
+} from "./constants.js";
 
 type JsxGeneratorOptions = {
     prettierConfig?: unknown;
@@ -21,6 +21,7 @@ type JsxGeneratorOptions = {
 type JsxGeneratorResult = {
     jsx: string;
     internal: string;
+    registry: string;
 };
 
 type WidgetChildInfo = {
@@ -155,9 +156,13 @@ export class JsxGenerator {
             this.generateSignalNamesMap(allWidgets),
         ];
 
+        const widgetNamespaces = [...new Set(allWidgets.map((w) => w.namespace))];
+        const registryCode = this.generateNamespaceRegistry(widgetNamespaces);
+
         return {
             jsx: await this.formatCode(jsxSections.join("\n")),
             internal: await this.formatCode(internalSections.join("\n")),
+            registry: await this.formatCode(registryCode),
         };
     }
 
@@ -181,6 +186,27 @@ export class JsxGenerator {
 
     private generateInternalImports(): string {
         return "/** Internal metadata for the reconciler. Not part of the public API. */\n";
+    }
+
+    private generateNamespaceRegistry(widgetNamespaces: string[]): string {
+        const sortedByLength = [...widgetNamespaces].sort((a, b) => b.length - a.length || a.localeCompare(b));
+        const sortedAlphabetically = [...widgetNamespaces].sort();
+
+        const imports = sortedAlphabetically.map((ns) => `import * as ${ns} from "@gtkx/ffi/${ns.toLowerCase()}";`);
+        const registryEntries = sortedByLength.map((ns) => `    ["${ns}", ${ns}],`);
+
+        return [
+            "/** Generated namespace registry for widget class resolution. */",
+            "",
+            ...imports,
+            "",
+            "type Namespace = Record<string, unknown>;",
+            "",
+            "export const NAMESPACE_REGISTRY: [string, Namespace][] = [",
+            ...registryEntries,
+            "];",
+            "",
+        ].join("\n");
     }
 
     private generateCommonTypes(widgetClass: GirClass | undefined): string {
@@ -233,7 +259,7 @@ export class JsxGenerator {
         const metadata = new Map<string, ContainerMetadata>();
         for (const { widget, namespace } of widgets) {
             const key = `${namespace}.${widget.name}`;
-            metadata.set(key, this.analyzeContainerCapabilities(widget));
+            metadata.set(key, this.analyzeContainerCapabilities(widget, namespace));
         }
         return metadata;
     }
@@ -278,7 +304,7 @@ export class JsxGenerator {
         });
     }
 
-    private analyzeContainerCapabilities(widget: GirClass): ContainerMetadata {
+    private analyzeContainerCapabilities(widget: GirClass, namespace: string): ContainerMetadata {
         const hasAppend = widget.methods.some((m) => m.name === "append");
         const hasSetChild = widget.methods.some((m) => m.name === "set_child");
 
@@ -294,7 +320,8 @@ export class JsxGenerator {
                 slotName: toPascalCase(prop.name),
             }));
 
-        if (isToolbarViewWidget(widget.name)) {
+        const widgetName = `${namespace}${toPascalCase(widget.name)}`;
+        if (isToolbarViewWidget(widgetName)) {
             namedChildSlots.push({ propertyName: "top", slotName: "Top" });
             namedChildSlots.push({ propertyName: "bottom", slotName: "Bottom" });
         }
@@ -330,7 +357,6 @@ export class JsxGenerator {
 
     private getWidgetExportName(widget: GirClass): string {
         const baseName = toPascalCase(widget.name);
-        if (this.currentNamespace === "Gtk") return baseName;
         return `${this.currentNamespace}${baseName}`;
     }
 
@@ -426,7 +452,7 @@ export class JsxGenerator {
             }
         }
 
-        if (isListWidget(widget.name) || isColumnViewWidget(widget.name)) {
+        if (isListWidget(widgetName) || isColumnViewWidget(widgetName)) {
             lines.push("");
             lines.push(`\t/** Array of selected item IDs */`);
             lines.push(`\tselected?: string[];`);
@@ -436,7 +462,7 @@ export class JsxGenerator {
             lines.push(`\tselectionMode?: import("@gtkx/ffi/gtk").SelectionMode;`);
         }
 
-        if (isListWidget(widget.name)) {
+        if (isListWidget(widgetName)) {
             lines.push("");
             lines.push(`\t/**`);
             lines.push(`\t * Render function for list items.`);
@@ -445,7 +471,7 @@ export class JsxGenerator {
             lines.push(`\trenderItem: (item: unknown) => import("react").ReactElement;`);
         }
 
-        if (isDropDownWidget(widget.name)) {
+        if (isDropDownWidget(widgetName)) {
             lines.push("");
             lines.push(`\t/** ID of the initially selected item */`);
             lines.push(`\tselectedId?: string;`);
@@ -462,8 +488,8 @@ export class JsxGenerator {
     }
 
     private getParentPropsName(widget: GirClass): string {
-        if (widget.name === "Window") return "WidgetProps";
-        if (widget.name === "ApplicationWindow") return "WindowProps";
+        if (widget.name === "Window" && this.currentNamespace === "Gtk") return "WidgetProps";
+        if (widget.name === "ApplicationWindow" && this.currentNamespace === "Gtk") return "GtkWindowProps";
 
         if (!widget.parent) return "WidgetProps";
 
@@ -471,13 +497,9 @@ export class JsxGenerator {
         const parentName = widget.parent.includes(".") ? widget.parent.split(".")[1] : widget.parent;
 
         if (parentName === "Widget") return "WidgetProps";
-        if (parentName === "Window") return "WindowProps";
+        if (parentName === "Window") return `${parentNs}WindowProps`;
 
         const baseName = toPascalCase(parentName ?? "");
-        if (parentNs === "Gtk") {
-            return `${baseName}Props`;
-        }
-
         return `${parentNs}${baseName}Props`;
     }
 
@@ -488,6 +510,7 @@ export class JsxGenerator {
 
         for (const param of mainCtor.parameters) {
             if (!param.nullable && !param.optional) {
+                if (param.name === "application") continue;
                 const normalizedName = param.name.replace(/_/g, "-");
                 required.add(normalizedName);
             }
@@ -861,23 +884,23 @@ export class JsxGenerator {
             const nonChildSlots = metadata.namedChildSlots.filter((slot) => slot.slotName !== "Child");
             const hasMeaningfulSlots =
                 nonChildSlots.length > 0 ||
-                isListWidget(widget.name) ||
-                isColumnViewWidget(widget.name) ||
-                isDropDownWidget(widget.name) ||
-                isGridWidget(widget.name) ||
-                isNotebookWidget(widget.name) ||
-                isStackWidget(widget.name) ||
-                isPopoverMenuWidget(widget.name);
+                isListWidget(widgetName) ||
+                isColumnViewWidget(widgetName) ||
+                isDropDownWidget(widgetName) ||
+                isGridWidget(widgetName) ||
+                isNotebookWidget(widgetName) ||
+                isStackWidget(widgetName) ||
+                isPopoverMenuWidget(widgetName);
 
             const docComment = widget.doc ? this.formatDoc(widget.doc).trimEnd() : "";
 
             if (hasMeaningfulSlots) {
                 if (
-                    isListWidget(widget.name) ||
-                    isColumnViewWidget(widget.name) ||
-                    isDropDownWidget(widget.name) ||
-                    isStackWidget(widget.name) ||
-                    isPopoverMenuWidget(widget.name)
+                    isListWidget(widgetName) ||
+                    isColumnViewWidget(widgetName) ||
+                    isDropDownWidget(widgetName) ||
+                    isStackWidget(widgetName) ||
+                    isPopoverMenuWidget(widgetName)
                 ) {
                     const wrapperComponents = this.generateGenericWrapperComponents(widgetName, metadata);
                     const exportMembers = this.getWrapperExportMembers(widgetName, metadata);
@@ -897,8 +920,8 @@ export class JsxGenerator {
                         ...metadata.namedChildSlots.map(
                             (slot) => `${slot.slotName}: "${widgetName}.${slot.slotName}" as const`,
                         ),
-                        ...(isGridWidget(widget.name) ? [`Child: "${widgetName}.Child" as const`] : []),
-                        ...(isNotebookWidget(widget.name) ? [`Page: "${widgetName}.Page" as const`] : []),
+                        ...(isGridWidget(widgetName) ? [`Child: "${widgetName}.Child" as const`] : []),
+                        ...(isNotebookWidget(widgetName) ? [`Page: "${widgetName}.Page" as const`] : []),
                     ];
                     if (docComment) {
                         lines.push(
@@ -1060,13 +1083,13 @@ export class JsxGenerator {
             const nonChildSlots = metadata.namedChildSlots.filter((slot) => slot.slotName !== "Child");
             const hasMeaningfulSlots =
                 nonChildSlots.length > 0 ||
-                isListWidget(widget.name) ||
-                isColumnViewWidget(widget.name) ||
-                isDropDownWidget(widget.name) ||
-                isGridWidget(widget.name) ||
-                isNotebookWidget(widget.name) ||
-                isStackWidget(widget.name) ||
-                isPopoverMenuWidget(widget.name);
+                isListWidget(widgetName) ||
+                isColumnViewWidget(widgetName) ||
+                isDropDownWidget(widgetName) ||
+                isGridWidget(widgetName) ||
+                isNotebookWidget(widgetName) ||
+                isStackWidget(widgetName) ||
+                isPopoverMenuWidget(widgetName);
 
             if (hasMeaningfulSlots) {
                 elements.push(`"${widgetName}.Root": ${propsName};`);
@@ -1078,28 +1101,28 @@ export class JsxGenerator {
                 elements.push(`"${widgetName}.${slot.slotName}": SlotProps;`);
             }
 
-            if (isListWidget(widget.name)) {
+            if (isListWidget(widgetName)) {
                 elements.push(`"${widgetName}.Item": ListItemProps;`);
             }
 
-            if (isColumnViewWidget(widget.name)) {
+            if (isColumnViewWidget(widgetName)) {
                 elements.push(`"${widgetName}.Column": ColumnViewColumnProps;`);
                 elements.push(`"${widgetName}.Item": ListItemProps;`);
             }
 
-            if (isDropDownWidget(widget.name)) {
+            if (isDropDownWidget(widgetName)) {
                 elements.push(`"${widgetName}.Item": StringListItemProps;`);
             }
 
-            if (isGridWidget(widget.name)) {
+            if (isGridWidget(widgetName)) {
                 elements.push(`"${widgetName}.Child": GridChildProps;`);
             }
 
-            if (isNotebookWidget(widget.name)) {
+            if (isNotebookWidget(widgetName)) {
                 elements.push(`"${widgetName}.Page": NotebookPageProps;`);
             }
 
-            if (isStackWidget(widget.name)) {
+            if (isStackWidget(widgetName)) {
                 elements.push(`"${widgetName}.Page": StackPageProps;`);
             }
         }

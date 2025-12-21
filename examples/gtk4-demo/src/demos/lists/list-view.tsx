@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, ListView } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkListView } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
@@ -21,25 +21,25 @@ const tasks: Task[] = [
 
 const ListViewDemo = () => {
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="List View" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="List View" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="About ListView" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="About ListView" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="ListView is a high-performance scrollable list that efficiently handles large datasets using virtual scrolling. It only renders visible items."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Task List" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} heightRequest={250}>
-                    <ListView.Root
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Task List" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} heightRequest={250}>
+                    <GtkListView.Root
                         vexpand
                         renderItem={(task: Task | null) => (
-                            <Label
+                            <GtkLabel
                                 label={task?.title ?? ""}
                                 cssClasses={task?.completed ? ["dim-label"] : []}
                                 halign={Gtk.Align.START}
@@ -51,21 +51,21 @@ const ListViewDemo = () => {
                         )}
                     >
                         {tasks.map((task) => (
-                            <ListView.Item key={task.id} id={task.id} item={task} />
+                            <GtkListView.Item key={task.id} id={task.id} item={task} />
                         ))}
-                    </ListView.Root>
-                </Box>
-            </Box>
+                    </GtkListView.Root>
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="ListView uses a renderItem prop that returns JSX for each item. The widget is created once during setup and updated with item data during bind. This pattern ensures optimal performance with recycled widgets."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

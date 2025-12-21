@@ -30,7 +30,7 @@ export class ColumnViewNode extends SelectableListNode<Gtk.ColumnView, ColumnVie
     ];
 
     static matches(type: string): boolean {
-        return type === "ColumnView.Root";
+        return type === "GtkColumnView.Root";
     }
 
     override initialize(props: Props): void {
@@ -212,7 +212,7 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
     static override consumedPropNames = ["renderCell", "title", "expand", "resizable", "fixedWidth", "id", "sortable"];
 
     static matches(type: string): boolean {
-        return type === "ColumnView.Column";
+        return type === "GtkColumnView.Column";
     }
 
     protected override isVirtual(): boolean {
@@ -322,6 +322,6 @@ export class ColumnViewColumnNode extends Node<never, ColumnViewColumnState> {
 
 export class ColumnViewItemNode extends VirtualItemNode {
     static matches(type: string): boolean {
-        return type === "ColumnView.Item";
+        return type === "GtkColumnView.Item";
     }
 }

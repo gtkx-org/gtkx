@@ -1,62 +1,62 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label, LinkButton, ToggleButton } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkLinkButton, GtkToggleButton } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-const ButtonsDemo = () => {
+const GtkButtonsDemo = () => {
     const [clickCount, setClickCount] = useState(0);
     const [toggled, setToggled] = useState(false);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Button Types" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="<GtkButton Types" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Regular Buttons" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Button label="Normal" onClicked={() => setClickCount((c) => c + 1)} />
-                    <Button
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Regular GtkButtons" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkButton label="Normal" onClicked={() => setClickCount((c) => c + 1)} />
+                    <GtkButton
                         label="Suggested"
                         cssClasses={["suggested-action"]}
                         onClicked={() => setClickCount((c) => c + 1)}
                     />
-                    <Button
+                    <GtkButton
                         label="Destructive"
                         cssClasses={["destructive-action"]}
                         onClicked={() => setClickCount((c) => c + 1)}
                     />
-                    <Button label="Flat" cssClasses={["flat"]} onClicked={() => setClickCount((c) => c + 1)} />
-                </Box>
-                <Label label={`Clicked ${clickCount} times`} cssClasses={["dim-label"]} />
-            </Box>
+                    <GtkButton label="Flat" cssClasses={["flat"]} onClicked={() => setClickCount((c) => c + 1)} />
+                </GtkBox>
+                <GtkLabel label={`Clicked ${clickCount} times`} cssClasses={["dim-label"]} />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Toggle Button" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <ToggleButton.Root
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Toggle GtkButton" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkToggleButton.Root
                         label={toggled ? "ON" : "OFF"}
                         active={toggled}
                         onToggled={() => setToggled((t) => !t)}
                     />
-                    <Label label={`Toggle state: ${toggled ? "Active" : "Inactive"}`} />
-                </Box>
-            </Box>
+                    <GtkLabel label={`Toggle state: ${toggled ? "Active" : "Inactive"}`} />
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Link Button" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <LinkButton uri="https://gtk.org" label="Visit GTK Website" />
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Link GtkButton" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLinkButton uri="https://gtk.org" label="Visit GTK Website" />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Button Sizes" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} valign={Gtk.Align.CENTER}>
-                    <Button label="Small" cssClasses={["small"]} />
-                    <Button label="Normal" />
-                    <Button label="Large" cssClasses={["large"]} />
-                </Box>
-            </Box>
-        </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="<GtkButton Sizes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} valign={Gtk.Align.CENTER}>
+                    <GtkButton label="Small" cssClasses={["small"]} />
+                    <GtkButton label="Normal" />
+                    <GtkButton label="Large" cssClasses={["large"]} />
+                </GtkBox>
+            </GtkBox>
+        </GtkBox>
     );
 };
 
@@ -65,6 +65,6 @@ export const buttonsDemo: Demo = {
     title: "Buttons",
     description: "Various button types and styles available in GTK4.",
     keywords: ["button", "toggle", "link", "GtkButton", "GtkToggleButton", "GtkLinkButton"],
-    component: ButtonsDemo,
+    component: GtkButtonsDemo,
     sourcePath: getSourcePath(import.meta.url, "buttons.tsx"),
 };

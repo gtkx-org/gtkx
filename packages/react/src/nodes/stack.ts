@@ -11,7 +11,7 @@ const STACK_PAGE_PROPS = ["name", "title", "iconName", "needsAttention", "visibl
 
 export class StackNode extends PagedStackNode<Gtk.Stack> {
     static matches(type: string): boolean {
-        return type === "Stack" || type === "Stack.Root";
+        return type === "GtkStack" || type === "GtkStack.Root";
     }
 
     addStackPage(child: Gtk.Widget, props: StackPageProps): void {
@@ -39,7 +39,7 @@ export class StackPageNode extends VirtualSlotNode<StackPageContainer, StackPage
     static override consumedPropNames = STACK_PAGE_PROPS;
 
     static matches(type: string): boolean {
-        return type === "Stack.Page" || type === "AdwViewStack.Page";
+        return type === "GtkStack.Page" || type === "AdwViewStack.Page";
     }
 
     protected isValidContainer(parent: Node): parent is Node & StackPageContainer {

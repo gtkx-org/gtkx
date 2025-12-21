@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -79,11 +79,11 @@ const TileButton = ({
     onClick: () => void;
 }) => {
     if (tile === null) {
-        return <Button label="" cssClasses={[emptyTileStyle]} sensitive={false} />;
+        return <GtkButton label="" cssClasses={[emptyTileStyle]} sensitive={false} />;
     }
 
     return (
-        <Button
+        <GtkButton
             label={String(tile)}
             cssClasses={[tileStyle, canMove ? "suggested-action" : ""]}
             onClicked={onClick}
@@ -134,25 +134,25 @@ const FifteenPuzzleDemo = () => {
     const emptyIndex = board.indexOf(null);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="15 Puzzle" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="15 Puzzle" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel
                     label="Slide the tiles to arrange them in numerical order. Click a tile adjacent to the empty space to move it."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                <Label label={`Moves: ${moves}`} cssClasses={["heading"]} />
-                {solved && <Label label="Solved!" cssClasses={["success"]} />}
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                <GtkLabel label={`Moves: ${moves}`} cssClasses={["heading"]} />
+                {solved && <GtkLabel label="Solved!" cssClasses={["success"]} />}
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER} spacing={4}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER} spacing={4}>
                 {[0, 1, 2, 3].map((rowIdx) => (
-                    <Box key={rowIdx} orientation={Gtk.Orientation.HORIZONTAL} spacing={4} homogeneous>
+                    <GtkBox key={rowIdx} orientation={Gtk.Orientation.HORIZONTAL} spacing={4} homogeneous>
                         {getRow(rowIdx).map((tile, colIdx) => {
                             const index = rowIdx * GRID_SIZE + colIdx;
                             const canMove = getValidMoves(emptyIndex).includes(index);
@@ -166,14 +166,14 @@ const FifteenPuzzleDemo = () => {
                                 />
                             );
                         })}
-                    </Box>
+                    </GtkBox>
                 ))}
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
-                <Button label="New Game" cssClasses={["destructive-action"]} onClicked={handleNewGame} />
-            </Box>
-        </Box>
+            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                <GtkButton label="New Game" cssClasses={["destructive-action"]} onClicked={handleNewGame} />
+            </GtkBox>
+        </GtkBox>
     );
 };
 

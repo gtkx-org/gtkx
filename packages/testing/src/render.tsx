@@ -1,6 +1,6 @@
 import { getApplication, getNativeObject, start, stop } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationWindow, ROOT_NODE_CONTAINER, reconciler } from "@gtkx/react";
+import { GtkApplicationWindow, ROOT_NODE_CONTAINER, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import * as queries from "./queries.js";
@@ -78,7 +78,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
 };
 
 const DefaultWrapper = ({ children }: { children: ReactNode }): ReactNode => (
-    <ApplicationWindow>{children}</ApplicationWindow>
+    <GtkApplicationWindow>{children}</GtkApplicationWindow>
 );
 
 const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"] = true): ReactNode => {

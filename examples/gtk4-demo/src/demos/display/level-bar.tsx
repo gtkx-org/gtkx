@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label, LevelBar } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkLevelBar } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -8,60 +8,60 @@ const LevelBarDemo = () => {
     const [level, setLevel] = useState(0.5);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Level Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Level Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="About Level Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="About Level Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GtkLevelBar is a bar widget that can be used as a level indicator. It can work in continuous or discrete mode and has built-in color offsets for different levels."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Interactive Level Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <LevelBar value={level} minValue={0} maxValue={1} hexpand />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
-                    <Button label="-" onClicked={() => setLevel((l) => Math.max(0, l - 0.1))} widthRequest={48} />
-                    <Label label={`${Math.round(level * 100)}%`} widthRequest={60} halign={Gtk.Align.CENTER} />
-                    <Button label="+" onClicked={() => setLevel((l) => Math.min(1, l + 0.1))} widthRequest={48} />
-                </Box>
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Interactive Level Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLevelBar value={level} minValue={0} maxValue={1} hexpand />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkButton label="-" onClicked={() => setLevel((l) => Math.max(0, l - 0.1))} widthRequest={48} />
+                    <GtkLabel label={`${Math.round(level * 100)}%`} widthRequest={60} halign={Gtk.Align.CENTER} />
+                    <GtkButton label="+" onClicked={() => setLevel((l) => Math.min(1, l + 0.1))} widthRequest={48} />
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Different Levels" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <Label label="Low" widthRequest={60} halign={Gtk.Align.END} />
-                        <LevelBar value={0.25} minValue={0} maxValue={1} hexpand />
-                    </Box>
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <Label label="Medium" widthRequest={60} halign={Gtk.Align.END} />
-                        <LevelBar value={0.5} minValue={0} maxValue={1} hexpand />
-                    </Box>
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <Label label="High" widthRequest={60} halign={Gtk.Align.END} />
-                        <LevelBar value={0.75} minValue={0} maxValue={1} hexpand />
-                    </Box>
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <Label label="Full" widthRequest={60} halign={Gtk.Align.END} />
-                        <LevelBar value={1} minValue={0} maxValue={1} hexpand />
-                    </Box>
-                </Box>
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Different Levels" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkLabel label="Low" widthRequest={60} halign={Gtk.Align.END} />
+                        <GtkLevelBar value={0.25} minValue={0} maxValue={1} hexpand />
+                    </GtkBox>
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkLabel label="Medium" widthRequest={60} halign={Gtk.Align.END} />
+                        <GtkLevelBar value={0.5} minValue={0} maxValue={1} hexpand />
+                    </GtkBox>
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkLabel label="High" widthRequest={60} halign={Gtk.Align.END} />
+                        <GtkLevelBar value={0.75} minValue={0} maxValue={1} hexpand />
+                    </GtkBox>
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkLabel label="Full" widthRequest={60} halign={Gtk.Align.END} />
+                        <GtkLevelBar value={1} minValue={0} maxValue={1} hexpand />
+                    </GtkBox>
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Discrete Mode" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Discrete Mode" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="Level bar can also display discrete steps instead of a continuous bar."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <LevelBar value={3} minValue={0} maxValue={5} mode={Gtk.LevelBarMode.DISCRETE} hexpand />
-            </Box>
-        </Box>
+                <GtkLevelBar value={3} minValue={0} maxValue={5} mode={Gtk.LevelBarMode.DISCRETE} hexpand />
+            </GtkBox>
+        </GtkBox>
     );
 };
 

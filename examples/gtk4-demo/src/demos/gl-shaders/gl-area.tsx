@@ -1,7 +1,7 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as GL from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, GLArea, Label, Scale } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -300,23 +300,23 @@ const GLAreaDemo = () => {
 
     if (error) {
         return (
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
-                <Label label="GLArea Error" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-                <Label label={error} wrap cssClasses={["error"]} />
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
+                <GtkLabel label="<GtkGLArea Error" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+                <GtkLabel label={error} wrap cssClasses={["error"]} />
+            </GtkBox>
         );
     }
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="OpenGL Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-            <Label
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="OpenGL Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel
                 label="GtkGLArea is a widget that allows drawing with OpenGL. This demo renders a rotating colored triangle using vertex and fragment shaders."
                 wrap
                 cssClasses={["dim-label"]}
             />
 
-            <GLArea
+            <GtkGLArea
                 hasDepthBuffer
                 useEs
                 vexpand
@@ -328,47 +328,47 @@ const GLAreaDemo = () => {
                 onResize={handleResize}
             />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="Rotation Controls" cssClasses={["heading"]} halign={Gtk.Align.START} />
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="Rotation Controls" cssClasses={["heading"]} halign={Gtk.Align.START} />
 
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="X:" widthRequest={30} />
-                    <Scale
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="X:" widthRequest={30} />
+                    <GtkScale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
                         adjustment={xAdjustment}
                         onValueChanged={handleXChange}
                     />
-                </Box>
+                </GtkBox>
 
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="Y:" widthRequest={30} />
-                    <Scale
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="Y:" widthRequest={30} />
+                    <GtkScale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
                         adjustment={yAdjustment}
                         onValueChanged={handleYChange}
                     />
-                </Box>
+                </GtkBox>
 
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="Z:" widthRequest={30} />
-                    <Scale
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="Z:" widthRequest={30} />
+                    <GtkScale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
                         adjustment={zAdjustment}
                         onValueChanged={handleZChange}
                     />
-                </Box>
+                </GtkBox>
 
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.END} marginTop={8}>
-                    <Button label="Reset" onClicked={handleReset} />
-                </Box>
-            </Box>
-        </Box>
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.END} marginTop={8}>
+                    <GtkButton label="Reset" onClicked={handleReset} />
+                </GtkBox>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

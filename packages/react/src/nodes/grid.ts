@@ -7,7 +7,7 @@ import { VirtualSlotNode } from "./virtual-slot.js";
 
 export class GridNode extends Node<Gtk.Grid> implements GridContainer {
     static matches(type: string): boolean {
-        return type === "Grid.Root";
+        return type === "GtkGrid.Root";
     }
 
     attachToGrid(child: Gtk.Widget, column: number, row: number, colSpan: number, rowSpan: number): void {
@@ -69,7 +69,7 @@ type GridChildProps = {
 
 export class GridChildNode extends VirtualSlotNode<GridContainer, GridChildProps> {
     static matches(type: string): boolean {
-        return type === "Grid.Child";
+        return type === "GtkGrid.Child";
     }
 
     protected isValidContainer(parent: Node): parent is Node & GridContainer {

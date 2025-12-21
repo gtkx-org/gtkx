@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { Label, Notebook } from "@gtkx/react";
+import { GtkLabel, GtkNotebook } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -24,7 +24,7 @@ describe("render - Notebook", () => {
         it("creates Notebook widget", async () => {
             const ref = createRef<Gtk.Notebook>();
 
-            await render(<Notebook.Root ref={ref} />, { wrapper: false });
+            await render(<GtkNotebook.Root ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -35,11 +35,11 @@ describe("render - Notebook", () => {
             const notebookRef = createRef<Gtk.Notebook>();
 
             await render(
-                <Notebook.Root ref={notebookRef}>
-                    <Notebook.Page label="Tab 1">
-                        <Label label="Page 1 Content" />
-                    </Notebook.Page>
-                </Notebook.Root>,
+                <GtkNotebook.Root ref={notebookRef}>
+                    <GtkNotebook.Page label="Tab 1">
+                        <GtkLabel label="Page 1 Content" />
+                    </GtkNotebook.Page>
+                </GtkNotebook.Root>,
                 { wrapper: false },
             );
 
@@ -55,13 +55,13 @@ describe("render - Notebook", () => {
 
             function App({ pages }: { pages: string[] }) {
                 return (
-                    <Notebook.Root ref={notebookRef}>
+                    <GtkNotebook.Root ref={notebookRef}>
                         {pages.map((label) => (
-                            <Notebook.Page key={label} label={label}>
-                                <Label label={`Content: ${label}`} />
-                            </Notebook.Page>
+                            <GtkNotebook.Page key={label} label={label}>
+                                <GtkLabel label={`Content: ${label}`} />
+                            </GtkNotebook.Page>
                         ))}
-                    </Notebook.Root>
+                    </GtkNotebook.Root>
                 );
             }
 
@@ -78,13 +78,13 @@ describe("render - Notebook", () => {
 
             function App({ pages }: { pages: string[] }) {
                 return (
-                    <Notebook.Root ref={notebookRef}>
+                    <GtkNotebook.Root ref={notebookRef}>
                         {pages.map((label) => (
-                            <Notebook.Page key={label} label={label}>
-                                <Label label={`Content: ${label}`} />
-                            </Notebook.Page>
+                            <GtkNotebook.Page key={label} label={label}>
+                                <GtkLabel label={`Content: ${label}`} />
+                            </GtkNotebook.Page>
                         ))}
-                    </Notebook.Root>
+                    </GtkNotebook.Root>
                 );
             }
 
@@ -101,11 +101,11 @@ describe("render - Notebook", () => {
 
             function App({ label }: { label: string }) {
                 return (
-                    <Notebook.Root ref={notebookRef}>
-                        <Notebook.Page label={label}>
-                            <Label label="Content" />
-                        </Notebook.Page>
-                    </Notebook.Root>
+                    <GtkNotebook.Root ref={notebookRef}>
+                        <GtkNotebook.Page label={label}>
+                            <GtkLabel label="Content" />
+                        </GtkNotebook.Page>
+                    </GtkNotebook.Root>
                 );
             }
 

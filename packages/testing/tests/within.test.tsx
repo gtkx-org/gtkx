@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Entry, Frame, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkEntry, GtkFrame, GtkLabel } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, within } from "../src/index.js";
 
@@ -10,14 +10,14 @@ afterEach(async () => {
 describe("within", () => {
     it("scopes queries to container element", async () => {
         await render(
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                <Frame.Root name="section-a" label="Section A">
-                    <Button label="Submit" />
-                </Frame.Root>
-                <Frame.Root name="section-b" label="Section B">
-                    <Button label="Cancel" />
-                </Frame.Root>
-            </Box>,
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkFrame.Root name="section-a" label="Section A">
+                    <GtkButton label="Submit" />
+                </GtkFrame.Root>
+                <GtkFrame.Root name="section-b" label="Section B">
+                    <GtkButton label="Cancel" />
+                </GtkFrame.Root>
+            </GtkBox>,
         );
 
         const sectionA = await screen.findByTestId("section-a");
@@ -29,12 +29,12 @@ describe("within", () => {
 
     it("does not find elements outside container", async () => {
         await render(
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                <Frame.Root name="inner-frame" label="Inner">
-                    <Label label="Inside" />
-                </Frame.Root>
-                <Label label="Outside" />
-            </Box>,
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkFrame.Root name="inner-frame" label="Inner">
+                    <GtkLabel label="Inside" />
+                </GtkFrame.Root>
+                <GtkLabel label="Outside" />
+            </GtkBox>,
         );
 
         const frame = await screen.findByTestId("inner-frame");
@@ -45,9 +45,9 @@ describe("within", () => {
 
     it("provides findByRole query", async () => {
         await render(
-            <Frame.Root name="container">
-                <Button label="Test" />
-            </Frame.Root>,
+            <GtkFrame.Root name="container">
+                <GtkButton label="Test" />
+            </GtkFrame.Root>,
         );
 
         const frame = await screen.findByTestId("container");
@@ -58,9 +58,9 @@ describe("within", () => {
 
     it("provides findByText query", async () => {
         await render(
-            <Frame.Root name="container">
-                <Label label="Hello World" />
-            </Frame.Root>,
+            <GtkFrame.Root name="container">
+                <GtkLabel label="Hello World" />
+            </GtkFrame.Root>,
         );
 
         const frame = await screen.findByTestId("container");
@@ -71,9 +71,9 @@ describe("within", () => {
 
     it("provides findByLabelText query", async () => {
         await render(
-            <Frame.Root name="container">
-                <Button label="Action" />
-            </Frame.Root>,
+            <GtkFrame.Root name="container">
+                <GtkButton label="Action" />
+            </GtkFrame.Root>,
         );
 
         const frame = await screen.findByTestId("container");
@@ -84,9 +84,9 @@ describe("within", () => {
 
     it("provides findByTestId query", async () => {
         await render(
-            <Frame.Root name="container">
-                <Entry name="my-input" />
-            </Frame.Root>,
+            <GtkFrame.Root name="container">
+                <GtkEntry name="my-input" />
+            </GtkFrame.Root>,
         );
 
         const frame = await screen.findByTestId("container");
@@ -97,12 +97,12 @@ describe("within", () => {
 
     it("provides findAllByRole query", async () => {
         await render(
-            <Frame.Root name="container">
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                    <Button label="First" />
-                    <Button label="Second" />
-                </Box>
-            </Frame.Root>,
+            <GtkFrame.Root name="container">
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                    <GtkButton label="First" />
+                    <GtkButton label="Second" />
+                </GtkBox>
+            </GtkFrame.Root>,
         );
 
         const frame = await screen.findByTestId("container");
@@ -113,12 +113,12 @@ describe("within", () => {
 
     it("provides findAllByText query", async () => {
         await render(
-            <Frame.Root name="container">
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                    <Label label="Item" />
-                    <Label label="Item" />
-                </Box>
-            </Frame.Root>,
+            <GtkFrame.Root name="container">
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                    <GtkLabel label="Item" />
+                    <GtkLabel label="Item" />
+                </GtkBox>
+            </GtkFrame.Root>,
         );
 
         const frame = await screen.findByTestId("container");
@@ -129,12 +129,12 @@ describe("within", () => {
 
     it("provides findAllByLabelText query", async () => {
         await render(
-            <Frame.Root name="container">
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                    <Button label="Action" />
-                    <Button label="Action" />
-                </Box>
-            </Frame.Root>,
+            <GtkFrame.Root name="container">
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                    <GtkButton label="Action" />
+                    <GtkButton label="Action" />
+                </GtkBox>
+            </GtkFrame.Root>,
         );
 
         const frame = await screen.findByTestId("container");
@@ -145,12 +145,12 @@ describe("within", () => {
 
     it("provides findAllByTestId query", async () => {
         await render(
-            <Frame.Root name="container">
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                    <Entry name="field" />
-                    <Entry name="field" />
-                </Box>
-            </Frame.Root>,
+            <GtkFrame.Root name="container">
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                    <GtkEntry name="field" />
+                    <GtkEntry name="field" />
+                </GtkBox>
+            </GtkFrame.Root>,
         );
 
         const frame = await screen.findByTestId("container");
@@ -161,11 +161,11 @@ describe("within", () => {
 
     it("supports nested within calls", async () => {
         await render(
-            <Frame.Root name="outer-frame">
-                <Frame.Root name="inner-frame">
-                    <Button label="Deep" />
-                </Frame.Root>
-            </Frame.Root>,
+            <GtkFrame.Root name="outer-frame">
+                <GtkFrame.Root name="inner-frame">
+                    <GtkButton label="Deep" />
+                </GtkFrame.Root>
+            </GtkFrame.Root>,
         );
 
         const outer = await screen.findByTestId("outer-frame");

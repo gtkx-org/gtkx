@@ -41,21 +41,18 @@
                 "$TURBO_ROOT$/vitest.setup.ts"
             ]
         },
-        "@gtkx/config#build": {
-            "dependsOn": ["^build"]
-        },
         "@gtkx/gir#build": {
             "dependsOn": ["^build"]
         },
         "@gtkx/codegen#build": {
-            "dependsOn": ["@gtkx/gir#build", "@gtkx/config#build"]
+            "dependsOn": ["@gtkx/gir#build"]
         },
         "website#build": {
-            "dependsOn": ["@gtkx/config#build", "@gtkx/ffi#build", "@gtkx/react#build"],
+            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
             "outputs": ["build/**", ".docusaurus/**", "docs/api/**"]
         },
         "website#start": {
-            "dependsOn": ["@gtkx/config#build", "@gtkx/ffi#build", "@gtkx/react#build"],
+            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
             "persistent": true,
             "cache": false
         }

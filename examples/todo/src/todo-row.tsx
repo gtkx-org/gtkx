@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, CheckButton, Label, ListBoxRow } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkCheckButton, GtkLabel, GtkListBoxRow } from "@gtkx/react";
 import type { Todo } from "./types.js";
 
 type TodoRowProps = {
@@ -10,8 +10,8 @@ type TodoRowProps = {
 
 export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
     return (
-        <ListBoxRow activatable={false} name={`todo-${todo.id}`}>
-            <Box
+        <GtkListBoxRow activatable={false} name={`todo-${todo.id}`}>
+            <GtkBox
                 orientation={Gtk.Orientation.HORIZONTAL}
                 spacing={12}
                 marginTop={8}
@@ -19,13 +19,13 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
                 marginStart={12}
                 marginEnd={12}
             >
-                <CheckButton.Root
+                <GtkCheckButton.Root
                     active={todo.completed}
                     onToggled={() => onToggle(todo.id)}
                     name={`toggle-${todo.id}`}
                     valign={Gtk.Align.CENTER}
                 />
-                <Label
+                <GtkLabel
                     label={todo.text}
                     hexpand
                     xalign={0}
@@ -33,7 +33,7 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
                     cssClasses={todo.completed ? ["dim-label"] : []}
                     valign={Gtk.Align.CENTER}
                 />
-                <Button
+                <GtkButton
                     iconName="edit-delete-symbolic"
                     tooltipText="Delete task"
                     cssClasses={["flat", "circular"]}
@@ -41,7 +41,7 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
                     name={`delete-${todo.id}`}
                     valign={Gtk.Align.CENTER}
                 />
-            </Box>
-        </ListBoxRow>
+            </GtkBox>
+        </GtkListBoxRow>
     );
 };

@@ -1,5 +1,5 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import { AdwViewStack, AdwViewSwitcher, ApplicationWindow, HeaderBar, quit, Window } from "@gtkx/react";
+import { AdwViewStack, AdwViewSwitcher, GtkApplicationWindow, GtkHeaderBar, GtkWindow, quit } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import { ColumnViewDemo } from "./demos/column-view.js";
 import { DropDownDemo } from "./demos/drop-down.js";
@@ -13,14 +13,14 @@ export const App = () => {
     const stackRef = useCallback((node: Adw.ViewStack | null) => setStack(node), []);
 
     return (
-        <ApplicationWindow title="GTK4 Lists" defaultWidth={1000} defaultHeight={700} onCloseRequest={quit}>
-            <Window.Titlebar>
-                <HeaderBar.Root>
-                    <HeaderBar.TitleWidget>
+        <GtkApplicationWindow title="GTK4 Lists" defaultWidth={1000} defaultHeight={700} onCloseRequest={quit}>
+            <GtkWindow.Titlebar>
+                <GtkHeaderBar.Root>
+                    <GtkHeaderBar.TitleWidget>
                         <AdwViewSwitcher policy={1} stack={stack ?? undefined} />
-                    </HeaderBar.TitleWidget>
-                </HeaderBar.Root>
-            </Window.Titlebar>
+                    </GtkHeaderBar.TitleWidget>
+                </GtkHeaderBar.Root>
+            </GtkWindow.Titlebar>
 
             <AdwViewStack.Root ref={stackRef} vexpand hexpand>
                 <AdwViewStack.Page name="listbox" title="ListBox" iconName="view-list-symbolic">
@@ -42,7 +42,7 @@ export const App = () => {
                     <FlowBoxDemo />
                 </AdwViewStack.Page>
             </AdwViewStack.Root>
-        </ApplicationWindow>
+        </GtkApplicationWindow>
     );
 };
 

@@ -1,4 +1,4 @@
-import { getApplication, getNativeObject } from "@gtkx/ffi";
+import { getApplication } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -136,7 +136,7 @@ abstract class MenuWidgetNode<T extends MenuWidget> extends MenuContainerNode<T>
 
 export class PopoverMenuRootNode extends MenuWidgetNode<Gtk.PopoverMenu> {
     static matches(type: string): boolean {
-        return type === "PopoverMenu.Root";
+        return type === "GtkPopoverMenu.Root";
     }
 
     protected createMenuWidget(menu: Gio.Menu): Gtk.PopoverMenu {
@@ -146,7 +146,7 @@ export class PopoverMenuRootNode extends MenuWidgetNode<Gtk.PopoverMenu> {
 
 export class PopoverMenuBarNode extends MenuWidgetNode<Gtk.PopoverMenuBar> {
     static matches(type: string): boolean {
-        return type === "PopoverMenuBar";
+        return type === "GtkPopoverMenuBar";
     }
 
     protected createMenuWidget(menu: Gio.Menu): Gtk.PopoverMenuBar {
@@ -273,13 +273,8 @@ export class MenuItemNode extends NodeClass<never> implements MenuEntryNode {
         this.signalHandlerId = this.action.connect("activate", () => this.invokeCurrentCallback());
 
         const app = getApplication();
-        const action = getNativeObject(this.action.id, Gio.Action);
 
-        if (!action) {
-            throw new Error("Failed to get Gio.Action interface from SimpleAction");
-        }
-
-        app.addAction(action);
+        app.addAction(this.action);
 
         this.entry.action = `app.${this.actionName}`;
 

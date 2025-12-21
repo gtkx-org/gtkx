@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Entry, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "../src/index.js";
 
@@ -9,36 +9,36 @@ afterEach(async () => {
 
 describe("screen", () => {
     it("finds element by role", async () => {
-        await render(<Button label="Test" />);
+        await render(<GtkButton label="Test" />);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
         expect(button).toBeDefined();
     });
 
     it("finds element by text", async () => {
-        await render(<Label label="Hello World" />);
+        await render(<GtkLabel label="Hello World" />);
         const label = await screen.findByText("Hello World");
         expect(label).toBeDefined();
     });
 
     it("finds element by label text", async () => {
-        await render(<Button label="Click Me" />);
+        await render(<GtkButton label="Click Me" />);
         const button = await screen.findByLabelText("Click Me");
         expect(button).toBeDefined();
     });
 
     it("finds element by test id", async () => {
-        await render(<Entry name="my-input" />);
+        await render(<GtkEntry name="my-input" />);
         const entry = await screen.findByTestId("my-input");
         expect(entry).toBeDefined();
     });
 
     it("finds all elements by role", async () => {
         await render(
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                <Button label="First" />
-                <Button label="Second" />
-                <Button label="Third" />
-            </Box>,
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkButton label="First" />
+                <GtkButton label="Second" />
+                <GtkButton label="Third" />
+            </GtkBox>,
         );
 
         const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
@@ -47,10 +47,10 @@ describe("screen", () => {
 
     it("finds all elements by text", async () => {
         await render(
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                <Label label="Item" />
-                <Label label="Item" />
-            </Box>,
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkLabel label="Item" />
+                <GtkLabel label="Item" />
+            </GtkBox>,
         );
 
         const labels = await screen.findAllByText("Item");
@@ -59,10 +59,10 @@ describe("screen", () => {
 
     it("finds all elements by label text", async () => {
         await render(
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                <Button label="Action" />
-                <Button label="Action" />
-            </Box>,
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkButton label="Action" />
+                <GtkButton label="Action" />
+            </GtkBox>,
         );
 
         const buttons = await screen.findAllByLabelText("Action");
@@ -71,10 +71,10 @@ describe("screen", () => {
 
     it("finds all elements by test id", async () => {
         await render(
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                <Entry name="field" />
-                <Entry name="field" />
-            </Box>,
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkEntry name="field" />
+                <GtkEntry name="field" />
+            </GtkBox>,
         );
 
         const entries = await screen.findAllByTestId("field");

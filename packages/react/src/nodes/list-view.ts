@@ -16,7 +16,7 @@ export class ListViewNode extends SelectableListNode<Gtk.ListView | Gtk.GridView
     static override consumedPropNames = ["renderItem", "selected", "onSelectionChanged", "selectionMode"];
 
     static matches(type: string): boolean {
-        return type === "ListView.Root" || type === "GridView.Root";
+        return type === "GtkListView.Root" || type === "GtkGridView.Root";
     }
 
     override initialize(props: Props): void {
@@ -62,6 +62,6 @@ export class ListViewNode extends SelectableListNode<Gtk.ListView | Gtk.GridView
 
 export class ListItemNode extends VirtualItemNode {
     static matches(type: string): boolean {
-        return type === "ListView.Item" || type === "GridView.Item";
+        return type === "GtkListView.Item" || type === "GtkGridView.Item";
     }
 }

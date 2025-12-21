@@ -58,13 +58,13 @@ const AppLayout = () => (
 `AdwHeaderBar` is the libadwaita header bar with adaptive behavior. Children are packed to the start by default:
 
 ```tsx
-import { AdwHeaderBar, AdwWindowTitle, Button } from "@gtkx/react";
+import { AdwHeaderBar, AdwWindowTitle, GtkButton } from "@gtkx/react";
 
 <AdwHeaderBar.Root>
   <AdwHeaderBar.TitleWidget>
     <AdwWindowTitle title="Settings" subtitle="Preferences" />
   </AdwHeaderBar.TitleWidget>
-  <Button iconName="open-menu-symbolic" />
+  <GtkButton iconName="open-menu-symbolic" />
 </AdwHeaderBar.Root>;
 ```
 
@@ -74,7 +74,7 @@ import { AdwHeaderBar, AdwWindowTitle, Button } from "@gtkx/react";
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AdwStatusPage, Box, Button, AdwButtonContent } from "@gtkx/react";
+import { AdwStatusPage, GtkBox, GtkButton, AdwButtonContent } from "@gtkx/react";
 
 const WelcomePage = () => (
   <AdwStatusPage
@@ -82,11 +82,11 @@ const WelcomePage = () => (
     description="Get started by exploring the features below"
     iconName="org.gnome.Adwaita1.Demo"
   >
-    <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <Button cssClasses={["suggested-action", "pill"]}>
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+      <GtkButton cssClasses={["suggested-action", "pill"]}>
         <AdwButtonContent iconName="list-add-symbolic" label="Get Started" />
-      </Button>
-    </Box>
+      </GtkButton>
+    </GtkBox>
   </AdwStatusPage>
 );
 ```
@@ -134,7 +134,7 @@ import {
   AdwPreferencesGroup,
   AdwActionRow,
   AdwAvatar,
-  Image,
+  GtkImage,
 } from "@gtkx/react";
 
 const AccountSection = () => (
@@ -147,7 +147,7 @@ const AccountSection = () => (
       <AdwAvatar size={40} text="Demo User" showInitials />
     </AdwActionRow.Root>
     <AdwActionRow.Root title="Storage" subtitle="2.4 GB of 15 GB used">
-      <Image iconName="drive-harddisk-symbolic" iconSize={1} />
+      <GtkImage iconName="drive-harddisk-symbolic" iconSize={1} />
     </AdwActionRow.Root>
   </AdwPreferencesGroup.Root>
 );
@@ -192,15 +192,15 @@ const NotificationBanner = () => {
 `AdwButtonContent` creates consistent button layouts with an icon and label:
 
 ```tsx
-import { Button, AdwButtonContent } from "@gtkx/react";
+import { GtkButton, AdwButtonContent } from "@gtkx/react";
 
-<Button cssClasses={["suggested-action", "pill"]}>
+<GtkButton cssClasses={["suggested-action", "pill"]}>
     <AdwButtonContent iconName="document-save-symbolic" label="Save" />
-</Button>
+</GtkButton>
 
-<Button cssClasses={["destructive-action", "pill"]}>
+<GtkButton cssClasses={["destructive-action", "pill"]}>
     <AdwButtonContent iconName="user-trash-symbolic" label="Delete" />
-</Button>
+</GtkButton>
 ```
 
 ## Clamp
@@ -209,10 +209,10 @@ import { Button, AdwButtonContent } from "@gtkx/react";
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AdwClamp, ScrolledWindow, Box } from "@gtkx/react";
+import { AdwClamp, GtkScrolledWindow, GtkBox } from "@gtkx/react";
 
 const ContentPage = () => (
-  <ScrolledWindow vexpand>
+  <GtkScrolledWindow vexpand>
     <AdwClamp
       maximumSize={600}
       marginTop={24}
@@ -220,11 +220,11 @@ const ContentPage = () => (
       marginStart={12}
       marginEnd={12}
     >
-      <Box orientation={Gtk.Orientation.VERTICAL} spacing={24}>
+      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
         {/* Content constrained to 600px max width */}
-      </Box>
+      </GtkBox>
     </AdwClamp>
-  </ScrolledWindow>
+  </GtkScrolledWindow>
 );
 ```
 
@@ -248,9 +248,9 @@ import {
   AdwSwitchRow,
   AdwToolbarView,
   AdwWindowTitle,
-  Box,
-  Button,
-  ScrolledWindow,
+  GtkBox,
+  GtkButton,
+  GtkScrolledWindow,
   quit,
 } from "@gtkx/react";
 import { useState } from "react";
@@ -263,12 +263,12 @@ const WelcomePage = ({ onNavigate }: { onNavigate: (page: Page) => void }) => (
     description="Build native Linux desktop apps with React"
     iconName="org.gnome.Adwaita1.Demo"
   >
-    <Button
+    <GtkButton
       cssClasses={["suggested-action", "pill"]}
       onClicked={() => onNavigate("settings")}
     >
       <AdwButtonContent iconName="emblem-system-symbolic" label="Settings" />
-    </Button>
+    </GtkButton>
   </AdwStatusPage>
 );
 
@@ -278,9 +278,9 @@ const SettingsPage = () => {
   const [showBanner, setShowBanner] = useState(true);
 
   return (
-    <ScrolledWindow vexpand hscrollbarPolicy={2}>
+    <GtkScrolledWindow vexpand hscrollbarPolicy={2}>
       <AdwClamp maximumSize={600} marginTop={24} marginBottom={24}>
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={24}>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
           {showBanner && (
             <AdwBanner
               title="Welcome! Explore the settings below."
@@ -313,9 +313,9 @@ const SettingsPage = () => {
               <AdwAvatar size={40} text="Demo User" showInitials />
             </AdwActionRow.Root>
           </AdwPreferencesGroup.Root>
-        </Box>
+        </GtkBox>
       </AdwClamp>
-    </ScrolledWindow>
+    </GtkScrolledWindow>
   );
 };
 
@@ -336,7 +336,7 @@ export const App = () => {
                 <AdwWindowTitle title="Adwaita Demo" />
               </AdwHeaderBar.TitleWidget>
               {currentPage !== "welcome" && (
-                <Button
+                <GtkButton
                   iconName="go-home-symbolic"
                   onClicked={() => setCurrentPage("welcome")}
                 />

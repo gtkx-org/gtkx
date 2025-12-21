@@ -1,21 +1,21 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Grid, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkGrid, GtkLabel } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const GridDemo = () => {
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Grid Layout" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Grid Layout" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Basic Grid" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
-                    label="Grid arranges widgets in rows and columns. Use Grid.Child to specify position and span."
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Basic Grid" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="Grid arranges widgets in rows and columns. Use <GtkGrid.Child to specify position and span."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Box
+                <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={0}
                     cssClasses={["card"]}
@@ -24,7 +24,7 @@ const GridDemo = () => {
                     marginStart={8}
                     marginEnd={8}
                 >
-                    <Grid.Root
+                    <GtkGrid.Root
                         rowSpacing={8}
                         columnSpacing={8}
                         marginTop={12}
@@ -32,36 +32,36 @@ const GridDemo = () => {
                         marginStart={12}
                         marginEnd={12}
                     >
-                        <Grid.Child column={0} row={0}>
-                            <Button label="(0,0)" />
-                        </Grid.Child>
-                        <Grid.Child column={1} row={0}>
-                            <Button label="(1,0)" />
-                        </Grid.Child>
-                        <Grid.Child column={2} row={0}>
-                            <Button label="(2,0)" />
-                        </Grid.Child>
-                        <Grid.Child column={0} row={1}>
-                            <Button label="(0,1)" />
-                        </Grid.Child>
-                        <Grid.Child column={1} row={1}>
-                            <Button label="(1,1)" />
-                        </Grid.Child>
-                        <Grid.Child column={2} row={1}>
-                            <Button label="(2,1)" />
-                        </Grid.Child>
-                    </Grid.Root>
-                </Box>
-            </Box>
+                        <GtkGrid.Child column={0} row={0}>
+                            <GtkButton label="(0,0)" />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={1} row={0}>
+                            <GtkButton label="(1,0)" />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={2} row={0}>
+                            <GtkButton label="(2,0)" />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={0} row={1}>
+                            <GtkButton label="(0,1)" />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={1} row={1}>
+                            <GtkButton label="(1,1)" />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={2} row={1}>
+                            <GtkButton label="(2,1)" />
+                        </GtkGrid.Child>
+                    </GtkGrid.Root>
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Column and Row Spanning" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Column and Row Spanning" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="Widgets can span multiple columns or rows using columnSpan and rowSpan props."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Box
+                <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={0}
                     cssClasses={["card"]}
@@ -70,7 +70,7 @@ const GridDemo = () => {
                     marginStart={8}
                     marginEnd={8}
                 >
-                    <Grid.Root
+                    <GtkGrid.Root
                         rowSpacing={8}
                         columnSpacing={8}
                         marginTop={12}
@@ -78,30 +78,30 @@ const GridDemo = () => {
                         marginStart={12}
                         marginEnd={12}
                     >
-                        <Grid.Child column={0} row={0} columnSpan={2}>
-                            <Button label="Spans 2 columns" hexpand />
-                        </Grid.Child>
-                        <Grid.Child column={2} row={0} rowSpan={2}>
-                            <Button label="Spans 2 rows" vexpand />
-                        </Grid.Child>
-                        <Grid.Child column={0} row={1}>
-                            <Button label="(0,1)" />
-                        </Grid.Child>
-                        <Grid.Child column={1} row={1}>
-                            <Button label="(1,1)" />
-                        </Grid.Child>
-                    </Grid.Root>
-                </Box>
-            </Box>
+                        <GtkGrid.Child column={0} row={0} columnSpan={2}>
+                            <GtkButton label="Spans 2 columns" hexpand />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={2} row={0} rowSpan={2}>
+                            <GtkButton label="Spans 2 rows" vexpand />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={0} row={1}>
+                            <GtkButton label="(0,1)" />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={1} row={1}>
+                            <GtkButton label="(1,1)" />
+                        </GtkGrid.Child>
+                    </GtkGrid.Root>
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Form Layout" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Form Layout" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="Grid is great for form layouts with labels and inputs aligned."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Box
+                <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={0}
                     cssClasses={["card"]}
@@ -110,7 +110,7 @@ const GridDemo = () => {
                     marginStart={8}
                     marginEnd={8}
                 >
-                    <Grid.Root
+                    <GtkGrid.Root
                         rowSpacing={8}
                         columnSpacing={12}
                         marginTop={12}
@@ -118,25 +118,25 @@ const GridDemo = () => {
                         marginStart={12}
                         marginEnd={12}
                     >
-                        <Grid.Child column={0} row={0}>
-                            <Label label="Name:" halign={Gtk.Align.END} />
-                        </Grid.Child>
-                        <Grid.Child column={1} row={0}>
-                            <Button label="Text Entry Here" hexpand />
-                        </Grid.Child>
-                        <Grid.Child column={0} row={1}>
-                            <Label label="Email:" halign={Gtk.Align.END} />
-                        </Grid.Child>
-                        <Grid.Child column={1} row={1}>
-                            <Button label="Email Entry Here" hexpand />
-                        </Grid.Child>
-                        <Grid.Child column={0} row={2} columnSpan={2}>
-                            <Button label="Submit" halign={Gtk.Align.END} marginTop={8} />
-                        </Grid.Child>
-                    </Grid.Root>
-                </Box>
-            </Box>
-        </Box>
+                        <GtkGrid.Child column={0} row={0}>
+                            <GtkLabel label="Name:" halign={Gtk.Align.END} />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={1} row={0}>
+                            <GtkButton label="Text <GtkEntry Here" hexpand />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={0} row={1}>
+                            <GtkLabel label="Email:" halign={Gtk.Align.END} />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={1} row={1}>
+                            <GtkButton label="Email <GtkEntry Here" hexpand />
+                        </GtkGrid.Child>
+                        <GtkGrid.Child column={0} row={2} columnSpan={2}>
+                            <GtkButton label="Submit" halign={Gtk.Align.END} marginTop={8} />
+                        </GtkGrid.Child>
+                    </GtkGrid.Root>
+                </GtkBox>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

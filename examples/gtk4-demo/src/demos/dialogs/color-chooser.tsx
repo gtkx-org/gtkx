@@ -1,6 +1,6 @@
 import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -23,31 +23,31 @@ const ColorChooserDemo = () => {
     };
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Color Chooser" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Color Chooser" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Color Dialog" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Color Dialog" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="ColorDialog provides a modern color picker dialog with support for RGBA colors including alpha transparency."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Button label="Choose Color..." onClicked={openColorDialog} />
-                    {color && <Label label={color} cssClasses={["monospace"]} />}
-                </Box>
-            </Box>
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkButton label="Choose Color..." onClicked={openColorDialog} />
+                    {color && <GtkLabel label={color} cssClasses={["monospace"]} />}
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="How It Works" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="How It Works" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="ColorDialog uses a Promise-based API. Call dialog.chooseRgba() and await the result. The dialog returns an RGBA struct with red, green, blue, and alpha values."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

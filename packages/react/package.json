@@ -39,7 +39,6 @@
         "codegen": "gtkx-codegen jsx --girs-dir ../../girs --output-dir src/generated"
     },
     "dependencies": {
-        "@gtkx/config": "workspace:*",
         "@gtkx/ffi": "workspace:*",
         "react-reconciler": "^0.33.0"
     },

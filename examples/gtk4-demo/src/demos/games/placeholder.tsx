@@ -1,45 +1,45 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label } from "@gtkx/react";
+import { GtkBox, GtkLabel } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const GamesPlaceholderDemo = () => {
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Games" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Games" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="About Games" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="About Games" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="This category showcases interactive games built with GTKX, demonstrating how React state management and GTK widgets combine to create engaging experiences."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Available Demos" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Available Demos" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={`• 15 Puzzle - Classic sliding tile puzzle game
 • Memory Game - Card matching memory challenge`}
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Key Techniques" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Key Techniques" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={`- React useState for game state management
-- Box layout with homogeneous prop for tile grids
+- GtkBox layout with homogeneous prop for tile grids
 - CSS-in-JS for dynamic styling
 - useCallback for optimized event handlers
 - useEffect for game logic side effects`}
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

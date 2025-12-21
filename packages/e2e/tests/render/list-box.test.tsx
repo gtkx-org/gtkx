@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { Label, ListBox } from "@gtkx/react";
+import { GtkLabel, GtkListBox } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -25,10 +25,10 @@ describe("render - ListBox", () => {
             const ref = createRef<Gtk.ListBox>();
 
             await render(
-                <ListBox ref={ref}>
-                    <Label label="First" />
-                    <Label label="Second" />
-                </ListBox>,
+                <GtkListBox ref={ref}>
+                    <GtkLabel label="First" />
+                    <GtkLabel label="Second" />
+                </GtkListBox>,
                 { wrapper: false },
             );
 
@@ -40,11 +40,11 @@ describe("render - ListBox", () => {
             const ref = createRef<Gtk.ListBox>();
 
             await render(
-                <ListBox ref={ref}>
-                    <Label label="A" />
-                    <Label label="B" />
-                    <Label label="C" />
-                </ListBox>,
+                <GtkListBox ref={ref}>
+                    <GtkLabel label="A" />
+                    <GtkLabel label="B" />
+                    <GtkLabel label="C" />
+                </GtkListBox>,
                 { wrapper: false },
             );
 
@@ -59,11 +59,11 @@ describe("render - ListBox", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <ListBox ref={ref}>
+                    <GtkListBox ref={ref}>
                         {items.map((item) => (
-                            <Label key={item} label={item} />
+                            <GtkLabel key={item} label={item} />
                         ))}
-                    </ListBox>
+                    </GtkListBox>
                 );
             }
 
@@ -82,11 +82,11 @@ describe("render - ListBox", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <ListBox ref={ref}>
+                    <GtkListBox ref={ref}>
                         {items.map((item) => (
-                            <Label key={item} label={item} />
+                            <GtkLabel key={item} label={item} />
                         ))}
-                    </ListBox>
+                    </GtkListBox>
                 );
             }
 
@@ -105,11 +105,11 @@ describe("render - ListBox", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <ListBox ref={ref}>
+                    <GtkListBox ref={ref}>
                         {items.map((item) => (
-                            <Label key={item} label={item} />
+                            <GtkLabel key={item} label={item} />
                         ))}
-                    </ListBox>
+                    </GtkListBox>
                 );
             }
 

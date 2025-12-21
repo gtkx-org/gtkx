@@ -4,7 +4,7 @@ import { Node } from "../node.js";
 
 export class OverlayNode extends Node<Gtk.Overlay> implements ChildContainer {
     static matches(type: string): boolean {
-        return type === "Overlay" || type === "Overlay.Root";
+        return type === "GtkOverlay" || type === "GtkOverlay.Root";
     }
 
     private mainChild: Gtk.Widget | null = null;

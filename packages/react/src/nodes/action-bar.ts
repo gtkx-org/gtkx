@@ -3,6 +3,6 @@ import { PackContainerNode } from "./header-bar.js";
 
 export class ActionBarNode extends PackContainerNode<Gtk.ActionBar> {
     static matches(type: string): boolean {
-        return type === "ActionBar" || type === "ActionBar.Root";
+        return type === "GtkActionBar" || type === "GtkActionBar.Root";
     }
 }

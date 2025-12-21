@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, FlowBox, Label, ScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkFlowBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 
 interface Tag {
@@ -66,7 +66,7 @@ export const FlowBoxDemo = () => {
     const selectedTagNames = tags.filter((t) => selectedTags.has(t.id)).map((t) => t.name);
 
     return (
-        <Box
+        <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             spacing={16}
             marginStart={20}
@@ -76,30 +76,30 @@ export const FlowBoxDemo = () => {
             hexpand
             vexpand
         >
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="FlowBox" cssClasses={["title-1"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="FlowBox" cssClasses={["title-1"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GtkFlowBox arranges children in a flowing layout. Children reflow automatically when the container is resized. Great for tag clouds, icon grids, and dynamic layouts."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                    <Label label="Technology Tags" cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
-                    <Label label={`${selectedTags.size} selected`} cssClasses={["dim-label"]} />
-                </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkLabel label="Technology Tags" cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
+                    <GtkLabel label={`${selectedTags.size} selected`} cssClasses={["dim-label"]} />
+                </GtkBox>
 
-                <Label
+                <GtkLabel
                     label="Click tags to toggle selection. Resize the window to see tags reflow."
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
 
-                <ScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                    <FlowBox
+                <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                    <GtkFlowBox
                         selectionMode={Gtk.SelectionMode.NONE}
                         maxChildrenPerLine={8}
                         minChildrenPerLine={2}
@@ -110,27 +110,27 @@ export const FlowBoxDemo = () => {
                         activateOnSingleClick
                     >
                         {tags.map((tag) => (
-                            <Box
+                            <GtkBox
                                 key={tag.id}
                                 orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={8}
                                 cssClasses={[tagChip(tag.color)]}
                                 focusable
                             >
-                                <Box
+                                <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={0}
                                     cssClasses={[colorDot(tag.color)]}
                                 />
-                                <Label label={tag.name} />
-                            </Box>
+                                <GtkLabel label={tag.name} />
+                            </GtkBox>
                         ))}
-                    </FlowBox>
-                </ScrolledWindow>
+                    </GtkFlowBox>
+                </GtkScrolledWindow>
 
                 {selectedTagNames.length > 0 && (
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} cssClasses={["card"]} marginTop={8}>
-                        <Box
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} cssClasses={["card"]} marginTop={8}>
+                        <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={4}
                             marginStart={12}
@@ -138,16 +138,16 @@ export const FlowBoxDemo = () => {
                             marginTop={12}
                             marginBottom={12}
                         >
-                            <Label label="Selected Technologies" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                            <Label label={selectedTagNames.join(", ")} halign={Gtk.Align.START} wrap />
-                        </Box>
-                    </Box>
+                            <GtkLabel label="Selected Technologies" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                            <GtkLabel label={selectedTagNames.join(", ")} halign={Gtk.Align.START} wrap />
+                        </GtkBox>
+                    </GtkBox>
                 )}
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={
                         "• Automatic reflow on resize\n• minChildrenPerLine and maxChildrenPerLine\n• columnSpacing and rowSpacing\n• Multiple selection modes\n• homogeneous for uniform sizing"
                     }
@@ -155,7 +155,7 @@ export const FlowBoxDemo = () => {
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };

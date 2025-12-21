@@ -1,5 +1,4 @@
-import { getNativeObject } from "@gtkx/ffi";
-import * as Gio from "@gtkx/ffi/gio";
+import type * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { StringListContainer } from "../containers.js";
 import type { Props } from "../factory.js";
@@ -72,7 +71,7 @@ export abstract class StringListContainerNode<T extends StringListWidget>
 
         super.initialize(props);
 
-        this.widget.setModel(getNativeObject(store.getModel().id, Gio.ListModel) ?? undefined);
+        this.widget.setModel(store.getModel());
     }
 
     private connectSelectionHandler(): void {

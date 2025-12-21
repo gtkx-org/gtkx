@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { DropDown } from "@gtkx/react";
+import { GtkDropDown } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -10,9 +10,9 @@ describe("render - DropDown", () => {
             const ref = createRef<Gtk.DropDown>();
 
             await render(
-                <DropDown.Root ref={ref}>
-                    <DropDown.Item id="1" label="First" />
-                </DropDown.Root>,
+                <GtkDropDown.Root ref={ref}>
+                    <GtkDropDown.Item id="1" label="First" />
+                </GtkDropDown.Root>,
                 { wrapper: false },
             );
 
@@ -25,10 +25,10 @@ describe("render - DropDown", () => {
             const ref = createRef<Gtk.DropDown>();
 
             await render(
-                <DropDown.Root ref={ref}>
-                    <DropDown.Item id="option1" label="Option 1" />
-                    <DropDown.Item id="option2" label="Option 2" />
-                </DropDown.Root>,
+                <GtkDropDown.Root ref={ref}>
+                    <GtkDropDown.Item id="option1" label="Option 1" />
+                    <GtkDropDown.Item id="option2" label="Option 2" />
+                </GtkDropDown.Root>,
                 { wrapper: false },
             );
 
@@ -40,11 +40,11 @@ describe("render - DropDown", () => {
 
             function App({ items }: { items: { id: string; label: string }[] }) {
                 return (
-                    <DropDown.Root ref={ref}>
+                    <GtkDropDown.Root ref={ref}>
                         {items.map((item) => (
-                            <DropDown.Item key={item.id} id={item.id} label={item.label} />
+                            <GtkDropDown.Item key={item.id} id={item.id} label={item.label} />
                         ))}
-                    </DropDown.Root>
+                    </GtkDropDown.Root>
                 );
             }
 
@@ -77,11 +77,11 @@ describe("render - DropDown", () => {
 
             function App({ items }: { items: { id: string; label: string }[] }) {
                 return (
-                    <DropDown.Root ref={ref}>
+                    <GtkDropDown.Root ref={ref}>
                         {items.map((item) => (
-                            <DropDown.Item key={item.id} id={item.id} label={item.label} />
+                            <GtkDropDown.Item key={item.id} id={item.id} label={item.label} />
                         ))}
-                    </DropDown.Root>
+                    </GtkDropDown.Root>
                 );
             }
 
@@ -114,9 +114,9 @@ describe("render - DropDown", () => {
 
             function App({ label }: { label: string }) {
                 return (
-                    <DropDown.Root ref={ref}>
-                        <DropDown.Item id="1" label={label} />
-                    </DropDown.Root>
+                    <GtkDropDown.Root ref={ref}>
+                        <GtkDropDown.Item id="1" label={label} />
+                    </GtkDropDown.Root>
                 );
             }
 
@@ -131,11 +131,11 @@ describe("render - DropDown", () => {
             const ref = createRef<Gtk.DropDown>();
 
             await render(
-                <DropDown.Root ref={ref} selectedId="2">
-                    <DropDown.Item id="1" label="First" />
-                    <DropDown.Item id="2" label="Second" />
-                    <DropDown.Item id="3" label="Third" />
-                </DropDown.Root>,
+                <GtkDropDown.Root ref={ref} selectedId="2">
+                    <GtkDropDown.Item id="1" label="First" />
+                    <GtkDropDown.Item id="2" label="Second" />
+                    <GtkDropDown.Item id="3" label="Third" />
+                </GtkDropDown.Root>,
                 { wrapper: false },
             );
         });
@@ -145,10 +145,10 @@ describe("render - DropDown", () => {
             const onSelectionChanged = vi.fn();
 
             await render(
-                <DropDown.Root ref={ref} onSelectionChanged={onSelectionChanged}>
-                    <DropDown.Item id="1" label="First" />
-                    <DropDown.Item id="2" label="Second" />
-                </DropDown.Root>,
+                <GtkDropDown.Root ref={ref} onSelectionChanged={onSelectionChanged}>
+                    <GtkDropDown.Item id="1" label="First" />
+                    <GtkDropDown.Item id="2" label="Second" />
+                </GtkDropDown.Root>,
                 { wrapper: false },
             );
 
@@ -160,10 +160,10 @@ describe("render - DropDown", () => {
 
             function App({ selectedId }: { selectedId: string }) {
                 return (
-                    <DropDown.Root ref={ref} selectedId={selectedId}>
-                        <DropDown.Item id="1" label="First" />
-                        <DropDown.Item id="2" label="Second" />
-                    </DropDown.Root>
+                    <GtkDropDown.Root ref={ref} selectedId={selectedId}>
+                        <GtkDropDown.Item id="1" label="First" />
+                        <GtkDropDown.Item id="2" label="Second" />
+                    </GtkDropDown.Root>
                 );
             }
 

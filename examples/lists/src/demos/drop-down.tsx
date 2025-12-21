@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, DropDown, Label } from "@gtkx/react";
+import { GtkBox, GtkDropDown, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 
 interface Framework {
@@ -48,7 +48,7 @@ export const DropDownDemo = () => {
     const selectedTheme = selectedThemeId ? themesById.get(selectedThemeId) : null;
 
     return (
-        <Box
+        <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             spacing={16}
             marginStart={20}
@@ -58,30 +58,30 @@ export const DropDownDemo = () => {
             hexpand
             vexpand
         >
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="DropDown" cssClasses={["title-1"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="DropDown" cssClasses={["title-1"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GtkDropDown is a modern replacement for combo boxes. It displays a single selected item and reveals a list of options when activated. Supports search filtering and custom item display."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} vexpand>
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                    <Label label="Framework Selector" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <DropDown.Root onSelectionChanged={setSelectedFrameworkId} hexpand={false}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} vexpand>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                    <GtkLabel label="Framework Selector" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkDropDown.Root onSelectionChanged={setSelectedFrameworkId} hexpand={false}>
                             {frameworks.map((fw) => (
-                                <DropDown.Item key={fw.id} id={fw.id} label={fw.name} />
+                                <GtkDropDown.Item key={fw.id} id={fw.id} label={fw.name} />
                             ))}
-                        </DropDown.Root>
-                    </Box>
+                        </GtkDropDown.Root>
+                    </GtkBox>
 
                     {selectedFramework && (
-                        <Box orientation={Gtk.Orientation.VERTICAL} spacing={8} cssClasses={["card"]} marginTop={8}>
-                            <Box
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} cssClasses={["card"]} marginTop={8}>
+                            <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={4}
                                 marginStart={12}
@@ -89,42 +89,42 @@ export const DropDownDemo = () => {
                                 marginTop={12}
                                 marginBottom={12}
                             >
-                                <Label
+                                <GtkLabel
                                     label={selectedFramework.name}
                                     cssClasses={["title-3"]}
                                     halign={Gtk.Align.START}
                                 />
-                                <Label label={`Language: ${selectedFramework.language}`} halign={Gtk.Align.START} />
-                                <Label
+                                <GtkLabel label={`Language: ${selectedFramework.language}`} halign={Gtk.Align.START} />
+                                <GtkLabel
                                     label={selectedFramework.description}
                                     cssClasses={["dim-label"]}
                                     halign={Gtk.Align.START}
                                     wrap
                                 />
-                            </Box>
-                        </Box>
+                            </GtkBox>
+                        </GtkBox>
                     )}
-                </Box>
+                </GtkBox>
 
-                <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                    <Label label="Theme Preference" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                    <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} valign={Gtk.Align.CENTER}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                    <GtkLabel label="Theme Preference" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} valign={Gtk.Align.CENTER}>
                         Select theme:
-                        <DropDown.Root selectedId="system" onSelectionChanged={setSelectedThemeId} hexpand={false}>
+                        <GtkDropDown.Root selectedId="system" onSelectionChanged={setSelectedThemeId} hexpand={false}>
                             {themes.map((theme) => (
-                                <DropDown.Item key={theme.id} id={theme.id} label={theme.name} />
+                                <GtkDropDown.Item key={theme.id} id={theme.id} label={theme.name} />
                             ))}
-                        </DropDown.Root>
+                        </GtkDropDown.Root>
                         {selectedTheme && (
-                            <Label label={`Selected: ${selectedTheme.name}`} cssClasses={["dim-label"]} />
+                            <GtkLabel label={`Selected: ${selectedTheme.name}`} cssClasses={["dim-label"]} />
                         )}
-                    </Box>
-                </Box>
-            </Box>
+                    </GtkBox>
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={
                         "• Modern replacement for GtkComboBox\n• id and label props for items\n• onSelectionChanged callback returns selected ID\n• Built-in keyboard navigation\n• Search filtering support"
                     }
@@ -132,7 +132,7 @@ export const DropDownDemo = () => {
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };

@@ -10,7 +10,7 @@ export class ToggleButtonNode extends Node<Gtk.ToggleButton, ToggleButtonState> 
     static override consumedPropNames = ["active"];
 
     static matches(type: string): boolean {
-        return type === "ToggleButton.Root";
+        return type === "GtkToggleButton.Root";
     }
 
     override initialize(props: Props): void {

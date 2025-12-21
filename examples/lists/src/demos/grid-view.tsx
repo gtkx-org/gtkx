@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, GridView, Label, ScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkGridView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 
 interface Photo {
     id: string;
@@ -35,7 +35,7 @@ const photoTile = (color: string) => css`
 
 export const GridViewDemo = () => {
     return (
-        <Box
+        <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             spacing={16}
             marginStart={20}
@@ -45,28 +45,28 @@ export const GridViewDemo = () => {
             hexpand
             vexpand
         >
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="GridView" cssClasses={["title-1"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="GridView" cssClasses={["title-1"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GtkGridView displays items in a grid layout with virtual scrolling. Perfect for photo galleries, file browsers, and icon views where items should be arranged in rows and columns."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                    <Label label="Photo Gallery" cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
-                    <Label label={`${photos.length} photos`} cssClasses={["dim-label"]} />
-                </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkLabel label="Photo Gallery" cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
+                    <GtkLabel label={`${photos.length} photos`} cssClasses={["dim-label"]} />
+                </GtkBox>
 
-                <ScrolledWindow vexpand>
-                    <GridView.Root
+                <GtkScrolledWindow vexpand>
+                    <GtkGridView.Root
                         minColumns={2}
                         maxColumns={6}
                         renderItem={(photo: Photo | null) => (
-                            <Box
+                            <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={4}
                                 marginStart={4}
@@ -75,37 +75,37 @@ export const GridViewDemo = () => {
                                 marginBottom={4}
                                 widthRequest={140}
                             >
-                                <Box
+                                <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={0}
                                     heightRequest={100}
                                     cssClasses={[photoTile(photo?.color ?? "#ccc")]}
                                     hexpand
                                 />
-                                <Label
+                                <GtkLabel
                                     label={photo?.title ?? ""}
                                     halign={Gtk.Align.START}
                                     ellipsize={3}
                                     cssClasses={["caption"]}
                                 />
-                                <Label
+                                <GtkLabel
                                     label={photo?.size ?? ""}
                                     halign={Gtk.Align.START}
                                     cssClasses={["dim-label", "caption"]}
                                 />
-                            </Box>
+                            </GtkBox>
                         )}
                     >
                         {photos.map((photo) => (
-                            <GridView.Item key={photo.id} id={photo.id} item={photo} />
+                            <GtkGridView.Item key={photo.id} id={photo.id} item={photo} />
                         ))}
-                    </GridView.Root>
-                </ScrolledWindow>
-            </Box>
+                    </GtkGridView.Root>
+                </GtkScrolledWindow>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={
                         "• Automatic grid layout with configurable columns\n• Virtual scrolling for large datasets\n• minColumns and maxColumns for responsive design\n• Same renderItem pattern as ListView"
                     }
@@ -113,7 +113,7 @@ export const GridViewDemo = () => {
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };

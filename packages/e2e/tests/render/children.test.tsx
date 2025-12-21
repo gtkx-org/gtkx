@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Frame, Label, Window } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkLabel, GtkWindow } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -27,9 +27,9 @@ describe("render - children", () => {
             const labelRef = createRef<Gtk.Label>();
 
             await render(
-                <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                    <Label ref={labelRef} label="Child" />
-                </Box>,
+                <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel ref={labelRef} label="Child" />
+                </GtkBox>,
                 { wrapper: false },
             );
 
@@ -41,9 +41,9 @@ describe("render - children", () => {
             const labelRef = createRef<Gtk.Label>();
 
             await render(
-                <Frame.Root ref={frameRef}>
-                    <Label ref={labelRef} label="Single Child" />
-                </Frame.Root>,
+                <GtkFrame.Root ref={frameRef}>
+                    <GtkLabel ref={labelRef} label="Single Child" />
+                </GtkFrame.Root>,
                 { wrapper: false },
             );
 
@@ -57,9 +57,9 @@ describe("render - children", () => {
 
             function App({ showChild }: { showChild: boolean }) {
                 return (
-                    <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                        {showChild && <Label label="Removable" />}
-                    </Box>
+                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                        {showChild && <GtkLabel label="Removable" />}
+                    </GtkBox>
                 );
             }
 
@@ -76,7 +76,7 @@ describe("render - children", () => {
             const frameRef = createRef<Gtk.Frame>();
 
             function App({ showChild }: { showChild: boolean }) {
-                return <Frame.Root ref={frameRef}>{showChild && <Label label="Child" />}</Frame.Root>;
+                return <GtkFrame.Root ref={frameRef}>{showChild && <GtkLabel label="Child" />}</GtkFrame.Root>;
             }
 
             await render(<App showChild={true} />, { wrapper: false });
@@ -95,11 +95,11 @@ describe("render - children", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                         {items.map((item) => (
-                            <Label key={item} label={item} />
+                            <GtkLabel key={item} label={item} />
                         ))}
-                    </Box>
+                    </GtkBox>
                 );
             }
 
@@ -117,11 +117,11 @@ describe("render - children", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                         {items.map((item) => (
-                            <Label key={item} label={item} />
+                            <GtkLabel key={item} label={item} />
                         ))}
-                    </Box>
+                    </GtkBox>
                 );
             }
 
@@ -137,7 +137,7 @@ describe("render - children", () => {
         it("renders root level window", async () => {
             const windowRef = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={windowRef} title="Root Container" />, { wrapper: false });
+            await render(<GtkWindow.Root ref={windowRef} title="Root Container" />, { wrapper: false });
 
             expect(windowRef.current).not.toBeNull();
         });
@@ -146,7 +146,7 @@ describe("render - children", () => {
             const windowRef = createRef<Gtk.Window>();
 
             function App({ showWindow }: { showWindow: boolean }) {
-                return showWindow ? <Window.Root ref={windowRef} title="Window" /> : null;
+                return showWindow ? <GtkWindow.Root ref={windowRef} title="Window" /> : null;
             }
 
             await render(<App showWindow={true} />, { wrapper: false });
@@ -164,7 +164,7 @@ describe("render - children", () => {
                 return (
                     <>
                         {windows.map((title, i) => (
-                            <Window.Root key={title} ref={i === 0 ? window1Ref : window2Ref} title={title} />
+                            <GtkWindow.Root key={title} ref={i === 0 ? window1Ref : window2Ref} title={title} />
                         ))}
                     </>
                 );
@@ -182,11 +182,11 @@ describe("render - children", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                         {items.map((item) => (
-                            <Label key={item} label={item} />
+                            <GtkLabel key={item} label={item} />
                         ))}
-                    </Box>
+                    </GtkBox>
                 );
             }
 
@@ -205,11 +205,11 @@ describe("render - children", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                         {items.map((item) => (
-                            <Label key={item} label={item} />
+                            <GtkLabel key={item} label={item} />
                         ))}
-                    </Box>
+                    </GtkBox>
                 );
             }
 

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, ColumnView, Label, ScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkColumnView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useCallback, useMemo, useState } from "react";
 
 interface Employee {
@@ -156,7 +156,7 @@ export const ColumnViewDemo = () => {
         : "Click column headers to sort";
 
     return (
-        <Box
+        <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             spacing={16}
             marginStart={20}
@@ -166,43 +166,43 @@ export const ColumnViewDemo = () => {
             hexpand
             vexpand
         >
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="ColumnView" cssClasses={["title-1"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="ColumnView" cssClasses={["title-1"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GtkColumnView displays data in a table with multiple columns. It supports sortable columns, resizable columns, and virtual scrolling for large datasets."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                    <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkLabel
                         label={`Employee Directory (${employees.length.toLocaleString()} employees)`}
                         cssClasses={["heading"]}
                         halign={Gtk.Align.START}
                         hexpand
                     />
-                    <Label label={sortIndicator} cssClasses={["dim-label"]} />
-                </Box>
+                    <GtkLabel label={sortIndicator} cssClasses={["dim-label"]} />
+                </GtkBox>
 
-                <ScrolledWindow vexpand hexpand cssClasses={["card"]}>
-                    <ColumnView.Root
+                <GtkScrolledWindow vexpand hexpand cssClasses={["card"]}>
+                    <GtkColumnView.Root
                         sortColumn={sortColumn}
                         sortOrder={sortOrder}
                         onSortChange={handleSortChange}
                         vexpand
                         hexpand
                     >
-                        <ColumnView.Column
+                        <GtkColumnView.Column
                             id="name"
                             title="Name"
                             expand
                             resizable
                             sortable
                             renderCell={(emp: Employee | null) => (
-                                <Label
+                                <GtkLabel
                                     label={emp?.name ?? ""}
                                     halign={Gtk.Align.START}
                                     marginStart={8}
@@ -212,13 +212,13 @@ export const ColumnViewDemo = () => {
                                 />
                             )}
                         />
-                        <ColumnView.Column
+                        <GtkColumnView.Column
                             id="department"
                             title="Department"
                             resizable
                             sortable
                             renderCell={(emp: Employee | null) => (
-                                <Label
+                                <GtkLabel
                                     label={emp?.department ?? ""}
                                     halign={Gtk.Align.START}
                                     marginStart={8}
@@ -228,13 +228,13 @@ export const ColumnViewDemo = () => {
                                 />
                             )}
                         />
-                        <ColumnView.Column
+                        <GtkColumnView.Column
                             id="salary"
                             title="Salary"
                             resizable
                             sortable
                             renderCell={(emp: Employee | null) => (
-                                <Label
+                                <GtkLabel
                                     label={emp ? formatSalary(emp.salary) : ""}
                                     halign={Gtk.Align.END}
                                     marginStart={8}
@@ -244,13 +244,13 @@ export const ColumnViewDemo = () => {
                                 />
                             )}
                         />
-                        <ColumnView.Column
+                        <GtkColumnView.Column
                             id="startDate"
                             title="Start Date"
                             resizable
                             sortable
                             renderCell={(emp: Employee | null) => (
-                                <Label
+                                <GtkLabel
                                     label={emp ? formatDate(emp.startDate) : ""}
                                     halign={Gtk.Align.START}
                                     marginStart={8}
@@ -261,11 +261,11 @@ export const ColumnViewDemo = () => {
                                 />
                             )}
                         />
-                        <ColumnView.Column
+                        <GtkColumnView.Column
                             title="Status"
                             fixedWidth={100}
                             renderCell={(emp: Employee | null) => (
-                                <Label
+                                <GtkLabel
                                     label={emp?.status ?? ""}
                                     halign={Gtk.Align.CENTER}
                                     marginTop={6}
@@ -275,15 +275,15 @@ export const ColumnViewDemo = () => {
                             )}
                         />
                         {sortedEmployees.map((emp) => (
-                            <ColumnView.Item key={emp.id} id={emp.id} item={emp} />
+                            <GtkColumnView.Item key={emp.id} id={emp.id} item={emp} />
                         ))}
-                    </ColumnView.Root>
-                </ScrolledWindow>
-            </Box>
+                    </GtkColumnView.Root>
+                </GtkScrolledWindow>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={
                         "• Sortable columns with sortFn and onSortChange\n• Resizable columns with resizable prop\n• Fixed-width columns with fixedWidth prop\n• renderCell for custom cell content\n• Virtual scrolling for performance"
                     }
@@ -291,7 +291,7 @@ export const ColumnViewDemo = () => {
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };

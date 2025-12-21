@@ -55,7 +55,7 @@ export function createHostConfig(createNodeFromContainer: (container: Container)
         getChildHostContext: (parentHostContext) => parentHostContext,
         shouldSetTextContent: () => false,
         createInstance: (type, props) => createNode(type, props),
-        createTextInstance: (text) => createNode("Label", { label: text }),
+        createTextInstance: (text) => createNode("GtkLabel", { label: text }),
         appendInitialChild: (parent, child) => parent.appendChild(child),
         finalizeInitialChildren: () => true,
         commitUpdate: (instance, _type, oldProps, newProps) => {

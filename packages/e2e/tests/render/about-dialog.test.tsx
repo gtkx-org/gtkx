@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AboutDialog, Box } from "@gtkx/react";
+import { GtkAboutDialog, GtkBox } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -8,7 +8,7 @@ describe("render - AboutDialog", () => {
     it("creates AboutDialog widget", async () => {
         const ref = createRef<Gtk.AboutDialog>();
 
-        await render(<AboutDialog ref={ref} programName="Test App" />, { wrapper: false });
+        await render(<GtkAboutDialog ref={ref} programName="Test App" />, { wrapper: false });
 
         expect(ref.current).not.toBeNull();
     });
@@ -18,9 +18,9 @@ describe("render - AboutDialog", () => {
         const dialogRef = createRef<Gtk.AboutDialog>();
 
         await render(
-            <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                <AboutDialog ref={dialogRef} programName="Dialog" />
-            </Box>,
+            <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                <GtkAboutDialog ref={dialogRef} programName="Dialog" />
+            </GtkBox>,
             { wrapper: false },
         );
 
@@ -30,7 +30,7 @@ describe("render - AboutDialog", () => {
     it("presents on mount", async () => {
         const ref = createRef<Gtk.AboutDialog>();
 
-        await render(<AboutDialog ref={ref} programName="Mount Test" />, { wrapper: false });
+        await render(<GtkAboutDialog ref={ref} programName="Mount Test" />, { wrapper: false });
 
         expect(ref.current?.getVisible()).toBe(true);
     });
@@ -39,7 +39,7 @@ describe("render - AboutDialog", () => {
         const ref = createRef<Gtk.AboutDialog>();
 
         function App({ show }: { show: boolean }) {
-            return show ? <AboutDialog ref={ref} programName="Unmount Test" /> : null;
+            return show ? <GtkAboutDialog ref={ref} programName="Unmount Test" /> : null;
         }
 
         await render(<App show={true} />, { wrapper: false });
@@ -54,7 +54,7 @@ describe("render - AboutDialog", () => {
         const ref = createRef<Gtk.AboutDialog>();
 
         await render(
-            <AboutDialog
+            <GtkAboutDialog
                 ref={ref}
                 programName="My Application"
                 version="1.0.0"

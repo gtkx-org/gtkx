@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { AdwHeaderBar, Button, HeaderBar, Label } from "@gtkx/react";
+import { AdwHeaderBar, GtkButton, GtkHeaderBar, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -10,7 +10,7 @@ describe("render - HeaderBar", () => {
         it("creates HeaderBar widget", async () => {
             const ref = createRef<Gtk.HeaderBar>();
 
-            await render(<HeaderBar.Root ref={ref} />, { wrapper: false });
+            await render(<GtkHeaderBar.Root ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -22,11 +22,11 @@ describe("render - HeaderBar", () => {
             const labelRef = createRef<Gtk.Label>();
 
             await render(
-                <HeaderBar.Root ref={headerBarRef}>
-                    <HeaderBar.TitleWidget>
-                        <Label ref={labelRef} label="Custom Title" />
-                    </HeaderBar.TitleWidget>
-                </HeaderBar.Root>,
+                <GtkHeaderBar.Root ref={headerBarRef}>
+                    <GtkHeaderBar.TitleWidget>
+                        <GtkLabel ref={labelRef} label="Custom Title" />
+                    </GtkHeaderBar.TitleWidget>
+                </GtkHeaderBar.Root>,
                 { wrapper: false },
             );
 
@@ -38,13 +38,13 @@ describe("render - HeaderBar", () => {
 
             function App({ showTitle }: { showTitle: boolean }) {
                 return (
-                    <HeaderBar.Root ref={headerBarRef}>
+                    <GtkHeaderBar.Root ref={headerBarRef}>
                         {showTitle && (
-                            <HeaderBar.TitleWidget>
-                                <Label label="Title" />
-                            </HeaderBar.TitleWidget>
+                            <GtkHeaderBar.TitleWidget>
+                                <GtkLabel label="Title" />
+                            </GtkHeaderBar.TitleWidget>
                         )}
-                    </HeaderBar.Root>
+                    </GtkHeaderBar.Root>
                 );
             }
 
@@ -64,9 +64,9 @@ describe("render - HeaderBar", () => {
             const buttonRef = createRef<Gtk.Button>();
 
             await render(
-                <HeaderBar.Root ref={headerBarRef}>
-                    <Button ref={buttonRef} label="Direct Child" />
-                </HeaderBar.Root>,
+                <GtkHeaderBar.Root ref={headerBarRef}>
+                    <GtkButton ref={buttonRef} label="Direct Child" />
+                </GtkHeaderBar.Root>,
                 { wrapper: false },
             );
 
@@ -79,10 +79,10 @@ describe("render - HeaderBar", () => {
             const button2Ref = createRef<Gtk.Button>();
 
             await render(
-                <HeaderBar.Root ref={headerBarRef}>
-                    <Button ref={button1Ref} label="Button 1" />
-                    <Button ref={button2Ref} label="Button 2" />
-                </HeaderBar.Root>,
+                <GtkHeaderBar.Root ref={headerBarRef}>
+                    <GtkButton ref={button1Ref} label="Button 1" />
+                    <GtkButton ref={button2Ref} label="Button 2" />
+                </GtkHeaderBar.Root>,
                 { wrapper: false },
             );
 
@@ -96,7 +96,11 @@ describe("render - HeaderBar", () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
 
             function App({ showButton }: { showButton: boolean }) {
-                return <HeaderBar.Root ref={headerBarRef}>{showButton && <Button label="Removable" />}</HeaderBar.Root>;
+                return (
+                    <GtkHeaderBar.Root ref={headerBarRef}>
+                        {showButton && <GtkButton label="Removable" />}
+                    </GtkHeaderBar.Root>
+                );
             }
 
             await render(<App showButton={true} />, { wrapper: false });
@@ -123,7 +127,7 @@ describe("render - HeaderBar", () => {
             await render(
                 <AdwHeaderBar.Root ref={headerBarRef}>
                     <AdwHeaderBar.TitleWidget>
-                        <Label ref={labelRef} label="Adw Title" />
+                        <GtkLabel ref={labelRef} label="Adw Title" />
                     </AdwHeaderBar.TitleWidget>
                 </AdwHeaderBar.Root>,
                 { wrapper: false },
@@ -138,7 +142,7 @@ describe("render - HeaderBar", () => {
 
             await render(
                 <AdwHeaderBar.Root ref={headerBarRef}>
-                    <Button ref={buttonRef} label="Child" />
+                    <GtkButton ref={buttonRef} label="Child" />
                 </AdwHeaderBar.Root>,
                 { wrapper: false },
             );

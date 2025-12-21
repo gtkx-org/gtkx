@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { Menu, PopoverMenu, PopoverMenuBar } from "@gtkx/react";
+import { GtkPopoverMenu, GtkPopoverMenuBar, Menu } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -10,9 +10,9 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
             await render(
-                <PopoverMenu.Root ref={ref}>
+                <GtkPopoverMenu.Root ref={ref}>
                     <Menu.Item label="Item 1" />
-                </PopoverMenu.Root>,
+                </GtkPopoverMenu.Root>,
                 { wrapper: false },
             );
 
@@ -24,11 +24,11 @@ describe("render - Menu", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <PopoverMenu.Root ref={ref}>
+                    <GtkPopoverMenu.Root ref={ref}>
                         {items.map((label) => (
                             <Menu.Item key={label} label={label} />
                         ))}
-                    </PopoverMenu.Root>
+                    </GtkPopoverMenu.Root>
                 );
             }
 
@@ -43,11 +43,11 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenuBar>();
 
             await render(
-                <PopoverMenuBar ref={ref}>
+                <GtkPopoverMenuBar ref={ref}>
                     <Menu.Submenu label="File">
                         <Menu.Item label="New" />
                     </Menu.Submenu>
-                </PopoverMenuBar>,
+                </GtkPopoverMenuBar>,
                 { wrapper: false },
             );
 
@@ -60,9 +60,9 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
             await render(
-                <PopoverMenu.Root ref={ref}>
+                <GtkPopoverMenu.Root ref={ref}>
                     <Menu.Item label="Test Item" />
-                </PopoverMenu.Root>,
+                </GtkPopoverMenu.Root>,
                 { wrapper: false },
             );
         });
@@ -71,9 +71,9 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
             await render(
-                <PopoverMenu.Root ref={ref}>
+                <GtkPopoverMenu.Root ref={ref}>
                     <Menu.Item label="Save" accels="<Control>s" onActivate={() => {}} />
-                </PopoverMenu.Root>,
+                </GtkPopoverMenu.Root>,
                 { wrapper: false },
             );
         });
@@ -83,9 +83,9 @@ describe("render - Menu", () => {
 
             function App({ label }: { label: string }) {
                 return (
-                    <PopoverMenu.Root ref={ref}>
+                    <GtkPopoverMenu.Root ref={ref}>
                         <Menu.Item label={label} />
-                    </PopoverMenu.Root>
+                    </GtkPopoverMenu.Root>
                 );
             }
 
@@ -100,9 +100,9 @@ describe("render - Menu", () => {
 
             function App({ showItem }: { showItem: boolean }) {
                 return (
-                    <PopoverMenu.Root ref={ref}>
+                    <GtkPopoverMenu.Root ref={ref}>
                         {showItem && <Menu.Item label="Removable" onActivate={onActivate} />}
-                    </PopoverMenu.Root>
+                    </GtkPopoverMenu.Root>
                 );
             }
 
@@ -117,12 +117,12 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
             await render(
-                <PopoverMenu.Root ref={ref}>
+                <GtkPopoverMenu.Root ref={ref}>
                     <Menu.Section>
                         <Menu.Item label="Section Item 1" />
                         <Menu.Item label="Section Item 2" />
                     </Menu.Section>
-                </PopoverMenu.Root>,
+                </GtkPopoverMenu.Root>,
                 { wrapper: false },
             );
         });
@@ -131,14 +131,14 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
             await render(
-                <PopoverMenu.Root ref={ref}>
+                <GtkPopoverMenu.Root ref={ref}>
                     <Menu.Section>
                         <Menu.Item label="Item A" />
                     </Menu.Section>
                     <Menu.Section>
                         <Menu.Item label="Item B" />
                     </Menu.Section>
-                </PopoverMenu.Root>,
+                </GtkPopoverMenu.Root>,
                 { wrapper: false },
             );
         });
@@ -147,11 +147,11 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
             await render(
-                <PopoverMenu.Root ref={ref}>
+                <GtkPopoverMenu.Root ref={ref}>
                     <Menu.Section label="Section Title">
                         <Menu.Item label="Item" />
                     </Menu.Section>
-                </PopoverMenu.Root>,
+                </GtkPopoverMenu.Root>,
                 { wrapper: false },
             );
         });
@@ -162,12 +162,12 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
             await render(
-                <PopoverMenu.Root ref={ref}>
+                <GtkPopoverMenu.Root ref={ref}>
                     <Menu.Submenu label="File">
                         <Menu.Item label="New" />
                         <Menu.Item label="Open" />
                     </Menu.Submenu>
-                </PopoverMenu.Root>,
+                </GtkPopoverMenu.Root>,
                 { wrapper: false },
             );
         });
@@ -176,13 +176,13 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
             await render(
-                <PopoverMenu.Root ref={ref}>
+                <GtkPopoverMenu.Root ref={ref}>
                     <Menu.Submenu label="Edit">
                         <Menu.Item label="Cut" />
                         <Menu.Item label="Copy" />
                         <Menu.Item label="Paste" />
                     </Menu.Submenu>
-                </PopoverMenu.Root>,
+                </GtkPopoverMenu.Root>,
                 { wrapper: false },
             );
         });
@@ -191,11 +191,11 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
             await render(
-                <PopoverMenu.Root ref={ref}>
+                <GtkPopoverMenu.Root ref={ref}>
                     <Menu.Submenu label="Help">
                         <Menu.Item label="About" />
                     </Menu.Submenu>
-                </PopoverMenu.Root>,
+                </GtkPopoverMenu.Root>,
                 { wrapper: false },
             );
         });
@@ -204,14 +204,14 @@ describe("render - Menu", () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
             await render(
-                <PopoverMenu.Root ref={ref}>
+                <GtkPopoverMenu.Root ref={ref}>
                     <Menu.Submenu label="File">
                         <Menu.Submenu label="Recent">
                             <Menu.Item label="File 1" />
                             <Menu.Item label="File 2" />
                         </Menu.Submenu>
                     </Menu.Submenu>
-                </PopoverMenu.Root>,
+                </GtkPopoverMenu.Root>,
                 { wrapper: false },
             );
         });

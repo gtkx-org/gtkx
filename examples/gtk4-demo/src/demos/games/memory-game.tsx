@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -65,7 +65,7 @@ const CardButton = ({
     const isRevealed = card.isFlipped || card.isMatched;
 
     return (
-        <Button
+        <GtkButton
             label={isRevealed ? card.symbol : "?"}
             cssClasses={[
                 isRevealed ? cardStyle : hiddenCardStyle,
@@ -147,26 +147,26 @@ const MemoryGameDemo = () => {
     };
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Memory Game" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Memory Game" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel
                     label="Find all matching pairs! Click cards to flip them and try to remember where each symbol is located."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={20}>
-                <Label label={`Moves: ${moves}`} cssClasses={["heading"]} />
-                <Label label={`Matches: ${matches}/${TOTAL_PAIRS}`} cssClasses={["heading"]} />
-                {isGameWon && <Label label="You Win!" cssClasses={["success"]} />}
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={20}>
+                <GtkLabel label={`Moves: ${moves}`} cssClasses={["heading"]} />
+                <GtkLabel label={`Matches: ${matches}/${TOTAL_PAIRS}`} cssClasses={["heading"]} />
+                {isGameWon && <GtkLabel label="You Win!" cssClasses={["success"]} />}
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER} spacing={6}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER} spacing={6}>
                 {[0, 1, 2, 3].map((rowIdx) => (
-                    <Box key={rowIdx} orientation={Gtk.Orientation.HORIZONTAL} spacing={6} homogeneous>
+                    <GtkBox key={rowIdx} orientation={Gtk.Orientation.HORIZONTAL} spacing={6} homogeneous>
                         {getRow(rowIdx).map((card) => (
                             <CardButton
                                 key={card.id}
@@ -176,14 +176,14 @@ const MemoryGameDemo = () => {
                                 onClick={() => handleCardClick(card.id)}
                             />
                         ))}
-                    </Box>
+                    </GtkBox>
                 ))}
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
-                <Button label="New Game" cssClasses={["destructive-action"]} onClicked={handleNewGame} />
-            </Box>
-        </Box>
+            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                <GtkButton label="New Game" cssClasses={["destructive-action"]} onClicked={handleNewGame} />
+            </GtkBox>
+        </GtkBox>
     );
 };
 

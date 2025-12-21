@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, ListBox, ListBoxRow, ScrolledWindow, SearchEntry } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow, GtkSearchEntry } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
@@ -33,43 +33,43 @@ const fruits = [
 
 const SearchEntryDemo = () => {
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Search Entry" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Search Entry" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Search Input" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
-                    label="SearchEntry is optimized for search with a built-in clear button and search icon."
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Search Input" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="<GtkSearchEntry is optimized for search with a built-in clear button and search icon."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <SearchEntry placeholderText="Search fruits..." />
-            </Box>
+                <GtkSearchEntry placeholderText="Search fruits..." />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Sample List" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Sample List" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="Here's a list of fruits that could be filtered by a search."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <ScrolledWindow vexpand heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                    <ListBox cssClasses={["boxed-list"]}>
+                <GtkScrolledWindow vexpand heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                    <GtkListBox cssClasses={["boxed-list"]}>
                         {fruits.map((item) => (
-                            <ListBoxRow key={item}>
-                                <Label
+                            <GtkListBoxRow key={item}>
+                                <GtkLabel
                                     label={item}
                                     halign={Gtk.Align.START}
                                     marginStart={12}
                                     marginTop={8}
                                     marginBottom={8}
                                 />
-                            </ListBoxRow>
+                            </GtkListBoxRow>
                         ))}
-                    </ListBox>
-                </ScrolledWindow>
-            </Box>
-        </Box>
+                    </GtkListBox>
+                </GtkScrolledWindow>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

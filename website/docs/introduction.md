@@ -53,10 +53,10 @@ Here's a simple counter application:
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
   render,
-  ApplicationWindow,
-  Box,
-  Button,
-  Label,
+  GtkApplicationWindow,
+  GtkBox,
+  GtkButton,
+  GtkLabel,
   quit,
 } from "@gtkx/react";
 import { useState } from "react";
@@ -65,28 +65,28 @@ const Counter = () => {
   const [count, setCount] = useState(0);
 
   return (
-    <Box
+    <GtkBox
       orientation={Gtk.Orientation.VERTICAL}
       spacing={12}
       marginStart={20}
       marginEnd={20}
       marginTop={20}
     >
-      <Label label={`Count: ${count}`} />
-      <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
-    </Box>
+      <GtkLabel label={`Count: ${count}`} />
+      <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+    </GtkBox>
   );
 };
 
 const App = () => (
-  <ApplicationWindow
+  <GtkApplicationWindow
     title="Counter"
     defaultWidth={300}
     defaultHeight={150}
     onCloseRequest={quit}
   >
     <Counter />
-  </ApplicationWindow>
+  </GtkApplicationWindow>
 );
 
 render(<App />, "org.example.Counter");

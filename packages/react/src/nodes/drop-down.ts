@@ -4,12 +4,12 @@ import { StringListItemNode } from "./string-list-item.js";
 
 export class DropDownNode extends StringListContainerNode<Gtk.DropDown> {
     static matches(type: string): boolean {
-        return type === "DropDown.Root";
+        return type === "GtkDropDown.Root";
     }
 }
 
 export class DropDownItemNode extends StringListItemNode {
     static matches(type: string): boolean {
-        return type === "DropDown.Item" || type === "AdwComboRow.Item";
+        return type === "GtkDropDown.Item" || type === "AdwComboRow.Item";
     }
 }

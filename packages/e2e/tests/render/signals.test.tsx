@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { Button, Entry, Switch } from "@gtkx/react";
+import { GtkButton, GtkEntry, GtkSwitch } from "@gtkx/react";
 import { fireEvent, render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -10,7 +10,7 @@ describe("render - signals", () => {
             const handleClick = vi.fn();
             const ref = createRef<Gtk.Button>();
 
-            await render(<Button ref={ref} onClicked={handleClick} label="Click" />, { wrapper: false });
+            await render(<GtkButton ref={ref} onClicked={handleClick} label="Click" />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             await fireEvent(ref.current as Gtk.Widget, "clicked");
@@ -22,7 +22,7 @@ describe("render - signals", () => {
             const handleActivate = vi.fn();
             const ref = createRef<Gtk.Entry>();
 
-            await render(<Entry ref={ref} onActivate={handleActivate} />, { wrapper: false });
+            await render(<GtkEntry ref={ref} onActivate={handleActivate} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             await fireEvent(ref.current as Gtk.Widget, "activate");
@@ -34,7 +34,7 @@ describe("render - signals", () => {
             const handleStateSet = vi.fn(() => false);
             const ref = createRef<Gtk.Switch>();
 
-            await render(<Switch ref={ref} onStateSet={handleStateSet} />, { wrapper: false });
+            await render(<GtkSwitch ref={ref} onStateSet={handleStateSet} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             await fireEvent(
@@ -54,7 +54,7 @@ describe("render - signals", () => {
             const ref = createRef<Gtk.Button>();
 
             function App({ hasHandler }: { hasHandler: boolean }) {
-                return <Button ref={ref} onClicked={hasHandler ? handleClick : undefined} label="Click" />;
+                return <GtkButton ref={ref} onClicked={hasHandler ? handleClick : undefined} label="Click" />;
             }
 
             await render(<App hasHandler={true} />, { wrapper: false });
@@ -73,7 +73,7 @@ describe("render - signals", () => {
             const ref = createRef<Gtk.Button>();
 
             function App({ showButton }: { showButton: boolean }) {
-                return showButton ? <Button ref={ref} onClicked={handleClick} label="Click" /> : null;
+                return showButton ? <GtkButton ref={ref} onClicked={handleClick} label="Click" /> : null;
             }
 
             await render(<App showButton={true} />, { wrapper: false });
@@ -93,7 +93,7 @@ describe("render - signals", () => {
             const ref = createRef<Gtk.Button>();
 
             function App({ useHandler1 }: { useHandler1: boolean }) {
-                return <Button ref={ref} onClicked={useHandler1 ? handler1 : handler2} label="Click" />;
+                return <GtkButton ref={ref} onClicked={useHandler1 ? handler1 : handler2} label="Click" />;
             }
 
             await render(<App useHandler1={true} />, { wrapper: false });
@@ -114,7 +114,7 @@ describe("render - signals", () => {
             const ref = createRef<Gtk.Button>();
 
             function App({ label }: { label: string }) {
-                return <Button ref={ref} onClicked={handleClick} label={label} />;
+                return <GtkButton ref={ref} onClicked={handleClick} label={label} />;
             }
 
             await render(<App label="First" />, { wrapper: false });
@@ -131,7 +131,7 @@ describe("render - signals", () => {
             const handleStateSet = vi.fn(() => false);
             const ref = createRef<Gtk.Switch>();
 
-            await render(<Switch ref={ref} onStateSet={handleStateSet} />, { wrapper: false });
+            await render(<GtkSwitch ref={ref} onStateSet={handleStateSet} />, { wrapper: false });
 
             await fireEvent(
                 ref.current as Gtk.Widget,
@@ -147,7 +147,7 @@ describe("render - signals", () => {
             const handleClick = vi.fn();
             const ref = createRef<Gtk.Button>();
 
-            await render(<Button ref={ref} onClicked={handleClick} label="Click" />, { wrapper: false });
+            await render(<GtkButton ref={ref} onClicked={handleClick} label="Click" />, { wrapper: false });
 
             await fireEvent(ref.current as Gtk.Widget, "clicked");
 

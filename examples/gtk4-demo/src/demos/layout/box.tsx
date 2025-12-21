@@ -1,16 +1,16 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const BoxDemo = () => {
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Box Layout" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="GtkBox Layout" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Horizontal Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Horizontal GtkBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
                     cssClasses={["card"]}
@@ -19,15 +19,15 @@ const BoxDemo = () => {
                     marginStart={8}
                     marginEnd={8}
                 >
-                    <Button label="First" />
-                    <Button label="Second" />
-                    <Button label="Third" />
-                </Box>
-            </Box>
+                    <GtkButton label="First" />
+                    <GtkButton label="Second" />
+                    <GtkButton label="Third" />
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Vertical Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Vertical GtkBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={8}
                     cssClasses={["card"]}
@@ -36,15 +36,15 @@ const BoxDemo = () => {
                     marginStart={8}
                     marginEnd={8}
                 >
-                    <Button label="Top" />
-                    <Button label="Middle" />
-                    <Button label="Bottom" />
-                </Box>
-            </Box>
+                    <GtkButton label="Top" />
+                    <GtkButton label="Middle" />
+                    <GtkButton label="Bottom" />
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Expand and Fill" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Expand and Fill" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
                     cssClasses={["card"]}
@@ -53,15 +53,15 @@ const BoxDemo = () => {
                     marginStart={8}
                     marginEnd={8}
                 >
-                    <Button label="Fixed" />
-                    <Button label="Expand" hexpand />
-                    <Button label="Fixed" />
-                </Box>
-            </Box>
+                    <GtkButton label="Fixed" />
+                    <GtkButton label="Expand" hexpand />
+                    <GtkButton label="Fixed" />
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Alignment" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Alignment" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
                     cssClasses={["card"]}
@@ -71,21 +71,21 @@ const BoxDemo = () => {
                     marginEnd={8}
                     heightRequest={80}
                 >
-                    <Button label="Start" valign={Gtk.Align.START} />
-                    <Button label="Center" valign={Gtk.Align.CENTER} />
-                    <Button label="End" valign={Gtk.Align.END} />
-                    <Button label="Fill" valign={Gtk.Align.FILL} vexpand />
-                </Box>
-            </Box>
+                    <GtkButton label="Start" valign={Gtk.Align.START} />
+                    <GtkButton label="Center" valign={Gtk.Align.CENTER} />
+                    <GtkButton label="End" valign={Gtk.Align.END} />
+                    <GtkButton label="Fill" valign={Gtk.Align.FILL} vexpand />
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Homogeneous" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Homogeneous" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="When homogeneous is true, all children get the same size."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Box
+                <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
                     homogeneous
@@ -95,18 +95,18 @@ const BoxDemo = () => {
                     marginStart={8}
                     marginEnd={8}
                 >
-                    <Button label="Short" />
-                    <Button label="Medium Text" />
-                    <Button label="Longer Button Text" />
-                </Box>
-            </Box>
-        </Box>
+                    <GtkButton label="Short" />
+                    <GtkButton label="Medium Text" />
+                    <GtkButton label="Longer <GtkButton Text" />
+                </GtkBox>
+            </GtkBox>
+        </GtkBox>
     );
 };
 
 export const boxDemo: Demo = {
     id: "box",
-    title: "Box",
+    title: "GtkBox",
     description: "Linear container for arranging widgets horizontally or vertically.",
     keywords: ["box", "layout", "container", "horizontal", "vertical", "GtkBox"],
     component: BoxDemo,

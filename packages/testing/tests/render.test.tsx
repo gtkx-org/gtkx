@@ -1,6 +1,6 @@
 import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Box, Button, Label } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "../src/index.js";
 
@@ -10,17 +10,17 @@ afterEach(async () => {
 
 describe("render", () => {
     it("renders a simple element", async () => {
-        const { findByRole } = await render(<Button label="Click me" />);
+        const { findByRole } = await render(<GtkButton label="Click me" />);
         const button = await findByRole(Gtk.AccessibleRole.BUTTON);
         expect(button).toBeDefined();
     });
 
     it("renders nested elements", async () => {
         const { findByRole, findByText } = await render(
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                <Button label="First" />
-                <Label label="Second" />
-            </Box>,
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkButton label="First" />
+                <GtkLabel label="Second" />
+            </GtkBox>,
         );
 
         const button = await findByRole(Gtk.AccessibleRole.BUTTON);
@@ -31,22 +31,22 @@ describe("render", () => {
     });
 
     it("returns container as the GTK Application", async () => {
-        const { container } = await render(<Label label="Test" />);
+        const { container } = await render(<GtkLabel label="Test" />);
         expect(container).toBeDefined();
         expect(container.getApplicationId()).toMatch(/com\.gtkx\.test/);
     });
 
     it("wraps element in ApplicationWindow by default", async () => {
-        const { findByRole } = await render(<Button label="Test" />);
+        const { findByRole } = await render(<GtkButton label="Test" />);
         const window = await findByRole(Gtk.AccessibleRole.WINDOW);
         expect(window).toBeDefined();
     });
 
     it("does not wrap when wrapper is false", async () => {
         const { findByRole } = await render(
-            <ApplicationWindow>
-                <Button label="Test" />
-            </ApplicationWindow>,
+            <GtkApplicationWindow>
+                <GtkButton label="Test" />
+            </GtkApplicationWindow>,
             { wrapper: false },
         );
 
@@ -56,26 +56,26 @@ describe("render", () => {
 
     it("uses custom wrapper component", async () => {
         const CustomWrapper = ({ children }: { children: React.ReactNode }) => (
-            <ApplicationWindow title="Custom Title">{children}</ApplicationWindow>
+            <GtkApplicationWindow title="Custom Title">{children}</GtkApplicationWindow>
         );
 
-        const { findByRole } = await render(<Button label="Test" />, { wrapper: CustomWrapper });
+        const { findByRole } = await render(<GtkButton label="Test" />, { wrapper: CustomWrapper });
         const window = await findByRole(Gtk.AccessibleRole.WINDOW, { name: "Custom Title" });
         expect(window).toBeDefined();
     });
 
     it("provides rerender function to update content", async () => {
-        const { findByText, rerender } = await render(<Label label="Initial" />);
+        const { findByText, rerender } = await render(<GtkLabel label="Initial" />);
 
         await findByText("Initial");
-        await rerender(<Label label="Updated" />);
+        await rerender(<GtkLabel label="Updated" />);
 
         const updatedLabel = await findByText("Updated");
         expect(updatedLabel).toBeDefined();
     });
 
     it("provides unmount function to remove content", async () => {
-        const { findByRole, unmount } = await render(<Button label="Test" />);
+        const { findByRole, unmount } = await render(<GtkButton label="Test" />);
 
         await findByRole(Gtk.AccessibleRole.BUTTON);
         await unmount();
@@ -86,14 +86,14 @@ describe("render", () => {
     });
 
     it("provides debug function", async () => {
-        const { debug } = await render(<Button label="Debug Test" />);
+        const { debug } = await render(<GtkButton label="Debug Test" />);
         expect(typeof debug).toBe("function");
     });
 });
 
 describe("cleanup", () => {
     it("removes rendered content", async () => {
-        await render(<Button label="Test" />);
+        await render(<GtkButton label="Test" />);
         await cleanup();
 
         const app = getApplication();
@@ -102,12 +102,12 @@ describe("cleanup", () => {
     });
 
     it("allows rendering again after cleanup", async () => {
-        const { findByText } = await render(<Label label="First" />);
+        const { findByText } = await render(<GtkLabel label="First" />);
         await findByText("First");
 
         await cleanup();
 
-        const { findByText: findByText2 } = await render(<Label label="Second" />);
+        const { findByText: findByText2 } = await render(<GtkLabel label="Second" />);
         const label = await findByText2("Second");
         expect(label).toBeDefined();
     });

@@ -3,7 +3,7 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
-import { Box, Button, GtkSourceView, Label, ScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkScrolledWindow, GtkSourceView } from "@gtkx/react";
 import { useEffect, useMemo, useRef } from "react";
 
 interface SourceViewerProps {
@@ -63,7 +63,7 @@ export const SourceViewer = ({ sourcePath, title = "Source Code" }: SourceViewer
 
     if (!source) {
         return (
-            <Box
+            <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={0}
                 halign={Gtk.Align.CENTER}
@@ -71,14 +71,14 @@ export const SourceViewer = ({ sourcePath, title = "Source Code" }: SourceViewer
                 vexpand
                 hexpand
             >
-                <Label label="No source available" cssClasses={["dim-label"]} />
-            </Box>
+                <GtkLabel label="No source available" cssClasses={["dim-label"]} />
+            </GtkBox>
         );
     }
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-            <Box
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
+            <GtkBox
                 orientation={Gtk.Orientation.HORIZONTAL}
                 spacing={8}
                 marginStart={16}
@@ -86,15 +86,15 @@ export const SourceViewer = ({ sourcePath, title = "Source Code" }: SourceViewer
                 marginTop={8}
                 marginBottom={8}
             >
-                <Label label={title} cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
-                <Button
+                <GtkLabel label={title} cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
+                <GtkButton
                     iconName="edit-copy-symbolic"
                     cssClasses={["flat"]}
                     tooltipText="Copy source code"
                     onClicked={handleCopy}
                 />
-            </Box>
-            <ScrolledWindow vexpand hexpand>
+            </GtkBox>
+            <GtkScrolledWindow vexpand hexpand>
                 <GtkSourceView
                     buffer={buffer}
                     editable={false}
@@ -107,7 +107,7 @@ export const SourceViewer = ({ sourcePath, title = "Source Code" }: SourceViewer
                     bottomMargin={8}
                     wrapMode={Gtk.WrapMode.NONE}
                 />
-            </ScrolledWindow>
-        </Box>
+            </GtkScrolledWindow>
+        </GtkBox>
     );
 };

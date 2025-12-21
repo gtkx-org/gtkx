@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, Scale } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkScale } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -14,44 +14,44 @@ const ScaleDemo = () => {
     const [temperature, setTemperature] = useState(20);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Scale" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Scale" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Horizontal Scale with Value" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="Volume:" widthRequest={80} />
-                    <Scale
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Horizontal <GtkScale with Value" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="Volume:" widthRequest={80} />
+                    <GtkScale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
                         adjustment={volumeAdjustment}
                         onValueChanged={(self) => setVolume(self.getValue())}
                     />
-                </Box>
-                <Label label={`Current volume: ${Math.round(volume)}%`} cssClasses={["dim-label"]} />
-            </Box>
+                </GtkBox>
+                <GtkLabel label={`Current volume: ${Math.round(volume)}%`} cssClasses={["dim-label"]} />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Scale with Marks" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="Brightness:" widthRequest={80} />
-                    <Scale
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="<GtkScale with Marks" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="Brightness:" widthRequest={80} />
+                    <GtkScale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
                         adjustment={brightnessAdjustment}
                         onValueChanged={(self) => setBrightness(self.getValue())}
                     />
-                </Box>
-                <Label label={`Current brightness: ${Math.round(brightness)}%`} cssClasses={["dim-label"]} />
-            </Box>
+                </GtkBox>
+                <GtkLabel label={`Current brightness: ${Math.round(brightness)}%`} cssClasses={["dim-label"]} />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Fine-grained Control" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Label label="Temp:" widthRequest={80} />
-                    <Scale
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Fine-grained Control" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkLabel label="Temp:" widthRequest={80} />
+                    <GtkScale
                         orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
@@ -59,36 +59,36 @@ const ScaleDemo = () => {
                         adjustment={temperatureAdjustment}
                         onValueChanged={(self) => setTemperature(self.getValue())}
                     />
-                </Box>
-                <Label label={`Temperature: ${temperature.toFixed(1)}°C`} cssClasses={["dim-label"]} />
-            </Box>
+                </GtkBox>
+                <GtkLabel label={`Temperature: ${temperature.toFixed(1)}°C`} cssClasses={["dim-label"]} />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Vertical Scale" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={20} halign={Gtk.Align.CENTER}>
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={4} halign={Gtk.Align.CENTER}>
-                        <Scale
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Vertical Scale" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={20} halign={Gtk.Align.CENTER}>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} halign={Gtk.Align.CENTER}>
+                        <GtkScale
                             orientation={Gtk.Orientation.VERTICAL}
                             heightRequest={150}
                             inverted
                             drawValue
                             adjustment={volumeAdjustment}
                         />
-                        <Label label="Vol" cssClasses={["dim-label"]} />
-                    </Box>
-                    <Box orientation={Gtk.Orientation.VERTICAL} spacing={4} halign={Gtk.Align.CENTER}>
-                        <Scale
+                        <GtkLabel label="Vol" cssClasses={["dim-label"]} />
+                    </GtkBox>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} halign={Gtk.Align.CENTER}>
+                        <GtkScale
                             orientation={Gtk.Orientation.VERTICAL}
                             heightRequest={150}
                             inverted
                             drawValue
                             adjustment={brightnessAdjustment}
                         />
-                        <Label label="Bright" cssClasses={["dim-label"]} />
-                    </Box>
-                </Box>
-            </Box>
-        </Box>
+                        <GtkLabel label="Bright" cssClasses={["dim-label"]} />
+                    </GtkBox>
+                </GtkBox>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

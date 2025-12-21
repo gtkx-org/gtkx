@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, ListView, ScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 
 interface Contact {
     id: string;
@@ -28,7 +28,7 @@ const contacts: Contact[] = [
 
 export const ListViewDemo = () => {
     return (
-        <Box
+        <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             spacing={16}
             marginStart={20}
@@ -38,23 +38,23 @@ export const ListViewDemo = () => {
             hexpand
             vexpand
         >
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="ListView" cssClasses={["title-1"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="ListView" cssClasses={["title-1"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GtkListView is a high-performance widget for displaying large lists using virtual scrolling. Only visible items are rendered, making it efficient for thousands of items."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
-                <Label label="Company Directory" cssClasses={["heading"]} halign={Gtk.Align.START} />
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} vexpand>
+                <GtkLabel label="Company Directory" cssClasses={["heading"]} halign={Gtk.Align.START} />
 
-                <ScrolledWindow vexpand cssClasses={["card"]}>
-                    <ListView.Root
+                <GtkScrolledWindow vexpand cssClasses={["card"]}>
+                    <GtkListView.Root
                         renderItem={(contact: Contact | null) => (
-                            <Box
+                            <GtkBox
                                 orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={12}
                                 marginStart={12}
@@ -62,7 +62,7 @@ export const ListViewDemo = () => {
                                 marginTop={10}
                                 marginBottom={10}
                             >
-                                <Box
+                                <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={0}
                                     widthRequest={40}
@@ -71,35 +71,35 @@ export const ListViewDemo = () => {
                                     halign={Gtk.Align.CENTER}
                                     valign={Gtk.Align.CENTER}
                                 >
-                                    <Label
+                                    <GtkLabel
                                         label={contact?.name.charAt(0) ?? "?"}
                                         cssClasses={["title-3"]}
                                         halign={Gtk.Align.CENTER}
                                         valign={Gtk.Align.CENTER}
                                     />
-                                </Box>
-                                <Box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
-                                    <Label label={contact?.name ?? ""} halign={Gtk.Align.START} />
-                                    <Label
+                                </GtkBox>
+                                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
+                                    <GtkLabel label={contact?.name ?? ""} halign={Gtk.Align.START} />
+                                    <GtkLabel
                                         label={contact?.email ?? ""}
                                         cssClasses={["dim-label", "caption"]}
                                         halign={Gtk.Align.START}
                                     />
-                                </Box>
-                                <Label label={contact?.department ?? ""} cssClasses={["dim-label"]} />
-                            </Box>
+                                </GtkBox>
+                                <GtkLabel label={contact?.department ?? ""} cssClasses={["dim-label"]} />
+                            </GtkBox>
                         )}
                     >
                         {contacts.map((contact) => (
-                            <ListView.Item key={contact.id} id={contact.id} item={contact} />
+                            <GtkListView.Item key={contact.id} id={contact.id} item={contact} />
                         ))}
-                    </ListView.Root>
-                </ScrolledWindow>
-            </Box>
+                    </GtkListView.Root>
+                </GtkScrolledWindow>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <Label label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <GtkLabel label="Key Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={
                         "• Virtual scrolling for optimal performance\n• Widget recycling reduces memory usage\n• renderItem prop for custom item rendering\n• Works with any data type"
                     }
@@ -107,7 +107,7 @@ export const ListViewDemo = () => {
                     halign={Gtk.Align.START}
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };

@@ -1,7 +1,7 @@
-import { WINDOW_TYPES } from "@gtkx/config";
 import { getApplication } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { WINDOW_TYPES } from "../constants.js";
 import type { Props } from "../factory.js";
 import { Node, normalizeWidgetType } from "../node.js";
 
@@ -19,7 +19,7 @@ export class WindowNode extends Node<Gtk.Window> {
     protected override createWidget(type: string, _props: Props): Gtk.Window {
         const widgetType = normalizeWidgetType(type);
 
-        if (widgetType === "ApplicationWindow") {
+        if (widgetType === "GtkApplicationWindow") {
             return new Gtk.ApplicationWindow(getApplication());
         }
 

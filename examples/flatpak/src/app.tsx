@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
 import { useState } from "react";
 
 export const appId = "org.gtkx.flatpak";
@@ -12,8 +12,8 @@ export const App = () => {
     };
 
     return (
-        <ApplicationWindow title="GTKX Flatpak Demo" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
-            <Box
+        <GtkApplicationWindow title="GTKX Flatpak Demo" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+            <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={20}
                 marginTop={40}
@@ -23,10 +23,10 @@ export const App = () => {
                 valign={Gtk.Align.CENTER}
                 halign={Gtk.Align.CENTER}
             >
-                <Label label="Hello from Flatpak!" cssClasses={["title-1"]} />
-                <Label label={`Count: ${count}`} cssClasses={["title-2"]} name="count-label" />
-                <Button label="Increment" onClicked={increment} cssClasses={["suggested-action", "pill"]} />
-            </Box>
-        </ApplicationWindow>
+                <GtkLabel label="Hello from Flatpak!" cssClasses={["title-1"]} />
+                <GtkLabel label={`Count: ${count}`} cssClasses={["title-2"]} name="count-label" />
+                <GtkButton label="Increment" onClicked={increment} cssClasses={["suggested-action", "pill"]} />
+            </GtkBox>
+        </GtkApplicationWindow>
     );
 };

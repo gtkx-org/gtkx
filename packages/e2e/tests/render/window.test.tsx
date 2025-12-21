@@ -1,7 +1,7 @@
 import { createRef as createNativeRef, getApplication } from "@gtkx/ffi";
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { AdwApplicationWindow, AdwWindow, ApplicationWindow, Label, Window } from "@gtkx/react";
+import { AdwApplicationWindow, AdwWindow, GtkApplicationWindow, GtkLabel, GtkWindow } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ describe("render - Window", () => {
         it("creates Gtk.Window", async () => {
             const ref = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={ref} title="Plain Window" />, { wrapper: false });
+            await render(<GtkWindow.Root ref={ref} title="Plain Window" />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getTitle()).toBe("Plain Window");
@@ -20,7 +20,7 @@ describe("render - Window", () => {
         it("creates Gtk.ApplicationWindow with current app", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
 
-            await render(<ApplicationWindow ref={ref} title="App Window" />, { wrapper: false });
+            await render(<GtkApplicationWindow ref={ref} title="App Window" />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getApplication()?.id).toEqual(getApplication().id);
@@ -48,7 +48,7 @@ describe("render - Window", () => {
         it("sets default size via defaultWidth/defaultHeight", async () => {
             const ref = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={ref} defaultWidth={300} defaultHeight={200} />, { wrapper: false });
+            await render(<GtkWindow.Root ref={ref} defaultWidth={300} defaultHeight={200} />, { wrapper: false });
 
             const widthRef = createNativeRef(0);
             const heightRef = createNativeRef(0);
@@ -61,7 +61,7 @@ describe("render - Window", () => {
             const ref = createRef<Gtk.Window>();
 
             function App({ width, height }: { width: number; height: number }) {
-                return <Window.Root ref={ref} defaultWidth={width} defaultHeight={height} />;
+                return <GtkWindow.Root ref={ref} defaultWidth={width} defaultHeight={height} />;
             }
 
             await render(<App width={200} height={150} />, { wrapper: false });
@@ -82,7 +82,7 @@ describe("render - Window", () => {
         it("handles partial size (only width)", async () => {
             const ref = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={ref} defaultWidth={300} />, { wrapper: false });
+            await render(<GtkWindow.Root ref={ref} defaultWidth={300} />, { wrapper: false });
 
             const widthRef = createNativeRef(0);
             ref.current?.getDefaultSize(widthRef);
@@ -92,7 +92,7 @@ describe("render - Window", () => {
         it("handles partial size (only height)", async () => {
             const ref = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={ref} defaultHeight={200} />, { wrapper: false });
+            await render(<GtkWindow.Root ref={ref} defaultHeight={200} />, { wrapper: false });
 
             const heightRef = createNativeRef(0);
             ref.current?.getDefaultSize(undefined, heightRef);
@@ -104,7 +104,7 @@ describe("render - Window", () => {
         it("presents window on mount", async () => {
             const ref = createRef<Gtk.Window>();
 
-            await render(<Window.Root ref={ref} title="Present" />, { wrapper: false });
+            await render(<GtkWindow.Root ref={ref} title="Present" />, { wrapper: false });
 
             expect(ref.current?.getVisible()).toBe(true);
         });
@@ -113,7 +113,7 @@ describe("render - Window", () => {
             const ref = createRef<Gtk.Window>();
 
             function App({ show }: { show: boolean }) {
-                return show ? <Window.Root ref={ref} title="Destroy" /> : null;
+                return show ? <GtkWindow.Root ref={ref} title="Destroy" /> : null;
             }
 
             await render(<App show={true} />, { wrapper: false });
@@ -131,9 +131,9 @@ describe("render - Window", () => {
             const labelRef = createRef<Gtk.Label>();
 
             await render(
-                <Window.Root ref={windowRef}>
-                    <Label ref={labelRef} label="Window Child" />
-                </Window.Root>,
+                <GtkWindow.Root ref={windowRef}>
+                    <GtkLabel ref={labelRef} label="Window Child" />
+                </GtkWindow.Root>,
                 { wrapper: false },
             );
 
@@ -147,13 +147,13 @@ describe("render - Window", () => {
 
             function App({ first }: { first: boolean }) {
                 return (
-                    <Window.Root ref={windowRef}>
+                    <GtkWindow.Root ref={windowRef}>
                         {first ? (
-                            <Label ref={label1Ref} key="first" label="First" />
+                            <GtkLabel ref={label1Ref} key="first" label="First" />
                         ) : (
-                            <Label ref={label2Ref} key="second" label="Second" />
+                            <GtkLabel ref={label2Ref} key="second" label="Second" />
                         )}
-                    </Window.Root>
+                    </GtkWindow.Root>
                 );
             }
 

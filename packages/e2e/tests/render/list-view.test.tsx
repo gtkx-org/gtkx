@@ -1,7 +1,5 @@
-import { getNativeObject } from "@gtkx/ffi";
-import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GridView, Label, ListView } from "@gtkx/react";
+import { GtkGridView, GtkLabel, GtkListView } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -9,8 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 const getModelItemCount = (listView: Gtk.ListView): number => {
     const model = listView.getModel();
     if (!model) return 0;
-    const listModel = getNativeObject(model.id, Gio.ListModel);
-    return listModel?.getNItems() ?? 0;
+    return model.getNItems() ?? 0;
 };
 
 describe("render - ListView", () => {
@@ -19,9 +16,9 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <ListView.Root ref={ref} renderItem={() => <Label label="Item" />}>
-                    <ListView.Item id="1" item={{ name: "First" }} />
-                </ListView.Root>,
+                <GtkListView.Root ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView.Item id="1" item={{ name: "First" }} />
+                </GtkListView.Root>,
                 { wrapper: false },
             );
 
@@ -34,10 +31,10 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <ListView.Root ref={ref} renderItem={() => <Label label="Item" />}>
-                    <ListView.Item id="1" item={{ name: "First" }} />
-                    <ListView.Item id="2" item={{ name: "Second" }} />
-                </ListView.Root>,
+                <GtkListView.Root ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView.Item id="1" item={{ name: "First" }} />
+                    <GtkListView.Item id="2" item={{ name: "Second" }} />
+                </GtkListView.Root>,
                 { wrapper: false },
             );
 
@@ -49,11 +46,11 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
-                    <ListView.Root ref={ref} renderItem={() => <Label label="Item" />}>
+                    <GtkListView.Root ref={ref} renderItem={() => <GtkLabel label="Item" />}>
                         {items.map((item) => (
-                            <ListView.Item key={item.id} id={item.id} item={item} />
+                            <GtkListView.Item key={item.id} id={item.id} item={item} />
                         ))}
-                    </ListView.Root>
+                    </GtkListView.Root>
                 );
             }
 
@@ -88,11 +85,11 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
-                    <ListView.Root ref={ref} renderItem={() => <Label label="Item" />}>
+                    <GtkListView.Root ref={ref} renderItem={() => <GtkLabel label="Item" />}>
                         {items.map((item) => (
-                            <ListView.Item key={item.id} id={item.id} item={item} />
+                            <GtkListView.Item key={item.id} id={item.id} item={item} />
                         ))}
-                    </ListView.Root>
+                    </GtkListView.Root>
                 );
             }
 
@@ -127,9 +124,9 @@ describe("render - ListView", () => {
 
             function App({ itemName }: { itemName: string }) {
                 return (
-                    <ListView.Root ref={ref} renderItem={() => <Label label="Item" />}>
-                        <ListView.Item id="1" item={{ name: itemName }} />
-                    </ListView.Root>
+                    <GtkListView.Root ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                        <GtkListView.Item id="1" item={{ name: itemName }} />
+                    </GtkListView.Root>
                 );
             }
 
@@ -142,12 +139,12 @@ describe("render - ListView", () => {
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
             const ref = createRef<Gtk.ListView>();
-            const renderItem = vi.fn((item: { name: string } | null) => <Label label={item?.name ?? "Empty"} />);
+            const renderItem = vi.fn((item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />);
 
             await render(
-                <ListView.Root ref={ref} renderItem={renderItem}>
-                    <ListView.Item id="1" item={{ name: "Test Item" }} />
-                </ListView.Root>,
+                <GtkListView.Root ref={ref} renderItem={renderItem}>
+                    <GtkListView.Item id="1" item={{ name: "Test Item" }} />
+                </GtkListView.Root>,
                 { wrapper: false },
             );
         });
@@ -157,14 +154,14 @@ describe("render - ListView", () => {
 
             function App({ prefix }: { prefix: string }) {
                 return (
-                    <ListView.Root
+                    <GtkListView.Root
                         ref={ref}
                         renderItem={(item: { name: string } | null) => (
-                            <Label label={`${prefix}: ${item?.name ?? ""}`} />
+                            <GtkLabel label={`${prefix}: ${item?.name ?? ""}`} />
                         )}
                     >
-                        <ListView.Item id="1" item={{ name: "Test" }} />
-                    </ListView.Root>
+                        <GtkListView.Item id="1" item={{ name: "Test" }} />
+                    </GtkListView.Root>
                 );
             }
 
@@ -179,10 +176,10 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <ListView.Root ref={ref} renderItem={() => <Label label="Item" />} selected={["2"]}>
-                    <ListView.Item id="1" item={{ name: "First" }} />
-                    <ListView.Item id="2" item={{ name: "Second" }} />
-                </ListView.Root>,
+                <GtkListView.Root ref={ref} renderItem={() => <GtkLabel label="Item" />} selected={["2"]}>
+                    <GtkListView.Item id="1" item={{ name: "First" }} />
+                    <GtkListView.Item id="2" item={{ name: "Second" }} />
+                </GtkListView.Root>,
                 { wrapper: false },
             );
         });
@@ -192,14 +189,14 @@ describe("render - ListView", () => {
             const onSelectionChanged = vi.fn();
 
             await render(
-                <ListView.Root
+                <GtkListView.Root
                     ref={ref}
-                    renderItem={() => <Label label="Item" />}
+                    renderItem={() => <GtkLabel label="Item" />}
                     onSelectionChanged={onSelectionChanged}
                 >
-                    <ListView.Item id="1" item={{ name: "First" }} />
-                    <ListView.Item id="2" item={{ name: "Second" }} />
-                </ListView.Root>,
+                    <GtkListView.Item id="1" item={{ name: "First" }} />
+                    <GtkListView.Item id="2" item={{ name: "Second" }} />
+                </GtkListView.Root>,
                 { wrapper: false },
             );
 
@@ -211,9 +208,9 @@ describe("render - ListView", () => {
 
             function App({ selected }: { selected: string[] }) {
                 return (
-                    <ListView.Root ref={ref} renderItem={() => <Label label="Item" />} selected={selected}>
-                        <ListView.Item id="1" item={{ name: "First" }} />
-                    </ListView.Root>
+                    <GtkListView.Root ref={ref} renderItem={() => <GtkLabel label="Item" />} selected={selected}>
+                        <GtkListView.Item id="1" item={{ name: "First" }} />
+                    </GtkListView.Root>
                 );
             }
 
@@ -228,14 +225,14 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <ListView.Root
+                <GtkListView.Root
                     ref={ref}
-                    renderItem={() => <Label label="Item" />}
+                    renderItem={() => <GtkLabel label="Item" />}
                     selectionMode={Gtk.SelectionMode.MULTIPLE}
                 >
-                    <ListView.Item id="1" item={{ name: "First" }} />
-                    <ListView.Item id="2" item={{ name: "Second" }} />
-                </ListView.Root>,
+                    <GtkListView.Item id="1" item={{ name: "First" }} />
+                    <GtkListView.Item id="2" item={{ name: "Second" }} />
+                </GtkListView.Root>,
                 { wrapper: false },
             );
         });
@@ -244,16 +241,16 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <ListView.Root
+                <GtkListView.Root
                     ref={ref}
-                    renderItem={() => <Label label="Item" />}
+                    renderItem={() => <GtkLabel label="Item" />}
                     selectionMode={Gtk.SelectionMode.MULTIPLE}
                     selected={["1", "3"]}
                 >
-                    <ListView.Item id="1" item={{ name: "First" }} />
-                    <ListView.Item id="2" item={{ name: "Second" }} />
-                    <ListView.Item id="3" item={{ name: "Third" }} />
-                </ListView.Root>,
+                    <GtkListView.Item id="1" item={{ name: "First" }} />
+                    <GtkListView.Item id="2" item={{ name: "Second" }} />
+                    <GtkListView.Item id="3" item={{ name: "Third" }} />
+                </GtkListView.Root>,
                 { wrapper: false },
             );
         });
@@ -263,15 +260,15 @@ describe("render - ListView", () => {
             const onSelectionChanged = vi.fn();
 
             await render(
-                <ListView.Root
+                <GtkListView.Root
                     ref={ref}
-                    renderItem={() => <Label label="Item" />}
+                    renderItem={() => <GtkLabel label="Item" />}
                     selectionMode={Gtk.SelectionMode.MULTIPLE}
                     onSelectionChanged={onSelectionChanged}
                 >
-                    <ListView.Item id="1" item={{ name: "First" }} />
-                    <ListView.Item id="2" item={{ name: "Second" }} />
-                </ListView.Root>,
+                    <GtkListView.Item id="1" item={{ name: "First" }} />
+                    <GtkListView.Item id="2" item={{ name: "Second" }} />
+                </GtkListView.Root>,
                 { wrapper: false },
             );
 
@@ -284,9 +281,9 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.GridView>();
 
             await render(
-                <GridView.Root ref={ref} renderItem={() => <Label label="Item" />}>
-                    <GridView.Item id="1" item={{ name: "First" }} />
-                </GridView.Root>,
+                <GtkGridView.Root ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkGridView.Item id="1" item={{ name: "First" }} />
+                </GtkGridView.Root>,
                 { wrapper: false },
             );
 

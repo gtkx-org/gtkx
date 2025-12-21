@@ -15,9 +15,9 @@ Use `createPortal` to render dialogs at the root level of your application:
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
   createPortal,
-  ApplicationWindow,
-  Button,
-  AboutDialog,
+  GtkApplicationWindow,
+  GtkButton,
+  GtkAboutDialog,
   quit,
 } from "@gtkx/react";
 import { useState } from "react";
@@ -26,12 +26,12 @@ const App = () => {
   const [showAbout, setShowAbout] = useState(false);
 
   return (
-    <ApplicationWindow title="My App" onCloseRequest={quit}>
-      <Button label="About" onClicked={() => setShowAbout(true)} />
+    <GtkApplicationWindow title="My App" onCloseRequest={quit}>
+      <GtkButton label="About" onClicked={() => setShowAbout(true)} />
 
       {showAbout &&
         createPortal(
-          <AboutDialog
+          <GtkAboutDialog
             programName="My App"
             version="1.0.0"
             comments="A GTKX application"
@@ -44,7 +44,7 @@ const App = () => {
             }}
           />
         )}
-    </ApplicationWindow>
+    </GtkApplicationWindow>
   );
 };
 ```
@@ -65,7 +65,7 @@ GTK4's `AlertDialog` and file dialogs use async/await patterns:
 ```tsx
 import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Button, Label, Box, quit } from "@gtkx/react";
+import { GtkApplicationWindow, GtkButton, GtkLabel, GtkBox, quit } from "@gtkx/react";
 import { useState } from "react";
 
 const App = () => {
@@ -92,18 +92,18 @@ const App = () => {
   };
 
   return (
-    <ApplicationWindow title="Dialogs" onCloseRequest={quit}>
-      <Box
+    <GtkApplicationWindow title="Dialogs" onCloseRequest={quit}>
+      <GtkBox
         orientation={Gtk.Orientation.VERTICAL}
         spacing={12}
         marginStart={20}
         marginEnd={20}
         marginTop={20}
       >
-        <Button label="Delete Item" onClicked={showConfirmDialog} />
-        {result && <Label label={`Result: ${result}`} />}
-      </Box>
-    </ApplicationWindow>
+        <GtkButton label="Delete Item" onClicked={showConfirmDialog} />
+        {result && <GtkLabel label={`Result: ${result}`} />}
+      </GtkBox>
+    </GtkApplicationWindow>
   );
 };
 ```
@@ -113,7 +113,7 @@ const App = () => {
 ```tsx
 import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Button, Label } from "@gtkx/react";
+import { GtkButton, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 
 const FilePicker = () => {
@@ -153,9 +153,9 @@ const FilePicker = () => {
 
   return (
     <>
-      <Button label="Open..." onClicked={openFile} />
-      <Button label="Save..." onClicked={saveFile} />
-      {selectedFile && <Label label={selectedFile} />}
+      <GtkButton label="Open..." onClicked={openFile} />
+      <GtkButton label="Save..." onClicked={saveFile} />
+      {selectedFile && <GtkLabel label={selectedFile} />}
     </>
   );
 };
@@ -202,10 +202,10 @@ Dialogs can be modal (block interaction with parent) or non-modal:
 
 ```tsx
 // Modal dialog (default for AlertDialog)
-<AboutDialog modal onCloseRequest={() => { setShow(false); return false; }} />
+<GtkAboutDialog modal onCloseRequest={() => { setShow(false); return false; }} />
 
 // Non-modal dialog
-<AboutDialog modal={false} onCloseRequest={() => { setShow(false); return false; }} />
+<GtkAboutDialog modal={false} onCloseRequest={() => { setShow(false); return false; }} />
 ```
 
 ## Best Practices

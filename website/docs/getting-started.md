@@ -66,19 +66,19 @@ my-app/
 ```tsx
 import { useState } from "react";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationWindow, Box, Button, Label, quit } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
 
 export default function App() {
   const [count, setCount] = useState(0);
 
   return (
-    <ApplicationWindow
+    <GtkApplicationWindow
       title="My App"
       defaultWidth={400}
       defaultHeight={300}
       onCloseRequest={quit}
     >
-      <Box
+      <GtkBox
         orientation={Gtk.Orientation.VERTICAL}
         spacing={20}
         marginTop={40}
@@ -87,9 +87,9 @@ export default function App() {
       >
         Welcome to GTKX!
         {`Count: ${count}`}
-        <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
-      </Box>
-    </ApplicationWindow>
+        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+      </GtkBox>
+    </GtkApplicationWindow>
   );
 }
 
@@ -116,7 +116,7 @@ The entry point for GTKX applications. It:
 3. Mounts your React element tree
 4. Starts the event loop
 
-### `ApplicationWindow`
+### `GtkApplicationWindow`
 
 The main window component. Key props:
 
@@ -133,9 +133,9 @@ Cleanly shuts down the application by:
 
 Always use `quit()` in `onCloseRequest` to ensure proper cleanup.
 
-### Layout with `Box`
+### Layout with `GtkBox`
 
-`Box` is the primary layout container in GTK. Use `orientation` to set horizontal or vertical layout, and `spacing` to add gaps between children.
+`GtkBox` is the primary layout container in GTK. Use `orientation` to set horizontal or vertical layout, and `spacing` to add gaps between children.
 
 ### Handling Events
 

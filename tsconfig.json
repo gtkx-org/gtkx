@@ -3,9 +3,6 @@
     "include": [],
     "references": [
         {
-            "path": "packages/config/tsconfig.json"
-        },
-        {
             "path": "packages/css/tsconfig.json"
         },
         {
@@ -40,6 +37,9 @@
         },
         {
             "path": "examples/adwaita/tsconfig.json"
+        },
+        {
+            "path": "examples/lists/tsconfig.json"
         }
     ]
 }

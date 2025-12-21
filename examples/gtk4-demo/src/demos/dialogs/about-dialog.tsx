@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AboutDialog, Box, Button, createPortal, Label } from "@gtkx/react";
+import { createPortal, GtkAboutDialog, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -12,26 +12,26 @@ const AboutDialogDemo = () => {
     const logo = useMemo(() => Gdk.Texture.newFromFilename(LOGO_PATH), []);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="About Dialog" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="About Dialog" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label
-                    label="AboutDialog displays information about your application including version, copyright, license, and credits."
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel
+                    label="<GtkAboutDialog displays information about your application including version, copyright, license, and credits."
                     wrap
                     cssClasses={["dim-label"]}
                 />
 
-                <Button
+                <GtkButton
                     label="Show About Dialog"
                     cssClasses={["suggested-action"]}
                     onClicked={() => setShowDialog(true)}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={`- Program name and version
 - Application description
 - Website link
@@ -41,11 +41,11 @@ const AboutDialogDemo = () => {
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
             {showDialog &&
                 createPortal(
-                    <AboutDialog
+                    <GtkAboutDialog
                         programName="GTKX Demo"
                         version="1.0.0"
                         comments="A demonstration of GTK4 widgets using React and TypeScript"
@@ -64,7 +64,7 @@ const AboutDialogDemo = () => {
                         }}
                     />,
                 )}
-        </Box>
+        </GtkBox>
     );
 };
 

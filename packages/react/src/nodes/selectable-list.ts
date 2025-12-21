@@ -1,5 +1,3 @@
-import { getNativeObject } from "@gtkx/ffi";
-import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { scheduleFlush } from "../batch.js";
@@ -68,11 +66,11 @@ export abstract class SelectableListNode<T extends SelectableListWidget, S exten
     protected initializeSelectionState(props: Props): SelectableListState {
         const selectionMode = (props.selectionMode as Gtk.SelectionMode | undefined) ?? Gtk.SelectionMode.SINGLE;
         const stringList = new Gtk.StringList([]);
-        const listModel = getNativeObject(stringList.id, Gio.ListModel) ?? undefined;
+
         const selectionModel =
             selectionMode === Gtk.SelectionMode.MULTIPLE
-                ? new Gtk.MultiSelection(listModel)
-                : new Gtk.SingleSelection(listModel);
+                ? new Gtk.MultiSelection(stringList)
+                : new Gtk.SingleSelection(stringList);
 
         if (selectionModel instanceof Gtk.SingleSelection) {
             selectionModel.setAutoselect(false);
@@ -140,7 +138,7 @@ export abstract class SelectableListNode<T extends SelectableListWidget, S exten
 
         this.disconnectSelectionHandler();
 
-        const listModel = getNativeObject(this.state.stringList.id, Gio.ListModel) ?? undefined;
+        const listModel = this.state.stringList;
         const newSelectionModel =
             newSelectionMode === Gtk.SelectionMode.MULTIPLE
                 ? new Gtk.MultiSelection(listModel)

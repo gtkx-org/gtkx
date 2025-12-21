@@ -1,6 +1,6 @@
 import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -56,35 +56,39 @@ const DialogDemo = () => {
     };
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Dialogs" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Dialogs" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Alert Dialogs" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Alert Dialogs" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="AlertDialog provides a simple way to show messages and get user confirmation."
                     wrap
                     cssClasses={["dim-label"]}
                 />
 
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <Button label="Confirmation" onClicked={showAlertDialog} />
-                    <Button label="Destructive" cssClasses={["destructive-action"]} onClicked={showDestructiveDialog} />
-                    <Button label="Information" onClicked={showInfoDialog} />
-                </Box>
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkButton label="Confirmation" onClicked={showAlertDialog} />
+                    <GtkButton
+                        label="Destructive"
+                        cssClasses={["destructive-action"]}
+                        onClicked={showDestructiveDialog}
+                    />
+                    <GtkButton label="Information" onClicked={showInfoDialog} />
+                </GtkBox>
 
-                {result && <Label label={`Last result: ${result}`} cssClasses={["dim-label"]} />}
-            </Box>
+                {result && <GtkLabel label={`Last result: ${result}`} cssClasses={["dim-label"]} />}
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="How It Works" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="How It Works" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="Use AlertDialog.dialogNew(message) to create the dialog, then configure with setDetail(), setButtons(), etc. Call dialog.choose() and await the response index."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

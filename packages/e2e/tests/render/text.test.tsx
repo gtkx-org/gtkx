@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box } from "@gtkx/react";
+import { GtkBox } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -21,9 +21,9 @@ describe("render - text instances", () => {
         const boxRef = createRef<Gtk.Box>();
 
         await render(
-            <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+            <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 Hello World
-            </Box>,
+            </GtkBox>,
             { wrapper: false },
         );
 
@@ -36,9 +36,9 @@ describe("render - text instances", () => {
 
         function App({ text }: { text: string }) {
             return (
-                <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     {text}
-                </Box>
+                </GtkBox>
             );
         }
 
@@ -55,9 +55,9 @@ describe("render - text instances", () => {
         const boxRef = createRef<Gtk.Box>();
 
         await render(
-            <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+            <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 {""}
-            </Box>,
+            </GtkBox>,
             { wrapper: false },
         );
 
@@ -69,9 +69,9 @@ describe("render - text instances", () => {
         const boxRef = createRef<Gtk.Box>();
 
         await render(
-            <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+            <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 你好世界 🌍 مرحبا
-            </Box>,
+            </GtkBox>,
             { wrapper: false },
         );
 
@@ -84,9 +84,9 @@ describe("render - text instances", () => {
 
         function App({ showText }: { showText: boolean }) {
             return (
-                <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                     {showText && "Removable Text"}
-                </Box>
+                </GtkBox>
             );
         }
 
@@ -103,11 +103,11 @@ describe("render - text instances", () => {
         const boxRef = createRef<Gtk.Box>();
 
         await render(
-            <Box ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+            <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
                 {"First"}
                 {"Second"}
                 {"Third"}
-            </Box>,
+            </GtkBox>,
             { wrapper: false },
         );
 

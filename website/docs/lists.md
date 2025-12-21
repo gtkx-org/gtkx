@@ -13,7 +13,7 @@ GTKX provides virtualized list components that efficiently render large datasets
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ListView, Label, ScrolledWindow } from "@gtkx/react";
+import { GtkListView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 
 interface User {
   id: string;
@@ -28,24 +28,24 @@ const users: User[] = [
 ];
 
 const UserList = () => (
-  <ScrolledWindow vexpand>
-    <ListView.Root
+  <GtkScrolledWindow vexpand>
+    <GtkListView.Root
       renderItem={(user: User | null) => (
-        <Label label={user?.name ?? ""} halign={Gtk.Align.START} />
+        <GtkLabel label={user?.name ?? ""} halign={Gtk.Align.START} />
       )}
     >
       {users.map((user) => (
-        <ListView.Item key={user.id} id={user.id} item={user} />
+        <GtkListView.Item key={user.id} id={user.id} item={user} />
       ))}
-    </ListView.Root>
-  </ScrolledWindow>
+    </GtkListView.Root>
+  </GtkScrolledWindow>
 );
 ```
 
 ### How It Works
 
-1. **`ListView.Root`** creates a `GtkListView` with a `SignalListItemFactory`
-2. **`ListView.Item`** registers each data item with the internal model
+1. **`GtkListView.Root`** creates a `GtkListView` with a `SignalListItemFactory`
+2. **`GtkListView.Item`** registers each data item with the internal model
 3. **`renderItem`** is called with the item during bind to render the content
 4. Items outside the viewport are not rendered (virtualization)
 
@@ -63,7 +63,7 @@ type RenderItemFn<T> = (item: T | null) => ReactElement;
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GridView, Label, ScrolledWindow } from "@gtkx/react";
+import { GtkGridView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 
 interface Photo {
   id: string;
@@ -78,20 +78,20 @@ const photos: Photo[] = [
 ];
 
 const PhotoGrid = () => (
-  <ScrolledWindow vexpand>
-    <GridView.Root
+  <GtkScrolledWindow vexpand>
+    <GtkGridView.Root
       renderItem={(photo: Photo | null) => (
-        <Label
+        <GtkLabel
           label={photo ? `${photo.emoji}\n${photo.title}` : ""}
           cssClasses={["title-1"]}
         />
       )}
     >
       {photos.map((photo) => (
-        <GridView.Item key={photo.id} id={photo.id} item={photo} />
+        <GtkGridView.Item key={photo.id} id={photo.id} item={photo} />
       ))}
-    </GridView.Root>
-  </ScrolledWindow>
+    </GtkGridView.Root>
+  </GtkScrolledWindow>
 );
 ```
 
@@ -101,7 +101,7 @@ For tabular data with multiple columns, use `ColumnView`. Each column has its ow
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ColumnView, Label, ScrolledWindow } from "@gtkx/react";
+import { GtkColumnView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 
 interface Product {
   id: string;
@@ -116,34 +116,34 @@ const products: Product[] = [
 ];
 
 const ProductTable = () => (
-  <ScrolledWindow vexpand>
-    <ColumnView.Root>
-      <ColumnView.Column
+  <GtkScrolledWindow vexpand>
+    <GtkColumnView.Root>
+      <GtkColumnView.Column
         title="Name"
         expand
         renderCell={(product: Product | null) => (
-          <Label label={product?.name ?? ""} halign={Gtk.Align.START} />
+          <GtkLabel label={product?.name ?? ""} halign={Gtk.Align.START} />
         )}
       />
-      <ColumnView.Column
+      <GtkColumnView.Column
         title="Price"
         fixedWidth={100}
         renderCell={(product: Product | null) => (
-          <Label label={product ? `$${product.price.toFixed(2)}` : ""} />
+          <GtkLabel label={product ? `$${product.price.toFixed(2)}` : ""} />
         )}
       />
-      <ColumnView.Column
+      <GtkColumnView.Column
         title="Stock"
         fixedWidth={80}
         renderCell={(product: Product | null) => (
-          <Label label={product?.stock.toString() ?? ""} />
+          <GtkLabel label={product?.stock.toString() ?? ""} />
         )}
       />
       {products.map((product) => (
-        <ColumnView.Item key={product.id} id={product.id} item={product} />
+        <GtkColumnView.Item key={product.id} id={product.id} item={product} />
       ))}
-    </ColumnView.Root>
-  </ScrolledWindow>
+    </GtkColumnView.Root>
+  </GtkScrolledWindow>
 );
 ```
 
@@ -153,7 +153,7 @@ ColumnView supports sortable columns. When the user clicks a column header, the 
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ColumnView, Label, ScrolledWindow } from "@gtkx/react";
+import { GtkColumnView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useMemo, useState } from "react";
 
 interface Product {
@@ -188,8 +188,8 @@ const SortableTable = () => {
   }, [sortColumn, sortOrder]);
 
   return (
-    <ScrolledWindow vexpand>
-      <ColumnView.Root<Product, ColumnId>
+    <GtkScrolledWindow vexpand>
+      <GtkColumnView.Root<Product, ColumnId>
         sortColumn={sortColumn}
         sortOrder={sortOrder}
         onSortChange={(column, order) => {
@@ -197,30 +197,30 @@ const SortableTable = () => {
           setSortOrder(order);
         }}
       >
-        <ColumnView.Column<Product>
+        <GtkColumnView.Column<Product>
           id="name"
           title="Name"
           expand
-          renderCell={(product) => <Label label={product?.name ?? ""} />}
+          renderCell={(product) => <GtkLabel label={product?.name ?? ""} />}
         />
-        <ColumnView.Column<Product>
+        <GtkColumnView.Column<Product>
           id="price"
           title="Price"
           fixedWidth={100}
           renderCell={(product) => (
-            <Label label={product ? `$${product.price}` : ""} />
+            <GtkLabel label={product ? `$${product.price}` : ""} />
           )}
         />
         {sortedProducts.map((product) => (
-          <ColumnView.Item key={product.id} id={product.id} item={product} />
+          <GtkColumnView.Item key={product.id} id={product.id} item={product} />
         ))}
-      </ColumnView.Root>
-    </ScrolledWindow>
+      </GtkColumnView.Root>
+    </GtkScrolledWindow>
   );
 };
 ```
 
-**Note:** ColumnView doesn't sort items internally. You must sort your data before rendering based on `sortColumn` and `sortOrder`. The `onSortChange` callback notifies you when the user clicks a column header.
+**Note:** GtkColumnView doesn't sort items internally. You must sort your data before rendering based on `sortColumn` and `sortOrder`. The `onSortChange` callback notifies you when the user clicks a column header.
 
 | Prop           | Type                                                    | Description                                    |
 | -------------- | ------------------------------------------------------- | ---------------------------------------------- |
@@ -228,7 +228,7 @@ const SortableTable = () => {
 | `sortOrder`    | `Gtk.SortType`                                          | `ASCENDING` or `DESCENDING`                    |
 | `onSortChange` | `(column: string \| null, order: Gtk.SortType) => void` | Called when user clicks column headers         |
 
-### ColumnView.Column Props
+### GtkColumnView.Column Props
 
 | Prop         | Type                                | Description                                    |
 | ------------ | ----------------------------------- | ---------------------------------------------- |
@@ -244,7 +244,7 @@ const SortableTable = () => {
 `DropDown` creates a selection dropdown using simple id/label pairs:
 
 ```tsx
-import { DropDown, Label } from "@gtkx/react";
+import { GtkDropDown, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 
 interface Country {
@@ -265,29 +265,29 @@ const CountrySelector = () => {
 
   return (
     <>
-      <DropDown.Root
+      <GtkDropDown.Root
         selectedId={selectedId ?? undefined}
         onSelectionChanged={(id) => setSelectedId(id)}
       >
         {countries.map((country) => (
-          <DropDown.Item key={country.id} id={country.id} label={country.name} />
+          <GtkDropDown.Item key={country.id} id={country.id} label={country.name} />
         ))}
-      </DropDown.Root>
+      </GtkDropDown.Root>
 
-      {selected && <Label label={`Capital: ${selected.capital}`} />}
+      {selected && <GtkLabel label={`Capital: ${selected.capital}`} />}
     </>
   );
 };
 ```
 
-### DropDown.Root Props
+### GtkDropDown.Root Props
 
 | Prop                 | Type                 | Description                                       |
 | -------------------- | -------------------- | ------------------------------------------------- |
 | `selectedId`         | `string`             | ID of the initially selected item                 |
 | `onSelectionChanged` | `(id: string) => void` | Called when selection changes with the item's ID |
 
-### DropDown.Item Props
+### GtkDropDown.Item Props
 
 | Prop    | Type     | Description                           |
 | ------- | -------- | ------------------------------------- |
@@ -300,7 +300,7 @@ List items respond to React state changes:
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ListView, Box, Button, Label, ScrolledWindow } from "@gtkx/react";
+import { GtkListView, GtkBox, GtkButton, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 
 interface User {
@@ -319,30 +319,30 @@ const UserListWithRemove = () => {
   };
 
   return (
-    <ScrolledWindow vexpand>
-      <ListView.Root
+    <GtkScrolledWindow vexpand>
+      <GtkListView.Root
         renderItem={(user: User | null) => (
-          <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-            <Label label={user?.name ?? ""} hexpand />
-            <Button
+          <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+            <GtkLabel label={user?.name ?? ""} hexpand />
+            <GtkButton
               label="Remove"
               onClicked={() => user && removeUser(user.id)}
             />
-          </Box>
+          </GtkBox>
         )}
       >
         {users.map((user) => (
-          <ListView.Item key={user.id} id={user.id} item={user} />
+          <GtkListView.Item key={user.id} id={user.id} item={user} />
         ))}
-      </ListView.Root>
-    </ScrolledWindow>
+      </GtkListView.Root>
+    </GtkScrolledWindow>
   );
 };
 ```
 
 ## When to Use Lists vs Array Mapping
 
-**Use `ListView`/`GridView` when:**
+**Use `GtkListView`/`GtkGridView` when:**
 
 - Rendering many items (100+)
 - Items have uniform height/size
@@ -356,22 +356,22 @@ const UserListWithRemove = () => {
 
 ```tsx
 // Standard React pattern - fine for small lists
-<Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
   {items.map(item => (
-    <Label key={item.id} label={item.name} />
+    <GtkLabel key={item.id} label={item.name} />
   ))}
-</Box>
+</GtkBox>
 
-// GTKX ListView - better for large lists
-<ScrolledWindow vexpand>
-  <ListView.Root
+// GTKX GtkListView - better for large lists
+<GtkScrolledWindow vexpand>
+  <GtkListView.Root
     renderItem={(item: Item | null) => (
-      <Label label={item?.name ?? ""} />
+      <GtkLabel label={item?.name ?? ""} />
     )}
   >
     {items.map(item => (
-      <ListView.Item key={item.id} id={item.id} item={item} />
+      <GtkListView.Item key={item.id} id={item.id} item={item} />
     ))}
-  </ListView.Root>
-</ScrolledWindow>
+  </GtkListView.Root>
+</GtkScrolledWindow>
 ```

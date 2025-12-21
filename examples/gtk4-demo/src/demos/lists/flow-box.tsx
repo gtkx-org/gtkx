@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, FlowBox, Label, ScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkFlowBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
@@ -34,27 +34,27 @@ const colorBox = (color: string) => css`
 
 const FlowBoxDemo = () => {
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Flow Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Flow GtkBox" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="About FlowBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="About FlowBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GtkFlowBox is a container that positions child widgets in sequence according to its orientation. It reflows children when the container size changes."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Color Palette" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
-                    label="Resize the window to see the colors reflow. FlowBox automatically adjusts the layout based on available space."
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Color Palette" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="Resize the window to see the colors reflow. <GtkFlowBox automatically adjusts the layout based on available space."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <ScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                    <FlowBox
+                <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                    <GtkFlowBox
                         selectionMode={Gtk.SelectionMode.SINGLE}
                         maxChildrenPerLine={10}
                         minChildrenPerLine={3}
@@ -63,7 +63,7 @@ const FlowBoxDemo = () => {
                         homogeneous
                     >
                         {colors.map((color, index) => (
-                            <Box
+                            <GtkBox
                                 // biome-ignore lint/suspicious/noArrayIndexKey: demo
                                 key={index}
                                 orientation={Gtk.Orientation.HORIZONTAL}
@@ -73,25 +73,25 @@ const FlowBoxDemo = () => {
                                 cssClasses={[colorBox(color)]}
                             />
                         ))}
-                    </FlowBox>
-                </ScrolledWindow>
-            </Box>
+                    </GtkFlowBox>
+                </GtkScrolledWindow>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
-                    label="FlowBox properties include: min/max-children-per-line, column-spacing, row-spacing, homogeneous, and selection-mode."
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="<GtkFlowBox properties include: min/max-children-per-line, column-spacing, row-spacing, homogeneous, and selection-mode."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };
 
 export const flowBoxDemo: Demo = {
     id: "flowbox",
-    title: "Flow Box",
+    title: "Flow GtkBox",
     description: "Container that reflows children based on available space.",
     keywords: ["flowbox", "flow", "grid", "wrap", "GtkFlowBox"],
     component: FlowBoxDemo,

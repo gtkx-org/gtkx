@@ -1,25 +1,25 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label } from "@gtkx/react";
+import { GtkBox, GtkLabel } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const PrintOverviewDemo = () => {
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Printing" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Printing" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="About Printing" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="About Printing" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GTK provides comprehensive printing support through GtkPrintOperation. This high-level API handles printer selection, page setup, and integrates with the native system print dialog."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Print Components" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Print Components" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={`• GtkPrintOperation - Main print job controller
 • GtkPrintContext - Provides Cairo context for page rendering
 • GtkPageSetup - Page size, margins, and orientation
@@ -27,11 +27,11 @@ const PrintOverviewDemo = () => {
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Print Signals" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Print Signals" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={`• begin-print - Called before printing starts
 • draw-page - Render each page with Cairo
 • end-print - Called after all pages are printed
@@ -39,11 +39,11 @@ const PrintOverviewDemo = () => {
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label={`• Native system print dialog
 • Print to file (PDF export)
 • Page setup dialog
@@ -53,8 +53,8 @@ const PrintOverviewDemo = () => {
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

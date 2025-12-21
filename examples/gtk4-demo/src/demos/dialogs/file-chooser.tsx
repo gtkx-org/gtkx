@@ -1,6 +1,6 @@
 import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Button, Label } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -48,36 +48,36 @@ const FileChooserDemo = () => {
     };
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="File Chooser" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="File Chooser" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Open File" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Button label="Open File..." onClicked={openSingleFile} />
-                {selectedFile && <Label label={`Selected: ${selectedFile}`} cssClasses={["dim-label"]} wrap />}
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Open File" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkButton label="Open File..." onClicked={openSingleFile} />
+                {selectedFile && <GtkLabel label={`Selected: ${selectedFile}`} cssClasses={["dim-label"]} wrap />}
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Select Folder" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Button label="Select Folder..." onClicked={selectFolder} />
-                {selectedFolder && <Label label={`Selected: ${selectedFolder}`} cssClasses={["dim-label"]} wrap />}
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Select Folder" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkButton label="Select Folder..." onClicked={selectFolder} />
+                {selectedFolder && <GtkLabel label={`Selected: ${selectedFolder}`} cssClasses={["dim-label"]} wrap />}
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Save File" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Button label="Save As..." onClicked={saveFile} />
-                {saveLocation && <Label label={`Would save to: ${saveLocation}`} cssClasses={["dim-label"]} wrap />}
-            </Box>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Save File" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkButton label="Save As..." onClicked={saveFile} />
+                {saveLocation && <GtkLabel label={`Would save to: ${saveLocation}`} cssClasses={["dim-label"]} wrap />}
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="About FileDialog" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
-                    label="FileDialog is the modern GTK4 file chooser. It uses async/await and returns Gio.File objects that can be used to read or write file contents."
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="About FileDialog" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="<GtkFileDialog is the modern GTK4 file chooser. It uses async/await and returns Gio.File objects that can be used to read or write file contents."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

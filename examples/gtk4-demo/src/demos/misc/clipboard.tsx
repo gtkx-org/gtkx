@@ -1,41 +1,41 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Entry, Label } from "@gtkx/react";
+import { GtkBox, GtkEntry, GtkLabel } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const ClipboardDemo = () => {
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="Clipboard" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="Clipboard" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="About Clipboard" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="About Clipboard" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GTK provides clipboard support for copying and pasting text, images, and other data between applications."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Text Clipboard" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Text Clipboard" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="Use standard copy/paste shortcuts (Ctrl+C, Ctrl+V) in the entry below."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Entry placeholderText="Type text and use Ctrl+C to copy..." />
-            </Box>
+                <GtkEntry placeholderText="Type text and use Ctrl+C to copy..." />
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Clipboard API" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Clipboard API" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="Programmatic clipboard access is available through Gdk.Display.getClipboard(). Full clipboard API support is planned for future GTKX releases."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

@@ -6,7 +6,7 @@ export class TextViewNode extends Node<Gtk.TextView> {
     static override consumedPropNames = ["buffer"];
 
     static override matches(type: string): boolean {
-        return type === "TextView";
+        return type === "GtkTextView";
     }
 
     override updateProps(oldProps: Props, newProps: Props): void {

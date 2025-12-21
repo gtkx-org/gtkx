@@ -41,7 +41,7 @@ Edit your code and see changes instantly—no restart needed.
 ### Example
 
 ```tsx
-import { render, ApplicationWindow, Box, Button, quit } from "@gtkx/react";
+import { render, GtkApplicationWindow, GtkBox, GtkButton, quit } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -49,12 +49,12 @@ const App = () => {
   const [count, setCount] = useState(0);
 
   return (
-    <ApplicationWindow title="Counter" onCloseRequest={quit}>
-      <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+    <GtkApplicationWindow title="Counter" onCloseRequest={quit}>
+      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
         {`Count: ${count}`}
-        <Button label="Increment" onClicked={() => setCount((c) => c + 1)} />
-      </Box>
-    </ApplicationWindow>
+        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+      </GtkBox>
+    </GtkApplicationWindow>
   );
 };
 
@@ -65,7 +65,7 @@ render(<App />, "org.example.Counter");
 
 ```tsx
 import { css } from "@gtkx/css";
-import { Button } from "@gtkx/react";
+import { GtkButton } from "@gtkx/react";
 
 const primary = css`
   padding: 16px 32px;
@@ -74,7 +74,7 @@ const primary = css`
   color: white;
 `;
 
-<Button label="Click me" cssClasses={[primary]} />;
+<GtkButton label="Click me" cssClasses={[primary]} />;
 ```
 
 ## Testing

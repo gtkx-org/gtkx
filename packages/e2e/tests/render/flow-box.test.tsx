@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { FlowBox, Label } from "@gtkx/react";
+import { GtkFlowBox, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -25,10 +25,10 @@ describe("render - FlowBox", () => {
             const ref = createRef<Gtk.FlowBox>();
 
             await render(
-                <FlowBox ref={ref}>
-                    <Label label="First" />
-                    <Label label="Second" />
-                </FlowBox>,
+                <GtkFlowBox ref={ref}>
+                    <GtkLabel label="First" />
+                    <GtkLabel label="Second" />
+                </GtkFlowBox>,
                 { wrapper: false },
             );
 
@@ -43,11 +43,11 @@ describe("render - FlowBox", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <FlowBox ref={ref}>
+                    <GtkFlowBox ref={ref}>
                         {items.map((item) => (
-                            <Label key={item} label={item} />
+                            <GtkLabel key={item} label={item} />
                         ))}
-                    </FlowBox>
+                    </GtkFlowBox>
                 );
             }
 
@@ -66,11 +66,11 @@ describe("render - FlowBox", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <FlowBox ref={ref}>
+                    <GtkFlowBox ref={ref}>
                         {items.map((item) => (
-                            <Label key={item} label={item} />
+                            <GtkLabel key={item} label={item} />
                         ))}
-                    </FlowBox>
+                    </GtkFlowBox>
                 );
             }
 

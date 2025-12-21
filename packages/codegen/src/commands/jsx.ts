@@ -115,12 +115,16 @@ export const jsx = defineCommand({
 
         const jsxOutputFile = join(outputDir, "jsx.ts");
         const internalOutputFile = join(outputDir, "internal.ts");
+        const registryOutputFile = join(outputDir, "registry.ts");
 
         writeFileSync(jsxOutputFile, result.jsx);
         genSpinner.message("Wrote jsx.ts");
 
         writeFileSync(internalOutputFile, result.internal);
-        genSpinner.stop("Wrote internal.ts");
+        genSpinner.message("Wrote internal.ts");
+
+        writeFileSync(registryOutputFile, result.registry);
+        genSpinner.stop("Wrote registry.ts");
 
         outro("JSX generation complete");
     },

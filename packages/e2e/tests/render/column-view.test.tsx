@@ -1,6 +1,5 @@
-import { getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ColumnView, Label } from "@gtkx/react";
+import { GtkColumnView, GtkLabel } from "@gtkx/react";
 import { render, tick } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -30,11 +29,10 @@ const getColumnById = (columnView: Gtk.ColumnView, columnId: string): Gtk.Column
     const nItems = columns.getNItems();
 
     for (let i = 0; i < nItems; i++) {
-        const obj = columns.getObject(i);
+        const obj = columns.getObject(i) as Gtk.ColumnViewColumn | null;
         if (obj) {
-            const column = getNativeObject(obj.id, Gtk.ColumnViewColumn);
-            if (column?.getId() === columnId) {
-                return column;
+            if (obj.getId() === columnId) {
+                return obj;
             }
         }
     }
@@ -90,28 +88,28 @@ function SortableColumnView({
     }
 
     return (
-        <ColumnView.Root
+        <GtkColumnView.Root
             ref={columnViewRef}
             sortColumn={sortColumn}
             sortOrder={sortOrder}
             onSortChange={handleSortChange}
         >
-            <ColumnView.Column
+            <GtkColumnView.Column
                 id="name"
                 title="Name"
                 sortable
-                renderCell={(emp: Employee | null) => <Label label={emp?.name ?? ""} />}
+                renderCell={(emp: Employee | null) => <GtkLabel label={emp?.name ?? ""} />}
             />
-            <ColumnView.Column
+            <GtkColumnView.Column
                 id="salary"
                 title="Salary"
                 sortable
-                renderCell={(emp: Employee | null) => <Label label={emp ? `$${emp.salary}` : ""} />}
+                renderCell={(emp: Employee | null) => <GtkLabel label={emp ? `$${emp.salary}` : ""} />}
             />
             {sortedEmployees.map((emp) => (
-                <ColumnView.Item key={emp.id} id={emp.id} item={emp} />
+                <GtkColumnView.Item key={emp.id} id={emp.id} item={emp} />
             ))}
-        </ColumnView.Root>
+        </GtkColumnView.Root>
     );
 }
 
@@ -121,10 +119,10 @@ describe("render - ColumnView", () => {
             const ref = createRef<Gtk.ColumnView>();
 
             await render(
-                <ColumnView.Root ref={ref}>
-                    <ColumnView.Column title="Name" renderCell={() => <Label label="Cell" />} />
-                    <ColumnView.Item id="1" item={{ name: "First" }} />
-                </ColumnView.Root>,
+                <GtkColumnView.Root ref={ref}>
+                    <GtkColumnView.Column title="Name" renderCell={() => <GtkLabel label="Cell" />} />
+                    <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                </GtkColumnView.Root>,
                 { wrapper: false },
             );
 
@@ -137,10 +135,10 @@ describe("render - ColumnView", () => {
             const ref = createRef<Gtk.ColumnView>();
 
             await render(
-                <ColumnView.Root ref={ref}>
-                    <ColumnView.Column title="Column Title" renderCell={() => <Label label="Cell" />} />
-                    <ColumnView.Item id="1" item={{ name: "First" }} />
-                </ColumnView.Root>,
+                <GtkColumnView.Root ref={ref}>
+                    <GtkColumnView.Column title="Column Title" renderCell={() => <GtkLabel label="Cell" />} />
+                    <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                </GtkColumnView.Root>,
                 { wrapper: false },
             );
 
@@ -153,12 +151,16 @@ describe("render - ColumnView", () => {
 
             function App({ columns }: { columns: string[] }) {
                 return (
-                    <ColumnView.Root ref={ref}>
+                    <GtkColumnView.Root ref={ref}>
                         {columns.map((title) => (
-                            <ColumnView.Column key={title} title={title} renderCell={() => <Label label="Cell" />} />
+                            <GtkColumnView.Column
+                                key={title}
+                                title={title}
+                                renderCell={() => <GtkLabel label="Cell" />}
+                            />
                         ))}
-                        <ColumnView.Item id="1" item={{ name: "First" }} />
-                    </ColumnView.Root>
+                        <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                    </GtkColumnView.Root>
                 );
             }
 
@@ -174,12 +176,16 @@ describe("render - ColumnView", () => {
 
             function App({ columns }: { columns: string[] }) {
                 return (
-                    <ColumnView.Root ref={ref}>
+                    <GtkColumnView.Root ref={ref}>
                         {columns.map((title) => (
-                            <ColumnView.Column key={title} title={title} renderCell={() => <Label label="Cell" />} />
+                            <GtkColumnView.Column
+                                key={title}
+                                title={title}
+                                renderCell={() => <GtkLabel label="Cell" />}
+                            />
                         ))}
-                        <ColumnView.Item id="1" item={{ name: "First" }} />
-                    </ColumnView.Root>
+                        <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                    </GtkColumnView.Root>
                 );
             }
 
@@ -194,16 +200,16 @@ describe("render - ColumnView", () => {
             const ref = createRef<Gtk.ColumnView>();
 
             await render(
-                <ColumnView.Root ref={ref}>
-                    <ColumnView.Column
+                <GtkColumnView.Root ref={ref}>
+                    <GtkColumnView.Column
                         title="Props"
                         expand={true}
                         resizable={true}
                         fixedWidth={100}
-                        renderCell={() => <Label label="Cell" />}
+                        renderCell={() => <GtkLabel label="Cell" />}
                     />
-                    <ColumnView.Item id="1" item={{ name: "First" }} />
-                </ColumnView.Root>,
+                    <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                </GtkColumnView.Root>,
                 { wrapper: false },
             );
         });
@@ -213,10 +219,10 @@ describe("render - ColumnView", () => {
 
             function App({ title }: { title: string }) {
                 return (
-                    <ColumnView.Root ref={ref}>
-                        <ColumnView.Column title={title} renderCell={() => <Label label="Cell" />} />
-                        <ColumnView.Item id="1" item={{ name: "First" }} />
-                    </ColumnView.Root>
+                    <GtkColumnView.Root ref={ref}>
+                        <GtkColumnView.Column title={title} renderCell={() => <GtkLabel label="Cell" />} />
+                        <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                    </GtkColumnView.Root>
                 );
             }
 
@@ -231,11 +237,11 @@ describe("render - ColumnView", () => {
             const ref = createRef<Gtk.ColumnView>();
 
             await render(
-                <ColumnView.Root ref={ref}>
-                    <ColumnView.Column title="Name" renderCell={() => <Label label="Cell" />} />
-                    <ColumnView.Item id="1" item={{ name: "First" }} />
-                    <ColumnView.Item id="2" item={{ name: "Second" }} />
-                </ColumnView.Root>,
+                <GtkColumnView.Root ref={ref}>
+                    <GtkColumnView.Column title="Name" renderCell={() => <GtkLabel label="Cell" />} />
+                    <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                    <GtkColumnView.Item id="2" item={{ name: "Second" }} />
+                </GtkColumnView.Root>,
                 { wrapper: false },
             );
 
@@ -247,12 +253,12 @@ describe("render - ColumnView", () => {
 
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
-                    <ColumnView.Root ref={ref}>
-                        <ColumnView.Column title="Name" renderCell={() => <Label label="Cell" />} />
+                    <GtkColumnView.Root ref={ref}>
+                        <GtkColumnView.Column title="Name" renderCell={() => <GtkLabel label="Cell" />} />
                         {items.map((item) => (
-                            <ColumnView.Item key={item.id} id={item.id} item={item} />
+                            <GtkColumnView.Item key={item.id} id={item.id} item={item} />
                         ))}
-                    </ColumnView.Root>
+                    </GtkColumnView.Root>
                 );
             }
 
@@ -285,12 +291,12 @@ describe("render - ColumnView", () => {
 
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
-                    <ColumnView.Root ref={ref}>
-                        <ColumnView.Column title="Name" renderCell={() => <Label label="Cell" />} />
+                    <GtkColumnView.Root ref={ref}>
+                        <GtkColumnView.Column title="Name" renderCell={() => <GtkLabel label="Cell" />} />
                         {items.map((item) => (
-                            <ColumnView.Item key={item.id} id={item.id} item={item} />
+                            <GtkColumnView.Item key={item.id} id={item.id} item={item} />
                         ))}
-                    </ColumnView.Root>
+                    </GtkColumnView.Root>
                 );
             }
 
@@ -322,13 +328,13 @@ describe("render - ColumnView", () => {
     describe("renderCell", () => {
         it("receives item data in renderCell", async () => {
             const ref = createRef<Gtk.ColumnView>();
-            const renderCell = vi.fn((item: { name: string } | null) => <Label label={item?.name ?? "Empty"} />);
+            const renderCell = vi.fn((item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />);
 
             await render(
-                <ColumnView.Root ref={ref}>
-                    <ColumnView.Column title="Name" renderCell={renderCell} />
-                    <ColumnView.Item id="1" item={{ name: "Test" }} />
-                </ColumnView.Root>,
+                <GtkColumnView.Root ref={ref}>
+                    <GtkColumnView.Column title="Name" renderCell={renderCell} />
+                    <GtkColumnView.Item id="1" item={{ name: "Test" }} />
+                </GtkColumnView.Root>,
                 { wrapper: false },
             );
         });
@@ -339,10 +345,10 @@ describe("render - ColumnView", () => {
             const ref = createRef<Gtk.ColumnView>();
 
             await render(
-                <ColumnView.Root ref={ref} sortColumn="name">
-                    <ColumnView.Column id="name" title="Name" renderCell={() => <Label label="Cell" />} />
-                    <ColumnView.Item id="1" item={{ name: "First" }} />
-                </ColumnView.Root>,
+                <GtkColumnView.Root ref={ref} sortColumn="name">
+                    <GtkColumnView.Column id="name" title="Name" renderCell={() => <GtkLabel label="Cell" />} />
+                    <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                </GtkColumnView.Root>,
                 { wrapper: false },
             );
         });
@@ -351,10 +357,10 @@ describe("render - ColumnView", () => {
             const ref = createRef<Gtk.ColumnView>();
 
             await render(
-                <ColumnView.Root ref={ref} sortColumn="name" sortOrder={Gtk.SortType.DESCENDING}>
-                    <ColumnView.Column id="name" title="Name" renderCell={() => <Label label="Cell" />} />
-                    <ColumnView.Item id="1" item={{ name: "First" }} />
-                </ColumnView.Root>,
+                <GtkColumnView.Root ref={ref} sortColumn="name" sortOrder={Gtk.SortType.DESCENDING}>
+                    <GtkColumnView.Column id="name" title="Name" renderCell={() => <GtkLabel label="Cell" />} />
+                    <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                </GtkColumnView.Root>,
                 { wrapper: false },
             );
         });
@@ -364,10 +370,10 @@ describe("render - ColumnView", () => {
             const onSortChange = vi.fn();
 
             await render(
-                <ColumnView.Root ref={ref} onSortChange={onSortChange}>
-                    <ColumnView.Column id="name" title="Name" renderCell={() => <Label label="Cell" />} />
-                    <ColumnView.Item id="1" item={{ name: "First" }} />
-                </ColumnView.Root>,
+                <GtkColumnView.Root ref={ref} onSortChange={onSortChange}>
+                    <GtkColumnView.Column id="name" title="Name" renderCell={() => <GtkLabel label="Cell" />} />
+                    <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                </GtkColumnView.Root>,
                 { wrapper: false },
             );
         });
@@ -377,11 +383,11 @@ describe("render - ColumnView", () => {
 
             function App({ sortColumn }: { sortColumn: string | null }) {
                 return (
-                    <ColumnView.Root ref={ref} sortColumn={sortColumn}>
-                        <ColumnView.Column id="name" title="Name" renderCell={() => <Label label="Cell" />} />
-                        <ColumnView.Column id="age" title="Age" renderCell={() => <Label label="Cell" />} />
-                        <ColumnView.Item id="1" item={{ name: "First", age: 25 }} />
-                    </ColumnView.Root>
+                    <GtkColumnView.Root ref={ref} sortColumn={sortColumn}>
+                        <GtkColumnView.Column id="name" title="Name" renderCell={() => <GtkLabel label="Cell" />} />
+                        <GtkColumnView.Column id="age" title="Age" renderCell={() => <GtkLabel label="Cell" />} />
+                        <GtkColumnView.Item id="1" item={{ name: "First", age: 25 }} />
+                    </GtkColumnView.Root>
                 );
             }
 
@@ -396,11 +402,11 @@ describe("render - ColumnView", () => {
             const ref = createRef<Gtk.ColumnView>();
 
             await render(
-                <ColumnView.Root ref={ref} selected={["1"]}>
-                    <ColumnView.Column title="Name" renderCell={() => <Label label="Cell" />} />
-                    <ColumnView.Item id="1" item={{ name: "First" }} />
-                    <ColumnView.Item id="2" item={{ name: "Second" }} />
-                </ColumnView.Root>,
+                <GtkColumnView.Root ref={ref} selected={["1"]}>
+                    <GtkColumnView.Column title="Name" renderCell={() => <GtkLabel label="Cell" />} />
+                    <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                    <GtkColumnView.Item id="2" item={{ name: "Second" }} />
+                </GtkColumnView.Root>,
                 { wrapper: false },
             );
         });
@@ -409,12 +415,12 @@ describe("render - ColumnView", () => {
             const ref = createRef<Gtk.ColumnView>();
 
             await render(
-                <ColumnView.Root ref={ref} selectionMode={Gtk.SelectionMode.MULTIPLE} selected={["1", "2"]}>
-                    <ColumnView.Column title="Name" renderCell={() => <Label label="Cell" />} />
-                    <ColumnView.Item id="1" item={{ name: "First" }} />
-                    <ColumnView.Item id="2" item={{ name: "Second" }} />
-                    <ColumnView.Item id="3" item={{ name: "Third" }} />
-                </ColumnView.Root>,
+                <GtkColumnView.Root ref={ref} selectionMode={Gtk.SelectionMode.MULTIPLE} selected={["1", "2"]}>
+                    <GtkColumnView.Column title="Name" renderCell={() => <GtkLabel label="Cell" />} />
+                    <GtkColumnView.Item id="1" item={{ name: "First" }} />
+                    <GtkColumnView.Item id="2" item={{ name: "Second" }} />
+                    <GtkColumnView.Item id="3" item={{ name: "Third" }} />
+                </GtkColumnView.Root>,
                 { wrapper: false },
             );
         });

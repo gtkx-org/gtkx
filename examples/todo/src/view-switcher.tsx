@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, ToggleButton } from "@gtkx/react";
+import { GtkBox, GtkToggleButton } from "@gtkx/react";
 import type { Filter } from "./types.js";
 
 type ViewSwitcherProps = {
@@ -9,25 +9,25 @@ type ViewSwitcherProps = {
 
 export const ViewSwitcher = ({ filter, onFilterChange }: ViewSwitcherProps) => {
     return (
-        <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={["linked"]} halign={Gtk.Align.CENTER}>
-            <ToggleButton.Root
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={["linked"]} halign={Gtk.Align.CENTER}>
+            <GtkToggleButton.Root
                 label="All"
                 active={filter === "all"}
                 onToggled={() => onFilterChange("all")}
                 name="filter-all"
             />
-            <ToggleButton.Root
+            <GtkToggleButton.Root
                 label="Active"
                 active={filter === "active"}
                 onToggled={() => onFilterChange("active")}
                 name="filter-active"
             />
-            <ToggleButton.Root
+            <GtkToggleButton.Root
                 label="Completed"
                 active={filter === "completed"}
                 onToggled={() => onFilterChange("completed")}
                 name="filter-completed"
             />
-        </Box>
+        </GtkBox>
     );
 };

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Label, ListBox, ListBoxRow, ScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -18,29 +18,29 @@ const ListBoxDemo = () => {
     const [selectedId, setSelectedId] = useState<number | null>(null);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="List Box" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="List GtkBox" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="About ListBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="About ListBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
                     label="GtkListBox is a vertical container that displays selectable rows. It's ideal for lists with custom row layouts and supports selection, activation, and keyboard navigation."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Selectable List" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <ScrolledWindow heightRequest={250} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                    <ListBox selectionMode={Gtk.SelectionMode.SINGLE} cssClasses={["boxed-list"]}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Selectable List" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkScrolledWindow heightRequest={250} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                    <GtkListBox selectionMode={Gtk.SelectionMode.SINGLE} cssClasses={["boxed-list"]}>
                         {items.map((item) => (
-                            <ListBoxRow
+                            <GtkListBoxRow
                                 key={item.id}
                                 onActivate={() => setSelectedId(item.id)}
                                 cssClasses={selectedId === item.id ? ["selected"] : []}
                             >
-                                <Box
+                                <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={4}
                                     marginStart={12}
@@ -48,40 +48,40 @@ const ListBoxDemo = () => {
                                     marginTop={10}
                                     marginBottom={10}
                                 >
-                                    <Label label={item.title} halign={Gtk.Align.START} cssClasses={["heading"]} />
-                                    <Label
+                                    <GtkLabel label={item.title} halign={Gtk.Align.START} cssClasses={["heading"]} />
+                                    <GtkLabel
                                         label={item.subtitle}
                                         halign={Gtk.Align.START}
                                         cssClasses={["dim-label", "caption"]}
                                     />
-                                </Box>
-                            </ListBoxRow>
+                                </GtkBox>
+                            </GtkListBoxRow>
                         ))}
-                    </ListBox>
-                </ScrolledWindow>
+                    </GtkListBox>
+                </GtkScrolledWindow>
                 {selectedId && (
-                    <Label
+                    <GtkLabel
                         label={`Selected: ${items.find((i) => i.id === selectedId)?.title ?? ""}`}
                         cssClasses={["dim-label"]}
                     />
                 )}
-            </Box>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Selection Modes" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
-                    label="ListBox supports NONE, SINGLE, BROWSE, and MULTIPLE selection modes."
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Selection Modes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="<GtkListBox supports NONE, SINGLE, BROWSE, and MULTIPLE selection modes."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-            </Box>
-        </Box>
+            </GtkBox>
+        </GtkBox>
     );
 };
 
 export const listBoxDemo: Demo = {
     id: "listbox",
-    title: "List Box",
+    title: "List GtkBox",
     description: "Vertical list with selectable rows and custom layouts.",
     keywords: ["list", "listbox", "selection", "rows", "GtkListBox"],
     component: ListBoxDemo,

@@ -53,7 +53,7 @@ export class PackStartNode extends PackSlotNode {
     protected override readonly position: PackPosition = "start";
 
     static matches(type: string): boolean {
-        return type === "HeaderBar.Start" || type === "AdwHeaderBar.Start" || type === "ActionBar.Start";
+        return type === "GtkHeaderBar.Start" || type === "AdwHeaderBar.Start" || type === "GtkActionBar.Start";
     }
 }
 
@@ -61,7 +61,7 @@ export class PackEndNode extends PackSlotNode {
     protected override readonly position: PackPosition = "end";
 
     static matches(type: string): boolean {
-        return type === "HeaderBar.End" || type === "AdwHeaderBar.End" || type === "ActionBar.End";
+        return type === "GtkHeaderBar.End" || type === "AdwHeaderBar.End" || type === "GtkActionBar.End";
     }
 }
 
@@ -147,6 +147,6 @@ export class AdwHeaderBarNode extends PackContainerNode<Adw.HeaderBar> {
 
 export class HeaderBarNode extends PackContainerNode<Gtk.HeaderBar> {
     static matches(type: string): boolean {
-        return type === "HeaderBar" || type === "HeaderBar.Root";
+        return type === "GtkHeaderBar" || type === "GtkHeaderBar.Root";
     }
 }

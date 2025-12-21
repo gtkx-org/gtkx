@@ -1,7 +1,7 @@
 import { beginBatch, endBatch } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { Box, Frame, Label, ScrolledWindow, TextView } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useEffect, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -39,19 +39,19 @@ const TextViewDemo = () => {
     }, [buffer]);
 
     return (
-        <Box orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <Label label="TextView" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
+            <GtkLabel label="TextView" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Multi-line Text Editor" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
-                    label="TextView is a multi-line text editing widget. Type in the text area below to see the character and word count update."
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Multi-line Text Editor" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="<GtkTextView is a multi-line text editing widget. Type in the text area below to see the character and word count update."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Frame.Root>
-                    <ScrolledWindow minContentHeight={150} hexpand vexpand>
-                        <TextView
+                <GtkFrame.Root>
+                    <GtkScrolledWindow minContentHeight={150} hexpand vexpand>
+                        <GtkTextView
                             buffer={buffer}
                             leftMargin={8}
                             rightMargin={8}
@@ -59,24 +59,24 @@ const TextViewDemo = () => {
                             bottomMargin={8}
                             wrapMode={Gtk.WrapMode.WORD_CHAR}
                         />
-                    </ScrolledWindow>
-                </Frame.Root>
-                <Box orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
-                    <Label label={`Characters: ${charCount}`} cssClasses={["dim-label"]} />
-                    <Label label={`Words: ${wordCount}`} cssClasses={["dim-label"]} />
-                </Box>
-            </Box>
+                    </GtkScrolledWindow>
+                </GtkFrame.Root>
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkLabel label={`Characters: ${charCount}`} cssClasses={["dim-label"]} />
+                    <GtkLabel label={`Words: ${wordCount}`} cssClasses={["dim-label"]} />
+                </GtkBox>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Read-only TextView" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label
-                    label="A non-editable TextView can be used to display formatted text."
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Read-only TextView" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="A non-editable <GtkTextView can be used to display formatted text."
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <Frame.Root>
-                    <ScrolledWindow minContentHeight={100} hexpand>
-                        <TextView
+                <GtkFrame.Root>
+                    <GtkScrolledWindow minContentHeight={100} hexpand>
+                        <GtkTextView
                             editable={false}
                             cursorVisible={false}
                             leftMargin={8}
@@ -85,16 +85,16 @@ const TextViewDemo = () => {
                             bottomMargin={8}
                             wrapMode={Gtk.WrapMode.WORD}
                         />
-                    </ScrolledWindow>
-                </Frame.Root>
-            </Box>
+                    </GtkScrolledWindow>
+                </GtkFrame.Root>
+            </GtkBox>
 
-            <Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Label label="Monospace TextView" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <Label label="Useful for code editing or displaying logs." wrap cssClasses={["dim-label"]} />
-                <Frame.Root>
-                    <ScrolledWindow minContentHeight={100} hexpand>
-                        <TextView
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkLabel label="Monospace TextView" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel label="Useful for code editing or displaying logs." wrap cssClasses={["dim-label"]} />
+                <GtkFrame.Root>
+                    <GtkScrolledWindow minContentHeight={100} hexpand>
+                        <GtkTextView
                             monospace
                             leftMargin={8}
                             rightMargin={8}
@@ -102,10 +102,10 @@ const TextViewDemo = () => {
                             bottomMargin={8}
                             wrapMode={Gtk.WrapMode.NONE}
                         />
-                    </ScrolledWindow>
-                </Frame.Root>
-            </Box>
-        </Box>
+                    </GtkScrolledWindow>
+                </GtkFrame.Root>
+            </GtkBox>
+        </GtkBox>
     );
 };
 

@@ -185,9 +185,6 @@ importers:
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
-      '@gtkx/config':
-        specifier: workspace:*
-        version: link:../config
       '@gtkx/gir':
         specifier: workspace:*
         version: link:../gir
@@ -197,8 +194,6 @@ importers:
       prettier:
         specifier: ^3.5.3
         version: 3.7.4
-
-  packages/config: {}
 
   packages/css:
     dependencies:
@@ -252,9 +247,6 @@ importers:
 
   packages/react:
     dependencies:
-      '@gtkx/config':
-        specifier: workspace:*
-        version: link:../config
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
