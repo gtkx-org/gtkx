@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=GTKX Snap
 Comment=GTKX Snap
-Exec=gtkx-demo
+Exec=gtkx-snap-demo
 Icon=${SNAP}/gui/icon.png
 Terminal=false
 Type=Application

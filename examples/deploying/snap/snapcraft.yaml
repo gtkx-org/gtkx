@@ -33,7 +33,7 @@ parts:
       mkdir -p $CRAFT_PART_INSTALL/gui
       
       cp ./assets/icon.png $CRAFT_PART_INSTALL/gui/
-      cp ./assets/app.desktop $CRAFT_PART_INSTALL/gui/
+      cp ./snap/gtkx-demo.desktop $CRAFT_PART_INSTALL/gui/
       
       # 6. Copy native module
       cp ./dist/index.node $CRAFT_PART_INSTALL/bin/index.node
@@ -50,7 +50,7 @@ parts:
 apps:
   gtkx-demo:
     command: bin/app
-    desktop: gui/app.desktop
+    desktop: gui/gtkx-demo.desktop
     # Automatically configure GNOME environment
     extensions: [ gnome ]
     environment:

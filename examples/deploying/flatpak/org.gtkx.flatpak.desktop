@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=GTKX Flatpak
+Comment=GTKX Flatpak
+Exec=gtkx-flatpak-demo
+Icon=org.gtkx.flatpak.png
+Terminal=false
+Type=Application
+Categories=Utility;

@@ -27,10 +27,10 @@ modules:
         - --share=network
     # Install the pre-built binary and native module
     build-commands:
-      - install -Dm755 dist/app /app/bin/app
+      - install -Dm755 dist/app /app/bin/gtkx-flatpak-demo
       - install -Dm755 dist/index.node /app/bin/index.node
-      - install -Dm644 assets/app.desktop /app/share/applications/app.desktop
-      - install -Dm644 assets/icon.png /app/share/icons/hicolor/256x256/apps/icon.png
+      - install -Dm644 flatpak/org.gtkx.flatpak.desktop /app/share/applications/org.gtkx.flatpak.desktop
+      - install -Dm644 assets/icon.png /app/share/icons/hicolor/256x256/apps/org.gtkx.flatpak.png
     sources:
       - type: dir
         path: ..
