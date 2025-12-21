@@ -64,7 +64,7 @@ const FlowBoxDemo = () => {
                     >
                         {colors.map((color, index) => (
                             <GtkBox
-                                // biome-ignore lint/suspicious/noArrayIndexKey: demo
+                                // biome-ignore lint/suspicious/noArrayIndexKey: ignore
                                 key={index}
                                 orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={0}
@@ -80,7 +80,7 @@ const FlowBoxDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="<GtkFlowBox properties include: min/max-children-per-line, column-spacing, row-spacing, homogeneous, and selection-mode."
+                    label="GtkFlowBox properties include: min/max-children-per-line, column-spacing, row-spacing, homogeneous, and selection-mode."
                     wrap
                     cssClasses={["dim-label"]}
                 />

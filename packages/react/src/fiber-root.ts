@@ -1,13 +1,12 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type Reconciler from "react-reconciler";
-import { ROOT_NODE_CONTAINER } from "./factory.js";
 import { reconciler } from "./reconciler.js";
 
-export const createFiberRoot = (container?: Gtk.Widget): Reconciler.FiberRoot => {
+export const createFiberRoot = (container: Gtk.Widget): Reconciler.FiberRoot => {
     const instance = reconciler.getInstance();
 
     return instance.createContainer(
-        container ?? ROOT_NODE_CONTAINER,
+        container,
         0,
         null,
         false,

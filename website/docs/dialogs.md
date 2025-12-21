@@ -63,16 +63,22 @@ GTK4's `AlertDialog` and file dialogs use async/await patterns:
 ### AlertDialog
 
 ```tsx
-import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, GtkButton, GtkLabel, GtkBox, quit } from "@gtkx/react";
+import {
+  GtkApplicationWindow,
+  GtkButton,
+  GtkLabel,
+  GtkBox,
+  quit,
+  useApplication,
+} from "@gtkx/react";
 import { useState } from "react";
 
 const App = () => {
+  const app = useApplication();
   const [result, setResult] = useState<string | null>(null);
 
   const showConfirmDialog = async () => {
-    const app = getApplication();
     const dialog = new Gtk.AlertDialog();
     dialog.setMessage("Confirm Action");
     dialog.setDetail(
@@ -111,16 +117,15 @@ const App = () => {
 ### File Dialogs
 
 ```tsx
-import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkButton, GtkLabel } from "@gtkx/react";
+import { GtkButton, GtkLabel, useApplication } from "@gtkx/react";
 import { useState } from "react";
 
 const FilePicker = () => {
+  const app = useApplication();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   const openFile = async () => {
-    const app = getApplication();
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Open File");
 
@@ -138,7 +143,6 @@ const FilePicker = () => {
   };
 
   const saveFile = async () => {
-    const app = getApplication();
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Save File");
     dialog.setInitialName("document.txt");
@@ -164,35 +168,44 @@ const FilePicker = () => {
 ## Color and Font Dialogs
 
 ```tsx
-import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkButton, GtkBox, useApplication } from "@gtkx/react";
 
-const pickColor = async () => {
-  const app = getApplication();
-  const dialog = new Gtk.ColorDialog();
-  dialog.setTitle("Choose Color");
+const ColorFontPicker = () => {
+  const app = useApplication();
 
-  try {
-    const color = await dialog.chooseRgba(app.getActiveWindow() ?? undefined);
-    console.log(
-      `Selected: rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha})`
-    );
-  } catch {
-    // Cancelled
-  }
-};
+  const pickColor = async () => {
+    const dialog = new Gtk.ColorDialog();
+    dialog.setTitle("Choose Color");
 
-const pickFont = async () => {
-  const app = getApplication();
-  const dialog = new Gtk.FontDialog();
-  dialog.setTitle("Choose Font");
+    try {
+      const color = await dialog.chooseRgba(app.getActiveWindow() ?? undefined);
+      console.log(
+        `Selected: rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha})`
+      );
+    } catch {
+      // Cancelled
+    }
+  };
 
-  try {
-    const font = await dialog.chooseFont(app.getActiveWindow() ?? undefined);
-    console.log(`Selected: ${font.toString()}`);
-  } catch {
-    // Cancelled
-  }
+  const pickFont = async () => {
+    const dialog = new Gtk.FontDialog();
+    dialog.setTitle("Choose Font");
+
+    try {
+      const font = await dialog.chooseFont(app.getActiveWindow() ?? undefined);
+      console.log(`Selected: ${font.toString()}`);
+    } catch {
+      // Cancelled
+    }
+  };
+
+  return (
+    <GtkBox>
+      <GtkButton label="Pick Color" onClicked={pickColor} />
+      <GtkButton label="Pick Font" onClicked={pickFont} />
+    </GtkBox>
+  );
 };
 ```
 

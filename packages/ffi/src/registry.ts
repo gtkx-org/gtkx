@@ -41,6 +41,4 @@ export const findNativeClass = (glibTypeName: string) => {
 
         currentTypeName = typeName(parentGtype);
     }
-
-    return undefined;
 };

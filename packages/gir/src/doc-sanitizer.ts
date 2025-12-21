@@ -48,12 +48,10 @@ function parseGirLink(type: string, reference: string): GirLink | undefined {
     ];
 
     if (!validTypes.includes(linkType)) {
-        return undefined;
     }
 
     const parts = reference.split(".");
     if (parts.length === 0) {
-        return undefined;
     }
 
     if (linkType === "property" || linkType === "signal") {

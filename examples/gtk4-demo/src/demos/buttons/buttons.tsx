@@ -10,7 +10,7 @@ const GtkButtonsDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <GtkLabel label="<GtkButton Types" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="GtkButton Types" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Regular GtkButtons" cssClasses={["heading"]} halign={Gtk.Align.START} />
@@ -34,7 +34,7 @@ const GtkButtonsDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Toggle GtkButton" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <GtkToggleButton.Root
+                    <GtkToggleButton
                         label={toggled ? "ON" : "OFF"}
                         active={toggled}
                         onToggled={() => setToggled((t) => !t)}
@@ -49,7 +49,7 @@ const GtkButtonsDemo = () => {
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <GtkLabel label="<GtkButton Sizes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel label="GtkButton Sizes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} valign={Gtk.Align.CENTER}>
                     <GtkButton label="Small" cssClasses={["small"]} />
                     <GtkButton label="Normal" />

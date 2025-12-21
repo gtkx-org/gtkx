@@ -10,19 +10,19 @@ type ViewSwitcherProps = {
 export const ViewSwitcher = ({ filter, onFilterChange }: ViewSwitcherProps) => {
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={["linked"]} halign={Gtk.Align.CENTER}>
-            <GtkToggleButton.Root
+            <GtkToggleButton
                 label="All"
                 active={filter === "all"}
                 onToggled={() => onFilterChange("all")}
                 name="filter-all"
             />
-            <GtkToggleButton.Root
+            <GtkToggleButton
                 label="Active"
                 active={filter === "active"}
                 onToggled={() => onFilterChange("active")}
                 name="filter-active"
             />
-            <GtkToggleButton.Root
+            <GtkToggleButton
                 label="Completed"
                 active={filter === "completed"}
                 onToggled={() => onFilterChange("completed")}

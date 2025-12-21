@@ -1,11 +1,11 @@
-import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, useApplication } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const DialogDemo = () => {
+    const app = useApplication();
     const [result, setResult] = useState<string | null>(null);
 
     const showAlertDialog = async () => {
@@ -17,7 +17,7 @@ const DialogDemo = () => {
         dialog.setDefaultButton(1);
 
         try {
-            const response = await dialog.choose(getApplication().getActiveWindow() ?? undefined);
+            const response = await dialog.choose(app.getActiveWindow() ?? undefined);
             setResult(response === 1 ? "Confirmed" : "Cancelled");
         } catch {
             setResult("Dismissed");
@@ -33,7 +33,7 @@ const DialogDemo = () => {
         dialog.setDefaultButton(0);
 
         try {
-            const response = await dialog.choose(getApplication().getActiveWindow() ?? undefined);
+            const response = await dialog.choose(app.getActiveWindow() ?? undefined);
             setResult(response === 1 ? "Deleted" : "Cancelled");
         } catch {
             setResult("Dismissed");
@@ -48,7 +48,7 @@ const DialogDemo = () => {
         dialog.setDefaultButton(0);
 
         try {
-            await dialog.choose(getApplication().getActiveWindow() ?? undefined);
+            await dialog.choose(app.getActiveWindow() ?? undefined);
             setResult("Acknowledged");
         } catch {
             setResult("Dismissed");

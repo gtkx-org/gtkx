@@ -1,5 +1,5 @@
 import type { ReactNode, ReactPortal } from "react";
-import { ROOT_NODE_CONTAINER } from "./factory.js";
+import type { Container } from "./types.js";
 
 /**
  * Creates a portal that renders children into a different GTK widget container.
@@ -22,12 +22,12 @@ import { ROOT_NODE_CONTAINER } from "./factory.js";
  * {createPortal(<Label label="This is in the Box" />, boxRef.current)}
  * ```
  */
-export const createPortal = (children: ReactNode, container?: unknown, key?: string | null): ReactPortal => {
+export const createPortal = (children: ReactNode, container: Container, key?: string | null): ReactPortal => {
     return {
         $$typeof: Symbol.for("react.portal"),
         key: key ?? null,
         children,
-        containerInfo: container ?? ROOT_NODE_CONTAINER,
+        containerInfo: container,
         implementation: null,
     } as unknown as ReactPortal;
 };

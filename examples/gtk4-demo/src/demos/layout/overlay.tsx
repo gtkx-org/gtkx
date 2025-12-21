@@ -14,7 +14,7 @@ const OverlayDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="About Overlay" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="<GtkOverlay stacks widgets on top of each other. The first child is the main content, and subsequent children are overlaid on top."
+                    label="GtkOverlay stacks widgets on top of each other. The first child is the main content, and subsequent children are overlaid on top."
                     wrap
                     cssClasses={["dim-label"]}
                 />

@@ -1,83 +1,92 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { Node } from "../node.js";
+import { toCamelCase } from "@gtkx/gir";
+import { PROPS } from "../generated/internal.js";
+import type { SlotProps } from "../jsx.js";
+import type { Node } from "../node.js";
+import { registerNodeClass } from "../registry.js";
+import type { ContainerClass } from "../types.js";
+import { VirtualNode } from "./virtual.js";
+import { WidgetNode } from "./widget.js";
 
-export class SlotNode extends Node<never> {
-    static matches(type: string): boolean {
-        if (!type.includes(".")) return false;
-        const parts = type.split(".");
-        if (parts.length !== 2) return false;
-        const suffix = parts[1];
-        return suffix !== "Root";
+type SlotNodeProps = Omit<SlotProps, "children">;
+
+export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNode<P> {
+    public static override priority = 2;
+
+    public static override matches(type: string): boolean {
+        return type === "Slot";
     }
 
-    protected override isVirtual(): boolean {
-        return true;
-    }
+    parent?: Gtk.Widget;
+    child?: Gtk.Widget;
 
-    private child: Node | null = null;
-    private slotName: string;
-
-    constructor(type: string) {
-        super(type);
-
-        const dotIndex = type.indexOf(".");
-
-        if (dotIndex === -1) {
-            throw new Error(`Invalid slot type: ${type}`);
-        }
-
-        this.slotName = type.substring(dotIndex + 1);
-    }
-
-    private updateParentSlot(): void {
-        if (!this.parent) return;
-
-        const parentWidget = this.parent.getWidget();
-        const childWidget = this.child?.getWidget();
-
-        if (!parentWidget) return;
-
-        const setterName = `set${this.slotName}`;
-        const setter = parentWidget[setterName as keyof Gtk.Widget];
-
-        if (typeof setter === "function") {
-            (setter as (id: unknown) => void).call(parentWidget, childWidget?.id ?? null);
+    public setParent(parent?: Gtk.Widget): void {
+        this.parent = parent;
+        if (parent && this.child) {
+            this.onChildChange(undefined);
         }
     }
 
-    override appendChild(child: Node): void {
-        child.parent = this;
-        if (child.getWidget()) {
-            this.child = child;
-            this.updateParentSlot();
+    protected getId(): string {
+        const id = (this.props as SlotProps).id;
+        if (!id) {
+            throw new Error(`Slot id is not set on SlotNode`);
         }
+
+        return toCamelCase(id);
     }
 
-    override removeChild(child: Node): void {
-        child.unmount();
-        this.child = null;
-        this.updateParentSlot();
-        child.parent = null;
+    private getParent(): Gtk.Widget {
+        if (!this.parent) {
+            throw new Error(`Parent is not set on ${this.getId()} SlotNode`);
+        }
+
+        return this.parent;
     }
 
-    override mount(): void {
-        this.updateParentSlot();
+    public getChild(): Gtk.Widget {
+        if (!this.child) {
+            throw new Error(`Child is not set on ${this.getId()} SlotNode`);
+        }
+
+        return this.child;
     }
 
-    override unmount(): void {
+    public override appendChild(child: Node): void {
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot append child of type ${child.typeName} to Slot`);
+        }
+
+        const oldChild = this.child;
+        this.child = child.container;
         if (this.parent) {
-            const parentWidget = this.parent.getWidget();
+            this.onChildChange(oldChild);
+        }
+    }
 
-            if (parentWidget) {
-                const setterName = `set${this.slotName}`;
-                const setter = parentWidget[setterName as keyof Gtk.Widget];
+    public override removeChild(): void {
+        const oldChild = this.child;
+        this.child = undefined;
+        this.onChildChange(oldChild);
+    }
 
-                if (typeof setter === "function") {
-                    (setter as (ptr: null) => void).call(parentWidget, null);
-                }
-            }
+    protected onChildChange(_oldChild: Gtk.Widget | undefined): void {
+        const parent = this.getParent();
+        const parentType = (parent.constructor as ContainerClass).glibTypeName;
+        const [_, setterName] = PROPS[parentType]?.[this.getId()] ?? [];
+
+        if (!setterName) {
+            throw new Error(`No property found for Slot ${this.getId()} on parent type ${parentType}`);
         }
 
-        super.unmount();
+        const setter = parent[setterName as keyof Gtk.Widget];
+
+        if (typeof setter !== "function") {
+            throw new Error(`Setter is not a function for Slot ${this.getId()} on parent type ${parentType}`);
+        }
+
+        setter.call(parent, this.child);
     }
 }
+
+registerNodeClass(SlotNode);

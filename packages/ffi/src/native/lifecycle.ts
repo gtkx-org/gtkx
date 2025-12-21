@@ -9,9 +9,9 @@ import { getNativeObject } from "./object.js";
 declare const Deno: unknown;
 const isDeno = typeof Deno !== "undefined";
 
-let currentApp: Application | null = null;
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
+let application: Application | null = null;
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
@@ -30,32 +30,19 @@ const stopPolling = (): void => {
 };
 
 /**
- * Gets the current GTK application instance.
- * @returns The GTK Application instance
- * @throws Error if GTK has not been started yet
- */
-export const getApplication = (): Application => {
-    if (!currentApp) {
-        throw new Error("GTK application not initialized. Call start() first.");
-    }
-    return currentApp;
-};
-
-/**
  * Starts the GTK application with the given application ID.
  * Sets up a keep-alive timer to prevent Node.js from exiting.
- * This function is idempotent - calling it multiple times returns the existing app.
+ * This function is idempotent - calling it multiple times returns the same application.
  * @param appId - The application ID (e.g., "com.example.myapp")
  * @param flags - Optional GIO application flags
  * @returns The GTK Application instance
  */
 export const start = (appId: string, flags?: ApplicationFlags): Application => {
-    if (currentApp) {
-        return currentApp;
+    if (application) {
+        return application;
     }
 
     const app = nativeStart(appId, flags);
-    currentApp = getNativeObject(app);
     events.emit("start");
 
     try {
@@ -69,11 +56,8 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
         startPolling();
     }
 
-    if (!currentApp) {
-        throw new Error("Failed to initialize GTK Application.");
-    }
-
-    return currentApp;
+    application = getNativeObject(app) as Application;
+    return application;
 };
 
 /**
@@ -82,23 +66,18 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
  * This function is idempotent - calling it when not started does nothing.
  */
 export const stop = (): void => {
-    if (!currentApp) {
-        return;
-    }
-
     if (keepAliveTimeout) {
         clearTimeout(keepAliveTimeout);
         keepAliveTimeout = null;
     }
 
     stopPolling();
-
     events.emit("stop");
 
     try {
         finalizeGtkSource();
     } catch {}
 
+    application = null;
     nativeStop();
-    currentApp = null;
 };

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, Slot } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
@@ -10,8 +10,8 @@ const FramesDemo = () => {
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Basic Frame" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkFrame.Root label="Section Title">
-                    <GtkFrame.Child>
+                <GtkFrame label="Section Title">
+                    <Slot for={GtkFrame} id="child">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
@@ -27,14 +27,14 @@ const FramesDemo = () => {
                                 wrap
                             />
                         </GtkBox>
-                    </GtkFrame.Child>
-                </GtkFrame.Root>
+                    </Slot>
+                </GtkFrame>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Frame without GtkLabel" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkFrame.Root>
-                    <GtkFrame.Child>
+                <GtkFrame>
+                    <Slot for={GtkFrame} id="child">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
@@ -50,20 +50,20 @@ const FramesDemo = () => {
                                 wrap
                             />
                         </GtkBox>
-                    </GtkFrame.Child>
-                </GtkFrame.Root>
+                    </Slot>
+                </GtkFrame>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Custom <GtkLabel Widget" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkFrame.Root>
-                    <GtkFrame.LabelWidget>
+                <GtkFrame>
+                    <Slot for={GtkFrame} id="labelWidget">
                         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
                             <GtkLabel label="Custom Header" cssClasses={["heading"]} />
                             <GtkButton label="Action" cssClasses={["flat", "small"]} />
                         </GtkBox>
-                    </GtkFrame.LabelWidget>
-                    <GtkFrame.Child>
+                    </Slot>
+                    <Slot for={GtkFrame} id="child">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
@@ -75,15 +75,15 @@ const FramesDemo = () => {
                             <GtkLabel label="You can use any widget as the frame label." wrap />
                             <GtkLabel label="This allows for interactive headers." cssClasses={["dim-label"]} wrap />
                         </GtkBox>
-                    </GtkFrame.Child>
-                </GtkFrame.Root>
+                    </Slot>
+                </GtkFrame>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Multiple Frames" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                    <GtkFrame.Root label="Option A" hexpand>
-                        <GtkFrame.Child>
+                    <GtkFrame label="Option A" hexpand>
+                        <Slot for={GtkFrame} id="child">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={0}
@@ -94,10 +94,10 @@ const FramesDemo = () => {
                             >
                                 <GtkButton label="Select A" hexpand />
                             </GtkBox>
-                        </GtkFrame.Child>
-                    </GtkFrame.Root>
-                    <GtkFrame.Root label="Option B" hexpand>
-                        <GtkFrame.Child>
+                        </Slot>
+                    </GtkFrame>
+                    <GtkFrame label="Option B" hexpand>
+                        <Slot for={GtkFrame} id="child">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={0}
@@ -108,10 +108,10 @@ const FramesDemo = () => {
                             >
                                 <GtkButton label="Select B" hexpand />
                             </GtkBox>
-                        </GtkFrame.Child>
-                    </GtkFrame.Root>
-                    <GtkFrame.Root label="Option C" hexpand>
-                        <GtkFrame.Child>
+                        </Slot>
+                    </GtkFrame>
+                    <GtkFrame label="Option C" hexpand>
+                        <Slot for={GtkFrame} id="child">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={0}
@@ -122,8 +122,8 @@ const FramesDemo = () => {
                             >
                                 <GtkButton label="Select C" hexpand />
                             </GtkBox>
-                        </GtkFrame.Child>
-                    </GtkFrame.Root>
+                        </Slot>
+                    </GtkFrame>
                 </GtkBox>
             </GtkBox>
         </GtkBox>

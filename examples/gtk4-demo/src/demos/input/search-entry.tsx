@@ -39,7 +39,7 @@ const SearchEntryDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Search Input" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="<GtkSearchEntry is optimized for search with a built-in clear button and search icon."
+                    label="GtkSearchEntry is optimized for search with a built-in clear button and search icon."
                     wrap
                     cssClasses={["dim-label"]}
                 />

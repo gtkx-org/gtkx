@@ -1,30 +1,30 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkLabel, GtkStack } from "@gtkx/react";
+import { GtkLabel, GtkStack, StackPage } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - Stack", () => {
-    describe("Stack.Root", () => {
+    describe("GtkStack", () => {
         it("creates Stack widget", async () => {
             const ref = createRef<Gtk.Stack>();
 
-            await render(<GtkStack.Root ref={ref} />, { wrapper: false });
+            await render(<GtkStack ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
     });
 
-    describe("Stack.Page", () => {
+    describe("StackPage", () => {
         it("adds named page", async () => {
             const stackRef = createRef<Gtk.Stack>();
 
             await render(
-                <GtkStack.Root ref={stackRef}>
-                    <GtkStack.Page name="page1">
+                <GtkStack ref={stackRef}>
+                    <StackPage name="page1">
                         <GtkLabel label="Page 1" />
-                    </GtkStack.Page>
-                </GtkStack.Root>,
+                    </StackPage>
+                </GtkStack>,
                 { wrapper: false },
             );
 
@@ -35,11 +35,11 @@ describe("render - Stack", () => {
             const stackRef = createRef<Gtk.Stack>();
 
             await render(
-                <GtkStack.Root ref={stackRef}>
-                    <GtkStack.Page title="Page Title" name="titled">
+                <GtkStack ref={stackRef}>
+                    <StackPage title="Page Title" name="titled">
                         <GtkLabel label="Titled Content" />
-                    </GtkStack.Page>
-                </GtkStack.Root>,
+                    </StackPage>
+                </GtkStack>,
                 { wrapper: false },
             );
 
@@ -51,11 +51,11 @@ describe("render - Stack", () => {
             const stackRef = createRef<Gtk.Stack>();
 
             await render(
-                <GtkStack.Root ref={stackRef}>
-                    <GtkStack.Page>
+                <GtkStack ref={stackRef}>
+                    <StackPage>
                         <GtkLabel label="Unnamed Page" />
-                    </GtkStack.Page>
-                </GtkStack.Root>,
+                    </StackPage>
+                </GtkStack>,
                 { wrapper: false },
             );
 
@@ -66,11 +66,11 @@ describe("render - Stack", () => {
             const stackRef = createRef<Gtk.Stack>();
 
             await render(
-                <GtkStack.Root ref={stackRef}>
-                    <GtkStack.Page name="props-test" iconName="dialog-information" needsAttention={true}>
+                <GtkStack ref={stackRef}>
+                    <StackPage name="props-test" iconName="dialog-information" needsAttention={true}>
                         <GtkLabel label="With Props" />
-                    </GtkStack.Page>
-                </GtkStack.Root>,
+                    </StackPage>
+                </GtkStack>,
                 { wrapper: false },
             );
 
@@ -87,13 +87,13 @@ describe("render - Stack", () => {
 
             function App({ pages }: { pages: string[] }) {
                 return (
-                    <GtkStack.Root ref={stackRef}>
+                    <GtkStack ref={stackRef}>
                         {pages.map((name) => (
-                            <GtkStack.Page key={name} name={name}>
+                            <StackPage key={name} name={name}>
                                 <GtkLabel label={name} />
-                            </GtkStack.Page>
+                            </StackPage>
                         ))}
-                    </GtkStack.Root>
+                    </GtkStack>
                 );
             }
 
@@ -111,13 +111,13 @@ describe("render - Stack", () => {
 
             function App({ pages }: { pages: string[] }) {
                 return (
-                    <GtkStack.Root ref={stackRef}>
+                    <GtkStack ref={stackRef}>
                         {pages.map((name) => (
-                            <GtkStack.Page key={name} name={name}>
+                            <StackPage key={name} name={name}>
                                 <GtkLabel label={name} />
-                            </GtkStack.Page>
+                            </StackPage>
                         ))}
-                    </GtkStack.Root>
+                    </GtkStack>
                 );
             }
 
@@ -135,11 +135,11 @@ describe("render - Stack", () => {
 
             function App({ iconName }: { iconName: string }) {
                 return (
-                    <GtkStack.Root ref={stackRef}>
-                        <GtkStack.Page name="dynamic" iconName={iconName}>
+                    <GtkStack ref={stackRef}>
+                        <StackPage name="dynamic" iconName={iconName}>
                             <GtkLabel label="Dynamic" />
-                        </GtkStack.Page>
-                    </GtkStack.Root>
+                        </StackPage>
+                    </GtkStack>
                 );
             }
 
@@ -161,14 +161,14 @@ describe("render - Stack", () => {
             const stackRef = createRef<Gtk.Stack>();
 
             await render(
-                <GtkStack.Root ref={stackRef} visibleChildName="page2">
-                    <GtkStack.Page name="page1">
+                <GtkStack ref={stackRef} visibleChildName="page2">
+                    <StackPage name="page1">
                         <GtkLabel label="Page 1" />
-                    </GtkStack.Page>
-                    <GtkStack.Page name="page2">
+                    </StackPage>
+                    <StackPage name="page2">
                         <GtkLabel label="Page 2" />
-                    </GtkStack.Page>
-                </GtkStack.Root>,
+                    </StackPage>
+                </GtkStack>,
                 { wrapper: false },
             );
 
@@ -180,13 +180,13 @@ describe("render - Stack", () => {
 
             function App({ pages }: { pages: string[] }) {
                 return (
-                    <GtkStack.Root ref={stackRef} visibleChildName="target">
+                    <GtkStack ref={stackRef} visibleChildName="target">
                         {pages.map((name) => (
-                            <GtkStack.Page key={name} name={name}>
+                            <StackPage key={name} name={name}>
                                 <GtkLabel label={name} />
-                            </GtkStack.Page>
+                            </StackPage>
                         ))}
-                    </GtkStack.Root>
+                    </GtkStack>
                 );
             }
 

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkPaned, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkPaned, GtkScrolledWindow, Slot } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
@@ -11,14 +11,14 @@ const PanesDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Horizontal Paned" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel label="Drag the handle between panes to resize them." wrap cssClasses={["dim-label"]} />
-                <GtkPaned.Root
+                <GtkPaned
                     orientation={Gtk.Orientation.HORIZONTAL}
                     wideHandle
                     heightRequest={150}
                     position={200}
                     cssClasses={["card"]}
                 >
-                    <GtkPaned.StartChild>
+                    <Slot for={GtkPaned} id="startChild">
                         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} marginStart={12} marginTop={12}>
                                 <GtkLabel label="Left Pane" cssClasses={["heading"]} halign={Gtk.Align.START} />
@@ -29,8 +29,8 @@ const PanesDemo = () => {
                                 />
                             </GtkBox>
                         </GtkScrolledWindow>
-                    </GtkPaned.StartChild>
-                    <GtkPaned.EndChild>
+                    </Slot>
+                    <Slot for={GtkPaned} id="endChild">
                         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} marginStart={12} marginTop={12}>
                                 <GtkLabel label="Right Pane" cssClasses={["heading"]} halign={Gtk.Align.START} />
@@ -41,49 +41,49 @@ const PanesDemo = () => {
                                 />
                             </GtkBox>
                         </GtkScrolledWindow>
-                    </GtkPaned.EndChild>
-                </GtkPaned.Root>
+                    </Slot>
+                </GtkPaned>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Vertical Paned" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkPaned.Root
+                <GtkPaned
                     orientation={Gtk.Orientation.VERTICAL}
                     wideHandle
                     heightRequest={200}
                     position={80}
                     cssClasses={["card"]}
                 >
-                    <GtkPaned.StartChild>
+                    <Slot for={GtkPaned} id="startChild">
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} marginStart={12} marginTop={12}>
                             <GtkLabel label="Top Pane" cssClasses={["heading"]} halign={Gtk.Align.START} />
                         </GtkBox>
-                    </GtkPaned.StartChild>
-                    <GtkPaned.EndChild>
+                    </Slot>
+                    <Slot for={GtkPaned} id="endChild">
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} marginStart={12} marginTop={12}>
                             <GtkLabel label="Bottom Pane" cssClasses={["heading"]} halign={Gtk.Align.START} />
                         </GtkBox>
-                    </GtkPaned.EndChild>
-                </GtkPaned.Root>
+                    </Slot>
+                </GtkPaned>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Nested Panes" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkPaned.Root
+                <GtkPaned
                     orientation={Gtk.Orientation.HORIZONTAL}
                     wideHandle
                     heightRequest={200}
                     position={150}
                     cssClasses={["card"]}
                 >
-                    <GtkPaned.StartChild>
+                    <Slot for={GtkPaned} id="startChild">
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} marginStart={12} marginTop={12}>
                             <GtkLabel label="Sidebar" cssClasses={["heading"]} />
                         </GtkBox>
-                    </GtkPaned.StartChild>
-                    <GtkPaned.EndChild>
-                        <GtkPaned.Root orientation={Gtk.Orientation.VERTICAL} wideHandle position={100}>
-                            <GtkPaned.StartChild>
+                    </Slot>
+                    <Slot for={GtkPaned} id="endChild">
+                        <GtkPaned orientation={Gtk.Orientation.VERTICAL} wideHandle position={100}>
+                            <Slot for={GtkPaned} id="startChild">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={0}
@@ -92,8 +92,8 @@ const PanesDemo = () => {
                                 >
                                     <GtkLabel label="Main Content" cssClasses={["heading"]} />
                                 </GtkBox>
-                            </GtkPaned.StartChild>
-                            <GtkPaned.EndChild>
+                            </Slot>
+                            <Slot for={GtkPaned} id="endChild">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={0}
@@ -102,10 +102,10 @@ const PanesDemo = () => {
                                 >
                                     <GtkLabel label="Details Panel" cssClasses={["heading"]} />
                                 </GtkBox>
-                            </GtkPaned.EndChild>
-                        </GtkPaned.Root>
-                    </GtkPaned.EndChild>
-                </GtkPaned.Root>
+                            </Slot>
+                        </GtkPaned>
+                    </Slot>
+                </GtkPaned>
             </GtkBox>
         </GtkBox>
     );

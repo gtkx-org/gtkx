@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkMenuButton, GtkPopover } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, GtkMenuButton, GtkPopover, Slot } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -22,10 +22,10 @@ const PopoverDemo = () => {
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Menu <GtkButton with Popover" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkMenuButton.Root label="Open Popover" halign={Gtk.Align.CENTER}>
-                    <GtkMenuButton.Popover>
-                        <GtkPopover.Root>
-                            <GtkPopover.Child>
+                <GtkMenuButton label="Open Popover" halign={Gtk.Align.CENTER}>
+                    <Slot for={GtkMenuButton} id="popover">
+                        <GtkPopover>
+                            <Slot for={GtkPopover} id="child">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={8}
@@ -34,7 +34,7 @@ const PopoverDemo = () => {
                                     marginTop={12}
                                     marginBottom={12}
                                 >
-                                    <GtkLabel label="<GtkPopover Content" cssClasses={["heading"]} />
+                                    <GtkLabel label="GtkPopover Content" cssClasses={["heading"]} />
                                     <GtkLabel label="This is inside a popover!" cssClasses={["dim-label"]} />
                                     <GtkButton
                                         label={`Clicked ${clicks} times`}
@@ -42,18 +42,18 @@ const PopoverDemo = () => {
                                         cssClasses={["suggested-action"]}
                                     />
                                 </GtkBox>
-                            </GtkPopover.Child>
-                        </GtkPopover.Root>
-                    </GtkMenuButton.Popover>
-                </GtkMenuButton.Root>
+                            </Slot>
+                        </GtkPopover>
+                    </Slot>
+                </GtkMenuButton>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Actions Menu" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkMenuButton.Root label="Actions" iconName="view-more-symbolic" halign={Gtk.Align.CENTER}>
-                    <GtkMenuButton.Popover>
-                        <GtkPopover.Root>
-                            <GtkPopover.Child>
+                <GtkMenuButton label="Actions" iconName="view-more-symbolic" halign={Gtk.Align.CENTER}>
+                    <Slot for={GtkMenuButton} id="popover">
+                        <GtkPopover>
+                            <Slot for={GtkPopover} id="child">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={4}
@@ -67,10 +67,10 @@ const PopoverDemo = () => {
                                     <GtkButton label="Save" cssClasses={["flat"]} />
                                     <GtkButton label="Save As..." cssClasses={["flat"]} />
                                 </GtkBox>
-                            </GtkPopover.Child>
-                        </GtkPopover.Root>
-                    </GtkMenuButton.Popover>
-                </GtkMenuButton.Root>
+                            </Slot>
+                        </GtkPopover>
+                    </Slot>
+                </GtkMenuButton>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>

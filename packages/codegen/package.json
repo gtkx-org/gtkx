@@ -39,7 +39,7 @@
     "scripts": {
         "build": "tsc -b"
     },
-    "dependencies": {
+    "devDependencies": {
         "@clack/prompts": "^0.11.0",
         "@gtkx/gir": "workspace:*",
         "citty": "^0.1.6",

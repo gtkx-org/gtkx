@@ -25,6 +25,8 @@ import {
     GtkListBox,
     GtkScrolledWindow,
     quit,
+    Slot,
+    Toolbar,
 } from "@gtkx/react";
 import { useState } from "react";
 
@@ -38,30 +40,30 @@ const PreferencesSection = () => {
     return (
         <GtkScrolledWindow vexpand hexpand>
             <AdwPreferencesPage title="Settings" iconName="preferences-system-symbolic">
-                <AdwPreferencesGroup.Root title="Appearance" description="Customize the look and feel">
+                <AdwPreferencesGroup title="Appearance" description="Customize the look and feel">
                     <AdwSwitchRow
                         title="Dark Mode"
                         subtitle="Use dark color scheme"
                         active={darkMode}
                         onActivate={() => setDarkMode(!darkMode)}
                     />
-                </AdwPreferencesGroup.Root>
+                </AdwPreferencesGroup>
 
-                <AdwPreferencesGroup.Root title="Account" description="Manage your profile">
-                    <AdwActionRow.Root title="Profile Picture" subtitle="Set your avatar">
-                        <AdwActionRow.ActivatableWidget>
+                <AdwPreferencesGroup title="Account" description="Manage your profile">
+                    <AdwActionRow title="Profile Picture" subtitle="Set your avatar">
+                        <Slot for={AdwActionRow} id="activatableWidget">
                             <AdwAvatar size={48} text={username || "User"} showInitials valign={Gtk.Align.CENTER} />
-                        </AdwActionRow.ActivatableWidget>
-                    </AdwActionRow.Root>
+                        </Slot>
+                    </AdwActionRow>
                     <AdwEntryRow
                         title="Username"
                         text={username}
                         onChanged={(self) => setUsername((self as EditableEntryRow).getText())}
                     />
                     <AdwPasswordEntryRow title="Password" />
-                </AdwPreferencesGroup.Root>
+                </AdwPreferencesGroup>
 
-                <AdwPreferencesGroup.Root title="Notifications">
+                <AdwPreferencesGroup title="Notifications">
                     <AdwSwitchRow
                         title="Enable Notifications"
                         subtitle="Receive updates and alerts"
@@ -73,7 +75,7 @@ const PreferencesSection = () => {
                         <AdwSwitchRow title="Badges" subtitle="Show notification badges" active />
                         <AdwSwitchRow title="Lock Screen" subtitle="Show notifications on lock screen" active={false} />
                     </AdwExpanderRow>
-                </AdwPreferencesGroup.Root>
+                </AdwPreferencesGroup>
             </AdwPreferencesPage>
         </GtkScrolledWindow>
     );
@@ -84,28 +86,28 @@ const ListsSection = () => (
         <AdwClamp maximumSize={600} marginTop={24} marginBottom={24} marginStart={12} marginEnd={12}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
                 <GtkListBox cssClasses={["boxed-list"]} selectionMode={Gtk.SelectionMode.NONE}>
-                    <AdwActionRow.Root title="Simple Action Row" subtitle="A basic row with title and subtitle">
-                        <AdwActionRow.ActivatableWidget>
+                    <AdwActionRow title="Simple Action Row" subtitle="A basic row with title and subtitle">
+                        <Slot for={AdwActionRow} id="activatableWidget">
                             <GtkImage iconName="go-next-symbolic" valign={Gtk.Align.CENTER} />
-                        </AdwActionRow.ActivatableWidget>
-                    </AdwActionRow.Root>
+                        </Slot>
+                    </AdwActionRow>
 
-                    <AdwActionRow.Root title="Row with Icon" subtitle="Includes a prefix icon">
+                    <AdwActionRow title="Row with Icon" subtitle="Includes a prefix icon">
                         <GtkImage iconName="starred-symbolic" valign={Gtk.Align.CENTER} cssClasses={["accent"]} />
-                    </AdwActionRow.Root>
+                    </AdwActionRow>
 
                     <AdwButtonRow title="Button Row" startIconName="list-add-symbolic" />
 
-                    <AdwActionRow.Root title="With Badge" subtitle="Shows additional info">
+                    <AdwActionRow title="With Badge" subtitle="Shows additional info">
                         <GtkLabel label="3" cssClasses={["accent", "badge"]} valign={Gtk.Align.CENTER} />
-                    </AdwActionRow.Root>
+                    </AdwActionRow>
                 </GtkListBox>
 
                 <GtkListBox cssClasses={["boxed-list"]} selectionMode={Gtk.SelectionMode.NONE}>
                     <AdwExpanderRow title="Expandable Section" subtitle="Click to expand" iconName="folder-symbolic">
-                        <AdwActionRow.Root title="Child Item 1" />
-                        <AdwActionRow.Root title="Child Item 2" />
-                        <AdwActionRow.Root title="Child Item 3" />
+                        <AdwActionRow title="Child Item 1" />
+                        <AdwActionRow title="Child Item 2" />
+                        <AdwActionRow title="Child Item 3" />
                     </AdwExpanderRow>
                 </GtkListBox>
             </GtkBox>
@@ -120,7 +122,7 @@ const WidgetsSection = () => {
         <GtkScrolledWindow vexpand hexpand>
             <AdwClamp maximumSize={600} marginTop={24} marginBottom={24} marginStart={12} marginEnd={12}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-                    <AdwPreferencesGroup.Root title="Avatars" description="User representation">
+                    <AdwPreferencesGroup title="Avatars" description="User representation">
                         <GtkBox
                             orientation={Gtk.Orientation.HORIZONTAL}
                             spacing={12}
@@ -133,9 +135,9 @@ const WidgetsSection = () => {
                             <AdwAvatar size={64} text="Large" showInitials />
                             <AdwAvatar size={80} text="XL" showInitials />
                         </GtkBox>
-                    </AdwPreferencesGroup.Root>
+                    </AdwPreferencesGroup>
 
-                    <AdwPreferencesGroup.Root title="Loading States" description="Spinners and progress">
+                    <AdwPreferencesGroup title="Loading States" description="Spinners and progress">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={16}
@@ -151,9 +153,9 @@ const WidgetsSection = () => {
                                 onClicked={() => setLoading(!loading)}
                             />
                         </GtkBox>
-                    </AdwPreferencesGroup.Root>
+                    </AdwPreferencesGroup>
 
-                    <AdwPreferencesGroup.Root title="Buttons" description="Various button styles">
+                    <AdwPreferencesGroup title="Buttons" description="Various button styles">
                         <GtkBox
                             orientation={Gtk.Orientation.HORIZONTAL}
                             spacing={12}
@@ -177,7 +179,7 @@ const WidgetsSection = () => {
                             <GtkButton label="Flat" cssClasses={["flat"]} />
                             <GtkButton label="Circular" cssClasses={["circular"]} iconName="list-add-symbolic" />
                         </GtkBox>
-                    </AdwPreferencesGroup.Root>
+                    </AdwPreferencesGroup>
                 </GtkBox>
             </AdwClamp>
         </GtkScrolledWindow>
@@ -235,23 +237,23 @@ const App = () => {
     };
 
     return (
-        <AdwApplicationWindow.Root title="Adwaita Demo" defaultWidth={900} defaultHeight={700} onCloseRequest={quit}>
-            <AdwApplicationWindow.Content>
-                <AdwToolbarView.Root>
-                    <AdwToolbarView.Top>
-                        <AdwHeaderBar.Root>
+        <AdwApplicationWindow title="Adwaita Demo" defaultWidth={900} defaultHeight={700} onCloseRequest={quit}>
+            <Slot for={AdwApplicationWindow} id="content">
+                <AdwToolbarView>
+                    <Toolbar.Top>
+                        <AdwHeaderBar>
                             <GtkButton
                                 iconName="go-home-symbolic"
                                 cssClasses={currentPage === "welcome" ? ["suggested-action"] : ["flat"]}
                                 onClicked={() => setCurrentPage("welcome")}
                             />
-                            <AdwHeaderBar.TitleWidget>
+                            <Slot for={AdwHeaderBar} id="titleWidget">
                                 <AdwWindowTitle title="Adwaita Demo" subtitle="GTKX Widgets Showcase" />
-                            </AdwHeaderBar.TitleWidget>
-                        </AdwHeaderBar.Root>
-                    </AdwToolbarView.Top>
-                    <AdwToolbarView.Content>{renderContent()}</AdwToolbarView.Content>
-                    <AdwToolbarView.Bottom>
+                            </Slot>
+                        </AdwHeaderBar>
+                    </Toolbar.Top>
+                    {renderContent()}
+                    <Toolbar.Bottom>
                         <GtkBox
                             orientation={Gtk.Orientation.HORIZONTAL}
                             spacing={0}
@@ -283,10 +285,10 @@ const App = () => {
                                 onClicked={() => setCurrentPage("widgets")}
                             />
                         </GtkBox>
-                    </AdwToolbarView.Bottom>
-                </AdwToolbarView.Root>
-            </AdwApplicationWindow.Content>
-        </AdwApplicationWindow.Root>
+                    </Toolbar.Bottom>
+                </AdwToolbarView>
+            </Slot>
+        </AdwApplicationWindow>
     );
 };
 

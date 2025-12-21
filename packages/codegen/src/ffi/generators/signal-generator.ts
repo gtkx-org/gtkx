@@ -177,7 +177,6 @@ export class SignalGenerator extends BaseGenerator {
             if (this.options.typeRegistry) {
                 const registered = this.options.typeRegistry.resolve(typeName);
                 if (!registered || (registered.kind !== "class" && registered.kind !== "interface")) {
-                    return undefined;
                 }
             }
 
@@ -192,7 +191,5 @@ export class SignalGenerator extends BaseGenerator {
         if (classMap.has(typeName) || classMap.has(normalizedName)) {
             return { transformedName: normalizedName, originalName: typeName };
         }
-
-        return undefined;
     }
 }

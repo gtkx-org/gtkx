@@ -13,7 +13,7 @@ const PopoverMenuBarDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <GtkLabel label="<GtkPopover Menu Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="GtkPopover Menu Bar" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="About PopoverMenuBar" cssClasses={["heading"]} halign={Gtk.Align.START} />
@@ -24,7 +24,7 @@ const PopoverMenuBarDemo = () => {
                 />
             </GtkBox>
 
-            <GtkFrame.Root>
+            <GtkFrame>
                 <GtkBox
                     orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
@@ -36,31 +36,35 @@ const PopoverMenuBarDemo = () => {
                     <GtkLabel label="Last action:" cssClasses={["dim-label"]} />
                     <GtkLabel label={lastAction ?? "(none)"} cssClasses={lastAction ? ["accent"] : ["dim-label"]} />
                 </GtkBox>
-            </GtkFrame.Root>
+            </GtkFrame>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Inline Menu Bar" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkFrame.Root>
+                <GtkFrame>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
                         <GtkPopoverMenuBar>
                             <Menu.Submenu label="File">
                                 <Menu.Item
+                                    id="new"
                                     label="New"
                                     onActivate={() => handleAction("File > New")}
                                     accels="<Control>n"
                                 />
                                 <Menu.Item
+                                    id="open"
                                     label="Open"
                                     onActivate={() => handleAction("File > Open")}
                                     accels="<Control>o"
                                 />
                                 <Menu.Item
+                                    id="save"
                                     label="Save"
                                     onActivate={() => handleAction("File > Save")}
                                     accels="<Control>s"
                                 />
                                 <Menu.Section>
                                     <Menu.Item
+                                        id="quit"
                                         label="Quit"
                                         onActivate={() => handleAction("File > Quit")}
                                         accels="<Control>q"
@@ -69,27 +73,32 @@ const PopoverMenuBarDemo = () => {
                             </Menu.Submenu>
                             <Menu.Submenu label="Edit">
                                 <Menu.Item
+                                    id="undo"
                                     label="Undo"
                                     onActivate={() => handleAction("Edit > Undo")}
                                     accels="<Control>z"
                                 />
                                 <Menu.Item
+                                    id="redo"
                                     label="Redo"
                                     onActivate={() => handleAction("Edit > Redo")}
                                     accels="<Control><Shift>z"
                                 />
                                 <Menu.Section>
                                     <Menu.Item
+                                        id="cut"
                                         label="Cut"
                                         onActivate={() => handleAction("Edit > Cut")}
                                         accels="<Control>x"
                                     />
                                     <Menu.Item
+                                        id="copy"
                                         label="Copy"
                                         onActivate={() => handleAction("Edit > Copy")}
                                         accels="<Control>c"
                                     />
                                     <Menu.Item
+                                        id="paste"
                                         label="Paste"
                                         onActivate={() => handleAction("Edit > Paste")}
                                         accels="<Control>v"
@@ -98,16 +107,19 @@ const PopoverMenuBarDemo = () => {
                             </Menu.Submenu>
                             <Menu.Submenu label="View">
                                 <Menu.Item
+                                    id="zoom-in"
                                     label="Zoom In"
                                     onActivate={() => handleAction("View > Zoom In")}
                                     accels="<Control>plus"
                                 />
                                 <Menu.Item
+                                    id="zoom-out"
                                     label="Zoom Out"
                                     onActivate={() => handleAction("View > Zoom Out")}
                                     accels="<Control>minus"
                                 />
                                 <Menu.Item
+                                    id="reset-zoom"
                                     label="Reset Zoom"
                                     onActivate={() => handleAction("View > Reset Zoom")}
                                     accels="<Control>0"
@@ -115,10 +127,11 @@ const PopoverMenuBarDemo = () => {
                             </Menu.Submenu>
                             <Menu.Submenu label="Help">
                                 <Menu.Item
+                                    id="documentation"
                                     label="Documentation"
                                     onActivate={() => handleAction("Help > Documentation")}
                                 />
-                                <Menu.Item label="About" onActivate={() => handleAction("Help > About")} />
+                                <Menu.Item id="about" label="About" onActivate={() => handleAction("Help > About")} />
                             </Menu.Submenu>
                         </GtkPopoverMenuBar>
                         <GtkBox
@@ -140,7 +153,7 @@ const PopoverMenuBarDemo = () => {
                             />
                         </GtkBox>
                     </GtkBox>
-                </GtkFrame.Root>
+                </GtkFrame>
             </GtkBox>
         </GtkBox>
     );
@@ -148,7 +161,7 @@ const PopoverMenuBarDemo = () => {
 
 export const popoverMenuBarDemo: Demo = {
     id: "popovermenubar",
-    title: "<GtkPopover Menu Bar",
+    title: "GtkPopover Menu Bar",
     description: "Traditional horizontal menu bar as an inline widget using <GtkPopoverMenuBar.",
     keywords: ["menu", "menubar", "horizontal", "GtkPopoverMenuBar", "inline"],
     component: PopoverMenuBarDemo,

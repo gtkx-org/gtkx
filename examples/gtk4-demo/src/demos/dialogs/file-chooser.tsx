@@ -1,11 +1,11 @@
-import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, useApplication } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const FileChooserDemo = () => {
+    const app = useApplication();
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [saveLocation, setSaveLocation] = useState<string | null>(null);
@@ -15,7 +15,7 @@ const FileChooserDemo = () => {
         dialog.setTitle("Open File");
 
         try {
-            const file = await dialog.open(getApplication().getActiveWindow() ?? undefined);
+            const file = await dialog.open(app.getActiveWindow() ?? undefined);
             setSelectedFile(file.getPath() ?? null);
         } catch {
             setSelectedFile(null);
@@ -27,7 +27,7 @@ const FileChooserDemo = () => {
         dialog.setTitle("Select Folder");
 
         try {
-            const folder = await dialog.selectFolder(getApplication().getActiveWindow() ?? undefined);
+            const folder = await dialog.selectFolder(app.getActiveWindow() ?? undefined);
             setSelectedFolder(folder.getPath() ?? null);
         } catch {
             setSelectedFolder(null);
@@ -40,7 +40,7 @@ const FileChooserDemo = () => {
         dialog.setInitialName("untitled.txt");
 
         try {
-            const file = await dialog.save(getApplication().getActiveWindow() ?? undefined);
+            const file = await dialog.save(app.getActiveWindow() ?? undefined);
             setSaveLocation(file.getPath() ?? null);
         } catch {
             setSaveLocation(null);
@@ -72,7 +72,7 @@ const FileChooserDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="About FileDialog" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="<GtkFileDialog is the modern GTK4 file chooser. It uses async/await and returns Gio.File objects that can be used to read or write file contents."
+                    label="GtkFileDialog is the modern GTK4 file chooser. It uses async/await and returns Gio.File objects that can be used to read or write file contents."
                     wrap
                     cssClasses={["dim-label"]}
                 />

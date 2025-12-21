@@ -1,6 +1,6 @@
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkGridView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { GridView, GtkBox, GtkLabel, GtkScrolledWindow, ListItem } from "@gtkx/react";
 
 interface Photo {
     id: string;
@@ -62,10 +62,10 @@ export const GridViewDemo = () => {
                 </GtkBox>
 
                 <GtkScrolledWindow vexpand>
-                    <GtkGridView.Root
+                    <GridView<Photo>
                         minColumns={2}
                         maxColumns={6}
-                        renderItem={(photo: Photo | null) => (
+                        renderItem={(photo) => (
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={4}
@@ -97,9 +97,9 @@ export const GridViewDemo = () => {
                         )}
                     >
                         {photos.map((photo) => (
-                            <GtkGridView.Item key={photo.id} id={photo.id} item={photo} />
+                            <ListItem key={photo.id} id={photo.id} value={photo} />
                         ))}
-                    </GtkGridView.Root>
+                    </GridView>
                 </GtkScrolledWindow>
             </GtkBox>
 

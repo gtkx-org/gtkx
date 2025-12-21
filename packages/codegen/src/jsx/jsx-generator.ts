@@ -1,18 +1,7 @@
 import type { GirClass, GirInterface, GirNamespace, GirSignal, TypeMapper, TypeRegistry } from "@gtkx/gir";
 import { formatDoc as formatDocBase, toCamelCase, toPascalCase } from "@gtkx/gir";
 import { format } from "prettier";
-import {
-    COLUMN_VIEW_WIDGET,
-    DROPDOWN_WIDGETS,
-    GRID_WIDGETS,
-    HIDDEN_PROPS,
-    LIST_WIDGETS,
-    NOTEBOOK_WIDGET,
-    POPOVER_MENU_WIDGET,
-    STACK_WIDGETS,
-    TOOLBAR_VIEW_WIDGET,
-    WIDGET_REFERENCE_PROPERTIES,
-} from "./constants.js";
+import { COLUMN_VIEW_WIDGET, DROPDOWN_WIDGETS, HIDDEN_PROPS, LIST_WIDGETS } from "./constants.js";
 
 type JsxGeneratorOptions = {
     prettierConfig?: unknown;
@@ -22,17 +11,6 @@ type JsxGeneratorResult = {
     jsx: string;
     internal: string;
     registry: string;
-};
-
-type WidgetChildInfo = {
-    propertyName: string;
-    slotName: string;
-};
-
-type ContainerMetadata = {
-    supportsMultipleChildren: boolean;
-    supportsSingleChild: boolean;
-    namedChildSlots: WidgetChildInfo[];
 };
 
 type WidgetInfo = {
@@ -67,11 +45,6 @@ const toJsxPropertyTypeBase = (tsType: string, namespace: string): string => {
 const isListWidget = (widgetName: string): boolean => LIST_WIDGETS.has(widgetName);
 const isColumnViewWidget = (widgetName: string): boolean => widgetName === COLUMN_VIEW_WIDGET;
 const isDropDownWidget = (widgetName: string): boolean => DROPDOWN_WIDGETS.has(widgetName);
-const isGridWidget = (widgetName: string): boolean => GRID_WIDGETS.has(widgetName);
-const isNotebookWidget = (widgetName: string): boolean => widgetName === NOTEBOOK_WIDGET;
-const isStackWidget = (widgetName: string): boolean => STACK_WIDGETS.has(widgetName);
-const isPopoverMenuWidget = (widgetName: string): boolean => widgetName === POPOVER_MENU_WIDGET;
-const isToolbarViewWidget = (widgetName: string): boolean => widgetName === TOOLBAR_VIEW_WIDGET;
 
 const isWidgetSubclass = (
     typeName: string,
@@ -133,26 +106,33 @@ export class JsxGenerator {
             }
         }
 
-        const containerMetadata = this.buildContainerMetadata(allWidgets);
         const widgetClass = this.classMap.get("Widget") ?? this.classMap.get("Gtk.Widget");
 
         this.widgetPropertyNames = new Set(widgetClass?.properties.map((p) => toCamelCase(p.name)) ?? []);
         this.widgetSignalNames = new Set(widgetClass?.signals.map((s) => toCamelCase(s.name)) ?? []);
 
         const commonTypes = this.generateCommonTypes(widgetClass);
-        const widgetPropsInterfaces = this.generateWidgetPropsInterfaces(allWidgets, containerMetadata);
-        const exports = this.generateExports(allWidgets, containerMetadata);
-        const jsxNamespace = this.generateJsxNamespace(allWidgets, containerMetadata);
+        const widgetPropsInterfaces = this.generateWidgetPropsInterfaces(allWidgets);
+        const widgetSlotNamesType = this.generateWidgetSlotNamesType(allWidgets);
+        const exports = this.generateExports(allWidgets);
+        const jsxNamespace = this.generateJsxNamespace(allWidgets);
 
         const imports = this.generateImports();
 
-        const jsxSections = [imports, commonTypes, widgetPropsInterfaces, exports, jsxNamespace, "export {};"];
+        const jsxSections = [
+            imports,
+            commonTypes,
+            widgetPropsInterfaces,
+            widgetSlotNamesType,
+            exports,
+            jsxNamespace,
+            "export {};",
+        ];
 
         const internalSections = [
             this.generateInternalImports(),
-            this.generateConstructorArgsMetadata(allWidgets),
-            this.generatePropSettersMap(allWidgets),
-            this.generateSetterGetterMap(allWidgets),
+            this.generateConstructorPropsMetadata(allWidgets),
+            this.generatePropsMap(allWidgets),
             this.generateSignalNamesMap(allWidgets),
         ];
 
@@ -173,15 +153,7 @@ export class JsxGenerator {
             .sort()
             .map((ns) => `import type * as ${ns} from "@gtkx/ffi/${ns.toLowerCase()}";`);
 
-        return [
-            `import { createElement } from "react";`,
-            `import type { ReactNode, Ref } from "react";`,
-            ...namespaceImports,
-            `import type { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, MenuItemProps, MenuRootProps, MenuSectionProps, MenuSubmenuProps, NotebookPageProps, SlotProps, StackPageProps, StackRootProps, StringListItemProps } from "../jsx-base.js";`,
-            `export { ApplicationMenu, Menu } from "../jsx-base.js";`,
-            `export type { ColumnViewColumnProps, ColumnViewRootProps, GridChildProps, ListItemProps, ListViewRenderProps, MenuItemProps, MenuRootProps, MenuSectionProps, MenuSubmenuProps, NotebookPageProps, SlotProps, StackPageProps, StackRootProps, StringListItemProps } from "../jsx-base.js";`,
-            "",
-        ].join("\n");
+        return [`import type { ReactNode, Ref } from "react";`, ...namespaceImports, ""].join("\n");
     }
 
     private generateInternalImports(): string {
@@ -255,15 +227,6 @@ export class JsxGenerator {
         return lines.join("\n");
     }
 
-    private buildContainerMetadata(widgets: WidgetInfo[]): Map<string, ContainerMetadata> {
-        const metadata = new Map<string, ContainerMetadata>();
-        for (const { widget, namespace } of widgets) {
-            const key = `${namespace}.${widget.name}`;
-            metadata.set(key, this.analyzeContainerCapabilities(widget, namespace));
-        }
-        return metadata;
-    }
-
     private findWidgets(namespace: GirNamespace): GirClass[] {
         const widgetCache = new Map<string, boolean>();
 
@@ -304,52 +267,16 @@ export class JsxGenerator {
         });
     }
 
-    private analyzeContainerCapabilities(widget: GirClass, namespace: string): ContainerMetadata {
-        const hasAppend = widget.methods.some((m) => m.name === "append");
-        const hasSetChild = widget.methods.some((m) => m.name === "set_child");
-
-        const namedChildSlots: WidgetChildInfo[] = widget.properties
-            .filter((prop) => {
-                if (!prop.writable) return false;
-                if (WIDGET_REFERENCE_PROPERTIES.has(prop.name)) return false;
-                const typeName = prop.type.name;
-                return typeName === "Gtk.Widget" || typeName === "Widget" || isWidgetSubclass(typeName, this.classMap);
-            })
-            .map((prop) => ({
-                propertyName: prop.name,
-                slotName: toPascalCase(prop.name),
-            }));
-
-        const widgetName = `${namespace}${toPascalCase(widget.name)}`;
-        if (isToolbarViewWidget(widgetName)) {
-            namedChildSlots.push({ propertyName: "top", slotName: "Top" });
-            namedChildSlots.push({ propertyName: "bottom", slotName: "Bottom" });
-        }
-
-        return {
-            supportsMultipleChildren: hasAppend,
-            supportsSingleChild: hasSetChild,
-            namedChildSlots,
-        };
-    }
-
-    private generateWidgetPropsInterfaces(
-        widgets: WidgetInfo[],
-        containerMetadata: Map<string, ContainerMetadata>,
-    ): string {
+    private generateWidgetPropsInterfaces(widgets: WidgetInfo[]): string {
         const sections: string[] = [];
 
         for (const { widget, namespace } of widgets) {
             if (widget.name === "Widget") continue;
 
-            const metadataKey = `${namespace}.${widget.name}`;
-            const metadata = containerMetadata.get(metadataKey);
-            if (!metadata) throw new Error(`Missing container metadata for widget: ${metadataKey}`);
-
             this.currentNamespace = namespace;
             this.usedNamespaces.add(namespace);
             this.typeMapper.setTypeRegistry(this.typeRegistry, namespace);
-            sections.push(this.generateWidgetProps(widget, metadata));
+            sections.push(this.generateWidgetProps(widget));
         }
 
         return sections.join("\n");
@@ -360,10 +287,9 @@ export class JsxGenerator {
         return `${this.currentNamespace}${baseName}`;
     }
 
-    private generateWidgetProps(widget: GirClass, metadata: ContainerMetadata): string {
+    private generateWidgetProps(widget: GirClass): string {
         const widgetName = this.getWidgetExportName(widget);
         const parentPropsName = this.getParentPropsName(widget);
-        const namedChildPropNames = new Set(metadata.namedChildSlots.map((s) => toCamelCase(s.propertyName)));
 
         const lines: string[] = [];
         lines.push(`/** Props for the {@link ${widgetName}} widget. */`);
@@ -405,11 +331,7 @@ export class JsxGenerator {
 
         const specificProps = allProps.filter((prop) => {
             const propName = toCamelCase(prop.name);
-            return (
-                !this.widgetPropertyNames.has(propName) &&
-                !namedChildPropNames.has(propName) &&
-                !hiddenProps.has(propName)
-            );
+            return !this.widgetPropertyNames.has(propName) && !hiddenProps.has(propName);
         });
 
         const emittedProps = new Set<string>();
@@ -462,13 +384,23 @@ export class JsxGenerator {
             lines.push(`\tselectionMode?: import("@gtkx/ffi/gtk").SelectionMode;`);
         }
 
+        if (isColumnViewWidget(widgetName)) {
+            lines.push("");
+            lines.push(`\t/** ID of the currently sorted column, or null if unsorted */`);
+            lines.push(`\tsortColumn?: string | null;`);
+            lines.push(`\t/** The current sort direction */`);
+            lines.push(`\tsortOrder?: import("@gtkx/ffi/gtk").SortType;`);
+            lines.push(`\t/** Called when a column header is clicked to change sort */`);
+            lines.push(`\tonSortChange?: (column: string | null, order: import("@gtkx/ffi/gtk").SortType) => void;`);
+        }
+
         if (isListWidget(widgetName)) {
             lines.push("");
             lines.push(`\t/**`);
             lines.push(`\t * Render function for list items.`);
             lines.push(`\t * Called with null during setup (for loading state) and with the actual item during bind.`);
             lines.push(`\t */`);
-            lines.push(`\trenderItem: (item: unknown) => import("react").ReactElement;`);
+            lines.push(`\trenderItem: (item: any) => import("react").ReactElement;`);
         }
 
         if (isDropDownWidget(widgetName)) {
@@ -518,21 +450,21 @@ export class JsxGenerator {
         return required;
     }
 
-    private getConstructorParams(widget: GirClass): { name: string; hasDefault: boolean }[] {
+    private getConstructorParams(widget: GirClass): string[] {
         const mainCtor = widget.constructors.find((c) => c.name === "new");
         if (!mainCtor) return [];
 
         const params = mainCtor.parameters.map((param) => ({
             name: toCamelCase(param.name),
-            hasDefault: param.nullable || param.optional || false,
+            isOptional: param.nullable || param.optional || false,
         }));
 
-        const required = params.filter((p) => !p.hasDefault);
-        const optional = params.filter((p) => p.hasDefault);
+        const required = params.filter((p) => !p.isOptional).map((p) => p.name);
+        const optional = params.filter((p) => p.isOptional).map((p) => p.name);
         return [...required, ...optional];
     }
 
-    private generateConstructorArgsMetadata(widgets: WidgetInfo[]): string {
+    private generateConstructorPropsMetadata(widgets: WidgetInfo[]): string {
         const entries: string[] = [];
 
         for (const { widget, namespace } of widgets) {
@@ -541,80 +473,56 @@ export class JsxGenerator {
 
             this.currentNamespace = namespace;
             const widgetName = this.getWidgetExportName(widget);
-            const paramStrs = params.map((p) => `{ name: "${p.name}", hasDefault: ${p.hasDefault} }`);
+            const paramStrs = params.map((p) => `"${p}"`);
             entries.push(`\t${widgetName}: [${paramStrs.join(", ")}]`);
         }
 
         if (entries.length === 0) {
-            return `export const CONSTRUCTOR_PARAMS: Record<string, { name: string; hasDefault: boolean }[]> = {};\n`;
+            return `export const CONSTRUCTOR_PROPS: Record<string, string[]> = {};\n`;
         }
 
-        return `export const CONSTRUCTOR_PARAMS: Record<string, { name: string; hasDefault: boolean }[]> = {\n${entries.join(",\n")},\n};\n`;
+        return `export const CONSTRUCTOR_PROPS: Record<string, string[]> = {\n${entries.join(",\n")},\n};\n`;
     }
 
-    private generatePropSettersMap(widgets: WidgetInfo[]): string {
+    private generatePropsMap(widgets: WidgetInfo[]): string {
         const widgetEntries: string[] = [];
 
         for (const { widget, namespace } of widgets) {
             this.currentNamespace = namespace;
-            const propSetterPairs: string[] = [];
-            const allProps = this.collectAllProperties(widget);
-
-            for (const prop of allProps) {
-                if (prop.setter) {
-                    const propName = toCamelCase(prop.name);
-                    const setterName = toCamelCase(prop.setter);
-                    propSetterPairs.push(`"${propName}": "${setterName}"`);
-                }
-            }
-
-            if (propSetterPairs.length > 0) {
-                const widgetName = this.getWidgetExportName(widget);
-                widgetEntries.push(`\t${widgetName}: { ${propSetterPairs.join(", ")} }`);
-            }
-        }
-
-        if (widgetEntries.length === 0) {
-            return `export const PROP_SETTERS: Record<string, Record<string, string>> = {};\n`;
-        }
-
-        return `export const PROP_SETTERS: Record<string, Record<string, string>> = {\n${widgetEntries.join(",\n")},\n};\n`;
-    }
-
-    private generateSetterGetterMap(widgets: WidgetInfo[]): string {
-        const widgetEntries: string[] = [];
-
-        for (const { widget, namespace } of widgets) {
-            this.currentNamespace = namespace;
-            const setterGetterPairs: string[] = [];
+            const propEntries: string[] = [];
             const allProps = this.collectAllProperties(widget);
             const parentMethodNames = this.collectParentMethodNames(widget);
             const widgetClassName = toPascalCase(widget.name);
 
             for (const prop of allProps) {
-                if (prop.setter && prop.getter) {
+                if (prop.setter) {
+                    const propName = toCamelCase(prop.name);
                     const setterName = toCamelCase(prop.setter);
-                    let getterName = toCamelCase(prop.getter);
 
-                    if (parentMethodNames.has(prop.getter)) {
-                        getterName = `${getterName}${widgetClassName}`;
+                    let getterName: string | null = null;
+                    if (prop.getter) {
+                        getterName = toCamelCase(prop.getter);
+                        if (parentMethodNames.has(prop.getter)) {
+                            getterName = `${getterName}${widgetClassName}`;
+                        }
                     }
 
-                    setterGetterPairs.push(`"${setterName}": "${getterName}"`);
+                    const getterStr = getterName ? `"${getterName}"` : "null";
+                    propEntries.push(`"${propName}": [${getterStr}, "${setterName}"]`);
                 }
             }
 
-            if (setterGetterPairs.length > 0) {
+            if (propEntries.length > 0) {
                 const widgetName = this.getWidgetExportName(widget);
-                widgetEntries.push(`\t${widgetName}: { ${setterGetterPairs.join(", ")} }`);
+                widgetEntries.push(`\t${widgetName}: { ${propEntries.join(", ")} }`);
             }
         }
 
         if (widgetEntries.length === 0) {
-            return `export const SETTER_GETTERS: Record<string, Record<string, string>> = {};\n`;
+            return `export const PROPS: Record<string, Record<string, [string | null, string]>> = {};\n`;
         }
 
-        return `export const SETTER_GETTERS: Record<string, Record<string, string>> = {\n${widgetEntries.join(",\n")},\n};\n`;
+        return `export const PROPS: Record<string, Record<string, [string | null, string]>> = {\n${widgetEntries.join(",\n")},\n};\n`;
     }
 
     private generateSignalNamesMap(widgets: WidgetInfo[]): string {
@@ -781,7 +689,6 @@ export class JsxGenerator {
                 if (ifaceProp) return ifaceProp;
             }
         }
-        return undefined;
     }
 
     private generateSignalHandler(signal: GirSignal, widgetName: string): string {
@@ -803,7 +710,6 @@ export class JsxGenerator {
                     return `${ns}.${registered.transformedName}`;
                 }
             }
-            return undefined;
         }
 
         const registered = this.typeRegistry.resolveInNamespace(typeName, this.currentNamespace);
@@ -814,8 +720,6 @@ export class JsxGenerator {
             }
             return `${registered.namespace}.${registered.transformedName}`;
         }
-
-        return undefined;
     }
 
     private addNamespacePrefix(tsType: string): string {
@@ -871,203 +775,25 @@ export class JsxGenerator {
         return `(${params}) => ${returnType}`;
     }
 
-    private generateExports(widgets: WidgetInfo[], containerMetadata: Map<string, ContainerMetadata>): string {
+    private generateExports(widgets: WidgetInfo[]): string {
         const lines: string[] = [];
 
         for (const { widget, namespace } of widgets) {
             this.currentNamespace = namespace;
             const widgetName = this.getWidgetExportName(widget);
-            const metadataKey = `${namespace}.${widget.name}`;
-            const metadata = containerMetadata.get(metadataKey);
-            if (!metadata) throw new Error(`Missing container metadata for widget: ${metadataKey}`);
-
-            const nonChildSlots = metadata.namedChildSlots.filter((slot) => slot.slotName !== "Child");
-            const hasMeaningfulSlots =
-                nonChildSlots.length > 0 ||
-                isListWidget(widgetName) ||
-                isColumnViewWidget(widgetName) ||
-                isDropDownWidget(widgetName) ||
-                isGridWidget(widgetName) ||
-                isNotebookWidget(widgetName) ||
-                isStackWidget(widgetName) ||
-                isPopoverMenuWidget(widgetName);
-
             const docComment = widget.doc ? this.formatDoc(widget.doc).trimEnd() : "";
 
-            if (hasMeaningfulSlots) {
-                if (
-                    isListWidget(widgetName) ||
-                    isColumnViewWidget(widgetName) ||
-                    isDropDownWidget(widgetName) ||
-                    isStackWidget(widgetName) ||
-                    isPopoverMenuWidget(widgetName)
-                ) {
-                    const wrapperComponents = this.generateGenericWrapperComponents(widgetName, metadata);
-                    const exportMembers = this.getWrapperExportMembers(widgetName, metadata);
-
-                    if (docComment) {
-                        lines.push(
-                            `${wrapperComponents}\n${docComment}\nexport const ${widgetName} = {\n\t${exportMembers.join(",\n\t")},\n};`,
-                        );
-                    } else {
-                        lines.push(
-                            `${wrapperComponents}\nexport const ${widgetName} = {\n\t${exportMembers.join(",\n\t")},\n};`,
-                        );
-                    }
-                } else {
-                    const valueMembers = [
-                        `Root: "${widgetName}.Root" as const`,
-                        ...metadata.namedChildSlots.map(
-                            (slot) => `${slot.slotName}: "${widgetName}.${slot.slotName}" as const`,
-                        ),
-                        ...(isGridWidget(widgetName) ? [`Child: "${widgetName}.Child" as const`] : []),
-                        ...(isNotebookWidget(widgetName) ? [`Page: "${widgetName}.Page" as const`] : []),
-                    ];
-                    if (docComment) {
-                        lines.push(
-                            `${docComment}\nexport const ${widgetName} = {\n\t${valueMembers.join(",\n\t")},\n};`,
-                        );
-                    } else {
-                        lines.push(`export const ${widgetName} = {\n\t${valueMembers.join(",\n\t")},\n};`);
-                    }
-                }
+            if (docComment) {
+                lines.push(`${docComment}\nexport const ${widgetName} = "${widgetName}" as const;`);
             } else {
-                if (docComment) {
-                    lines.push(`${docComment}\nexport const ${widgetName} = "${widgetName}" as const;`);
-                } else {
-                    lines.push(`export const ${widgetName} = "${widgetName}" as const;`);
-                }
+                lines.push(`export const ${widgetName} = "${widgetName}" as const;`);
             }
         }
 
         return `${lines.join("\n")}\n`;
     }
 
-    private getWrapperExportMembers(widgetName: string, metadata: ContainerMetadata): string[] {
-        const name = toPascalCase(widgetName);
-        const members: string[] = [`Root: ${name}Root`];
-
-        if (isListWidget(widgetName)) {
-            members.push(`Item: ${name}Item`);
-        } else if (isColumnViewWidget(widgetName)) {
-            members.push(`Column: ${name}Column`);
-            members.push(`Item: ${name}Item`);
-        } else if (isDropDownWidget(widgetName)) {
-            members.push(`Item: ${name}Item`);
-        } else if (isStackWidget(widgetName)) {
-            members.push(`Page: ${name}Page`);
-        } else if (isPopoverMenuWidget(widgetName)) {
-            members.push(`Item: ${name}Item`);
-            members.push(`Section: ${name}Section`);
-            members.push(`Submenu: ${name}Submenu`);
-        }
-
-        for (const slot of metadata.namedChildSlots) {
-            members.push(`${slot.slotName}: ${name}${slot.slotName}`);
-        }
-
-        return members;
-    }
-
-    private generateGenericWrapperComponents(widgetName: string, metadata: ContainerMetadata): string {
-        const name = toPascalCase(widgetName);
-        const lines: string[] = [];
-
-        if (isListWidget(widgetName)) {
-            lines.push(`/**`);
-            lines.push(` * Props for the ${name}.Root component with type-safe item rendering.`);
-            lines.push(` * @typeParam T - The type of items in the list.`);
-            lines.push(` */`);
-            lines.push(`interface ${name}RootProps<T> extends Omit<${name}Props, "renderItem"> {`);
-            lines.push(`\t/** Render function for list items. Called with null during setup (for loading state). */`);
-            lines.push(`\trenderItem: (item: T | null) => import("react").ReactElement;`);
-            lines.push(`}`);
-            lines.push(``);
-            lines.push(`function ${name}Root<T>(props: ${name}RootProps<T>): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("${name}.Root", props);`);
-            lines.push(`}`);
-            lines.push(``);
-            lines.push(`function ${name}Item<T>(props: ListItemProps<T>): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("${name}.Item", props);`);
-            lines.push(`}`);
-        } else if (isColumnViewWidget(widgetName)) {
-            lines.push(`/**`);
-            lines.push(` * Props for the ${name}.Root component with column sorting UI indicators.`);
-            lines.push(` * @typeParam C - The union type of column IDs for type-safe sorting indicators.`);
-            lines.push(` */`);
-            lines.push(
-                `interface ${name}RootPropsExtended<C extends string = string> extends ${name}Props, ColumnViewRootProps<C> {}`,
-            );
-            lines.push(``);
-            lines.push(
-                `function ${name}Root<C extends string = string>(props: ${name}RootPropsExtended<C>): import("react").ReactElement {`,
-            );
-            lines.push(`\treturn createElement("${name}.Root", props);`);
-            lines.push(`}`);
-            lines.push(``);
-            lines.push(`/**`);
-            lines.push(` * Props for ${name}.Column with type-safe cell rendering.`);
-            lines.push(` * @typeParam T - The type of items passed to the renderCell function.`);
-            lines.push(` */`);
-            lines.push(`interface ${name}GenericColumnProps<T> extends Omit<ColumnViewColumnProps, "renderCell"> {`);
-            lines.push(`\t/** Render function for column cells. Called with null during setup (for loading state). */`);
-            lines.push(`\trenderCell: (item: T | null) => import("react").ReactElement;`);
-            lines.push(`}`);
-            lines.push(``);
-            lines.push(
-                `function ${name}Column<T>(props: ${name}GenericColumnProps<T>): import("react").ReactElement {`,
-            );
-            lines.push(`\treturn createElement("${name}.Column", props);`);
-            lines.push(`}`);
-            lines.push(``);
-            lines.push(`function ${name}Item<T>(props: ListItemProps<T>): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("${name}.Item", props);`);
-            lines.push(`}`);
-        } else if (isDropDownWidget(widgetName)) {
-            lines.push(`function ${name}Root(props: ${name}Props): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("${name}.Root", props);`);
-            lines.push(`}`);
-            lines.push(``);
-            lines.push(`function ${name}Item(props: StringListItemProps): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("${name}.Item", props);`);
-            lines.push(`}`);
-        } else if (isStackWidget(widgetName)) {
-            lines.push(`function ${name}Root(props: StackRootProps & ${name}Props): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("${name}.Root", props);`);
-            lines.push(`}`);
-            lines.push(``);
-            lines.push(`function ${name}Page(props: StackPageProps): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("${name}.Page", props);`);
-            lines.push(`}`);
-        } else if (isPopoverMenuWidget(widgetName)) {
-            lines.push(`function ${name}Root(props: MenuRootProps & ${name}Props): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("${name}.Root", props);`);
-            lines.push(`}`);
-            lines.push(``);
-            lines.push(`function ${name}Item(props: MenuItemProps): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("Menu.Item", props);`);
-            lines.push(`}`);
-            lines.push(``);
-            lines.push(`function ${name}Section(props: MenuSectionProps): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("Menu.Section", props);`);
-            lines.push(`}`);
-            lines.push(``);
-            lines.push(`function ${name}Submenu(props: MenuSubmenuProps): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("Menu.Submenu", props);`);
-            lines.push(`}`);
-        }
-
-        for (const slot of metadata.namedChildSlots) {
-            lines.push(``);
-            lines.push(`function ${name}${slot.slotName}(props: SlotProps): import("react").ReactElement {`);
-            lines.push(`\treturn createElement("${name}.${slot.slotName}", props);`);
-            lines.push(`}`);
-        }
-
-        return lines.join("\n");
-    }
-
-    private generateJsxNamespace(widgets: WidgetInfo[], containerMetadata: Map<string, ContainerMetadata>): string {
+    private generateJsxNamespace(widgets: WidgetInfo[]): string {
         const elements: string[] = [];
 
         for (const { widget, namespace } of widgets) {
@@ -1076,59 +802,9 @@ export class JsxGenerator {
             this.currentNamespace = namespace;
             const widgetName = this.getWidgetExportName(widget);
             const propsName = `${widgetName}Props`;
-            const metadataKey = `${namespace}.${widget.name}`;
-            const metadata = containerMetadata.get(metadataKey);
-            if (!metadata) throw new Error(`Missing container metadata for widget: ${metadataKey}`);
 
-            const nonChildSlots = metadata.namedChildSlots.filter((slot) => slot.slotName !== "Child");
-            const hasMeaningfulSlots =
-                nonChildSlots.length > 0 ||
-                isListWidget(widgetName) ||
-                isColumnViewWidget(widgetName) ||
-                isDropDownWidget(widgetName) ||
-                isGridWidget(widgetName) ||
-                isNotebookWidget(widgetName) ||
-                isStackWidget(widgetName) ||
-                isPopoverMenuWidget(widgetName);
-
-            if (hasMeaningfulSlots) {
-                elements.push(`"${widgetName}.Root": ${propsName};`);
-            } else {
-                elements.push(`${widgetName}: ${propsName};`);
-            }
-
-            for (const slot of metadata.namedChildSlots) {
-                elements.push(`"${widgetName}.${slot.slotName}": SlotProps;`);
-            }
-
-            if (isListWidget(widgetName)) {
-                elements.push(`"${widgetName}.Item": ListItemProps;`);
-            }
-
-            if (isColumnViewWidget(widgetName)) {
-                elements.push(`"${widgetName}.Column": ColumnViewColumnProps;`);
-                elements.push(`"${widgetName}.Item": ListItemProps;`);
-            }
-
-            if (isDropDownWidget(widgetName)) {
-                elements.push(`"${widgetName}.Item": StringListItemProps;`);
-            }
-
-            if (isGridWidget(widgetName)) {
-                elements.push(`"${widgetName}.Child": GridChildProps;`);
-            }
-
-            if (isNotebookWidget(widgetName)) {
-                elements.push(`"${widgetName}.Page": NotebookPageProps;`);
-            }
-
-            if (isStackWidget(widgetName)) {
-                elements.push(`"${widgetName}.Page": StackPageProps;`);
-            }
+            elements.push(`${widgetName}: ${propsName};`);
         }
-
-        this.addMenuIntrinsicElements(elements);
-        elements.push(`ApplicationMenu: MenuRootProps;`);
 
         return `
 declare global {
@@ -1143,10 +819,44 @@ declare global {
 `;
     }
 
-    private addMenuIntrinsicElements(elements: string[]): void {
-        elements.push(`"Menu.Item": MenuItemProps;`);
-        elements.push(`"Menu.Section": MenuSectionProps;`);
-        elements.push(`"Menu.Submenu": MenuSubmenuProps;`);
+    /**
+     * Generates a type mapping widgets to their valid slot names.
+     * Used for type-safe <Slot for={Widget} id="..."> autocomplete.
+     */
+    private generateWidgetSlotNamesType(widgets: WidgetInfo[]): string {
+        const entries: string[] = [];
+
+        for (const { widget, namespace } of widgets) {
+            this.currentNamespace = namespace;
+            const widgetName = this.getWidgetExportName(widget);
+
+            // Find properties that accept widgets (potential slots)
+            const slotNames = widget.properties
+                .filter((prop) => {
+                    if (!prop.writable) return false;
+                    const typeName = prop.type.name;
+                    return (
+                        typeName === "Gtk.Widget" || typeName === "Widget" || isWidgetSubclass(typeName, this.classMap)
+                    );
+                })
+                .map((prop) => `"${toCamelCase(prop.name)}"`);
+
+            if (slotNames.length > 0) {
+                entries.push(`\t${widgetName}: ${slotNames.join(" | ")};`);
+            }
+        }
+
+        if (entries.length === 0) {
+            return "/** Type mapping widgets to their valid slot names. */\nexport type WidgetSlotNames = Record<string, never>;\n";
+        }
+
+        return [
+            "/** Type mapping widgets to their valid slot names. Used for type-safe Slot components. */",
+            "export type WidgetSlotNames = {",
+            ...entries,
+            "};",
+            "",
+        ].join("\n");
     }
 
     private async formatCode(code: string): Promise<string> {

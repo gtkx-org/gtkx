@@ -1,11 +1,11 @@
-import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkLabel, useApplication } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
 const ColorChooserDemo = () => {
+    const app = useApplication();
     const [color, setColor] = useState<string | null>(null);
 
     const openColorDialog = async () => {
@@ -14,7 +14,7 @@ const ColorChooserDemo = () => {
         dialog.setWithAlpha(true);
 
         try {
-            const rgba = await dialog.chooseRgba(getApplication().getActiveWindow() ?? undefined);
+            const rgba = await dialog.chooseRgba(app.getActiveWindow() ?? undefined);
             const hex = `rgba(${Math.round(rgba.red * 255)}, ${Math.round(rgba.green * 255)}, ${Math.round(rgba.blue * 255)}, ${rgba.alpha.toFixed(2)})`;
             setColor(hex);
         } catch {

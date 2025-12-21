@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkCenterBox, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkCenterBox, GtkLabel, Slot } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
@@ -15,58 +15,53 @@ const CenterBoxDemo = () => {
                     wrap
                     cssClasses={["dim-label"]}
                 />
-                <GtkCenterBox.Root hexpand cssClasses={["card"]} marginTop={8} marginBottom={8}>
-                    <GtkCenterBox.StartWidget>
+                <GtkCenterBox hexpand cssClasses={["card"]} marginTop={8} marginBottom={8}>
+                    <Slot for={GtkCenterBox} id="startWidget">
                         <GtkButton label="Start" marginStart={8} />
-                    </GtkCenterBox.StartWidget>
-                    <GtkCenterBox.CenterWidget>
+                    </Slot>
+                    <Slot for={GtkCenterBox} id="centerWidget">
                         <GtkLabel label="Center" cssClasses={["heading"]} />
-                    </GtkCenterBox.CenterWidget>
-                    <GtkCenterBox.EndWidget>
+                    </Slot>
+                    <Slot for={GtkCenterBox} id="endWidget">
                         <GtkButton label="End" marginEnd={8} />
-                    </GtkCenterBox.EndWidget>
-                </GtkCenterBox.Root>
+                    </Slot>
+                </GtkCenterBox>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Toolbar Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkCenterBox.Root hexpand cssClasses={["toolbar"]}>
-                    <GtkCenterBox.StartWidget>
+                <GtkCenterBox hexpand cssClasses={["toolbar"]}>
+                    <Slot for={GtkCenterBox} id="startWidget">
                         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6} marginStart={6}>
                             <GtkButton label="Back" cssClasses={["flat"]} />
                             <GtkButton label="Forward" cssClasses={["flat"]} />
                         </GtkBox>
-                    </GtkCenterBox.StartWidget>
-                    <GtkCenterBox.CenterWidget>
+                    </Slot>
+                    <Slot for={GtkCenterBox} id="centerWidget">
                         <GtkLabel label="Document.txt" cssClasses={["title-4"]} />
-                    </GtkCenterBox.CenterWidget>
-                    <GtkCenterBox.EndWidget>
+                    </Slot>
+                    <Slot for={GtkCenterBox} id="endWidget">
                         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6} marginEnd={6}>
                             <GtkButton label="Share" cssClasses={["flat"]} />
                             <GtkButton label="Menu" cssClasses={["flat"]} />
                         </GtkBox>
-                    </GtkCenterBox.EndWidget>
-                </GtkCenterBox.Root>
+                    </Slot>
+                </GtkCenterBox>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Vertical CenterBox" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkCenterBox.Root
-                    orientation={Gtk.Orientation.VERTICAL}
-                    vexpand
-                    heightRequest={200}
-                    cssClasses={["card"]}
-                >
-                    <GtkCenterBox.StartWidget>
+                <GtkCenterBox orientation={Gtk.Orientation.VERTICAL} vexpand heightRequest={200} cssClasses={["card"]}>
+                    <Slot for={GtkCenterBox} id="startWidget">
                         <GtkLabel label="Top" marginTop={12} />
-                    </GtkCenterBox.StartWidget>
-                    <GtkCenterBox.CenterWidget>
+                    </Slot>
+                    <Slot for={GtkCenterBox} id="centerWidget">
                         <GtkButton label="Centered Content" cssClasses={["suggested-action"]} />
-                    </GtkCenterBox.CenterWidget>
-                    <GtkCenterBox.EndWidget>
+                    </Slot>
+                    <Slot for={GtkCenterBox} id="endWidget">
                         <GtkLabel label="Bottom" marginBottom={12} />
-                    </GtkCenterBox.EndWidget>
-                </GtkCenterBox.Root>
+                    </Slot>
+                </GtkCenterBox>
             </GtkBox>
         </GtkBox>
     );

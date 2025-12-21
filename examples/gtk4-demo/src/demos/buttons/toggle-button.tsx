@@ -19,26 +19,26 @@ const ToggleButtonDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Text Formatting Toolbar" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6} cssClasses={["linked"]}>
-                    <GtkToggleButton.Root
+                    <GtkToggleButton
                         label="B"
                         active={bold}
                         onToggled={() => setBold((v) => !v)}
                         cssClasses={["font-bold"]}
                     />
-                    <GtkToggleButton.Root
+                    <GtkToggleButton
                         label="I"
                         active={italic}
                         onToggled={() => setItalic((v) => !v)}
                         cssClasses={["font-italic"]}
                     />
-                    <GtkToggleButton.Root label="U" active={underline} onToggled={() => setUnderline((v) => !v)} />
+                    <GtkToggleButton label="U" active={underline} onToggled={() => setUnderline((v) => !v)} />
                 </GtkBox>
                 <GtkLabel label={`Current style: ${textStyle}`} cssClasses={["dim-label"]} />
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Standalone Toggle" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkToggleButton.Root label="Toggle Me" active={bold} onToggled={() => setBold((v) => !v)} />
+                <GtkToggleButton label="Toggle Me" active={bold} onToggled={() => setBold((v) => !v)} />
             </GtkBox>
         </GtkBox>
     );

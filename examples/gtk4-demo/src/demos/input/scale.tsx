@@ -33,7 +33,7 @@ const ScaleDemo = () => {
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <GtkLabel label="<GtkScale with Marks" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel label="GtkScale with Marks" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <GtkLabel label="Brightness:" widthRequest={80} />
                     <GtkScale

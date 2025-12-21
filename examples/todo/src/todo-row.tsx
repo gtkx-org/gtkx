@@ -19,7 +19,7 @@ export const TodoRow = ({ todo, onToggle, onDelete }: TodoRowProps) => {
                 marginStart={12}
                 marginEnd={12}
             >
-                <GtkCheckButton.Root
+                <GtkCheckButton
                     active={todo.completed}
                     onToggled={() => onToggle(todo.id)}
                     name={`toggle-${todo.id}`}

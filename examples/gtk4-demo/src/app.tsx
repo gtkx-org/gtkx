@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ApplicationMenu, GtkApplicationWindow, GtkBox, GtkPaned, Menu, quit } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkPaned, Menu, quit, Slot } from "@gtkx/react";
 import { DemoPanel } from "./components/demo-panel.js";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
@@ -12,7 +12,7 @@ const AppContent = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-            <GtkPaned.Root
+            <GtkPaned
                 orientation={Gtk.Orientation.HORIZONTAL}
                 wideHandle
                 vexpand
@@ -21,11 +21,11 @@ const AppContent = () => {
                 shrinkEndChild={false}
                 position={280}
             >
-                <GtkPaned.StartChild>
+                <Slot for={GtkPaned} id="startChild">
                     <Sidebar />
-                </GtkPaned.StartChild>
-                <GtkPaned.EndChild>
-                    <GtkPaned.Root
+                </Slot>
+                <Slot for={GtkPaned} id="endChild">
+                    <GtkPaned
                         orientation={Gtk.Orientation.HORIZONTAL}
                         wideHandle
                         vexpand
@@ -34,44 +34,52 @@ const AppContent = () => {
                         shrinkEndChild={false}
                         position={500}
                     >
-                        <GtkPaned.StartChild>
+                        <Slot for={GtkPaned} id="startChild">
                             <DemoPanel demo={currentDemo} />
-                        </GtkPaned.StartChild>
-                        <GtkPaned.EndChild>
+                        </Slot>
+                        <Slot for={GtkPaned} id="endChild">
                             <SourceViewer sourcePath={currentDemo?.sourcePath ?? null} />
-                        </GtkPaned.EndChild>
-                    </GtkPaned.Root>
-                </GtkPaned.EndChild>
-            </GtkPaned.Root>
+                        </Slot>
+                    </GtkPaned>
+                </Slot>
+            </GtkPaned>
         </GtkBox>
     );
 };
 
 export const App = () => (
     <DemoProvider categories={categories}>
-        <ApplicationMenu>
-            <Menu.Submenu label="File">
-                <Menu.Item label="New Document" onActivate={() => console.log("New Document")} accels="<Control>n" />
-                <Menu.Item label="Open..." onActivate={() => console.log("Open")} accels="<Control>o" />
-                <Menu.Item label="Save" onActivate={() => console.log("Save")} accels="<Control>s" />
-                <Menu.Section>
-                    <Menu.Item label="Quit" onActivate={quit} accels="<Control>q" />
-                </Menu.Section>
-            </Menu.Submenu>
-            <Menu.Submenu label="Edit">
-                <Menu.Item label="Undo" onActivate={() => console.log("Undo")} accels="<Control>z" />
-                <Menu.Item label="Redo" onActivate={() => console.log("Redo")} accels="<Control><Shift>z" />
-                <Menu.Section>
-                    <Menu.Item label="Cut" onActivate={() => console.log("Cut")} accels="<Control>x" />
-                    <Menu.Item label="Copy" onActivate={() => console.log("Copy")} accels="<Control>c" />
-                    <Menu.Item label="Paste" onActivate={() => console.log("Paste")} accels="<Control>v" />
-                </Menu.Section>
-            </Menu.Submenu>
-            <Menu.Submenu label="Help">
-                <Menu.Item label="Documentation" onActivate={() => console.log("Documentation")} accels="F1" />
-                <Menu.Item label="About" onActivate={() => console.log("About")} />
-            </Menu.Submenu>
-        </ApplicationMenu>
+        <Menu.Submenu label="File">
+            <Menu.Item
+                id="new"
+                label="New Document"
+                onActivate={() => console.log("New Document")}
+                accels="<Control>n"
+            />
+            <Menu.Item id="open" label="Open..." onActivate={() => console.log("Open")} accels="<Control>o" />
+            <Menu.Item id="save" label="Save" onActivate={() => console.log("Save")} accels="<Control>s" />
+            <Menu.Section>
+                <Menu.Item id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
+            </Menu.Section>
+        </Menu.Submenu>
+        <Menu.Submenu label="Edit">
+            <Menu.Item id="undo" label="Undo" onActivate={() => console.log("Undo")} accels="<Control>z" />
+            <Menu.Item id="redo" label="Redo" onActivate={() => console.log("Redo")} accels="<Control><Shift>z" />
+            <Menu.Section>
+                <Menu.Item id="cut" label="Cut" onActivate={() => console.log("Cut")} accels="<Control>x" />
+                <Menu.Item id="copy" label="Copy" onActivate={() => console.log("Copy")} accels="<Control>c" />
+                <Menu.Item id="paste" label="Paste" onActivate={() => console.log("Paste")} accels="<Control>v" />
+            </Menu.Section>
+        </Menu.Submenu>
+        <Menu.Submenu label="Help">
+            <Menu.Item
+                id="documentation"
+                label="Documentation"
+                onActivate={() => console.log("Documentation")}
+                accels="F1"
+            />
+            <Menu.Item id="about" label="About" onActivate={() => console.log("About")} />
+        </Menu.Submenu>
         <GtkApplicationWindow
             title="GTK4 Demo"
             defaultWidth={1400}

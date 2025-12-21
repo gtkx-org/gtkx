@@ -12,7 +12,7 @@ describe("fireEvent", () => {
         const handleClick = vi.fn();
         await render(<GtkButton label="Click me" onClicked={handleClick} />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
         await fireEvent(button, "clicked");
 
         expect(handleClick).toHaveBeenCalledTimes(1);
@@ -22,7 +22,7 @@ describe("fireEvent", () => {
         const handleClick = vi.fn();
         await render(<GtkButton label="Click me" onClicked={handleClick} />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
         await fireEvent(button, "clicked");
         await fireEvent(button, "clicked");
         await fireEvent(button, "clicked");
@@ -34,7 +34,7 @@ describe("fireEvent", () => {
         const handleClick = vi.fn();
         await render(<GtkButton label="Click me" onClicked={handleClick} />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
         const promise = fireEvent(button, "clicked");
 
         expect(promise).toBeInstanceOf(Promise);

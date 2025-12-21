@@ -1,4 +1,3 @@
-import { getApplication } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -11,7 +10,7 @@ afterEach(async () => {
 describe("render", () => {
     it("renders a simple element", async () => {
         const { findByRole } = await render(<GtkButton label="Click me" />);
-        const button = await findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
         expect(button).toBeDefined();
     });
 
@@ -75,13 +74,12 @@ describe("render", () => {
     });
 
     it("provides unmount function to remove content", async () => {
-        const { findByRole, unmount } = await render(<GtkButton label="Test" />);
+        const { container, findByRole, unmount } = await render(<GtkButton label="Test" />);
 
         await findByRole(Gtk.AccessibleRole.BUTTON);
         await unmount();
 
-        const app = getApplication();
-        const activeWindow = app.getActiveWindow();
+        const activeWindow = container.getActiveWindow();
         expect(activeWindow).toBeNull();
     });
 
@@ -93,11 +91,10 @@ describe("render", () => {
 
 describe("cleanup", () => {
     it("removes rendered content", async () => {
-        await render(<GtkButton label="Test" />);
+        const { container } = await render(<GtkButton label="Test" />);
         await cleanup();
 
-        const app = getApplication();
-        const windows = app.getWindows();
+        const windows = container.getWindows();
         expect(windows.length).toBe(0);
     });
 

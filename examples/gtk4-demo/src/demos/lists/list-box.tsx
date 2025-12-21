@@ -70,7 +70,7 @@ const ListBoxDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Selection Modes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="<GtkListBox supports NONE, SINGLE, BROWSE, and MULTIPLE selection modes."
+                    label="GtkListBox supports NONE, SINGLE, BROWSE, and MULTIPLE selection modes."
                     wrap
                     cssClasses={["dim-label"]}
                 />

@@ -301,7 +301,7 @@ const GLAreaDemo = () => {
     if (error) {
         return (
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={20} marginEnd={20} marginTop={20}>
-                <GtkLabel label="<GtkGLArea Error" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+                <GtkLabel label="GtkGLArea Error" cssClasses={["title-2"]} halign={Gtk.Align.START} />
                 <GtkLabel label={error} wrap cssClasses={["error"]} />
             </GtkBox>
         );

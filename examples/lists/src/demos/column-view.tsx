@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkColumnView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { ColumnViewColumn, GtkBox, GtkColumnView, GtkLabel, GtkScrolledWindow, ListItem } from "@gtkx/react";
 import { useCallback, useMemo, useState } from "react";
 
 interface Employee {
@@ -188,14 +188,14 @@ export const ColumnViewDemo = () => {
                 </GtkBox>
 
                 <GtkScrolledWindow vexpand hexpand cssClasses={["card"]}>
-                    <GtkColumnView.Root
+                    <GtkColumnView
                         sortColumn={sortColumn}
                         sortOrder={sortOrder}
                         onSortChange={handleSortChange}
                         vexpand
                         hexpand
                     >
-                        <GtkColumnView.Column
+                        <ColumnViewColumn
                             id="name"
                             title="Name"
                             expand
@@ -212,7 +212,7 @@ export const ColumnViewDemo = () => {
                                 />
                             )}
                         />
-                        <GtkColumnView.Column
+                        <ColumnViewColumn
                             id="department"
                             title="Department"
                             resizable
@@ -228,7 +228,7 @@ export const ColumnViewDemo = () => {
                                 />
                             )}
                         />
-                        <GtkColumnView.Column
+                        <ColumnViewColumn
                             id="salary"
                             title="Salary"
                             resizable
@@ -244,7 +244,7 @@ export const ColumnViewDemo = () => {
                                 />
                             )}
                         />
-                        <GtkColumnView.Column
+                        <ColumnViewColumn
                             id="startDate"
                             title="Start Date"
                             resizable
@@ -261,7 +261,7 @@ export const ColumnViewDemo = () => {
                                 />
                             )}
                         />
-                        <GtkColumnView.Column
+                        <ColumnViewColumn
                             title="Status"
                             fixedWidth={100}
                             renderCell={(emp: Employee | null) => (
@@ -275,9 +275,9 @@ export const ColumnViewDemo = () => {
                             )}
                         />
                         {sortedEmployees.map((emp) => (
-                            <GtkColumnView.Item key={emp.id} id={emp.id} item={emp} />
+                            <ListItem key={emp.id} id={emp.id} value={emp} />
                         ))}
-                    </GtkColumnView.Root>
+                    </GtkColumnView>
                 </GtkScrolledWindow>
             </GtkBox>
 

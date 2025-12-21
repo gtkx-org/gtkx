@@ -8,7 +8,7 @@ describe("render - ToggleButton", () => {
     it("creates ToggleButton widget", async () => {
         const ref = createRef<Gtk.ToggleButton>();
 
-        await render(<GtkToggleButton.Root ref={ref} label="Toggle" />, { wrapper: false });
+        await render(<GtkToggleButton ref={ref} label="Toggle" />, { wrapper: false });
 
         expect(ref.current).not.toBeNull();
     });
@@ -16,7 +16,7 @@ describe("render - ToggleButton", () => {
     it("sets active state via active prop", async () => {
         const ref = createRef<Gtk.ToggleButton>();
 
-        await render(<GtkToggleButton.Root ref={ref} active={true} label="Active" />, { wrapper: false });
+        await render(<GtkToggleButton ref={ref} active={true} label="Active" />, { wrapper: false });
 
         expect(ref.current?.getActive()).toBe(true);
     });
@@ -25,7 +25,7 @@ describe("render - ToggleButton", () => {
         const ref = createRef<Gtk.ToggleButton>();
 
         function App({ active }: { active: boolean }) {
-            return <GtkToggleButton.Root ref={ref} active={active} label="Toggle" />;
+            return <GtkToggleButton ref={ref} active={active} label="Toggle" />;
         }
 
         await render(<App active={false} />, { wrapper: false });
@@ -41,7 +41,7 @@ describe("render - ToggleButton", () => {
         const ref = createRef<Gtk.ToggleButton>();
         const onToggled = vi.fn();
 
-        await render(<GtkToggleButton.Root ref={ref} onToggled={onToggled} label="Toggle" />, { wrapper: false });
+        await render(<GtkToggleButton ref={ref} onToggled={onToggled} label="Toggle" />, { wrapper: false });
 
         await fireEvent(ref.current as Gtk.Widget, "toggled");
 

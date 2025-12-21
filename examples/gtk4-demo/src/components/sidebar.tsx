@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkExpander, GtkLabel, GtkScrolledWindow, GtkSearchEntry } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkExpander, GtkLabel, GtkScrolledWindow, GtkSearchEntry, Slot } from "@gtkx/react";
 import { useDemo } from "../context/demo-context.js";
 
 export const Sidebar = () => {
@@ -18,8 +18,8 @@ export const Sidebar = () => {
             <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} marginStart={8} marginEnd={8}>
                     {filteredCategories.map((category) => (
-                        <GtkExpander.Root key={category.id} label={category.title}>
-                            <GtkExpander.Child>
+                        <GtkExpander key={category.id} label={category.title}>
+                            <Slot for={GtkExpander} id="child">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={4}
@@ -51,8 +51,8 @@ export const Sidebar = () => {
                                         </GtkButton>
                                     ))}
                                 </GtkBox>
-                            </GtkExpander.Child>
-                        </GtkExpander.Root>
+                            </Slot>
+                        </GtkExpander>
                     ))}
                 </GtkBox>
             </GtkScrolledWindow>

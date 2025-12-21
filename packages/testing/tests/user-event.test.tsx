@@ -11,6 +11,7 @@ import {
     GtkListBoxRow,
     GtkSwitch,
     GtkToggleButton,
+    SimpleListItem,
 } from "@gtkx/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, userEvent } from "../src/index.js";
@@ -24,14 +25,14 @@ describe("userEvent.click", () => {
         const handleClick = vi.fn();
         await render(<GtkButton label="Click me" onClicked={handleClick} />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
         await userEvent.click(button);
 
         expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
     it("toggles checkbox state", async () => {
-        await render(<GtkCheckButton.Root label="Option" />);
+        await render(<GtkCheckButton label="Option" />);
 
         const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
         await userEvent.click(checkbox);
@@ -51,7 +52,7 @@ describe("userEvent.click", () => {
     });
 
     it("toggles toggle button state", async () => {
-        await render(<GtkToggleButton.Root label="Toggle" />);
+        await render(<GtkToggleButton label="Toggle" />);
 
         const toggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON);
         await userEvent.click(toggle);
@@ -66,7 +67,7 @@ describe("userEvent.dblClick", () => {
         const handleClick = vi.fn();
         await render(<GtkButton label="Double click me" onClicked={handleClick} />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Double click me" });
         await userEvent.dblClick(button);
 
         expect(handleClick).toHaveBeenCalledTimes(2);
@@ -78,7 +79,7 @@ describe("userEvent.tripleClick", () => {
         const handleClick = vi.fn();
         await render(<GtkButton label="Triple click me" onClicked={handleClick} />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Triple click me" });
         await userEvent.tripleClick(button);
 
         expect(handleClick).toHaveBeenCalledTimes(3);
@@ -89,7 +90,7 @@ describe("userEvent.activate", () => {
     it("calls activate on the widget", async () => {
         await render(<GtkButton label="Test" />);
 
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
         await expect(userEvent.activate(button)).resolves.toBeUndefined();
     });
 });
@@ -119,7 +120,7 @@ describe("userEvent.type", () => {
         it("throws when element is not editable", async () => {
             await render(<GtkButton label="Test" />);
 
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
             await expect(userEvent.type(button, "text")).rejects.toThrow("element is not editable");
         });
     });
@@ -140,7 +141,7 @@ describe("userEvent.clear", () => {
         it("throws when element is not editable", async () => {
             await render(<GtkButton label="Test" />);
 
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
             await expect(userEvent.clear(button)).rejects.toThrow("element is not editable");
         });
     });
@@ -177,11 +178,11 @@ describe("userEvent.tab", () => {
 describe("userEvent.selectOptions", () => {
     it("selects option in dropdown by index", async () => {
         await render(
-            <GtkDropDown.Root>
-                <GtkDropDown.Item id="a" label="Option A" />
-                <GtkDropDown.Item id="b" label="Option B" />
-                <GtkDropDown.Item id="c" label="Option C" />
-            </GtkDropDown.Root>,
+            <GtkDropDown>
+                <SimpleListItem id="a" value="Option A" />
+                <SimpleListItem id="b" value="Option B" />
+                <SimpleListItem id="c" value="Option C" />
+            </GtkDropDown>,
         );
 
         const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
@@ -208,16 +209,16 @@ describe("userEvent.selectOptions", () => {
         it("throws when element is not selectable", async () => {
             await render(<GtkButton label="Test" />);
 
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
             await expect(userEvent.selectOptions(button, 0)).rejects.toThrow("element is not a selectable widget");
         });
 
         it("throws when selecting multiple options on dropdown", async () => {
             await render(
-                <GtkDropDown.Root>
-                    <GtkDropDown.Item id="a" label="A" />
-                    <GtkDropDown.Item id="b" label="B" />
-                </GtkDropDown.Root>,
+                <GtkDropDown>
+                    <SimpleListItem id="a" value="A" />
+                    <SimpleListItem id="b" value="B" />
+                </GtkDropDown>,
             );
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
@@ -228,9 +229,9 @@ describe("userEvent.selectOptions", () => {
 
         it("throws when passing non-numeric value to dropdown", async () => {
             await render(
-                <GtkDropDown.Root>
-                    <GtkDropDown.Item id="a" label="A" />
-                </GtkDropDown.Root>,
+                <GtkDropDown>
+                    <SimpleListItem id="a" value="A" />
+                </GtkDropDown>,
             );
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
@@ -262,9 +263,9 @@ describe("userEvent.deselectOptions", () => {
     describe("error handling", () => {
         it("throws when element is not a list box", async () => {
             await render(
-                <GtkDropDown.Root>
-                    <GtkDropDown.Item id="a" label="A" />
-                </GtkDropDown.Root>,
+                <GtkDropDown>
+                    <SimpleListItem id="a" value="A" />
+                </GtkDropDown>,
             );
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);

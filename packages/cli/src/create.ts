@@ -36,7 +36,6 @@ export const getTestScript = (testing: TestingFramework): string | undefined => 
         case "node":
             return `${env} xvfb-run -a node --import tsx --test tests/**/*.test.ts`;
         case "none":
-            return undefined;
     }
 };
 
@@ -1119,7 +1118,6 @@ const promptForOptions = async (options: CreateOptions): Promise<ResolvedOptions
                     if (existsSync(resolve(process.cwd(), value))) {
                         return `Directory "${value}" already exists`;
                     }
-                    return undefined;
                 },
             }),
         );
@@ -1137,7 +1135,6 @@ const promptForOptions = async (options: CreateOptions): Promise<ResolvedOptions
                     if (!isValidAppId(value)) {
                         return "App ID must be reverse domain notation (e.g., com.example.myapp)";
                     }
-                    return undefined;
                 },
             }),
         );

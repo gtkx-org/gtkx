@@ -2,15 +2,15 @@ import { beginBatch, endBatch } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
-import { beginCommit, endCommit } from "./batch.js";
-import { createNode, type Props, type ROOT_NODE_CONTAINER } from "./factory.js";
+import { createNode } from "./factory.js";
 import type { Node } from "./node.js";
+import { flushAfterCommit } from "./scheduler.js";
+import type { Container, ContainerClass, Props } from "./types.js";
 
-type Container = Gtk.Widget | typeof ROOT_NODE_CONTAINER;
 type TextInstance = Node;
 type SuspenseInstance = never;
 type HydratableInstance = never;
-type PublicInstance = Gtk.Widget;
+type PublicInstance = Gtk.Widget | Gtk.Application;
 type HostContext = Record<string, never>;
 type ChildSet = never;
 type TimeoutHandle = number;
@@ -44,7 +44,12 @@ export type ReconcilerInstance = ReactReconciler.Reconciler<
     PublicInstance
 >;
 
-export function createHostConfig(createNodeFromContainer: (container: Container) => Node): HostConfig {
+const createNodeWithContainer = (container: Container): Node => {
+    const type = (container.constructor as ContainerClass).glibTypeName;
+    return createNode(type, {}, container, container);
+};
+
+export function createHostConfig(): HostConfig {
     return {
         supportsMutation: true,
         supportsPersistence: false,
@@ -54,10 +59,13 @@ export function createHostConfig(createNodeFromContainer: (container: Container)
         getRootHostContext: () => ({}),
         getChildHostContext: (parentHostContext) => parentHostContext,
         shouldSetTextContent: () => false,
-        createInstance: (type, props) => createNode(type, props),
+        createInstance: (type, props, rootContainer) => createNode(type, props, undefined, rootContainer),
         createTextInstance: (text) => createNode("GtkLabel", { label: text }),
         appendInitialChild: (parent, child) => parent.appendChild(child),
-        finalizeInitialChildren: () => true,
+        finalizeInitialChildren: (instance, _type, props) => {
+            instance.updateProps(null, props);
+            return true;
+        },
         commitUpdate: (instance, _type, oldProps, newProps) => {
             instance.updateProps(oldProps, newProps);
         },
@@ -68,25 +76,24 @@ export function createHostConfig(createNodeFromContainer: (container: Container)
         removeChild: (parent, child) => parent.removeChild(child),
         insertBefore: (parent, child, beforeChild) => parent.insertBefore(child, beforeChild),
         removeChildFromContainer: (container, child) => {
-            const parent = createNodeFromContainer(container);
+            const parent = createNodeWithContainer(container);
             parent.removeChild(child);
         },
         appendChildToContainer: (container, child) => {
-            const parent = createNodeFromContainer(container);
+            const parent = createNodeWithContainer(container);
             parent.appendChild(child);
         },
         insertInContainerBefore: (container, child, beforeChild) => {
-            const parent = createNodeFromContainer(container);
+            const parent = createNodeWithContainer(container);
             parent.insertBefore(child, beforeChild);
         },
         prepareForCommit: () => {
             beginBatch();
-            beginCommit();
             return null;
         },
         resetAfterCommit: () => {
-            endCommit();
             endBatch();
+            flushAfterCommit();
         },
         commitTextUpdate: (textInstance, oldText, newText) => {
             textInstance.updateProps({ label: oldText }, { label: newText });
@@ -100,7 +107,7 @@ export function createHostConfig(createNodeFromContainer: (container: Container)
         cancelTimeout: (id) => {
             clearTimeout(id);
         },
-        getPublicInstance: (instance) => instance.getWidget() as PublicInstance,
+        getPublicInstance: (instance) => instance.container as PublicInstance,
         getCurrentUpdatePriority: () => 2,
         setCurrentUpdatePriority: () => {},
         resolveUpdatePriority: () => 2,
@@ -111,7 +118,7 @@ export function createHostConfig(createNodeFromContainer: (container: Container)
         afterActiveInstanceBlur: () => {},
         prepareScopeUpdate: () => {},
         getInstanceFromScope: () => null,
-        detachDeletedInstance: () => {},
+        detachDeletedInstance: (instance) => instance.unmount(),
         resetFormInstance: () => {},
         requestPostPaintCallback: () => {},
         shouldAttemptEagerTransition: () => false,

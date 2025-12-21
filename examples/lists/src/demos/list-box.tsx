@@ -72,7 +72,7 @@ export const ListBoxDemo = () => {
                                 marginTop={8}
                                 marginBottom={8}
                             >
-                                <GtkCheckButton.Root active={task.completed} onToggled={() => toggleTask(task.id)} />
+                                <GtkCheckButton active={task.completed} onToggled={() => toggleTask(task.id)} />
                                 <GtkLabel
                                     label={task.title}
                                     hexpand

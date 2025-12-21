@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkDropDown, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkDropDown, GtkLabel, SimpleListItem } from "@gtkx/react";
 import { useState } from "react";
 
 interface Framework {
@@ -72,11 +72,11 @@ export const DropDownDemo = () => {
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                     <GtkLabel label="Framework Selector" cssClasses={["heading"]} halign={Gtk.Align.START} />
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <GtkDropDown.Root onSelectionChanged={setSelectedFrameworkId} hexpand={false}>
+                        <GtkDropDown onSelectionChanged={setSelectedFrameworkId} hexpand={false}>
                             {frameworks.map((fw) => (
-                                <GtkDropDown.Item key={fw.id} id={fw.id} label={fw.name} />
+                                <SimpleListItem key={fw.id} id={fw.id} value={fw.name} />
                             ))}
-                        </GtkDropDown.Root>
+                        </GtkDropDown>
                     </GtkBox>
 
                     {selectedFramework && (
@@ -110,11 +110,11 @@ export const DropDownDemo = () => {
                     <GtkLabel label="Theme Preference" cssClasses={["heading"]} halign={Gtk.Align.START} />
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} valign={Gtk.Align.CENTER}>
                         Select theme:
-                        <GtkDropDown.Root selectedId="system" onSelectionChanged={setSelectedThemeId} hexpand={false}>
+                        <GtkDropDown selectedId="system" onSelectionChanged={setSelectedThemeId} hexpand={false}>
                             {themes.map((theme) => (
-                                <GtkDropDown.Item key={theme.id} id={theme.id} label={theme.name} />
+                                <SimpleListItem key={theme.id} id={theme.id} value={theme.name} />
                             ))}
-                        </GtkDropDown.Root>
+                        </GtkDropDown>
                         {selectedTheme && (
                             <GtkLabel label={`Selected: ${selectedTheme.name}`} cssClasses={["dim-label"]} />
                         )}

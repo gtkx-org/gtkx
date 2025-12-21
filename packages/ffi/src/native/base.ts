@@ -12,8 +12,8 @@ export abstract class NativeObject {
     /** The native object id for the underlying GLib object */
     id: unknown;
 
-    // biome-ignore lint/complexity/noUselessConstructor: required for subclassing
-    // biome-ignore lint/suspicious/noExplicitAny: required for constructor args
+    // biome-ignore lint/complexity/noUselessConstructor: ignore
+    // biome-ignore lint/suspicious/noExplicitAny: ignore
     constructor(..._args: any[]) {}
 }
 

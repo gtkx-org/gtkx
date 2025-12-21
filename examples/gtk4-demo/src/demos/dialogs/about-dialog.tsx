@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { createPortal, GtkAboutDialog, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
+import { createPortal, GtkAboutDialog, GtkBox, GtkButton, GtkLabel, useApplication } from "@gtkx/react";
 import { useMemo, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -10,6 +10,8 @@ const LOGO_PATH = new URL("../../../../../logo.svg", import.meta.url).pathname;
 const AboutDialogDemo = () => {
     const [showDialog, setShowDialog] = useState(false);
     const logo = useMemo(() => Gdk.Texture.newFromFilename(LOGO_PATH), []);
+    const app = useApplication();
+    const activeWindow = app.getActiveWindow();
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
@@ -17,7 +19,7 @@ const AboutDialogDemo = () => {
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel
-                    label="<GtkAboutDialog displays information about your application including version, copyright, license, and credits."
+                    label="GtkAboutDialog displays information about your application including version, copyright, license, and credits."
                     wrap
                     cssClasses={["dim-label"]}
                 />
@@ -44,6 +46,7 @@ const AboutDialogDemo = () => {
             </GtkBox>
 
             {showDialog &&
+                activeWindow &&
                 createPortal(
                     <GtkAboutDialog
                         programName="GTKX Demo"
@@ -57,12 +60,12 @@ const AboutDialogDemo = () => {
                         artists={["Artist One"]}
                         documenters={["Documenter One"]}
                         logo={logo}
-                        modal
                         onCloseRequest={() => {
                             setShowDialog(false);
                             return false;
                         }}
                     />,
+                    activeWindow,
                 )}
         </GtkBox>
     );

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkListView } from "@gtkx/react";
+import { GtkBox, GtkLabel, ListItem, ListView } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
@@ -36,9 +36,9 @@ const ListViewDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Task List" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} heightRequest={250}>
-                    <GtkListView.Root
+                    <ListView<Task>
                         vexpand
-                        renderItem={(task: Task | null) => (
+                        renderItem={(task) => (
                             <GtkLabel
                                 label={task?.title ?? ""}
                                 cssClasses={task?.completed ? ["dim-label"] : []}
@@ -51,9 +51,9 @@ const ListViewDemo = () => {
                         )}
                     >
                         {tasks.map((task) => (
-                            <GtkListView.Item key={task.id} id={task.id} item={task} />
+                            <ListItem key={task.id} id={task.id} value={task} />
                         ))}
-                    </GtkListView.Root>
+                    </ListView>
                 </GtkBox>
             </GtkBox>
 

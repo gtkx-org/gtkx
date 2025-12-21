@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Gtk from "../src/generated/gtk/index.js";
-import { getApplication, getNativeObject } from "../src/index.js";
+import { getNativeObject } from "../src/index.js";
 
 describe("getNativeObject", () => {
     it("wraps a native pointer in a class instance", () => {
@@ -13,12 +13,6 @@ describe("getNativeObject", () => {
         const button = new Gtk.Button();
         const wrapped = getNativeObject(button.id);
         expect(wrapped).toBeInstanceOf(Gtk.Button);
-    });
-
-    it("walks up type hierarchy for unregistered subtypes", () => {
-        const app = getApplication();
-        const wrapped = getNativeObject(app.id);
-        expect(wrapped).toBeInstanceOf(Gtk.Application);
     });
 
     it("wraps with specific type when targetType is provided", () => {

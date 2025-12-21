@@ -1,31 +1,31 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkGrid, GtkLabel } from "@gtkx/react";
+import { GridChild, GtkGrid, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("render - Grid", () => {
-    describe("Grid.Root", () => {
+    describe("GtkGrid", () => {
         it("creates Grid widget", async () => {
             const ref = createRef<Gtk.Grid>();
 
-            await render(<GtkGrid.Root ref={ref} />, { wrapper: false });
+            await render(<GtkGrid ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
     });
 
-    describe("Grid.Child", () => {
+    describe("GridChild", () => {
         it("attaches child at column, row position", async () => {
             const gridRef = createRef<Gtk.Grid>();
             const labelRef = createRef<Gtk.Label>();
 
             await render(
-                <GtkGrid.Root ref={gridRef}>
-                    <GtkGrid.Child column={1} row={2}>
+                <GtkGrid ref={gridRef}>
+                    <GridChild column={1} row={2}>
                         <GtkLabel ref={labelRef} label="Positioned" />
-                    </GtkGrid.Child>
-                </GtkGrid.Root>,
+                    </GridChild>
+                </GtkGrid>,
                 { wrapper: false },
             );
 
@@ -37,11 +37,11 @@ describe("render - Grid", () => {
             const labelRef = createRef<Gtk.Label>();
 
             await render(
-                <GtkGrid.Root ref={gridRef}>
-                    <GtkGrid.Child column={0} row={0} columnSpan={2} rowSpan={3}>
+                <GtkGrid ref={gridRef}>
+                    <GridChild column={0} row={0} columnSpan={2} rowSpan={3}>
                         <GtkLabel ref={labelRef} label="Spanning" />
-                    </GtkGrid.Child>
-                </GtkGrid.Root>,
+                    </GridChild>
+                </GtkGrid>,
                 { wrapper: false },
             );
 
@@ -53,11 +53,11 @@ describe("render - Grid", () => {
             const labelRef = createRef<Gtk.Label>();
 
             await render(
-                <GtkGrid.Root ref={gridRef}>
-                    <GtkGrid.Child>
+                <GtkGrid ref={gridRef}>
+                    <GridChild>
                         <GtkLabel ref={labelRef} label="Default Position" />
-                    </GtkGrid.Child>
-                </GtkGrid.Root>,
+                    </GridChild>
+                </GtkGrid>,
                 { wrapper: false },
             );
 
@@ -72,11 +72,11 @@ describe("render - Grid", () => {
 
             function App({ column, row }: { column: number; row: number }) {
                 return (
-                    <GtkGrid.Root ref={gridRef}>
-                        <GtkGrid.Child column={column} row={row}>
+                    <GtkGrid ref={gridRef}>
+                        <GridChild column={column} row={row}>
                             <GtkLabel ref={labelRef} label="Moving" />
-                        </GtkGrid.Child>
-                    </GtkGrid.Root>
+                        </GridChild>
+                    </GtkGrid>
                 );
             }
 
@@ -93,11 +93,11 @@ describe("render - Grid", () => {
 
             function App({ columnSpan, rowSpan }: { columnSpan: number; rowSpan: number }) {
                 return (
-                    <GtkGrid.Root ref={gridRef}>
-                        <GtkGrid.Child column={0} row={0} columnSpan={columnSpan} rowSpan={rowSpan}>
+                    <GtkGrid ref={gridRef}>
+                        <GridChild column={0} row={0} columnSpan={columnSpan} rowSpan={rowSpan}>
                             <GtkLabel ref={labelRef} label="Resizing" />
-                        </GtkGrid.Child>
-                    </GtkGrid.Root>
+                        </GridChild>
+                    </GtkGrid>
                 );
             }
 
@@ -115,13 +115,13 @@ describe("render - Grid", () => {
 
             function App({ showChild }: { showChild: boolean }) {
                 return (
-                    <GtkGrid.Root ref={gridRef}>
+                    <GtkGrid ref={gridRef}>
                         {showChild && (
-                            <GtkGrid.Child column={0} row={0}>
+                            <GridChild column={0} row={0}>
                                 <GtkLabel label="Removable" />
-                            </GtkGrid.Child>
+                            </GridChild>
                         )}
-                    </GtkGrid.Root>
+                    </GtkGrid>
                 );
             }
 

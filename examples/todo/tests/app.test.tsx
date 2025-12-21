@@ -12,8 +12,8 @@ describe("Todo App", () => {
         it("renders with title", async () => {
             await render(<App />, { wrapper: false });
 
-            const title = await screen.findByText("Tasks");
-            expect(title).toBeDefined();
+            const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Tasks" });
+            expect(window).toBeDefined();
         });
 
         it("shows empty message when no todos", async () => {

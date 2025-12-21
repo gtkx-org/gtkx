@@ -25,7 +25,7 @@ const LinkButtonDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="How It Works" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="<GtkLinkButton opens the URI in the default browser when clicked. It automatically tracks visited state."
+                    label="GtkLinkButton opens the URI in the default browser when clicked. It automatically tracks visited state."
                     wrap
                     cssClasses={["dim-label"]}
                 />

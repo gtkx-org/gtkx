@@ -1,58 +1,107 @@
-import { getApplication } from "@gtkx/ffi";
+import { getNativeObject } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
+import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { WINDOW_TYPES } from "../constants.js";
-import type { Props } from "../factory.js";
-import { Node, normalizeWidgetType } from "../node.js";
+import type { Node } from "../node.js";
+import { registerNodeClass } from "../registry.js";
+import type { Container, ContainerClass, Props } from "../types.js";
+import { filterProps, isContainerType } from "./internal/helpers.js";
+import { MenuNode } from "./menu.js";
+import { WidgetNode } from "./widget.js";
 
-export class WindowNode extends Node<Gtk.Window> {
-    static override consumedPropNames = ["defaultWidth", "defaultHeight"];
+const PROPS = ["defaultWidth", "defaultHeight"];
 
-    static matches(type: string): boolean {
-        return WINDOW_TYPES.has(normalizeWidgetType(type));
+type WindowProps = Props & {
+    defaultWidth?: number;
+    defaultHeight?: number;
+};
+
+export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
+    public static override priority = 1;
+
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
+        return isContainerType(Gtk.Window, containerOrClass);
     }
 
-    protected override isStandalone(): boolean {
-        return true;
-    }
+    public static override createContainer(
+        props: Props,
+        containerClass: typeof Gtk.Window,
+        rootContainer?: Container,
+    ): Gtk.Window {
+        const WindowClass = containerClass as typeof Gtk.Window;
 
-    protected override createWidget(type: string, _props: Props): Gtk.Window {
-        const widgetType = normalizeWidgetType(type);
+        if (
+            isContainerType(Gtk.ApplicationWindow, WindowClass) ||
+            isContainerType(Adw.ApplicationWindow, WindowClass)
+        ) {
+            if (!(rootContainer instanceof Gtk.Application)) {
+                throw new Error("ApplicationWindow can only be created inside an Application");
+            }
 
-        if (widgetType === "GtkApplicationWindow") {
-            return new Gtk.ApplicationWindow(getApplication());
+            if (isContainerType(Adw.ApplicationWindow, WindowClass)) {
+                return new Adw.ApplicationWindow(rootContainer);
+            }
+
+            return new Gtk.ApplicationWindow(rootContainer);
         }
 
-        if (widgetType === "AdwApplicationWindow") {
-            return new Adw.ApplicationWindow(getApplication());
-        }
-
-        if (widgetType === "AdwWindow") {
-            return new Adw.Window();
-        }
-
-        return new Gtk.Window();
+        return WidgetNode.createContainer(props, containerClass) as Gtk.Window;
     }
 
-    override mount(): void {
-        this.widget.present();
+    public override appendChild(child: Node): void {
+        if (child.container instanceof Gtk.Window) {
+            child.container.setTransientFor(this.container);
+            return;
+        }
+
+        if (child instanceof MenuNode && this.container instanceof Gtk.ApplicationWindow) {
+            child.setActionMap(getNativeObject(this.container.id, Gio.ActionMap) ?? undefined);
+            return;
+        }
+
+        super.appendChild(child);
     }
 
-    override unmount(): void {
-        this.widget.destroy();
+    public override removeChild(child: Node): void {
+        if (child.container instanceof Gtk.Window) {
+            child.container.setTransientFor(undefined);
+            return;
+        }
+
+        if (child instanceof MenuNode && this.container instanceof Gtk.ApplicationWindow) {
+            child.setActionMap(undefined);
+        }
+
+        super.removeChild(child);
+    }
+
+    public override insertBefore(child: Node): void {
+        this.appendChild(child);
+    }
+
+    public override mount(): void {
+        this.container.present();
+        super.mount();
+    }
+
+    public override unmount(): void {
+        this.container.destroy();
         super.unmount();
     }
 
-    override updateProps(oldProps: Props, newProps: Props): void {
-        const widthChanged = oldProps.defaultWidth !== newProps.defaultWidth;
-        const heightChanged = oldProps.defaultHeight !== newProps.defaultHeight;
-
-        if (widthChanged || heightChanged) {
-            const width = (newProps.defaultWidth as number | undefined) ?? -1;
-            const height = (newProps.defaultHeight as number | undefined) ?? -1;
-            this.widget.setDefaultSize(width, height);
+    public override updateProps(oldProps: WindowProps | null, newProps: WindowProps): void {
+        if (
+            !oldProps ||
+            oldProps.defaultWidth !== newProps.defaultWidth ||
+            oldProps.defaultHeight !== newProps.defaultHeight
+        ) {
+            const width = newProps.defaultWidth ?? -1;
+            const height = newProps.defaultHeight ?? -1;
+            this.container.setDefaultSize(width, height);
         }
 
-        super.updateProps(oldProps, newProps);
+        super.updateProps(filterProps(oldProps ?? {}, PROPS), filterProps(newProps, PROPS));
     }
 }
+
+registerNodeClass(WindowNode);

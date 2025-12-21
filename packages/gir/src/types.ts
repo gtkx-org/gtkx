@@ -543,8 +543,6 @@ export class TypeRegistry {
                 return type;
             }
         }
-
-        return undefined;
     }
 
     /**

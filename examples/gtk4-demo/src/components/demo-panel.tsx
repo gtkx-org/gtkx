@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkLabel, GtkScrolledWindow, Slot } from "@gtkx/react";
 import type { Demo } from "../demos/types.js";
 
 interface DemoPanelProps {
@@ -44,8 +44,8 @@ export const DemoPanel = ({ demo }: DemoPanelProps) => {
                 />
             </GtkBox>
             <GtkScrolledWindow vexpand hexpand>
-                <GtkFrame.Root marginStart={16} marginEnd={16} marginTop={8} marginBottom={16}>
-                    <GtkFrame.Child>
+                <GtkFrame marginStart={16} marginEnd={16} marginTop={8} marginBottom={16}>
+                    <Slot for={GtkFrame} id="child">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={0}
@@ -56,8 +56,8 @@ export const DemoPanel = ({ demo }: DemoPanelProps) => {
                         >
                             <DemoComponent />
                         </GtkBox>
-                    </GtkFrame.Child>
-                </GtkFrame.Root>
+                    </Slot>
+                </GtkFrame>
             </GtkScrolledWindow>
         </GtkBox>
     );

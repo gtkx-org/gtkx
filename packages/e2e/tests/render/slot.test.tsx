@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkButton, GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPopover } from "@gtkx/react";
+import { GtkButton, GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPopover, Slot } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -10,11 +10,11 @@ describe("render - Slot", () => {
         const titleRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkHeaderBar.Root ref={headerBarRef}>
-                <GtkHeaderBar.TitleWidget>
+            <GtkHeaderBar ref={headerBarRef}>
+                <Slot for={GtkHeaderBar} id="titleWidget">
                     <GtkLabel ref={titleRef} label="Custom Title" />
-                </GtkHeaderBar.TitleWidget>
-            </GtkHeaderBar.Root>,
+                </Slot>
+            </GtkHeaderBar>,
             { wrapper: false },
         );
 
@@ -26,11 +26,11 @@ describe("render - Slot", () => {
         const labelRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkMenuButton.Root ref={menuButtonRef}>
-                <GtkMenuButton.Child>
+            <GtkMenuButton ref={menuButtonRef}>
+                <Slot for={GtkMenuButton} id="child">
                     <GtkLabel ref={labelRef} label="Button Content" />
-                </GtkMenuButton.Child>
-            </GtkMenuButton.Root>,
+                </Slot>
+            </GtkMenuButton>,
             { wrapper: false },
         );
 
@@ -42,13 +42,13 @@ describe("render - Slot", () => {
 
         function App({ showTitle }: { showTitle: boolean }) {
             return (
-                <GtkHeaderBar.Root ref={headerBarRef}>
+                <GtkHeaderBar ref={headerBarRef}>
                     {showTitle && (
-                        <GtkHeaderBar.TitleWidget>
+                        <Slot for={GtkHeaderBar} id="titleWidget">
                             <GtkLabel label="Title" />
-                        </GtkHeaderBar.TitleWidget>
+                        </Slot>
                     )}
-                </GtkHeaderBar.Root>
+                </GtkHeaderBar>
             );
         }
 
@@ -68,15 +68,15 @@ describe("render - Slot", () => {
 
         function App({ first }: { first: boolean }) {
             return (
-                <GtkHeaderBar.Root ref={headerBarRef}>
-                    <GtkHeaderBar.TitleWidget>
+                <GtkHeaderBar ref={headerBarRef}>
+                    <Slot for={GtkHeaderBar} id="titleWidget">
                         {first ? (
                             <GtkLabel ref={label1Ref} key="first" label="First Title" />
                         ) : (
                             <GtkLabel ref={label2Ref} key="second" label="Second Title" />
                         )}
-                    </GtkHeaderBar.TitleWidget>
-                </GtkHeaderBar.Root>
+                    </Slot>
+                </GtkHeaderBar>
             );
         }
 
@@ -94,11 +94,11 @@ describe("render - Slot", () => {
         const labelRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkMenuButton.Root ref={menuButtonRef}>
-                <GtkMenuButton.Child>
+            <GtkMenuButton ref={menuButtonRef}>
+                <Slot for={GtkMenuButton} id="child">
                     <GtkLabel ref={labelRef} label="Custom Child" />
-                </GtkMenuButton.Child>
-            </GtkMenuButton.Root>,
+                </Slot>
+            </GtkMenuButton>,
             { wrapper: false },
         );
 
@@ -110,13 +110,13 @@ describe("render - Slot", () => {
         const popoverRef = createRef<Gtk.Popover>();
 
         await render(
-            <GtkMenuButton.Root ref={menuButtonRef}>
-                <GtkMenuButton.Popover>
-                    <GtkPopover.Root ref={popoverRef}>
+            <GtkMenuButton ref={menuButtonRef}>
+                <Slot for={GtkMenuButton} id="popover">
+                    <GtkPopover ref={popoverRef}>
                         <GtkLabel label="Popover Content" />
-                    </GtkPopover.Root>
-                </GtkMenuButton.Popover>
-            </GtkMenuButton.Root>,
+                    </GtkPopover>
+                </Slot>
+            </GtkMenuButton>,
             { wrapper: false },
         );
 
@@ -129,16 +129,16 @@ describe("render - Slot", () => {
         const popoverRef = createRef<Gtk.Popover>();
 
         await render(
-            <GtkMenuButton.Root ref={menuButtonRef}>
-                <GtkMenuButton.Child>
+            <GtkMenuButton ref={menuButtonRef}>
+                <Slot for={GtkMenuButton} id="child">
                     <GtkLabel ref={labelRef} label="Button Label" />
-                </GtkMenuButton.Child>
-                <GtkMenuButton.Popover>
-                    <GtkPopover.Root ref={popoverRef}>
+                </Slot>
+                <Slot for={GtkMenuButton} id="popover">
+                    <GtkPopover ref={popoverRef}>
                         <GtkLabel label="Popover Content" />
-                    </GtkPopover.Root>
-                </GtkMenuButton.Popover>
-            </GtkMenuButton.Root>,
+                    </GtkPopover>
+                </Slot>
+            </GtkMenuButton>,
             { wrapper: false },
         );
 
@@ -151,9 +151,9 @@ describe("render - Slot", () => {
         const buttonRef = createRef<Gtk.Button>();
 
         await render(
-            <GtkHeaderBar.Root ref={headerBarRef}>
+            <GtkHeaderBar ref={headerBarRef}>
                 <GtkButton ref={buttonRef} label="Direct Button" />
-            </GtkHeaderBar.Root>,
+            </GtkHeaderBar>,
             { wrapper: false },
         );
 

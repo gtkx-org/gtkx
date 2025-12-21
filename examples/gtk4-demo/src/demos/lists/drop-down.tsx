@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkDropDown, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkDropDown, GtkLabel, SimpleListItem } from "@gtkx/react";
 import { useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
@@ -40,11 +40,11 @@ const DropDownDemo = () => {
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Country Selector" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkDropDown.Root onSelectionChanged={(id) => setSelectedId(id)}>
+                <GtkDropDown onSelectionChanged={(id) => setSelectedId(id)}>
                     {countries.map((country) => (
-                        <GtkDropDown.Item key={country.id} id={country.id} label={country.name} />
+                        <SimpleListItem key={country.id} id={country.id} value={country.name} />
                     ))}
-                </GtkDropDown.Root>
+                </GtkDropDown>
                 {selectedCountry && (
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} cssClasses={["card"]} marginTop={8}>
                         <GtkBox
@@ -70,7 +70,7 @@ const DropDownDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Features" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="DropDown supports custom item rendering, search/filter, and keyboard navigation. Use DropDown.Root with DropDown.Item children."
+                    label="DropDown supports custom item rendering, search/filter, and keyboard navigation. Use GtkDropDown with SimpleListItem children."
                     wrap
                     cssClasses={["dim-label"]}
                 />

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkScrolledWindow, ListItem, ListView } from "@gtkx/react";
 
 interface Contact {
     id: string;
@@ -52,8 +52,8 @@ export const ListViewDemo = () => {
                 <GtkLabel label="Company Directory" cssClasses={["heading"]} halign={Gtk.Align.START} />
 
                 <GtkScrolledWindow vexpand cssClasses={["card"]}>
-                    <GtkListView.Root
-                        renderItem={(contact: Contact | null) => (
+                    <ListView<Contact>
+                        renderItem={(contact) => (
                             <GtkBox
                                 orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={12}
@@ -91,9 +91,9 @@ export const ListViewDemo = () => {
                         )}
                     >
                         {contacts.map((contact) => (
-                            <GtkListView.Item key={contact.id} id={contact.id} item={contact} />
+                            <ListItem key={contact.id} id={contact.id} value={contact} />
                         ))}
-                    </GtkListView.Root>
+                    </ListView>
                 </GtkScrolledWindow>
             </GtkBox>
 

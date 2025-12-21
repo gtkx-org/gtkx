@@ -1,4 +1,3 @@
-export type SignalMeta = Record<
-    string,
-    { params: import("@gtkx/native").Type[]; returnType?: import("@gtkx/native").Type }
->;
+import type { Type } from "@gtkx/native";
+
+export type SignalMeta = Record<string, { params: Type[]; returnType?: Type }>;

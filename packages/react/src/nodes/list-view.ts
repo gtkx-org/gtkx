@@ -1,67 +1,78 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Props } from "../factory.js";
-import type { RenderItemFn } from "../types.js";
-import { connectListItemFactorySignals, type ListItemFactoryHandlers, type ListItemInfo } from "./list-item-factory.js";
-import { SelectableListNode, type SelectableListState } from "./selectable-list.js";
-import { VirtualItemNode } from "./virtual-item.js";
+import type { Node } from "../node.js";
+import { registerNodeClass } from "../registry.js";
+import type { Container, ContainerClass } from "../types.js";
+import { filterProps, isContainerType } from "./internal/helpers.js";
+import { ListItemRenderer, type RenderItemFn } from "./internal/list-item-renderer.js";
+import { ListItemNode } from "./list-item.js";
+import { List } from "./models/list.js";
+import { WidgetNode } from "./widget.js";
 
-type ListViewState = SelectableListState & {
-    factory: Gtk.SignalListItemFactory;
-    factoryHandlers: ListItemFactoryHandlers | null;
-    renderItem: RenderItemFn<unknown>;
-    listItemCache: Map<number, ListItemInfo>;
+const PROP_NAMES = ["renderItem"];
+
+type ListViewProps = {
+    renderItem?: RenderItemFn<unknown>;
 };
 
-export class ListViewNode extends SelectableListNode<Gtk.ListView | Gtk.GridView, ListViewState> {
-    static override consumedPropNames = ["renderItem", "selected", "onSelectionChanged", "selectionMode"];
+export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps> {
+    public static override priority = 1;
 
-    static matches(type: string): boolean {
-        return type === "GtkListView.Root" || type === "GtkGridView.Root";
+    private itemRenderer: ListItemRenderer;
+    private list: List;
+
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
+        return isContainerType(Gtk.ListView, containerOrClass) || isContainerType(Gtk.GridView, containerOrClass);
     }
 
-    override initialize(props: Props): void {
-        const selectionState = this.initializeSelectionState(props);
-
-        this.state = {
-            ...selectionState,
-            factory: new Gtk.SignalListItemFactory(),
-            factoryHandlers: null,
-            renderItem: props.renderItem as RenderItemFn<unknown>,
-            listItemCache: new Map(),
-        };
-
-        super.initialize(props);
-
-        this.state.factoryHandlers = connectListItemFactorySignals({
-            factory: this.state.factory,
-            listItemCache: this.state.listItemCache,
-            getRenderFn: () => this.state.renderItem,
-            getItemAtPosition: (position) => this.getItems()[position] ?? null,
-        });
-
-        this.applySelectionModel();
-        this.widget.setFactory(this.state.factory);
+    constructor(
+        typeName: string,
+        props: ListViewProps,
+        container: Gtk.ListView | Gtk.GridView,
+        rootContainer?: Container,
+    ) {
+        super(typeName, props, container, rootContainer);
+        this.list = new List();
+        this.itemRenderer = new ListItemRenderer(this.signalStore);
+        this.itemRenderer.setStore(this.list.getStore());
     }
 
-    override unmount(): void {
-        this.state.factoryHandlers?.disconnect();
-        this.cleanupSelection();
-        super.unmount();
+    public override mount(): void {
+        super.mount();
+        this.container.setFactory(this.itemRenderer.getFactory());
     }
 
-    override updateProps(oldProps: Props, newProps: Props): void {
-        if (oldProps.renderItem !== newProps.renderItem) {
-            this.state.renderItem = newProps.renderItem as RenderItemFn<unknown>;
+    public override appendChild(child: Node): void {
+        if (!(child instanceof ListItemNode)) {
+            throw new Error(`Cannot append child of type ${child.typeName} to ListView`);
         }
 
-        this.updateSelectionProps(oldProps, newProps);
+        this.list.appendChild(child);
+    }
 
-        super.updateProps(oldProps, newProps);
+    public override insertBefore(child: Node, before: Node): void {
+        if (!(child instanceof ListItemNode) || !(before instanceof ListItemNode)) {
+            throw new Error(`Cannot insert child of type ${child.typeName} to ListView`);
+        }
+
+        this.list.insertBefore(child, before);
+    }
+
+    public override removeChild(child: Node): void {
+        if (!(child instanceof ListItemNode)) {
+            throw new Error(`Cannot remove child of type ${child.typeName} from ListView`);
+        }
+
+        this.list.removeChild(child);
+    }
+
+    public override updateProps(oldProps: ListViewProps | null, newProps: ListViewProps): void {
+        if (!oldProps || oldProps.renderItem !== newProps.renderItem) {
+            this.itemRenderer.setRenderFn(newProps.renderItem);
+        }
+
+        this.list.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
+        super.updateProps(filterProps(oldProps ?? {}, PROP_NAMES), filterProps(newProps, PROP_NAMES));
     }
 }
 
-export class ListItemNode extends VirtualItemNode {
-    static matches(type: string): boolean {
-        return type === "GtkListView.Item" || type === "GtkGridView.Item";
-    }
-}
+registerNodeClass(ListViewNode);

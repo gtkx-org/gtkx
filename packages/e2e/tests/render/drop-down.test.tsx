@@ -1,18 +1,18 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkDropDown } from "@gtkx/react";
+import { GtkDropDown, SimpleListItem } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 describe("render - DropDown", () => {
-    describe("DropDown.Root", () => {
+    describe("GtkDropDown", () => {
         it("creates DropDown widget", async () => {
             const ref = createRef<Gtk.DropDown>();
 
             await render(
-                <GtkDropDown.Root ref={ref}>
-                    <GtkDropDown.Item id="1" label="First" />
-                </GtkDropDown.Root>,
+                <GtkDropDown ref={ref}>
+                    <SimpleListItem id="1" value="First" />
+                </GtkDropDown>,
                 { wrapper: false },
             );
 
@@ -20,15 +20,15 @@ describe("render - DropDown", () => {
         });
     });
 
-    describe("DropDown.Item", () => {
-        it("adds item with id and label", async () => {
+    describe("SimpleListItem", () => {
+        it("adds item with id and value", async () => {
             const ref = createRef<Gtk.DropDown>();
 
             await render(
-                <GtkDropDown.Root ref={ref}>
-                    <GtkDropDown.Item id="option1" label="Option 1" />
-                    <GtkDropDown.Item id="option2" label="Option 2" />
-                </GtkDropDown.Root>,
+                <GtkDropDown ref={ref}>
+                    <SimpleListItem id="option1" value="Option 1" />
+                    <SimpleListItem id="option2" value="Option 2" />
+                </GtkDropDown>,
                 { wrapper: false },
             );
 
@@ -38,21 +38,21 @@ describe("render - DropDown", () => {
         it("inserts item before existing item", async () => {
             const ref = createRef<Gtk.DropDown>();
 
-            function App({ items }: { items: { id: string; label: string }[] }) {
+            function App({ items }: { items: { id: string; value: string }[] }) {
                 return (
-                    <GtkDropDown.Root ref={ref}>
+                    <GtkDropDown ref={ref}>
                         {items.map((item) => (
-                            <GtkDropDown.Item key={item.id} id={item.id} label={item.label} />
+                            <SimpleListItem key={item.id} id={item.id} value={item.value} />
                         ))}
-                    </GtkDropDown.Root>
+                    </GtkDropDown>
                 );
             }
 
             await render(
                 <App
                     items={[
-                        { id: "1", label: "First" },
-                        { id: "3", label: "Third" },
+                        { id: "1", value: "First" },
+                        { id: "3", value: "Third" },
                     ]}
                 />,
                 { wrapper: false },
@@ -61,9 +61,9 @@ describe("render - DropDown", () => {
             await render(
                 <App
                     items={[
-                        { id: "1", label: "First" },
-                        { id: "2", label: "Second" },
-                        { id: "3", label: "Third" },
+                        { id: "1", value: "First" },
+                        { id: "2", value: "Second" },
+                        { id: "3", value: "Third" },
                     ]}
                 />,
                 { wrapper: false },
@@ -75,22 +75,22 @@ describe("render - DropDown", () => {
         it("removes item", async () => {
             const ref = createRef<Gtk.DropDown>();
 
-            function App({ items }: { items: { id: string; label: string }[] }) {
+            function App({ items }: { items: { id: string; value: string }[] }) {
                 return (
-                    <GtkDropDown.Root ref={ref}>
+                    <GtkDropDown ref={ref}>
                         {items.map((item) => (
-                            <GtkDropDown.Item key={item.id} id={item.id} label={item.label} />
+                            <SimpleListItem key={item.id} id={item.id} value={item.value} />
                         ))}
-                    </GtkDropDown.Root>
+                    </GtkDropDown>
                 );
             }
 
             await render(
                 <App
                     items={[
-                        { id: "1", label: "A" },
-                        { id: "2", label: "B" },
-                        { id: "3", label: "C" },
+                        { id: "1", value: "A" },
+                        { id: "2", value: "B" },
+                        { id: "3", value: "C" },
                     ]}
                 />,
                 { wrapper: false },
@@ -99,8 +99,8 @@ describe("render - DropDown", () => {
             await render(
                 <App
                     items={[
-                        { id: "1", label: "A" },
-                        { id: "3", label: "C" },
+                        { id: "1", value: "A" },
+                        { id: "3", value: "C" },
                     ]}
                 />,
                 { wrapper: false },
@@ -109,20 +109,20 @@ describe("render - DropDown", () => {
             expect(ref.current?.getModel()?.getNItems()).toBe(2);
         });
 
-        it("updates item label", async () => {
+        it("updates item value", async () => {
             const ref = createRef<Gtk.DropDown>();
 
-            function App({ label }: { label: string }) {
+            function App({ value }: { value: string }) {
                 return (
-                    <GtkDropDown.Root ref={ref}>
-                        <GtkDropDown.Item id="1" label={label} />
-                    </GtkDropDown.Root>
+                    <GtkDropDown ref={ref}>
+                        <SimpleListItem id="1" value={value} />
+                    </GtkDropDown>
                 );
             }
 
-            await render(<App label="Initial" />, { wrapper: false });
+            await render(<App value="Initial" />, { wrapper: false });
 
-            await render(<App label="Updated" />, { wrapper: false });
+            await render(<App value="Updated" />, { wrapper: false });
         });
     });
 
@@ -131,11 +131,11 @@ describe("render - DropDown", () => {
             const ref = createRef<Gtk.DropDown>();
 
             await render(
-                <GtkDropDown.Root ref={ref} selectedId="2">
-                    <GtkDropDown.Item id="1" label="First" />
-                    <GtkDropDown.Item id="2" label="Second" />
-                    <GtkDropDown.Item id="3" label="Third" />
-                </GtkDropDown.Root>,
+                <GtkDropDown ref={ref} selectedId="2">
+                    <SimpleListItem id="1" value="First" />
+                    <SimpleListItem id="2" value="Second" />
+                    <SimpleListItem id="3" value="Third" />
+                </GtkDropDown>,
                 { wrapper: false },
             );
         });
@@ -145,10 +145,10 @@ describe("render - DropDown", () => {
             const onSelectionChanged = vi.fn();
 
             await render(
-                <GtkDropDown.Root ref={ref} onSelectionChanged={onSelectionChanged}>
-                    <GtkDropDown.Item id="1" label="First" />
-                    <GtkDropDown.Item id="2" label="Second" />
-                </GtkDropDown.Root>,
+                <GtkDropDown ref={ref} onSelectionChanged={onSelectionChanged}>
+                    <SimpleListItem id="1" value="First" />
+                    <SimpleListItem id="2" value="Second" />
+                </GtkDropDown>,
                 { wrapper: false },
             );
 
@@ -160,10 +160,10 @@ describe("render - DropDown", () => {
 
             function App({ selectedId }: { selectedId: string }) {
                 return (
-                    <GtkDropDown.Root ref={ref} selectedId={selectedId}>
-                        <GtkDropDown.Item id="1" label="First" />
-                        <GtkDropDown.Item id="2" label="Second" />
-                    </GtkDropDown.Root>
+                    <GtkDropDown ref={ref} selectedId={selectedId}>
+                        <SimpleListItem id="1" value="First" />
+                        <SimpleListItem id="2" value="Second" />
+                    </GtkDropDown>
                 );
             }
 

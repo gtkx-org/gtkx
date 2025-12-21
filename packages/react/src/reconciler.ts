@@ -1,21 +1,12 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
 import ReactReconciler from "react-reconciler";
 import packageJson from "../package.json" with { type: "json" };
-import { createNode, type ROOT_NODE_CONTAINER } from "./factory.js";
 import { createHostConfig, type ReconcilerInstance } from "./host-config.js";
-import type { Node } from "./node.js";
-
-type Container = Gtk.Widget | typeof ROOT_NODE_CONTAINER;
 
 class Reconciler {
     private instance: ReconcilerInstance;
 
     constructor() {
-        const createNodeFromContainer = (container: Container): Node => {
-            return createNode(container.constructor.name, {}, container);
-        };
-
-        this.instance = ReactReconciler(createHostConfig(createNodeFromContainer));
+        this.instance = ReactReconciler(createHostConfig());
         this.injectDevTools();
     }
 
@@ -36,6 +27,6 @@ class Reconciler {
 
 /**
  * The singleton GTKX React reconciler instance.
- * @private This is an internal API used only by @gtkx/testing. Do not use directly.
+ * @internal This is an internal API used only by @gtkx/testing. Do not use directly.
  */
 export const reconciler = new Reconciler();

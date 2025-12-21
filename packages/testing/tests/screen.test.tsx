@@ -10,7 +10,7 @@ afterEach(async () => {
 describe("screen", () => {
     it("finds element by role", async () => {
         await render(<GtkButton label="Test" />);
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
         expect(button).toBeDefined();
     });
 
@@ -41,7 +41,7 @@ describe("screen", () => {
             </GtkBox>,
         );
 
-        const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
+        const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON, { name: /First|Second|Third/ });
         expect(buttons.length).toBe(3);
     });
 

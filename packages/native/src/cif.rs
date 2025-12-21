@@ -318,7 +318,12 @@ impl TryFrom<arg::Arg> for Value {
 
                 Ok(Value::Ptr(ptr))
             }
-            Type::Array(type_) => Value::try_from_array(&arg, type_),
+            Type::Array(type_) => match &arg.value {
+                value::Value::Null | value::Value::Undefined if arg.optional => {
+                    Ok(Value::Ptr(std::ptr::null_mut()))
+                }
+                _ => Value::try_from_array(&arg, type_),
+            },
             Type::Callback(type_) => Value::try_from_callback(&arg, type_),
             Type::Ref(type_) => Value::try_from_ref(&arg, type_),
         }

@@ -1,6 +1,6 @@
-import { getApplication, getNativeObject, start, stop } from "@gtkx/ffi";
+import { getNativeObject, start, stop } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, ROOT_NODE_CONTAINER, reconciler } from "@gtkx/react";
+import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import * as queries from "./queries.js";
@@ -11,6 +11,7 @@ import { hasLabel } from "./widget.js";
 
 const APP_ID = "com.gtkx.testing";
 
+let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
 
 const getWidgetLabel = (widget: Gtk.Widget): string | null => {
@@ -55,12 +56,12 @@ const update = async (
 };
 
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
-    const app = start(APP_ID);
+    application = start(APP_ID);
 
     if (!container) {
         const instance = reconciler.getInstance();
         container = instance.createContainer(
-            ROOT_NODE_CONTAINER,
+            application,
             0,
             null,
             false,
@@ -74,7 +75,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
         );
     }
 
-    return { app, container };
+    return { app: application, container };
 };
 
 const DefaultWrapper = ({ children }: { children: ReactNode }): ReactNode => (
@@ -99,7 +100,8 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
     const instance = reconciler.getInstance();
 
     const wrappedElement = wrapElement(element, options?.wrapper);
-    await update(instance, wrappedElement, fiberRoot);
+    const withContext = <ApplicationContext.Provider value={application}>{wrappedElement}</ApplicationContext.Provider>;
+    await update(instance, withContext, fiberRoot);
 
     setScreenRoot(application);
 
@@ -119,7 +121,8 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
         unmount: () => update(instance, null, fiberRoot),
         rerender: (newElement: ReactNode) => {
             const wrapped = wrapElement(newElement, options?.wrapper);
-            return update(instance, wrapped, fiberRoot);
+            const withCtx = <ApplicationContext.Provider value={application}>{wrapped}</ApplicationContext.Provider>;
+            return update(instance, withCtx, fiberRoot);
         },
         debug: () => {
             const activeWindow = application.getActiveWindow();
@@ -135,11 +138,10 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
  * Should be called after each test to reset state.
  */
 export const cleanup = async (): Promise<void> => {
-    if (container) {
-        const app = getApplication();
+    if (container && application) {
         const instance = reconciler.getInstance();
         await update(instance, null, container);
-        for (const window of app.getWindows()) {
+        for (const window of application.getWindows()) {
             window.destroy();
         }
     }

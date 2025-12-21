@@ -41,9 +41,9 @@ describe("render - children", () => {
             const labelRef = createRef<Gtk.Label>();
 
             await render(
-                <GtkFrame.Root ref={frameRef}>
+                <GtkFrame ref={frameRef}>
                     <GtkLabel ref={labelRef} label="Single Child" />
-                </GtkFrame.Root>,
+                </GtkFrame>,
                 { wrapper: false },
             );
 
@@ -76,7 +76,7 @@ describe("render - children", () => {
             const frameRef = createRef<Gtk.Frame>();
 
             function App({ showChild }: { showChild: boolean }) {
-                return <GtkFrame.Root ref={frameRef}>{showChild && <GtkLabel label="Child" />}</GtkFrame.Root>;
+                return <GtkFrame ref={frameRef}>{showChild && <GtkLabel label="Child" />}</GtkFrame>;
             }
 
             await render(<App showChild={true} />, { wrapper: false });
@@ -137,7 +137,7 @@ describe("render - children", () => {
         it("renders root level window", async () => {
             const windowRef = createRef<Gtk.Window>();
 
-            await render(<GtkWindow.Root ref={windowRef} title="Root Container" />, { wrapper: false });
+            await render(<GtkWindow ref={windowRef} title="Root Container" />, { wrapper: false });
 
             expect(windowRef.current).not.toBeNull();
         });
@@ -146,7 +146,7 @@ describe("render - children", () => {
             const windowRef = createRef<Gtk.Window>();
 
             function App({ showWindow }: { showWindow: boolean }) {
-                return showWindow ? <GtkWindow.Root ref={windowRef} title="Window" /> : null;
+                return showWindow ? <GtkWindow ref={windowRef} title="Window" /> : null;
             }
 
             await render(<App showWindow={true} />, { wrapper: false });
@@ -164,7 +164,7 @@ describe("render - children", () => {
                 return (
                     <>
                         {windows.map((title, i) => (
-                            <GtkWindow.Root key={title} ref={i === 0 ? window1Ref : window2Ref} title={title} />
+                            <GtkWindow key={title} ref={i === 0 ? window1Ref : window2Ref} title={title} />
                         ))}
                     </>
                 );

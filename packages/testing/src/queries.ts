@@ -177,7 +177,6 @@ const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
         case Gtk.AccessibleRole.SWITCH:
             return (widget as Gtk.Switch).getActive();
         default:
-            return undefined;
     }
 };
 
@@ -192,8 +191,6 @@ const getWidgetExpandedState = (widget: Gtk.Widget): boolean | undefined => {
         if (!parent) return undefined;
         return (parent as Gtk.Expander).getExpanded?.();
     }
-
-    return undefined;
 };
 
 const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {

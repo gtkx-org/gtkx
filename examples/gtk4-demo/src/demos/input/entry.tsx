@@ -11,7 +11,7 @@ const EntryDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Basic Entry" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="<GtkEntry is a single-line text input widget. Type in the entries below."
+                    label="GtkEntry is a single-line text input widget. Type in the entries below."
                     wrap
                     cssClasses={["dim-label"]}
                 />
@@ -24,7 +24,7 @@ const EntryDemo = () => {
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <GtkLabel label="<GtkEntry Purposes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel label="GtkEntry Purposes" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
                     label="Input purpose helps mobile keyboards show appropriate layouts."
                     wrap

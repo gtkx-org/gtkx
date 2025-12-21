@@ -8,6 +8,7 @@ import {
     GtkListBox,
     GtkScrolledWindow,
     quit,
+    Slot,
 } from "@gtkx/react";
 import { useCallback, useMemo, useState } from "react";
 import { TodoInput } from "./todo-input.js";
@@ -56,11 +57,11 @@ export const App = () => {
 
     return (
         <GtkApplicationWindow title="Tasks" defaultWidth={400} defaultHeight={500} onCloseRequest={quit}>
-            <GtkHeaderBar.Root>
-                <GtkHeaderBar.TitleWidget>
+            <GtkHeaderBar>
+                <Slot for={GtkHeaderBar} id="titleWidget">
                     <GtkLabel label="Tasks" cssClasses={["title"]} />
-                </GtkHeaderBar.TitleWidget>
-            </GtkHeaderBar.Root>
+                </Slot>
+            </GtkHeaderBar>
 
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}

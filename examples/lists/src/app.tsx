@@ -1,5 +1,14 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import { AdwViewStack, AdwViewSwitcher, GtkApplicationWindow, GtkHeaderBar, GtkWindow, quit } from "@gtkx/react";
+import {
+    AdwViewStack,
+    AdwViewSwitcher,
+    GtkApplicationWindow,
+    GtkHeaderBar,
+    GtkWindow,
+    quit,
+    Slot,
+    StackPage,
+} from "@gtkx/react";
 import { useCallback, useState } from "react";
 import { ColumnViewDemo } from "./demos/column-view.js";
 import { DropDownDemo } from "./demos/drop-down.js";
@@ -14,34 +23,34 @@ export const App = () => {
 
     return (
         <GtkApplicationWindow title="GTK4 Lists" defaultWidth={1000} defaultHeight={700} onCloseRequest={quit}>
-            <GtkWindow.Titlebar>
-                <GtkHeaderBar.Root>
-                    <GtkHeaderBar.TitleWidget>
+            <Slot for={GtkWindow} id="titlebar">
+                <GtkHeaderBar>
+                    <Slot for={GtkHeaderBar} id="titleWidget">
                         <AdwViewSwitcher policy={1} stack={stack ?? undefined} />
-                    </GtkHeaderBar.TitleWidget>
-                </GtkHeaderBar.Root>
-            </GtkWindow.Titlebar>
+                    </Slot>
+                </GtkHeaderBar>
+            </Slot>
 
-            <AdwViewStack.Root ref={stackRef} vexpand hexpand>
-                <AdwViewStack.Page name="listbox" title="ListBox" iconName="view-list-symbolic">
+            <AdwViewStack ref={stackRef} vexpand hexpand>
+                <StackPage name="listbox" title="ListBox" iconName="view-list-symbolic">
                     <ListBoxDemo />
-                </AdwViewStack.Page>
-                <AdwViewStack.Page name="listview" title="ListView" iconName="view-list-symbolic">
+                </StackPage>
+                <StackPage name="listview" title="ListView" iconName="view-list-symbolic">
                     <ListViewDemo />
-                </AdwViewStack.Page>
-                <AdwViewStack.Page name="gridview" title="GridView" iconName="view-grid-symbolic">
+                </StackPage>
+                <StackPage name="gridview" title="GridView" iconName="view-grid-symbolic">
                     <GridViewDemo />
-                </AdwViewStack.Page>
-                <AdwViewStack.Page name="columnview" title="ColumnView" iconName="x-office-spreadsheet-symbolic">
+                </StackPage>
+                <StackPage name="columnview" title="ColumnView" iconName="x-office-spreadsheet-symbolic">
                     <ColumnViewDemo />
-                </AdwViewStack.Page>
-                <AdwViewStack.Page name="dropdown" title="DropDown" iconName="view-more-symbolic">
+                </StackPage>
+                <StackPage name="dropdown" title="DropDown" iconName="view-more-symbolic">
                     <DropDownDemo />
-                </AdwViewStack.Page>
-                <AdwViewStack.Page name="flowbox" title="FlowBox" iconName="view-app-grid-symbolic">
+                </StackPage>
+                <StackPage name="flowbox" title="FlowBox" iconName="view-app-grid-symbolic">
                     <FlowBoxDemo />
-                </AdwViewStack.Page>
-            </AdwViewStack.Root>
+                </StackPage>
+            </AdwViewStack>
         </GtkApplicationWindow>
     );
 };

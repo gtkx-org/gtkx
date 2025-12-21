@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkImage, GtkLabel, GtkMenuButton, GtkPopover } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkImage, GtkLabel, GtkMenuButton, GtkPopover, Slot } from "@gtkx/react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
@@ -18,12 +18,12 @@ const MenuButtonDemo = () => {
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <GtkLabel label="<GtkButton Styles" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkLabel label="GtkButton Styles" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
-                    <GtkMenuButton.Root label="Text Only">
-                        <GtkMenuButton.Popover>
-                            <GtkPopover.Root>
-                                <GtkPopover.Child>
+                    <GtkMenuButton label="Text Only">
+                        <Slot for={GtkMenuButton} id="popover">
+                            <GtkPopover>
+                                <Slot for={GtkPopover} id="child">
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={4}
@@ -34,15 +34,15 @@ const MenuButtonDemo = () => {
                                     >
                                         Menu content
                                     </GtkBox>
-                                </GtkPopover.Child>
-                            </GtkPopover.Root>
-                        </GtkMenuButton.Popover>
-                    </GtkMenuButton.Root>
+                                </Slot>
+                            </GtkPopover>
+                        </Slot>
+                    </GtkMenuButton>
 
-                    <GtkMenuButton.Root iconName="open-menu-symbolic">
-                        <GtkMenuButton.Popover>
-                            <GtkPopover.Root>
-                                <GtkPopover.Child>
+                    <GtkMenuButton iconName="open-menu-symbolic">
+                        <Slot for={GtkMenuButton} id="popover">
+                            <GtkPopover>
+                                <Slot for={GtkPopover} id="child">
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={4}
@@ -53,20 +53,20 @@ const MenuButtonDemo = () => {
                                     >
                                         Icon menu
                                     </GtkBox>
-                                </GtkPopover.Child>
-                            </GtkPopover.Root>
-                        </GtkMenuButton.Popover>
-                    </GtkMenuButton.Root>
+                                </Slot>
+                            </GtkPopover>
+                        </Slot>
+                    </GtkMenuButton>
                 </GtkBox>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="File Menu Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
-                    <GtkMenuButton.Root label="File">
-                        <GtkMenuButton.Popover>
-                            <GtkPopover.Root>
-                                <GtkPopover.Child>
+                    <GtkMenuButton label="File">
+                        <Slot for={GtkMenuButton} id="popover">
+                            <GtkPopover>
+                                <Slot for={GtkPopover} id="child">
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={2}
@@ -81,15 +81,15 @@ const MenuButtonDemo = () => {
                                         <GtkButton label="Save As..." cssClasses={["flat"]} halign={Gtk.Align.FILL} />
                                         <GtkButton label="Close" cssClasses={["flat"]} halign={Gtk.Align.FILL} />
                                     </GtkBox>
-                                </GtkPopover.Child>
-                            </GtkPopover.Root>
-                        </GtkMenuButton.Popover>
-                    </GtkMenuButton.Root>
+                                </Slot>
+                            </GtkPopover>
+                        </Slot>
+                    </GtkMenuButton>
 
-                    <GtkMenuButton.Root label="Edit">
-                        <GtkMenuButton.Popover>
-                            <GtkPopover.Root>
-                                <GtkPopover.Child>
+                    <GtkMenuButton label="Edit">
+                        <Slot for={GtkMenuButton} id="popover">
+                            <GtkPopover>
+                                <Slot for={GtkPopover} id="child">
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={2}
@@ -104,15 +104,15 @@ const MenuButtonDemo = () => {
                                         <GtkButton label="Copy" cssClasses={["flat"]} halign={Gtk.Align.FILL} />
                                         <GtkButton label="Paste" cssClasses={["flat"]} halign={Gtk.Align.FILL} />
                                     </GtkBox>
-                                </GtkPopover.Child>
-                            </GtkPopover.Root>
-                        </GtkMenuButton.Popover>
-                    </GtkMenuButton.Root>
+                                </Slot>
+                            </GtkPopover>
+                        </Slot>
+                    </GtkMenuButton>
 
-                    <GtkMenuButton.Root label="View">
-                        <GtkMenuButton.Popover>
-                            <GtkPopover.Root>
-                                <GtkPopover.Child>
+                    <GtkMenuButton label="View">
+                        <Slot for={GtkMenuButton} id="popover">
+                            <GtkPopover>
+                                <Slot for={GtkPopover} id="child">
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={2}
@@ -125,19 +125,19 @@ const MenuButtonDemo = () => {
                                         <GtkButton label="Zoom Out" cssClasses={["flat"]} halign={Gtk.Align.FILL} />
                                         <GtkButton label="Fullscreen" cssClasses={["flat"]} halign={Gtk.Align.FILL} />
                                     </GtkBox>
-                                </GtkPopover.Child>
-                            </GtkPopover.Root>
-                        </GtkMenuButton.Popover>
-                    </GtkMenuButton.Root>
+                                </Slot>
+                            </GtkPopover>
+                        </Slot>
+                    </GtkMenuButton>
                 </GtkBox>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Rich Menu Items" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkMenuButton.Root label="Options" halign={Gtk.Align.CENTER}>
-                    <GtkMenuButton.Popover>
-                        <GtkPopover.Root>
-                            <GtkPopover.Child>
+                <GtkMenuButton label="Options" halign={Gtk.Align.CENTER}>
+                    <Slot for={GtkMenuButton} id="popover">
+                        <GtkPopover>
+                            <Slot for={GtkPopover} id="child">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={4}
@@ -159,10 +159,10 @@ const MenuButtonDemo = () => {
                                         <GtkLabel label="Settings" halign={Gtk.Align.START} />
                                     </GtkBox>
                                 </GtkBox>
-                            </GtkPopover.Child>
-                        </GtkPopover.Root>
-                    </GtkMenuButton.Popover>
-                </GtkMenuButton.Root>
+                            </Slot>
+                        </GtkPopover>
+                    </Slot>
+                </GtkMenuButton>
             </GtkBox>
         </GtkBox>
     );
@@ -171,7 +171,7 @@ const MenuButtonDemo = () => {
 export const menuButtonDemo: Demo = {
     id: "menubutton",
     title: "Menu GtkButton",
-    description: "<GtkButton that shows a popover menu when clicked.",
+    description: "GtkButton that shows a popover menu when clicked.",
     keywords: ["menu", "button", "popover", "dropdown", "GtkMenuButton"],
     component: MenuButtonDemo,
     sourcePath: getSourcePath(import.meta.url, "menu-button.tsx"),
