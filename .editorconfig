@@ -1,8 +1,0 @@
-root = true
-
-[*]
-# Force specific line ending (lf, crlf, or cr)
-end_of_line = lf
-
-# Automatically add a newline at the end of the file
-insert_final_newline = true

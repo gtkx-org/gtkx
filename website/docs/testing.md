@@ -1,517 +1,399 @@
 ---
-sidebar_position: 8
-sidebar_label: Testing
+sidebar_position: 12
 ---
 
 # Testing
 
-GTKX provides `@gtkx/testing`, a Testing Library-inspired package for testing GTK components. It offers familiar APIs like `screen`, `userEvent`, and query functions.
-
-## Installation
-
-```bash
-npm install -D @gtkx/testing
-```
+The `@gtkx/testing` package provides Testing Library-style utilities for testing GTK components.
 
 ## Setup
 
-`@gtkx/testing` works with any test runner (Jest, Vitest, Node's built-in test runner, etc.).
+Install the testing package:
+
+```bash
+pnpm add -D @gtkx/testing
+```
 
 ### Display Requirements
 
-Tests require a display. Use `xvfb-run` to run tests in a virtual framebuffer:
+GTK tests require a display. Use `xvfb-run` for headless testing:
 
 ```bash
-GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a <your-test-command>
+GDK_BACKEND=x11 \
+GSK_RENDERER=cairo \
+LIBGL_ALWAYS_SOFTWARE=1 \
+xvfb-run -a vitest
 ```
 
-The environment variables configure GTK for headless testing:
-- `GDK_BACKEND=x11` — Forces the X11 backend (required for xvfb)
-- `GSK_RENDERER=cairo` — Uses the Cairo software renderer
-- `LIBGL_ALWAYS_SOFTWARE=1` — Forces software rendering, avoiding EGL/DRI3 warnings
+The generated test script includes these variables automatically.
 
-## Writing Tests
-
-### Basic Test Structure
+## Basic Test
 
 ```tsx
-import { cleanup, render, screen } from "@gtkx/testing";
-import { App } from "../src/app.js";
+import { render, screen, cleanup } from '@gtkx/testing';
+import { GtkButton, GtkLabel, GtkBox } from '@gtkx/react';
+import * as Gtk from '@gtkx/ffi/gtk';
+import { afterEach, test, expect } from 'vitest';
 
-// Clean up after each test
 afterEach(async () => {
-  await cleanup();
+    await cleanup();
 });
 
-test("renders the title", async () => {
-  await render(<App />);
+test('renders a button', async () => {
+    await render(<GtkButton label="Click me" />);
 
-  const title = await screen.findByText("Welcome");
-  expect(title).toBeDefined();
+    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+    expect(button).toBeDefined();
 });
 ```
 
-GTK is automatically initialized on the first `render()` call—no manual setup required.
+Key points:
+- `render()` is async and wraps content in `GtkApplicationWindow` by default
+- `cleanup()` must be called after each test
+- All queries are async and wait for elements to appear
 
-### Query Functions
+## Queries
 
-GTKX testing provides async query functions to find elements:
+### findByRole
 
-| Variant      | Returns           | Throws if not found? |
-| ------------ | ----------------- | -------------------- |
-| `findBy*`    | Single element    | Yes                  |
-| `findAllBy*` | Array of elements | Yes (if empty)       |
-
-All queries are async and will wait for elements to appear (with a default timeout of 1000ms).
-
-#### By Text
+Find elements by accessible role:
 
 ```tsx
-// Find by exact text
-const label = await screen.findByText("Hello, World!");
+import * as Gtk from '@gtkx/ffi/gtk';
 
-// Find by partial text (regex)
-const greeting = await screen.findByText(/hello/i);
+const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+const textbox = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX);
+```
 
-// Find all matching elements
+With options:
+
+```tsx
+const submitButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+    name: 'Submit'
+});
+
+const checkedBox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
+    checked: true
+});
+
+const expandedRow = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+    expanded: true
+});
+```
+
+### findByText
+
+Find elements by text content:
+
+```tsx
+const label = await screen.findByText('Hello, World!');
+const partialMatch = await screen.findByText(/hello/i);
+```
+
+### findByLabelText
+
+Find form controls by associated label:
+
+```tsx
+const emailInput = await screen.findByLabelText('Email Address');
+```
+
+### findByTestId
+
+Find by widget name (set via `name` prop):
+
+```tsx
+<GtkButton name="submit-btn" label="Submit" />
+
+const button = await screen.findByTestId('submit-btn');
+```
+
+### findAll Variants
+
+Find multiple matching elements:
+
+```tsx
+const allButtons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
 const allLabels = await screen.findAllByText(/item/i);
 ```
 
-#### By Role
+## Role Options
 
-GTK widgets have accessibility roles. Use `findByRole` to query by role:
+| Option | Type | Description |
+|--------|------|-------------|
+| `name` | `string \| RegExp` | Accessible name |
+| `checked` | `boolean` | Checkbox/switch state |
+| `pressed` | `boolean` | Toggle button state |
+| `selected` | `boolean` | Selection state |
+| `expanded` | `boolean` | Expander state |
+| `level` | `number` | Heading level (1-6) |
 
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-
-const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-  name: "Submit",
-});
-
-const anyButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
-
-const checked = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
-  checked: true,
-});
-
-const expanded = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-  expanded: true,
-});
-```
-
-Import `Gtk` from `@gtkx/ffi/gtk` to access all available roles via `Gtk.AccessibleRole`.
-
-#### By Label Text
-
-Find form controls by their associated label:
-
-```tsx
-const input = await screen.findByLabelText("Email Address");
-```
-
-#### By Test ID
-
-Find elements by their widget name (test ID). Set the `name` prop on a widget to use this query:
-
-```tsx
-// In your component
-<GtkButton name="submit-btn">Submit</GtkButton>;
-
-// In your test
-const button = await screen.findByTestId("submit-btn");
-```
-
-## User Interactions
-
-Use `userEvent` to simulate user actions:
+## User Events
 
 ### Clicking
 
 ```tsx
-import { userEvent } from "@gtkx/testing";
+import { userEvent } from '@gtkx/testing';
 
-const button = await screen.findByRole(AccessibleRole.BUTTON, {
-  name: "Increment",
-});
+const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
 await userEvent.click(button);
-
-// Double-click
 await userEvent.dblClick(button);
+await userEvent.tripleClick(button);
 ```
 
 ### Typing
 
 ```tsx
-const input = await screen.findByRole(AccessibleRole.TEXT_BOX);
-await userEvent.type(input, "Hello, World!");
-
-// Clear input field
+const input = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+await userEvent.type(input, 'Hello, World!');
 await userEvent.clear(input);
 ```
 
-## Low-Level Events
-
-For more control, use `fireEvent` to emit GTK signals directly:
+### Activation
 
 ```tsx
-import { fireEvent } from "@gtkx/testing";
+await userEvent.activate(entry);
+```
 
-// Fire any signal by name
-await fireEvent(button, "clicked");
-await fireEvent(entry, "activate");
-await fireEvent(checkbox, "toggled");
+### Tab Navigation
 
-// Pass additional arguments to signal handlers
-await fireEvent(widget, "custom-signal", {
-  type: { type: "int", size: 32 },
-  value: 42,
+```tsx
+await userEvent.tab(element);
+await userEvent.tab(element, { shift: true });
+```
+
+### Selection
+
+```tsx
+await userEvent.selectOptions(dropdown, [0]);
+await userEvent.selectOptions(listbox, [0, 2, 3]);
+```
+
+## Fire Event
+
+Emit GTK signals directly:
+
+```tsx
+import { fireEvent } from '@gtkx/testing';
+
+await fireEvent(button, 'clicked');
+await fireEvent(entry, 'activate');
+await fireEvent(toggle, 'toggled');
+```
+
+With arguments:
+
+```tsx
+await fireEvent(widget, 'custom-signal', {
+    type: { type: 'int', size: 32 },
+    value: 42
 });
 ```
 
-For common user interactions like clicking or typing, prefer `userEvent` instead.
+## Waiting
 
-## Waiting for Changes
+### waitFor
 
-### `waitFor`
-
-Wait for a condition to be true:
+Wait for a condition:
 
 ```tsx
-import { waitFor } from "@gtkx/testing";
+import { waitFor } from '@gtkx/testing';
 
 await userEvent.click(submitButton);
 
 await waitFor(async () => {
-  const message = await screen.findByText("Success!");
-  expect(message).toBeDefined();
+    const message = await screen.findByText('Success!');
+    expect(message).toBeDefined();
 });
-
-// With custom options
-await waitFor(
-  async () => {
-    const done = await screen.findByText("Done");
-    expect(done).toBeDefined();
-  },
-  { timeout: 2000, interval: 100 }
-);
 ```
 
-### `waitForElementToBeRemoved`
-
-Wait for an element to be removed from the widget tree:
+With options:
 
 ```tsx
-import { waitForElementToBeRemoved } from "@gtkx/testing";
+await waitFor(callback, {
+    timeout: 2000,
+    interval: 100
+});
+```
 
-const loader = await screen.findByText("Loading...");
+### waitForElementToBeRemoved
+
+Wait for an element to disappear:
+
+```tsx
+import { waitForElementToBeRemoved } from '@gtkx/testing';
+
+const loader = await screen.findByText('Loading...');
 await waitForElementToBeRemoved(loader);
 ```
 
-### `findBy*` Queries
+## Scoped Queries
 
-`findBy*` queries automatically wait for elements:
-
-```tsx
-// Waits up to 1000ms for the element to appear
-const message = await screen.findByText("Loading complete");
-```
-
-## Scoped Queries with `within`
-
-Use `within` to scope queries to a specific container element. This is useful when you have multiple similar elements and need to query within a specific section:
+Use `within` to scope queries to a container:
 
 ```tsx
-import { within } from "@gtkx/testing";
+import { within } from '@gtkx/testing';
 
-// Find a dialog and query within it
-const dialog = await screen.findByRole(AccessibleRole.DIALOG);
+const dialog = await screen.findByRole(Gtk.AccessibleRole.DIALOG);
 const { findByRole, findByText } = within(dialog);
 
-// These queries only search within the dialog
-const confirmButton = await findByRole(AccessibleRole.BUTTON, {
-  name: "Confirm",
-});
-const message = await findByText("Are you sure?");
-```
-
-### Nested Containers
-
-You can chain `within` calls to query deeply nested elements:
-
-```tsx
-const sidebar = await screen.findByTestId("sidebar");
-const { findByTestId } = within(sidebar);
-
-const userSection = await findByTestId("user-section");
-const { findByText } = within(userSection);
-
-const username = await findByText("John Doe");
-```
-
-### Comparing Scoped vs Global Queries
-
-```tsx
-// Render a UI with multiple sections
-await render(
-  <GtkBox orientation={Orientation.VERTICAL} spacing={8}>
-    <GtkBox orientation={Orientation.VERTICAL} spacing={0} name="section-a">
-      <GtkButton label="Save" />
-    </GtkBox>
-    <GtkBox orientation={Orientation.VERTICAL} spacing={0} name="section-b">
-      <GtkButton label="Save" />
-    </GtkBox>
-  </GtkBox>
-);
-
-// Global query finds all matching elements
-const allSaveButtons = await screen.findAllByText("Save");
-// Returns 2 buttons
-
-// Scoped query finds only elements within the container
-const sectionA = await screen.findByTestId("section-a");
-const { findAllByText } = within(sectionA);
-const sectionASaveButtons = await findAllByText("Save");
-// Returns 1 button
-```
-
-## Complete Example
-
-Here's a full test for a counter component:
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { cleanup, render, screen, userEvent } from "@gtkx/testing";
-import { Counter } from "../src/counter.js";
-
-afterEach(async () => {
-  await cleanup();
-});
-
-test("renders initial count of zero", async () => {
-  await render(<Counter />);
-
-  const label = await screen.findByText("Count: 0");
-  expect(label).toBeDefined();
-});
-
-test("increments count when clicking increment button", async () => {
-  await render(<Counter />);
-
-  const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-    name: "Increment",
-  });
-  await userEvent.click(button);
-
-  await screen.findByText("Count: 1");
-});
-
-test("decrements count when clicking decrement button", async () => {
-  await render(<Counter />);
-
-  const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-    name: "Decrement",
-  });
-  await userEvent.click(button);
-
-  await screen.findByText("Count: -1");
-});
-
-test("resets count when clicking reset button", async () => {
-  await render(<Counter />);
-
-  const increment = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-    name: "Increment",
-  });
-  await userEvent.click(increment);
-  await userEvent.click(increment);
-  await userEvent.click(increment);
-  await screen.findByText("Count: 3");
-
-  const reset = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-    name: "Reset",
-  });
-  await userEvent.click(reset);
-
-  await screen.findByText("Count: 0");
+const confirmButton = await findByRole(Gtk.AccessibleRole.BUTTON, {
+    name: 'Confirm'
 });
 ```
 
 ## Render Options
 
-The `render` function is async and accepts an options object.
+### Default Wrapper
 
-### Default GtkApplicationWindow Wrapper
-
-By default, `render` wraps your component in a `GtkApplicationWindow`. This means you don't need to manually wrap your test content:
+By default, `render` wraps content in `GtkApplicationWindow`:
 
 ```tsx
-import { render } from "@gtkx/testing";
+await render(<GtkButton label="Click" />);
 
-// This works out of the box - no GtkApplicationWindow needed
-await render(<GtkButton label="Click me" />);
-
-// Equivalent to:
 await render(
-  <GtkApplicationWindow>
-    <GtkButton label="Click me" />
-  </GtkApplicationWindow>
+    <GtkApplicationWindow>
+        <GtkButton label="Click" />
+    </GtkApplicationWindow>
 );
 ```
 
 ### Custom Wrapper
 
-You can provide a custom wrapper component, which replaces the default `GtkApplicationWindow` wrapper:
-
 ```tsx
-import { render } from "@gtkx/testing";
-
-// With a wrapper component (useful for providers)
 const Wrapper = ({ children }) => (
-  <GtkApplicationWindow>
-    <ThemeProvider theme="dark">{children}</ThemeProvider>
-  </GtkApplicationWindow>
+    <GtkApplicationWindow>
+        <ThemeProvider theme="dark">
+            {children}
+        </ThemeProvider>
+    </GtkApplicationWindow>
 );
 
-const { container, rerender, unmount, debug } = await render(<MyComponent />, {
-  wrapper: Wrapper,
-});
+await render(<MyComponent />, { wrapper: Wrapper });
+```
 
-// Rerender with new props
+### No Wrapper
+
+For testing multiple windows:
+
+```tsx
+await render(
+    <>
+        <GtkApplicationWindow title="Window 1" />
+        <GtkApplicationWindow title="Window 2" />
+    </>,
+    { wrapper: false }
+);
+```
+
+## Render Result
+
+```tsx
+const { container, rerender, unmount, debug } = await render(<MyComponent />);
+
 await rerender(<MyComponent newProp="value" />);
 
-// Debug the widget tree
 debug();
 
-// Unmount the component
 await unmount();
 ```
 
-### Disabling the Default Wrapper
+| Property | Description |
+|----------|-------------|
+| `container` | GTK Application instance |
+| `rerender(element)` | Re-render with new element |
+| `unmount()` | Unmount the component |
+| `debug()` | Print widget tree to console |
+| `findBy*` | Query methods bound to container |
 
-For advanced cases like testing multiple windows, disable the default wrapper by setting `wrapper: false`:
+## Example: Counter Test
 
 ```tsx
-import { render } from "@gtkx/testing";
+import * as Gtk from '@gtkx/ffi/gtk';
+import { render, screen, userEvent, cleanup } from '@gtkx/testing';
+import { afterEach, test, expect } from 'vitest';
+import Counter from '../src/counter.js';
 
-// Render multiple windows without the default wrapper
-await render(
-  <>
-    <GtkApplicationWindow>
-      <GtkButton label="Window 1" />
-    </GtkApplicationWindow>
-    <GtkApplicationWindow>
-      <GtkButton label="Window 2" />
-    </GtkApplicationWindow>
-  </>,
-  { wrapper: false }
-);
+afterEach(async () => {
+    await cleanup();
+});
+
+test('increments count', async () => {
+    await render(<Counter />);
+
+    await screen.findByText('Count: 0');
+
+    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+        name: 'Increment'
+    });
+    await userEvent.click(button);
+
+    await screen.findByText('Count: 1');
+});
+
+test('handles multiple clicks', async () => {
+    await render(<Counter />);
+
+    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+        name: 'Increment'
+    });
+
+    await userEvent.click(button);
+    await userEvent.click(button);
+    await userEvent.click(button);
+
+    await screen.findByText('Count: 3');
+});
 ```
 
 ## API Reference
 
-### Lifecycle Functions
+### Lifecycle
 
-| Function                    | Description                                                                                                   |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `render(element, options?)` | Render a React element for testing. Wraps in `GtkApplicationWindow` by default. Returns `Promise<RenderResult>`. |
-| `cleanup()`                 | Unmount rendered components. Returns `Promise<void>`. Call after each test.                                   |
-| `teardown()`                | Clean up GTK entirely. Returns `Promise<void>`. Used in global teardown.                                      |
+| Function | Description |
+|----------|-------------|
+| `render(element, options?)` | Render component for testing |
+| `cleanup()` | Unmount rendered components |
+| `teardown()` | Full GTK cleanup (global teardown) |
 
-### RenderResult
+### Queries
 
-The object returned by `render()`:
-
-| Property/Method         | Description                                              |
-| ----------------------- | -------------------------------------------------------- |
-| `container`             | The GTK Application instance                             |
-| `rerender(element)`     | Re-render with a new element. Returns `Promise<void>`.   |
-| `unmount()`             | Unmount the rendered component. Returns `Promise<void>`. |
-| `debug()`               | Print the widget tree to console                         |
-| `findBy*`, `findAllBy*` | Query methods bound to the container                     |
-
-### Screen Queries
-
-All queries are available on the `screen` object and on `RenderResult`:
-
-| Query Type     | Variants      | Description             |
-| -------------- | ------------- | ----------------------- |
-| `*ByRole`      | find, findAll | Find by accessible role |
-| `*ByText`      | find, findAll | Find by text content    |
-| `*ByLabelText` | find, findAll | Find by label text      |
-| `*ByTestId`    | find, findAll | Find by widget name     |
-
-### Query Options
-
-#### TextMatchOptions
-
-```tsx
-await screen.findByText("hello", {
-  exact: false, // Enable substring matching (default: true)
-  normalizer: (text) => text.toLowerCase(), // Custom text normalizer
-});
-```
-
-#### ByRoleOptions
-
-```tsx
-await screen.findByRole(AccessibleRole.BUTTON, {
-  name: "Submit", // Match by accessible name
-  checked: true, // For checkboxes/radios
-  expanded: true, // For expanders
-  pressed: true, // For toggle buttons
-  selected: true, // For selectable items
-  level: 2, // For headings
-});
-```
+| Query | Description |
+|-------|-------------|
+| `findByRole(role, options?)` | Find by accessible role |
+| `findByText(text, options?)` | Find by text content |
+| `findByLabelText(text, options?)` | Find by label |
+| `findByTestId(id)` | Find by widget name |
+| `findAllBy*` | Find multiple elements |
 
 ### User Events
 
-| Function                                     | Description                                      |
-| -------------------------------------------- | ------------------------------------------------ |
-| `userEvent.click(element)`                   | Click an element                                 |
-| `userEvent.dblClick(element)`                | Double-click an element                          |
-| `userEvent.tripleClick(element)`             | Triple-click an element                          |
-| `userEvent.activate(element)`                | Activate an element (e.g., press Enter in input) |
-| `userEvent.type(element, text)`              | Type text into an input                          |
-| `userEvent.clear(element)`                   | Clear an input field                             |
-| `userEvent.tab(element, options?)`           | Simulate Tab navigation                          |
-| `userEvent.selectOptions(element, values)`   | Select options in ComboBox/ListBox               |
-| `userEvent.deselectOptions(element, values)` | Deselect options in ListBox                      |
+| Function | Description |
+|----------|-------------|
+| `userEvent.click(element)` | Click |
+| `userEvent.dblClick(element)` | Double click |
+| `userEvent.tripleClick(element)` | Triple click |
+| `userEvent.activate(element)` | Activate (Enter) |
+| `userEvent.type(element, text)` | Type text |
+| `userEvent.clear(element)` | Clear input |
+| `userEvent.tab(element, options?)` | Tab navigation |
+| `userEvent.selectOptions(element, values)` | Select options |
 
-### Fire Event
+### Utilities
 
-| Function                                  | Description                                 |
-| ----------------------------------------- | ------------------------------------------- |
-| `fireEvent(element, signalName, ...args)` | Fire any GTK signal with optional arguments |
-
-### Scoped Queries
-
-| Function            | Description                                           |
-| ------------------- | ----------------------------------------------------- |
-| `within(container)` | Returns query functions scoped to a container element |
-
-### Async Utilities
-
-| Function                                       | Description                     |
-| ---------------------------------------------- | ------------------------------- |
-| `waitFor(callback, options?)`                  | Wait for a condition to be true |
-| `waitForElementToBeRemoved(element, options?)` | Wait for element removal        |
-
-#### WaitForOptions
-
-```tsx
-await waitFor(callback, {
-  timeout: 1000, // Max wait time in ms (default: 1000)
-  interval: 50, // Poll interval in ms (default: 50)
-  onTimeout: (error) => new Error("Custom message"), // Custom timeout error
-});
-```
+| Function | Description |
+|----------|-------------|
+| `waitFor(callback, options?)` | Wait for condition |
+| `waitForElementToBeRemoved(element)` | Wait for removal |
+| `within(container)` | Scope queries to container |
+| `fireEvent(element, signal, ...args)` | Emit GTK signal |
 
 ## Tips
 
-1. **Always call `await cleanup()`** in `afterEach` to prevent test pollution
-2. **Use `await render()`** — render is async
-3. **Use `findBy*` queries** — all queries are async and will wait for elements
-4. **Use roles over text** when possible for more robust tests
-5. **Test behavior, not implementation** — focus on what users see and do
-6. **Use `debug()`** to inspect the widget tree when tests fail
+1. Always call `cleanup()` in `afterEach`
+2. Use `findByRole` with `name` option for robust tests
+3. All queries are async - use `await`
+4. Use `debug()` to inspect widget tree when tests fail
+5. Prefer `userEvent` over `fireEvent` for user interactions
+6. Test behavior, not implementation details

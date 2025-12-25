@@ -4,161 +4,271 @@ sidebar_position: 2
 
 # Getting Started
 
-Get up and running with GTKX in under a minute.
+Create and run your first GTKX application.
 
 ## Prerequisites
 
-Before you begin, make sure you have:
+GTKX requires:
 
-- **Node.js 20+** — GTKX uses modern JavaScript features
-- **GTK4** — Install `gtk4` via your distribution's package manager
-- **Linux** — GTK4 is designed for Linux (GNOME desktop)
-- **libadwaita** (optional) — For modern GNOME-style applications
+- **Node.js 20+** with ES modules support
+- **GTK4 development libraries** including headers and pkg-config files
+- **Linux** with a running display server (X11 or Wayland)
 
-## Create Your App
+### Installing GTK4
 
-The fastest way to start is with the GTKX CLI:
-
+**Fedora/RHEL:**
 ```bash
-npx @gtkx/cli@latest create
+sudo dnf install gtk4-devel
 ```
 
-This launches an interactive wizard that will:
-
-1. Ask for your project name
-2. Ask for your app ID (e.g., `com.example.myapp`)
-3. Let you choose your package manager (pnpm, npm, yarn, or bun)
-4. Create the project and install dependencies
-
-You can also pass options directly:
-
+**Ubuntu/Debian:**
 ```bash
-npx @gtkx/cli@latest create my-app --app-id com.example.myapp --pm pnpm
+sudo apt install libgtk-4-dev
 ```
 
-## Start Development
-
-Navigate to your project and start the dev server:
-
+**Arch Linux:**
 ```bash
-cd my-app
-npm run dev
+sudo pacman -S gtk4
 ```
 
-This starts the GTKX development server with **HMR** (Hot Module Replacement) — edit your code and see changes instantly without restarting the app!
+Verify the installation:
+```bash
+pkg-config --modversion gtk4
+```
+
+## Create a Project
+
+Use the CLI to scaffold a new project:
+
+```bash
+npx @gtkx/cli@latest create my-app
+```
+
+The wizard prompts for:
+- **App ID**: Reverse-domain identifier (e.g., `com.example.myapp`)
+- **Package Manager**: pnpm, npm, yarn, or bun
+- **Testing Framework**: vitest, jest, node test runner, or none
+
+Or pass options directly:
+
+```bash
+npx @gtkx/cli@latest create my-app \
+    --app-id com.example.myapp \
+    --pm pnpm \
+    --testing vitest
+```
 
 ## Project Structure
-
-The CLI creates a ready-to-go project:
 
 ```
 my-app/
 ├── package.json
 ├── tsconfig.json
-├── .gitignore
+├── tsconfig.app.json
 └── src/
-    ├── app.tsx      # Your main component
-    └── index.tsx    # Entry point
+    └── app.tsx          # Entry point
 ```
 
-### `src/app.tsx`
+## Entry Point
+
+The entry module must export a default component function:
 
 ```tsx
-import { useState } from "react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from '@gtkx/react';
+import * as Gtk from '@gtkx/ffi/gtk';
+import { useState } from 'react';
 
 export default function App() {
-  const [count, setCount] = useState(0);
+    const [count, setCount] = useState(0);
 
-  return (
-    <GtkApplicationWindow
-      title="My App"
-      defaultWidth={400}
-      defaultHeight={300}
-      onCloseRequest={quit}
-    >
-      <GtkBox
-        orientation={Gtk.Orientation.VERTICAL}
-        spacing={20}
-        marginTop={40}
-        marginStart={40}
-        marginEnd={40}
-      >
-        Welcome to GTKX!
-        {`Count: ${count}`}
-        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
-      </GtkBox>
-    </GtkApplicationWindow>
-  );
+    return (
+        <GtkApplicationWindow
+            title="Counter"
+            defaultWidth={400}
+            defaultHeight={300}
+            onCloseRequest={quit}
+        >
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={12}
+                marginTop={20}
+                marginStart={20}
+                marginEnd={20}
+            >
+                <GtkLabel label={`Count: ${count}`} />
+                <GtkButton
+                    label="Increment"
+                    onClicked={() => setCount(c => c + 1)}
+                />
+            </GtkBox>
+        </GtkApplicationWindow>
+    );
 }
 
-export const appId = "com.example.myapp";
+export const appId = 'com.example.counter';
 ```
 
-### `src/index.tsx`
+### Required Exports
+
+| Export | Type | Description |
+|--------|------|-------------|
+| `default` | `() => ReactNode` | Component function to render |
+| `appId` | `string` | Application identifier (optional, defaults to `com.gtkx.app`) |
+| `appFlags` | `Gio.ApplicationFlags` | Application flags (optional) |
+
+### Application Flags
+
+Control application behavior with `Gio.ApplicationFlags`:
 
 ```tsx
-import { render } from "@gtkx/react";
-import App, { appId } from "./app.js";
+import * as Gio from '@gtkx/ffi/gio';
 
-render(<App />, appId);
+export const appFlags = Gio.ApplicationFlags.NON_UNIQUE;
 ```
 
-## Understanding the Code
+Common flags:
+- `FLAGS_NONE` - Default behavior (single instance)
+- `NON_UNIQUE` - Allow multiple instances
+- `HANDLES_OPEN` - Handle file arguments
 
-### `render(element, appId)`
+## Run the Dev Server
 
-The entry point for GTKX applications. It:
-
-1. Initializes the GTK main loop
-2. Creates a GTK Application with the given ID
-3. Mounts your React element tree
-4. Starts the event loop
-
-### `GtkApplicationWindow`
-
-The main window component. Key props:
-
-- `title` — Window title
-- `defaultWidth` / `defaultHeight` — Initial window size
-- `onCloseRequest` — Called when the window close button is clicked
-
-### `quit()`
-
-Cleanly shuts down the application by:
-
-1. Unmounting the React tree
-2. Stopping the GTK main loop
-
-Always use `quit()` in `onCloseRequest` to ensure proper cleanup.
-
-### Layout with `GtkBox`
-
-`GtkBox` is the primary layout container in GTK. Use `orientation` to set horizontal or vertical layout, and `spacing` to add gaps between children.
-
-### Handling Events
-
-GTK signals are exposed as React props with the `on` prefix:
-
-- `onClicked` — Button clicks
-- `onCloseRequest` — Window close
-- `onChanged` — Text input changes
-
-## Building for Production
-
-Build your app for production:
+Start the development server with HMR:
 
 ```bash
-npm run build
-npm start
+cd my-app
+pnpm dev
 ```
 
-This compiles TypeScript and runs the built application without HMR.
+The dev server:
+- Watches for file changes
+- Performs component-local HMR when possible
+- Falls back to full reload for non-refreshable changes
+- Preserves component state during updates
+
+## Core Components
+
+### GtkApplicationWindow
+
+The root window for your application:
+
+```tsx
+<GtkApplicationWindow
+    title="My App"
+    defaultWidth={800}
+    defaultHeight={600}
+    onCloseRequest={quit}
+>
+    {children}
+</GtkApplicationWindow>
+```
+
+Key props:
+- `title` - Window title bar text
+- `defaultWidth` / `defaultHeight` - Initial dimensions
+- `onCloseRequest` - Handler when close button clicked (return `true` to prevent close)
+
+### GtkBox
+
+Primary layout container:
+
+```tsx
+<GtkBox
+    orientation={Gtk.Orientation.VERTICAL}
+    spacing={12}
+    homogeneous={false}
+>
+    <GtkLabel label="First" />
+    <GtkLabel label="Second" />
+</GtkBox>
+```
+
+- `orientation` - `VERTICAL` or `HORIZONTAL`
+- `spacing` - Gap between children in pixels
+- `homogeneous` - Equal size for all children
+
+### quit()
+
+Cleanly shut down the application:
+
+```tsx
+import { quit } from '@gtkx/react';
+
+<GtkApplicationWindow onCloseRequest={quit}>
+```
+
+This unmounts the React tree, releases resources, and exits the GTK main loop.
+
+## Signals and Properties
+
+### Setting Properties
+
+Widget properties become props:
+
+```tsx
+<GtkLabel
+    label="Hello"
+    xalign={0}
+    wrap={true}
+    selectable={true}
+/>
+```
+
+### Connecting Signals
+
+Signal handlers use the `on` prefix:
+
+```tsx
+<GtkButton
+    label="Click"
+    onClicked={() => console.log('clicked')}
+/>
+
+<GtkEntry
+    onChanged={() => console.log('text changed')}
+    onActivate={() => console.log('enter pressed')}
+/>
+```
+
+Signal names are converted from kebab-case to camelCase:
+- `clicked` → `onClicked`
+- `close-request` → `onCloseRequest`
+- `notify::label` → `onNotifyLabel`
+
+## Text Content
+
+Strings as children become `GtkLabel` widgets:
+
+```tsx
+<GtkBox>
+    Hello World
+    {`Count: ${count}`}
+</GtkBox>
+```
+
+Equivalent to:
+
+```tsx
+<GtkBox>
+    <GtkLabel label="Hello World" />
+    <GtkLabel label={`Count: ${count}`} />
+</GtkBox>
+```
+
+## Build for Production
+
+Compile TypeScript and run without HMR:
+
+```bash
+pnpm build
+pnpm start
+```
+
+For deployment options, see [Deploying](./deploying).
 
 ## Next Steps
 
-- [Adwaita](./adwaita) — Build modern GNOME apps with libadwaita
-- [CLI](./cli) — Learn more about the gtkx CLI
-- [Styling](./styling) — Add custom styles with CSS-in-JS
-- [Testing](./testing) — Write tests for your components
+- [CLI](./cli) - CLI options and Vite configuration
+- [Styling](./styling) - CSS-in-JS with GTK theme variables
+- [Slots](./slots) - Widget properties that accept children
+- [Lists](./lists) - Data-driven list widgets

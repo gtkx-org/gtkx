@@ -1,178 +1,254 @@
 ---
-sidebar_position: 1
-sidebar_label: Slots
+sidebar_position: 5
 ---
 
 # Slots
 
-GTK widgets often have named child properties like `titleWidget`, `child`, or `label`. GTKX exposes these as **slots** — special components that place children into specific widget properties rather than generic child containers.
+GTK widgets often have named properties that accept child widgets, such as `titlebar`, `child`, or `titleWidget`. The `Slot` component lets you set these properties declaratively.
 
 ## Basic Usage
 
-Slots follow the pattern `<Widget.SlotName>`:
+Use `<Slot id="propertyName">` to place a child widget into a parent's property:
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkExpander, GtkBox, GtkLabel } from "@gtkx/react";
+import { GtkWindow, GtkHeaderBar, GtkBox, Slot } from '@gtkx/react';
 
-const ExpandableSection = () => (
-  <GtkExpander.Root label="Click to expand">
-    <GtkExpander.Child>
-      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-        This content is inside the expander
-        It shows when expanded
-      </GtkBox>
-    </GtkExpander.Child>
-  </GtkExpander.Root>
-);
+<GtkWindow>
+    <Slot id="titlebar">
+        <GtkHeaderBar />
+    </Slot>
+    <GtkBox>
+        Main window content
+    </GtkBox>
+</GtkWindow>
 ```
 
-The `<Expander.Child>` slot calls `expander.setChild(widget)` internally, placing the content in the expander's designated child area.
+The `id` corresponds to the property name in camelCase. This example calls `window.setTitlebar(headerbar)`.
 
 ## How Slots Work
 
-Slots are virtual nodes — they don't create GTK widgets themselves. Instead, they:
+Slots are virtual nodes that:
 
-1. Receive children from React
-2. Call the appropriate setter on the parent widget (e.g., `setChild`, `setTitleWidget`)
-3. Call the setter with `null` when unmounted
+1. Accept a single child widget
+2. Call the parent's property setter (e.g., `setTitlebar`, `setChild`)
+3. Clear the property (set to `null`) when unmounted
 
-This maps React's composition model to GTK's property-based child management.
+This maps React's composition model to GTK's property-based widget attachment.
+
+## Type-Safe Slots
+
+Use the `for` prop to get type-safe slot IDs with autocomplete:
+
+```tsx
+import { GtkWindow, GtkHeaderBar, Slot } from '@gtkx/react';
+
+<GtkWindow>
+    <Slot for={GtkWindow} id="titlebar">
+        <GtkHeaderBar />
+    </Slot>
+</GtkWindow>
+```
+
+The `for` prop accepts a component type and restricts `id` to valid slot names for that widget.
 
 ## Common Slot Patterns
 
-### Frame with Child
+### Window Titlebar
+
+Replace the default titlebar with a custom header:
 
 ```tsx
-import { GtkFrame } from "@gtkx/react";
-
-<GtkFrame.Root label="Settings">
-  <GtkFrame.Child>Frame content goes here</GtkFrame.Child>
-</GtkFrame.Root>;
+<GtkWindow>
+    <Slot id="titlebar">
+        <GtkHeaderBar>
+            <GtkButton label="Menu" />
+        </GtkHeaderBar>
+    </Slot>
+    Content
+</GtkWindow>
 ```
 
-### HeaderBar with Title Widget
+### HeaderBar Widgets
+
+Add widgets to the start or end of a header bar:
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkHeaderBar, GtkLabel, GtkBox } from "@gtkx/react";
+<GtkHeaderBar>
+    <Slot id="titleWidget">
+        <GtkLabel label="Custom Title" cssClasses={['title']} />
+    </Slot>
+</GtkHeaderBar>
+```
 
-<GtkHeaderBar.Root>
-  <GtkHeaderBar.TitleWidget>
-    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-      <GtkLabel label="My App" cssClasses={["heading"]} />
-      <GtkLabel label="v1.0" cssClasses={["dim-label"]} />
+Note: For HeaderBar start/end widgets, use the `Pack` components instead of slots. See [Packing](#packing).
+
+### Expander with Custom Label
+
+```tsx
+<GtkExpander>
+    <Slot id="labelWidget">
+        <GtkLabel label="<b>Bold Title</b>" useMarkup={true} />
+    </Slot>
+    <Slot id="child">
+        <GtkBox>
+            Expandable content
+        </GtkBox>
+    </Slot>
+</GtkExpander>
+```
+
+### Button with Custom Child
+
+Replace a button's label with a custom widget:
+
+```tsx
+<GtkButton>
+    <Slot id="child">
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+            <GtkImage iconName="document-save-symbolic" />
+            <GtkLabel label="Save" />
+        </GtkBox>
+    </Slot>
+</GtkButton>
+```
+
+## Packing
+
+Some containers like `GtkHeaderBar` have start and end packing areas. Use `Pack.Start` and `Pack.End`:
+
+```tsx
+import { GtkHeaderBar, GtkButton, Pack } from '@gtkx/react';
+
+<GtkHeaderBar>
+    <Pack.Start>
+        <GtkButton iconName="go-previous-symbolic" />
+        <GtkButton iconName="go-next-symbolic" />
+    </Pack.Start>
+    <Pack.End>
+        <GtkMenuButton iconName="open-menu-symbolic" />
+    </Pack.End>
+</GtkHeaderBar>
+```
+
+Pack components:
+- `Pack.Start` - Pack children at the start (left in LTR)
+- `Pack.End` - Pack children at the end (right in LTR)
+
+## Toolbar Slots
+
+`GtkToolbarView` uses `Toolbar.Top` and `Toolbar.Bottom` for toolbar areas:
+
+```tsx
+import { GtkToolbarView, GtkHeaderBar, GtkBox, Toolbar } from '@gtkx/react';
+
+<GtkToolbarView>
+    <Toolbar.Top>
+        <GtkHeaderBar />
+    </Toolbar.Top>
+    <GtkBox>
+        Main content area
     </GtkBox>
-  </GtkHeaderBar.TitleWidget>
-</GtkHeaderBar.Root>;
+    <Toolbar.Bottom>
+        <GtkActionBar>
+            <GtkButton label="Cancel" />
+            <GtkButton label="Apply" />
+        </GtkActionBar>
+    </Toolbar.Bottom>
+</GtkToolbarView>
 ```
 
-### Window with Titlebar
+## Overlay Slots
+
+`GtkOverlay` places widgets on top of a main child:
 
 ```tsx
-import { GtkWindow, GtkHeaderBar, GtkButton, quit } from "@gtkx/react";
+import { GtkOverlay, GtkPicture, GtkLabel, Overlay } from '@gtkx/react';
 
-<GtkWindow.Root onCloseRequest={quit}>
-  <GtkWindow.Titlebar>
-    <GtkHeaderBar.Root>
-      <GtkButton label="Menu" />
-    </GtkHeaderBar.Root>
-  </GtkWindow.Titlebar>
-  <GtkWindow.Child>{/* Main content */}</GtkWindow.Child>
-</GtkWindow.Root>;
+<GtkOverlay>
+    <GtkPicture filename="/path/to/image.jpg" />
+    <Overlay>
+        <GtkLabel
+            label="Caption"
+            halign={Gtk.Align.END}
+            valign={Gtk.Align.END}
+            margin={12}
+        />
+    </Overlay>
+</GtkOverlay>
 ```
 
-### Adwaita Toolbar View
-
-`AdwToolbarView` uses slots for top bars, bottom bars, and main content:
-
-```tsx
-import {
-  AdwToolbarView,
-  AdwHeaderBar,
-  AdwWindowTitle,
-  GtkLabel,
-} from "@gtkx/react";
-
-<AdwToolbarView.Root>
-  <AdwToolbarView.Top>
-    <AdwHeaderBar.Root>
-      <AdwHeaderBar.TitleWidget>
-        <AdwWindowTitle title="My App" subtitle="Welcome" />
-      </AdwHeaderBar.TitleWidget>
-    </AdwHeaderBar.Root>
-  </AdwToolbarView.Top>
-  <AdwToolbarView.Content>Main content</AdwToolbarView.Content>
-  <AdwToolbarView.Bottom>{/* Optional bottom toolbar */}</AdwToolbarView.Bottom>
-</AdwToolbarView.Root>;
-```
-
-### Adwaita Application Window
-
-`AdwApplicationWindow` requires content to be placed in a slot:
-
-```tsx
-import { AdwApplicationWindow, quit } from "@gtkx/react";
-
-<AdwApplicationWindow.Root onCloseRequest={quit}>
-  <AdwApplicationWindow.Content>
-    {/* Your app content */}
-  </AdwApplicationWindow.Content>
-</AdwApplicationWindow.Root>;
-```
-
-## Root vs Slot Components
-
-Every widget with slots has two component types:
-
-- **`Widget.Root`** — The actual GTK widget (creates the widget instance)
-- **`Widget.SlotName`** — Named slots for specific child properties (virtual, no widget created)
-
-```tsx
-// Expander.Root creates the GtkExpander widget
-// Expander.Child places content into the expander's "child" property
-<Expander.Root label="Title">
-  <Expander.Child>
-    <Content />
-  </Expander.Child>
-</Expander.Root>
-```
-
-## Labels as Slots
-
-`Label` is commonly used as a slot value for custom widget titles:
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkExpander, GtkLabel, GtkBox } from "@gtkx/react";
-
-// Expander with a custom label widget using markup
-<GtkExpander.Root>
-  <GtkExpander.LabelWidget>
-    <GtkLabel label="<b>Bold</b> title" useMarkup />
-  </GtkExpander.LabelWidget>
-  <GtkExpander.Child>
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-      Content inside the expander
-    </GtkBox>
-  </GtkExpander.Child>
-</GtkExpander.Root>
-```
+The first child becomes the main widget. `Overlay` children are stacked on top.
 
 ## Dynamic Slot Content
 
-Slots work with React's conditional rendering:
+Slots work with conditional rendering:
 
 ```tsx
-import { GtkExpander, GtkLabel, GtkSpinner } from "@gtkx/react";
+const [loading, setLoading] = useState(true);
 
-const LoadingExpander = ({ loading, data }) => (
-  <GtkExpander.Root label="Data">
-    <GtkExpander.Child>
-      {loading ? <GtkSpinner spinning /> : <GtkLabel label={data} />}
-    </GtkExpander.Child>
-  </GtkExpander.Root>
-);
+<GtkExpander label="Data">
+    <Slot id="child">
+        {loading ? (
+            <GtkSpinner spinning={true} />
+        ) : (
+            <GtkLabel label={data} />
+        )}
+    </Slot>
+</GtkExpander>
 ```
 
-When the condition changes, GTKX automatically calls the appropriate setter to swap the slot content.
+When the condition changes, GTKX automatically updates the slot by calling the property setter with the new child.
+
+## Slot vs Direct Children
+
+Use slots when:
+- The widget has a named property for the child (like `titlebar`, `labelWidget`)
+- You need to place content in a specific area (like overlays)
+- The GTK documentation mentions a property that accepts a widget
+
+Use direct children when:
+- The widget uses `append()` for children (most containers)
+- Children are part of a list or sequence
+- No specific property is needed
+
+```tsx
+// Direct children - uses append()
+<GtkBox>
+    <GtkLabel label="First" />
+    <GtkLabel label="Second" />
+</GtkBox>
+
+// Slot - sets a specific property
+<GtkWindow>
+    <Slot id="titlebar">
+        <GtkHeaderBar />
+    </Slot>
+</GtkWindow>
+```
+
+## Available Slots
+
+Common widgets with slot properties:
+
+| Widget | Slots |
+|--------|-------|
+| `GtkWindow` | `titlebar`, `child` |
+| `GtkHeaderBar` | `titleWidget` |
+| `GtkExpander` | `child`, `labelWidget` |
+| `GtkFrame` | `child`, `labelWidget` |
+| `GtkButton` | `child` |
+| `GtkToggleButton` | `child` |
+| `GtkScrolledWindow` | `child` |
+| `GtkViewport` | `child` |
+| `GtkPopover` | `child` |
+| `GtkRevealer` | `child` |
+| `GtkSearchBar` | `child`, `keyCaptureWidget` |
+
+Adwaita widgets:
+| Widget | Slots |
+|--------|-------|
+| `AdwApplicationWindow` | `content` |
+| `AdwHeaderBar` | `titleWidget` |
+| `AdwToolbarView` | (uses `Toolbar.Top`, `Toolbar.Bottom`) |
+| `AdwNavigationPage` | `child` |
+| `AdwPreferencesGroup` | `headerSuffix` |

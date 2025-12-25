@@ -9,7 +9,7 @@ const sidebars: SidebarsConfig = {
             type: "category",
             label: "Components",
             collapsed: false,
-            items: ["slots", "lists", "grid-layout", "menus", "dialogs", "portals"],
+            items: ["slots", "lists", "menus", "portals"],
         },
         "styling",
         "testing",

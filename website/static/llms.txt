@@ -27,20 +27,17 @@ Prerequisites: Node.js 20+, GTK4, Linux, and optionally libadwaita for modern GN
 
 - [Introduction](https://eugeniodepalo.github.io/gtkx/docs/introduction): Overview of GTKX and how it works
 - [Getting Started](https://eugeniodepalo.github.io/gtkx/docs/getting-started): Create your first app with the CLI
+- [CLI](https://eugeniodepalo.github.io/gtkx/docs/cli): CLI commands, HMR, and Vite configuration
 - [Styling](https://eugeniodepalo.github.io/gtkx/docs/styling): CSS-in-JS styling for GTK widgets
-- [Dialogs](https://eugeniodepalo.github.io/gtkx/docs/dialogs): Working with GTK dialogs
-- [Lists](https://eugeniodepalo.github.io/gtkx/docs/lists): Rendering lists with ListBox and ListView
-- [Menus](https://eugeniodepalo.github.io/gtkx/docs/menus): Building menus and popovers
 - [Slots](https://eugeniodepalo.github.io/gtkx/docs/slots): Named child slots in container widgets
 - [Portals](https://eugeniodepalo.github.io/gtkx/docs/portals): Rendering children outside the parent hierarchy
-- [Grid Layout](https://eugeniodepalo.github.io/gtkx/docs/grid-layout): Two-dimensional layouts with Grid
-
-## API Reference
-
-- [@gtkx/react API](https://eugeniodepalo.github.io/gtkx/docs/api/react): React components, render function, and utilities
-- [@gtkx/css API](https://eugeniodepalo.github.io/gtkx/docs/api/css): CSS-in-JS template literals and styling functions
-- [@gtkx/testing API](https://eugeniodepalo.github.io/gtkx/docs/api/testing): Testing queries, userEvent, and waitFor utilities
-- [@gtkx/ffi API](https://eugeniodepalo.github.io/gtkx/docs/api/ffi): FFI bindings for GTK4, libadwaita, and GNOME libraries
+- [Lists](https://eugeniodepalo.github.io/gtkx/docs/lists): ListView, GridView, and ColumnView components
+- [Menus](https://eugeniodepalo.github.io/gtkx/docs/menus): Application menus and context menus
+- [Async Operations](https://eugeniodepalo.github.io/gtkx/docs/async-operations): File dialogs, alerts, and Promise-based APIs
+- [Error Handling](https://eugeniodepalo.github.io/gtkx/docs/error-handling): GError handling and NativeError exceptions
+- [Adwaita](https://eugeniodepalo.github.io/gtkx/docs/adwaita): Modern GNOME-style apps with libadwaita
+- [Testing](https://eugeniodepalo.github.io/gtkx/docs/testing): Testing utilities and patterns
+- [Deploying](https://eugeniodepalo.github.io/gtkx/docs/deploying): Flatpak and Snap packaging
 
 ## Optional
 

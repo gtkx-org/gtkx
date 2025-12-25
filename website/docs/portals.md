@@ -1,211 +1,229 @@
 ---
 sidebar_position: 6
-sidebar_label: Portals
 ---
 
 # Portals
 
-Portals let you render React children into a different part of the GTK widget tree. This is essential for dialogs, additional windows, and content that should render outside their parent container.
-
-## Basic Usage
-
-```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { createPortal, GtkBox, GtkLabel } from "@gtkx/react";
-
-const MyComponent = () => (
-  <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-    This is in the box
-    {createPortal("This renders at the root level")}
-  </GtkBox>
-);
-```
+Portals let you render React children into a different part of the GTK widget tree. This is useful for dialogs, additional windows, and content that should render outside the parent hierarchy.
 
 ## API
 
 ```typescript
+import { createPortal } from '@gtkx/react';
+
 createPortal(
-  children: ReactNode,
-  container?: Widget,
-  key?: string | null
+    children: ReactNode,
+    container?: Gtk.Widget,
+    key?: string | null
 ): ReactPortal
 ```
 
-| Parameter   | Type             | Description                                                           |
-| ----------- | ---------------- | --------------------------------------------------------------------- |
-| `children`  | `ReactNode`      | The React elements to render                                          |
-| `container` | `Widget`         | Optional. The GTK widget to render into. Defaults to application root |
-| `key`       | `string \| null` | Optional. React key for the portal                                    |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `children` | `ReactNode` | React elements to render |
+| `container` | `Gtk.Widget` | Target widget (optional, defaults to app root) |
+| `key` | `string \| null` | React key for the portal |
 
 ## Root-Level Portals
 
-When called without a container, `createPortal` renders at the application root level. This is the most common use case for dialogs:
+Without a container, content renders at the application root level as a sibling to your main window:
 
 ```tsx
-import {
-  createPortal,
-  GtkApplicationWindow,
-  GtkButton,
-  GtkAboutDialog,
-  quit,
-} from "@gtkx/react";
-import { useState } from "react";
+import { createPortal, GtkApplicationWindow, GtkWindow, GtkButton, quit } from '@gtkx/react';
+import { useState } from 'react';
 
-const App = () => {
-  const [showDialog, setShowDialog] = useState(false);
+function App() {
+    const [showWindow, setShowWindow] = useState(false);
 
-  return (
-    <GtkApplicationWindow title="My App" onCloseRequest={quit}>
-      <GtkButton label="Show Dialog" onClicked={() => setShowDialog(true)} />
-
-      {showDialog &&
-        createPortal(
-          <GtkAboutDialog
-            programName="My App"
-            onCloseRequest={() => {
-              setShowDialog(false);
-              return false;
-            }}
-          />
-        )}
-    </GtkApplicationWindow>
-  );
-};
+    return (
+        <GtkApplicationWindow title="Main" onCloseRequest={quit}>
+            <GtkButton
+                label="Open Window"
+                onClicked={() => setShowWindow(true)}
+            />
+            {showWindow && createPortal(
+                <GtkWindow
+                    title="Secondary"
+                    defaultWidth={400}
+                    defaultHeight={300}
+                    onCloseRequest={() => {
+                        setShowWindow(false);
+                        return true;
+                    }}
+                >
+                    This is a secondary window
+                </GtkWindow>
+            )}
+        </GtkApplicationWindow>
+    );
+}
 ```
 
-The dialog renders as a sibling to the main window, not nested inside it.
+The secondary window renders as a peer to the main window, not nested inside it. GTK automatically sets up the transient relationship.
 
 ## Container Portals
 
-You can also render into a specific widget container using refs:
+Render into a specific widget by passing a container reference:
 
 ```tsx
-import * as Gtk from "@gtkx/ffi/gtk";
-import { createPortal, GtkBox, GtkLabel, GtkButton } from "@gtkx/react";
-import { useState, useRef } from "react";
+import { createPortal, GtkBox, GtkButton, GtkLabel } from '@gtkx/react';
+import { useState, useRef } from 'react';
+import * as Gtk from '@gtkx/ffi/gtk';
 
-const App = () => {
-  const targetRef = useRef<Gtk.Box | null>(null);
-  const [showInTarget, setShowInTarget] = useState(false);
+function App() {
+    const targetRef = useRef<Gtk.Box>(null);
+    const [showContent, setShowContent] = useState(false);
 
-  return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-      <GtkButton
-        label="Toggle Portal"
-        onClicked={() => setShowInTarget(!showInTarget)}
-      />
-
-      <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-        <GtkBox
-          orientation={Gtk.Orientation.VERTICAL}
-          spacing={8}
-          ref={targetRef}
-          cssClasses={["card"]}
-          hexpand
-        >
-          Target container
-          {/* Portal content appears here */}
+    return (
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+            <GtkBox ref={targetRef}>
+                Target area:
+            </GtkBox>
+            <GtkBox>
+                <GtkButton
+                    label="Toggle"
+                    onClicked={() => setShowContent(!showContent)}
+                />
+                {showContent && targetRef.current && createPortal(
+                    <GtkLabel label="Portaled content" />,
+                    targetRef.current
+                )}
+            </GtkBox>
         </GtkBox>
-
-        <GtkBox
-          orientation={Gtk.Orientation.VERTICAL}
-          spacing={8}
-          cssClasses={["card"]}
-          hexpand
-        >
-          Source container
-          {showInTarget &&
-            createPortal(
-              "I'm rendered in the target!",
-              targetRef.current ?? undefined
-            )}
-        </GtkBox>
-      </GtkBox>
-    </GtkBox>
-  );
-};
+    );
+}
 ```
+
+Content appears in the target box even though the portal call is in the source box.
 
 ## How Portals Work
 
-1. **Without container**: Content renders at the root level, as siblings to your main window (windows/dialogs are associated with the GTK Application)
-2. **With container**: Content attaches to the specified widget as a child
-3. **React events bubble**: Events still bubble through the React tree, not the GTK tree
-4. **Context preserved**: React context passes through portals normally
+1. **Without container**: Content renders at the application root
+2. **With container**: Content appends to the specified widget
+3. **React context preserved**: Context providers work through portals
+4. **Automatic cleanup**: Content removes when the portal unmounts
 
 ## Use Cases
 
-### Dialogs
+### Modal Dialogs
 
-The primary use case — render dialogs outside the main window hierarchy:
+Render dialogs outside the main window:
 
 ```tsx
-{
-  showConfirm &&
-    createPortal(
-      <GtkDialog title="Confirm" modal>
-        <GtkButton label="OK" onClicked={handleConfirm} />
-      </GtkDialog>
-    );
-}
+const [showAbout, setShowAbout] = useState(false);
+
+{showAbout && createPortal(
+    <GtkAboutDialog
+        programName="My App"
+        version="1.0.0"
+        onCloseRequest={() => {
+            setShowAbout(false);
+            return true;
+        }}
+    />
+)}
 ```
 
 ### Multiple Windows
 
-Render additional windows alongside your main window:
+Create additional application windows:
 
 ```tsx
-{
-  showSecondWindow &&
-    createPortal(
-      <GtkApplicationWindow title="Second Window" defaultWidth={400} defaultHeight={300}>
-        This is a second window
-      </GtkApplicationWindow>
-    );
-}
+const [windows, setWindows] = useState<string[]>([]);
+
+{windows.map(id => createPortal(
+    <GtkWindow
+        key={id}
+        title={`Window ${id}`}
+        onCloseRequest={() => {
+            setWindows(w => w.filter(x => x !== id));
+            return true;
+        }}
+    >
+        Content for window {id}
+    </GtkWindow>,
+    undefined,
+    id
+))}
 ```
 
-### Dynamic Content Injection
+### Dynamic Content Placement
 
-Move content between containers based on state:
+Move content between containers:
 
 ```tsx
+const sidebarRef = useRef<Gtk.Box>(null);
+const mainRef = useRef<Gtk.Box>(null);
 const [inSidebar, setInSidebar] = useState(true);
 
-const content = "Movable content";
+const content = <GtkLabel label="Movable content" />;
 
-// Renders in sidebar or main area based on state
-{
-  inSidebar
-    ? createPortal(content, sidebarRef.current)
-    : createPortal(content, mainRef.current);
-}
+{inSidebar && sidebarRef.current && createPortal(content, sidebarRef.current)}
+{!inSidebar && mainRef.current && createPortal(content, mainRef.current)}
+```
+
+### Tooltips and Overlays
+
+Render tooltips or popups at the root level to avoid clipping:
+
+```tsx
+const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
+
+{tooltip && createPortal(
+    <GtkWindow
+        decorated={false}
+        defaultWidth={200}
+        defaultHeight={50}
+    >
+        Tooltip content
+    </GtkWindow>
+)}
 ```
 
 ## Portal vs Slot
 
-Don't confuse portals with slots:
+Portals and slots serve different purposes:
 
-- **Slots** (`Widget.SlotName`) — Place content in a widget's named property (e.g., `setChild()`)
-- **Portals** (`createPortal`) — Render content in a different widget container
+| Feature | Portal | Slot |
+|---------|--------|------|
+| Purpose | Render in different container | Set widget property |
+| Target | Any widget or root | Parent widget's property |
+| Method | `append()` to container | Property setter (e.g., `setTitlebar()`) |
+| Use case | Dialogs, windows | Titlebars, custom children |
 
 ```tsx
-// Slot: Places content in Expander's "child" property
-<Expander.Root>
-  <Expander.Child>
-    <Content />
-  </Expander.Child>
-</Expander.Root>;
+// Slot: sets the titlebar property
+<GtkWindow>
+    <Slot id="titlebar">
+        <GtkHeaderBar />
+    </Slot>
+</GtkWindow>
 
-// Portal: Renders content in a completely different container
-{
-  createPortal(<Content />, otherContainer);
-}
+// Portal: renders in a different container
+{createPortal(<Content />, otherContainer)}
 ```
 
 ## Tips
 
-1. **Always conditionally render portal content** — Don't create portals for content that shouldn't exist yet
-2. **Clean up on unmount** — Portal content is automatically removed when the portal unmounts
-3. **Use keys for lists of portals** — If rendering multiple portals dynamically, provide unique keys
-4. **State lives in React** — Even though content renders elsewhere in GTK, state management follows React's rules
+1. **Conditional rendering**: Only create portals when the content should exist
+2. **Null checks**: Verify container refs before using them
+3. **Keys for lists**: Provide unique keys when rendering multiple portals
+4. **State ownership**: State lives in the React tree, not the GTK tree
+5. **Cleanup**: Portal content automatically unmounts with the portal
+
+## Window Transient Relationships
+
+When portaling a `GtkWindow` as a child of another window, GTK sets up a transient relationship automatically. The child window:
+- Stays above its parent
+- Centers on the parent by default
+- Closes when the parent closes
+
+```tsx
+<GtkApplicationWindow title="Parent">
+    {showChild && createPortal(
+        <GtkWindow title="Child">
+            This window is transient to the parent
+        </GtkWindow>
+    )}
+</GtkApplicationWindow>
+```

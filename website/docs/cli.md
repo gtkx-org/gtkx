@@ -4,148 +4,219 @@ sidebar_position: 3
 
 # CLI
 
-The `@gtkx/cli` package provides the `gtkx` command for creating and developing GTKX applications.
+The `@gtkx/cli` package provides commands for creating and developing GTKX applications.
 
-## Quick Start
+## Installation
 
-The recommended way to use the CLI is with `npx` (or `pnpx` for pnpm users):
+Use without installing globally via your package manager's runner:
 
 ```bash
 npx @gtkx/cli@latest create
+pnpx @gtkx/cli@latest create
 ```
 
-This downloads and runs the CLI without installing it globally. After creating a project, the CLI is installed as a local dependency, so you can use `npm run dev` directly.
+After project creation, the CLI is installed locally and available via package scripts.
 
 ## Commands
 
-### `gtkx create`
+### gtkx create
 
-Scaffolds a new GTKX application with an interactive wizard.
-
-```bash
-gtkx create
-```
-
-The wizard prompts for:
-
-- **Project name** — lowercase letters, numbers, and hyphens (e.g., `my-app`)
-- **App ID** — reverse domain notation (e.g., `com.example.myapp`)
-- **Package manager** — pnpm, npm, yarn, or bun
-- **Testing framework** — Vitest, Jest, Node.js Test Runner, or none
-- **Claude Code skills** — optional AI assistance files for Claude Code
-
-You can also pass options directly to skip prompts:
+Scaffold a new GTKX application:
 
 ```bash
-gtkx create my-app --app-id com.example.myapp --pm pnpm --testing vitest
+gtkx create [name]
 ```
+
+Interactive prompts:
+- **Project name** - Directory name (lowercase, hyphens allowed)
+- **App ID** - Reverse-domain identifier for GTK
+- **Package manager** - pnpm, npm, yarn, or bun
+- **Testing framework** - vitest, jest, node, or none
+- **Claude Code skills** - AI assistance configuration files
 
 #### Options
 
-| Option      | Description                                            |
-| ----------- | ------------------------------------------------------ |
-| `--app-id`  | GTK application ID in reverse domain notation          |
-| `--pm`      | Package manager: `pnpm`, `npm`, `yarn`, or `bun`       |
-| `--testing` | Testing framework: `vitest`, `jest`, `node`, or `none` |
-
-#### Testing Setup
-
-When you choose a testing framework, the CLI sets up:
-
-- **Vitest** — `vitest.config.ts` and example test in `tests/app.test.tsx`
-- **Jest** — `jest.config.js` with ts-jest and example test
-- **Node.js Test Runner** — Example test using `node:test` and `tsx`
-
-All options install `@gtkx/testing` which provides Testing Library-style utilities for querying GTK widgets.
-
-### `gtkx dev`
-
-Starts the development server with HMR (Hot Module Replacement).
+| Option | Description |
+|--------|-------------|
+| `--app-id <id>` | Application ID (e.g., `com.example.myapp`) |
+| `--pm <manager>` | Package manager: `pnpm`, `npm`, `yarn`, `bun` |
+| `--testing <framework>` | Testing: `vitest`, `jest`, `node`, `none` |
+| `--claude-skills` | Include Claude Code skill files |
 
 ```bash
-gtkx dev src/app.tsx
+gtkx create my-app \
+    --app-id com.example.myapp \
+    --pm pnpm \
+    --testing vitest \
+    --claude-skills
 ```
 
-This launches your application and watches for file changes. When you edit your code, the app updates instantly without restarting — just like web development with Vite.
+#### Generated Structure
 
-#### How HMR Works
+```
+my-app/
+├── package.json
+├── tsconfig.json
+├── tsconfig.app.json
+├── tsconfig.test.json      # if testing enabled
+├── vitest.config.ts        # if vitest
+├── .gitignore
+├── src/
+│   └── app.tsx
+└── tests/                  # if testing enabled
+    ├── setup.ts
+    └── app.test.tsx
+```
 
-1. Your app renders normally on first load
-2. The dev server watches for file changes
-3. When a file changes, it hot-reloads the module
-4. The React tree re-renders with the new code
-5. Component state is preserved when possible
+### gtkx dev
 
-#### Example Workflow
+Start the development server with HMR:
 
 ```bash
-# Terminal 1: Start dev server
-cd my-app
-npm run dev
-
-# Terminal 2: Edit code and watch it update
-# Changes to src/app.tsx will appear instantly
+gtkx dev <entry>
 ```
+
+The entry file must be a module that exports:
+
+```tsx
+export default function App() {
+    return <GtkApplicationWindow>...</GtkApplicationWindow>;
+}
+
+export const appId = 'com.example.myapp';
+export const appFlags = Gio.ApplicationFlags.FLAGS_NONE;
+```
+
+| Export | Required | Description |
+|--------|----------|-------------|
+| `default` | Yes | Component function returning ReactNode |
+| `appId` | No | Application identifier (defaults to `com.gtkx.app`) |
+| `appFlags` | No | `Gio.ApplicationFlags` value |
+
+## Hot Module Replacement
+
+The dev server implements React Refresh for fast updates:
+
+1. **Component-local HMR**: When a module exports only React components, the dev server performs a fast refresh that preserves component state
+2. **Full reload**: For non-component exports or structural changes, the entire application reloads
+
+### Refresh Boundaries
+
+A module is a valid refresh boundary when:
+- All exports are React components (functions starting with uppercase)
+- No side effects that would break on re-execution
+
+When editing a component file, only that component re-renders. Parent components and their state remain intact.
+
+### Limitations
+
+Full reload occurs when:
+- Editing entry point exports (`appId`, `appFlags`)
+- Changing module-level side effects
+- Modifying non-component exports
 
 ## Project Scripts
 
-When you create a new project, these scripts are set up in `package.json`:
+Generated `package.json` includes:
 
 ```json
 {
-  "scripts": {
-    "dev": "gtkx dev src/app.tsx",
-    "build": "tsc -b",
-    "start": "node dist/index.js",
-    "test": "GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a vitest"
-  }
+    "scripts": {
+        "dev": "gtkx dev src/app.tsx",
+        "build": "tsc -b",
+        "start": "node dist/app.js",
+        "test": "xvfb-run -a vitest"
+    }
 }
 ```
 
-The test script includes environment variables and a virtual framebuffer wrapper:
+| Script | Description |
+|--------|-------------|
+| `dev` | Start dev server with HMR |
+| `build` | Compile TypeScript to `dist/` |
+| `start` | Run compiled application |
+| `test` | Run test suite in virtual framebuffer |
 
-- `GDK_BACKEND=x11` — Forces the X11 backend (required for xvfb)
-- `GSK_RENDERER=cairo` — Uses the Cairo software renderer
-- `LIBGL_ALWAYS_SOFTWARE=1` — Forces Mesa to use software rendering, avoiding EGL/DRI3 warnings
-- `xvfb-run -a` — Runs the tests in a virtual framebuffer (required for GTK4 widgets)
+## Testing Environment
 
-### `npm run dev`
-
-Starts the development server with HMR. Use this during development.
-
-### `npm run build`
-
-Compiles TypeScript to JavaScript in the `dist/` directory.
-
-### `npm start`
-
-Runs the compiled application without HMR (no hot reloading). Use this for production or testing the built app.
-
-### `npm test`
-
-Runs the test suite. The test script varies based on your chosen framework (all include the environment variables and xvfb wrapper):
-
-- **Vitest**: `GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a vitest`
-- **Jest**: `GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a jest`
-- **Node.js**: `GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a node --import tsx --test tests/**/*.test.ts`
-
-## App ID
-
-GTK applications require a unique identifier in reverse domain notation (e.g., `com.example.myapp`). The CLI suggests `org.gtkx.<projectname>` as a default, but you should use your own domain for published apps (e.g., `io.github.username.appname`).
-
-## Using with npx/pnpx
-
-You don't need to install the CLI globally. Use your package manager's runner:
+GTK requires a display server. For headless testing (CI, containers):
 
 ```bash
-# npm users
-npx @gtkx/cli@latest create
-
-# pnpm users
-pnpx @gtkx/cli@latest create
-
-# With options
-npx @gtkx/cli@latest create my-app --app-id com.example.myapp --pm pnpm
+GDK_BACKEND=x11 \
+GSK_RENDERER=cairo \
+LIBGL_ALWAYS_SOFTWARE=1 \
+xvfb-run -a vitest
 ```
 
-After creating a project, the CLI is installed as a local dependency, so `npm run dev` (or `pnpm dev`) works directly.
+| Variable | Purpose |
+|----------|---------|
+| `GDK_BACKEND=x11` | Force X11 backend (required for Xvfb) |
+| `GSK_RENDERER=cairo` | Use Cairo software renderer |
+| `LIBGL_ALWAYS_SOFTWARE=1` | Disable hardware acceleration |
+| `xvfb-run -a` | Run in virtual framebuffer |
+
+These are pre-configured in generated test scripts.
+
+## Vite Configuration
+
+The dev server uses Vite internally. Customize via `vite.config.ts`:
+
+```typescript
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+    build: {
+        target: 'node20',
+    },
+    ssr: {
+        noExternal: ['@gtkx/react', '@gtkx/css'],
+    },
+});
+```
+
+The GTKX Vite plugin is added automatically by the dev server.
+
+## Application IDs
+
+GTK applications require unique identifiers in reverse-domain notation:
+
+```
+com.example.myapp
+org.gnome.Calculator
+io.github.username.project
+```
+
+Rules:
+- Use your own domain for published apps
+- The CLI defaults to `org.gtkx.<name>` for development
+- Must contain at least one dot
+- Lowercase letters, numbers, hyphens only
+
+## Programmatic API
+
+Create projects programmatically:
+
+```typescript
+import { createApp } from '@gtkx/cli';
+
+await createApp({
+    name: 'my-app',
+    appId: 'com.example.myapp',
+    packageManager: 'pnpm',
+    testing: 'vitest',
+    claudeSkills: false,
+});
+```
+
+Create a dev server programmatically:
+
+```typescript
+import { createDevServer } from '@gtkx/cli';
+
+const server = await createDevServer({
+    entry: 'src/app.tsx',
+    vite: {
+        // Vite config overrides
+    },
+});
+```

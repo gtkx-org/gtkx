@@ -41,24 +41,25 @@ Edit your code and see changes instantly—no restart needed.
 ### Example
 
 ```tsx
-import { render, GtkApplicationWindow, GtkBox, GtkButton, quit } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkButton, quit } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
-const App = () => {
-  const [count, setCount] = useState(0);
+function App() {
+    const [count, setCount] = useState(0);
 
-  return (
-    <GtkApplicationWindow title="Counter" onCloseRequest={quit}>
-      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-        {`Count: ${count}`}
-        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
-      </GtkBox>
-    </GtkApplicationWindow>
-  );
-};
+    return (
+        <GtkApplicationWindow title="Counter" onCloseRequest={quit}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                {`Count: ${count}`}
+                <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+            </GtkBox>
+        </GtkApplicationWindow>
+    );
+}
 
-render(<App />, "org.example.Counter");
+export default App;
+export const appId = "org.example.Counter";
 ```
 
 ## Styling
@@ -68,10 +69,10 @@ import { css } from "@gtkx/css";
 import { GtkButton } from "@gtkx/react";
 
 const primary = css`
-  padding: 16px 32px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, #3584e4, #9141ac);
-  color: white;
+    padding: 16px 32px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #3584e4, #9141ac);
+    color: white;
 `;
 
 <GtkButton label="Click me" cssClasses={[primary]} />;
@@ -83,25 +84,25 @@ const primary = css`
 import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import * as Gtk from "@gtkx/ffi/gtk";
 
-afterEach(() => cleanup());
+afterEach(async () => await cleanup());
 
 test("increments count", async () => {
-  await render(<App />);
+    await render(<App />);
 
-  const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
-    name: "Increment",
-  });
+    const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+        name: "Increment",
+    });
 
-  await userEvent.click(button);
+    await userEvent.click(button);
 
-  await screen.findByText("Count: 1");
+    await screen.findByText("Count: 1");
 });
 ```
 
 ## Requirements
 
-- Node.js 20+ (Deno support experimental)
-- GTK4 Runtime (`gtk4` on Fedora, `libgtk-4-1` on Ubuntu)
+- Node.js 20+
+- GTK4 (`gtk4-devel` on Fedora, `libgtk-4-dev` on Ubuntu)
 
 ## Contributing
 
