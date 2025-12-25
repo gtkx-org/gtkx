@@ -1,0 +1,40 @@
+app-id: org.gtkx.flatpak
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.node22
+command: gtkx-demo
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+build-options:
+  append-path: /usr/lib/sdk/node22/bin
+  env:
+    npm_config_nodedir: /usr/lib/sdk/node22
+  no-debuginfo: true
+  strip: false
+modules:
+  - name: gtkx-flatpak
+    buildsystem: simple
+    build-options:
+      build-args:
+        - --share=network
+    build-commands:
+      - install -Dm755 dist/app /app/bin/gtkx-demo
+      - install -Dm755 dist/index.node /app/bin/index.node
+      - install -Dm644 flatpak/org.gtkx.flatpak.desktop /app/share/applications/org.gtkx.flatpak.desktop
+      - install -Dm644 assets/icon.png /app/share/icons/hicolor/256x256/apps/org.gtkx.flatpak.png
+    sources:
+      - type: dir
+        path: ..
+        skip:
+          - .flatpak-builder
+          - build-dir
+          - node_modules
+          - node-v22.12.0-linux-x64
+          - node-v22.12.0-linux-x64.tar.xz
+          - generated-sources.json
+          - additional-sources.json

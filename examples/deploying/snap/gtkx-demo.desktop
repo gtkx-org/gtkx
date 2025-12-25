@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=GTKX Demo
+Comment=GTKX Demo Application
+Exec=gtkx-demo
+Icon=${SNAP}/gui/icon.png
+Terminal=false
+Type=Application
+Categories=Utility;

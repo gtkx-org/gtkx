@@ -6,7 +6,8 @@
     "type": "module",
     "scripts": {
         "build": "tsc -b",
-        "build:flatpak": "flatpak-builder --user --install --force-clean build-dir org.gtkx.flatpak.json",
+        "build:flatpak": "bash flatpak/build.sh",
+        "build:snap": "bash snap/build.sh",
         "build:sea": "bash scripts/build-sea.sh",
         "bundle": "node --import tsx scripts/bundle.ts",
         "dev": "gtkx dev src/app.tsx",

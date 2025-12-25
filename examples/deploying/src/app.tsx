@@ -30,3 +30,5 @@ export const App = () => {
         </GtkApplicationWindow>
     );
 };
+
+export default App;

@@ -8,3 +8,6 @@ generated
 node_modules
 out-tsc
 packages/**/README.md
+/.idea/
+.flatpak-builder
+build-dir

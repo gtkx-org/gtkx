@@ -55,7 +55,7 @@ importers:
         specifier: ^19.2.7
         version: 19.2.7
 
-  examples/flatpak:
+  examples/deploying:
     dependencies:
       '@gtkx/ffi':
         specifier: workspace:*

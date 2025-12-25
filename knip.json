@@ -12,10 +12,10 @@
             "entry": [],
             "project": ["src/**/*", "tests/**/*"]
         },
-        "examples/flatpak": {
+        "examples/deploying": {
             "project": ["src/**/*", "scripts/**/*"],
-            "ignoreDependencies": ["postject"],
-            "ignoreBinaries": ["flatpak-builder"]
+            "ignoreDependencies": ["postject", "@gtkx/cli"],
+            "ignoreBinaries": ["gtkx"]
         },
         "website": {
             "docusaurus": true,

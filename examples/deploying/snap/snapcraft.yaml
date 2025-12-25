@@ -1,0 +1,48 @@
+name: gtkx-snap
+base: core24
+version: '0.1'
+summary: GTKX Snap Demo
+description: Example GTKX application packaged as a Snap
+
+grade: devel
+confinement: devmode
+
+platforms:
+  amd64:
+
+parts:
+  gtkx-snap-part:
+    plugin: nil
+    source: .
+    build-snaps:
+      - node/24/stable
+    build-packages:
+      - wget
+
+    override-build: |
+      NODE_VERSION=$(node -v)
+      NODE_DIST="node-$NODE_VERSION-linux-x64"
+      NODE_URL="https://nodejs.org/dist/$NODE_VERSION/$NODE_DIST.tar.gz"
+
+      mkdir -p $CRAFT_PART_INSTALL/bin
+      mkdir -p $CRAFT_PART_INSTALL/gui
+
+      cp ./assets/icon.png $CRAFT_PART_INSTALL/gui/
+      cp ./snap/gtkx-demo.desktop $CRAFT_PART_INSTALL/gui/
+
+      cp ./dist/index.node $CRAFT_PART_INSTALL/bin/index.node
+      cp ./dist/app $CRAFT_PART_INSTALL/bin/app
+      ls $CRAFT_PART_INSTALL/bin
+
+    prime:
+      - bin/app
+      - bin/index.node
+      - gui/
+
+apps:
+  gtkx-demo:
+    command: bin/app
+    desktop: gui/gtkx-demo.desktop
+    extensions: [ gnome ]
+    environment:
+      LD_LIBRARY_PATH: $SNAP_DESKTOP_RUNTIME/usr/lib/$CRAFT_ARCH_TRIPLET/libproxy:$LD_LIBRARY_PATH
