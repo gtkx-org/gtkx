@@ -28,13 +28,13 @@ class PackNode extends WidgetNode<PackableWidget> {
     }
 
     public override appendChild(child: Node): void {
-        if (child instanceof SlotNode) {
-            super.appendChild(child);
+        if (child instanceof PackChild) {
+            child.setParent(this.container);
             return;
         }
 
-        if (child instanceof PackChild) {
-            child.setPackableWidget(this.container);
+        if (child instanceof SlotNode) {
+            child.setParent(this.container);
             return;
         }
 
@@ -43,7 +43,7 @@ class PackNode extends WidgetNode<PackableWidget> {
             return;
         }
 
-        throw new Error(`Cannot append '${child.typeName}' to 'PackedContainer': expected PackChild or Widget`);
+        throw new Error(`Cannot append '${child.typeName}' to 'PackedContainer': expected PackChild`);
     }
 
     public override insertBefore(child: Node): void {
@@ -51,13 +51,13 @@ class PackNode extends WidgetNode<PackableWidget> {
     }
 
     public override removeChild(child: Node): void {
-        if (child instanceof SlotNode) {
-            super.removeChild(child);
+        if (child instanceof PackChild) {
+            child.setParent(undefined);
             return;
         }
 
-        if (child instanceof PackChild) {
-            child.setPackableWidget(undefined);
+        if (child instanceof SlotNode) {
+            child.setParent(undefined);
             return;
         }
 
@@ -66,7 +66,7 @@ class PackNode extends WidgetNode<PackableWidget> {
             return;
         }
 
-        throw new Error(`Cannot remove '${child.typeName}' from 'PackedContainer': expected PackChild or Widget`);
+        throw new Error(`Cannot remove '${child.typeName}' from 'PackedContainer': expected PackChild`);
     }
 }
 

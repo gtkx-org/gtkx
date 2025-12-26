@@ -6,25 +6,13 @@ import { SlotNode } from "./slot.js";
 
 type Props = Partial<StackPageProps>;
 
-export class StackPageNode extends SlotNode<Props> {
+class StackPageNode extends SlotNode<Props> {
     public static override priority = 1;
 
-    page?: Gtk.StackPage | Adw.ViewStackPage;
+    private page?: Gtk.StackPage | Adw.ViewStackPage;
 
     public static override matches(type: string): boolean {
         return type === "StackPage";
-    }
-
-    public setStack(stack?: Gtk.Stack | Adw.ViewStack): void {
-        this.setParent(stack);
-    }
-
-    private getStack(): Gtk.Stack | Adw.ViewStack {
-        if (!this.parent) {
-            throw new Error("Expected Stack reference to be set on StackPageNode");
-        }
-
-        return this.parent as Gtk.Stack | Adw.ViewStack;
     }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
@@ -59,30 +47,30 @@ export class StackPageNode extends SlotNode<Props> {
 
     private addPage(): void {
         const child = this.getChild();
-        const stack = this.getStack();
+        const parent = this.getParent() as Gtk.Stack | Adw.ViewStack;
+        const name = this.props.name ?? "";
 
         let page: Gtk.StackPage | Adw.ViewStackPage;
 
-        if (stack instanceof Adw.ViewStack) {
+        if (parent instanceof Adw.ViewStack) {
             if (this.props.title && this.props.iconName) {
-                page = stack.addTitledWithIcon(child, this.props.title, this.props.iconName, this.props.name);
+                page = parent.addTitledWithIcon(child, this.props.title, this.props.iconName, name);
             } else if (this.props.title) {
-                page = stack.addTitled(child, this.props.title, this.props.name);
-            } else if (this.props.name) {
-                page = stack.addNamed(child, this.props.name);
+                page = parent.addTitled(child, this.props.title, name);
+            } else if (name) {
+                page = parent.addNamed(child, name);
             } else {
-                page = stack.add(child);
+                page = parent.add(child);
             }
         } else {
-            if (this.props.name) {
-                page = stack.addNamed(child, this.props.name);
+            if (this.props.title) {
+                page = parent.addTitled(child, this.props.title, name);
+            } else if (name) {
+                page = parent.addNamed(child, name);
             } else {
-                page = stack.addChild(child);
+                page = parent.addChild(child);
             }
 
-            if (this.props.title) {
-                page.setTitle(this.props.title);
-            }
             if (this.props.iconName) {
                 page.setIconName(this.props.iconName);
             }
@@ -92,18 +80,18 @@ export class StackPageNode extends SlotNode<Props> {
         this.updateProps(null, this.props);
     }
 
-    private removePage(): void {
-        const stack = this.getStack();
+    private removePage(oldChild?: Gtk.Widget): void {
+        const parent = this.getParent() as Gtk.Stack | Adw.ViewStack;
 
-        if (!this.page) {
+        if (!oldChild) {
             return;
         }
 
-        stack.remove(this.page.getChild());
+        parent.remove(oldChild);
     }
 
-    protected override onChildChange(): void {
-        this.removePage();
+    protected override onChildChange(oldChild?: Gtk.Widget): void {
+        this.removePage(oldChild);
 
         if (this.child) {
             this.addPage();

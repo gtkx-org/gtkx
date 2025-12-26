@@ -19,11 +19,15 @@ export class SignalGenerator extends BaseGenerator {
         this.typeMapper.setSameNamespaceClassUsageCallback(null);
 
         let hasBoxedSignalParams = false;
+        let hasGVariantSignalParams = false;
         const signalMetadata = signals.map((signal) => {
             const paramEntries = (signal.parameters ?? []).map((param) => {
                 const ffiType = this.typeMapper.mapParameter(param).ffi;
                 if (ffiType.type === "boxed") {
                     hasBoxedSignalParams = true;
+                }
+                if (ffiType.type === "gvariant") {
+                    hasGVariantSignalParams = true;
                 }
                 return JSON.stringify(ffiType);
             });
@@ -98,6 +102,14 @@ export class SignalGenerator extends BaseGenerator {
         if (hasBoxedSignalParams) {
             this.ctx.usesGetClassByTypeName = true;
         }
+        if (hasGVariantSignalParams) {
+            this.ctx.usedExternalTypes.set("GLib.Variant", {
+                namespace: "GLib",
+                name: "Variant",
+                transformedName: "Variant",
+                kind: "record",
+            });
+        }
 
         const moduleLevel =
             signalMetadata.length > 0 ? `const SIGNAL_META: SignalMeta = {\n${signalMetadata.join(",\n")}\n};\n` : "";
@@ -118,6 +130,13 @@ export class SignalGenerator extends BaseGenerator {
         }`
             : "";
 
+        const gvariantHandling = hasGVariantSignalParams
+            ? `
+        if (m.type === "gvariant" && signalArgs[i] != null) {
+          return getNativeObject(signalArgs[i], GLib.Variant);
+        }`
+            : "";
+
         const wrapperCode =
             signalMetadata.length > 0
                 ? `const wrappedHandler = (...args: unknown[]) => {
@@ -127,7 +146,7 @@ export class SignalGenerator extends BaseGenerator {
       const wrapped = meta.params.map((m, i) => {
         if (m.type === "gobject" && signalArgs[i] != null) {
           return getNativeObject(signalArgs[i]);
-        }${boxedHandling}
+        }${boxedHandling}${gvariantHandling}
         return signalArgs[i];
       });
       return handler(self, ...wrapped);

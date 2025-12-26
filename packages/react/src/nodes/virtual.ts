@@ -25,9 +25,6 @@ export class VirtualNode<P = Props> extends Node<undefined, P> {
     public updateProps(_oldProps: P | null, newProps: P): void {
         this.props = newProps;
     }
-
-    public mount(): void {}
-    public unmount(): void {}
 }
 
 registerNodeClass(VirtualNode);

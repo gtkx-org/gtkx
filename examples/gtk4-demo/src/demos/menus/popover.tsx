@@ -25,24 +25,22 @@ const PopoverDemo = () => {
                 <GtkMenuButton label="Open Popover" halign={Gtk.Align.CENTER}>
                     <Slot for={GtkMenuButton} id="popover">
                         <GtkPopover>
-                            <Slot for={GtkPopover} id="child">
-                                <GtkBox
-                                    orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={8}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                    marginTop={12}
-                                    marginBottom={12}
-                                >
-                                    <GtkLabel label="GtkPopover Content" cssClasses={["heading"]} />
-                                    <GtkLabel label="This is inside a popover!" cssClasses={["dim-label"]} />
-                                    <GtkButton
-                                        label={`Clicked ${clicks} times`}
-                                        onClicked={() => setClicks((c) => c + 1)}
-                                        cssClasses={["suggested-action"]}
-                                    />
-                                </GtkBox>
-                            </Slot>
+                            <GtkBox
+                                orientation={Gtk.Orientation.VERTICAL}
+                                spacing={8}
+                                marginStart={12}
+                                marginEnd={12}
+                                marginTop={12}
+                                marginBottom={12}
+                            >
+                                <GtkLabel label="GtkPopover Content" cssClasses={["heading"]} />
+                                <GtkLabel label="This is inside a popover!" cssClasses={["dim-label"]} />
+                                <GtkButton
+                                    label={`Clicked ${clicks} times`}
+                                    onClicked={() => setClicks((c) => c + 1)}
+                                    cssClasses={["suggested-action"]}
+                                />
+                            </GtkBox>
                         </GtkPopover>
                     </Slot>
                 </GtkMenuButton>
@@ -53,21 +51,19 @@ const PopoverDemo = () => {
                 <GtkMenuButton label="Actions" iconName="view-more-symbolic" halign={Gtk.Align.CENTER}>
                     <Slot for={GtkMenuButton} id="popover">
                         <GtkPopover>
-                            <Slot for={GtkPopover} id="child">
-                                <GtkBox
-                                    orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={4}
-                                    marginStart={8}
-                                    marginEnd={8}
-                                    marginTop={8}
-                                    marginBottom={8}
-                                >
-                                    <GtkButton label="New Document" cssClasses={["flat"]} />
-                                    <GtkButton label="Open..." cssClasses={["flat"]} />
-                                    <GtkButton label="Save" cssClasses={["flat"]} />
-                                    <GtkButton label="Save As..." cssClasses={["flat"]} />
-                                </GtkBox>
-                            </Slot>
+                            <GtkBox
+                                orientation={Gtk.Orientation.VERTICAL}
+                                spacing={4}
+                                marginStart={8}
+                                marginEnd={8}
+                                marginTop={8}
+                                marginBottom={8}
+                            >
+                                <GtkButton label="New Document" cssClasses={["flat"]} />
+                                <GtkButton label="Open..." cssClasses={["flat"]} />
+                                <GtkButton label="Save" cssClasses={["flat"]} />
+                                <GtkButton label="Save As..." cssClasses={["flat"]} />
+                            </GtkBox>
                         </GtkPopover>
                     </Slot>
                 </GtkMenuButton>

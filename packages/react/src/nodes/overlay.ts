@@ -1,140 +1,68 @@
+import { getObjectId } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { isContainerType } from "./internal/utils.js";
-import { SlotNode } from "./slot.js";
+import { OverlayChildNode } from "./overlay-child.js";
 import { WidgetNode } from "./widget.js";
-
-type Props = Partial<OverlayChildProps>;
-
-class OverlaySlotNode extends SlotNode<Props> {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "Overlay";
-    }
-
-    private getOverlay(): Gtk.Overlay {
-        if (!this.parent) {
-            throw new Error("Expected parent widget to be set on OverlaySlotNode");
-        }
-
-        return this.parent as Gtk.Overlay;
-    }
-
-    protected override onChildChange(oldChild: Gtk.Widget | undefined): void {
-        const overlay = this.getOverlay();
-
-        if (oldChild) {
-            overlay.removeOverlay(oldChild);
-        }
-
-        if (this.child) {
-            overlay.addOverlay(this.child);
-
-            if (this.props.measure !== undefined) {
-                overlay.setMeasureOverlay(this.child, this.props.measure);
-            }
-
-            if (this.props.clipOverlay !== undefined) {
-                overlay.setClipOverlay(this.child, this.props.clipOverlay);
-            }
-        }
-    }
-
-    public override updateProps(oldProps: Props | null, newProps: Props): void {
-        super.updateProps(oldProps, newProps);
-
-        if (!this.parent || !this.child) {
-            return;
-        }
-
-        const overlay = this.getOverlay();
-
-        if (oldProps?.measure !== newProps.measure && newProps.measure !== undefined) {
-            overlay.setMeasureOverlay(this.child, newProps.measure);
-        }
-
-        if (oldProps?.clipOverlay !== newProps.clipOverlay && newProps.clipOverlay !== undefined) {
-            overlay.setClipOverlay(this.child, newProps.clipOverlay);
-        }
-    }
-}
 
 class OverlayNode extends WidgetNode<Gtk.Overlay> {
     public static override priority = 1;
-
-    private mainChild?: Gtk.Widget;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
         return isContainerType(Gtk.Overlay, containerOrClass);
     }
 
     public override appendChild(child: Node): void {
-        if (child instanceof OverlaySlotNode) {
+        if (child instanceof OverlayChildNode) {
             child.setParent(this.container);
             return;
         }
 
-        if (child instanceof SlotNode) {
+        if (!(child instanceof WidgetNode)) {
             super.appendChild(child);
             return;
         }
 
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'Overlay': expected Widget`);
-        }
-
-        if (!this.mainChild) {
-            this.mainChild = child.container;
-            this.container.setChild(child.container);
+        if (!this.container.getChild()) {
+            super.appendChild(child);
         } else {
             this.container.addOverlay(child.container);
         }
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof OverlaySlotNode) {
+        if (child instanceof OverlayChildNode) {
             child.setParent(this.container);
             return;
         }
 
-        if (child instanceof SlotNode) {
+        if (!(child instanceof WidgetNode)) {
             super.insertBefore(child, before);
             return;
         }
 
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' to 'Overlay': expected Widget`);
-        }
-
-        if (!this.mainChild) {
-            this.mainChild = child.container;
-            this.container.setChild(child.container);
+        if (!this.container.getChild()) {
+            super.insertBefore(child, before);
         } else {
             this.container.addOverlay(child.container);
         }
     }
 
     public override removeChild(child: Node): void {
-        if (child instanceof OverlaySlotNode) {
+        if (child instanceof OverlayChildNode) {
             child.setParent(undefined);
             return;
         }
 
-        if (child instanceof SlotNode) {
+        if (!(child instanceof WidgetNode)) {
             super.removeChild(child);
             return;
         }
 
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'Overlay': expected Widget`);
-        }
-
-        if (this.mainChild === child.container) {
-            this.mainChild = undefined;
+        const currentChild = this.container.getChild();
+        if (currentChild && getObjectId(currentChild.id) === getObjectId(child.container.id)) {
             this.container.setChild(undefined);
         } else {
             this.container.removeOverlay(child.container);
@@ -143,4 +71,3 @@ class OverlayNode extends WidgetNode<Gtk.Overlay> {
 }
 
 registerNodeClass(OverlayNode);
-registerNodeClass(OverlaySlotNode);

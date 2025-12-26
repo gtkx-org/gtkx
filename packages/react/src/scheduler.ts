@@ -8,6 +8,7 @@ export const scheduleAfterCommit = (callback: Callback): void => {
 
 export const flushAfterCommit = (): void => {
     const callbacks = pendingCallbacks.splice(0);
+
     for (const callback of callbacks) {
         callback();
     }

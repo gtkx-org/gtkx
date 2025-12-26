@@ -9,6 +9,7 @@ import "./list-view.js";
 import "./menu.js";
 import "./notebook-page.js";
 import "./notebook.js";
+import "./overlay-child.js";
 import "./overlay.js";
 import "./pack-child.js";
 import "./pack.js";

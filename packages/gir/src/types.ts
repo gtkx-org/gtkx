@@ -737,6 +737,7 @@ export class TypeMapper {
     private onSameNamespaceClassUsed?: (className: string, originalName: string) => void;
     private typeRegistry?: TypeRegistry;
     private currentNamespace?: string;
+    private forceExternalNamespace?: string;
 
     /**
      * Registers an enumeration type for mapping.
@@ -840,6 +841,16 @@ export class TypeMapper {
         this.currentNamespace = currentNamespace;
     }
 
+    /**
+     * Sets a namespace that should always be treated as external when resolving types.
+     * This is used when generating cross-namespace interface methods where types
+     * from the interface's namespace should use qualified names.
+     * @param namespace - The namespace to treat as external, or null to clear
+     */
+    setForceExternalNamespace(namespace: string | null): void {
+        this.forceExternalNamespace = namespace ?? undefined;
+    }
+
     registerSkippedClass(name: string): void {
         this.skippedClasses.add(name);
     }
@@ -894,7 +905,9 @@ export class TypeMapper {
         if (this.typeRegistry && this.currentNamespace && !girType.name.includes(".")) {
             const registered = this.typeRegistry.resolveInNamespace(girType.name, this.currentNamespace);
             if (registered) {
-                const isExternal = registered.namespace !== this.currentNamespace;
+                const isExternal =
+                    registered.namespace !== this.currentNamespace ||
+                    registered.namespace === this.forceExternalNamespace;
                 const qualifiedName = isExternal
                     ? `${registered.namespace}.${registered.transformedName}`
                     : registered.transformedName;
@@ -931,6 +944,14 @@ export class TypeMapper {
                 }
 
                 if (registered.kind === "record") {
+                    if (registered.name === "Variant" && registered.namespace === "GLib") {
+                        return {
+                            ts: qualifiedName,
+                            ffi: { type: "gvariant", borrowed: isReturn },
+                            externalType,
+                            kind: registered.kind,
+                        };
+                    }
                     return {
                         ts: qualifiedName,
                         ffi: {
@@ -1001,7 +1022,9 @@ export class TypeMapper {
             if (this.typeRegistry && ns && typeName) {
                 const registered = this.typeRegistry.resolve(girType.name);
                 if (registered) {
-                    const isExternal = registered.namespace !== this.currentNamespace;
+                    const isExternal =
+                        registered.namespace !== this.currentNamespace ||
+                        registered.namespace === this.forceExternalNamespace;
                     const qualifiedName = isExternal
                         ? `${registered.namespace}.${registered.transformedName}`
                         : registered.transformedName;
@@ -1022,6 +1045,13 @@ export class TypeMapper {
                         };
                     }
                     if (registered.kind === "record") {
+                        if (registered.name === "Variant" && registered.namespace === "GLib") {
+                            return {
+                                ts: qualifiedName,
+                                ffi: { type: "gvariant", borrowed: isReturn },
+                                externalType: isExternal ? externalType : undefined,
+                            };
+                        }
                         return {
                             ts: qualifiedName,
                             ffi: {
@@ -1051,7 +1081,9 @@ export class TypeMapper {
         if (this.typeRegistry && this.currentNamespace) {
             const registered = this.typeRegistry.resolveInNamespace(girType.name, this.currentNamespace);
             if (registered) {
-                const isExternal = registered.namespace !== this.currentNamespace;
+                const isExternal =
+                    registered.namespace !== this.currentNamespace ||
+                    registered.namespace === this.forceExternalNamespace;
                 const qualifiedName = isExternal
                     ? `${registered.namespace}.${registered.transformedName}`
                     : registered.transformedName;

@@ -76,9 +76,10 @@ export function createHostConfig(): HostConfig {
         createInstance: (type, props, rootContainer) => {
             return createNode(type, props, undefined, rootContainer);
         },
-        createTextInstance: (text) => {
-            const node = createNode("GtkLabel", { label: text });
-            node.updateProps(null, { label: text });
+        createTextInstance: (text, rootContainer) => {
+            const props = { label: text };
+            const node = createNode("GtkLabel", props, undefined, rootContainer);
+            node.updateProps(null, props);
             return node;
         },
         appendInitialChild: (parent, child) => {
@@ -91,7 +92,7 @@ export function createHostConfig(): HostConfig {
         commitUpdate: (instance, _type, oldProps, newProps) => {
             instance.updateProps(oldProps, newProps);
         },
-        commitMount: (instance) => {
+        commitMount: (instance, _type) => {
             instance.mount();
         },
         appendChild: (parent, child) => {

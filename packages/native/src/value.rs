@@ -975,11 +975,13 @@ impl TryFrom<&glib::Value> for Value {
 
             Ok(Value::Object(ObjectId::new(Object::GObject(obj))))
         } else if value.is_type(glib::types::Type::BOXED) {
-            let boxed_ptr = value.as_ptr();
+            let boxed_ptr = unsafe {
+                glib::gobject_ffi::g_value_get_boxed(value.to_glib_none().0 as *const _)
+            };
             if boxed_ptr.is_null() {
                 Ok(Value::Null)
             } else {
-                let boxed = Boxed::from_glib_none(Some(value.type_()), boxed_ptr as *mut c_void);
+                let boxed = Boxed::from_glib_none(Some(value.type_()), boxed_ptr);
                 let object_id = ObjectId::new(Object::Boxed(boxed));
                 Ok(Value::Object(object_id))
             }

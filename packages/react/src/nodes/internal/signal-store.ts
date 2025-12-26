@@ -5,6 +5,18 @@ import { isCommitting } from "../../host-config.js";
 // biome-ignore lint/suspicious/noExplicitAny: ignore
 export type SignalHandler = (...args: any[]) => any;
 
+const LIFECYCLE_SIGNALS = new Set([
+    "realize",
+    "unrealize",
+    "map",
+    "unmap",
+    "show",
+    "hide",
+    "destroy",
+    "resize",
+    "render",
+]);
+
 export class SignalStore {
     private signalHandlers: Map<string, { obj: GObject.GObject; handlerId: number }> = new Map();
 
@@ -22,12 +34,15 @@ export class SignalStore {
     private connect(obj: GObject.GObject, signal: string, handler: SignalHandler): void {
         const objectId = getObjectId(obj.id);
         const key = `${objectId}:${signal}`;
+
         const wrappedHandler: SignalHandler = (...args) => {
-            if (isCommitting()) {
+            if (isCommitting() && !LIFECYCLE_SIGNALS.has(signal)) {
                 return;
             }
+
             return handler(...args);
         };
+
         const handlerId = obj.connect(signal, wrappedHandler);
         this.signalHandlers.set(key, { obj, handlerId });
     }

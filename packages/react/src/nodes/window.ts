@@ -1,12 +1,10 @@
-import { getNativeObject } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
-import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { filterProps, isContainerType } from "./internal/utils.js";
-import { MenuNode } from "./menu.js";
+import { Menu } from "./models/menu.js";
 import { WidgetNode } from "./widget.js";
 
 const PROPS = ["defaultWidth", "defaultHeight"];
@@ -18,6 +16,8 @@ type WindowProps = Props & {
 
 class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     public static override priority = 1;
+
+    private menu: Menu;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
         return isContainerType(Gtk.Window, containerOrClass);
@@ -48,17 +48,20 @@ class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         return WidgetNode.createContainer(props, containerClass) as Gtk.Window;
     }
 
+    constructor(typeName: string, props: WindowProps, container: Gtk.Window, rootContainer?: Container) {
+        super(typeName, props, container, rootContainer);
+        const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
+        const actionMap = container instanceof Gtk.ApplicationWindow ? container : undefined;
+        this.menu = new Menu("root", {}, actionMap, application);
+    }
+
     public override appendChild(child: Node): void {
         if (child.container instanceof Gtk.Window) {
             child.container.setTransientFor(this.container);
             return;
         }
 
-        if (child instanceof MenuNode && this.container instanceof Gtk.ApplicationWindow) {
-            child.setActionMap(getNativeObject(this.container.id, Gio.ActionMap) ?? undefined);
-            return;
-        }
-
+        this.menu.appendChild(child);
         super.appendChild(child);
     }
 
@@ -68,14 +71,12 @@ class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
             return;
         }
 
-        if (child instanceof MenuNode && this.container instanceof Gtk.ApplicationWindow) {
-            child.setActionMap(undefined);
-        }
-
+        this.menu.removeChild(child);
         super.removeChild(child);
     }
 
-    public override insertBefore(child: Node): void {
+    public override insertBefore(child: Node, before: Node): void {
+        this.menu.insertBefore(child, before);
         this.appendChild(child);
     }
 

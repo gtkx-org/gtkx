@@ -2,6 +2,7 @@ import { batch, getObjectId } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
+import { scheduleAfterCommit } from "../../scheduler.js";
 import { VirtualNode } from "../virtual.js";
 
 export type MenuType = "root" | "item" | "section" | "submenu";
@@ -15,6 +16,7 @@ export type MenuProps = {
 
 export class Menu extends VirtualNode<MenuProps> {
     private actionMap?: Gio.ActionMap;
+    private actionPrefix: string;
     private parent?: Gio.Menu;
     private menu: Gio.Menu;
     private type: MenuType;
@@ -22,11 +24,26 @@ export class Menu extends VirtualNode<MenuProps> {
     private action?: Gio.SimpleAction;
     private children: Menu[] = [];
 
-    constructor(type: MenuType, application?: Gtk.Application) {
-        super("", {}, undefined);
+    constructor(type: MenuType, props: MenuProps, actionMap?: Gio.ActionMap, application?: Gtk.Application) {
+        super("", props, undefined);
         this.type = type;
+        this.actionMap = actionMap;
+        this.actionPrefix = application ? "app" : "menu";
         this.application = application;
         this.menu = new Gio.Menu();
+    }
+
+    public setActionMap(actionMap: Gio.ActionMap, prefix: string): void {
+        this.actionMap = actionMap;
+        this.actionPrefix = prefix;
+
+        for (const child of this.children) {
+            child.setActionMap(actionMap, prefix);
+
+            if (child.type === "item") {
+                child.createAction();
+            }
+        }
     }
 
     private getAccels(): string[] {
@@ -40,7 +57,15 @@ export class Menu extends VirtualNode<MenuProps> {
     }
 
     private getActionName(): string {
-        return `${this.application ? "app" : "win"}.${this.props.id}`;
+        return `${this.actionPrefix}.${this.props.id}`;
+    }
+
+    private getOnActivate(): () => void {
+        if (!this.props.onActivate) {
+            throw new Error("Expected 'onActivate' prop to be present on MenuItem");
+        }
+
+        return this.props.onActivate;
     }
 
     private getId(): string {
@@ -61,36 +86,40 @@ export class Menu extends VirtualNode<MenuProps> {
 
     private getActionMap(): Gio.ActionMap {
         if (!this.actionMap) {
-            throw new Error("Expected ActionMap to be set on MenuNode");
+            throw new Error("Expected actionMap to be set on MenuNode");
         }
 
         return this.actionMap;
     }
 
-    private createAction(): void {
-        if (this.action) {
-            this.signalStore.set(this.action, "activate", undefined);
-        }
+    public createAction(): void {
+        batch(() => {
+            if (this.action) {
+                this.signalStore.set(this.action, "activate", undefined);
+            }
 
-        this.action = new Gio.SimpleAction(this.getId());
-        this.signalStore.set(this.action, "activate", this.props.onActivate);
-        this.getActionMap().addAction(this.action);
+            this.action = new Gio.SimpleAction(this.getId());
+            this.signalStore.set(this.action, "activate", this.getOnActivate());
+            this.getActionMap().addAction(this.action);
 
-        if (this.application && this.props.accels && this.props.accels.length > 0) {
-            this.application.setAccelsForAction(this.getActionName(), this.getAccels());
-        }
+            if (this.application && this.props.accels) {
+                this.application.setAccelsForAction(this.getActionName(), this.getAccels());
+            }
+        });
     }
 
     private removeAction(): void {
-        if (this.application && this.props.accels && this.props.accels.length > 0) {
-            this.application.setAccelsForAction(this.getActionName(), []);
-        }
+        batch(() => {
+            if (this.application && this.props.accels) {
+                this.application.setAccelsForAction(this.getActionName(), []);
+            }
 
-        if (this.action && this.actionMap) {
-            this.actionMap.removeAction(this.getId());
-            this.signalStore.set(this.action, "activate", undefined);
-            this.action = undefined;
-        }
+            if (this.action) {
+                this.getActionMap().removeAction(this.getId());
+                this.signalStore.set(this.action, "activate", undefined);
+                this.action = undefined;
+            }
+        });
     }
 
     private getPosition(): number {
@@ -112,43 +141,35 @@ export class Menu extends VirtualNode<MenuProps> {
             }
         }
 
-        throw new Error("Unable to find menu item in parent menu");
+        return 0;
     }
 
     private setParent(parent: Gio.Menu | undefined): void {
         this.parent = parent;
     }
 
-    public setActionMap(actionMap: Gio.ActionMap | undefined): void {
-        if (this.action) {
-            this.removeAction();
-        }
-
-        this.actionMap = actionMap;
-
-        if (actionMap) {
-            if (this.type === "item") {
-                this.createAction();
-            }
-
-            for (const child of this.children) {
-                child.setActionMap(actionMap);
-            }
-        }
-    }
-
     public getMenu(): Gio.Menu {
         return this.menu;
     }
 
+    private getAction(): Gio.SimpleAction {
+        if (!this.action) {
+            throw new Error("Expected action to be created on MenuItem");
+        }
+
+        return this.action;
+    }
+
     public removeFromParent(): void {
-        batch(() => {
-            this.getParent().remove(this.getPosition());
-        });
+        batch(() => this.getParent().remove(this.getPosition()));
     }
 
     public insertInParentBefore(before: Menu): void {
-        batch(() => {
+        if (this.type === "item" && this.actionMap) {
+            this.createAction();
+        }
+
+        scheduleAfterCommit(() => {
             const parent = this.getParent();
             const beforePosition = before.getPosition();
 
@@ -168,7 +189,11 @@ export class Menu extends VirtualNode<MenuProps> {
     }
 
     public appendToParent(): void {
-        batch(() => {
+        if (this.type === "item" && this.actionMap) {
+            this.createAction();
+        }
+
+        scheduleAfterCommit(() => {
             const parent = this.getParent();
 
             switch (this.type) {
@@ -191,8 +216,12 @@ export class Menu extends VirtualNode<MenuProps> {
         }
 
         this.children.push(child);
+
+        if (this.actionMap) {
+            child.setActionMap(this.actionMap, this.actionPrefix);
+        }
+
         child.setParent(this.menu);
-        child.setActionMap(this.actionMap);
         child.appendToParent();
     }
 
@@ -202,14 +231,17 @@ export class Menu extends VirtualNode<MenuProps> {
         }
 
         const beforeIndex = this.children.indexOf(before);
-        if (beforeIndex !== -1) {
+        if (beforeIndex >= 0) {
             this.children.splice(beforeIndex, 0, child);
         } else {
             this.children.push(child);
         }
 
+        if (this.actionMap) {
+            child.setActionMap(this.actionMap, this.actionPrefix);
+        }
+
         child.setParent(this.menu);
-        child.setActionMap(this.actionMap);
         child.insertInParentBefore(before);
     }
 
@@ -219,21 +251,16 @@ export class Menu extends VirtualNode<MenuProps> {
         }
 
         const index = this.children.indexOf(child);
-        if (index !== -1) {
+        if (index >= 0) {
             this.children.splice(index, 1);
         }
 
         child.removeFromParent();
         child.setParent(undefined);
-        child.setActionMap(undefined);
     }
 
     public override updateProps(oldProps: MenuProps | null, newProps: MenuProps): void {
         super.updateProps(oldProps, newProps);
-
-        if (!this.actionMap) {
-            return;
-        }
 
         if (this.type === "item") {
             this.updateItemProps(oldProps, newProps);
@@ -243,34 +270,27 @@ export class Menu extends VirtualNode<MenuProps> {
     }
 
     private updateItemProps(oldProps: MenuProps | null, newProps: MenuProps): void {
-        if (!this.action) {
-            this.createAction();
+        if (!this.parent || !this.actionMap) {
             return;
         }
 
-        if (!oldProps || oldProps.id !== newProps.id) {
+        if (!oldProps) {
+            return;
+        }
+
+        if (oldProps.id !== newProps.id || oldProps.label !== newProps.label) {
             this.removeAction();
             this.removeFromParent();
             this.createAction();
-            batch(() => {
-                this.parent?.append(newProps.label, this.getActionName());
-            });
+            this.appendToParent();
             return;
         }
 
-        if (!oldProps || oldProps.label !== newProps.label) {
-            batch(() => {
-                const position = this.getPosition();
-                this.getParent().remove(position);
-                this.parent?.insert(position, newProps.label, this.getActionName());
-            });
+        if (oldProps.onActivate !== newProps.onActivate) {
+            this.signalStore.set(this.getAction(), "activate", newProps.onActivate);
         }
 
-        if (!oldProps || oldProps.onActivate !== newProps.onActivate) {
-            this.signalStore.set(this.action, "activate", newProps.onActivate);
-        }
-
-        if (!oldProps || oldProps.accels !== newProps.accels) {
+        if (oldProps.accels !== newProps.accels) {
             if (this.application) {
                 this.application.setAccelsForAction(this.getActionName(), this.getAccels());
             }
@@ -278,25 +298,25 @@ export class Menu extends VirtualNode<MenuProps> {
     }
 
     private updateContainerProps(oldProps: MenuProps | null, newProps: MenuProps): void {
-        if (!oldProps || oldProps.label !== newProps.label) {
-            batch(() => {
-                const position = this.getPosition();
-                this.getParent().remove(position);
+        if (!this.parent) {
+            return;
+        }
 
-                if (this.type === "section") {
-                    this.parent?.insertSection(position, this.menu, newProps.label);
-                } else if (this.type === "submenu") {
-                    this.parent?.insertSubmenu(position, this.menu, newProps.label);
-                }
-            });
+        if (!oldProps || oldProps.label !== newProps.label) {
+            const position = this.getPosition();
+
+            this.removeFromParent();
+
+            if (this.type === "section") {
+                this.parent.insertSection(position, this.menu, newProps.label);
+            } else if (this.type === "submenu") {
+                this.parent.insertSubmenu(position, this.menu, newProps.label);
+            }
         }
     }
 
     public override unmount(): void {
-        if (this.type === "item") {
-            this.removeAction();
-        }
-
+        this.removeAction();
         super.unmount();
     }
 }

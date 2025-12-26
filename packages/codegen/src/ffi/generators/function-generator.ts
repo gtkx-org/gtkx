@@ -38,11 +38,12 @@ export class FunctionGenerator extends BaseGenerator {
             returnTypeMapping.ffi.type === "boxed" &&
             returnTypeMapping.ts !== "unknown" &&
             returnTypeMapping.kind !== "interface";
+        const needsGVariantWrap = returnTypeMapping.ffi.type === "gvariant" && returnTypeMapping.ts !== "unknown";
         const needsInterfaceWrap =
             returnTypeMapping.ffi.type === "gobject" &&
             returnTypeMapping.ts !== "unknown" &&
             returnTypeMapping.kind === "interface";
-        const needsObjectWrap = needsGObjectWrap || needsBoxedWrap || needsInterfaceWrap;
+        const needsObjectWrap = needsGObjectWrap || needsBoxedWrap || needsGVariantWrap || needsInterfaceWrap;
         const hasReturnValue = returnTypeMapping.ts !== "void";
 
         const gtkAllocatesRefs = this.identifyGtkAllocatesRefs(func.parameters);
@@ -75,7 +76,7 @@ ${allArgs ? `${allArgs},` : ""}
             if (isNullable) {
                 lines.push(`  if (ptr === null) return null;`);
             }
-            if (needsBoxedWrap || needsInterfaceWrap) {
+            if (needsBoxedWrap || needsGVariantWrap || needsInterfaceWrap) {
                 this.ctx.usesGetNativeObject = true;
                 lines.push(`  return getNativeObject(ptr, ${baseReturnType})!;`);
             } else {

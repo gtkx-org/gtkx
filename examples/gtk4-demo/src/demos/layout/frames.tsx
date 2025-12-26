@@ -11,46 +11,42 @@ const FramesDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Basic Frame" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkFrame label="Section Title">
-                    <Slot for={GtkFrame} id="child">
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                            marginStart={12}
-                            marginEnd={12}
-                            marginTop={12}
-                            marginBottom={12}
-                        >
-                            This content is inside a frame.
-                            <GtkLabel
-                                label="Frames provide visual grouping with an optional label."
-                                cssClasses={["dim-label"]}
-                                wrap
-                            />
-                        </GtkBox>
-                    </Slot>
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={8}
+                        marginStart={12}
+                        marginEnd={12}
+                        marginTop={12}
+                        marginBottom={12}
+                    >
+                        This content is inside a frame.
+                        <GtkLabel
+                            label="Frames provide visual grouping with an optional label."
+                            cssClasses={["dim-label"]}
+                            wrap
+                        />
+                    </GtkBox>
                 </GtkFrame>
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Frame without GtkLabel" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkFrame>
-                    <Slot for={GtkFrame} id="child">
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                            marginStart={12}
-                            marginEnd={12}
-                            marginTop={12}
-                            marginBottom={12}
-                        >
-                            <GtkLabel label="Frames can also be used without a label." wrap />
-                            <GtkLabel
-                                label="They still provide visual grouping and a border."
-                                cssClasses={["dim-label"]}
-                                wrap
-                            />
-                        </GtkBox>
-                    </Slot>
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={8}
+                        marginStart={12}
+                        marginEnd={12}
+                        marginTop={12}
+                        marginBottom={12}
+                    >
+                        <GtkLabel label="Frames can also be used without a label." wrap />
+                        <GtkLabel
+                            label="They still provide visual grouping and a border."
+                            cssClasses={["dim-label"]}
+                            wrap
+                        />
+                    </GtkBox>
                 </GtkFrame>
             </GtkBox>
 
@@ -63,19 +59,17 @@ const FramesDemo = () => {
                             <GtkButton label="Action" cssClasses={["flat", "small"]} />
                         </GtkBox>
                     </Slot>
-                    <Slot for={GtkFrame} id="child">
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                            marginStart={12}
-                            marginEnd={12}
-                            marginTop={12}
-                            marginBottom={12}
-                        >
-                            <GtkLabel label="You can use any widget as the frame label." wrap />
-                            <GtkLabel label="This allows for interactive headers." cssClasses={["dim-label"]} wrap />
-                        </GtkBox>
-                    </Slot>
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={8}
+                        marginStart={12}
+                        marginEnd={12}
+                        marginTop={12}
+                        marginBottom={12}
+                    >
+                        <GtkLabel label="You can use any widget as the frame label." wrap />
+                        <GtkLabel label="This allows for interactive headers." cssClasses={["dim-label"]} wrap />
+                    </GtkBox>
                 </GtkFrame>
             </GtkBox>
 
@@ -83,46 +77,40 @@ const FramesDemo = () => {
                 <GtkLabel label="Multiple Frames" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <GtkFrame label="Option A" hexpand>
-                        <Slot for={GtkFrame} id="child">
-                            <GtkBox
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={0}
-                                marginStart={12}
-                                marginEnd={12}
-                                marginTop={12}
-                                marginBottom={12}
-                            >
-                                <GtkButton label="Select A" hexpand />
-                            </GtkBox>
-                        </Slot>
+                        <GtkBox
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={0}
+                            marginStart={12}
+                            marginEnd={12}
+                            marginTop={12}
+                            marginBottom={12}
+                        >
+                            <GtkButton label="Select A" hexpand />
+                        </GtkBox>
                     </GtkFrame>
                     <GtkFrame label="Option B" hexpand>
-                        <Slot for={GtkFrame} id="child">
-                            <GtkBox
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={0}
-                                marginStart={12}
-                                marginEnd={12}
-                                marginTop={12}
-                                marginBottom={12}
-                            >
-                                <GtkButton label="Select B" hexpand />
-                            </GtkBox>
-                        </Slot>
+                        <GtkBox
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={0}
+                            marginStart={12}
+                            marginEnd={12}
+                            marginTop={12}
+                            marginBottom={12}
+                        >
+                            <GtkButton label="Select B" hexpand />
+                        </GtkBox>
                     </GtkFrame>
                     <GtkFrame label="Option C" hexpand>
-                        <Slot for={GtkFrame} id="child">
-                            <GtkBox
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={0}
-                                marginStart={12}
-                                marginEnd={12}
-                                marginTop={12}
-                                marginBottom={12}
-                            >
-                                <GtkButton label="Select C" hexpand />
-                            </GtkBox>
-                        </Slot>
+                        <GtkBox
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={0}
+                            marginStart={12}
+                            marginEnd={12}
+                            marginTop={12}
+                            marginBottom={12}
+                        >
+                            <GtkButton label="Select C" hexpand />
+                        </GtkBox>
                     </GtkFrame>
                 </GtkBox>
             </GtkBox>

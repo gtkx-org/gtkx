@@ -34,12 +34,12 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
         this.list = new List();
         this.itemRenderer = new ListItemRenderer(this.signalStore);
         this.itemRenderer.setStore(this.list.getStore());
+        this.container.setFactory(this.itemRenderer.getFactory());
     }
 
     public override mount(): void {
         super.mount();
         this.container.setModel(this.list.getSelectionModel());
-        this.container.setFactory(this.itemRenderer.getFactory());
     }
 
     public override appendChild(child: Node): void {

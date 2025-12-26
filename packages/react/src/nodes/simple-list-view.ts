@@ -24,14 +24,20 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
 
     private store = new SimpleListStore();
 
-    public override mount(): void {
-        super.mount();
+    constructor(
+        typeName: string,
+        props: SimpleListViewProps,
+        container: Gtk.DropDown | Adw.ComboRow,
+        rootContainer?: Container,
+    ) {
+        super(typeName, props, container, rootContainer);
         this.container.setModel(this.store.getModel());
     }
 
     public override updateProps(oldProps: SimpleListViewProps | null, newProps: SimpleListViewProps): void {
         if (!oldProps || oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
             const onSelectionChanged = newProps.onSelectionChanged;
+
             const handleSelectionChange = onSelectionChanged
                 ? () => {
                       const selectedIndex = this.container.getSelected();
@@ -41,6 +47,7 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
                       }
                   }
                 : undefined;
+
             this.signalStore.set(this.container, "notify::selected", handleSelectionChange);
         }
 
@@ -61,6 +68,7 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
         }
 
         const { id, value } = child.props;
+
         if (!id || value === undefined) {
             throw new Error("Expected 'id' and 'value' props to be present on SimpleListItem");
         }
@@ -76,6 +84,7 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
 
         const { id, value } = child.props;
         const beforeId = before.props.id;
+
         if (!id || value === undefined || !beforeId) {
             throw new Error("Expected 'id' and 'value' props to be present on SimpleListItem");
         }

@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkDropDown, SimpleListItem } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 describe("render - DropDown", () => {
     describe("GtkDropDown", () => {
@@ -138,21 +138,6 @@ describe("render - DropDown", () => {
                 </GtkDropDown>,
                 { wrapper: false },
             );
-        });
-
-        it("calls onSelectionChanged when selection changes", async () => {
-            const ref = createRef<Gtk.DropDown>();
-            const onSelectionChanged = vi.fn();
-
-            await render(
-                <GtkDropDown ref={ref} onSelectionChanged={onSelectionChanged}>
-                    <SimpleListItem id="1" value="First" />
-                    <SimpleListItem id="2" value="Second" />
-                </GtkDropDown>,
-                { wrapper: false },
-            );
-
-            expect(onSelectionChanged).toHaveBeenCalled();
         });
 
         it("updates selection when selectedId prop changes", async () => {

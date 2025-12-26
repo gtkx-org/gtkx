@@ -6,6 +6,8 @@ import type { Demo } from "../types.js";
 
 const StackDemo = () => {
     const [activePage, setActivePage] = useState("page1");
+    const [firstStack, setFirstStack] = useState<Gtk.Stack | null>(null);
+    const [secondStack, setSecondStack] = useState<Gtk.Stack | null>(null);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
@@ -19,21 +21,11 @@ const StackDemo = () => {
                     cssClasses={["dim-label"]}
                 />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} cssClasses={["card"]}>
-                    <GtkStackSwitcher
-                        marginTop={8}
-                        marginStart={8}
-                        marginEnd={8}
-                        ref={(switcher: Gtk.StackSwitcher | null) => {
-                            if (switcher) {
-                                const stack = switcher.getParent()?.getLastChild() as Gtk.Stack | null;
-                                if (stack) switcher.setStack(stack);
-                            }
-                        }}
-                    />
+                    {firstStack && <GtkStackSwitcher stack={firstStack} halign={Gtk.Align.CENTER} />}
                     <GtkStack
+                        visibleChildName="page1"
+                        ref={(stack) => setFirstStack(stack)}
                         transitionType={Gtk.StackTransitionType.SLIDE_LEFT_RIGHT}
-                        transitionDuration={200}
-                        heightRequest={120}
                     >
                         <StackPage name="page1" title="First">
                             <GtkBox
@@ -41,6 +33,7 @@ const StackDemo = () => {
                                 spacing={4}
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
+                                heightRequest={120}
                             >
                                 <GtkLabel label="First Page" cssClasses={["title-3"]} />
                                 <GtkLabel label="This is the content of the first page." cssClasses={["dim-label"]} />
@@ -52,6 +45,7 @@ const StackDemo = () => {
                                 spacing={4}
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
+                                heightRequest={120}
                             >
                                 <GtkLabel label="Second Page" cssClasses={["title-3"]} />
                                 <GtkLabel label="This is the content of the second page." cssClasses={["dim-label"]} />
@@ -63,6 +57,7 @@ const StackDemo = () => {
                                 spacing={4}
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
+                                heightRequest={120}
                             >
                                 <GtkLabel label="Third Page" cssClasses={["title-3"]} />
                                 <GtkLabel label="This is the content of the third page." cssClasses={["dim-label"]} />
@@ -75,27 +70,16 @@ const StackDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                 <GtkLabel label="Stack with GtkStackSidebar" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={["card"]} heightRequest={180}>
-                    <GtkStackSidebar
-                        widthRequest={120}
-                        ref={(sidebar: Gtk.StackSidebar | null) => {
-                            if (sidebar) {
-                                const stack = sidebar.getParent()?.getLastChild() as Gtk.Stack | null;
-                                if (stack) sidebar.setStack(stack);
-                            }
-                        }}
-                    />
-                    <GtkStack
-                        transitionType={Gtk.StackTransitionType.CROSSFADE}
-                        transitionDuration={300}
-                        hexpand
-                        vexpand
-                    >
+                    {secondStack && <GtkStackSidebar widthRequest={120} stack={secondStack} />}
+                    <GtkStack ref={(stack) => setSecondStack(stack)} visibleChildName="home">
                         <StackPage name="home" title="Home" iconName="go-home-symbolic">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={4}
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
+                                hexpand
+                                vexpand
                             >
                                 <GtkLabel label="Home" cssClasses={["title-3"]} />
                                 <GtkLabel label="Welcome to the home page." cssClasses={["dim-label"]} />
@@ -107,6 +91,8 @@ const StackDemo = () => {
                                 spacing={4}
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
+                                hexpand
+                                vexpand
                             >
                                 <GtkLabel label="Settings" cssClasses={["title-3"]} />
                                 <GtkLabel label="Configure your preferences here." cssClasses={["dim-label"]} />
@@ -118,6 +104,8 @@ const StackDemo = () => {
                                 spacing={4}
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
+                                hexpand
+                                vexpand
                             >
                                 <GtkLabel label="About" cssClasses={["title-3"]} />
                                 <GtkLabel label="Learn more about this application." cssClasses={["dim-label"]} />
@@ -147,41 +135,42 @@ const StackDemo = () => {
                         cssClasses={activePage === "page3" ? ["suggested-action"] : []}
                     />
                 </GtkBox>
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={["card"]} heightRequest={100}>
-                    <GtkStack
-                        visibleChildName={activePage}
-                        transitionType={Gtk.StackTransitionType.ROTATE_LEFT_RIGHT}
-                        transitionDuration={400}
-                        hexpand
-                    >
-                        <StackPage name="page1">
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
+                    <GtkStack visibleChildName={activePage}>
+                        <StackPage name="page1" title="Page 1">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={0}
+                                spacing={4}
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
+                                heightRequest={100}
                             >
                                 <GtkLabel label="Page 1" cssClasses={["title-3"]} />
+                                <GtkLabel label="Controlled by React state" cssClasses={["dim-label"]} />
                             </GtkBox>
                         </StackPage>
-                        <StackPage name="page2">
+                        <StackPage name="page2" title="Page 2">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={0}
+                                spacing={4}
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
+                                heightRequest={100}
                             >
                                 <GtkLabel label="Page 2" cssClasses={["title-3"]} />
+                                <GtkLabel label="Controlled by React state" cssClasses={["dim-label"]} />
                             </GtkBox>
                         </StackPage>
-                        <StackPage name="page3">
+                        <StackPage name="page3" title="Page 3">
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={0}
+                                spacing={4}
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
+                                heightRequest={100}
                             >
                                 <GtkLabel label="Page 3" cssClasses={["title-3"]} />
+                                <GtkLabel label="Controlled by React state" cssClasses={["dim-label"]} />
                             </GtkBox>
                         </StackPage>
                     </GtkStack>

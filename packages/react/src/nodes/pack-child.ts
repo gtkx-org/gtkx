@@ -12,34 +12,22 @@ export class PackChild extends SlotNode {
         return type === "Pack.Start" || type === "Pack.End";
     }
 
-    public setPackableWidget(packableWidget?: PackableWidget): void {
-        this.setParent(packableWidget);
-    }
-
-    private getPackableWidget(): PackableWidget {
-        if (!this.parent) {
-            throw new Error(`Expected packable widget reference to be set on '${this.typeName}'`);
-        }
-
-        return this.parent as PackableWidget;
-    }
-
     private getPosition(): PackChildPosition {
         return this.typeName === "Pack.Start" ? "start" : "end";
     }
 
     protected override onChildChange(oldChild: Gtk.Widget | undefined): void {
-        const packableWidget = this.getPackableWidget();
+        const parent = this.getParent() as PackableWidget;
 
         if (oldChild) {
-            packableWidget.remove(oldChild);
+            parent.remove(oldChild);
         }
 
         if (this.child) {
             if (this.getPosition() === "start") {
-                packableWidget.packStart(this.child);
+                parent.packStart(this.child);
             } else {
-                packableWidget.packEnd(this.child);
+                parent.packEnd(this.child);
             }
         }
     }

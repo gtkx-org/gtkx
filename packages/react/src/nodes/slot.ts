@@ -4,6 +4,7 @@ import { PROPS } from "../generated/internal.js";
 import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
+import { scheduleAfterCommit } from "../scheduler.js";
 import type { ContainerClass } from "../types.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
@@ -21,21 +22,17 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
     child?: Gtk.Widget;
 
     public setParent(parent?: Gtk.Widget): void {
-        const oldParent = this.parent;
-        this.parent = parent;
-        if (parent && this.child) {
-            this.onChildChange(undefined);
-        } else if (!parent && oldParent && this.child) {
-            this.parent = oldParent;
+        if (!parent && this.parent && this.child) {
             const oldChild = this.child;
             this.child = undefined;
             this.onChildChange(oldChild);
-            this.parent = undefined;
         }
+        this.parent = parent;
     }
 
     protected getId(): string {
         const id = (this.props as SlotProps).id;
+
         if (!id) {
             throw new Error("Expected 'id' prop to be present on Slot");
         }
@@ -43,7 +40,7 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
         return toCamelCase(id);
     }
 
-    private getParent(): Gtk.Widget {
+    protected getParent(): Gtk.Widget {
         if (!this.parent) {
             throw new Error(`Expected parent widget to be set on '${this.getId()}' SlotNode`);
         }
@@ -66,15 +63,23 @@ export class SlotNode<P extends SlotNodeProps = SlotNodeProps> extends VirtualNo
 
         const oldChild = this.child;
         this.child = child.container;
-        if (this.parent) {
-            this.onChildChange(oldChild);
-        }
+
+        scheduleAfterCommit(() => {
+            if (this.parent) {
+                this.onChildChange(oldChild);
+            }
+        });
     }
 
     public override removeChild(): void {
         const oldChild = this.child;
         this.child = undefined;
-        this.onChildChange(oldChild);
+
+        scheduleAfterCommit(() => {
+            if (this.parent) {
+                this.onChildChange(oldChild);
+            }
+        });
     }
 
     protected onChildChange(_oldChild: Gtk.Widget | undefined): void {

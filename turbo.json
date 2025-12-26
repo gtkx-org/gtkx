@@ -49,10 +49,12 @@
             ]
         },
         "@gtkx/gir#build": {
-            "dependsOn": ["^build"]
+            "dependsOn": ["^build"],
+            "outputs": ["dist/**", "*.tsbuildinfo"]
         },
         "@gtkx/codegen#build": {
-            "dependsOn": ["@gtkx/gir#build"]
+            "dependsOn": ["@gtkx/gir#build"],
+            "outputs": ["dist/**", "*.tsbuildinfo"]
         },
         "website#build": {
             "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],

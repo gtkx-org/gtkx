@@ -192,12 +192,12 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         if (getter && typeof getter === "function") {
             const currentValue = getter.call(this.container);
 
-            if (
-                (currentValue instanceof NativeObject &&
-                    value instanceof NativeObject &&
-                    getObjectId(currentValue.id) === getObjectId(value.id)) ||
-                currentValue === value
-            ) {
+            const isSameObject =
+                currentValue instanceof NativeObject &&
+                value instanceof NativeObject &&
+                getObjectId(currentValue.id) === getObjectId(value.id);
+
+            if (isSameObject || currentValue === value) {
                 return;
             }
         }

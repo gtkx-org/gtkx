@@ -1,9 +1,7 @@
-import { getNativeObject } from "@gtkx/ffi";
-import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass } from "../types.js";
+import type { Container, ContainerClass, Props } from "../types.js";
 import { isContainerType } from "./internal/utils.js";
 import { MenuNode } from "./menu.js";
 import { Menu } from "./models/menu.js";
@@ -17,14 +15,10 @@ class ApplicationNode extends Node<Gtk.Application> {
         return isContainerType(Gtk.Application, containerOrClass);
     }
 
-    constructor(typeName: string, props: Record<string, never>, container: Gtk.Application, rootContainer?: Container) {
+    constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer?: Container) {
         super(typeName, props, container, rootContainer);
-        this.menu = new Menu("root", container);
-
-        const actionMap = getNativeObject(container.id, Gio.ActionMap);
-        if (actionMap) {
-            this.menu.setActionMap(actionMap);
-        }
+        const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
+        this.menu = new Menu("root", {}, container, application);
     }
 
     public override appendChild(child: Node): void {

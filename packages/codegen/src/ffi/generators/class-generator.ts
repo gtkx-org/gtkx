@@ -64,14 +64,16 @@ export class ClassGenerator extends BaseGenerator {
         });
 
         const seenInterfaceMethodNames = new Set<string>();
-        const interfaceMethods: GirMethod[] = [];
+        const interfaceMethodsByNamespace = new Map<string, GirMethod[]>();
         for (const ifaceName of cls.implements) {
             let iface: GirInterface | undefined;
+            let sourceNamespace = this.options.namespace;
             if (ifaceName.includes(".")) {
                 const [ns, ifaceClassName] = ifaceName.split(".", 2);
                 const ifaceNs = (this.options.allNamespaces as Map<string, GirNamespace> | undefined)?.get(ns ?? "");
                 if (ifaceNs && ifaceClassName) {
                     iface = ifaceNs.interfaces.find((i) => i.name === ifaceClassName);
+                    sourceNamespace = ns ?? this.options.namespace;
                 }
             } else {
                 iface = interfaceMap.get(ifaceName);
@@ -86,13 +88,17 @@ export class ClassGenerator extends BaseGenerator {
                     const ifaceNamePascal = toPascalCase(iface.name);
                     const renamedMethod = `${ifaceNamePascal.charAt(0).toLowerCase()}${ifaceNamePascal.slice(1)}${pascalMethodName}`;
                     this.ctx.methodRenames.set(method.cIdentifier, renamedMethod);
-                    interfaceMethods.push(method);
                 } else {
                     seenInterfaceMethodNames.add(method.name);
-                    interfaceMethods.push(method);
                 }
+
+                if (!interfaceMethodsByNamespace.has(sourceNamespace)) {
+                    interfaceMethodsByNamespace.set(sourceNamespace, []);
+                }
+                interfaceMethodsByNamespace.get(sourceNamespace)?.push(method);
             }
         }
+        const interfaceMethods = Array.from(interfaceMethodsByNamespace.values()).flat();
 
         const syncMethods = filteredClassMethods.filter((m) => !asyncMethods.has(m.name) && !finishMethods.has(m.name));
         const syncInterfaceMethods = interfaceMethods.filter(
@@ -152,7 +158,17 @@ export class ClassGenerator extends BaseGenerator {
         sections.push(this.generateMethods(filteredClassMethods, sharedLibrary, cls.name));
 
         if (interfaceMethods.length > 0) {
-            sections.push(this.generateMethods(interfaceMethods, sharedLibrary, className));
+            for (const [sourceNamespace, methods] of interfaceMethodsByNamespace) {
+                if (sourceNamespace !== this.options.namespace && this.options.typeRegistry) {
+                    this.typeMapper.setTypeRegistry(this.options.typeRegistry, sourceNamespace);
+                    this.typeMapper.setForceExternalNamespace(sourceNamespace);
+                    sections.push(this.generateMethods(methods, sharedLibrary, className));
+                    this.typeMapper.setForceExternalNamespace(null);
+                    this.typeMapper.setTypeRegistry(this.options.typeRegistry, this.options.namespace);
+                } else {
+                    sections.push(this.generateMethods(methods, sharedLibrary, className));
+                }
+            }
         }
 
         let signalMetaConstant = "";
@@ -574,9 +590,10 @@ ${allArgs ? `${allArgs},` : ""}
             returnTypeMapping.ffi.type === "gobject" && returnTypeMapping.ts !== "unknown" && !isInterface;
         const needsBoxedWrap =
             returnTypeMapping.ffi.type === "boxed" && returnTypeMapping.ts !== "unknown" && !isInterface;
+        const needsGVariantWrap = returnTypeMapping.ffi.type === "gvariant" && returnTypeMapping.ts !== "unknown";
         const needsInterfaceWrap =
             returnTypeMapping.ffi.type === "gobject" && returnTypeMapping.ts !== "unknown" && isInterface;
-        const needsObjectWrap = needsGObjectWrap || needsBoxedWrap || needsInterfaceWrap;
+        const needsObjectWrap = needsGObjectWrap || needsBoxedWrap || needsGVariantWrap || needsInterfaceWrap;
 
         const lines: string[] = [];
 
@@ -649,7 +666,7 @@ ${allArgs ? `${allArgs},` : ""}
 
         if (outputParams.length === 0) {
             if (hasMainReturn) {
-                if (needsBoxedWrap || needsInterfaceWrap) {
+                if (needsBoxedWrap || needsGVariantWrap || needsInterfaceWrap) {
                     this.ctx.usesGetNativeObject = true;
                     if (isNullable) {
                         lines.push(`          if (ptr === null) { resolve(null); return; }`);
@@ -670,7 +687,7 @@ ${allArgs ? `${allArgs},` : ""}
         } else {
             const resolveFields: string[] = [];
             if (hasMainReturn) {
-                if (needsBoxedWrap || needsInterfaceWrap) {
+                if (needsBoxedWrap || needsGVariantWrap || needsInterfaceWrap) {
                     this.ctx.usesGetNativeObject = true;
                     if (isNullable) {
                         lines.push(
@@ -772,11 +789,12 @@ ${allArgs ? `${allArgs},` : ""}
             returnTypeMapping.ffi.type === "boxed" &&
             baseReturnType !== "unknown" &&
             returnTypeMapping.kind !== "interface";
+        const needsGVariantWrap = returnTypeMapping.ffi.type === "gvariant" && baseReturnType !== "unknown";
         const needsInterfaceWrap =
             returnTypeMapping.ffi.type === "gobject" &&
             baseReturnType !== "unknown" &&
             returnTypeMapping.kind === "interface";
-        const needsObjectWrap = needsGObjectWrap || needsBoxedWrap || needsInterfaceWrap;
+        const needsObjectWrap = needsGObjectWrap || needsBoxedWrap || needsGVariantWrap || needsInterfaceWrap;
         const needsArrayWrap =
             returnTypeMapping.ffi.type === "array" &&
             returnTypeMapping.ffi.itemType?.type === "gobject" &&
@@ -828,7 +846,7 @@ ${allArgs ? `${allArgs},` : ""}
             }
             if (isCyclic) {
                 lines.push(`    return { id: ptr } as unknown as ${baseReturnType};`);
-            } else if (needsBoxedWrap || needsInterfaceWrap) {
+            } else if (needsBoxedWrap || needsGVariantWrap || needsInterfaceWrap) {
                 this.ctx.usesGetNativeObject = true;
                 lines.push(`    return getNativeObject(ptr, ${baseReturnType})!;`);
             } else {

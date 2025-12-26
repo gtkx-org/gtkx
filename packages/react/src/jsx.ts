@@ -145,7 +145,7 @@ export type MenuSubmenuProps = {
 };
 
 /**
- * Props for Overlay.Overlay components.
+ * Props for Overlay child components.
  * Controls how an overlay widget is measured and clipped.
  */
 export type OverlayChildProps = SlotProps & {
@@ -328,7 +328,7 @@ declare global {
                 "Toolbar.Bottom": SlotProps;
 
                 // Overlay (GtkOverlay) - main child is just a regular child
-                Overlay: OverlayChildProps;
+                OverlayChild: OverlayChildProps;
 
                 // Menu
                 "Menu.Item": MenuItemProps;
