@@ -117,7 +117,9 @@ describe("userEvent.type", () => {
             await render(<GtkButton label="Test" />);
 
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
-            await expect(userEvent.type(button, "text")).rejects.toThrow("element is not editable");
+            await expect(userEvent.type(button, "text")).rejects.toThrow(
+                "Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
+            );
         });
     });
 });
@@ -138,7 +140,9 @@ describe("userEvent.clear", () => {
             await render(<GtkButton label="Test" />);
 
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
-            await expect(userEvent.clear(button)).rejects.toThrow("element is not editable");
+            await expect(userEvent.clear(button)).rejects.toThrow(
+                "Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
+            );
         });
     });
 });
@@ -206,7 +210,9 @@ describe("userEvent.selectOptions", () => {
             await render(<GtkButton label="Test" />);
 
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
-            await expect(userEvent.selectOptions(button, 0)).rejects.toThrow("element is not a selectable widget");
+            await expect(userEvent.selectOptions(button, 0)).rejects.toThrow(
+                "Cannot select options: expected selectable widget (COMBO_BOX or LIST)",
+            );
         });
 
         it("throws when selecting multiple options on dropdown", async () => {
@@ -219,7 +225,7 @@ describe("userEvent.selectOptions", () => {
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
             await expect(userEvent.selectOptions(dropdown, [0, 1])).rejects.toThrow(
-                "Cannot select multiple options on a ComboBox",
+                "Cannot select multiple options: ComboBox only supports single selection",
             );
         });
     });
@@ -252,7 +258,9 @@ describe("userEvent.deselectOptions", () => {
             );
 
             const dropdown = await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX);
-            await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow("only ListBox supports deselection");
+            await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow(
+                "Cannot deselect options: only ListBox supports deselection",
+            );
         });
     });
 });

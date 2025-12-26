@@ -32,6 +32,10 @@ export class StackPageNode extends SlotNode<Props> {
             return;
         }
 
+        if (!oldProps || oldProps.title !== newProps.title) {
+            this.page.setTitle(newProps.title ?? "");
+        }
+
         if (!oldProps || oldProps.iconName !== newProps.iconName) {
             this.page.setIconName(newProps.iconName ?? "");
         }
@@ -70,14 +74,22 @@ export class StackPageNode extends SlotNode<Props> {
                 page = stack.add(child);
             }
         } else {
-            if (this.props.title) {
-                page = stack.addTitled(child, this.props.title, this.props.name);
-            } else {
+            if (this.props.name) {
                 page = stack.addNamed(child, this.props.name);
+            } else {
+                page = stack.addChild(child);
+            }
+
+            if (this.props.title) {
+                page.setTitle(this.props.title);
+            }
+            if (this.props.iconName) {
+                page.setIconName(this.props.iconName);
             }
         }
 
         this.page = page;
+        this.updateProps(null, this.props);
     }
 
     private removePage(): void {
@@ -95,7 +107,6 @@ export class StackPageNode extends SlotNode<Props> {
 
         if (this.child) {
             this.addPage();
-            this.updateProps(null, this.props);
         }
     }
 }

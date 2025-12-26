@@ -36,6 +36,7 @@ jobs:
         run: |
           echo "NODE_VERSION=$(node -v)" >> $GITHUB_ENV
           echo "GTK4_VERSION=$(pkg-config --modversion gtk4)" >> $GITHUB_ENV
+          echo "VERSION=$(cat packages/*/package.json | grep '"version"' | sha256sum | cut -d' ' -f1)" >> $GITHUB_ENV
 
       - name: Build all packages
         run: pnpm build

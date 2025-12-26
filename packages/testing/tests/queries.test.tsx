@@ -123,7 +123,9 @@ describe("findByRole", () => {
                     <GtkLabel label="Same" />
                 </GtkBox>,
             );
-            await expect(findByText(container, "Same", { timeout: 100 })).rejects.toThrow("Found 2 elements");
+            await expect(findByText(container, "Same", { timeout: 100 })).rejects.toThrow(
+                "Expected 1 element with text 'Same', found 2",
+            );
         });
     });
 });
