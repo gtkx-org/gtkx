@@ -175,15 +175,6 @@ impl Value {
         }
     }
 
-    /// Converts a libffi CIF value to a [`Value`] based on the expected type.
-    ///
-    /// This is used to convert return values and out-parameters from FFI calls
-    /// back to JavaScript-compatible values.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the CIF value doesn't match the expected type or
-
     pub fn from_cif_value(cif_value: &cif::Value, type_: &Type) -> anyhow::Result<Self> {
         match type_ {
             Type::Null => Ok(Value::Null),

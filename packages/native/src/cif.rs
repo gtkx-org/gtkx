@@ -80,10 +80,6 @@ impl OwnedPtr {
         }
     }
 
-    /// Creates an OwnedPtr from a Vec, safely capturing the pointer to its buffer.
-    ///
-    /// This is preferred over `new` for Vec types because it captures the pointer
-    /// after the Vec is boxed, avoiding reliance on move semantics.
     pub fn from_vec<T: 'static>(vec: Vec<T>) -> Self {
         let boxed: Box<Vec<T>> = Box::new(vec);
         let ptr = boxed.as_ptr() as *mut c_void;

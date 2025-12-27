@@ -379,7 +379,6 @@ import { useRef } from "react";
 
 const entryRef = useRef<Gtk.Entry | null>(null);
 <GtkEntry ref={entryRef} />
-// Later: entryRef.current?.getText()
 \`\`\`
 
 ## Portals
