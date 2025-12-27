@@ -16,6 +16,8 @@ class StackPageNode extends SlotNode<Props> {
     }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
+        super.updateProps(oldProps, newProps);
+
         if (!this.page) {
             return;
         }
@@ -48,36 +50,30 @@ class StackPageNode extends SlotNode<Props> {
     private addPage(): void {
         const child = this.getChild();
         const parent = this.getParent() as Gtk.Stack | Adw.ViewStack;
-        const name = this.props.name ?? "";
 
         let page: Gtk.StackPage | Adw.ViewStackPage;
 
         if (parent instanceof Adw.ViewStack) {
             if (this.props.title && this.props.iconName) {
-                page = parent.addTitledWithIcon(child, this.props.title, this.props.iconName, name);
+                page = parent.addTitledWithIcon(child, this.props.title, this.props.iconName, this.props.name);
             } else if (this.props.title) {
-                page = parent.addTitled(child, this.props.title, name);
-            } else if (name) {
-                page = parent.addNamed(child, name);
+                page = parent.addTitled(child, this.props.title, this.props.name);
+            } else if (this.props.name) {
+                page = parent.addNamed(child, this.props.name);
             } else {
                 page = parent.add(child);
             }
         } else {
             if (this.props.title) {
-                page = parent.addTitled(child, this.props.title, name);
-            } else if (name) {
-                page = parent.addNamed(child, name);
+                page = parent.addTitled(child, this.props.title, this.props.name);
+            } else if (this.props.name) {
+                page = parent.addNamed(child, this.props.name);
             } else {
                 page = parent.addChild(child);
-            }
-
-            if (this.props.iconName) {
-                page.setIconName(this.props.iconName);
             }
         }
 
         this.page = page;
-        this.updateProps(null, this.props);
     }
 
     private removePage(oldChild?: Gtk.Widget): void {

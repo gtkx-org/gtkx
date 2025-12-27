@@ -3,6 +3,26 @@ import { typeCheckInstanceIsA, typeFromName, typeNameFromInstance } from "../gen
 import { findNativeClass } from "../registry.js";
 import type { NativeClass, NativeObject } from "./base.js";
 
+/**
+ * Creates a typed JavaScript wrapper for a native GTK object.
+ *
+ * Wraps a native object pointer in a JavaScript class instance,
+ * providing type-safe access to GTK methods and properties.
+ *
+ * @typeParam T - The expected wrapper class type
+ * @param id - Native object pointer/ID
+ * @param targetType - Optional target class for interface type checking
+ * @returns The typed wrapper instance, or null if the input is null/undefined
+ *
+ * @example
+ * ```tsx
+ * import { getNativeObject } from "@gtkx/ffi";
+ * import * as Gtk from "@gtkx/ffi/gtk";
+ *
+ * const widget = getNativeObject(nativeId, Gtk.Widget);
+ * widget?.setVisible(true);
+ * ```
+ */
 export function getNativeObject<T extends NativeObject = NativeObject>(
     id: unknown,
     targetType?: NativeClass<T>,

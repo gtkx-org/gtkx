@@ -214,6 +214,8 @@ export type { WidgetSlotNames } from "./generated/jsx.js";
  *   </Slot>
  * </GtkHeaderBar>
  * ```
+ *
+ * @internal
  */
 export function Slot<W extends keyof import("./generated/jsx.js").WidgetSlotNames>(props: {
     for: W;
@@ -309,6 +311,8 @@ export const ListItem = "ListItem" as const;
  *   />
  * </GtkColumnView>
  * ```
+ *
+ * @internal
  */
 export function ColumnViewColumn<T = unknown>(props: ColumnViewColumnProps<T>): ReactElement {
     return createElement("ColumnViewColumn", props);
@@ -341,6 +345,8 @@ export type ListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkLi
  *   ))}
  * </ListView>
  * ```
+ *
+ * @internal
  */
 export function ListView<T = unknown>(props: ListViewProps<T>): ReactElement {
     return createElement("GtkListView", props);
@@ -371,6 +377,8 @@ export type GridViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkGr
  *   ))}
  * </GridView>
  * ```
+ *
+ * @internal
  */
 export function GridView<T = unknown>(props: GridViewProps<T>): ReactElement {
     return createElement("GtkGridView", props);

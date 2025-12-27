@@ -1,0 +1,15 @@
+{
+    "extends": "./tsconfig.base.json",
+    "compilerOptions": {
+        "noEmit": true
+    },
+    "include": [
+        "packages/react/src/**/*",
+        "packages/testing/src/**/*",
+        "packages/css/src/**/*",
+        "packages/ffi/src/**/*",
+        "packages/cli/src/**/*",
+        "packages/native/**/*",
+        "packages/gir/src/**/*"
+    ]
+}

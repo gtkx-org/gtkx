@@ -1,3 +1,12 @@
+/**
+ * GObject Introspection XML (GIR) parser module.
+ *
+ * Parses GIR files to extract type information for GTK/GLib libraries.
+ * Used by the code generator to create TypeScript bindings.
+ *
+ * @packageDocumentation
+ */
+
 import { XMLParser } from "fast-xml-parser";
 import type {
     GirCallback,
@@ -67,6 +76,28 @@ const extractDoc = (node: Record<string, unknown>): string | undefined => {
 const ensureArray = (value: unknown): Record<string, unknown>[] =>
     Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
 
+/**
+ * Parser for GObject Introspection XML (GIR) files.
+ *
+ * Converts GIR XML into structured TypeScript objects that can be used
+ * for code generation. Handles all GIR elements including classes,
+ * interfaces, functions, signals, properties, and type information.
+ *
+ * @example
+ * ```tsx
+ * import { GirParser } from "@gtkx/gir";
+ * import { readFileSync } from "fs";
+ *
+ * const parser = new GirParser();
+ * const xml = readFileSync("Gtk-4.0.gir", "utf-8");
+ * const namespace = parser.parse(xml);
+ *
+ * console.log(namespace.name); // "Gtk"
+ * console.log(namespace.classes.length); // Number of GTK classes
+ * ```
+ *
+ * @see {@link GirNamespace} for the parsed output structure
+ */
 export class GirParser {
     private parser: XMLParser;
 
@@ -82,6 +113,28 @@ export class GirParser {
         });
     }
 
+    /**
+     * Parses a GIR XML string into a structured namespace object.
+     *
+     * @param girXml - The raw XML content of a GIR file
+     * @returns A parsed namespace containing all type information
+     * @throws Error if the XML is missing required repository or namespace elements
+     *
+     * @example
+     * ```tsx
+     * const namespace = parser.parse(girXml);
+     *
+     * // Access parsed classes
+     * for (const cls of namespace.classes) {
+     *   console.log(`Class: ${cls.name}, Parent: ${cls.parent}`);
+     * }
+     *
+     * // Access parsed functions
+     * for (const fn of namespace.functions) {
+     *   console.log(`Function: ${fn.name} -> ${fn.returnType.name}`);
+     * }
+     * ```
+     */
     parse(girXml: string): GirNamespace {
         const parsed = this.parser.parse(girXml);
         const repository = parsed.repository;

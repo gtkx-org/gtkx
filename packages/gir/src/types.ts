@@ -1,8 +1,23 @@
+/**
+ * GIR type definitions and utilities.
+ *
+ * Provides TypeScript representations of GObject Introspection data
+ * and utilities for type resolution and mapping.
+ *
+ * @packageDocumentation
+ */
+
 import { normalizeClassName } from "./class-names.js";
 import { toCamelCase, toPascalCase } from "./naming.js";
 
 export { toCamelCase, toPascalCase };
 
+/**
+ * Represents a parsed GIR namespace (library).
+ *
+ * Contains all type definitions from a single GIR file, including
+ * classes, interfaces, functions, enums, records, and callbacks.
+ */
 export type GirNamespace = {
     name: string;
 
@@ -31,6 +46,9 @@ export type GirNamespace = {
     doc?: string;
 };
 
+/**
+ * A constant value defined in a GIR namespace.
+ */
 export type GirConstant = {
     name: string;
 
@@ -43,6 +61,9 @@ export type GirConstant = {
     doc?: string;
 };
 
+/**
+ * A callback type definition (function pointer type).
+ */
 export type GirCallback = {
     name: string;
 
@@ -55,6 +76,12 @@ export type GirCallback = {
     doc?: string;
 };
 
+/**
+ * A GObject interface definition.
+ *
+ * Interfaces in GObject are similar to TypeScript interfaces - they
+ * define a contract that classes can implement.
+ */
 export type GirInterface = {
     name: string;
 
@@ -73,6 +100,13 @@ export type GirInterface = {
     doc?: string;
 };
 
+/**
+ * A GObject class definition.
+ *
+ * Classes are the primary building blocks of GObject-based libraries
+ * like GTK. They support single inheritance, interface implementation,
+ * properties, signals, and methods.
+ */
 export type GirClass = {
     name: string;
 
@@ -103,6 +137,12 @@ export type GirClass = {
     doc?: string;
 };
 
+/**
+ * A GLib record (boxed type or struct).
+ *
+ * Records are value types that can be allocated on the stack or heap.
+ * They may have fields, methods, and constructors but no inheritance.
+ */
 export type GirRecord = {
     name: string;
 
@@ -127,6 +167,9 @@ export type GirRecord = {
     doc?: string;
 };
 
+/**
+ * A field within a record or class.
+ */
 export type GirField = {
     name: string;
 
@@ -141,6 +184,9 @@ export type GirField = {
     doc?: string;
 };
 
+/**
+ * A method on a class, interface, or record.
+ */
 export type GirMethod = {
     name: string;
 
@@ -157,6 +203,9 @@ export type GirMethod = {
     returnDoc?: string;
 };
 
+/**
+ * A constructor for a class or record.
+ */
 export type GirConstructor = {
     name: string;
 
@@ -173,6 +222,9 @@ export type GirConstructor = {
     returnDoc?: string;
 };
 
+/**
+ * A standalone function or static method.
+ */
 export type GirFunction = {
     name: string;
 
@@ -189,6 +241,12 @@ export type GirFunction = {
     returnDoc?: string;
 };
 
+/**
+ * A parameter to a function, method, or callback.
+ *
+ * Includes direction (in/out/inout) and ownership transfer information
+ * for proper memory management in generated bindings.
+ */
 export type GirParameter = {
     name: string;
 
@@ -213,6 +271,12 @@ export type GirParameter = {
     doc?: string;
 };
 
+/**
+ * A type reference in GIR.
+ *
+ * Can represent primitive types, objects, arrays, or boxed types.
+ * Includes C type information and ownership semantics.
+ */
 export type GirType = {
     name: string;
 
@@ -227,6 +291,12 @@ export type GirType = {
     nullable?: boolean;
 };
 
+/**
+ * A GObject property definition.
+ *
+ * Properties in GObject are observable values with getter/setter
+ * methods and change notification support.
+ */
 export type GirProperty = {
     name: string;
 
@@ -247,6 +317,12 @@ export type GirProperty = {
     doc?: string;
 };
 
+/**
+ * A GObject signal definition.
+ *
+ * Signals are the GObject event system, allowing objects to emit
+ * notifications that handlers can connect to.
+ */
 export type GirSignal = {
     name: string;
 
@@ -259,6 +335,9 @@ export type GirSignal = {
     doc?: string;
 };
 
+/**
+ * An enumeration or bitfield definition.
+ */
 export type GirEnumeration = {
     name: string;
 
@@ -269,6 +348,9 @@ export type GirEnumeration = {
     doc?: string;
 };
 
+/**
+ * A member of an enumeration or bitfield.
+ */
 export type GirEnumerationMember = {
     name: string;
 
@@ -279,6 +361,12 @@ export type GirEnumerationMember = {
     doc?: string;
 };
 
+/**
+ * Describes how a type should be marshalled for FFI calls.
+ *
+ * Used by the code generator to create proper FFI type descriptors
+ * for the native module.
+ */
 export type FfiTypeDescriptor = {
     type: string;
 
@@ -309,6 +397,12 @@ export type FfiTypeDescriptor = {
     optional?: boolean;
 };
 
+/**
+ * Builds a lookup map from class name to class definition.
+ *
+ * @param classes - Array of parsed GIR classes
+ * @returns Map keyed by class name for O(1) lookup
+ */
 export const buildClassMap = (classes: GirClass[]): Map<string, GirClass> => {
     const classMap = new Map<string, GirClass>();
     for (const cls of classes) {
@@ -317,6 +411,12 @@ export const buildClassMap = (classes: GirClass[]): Map<string, GirClass> => {
     return classMap;
 };
 
+/**
+ * Registers all enumerations and bitfields from a namespace into a type mapper.
+ *
+ * @param typeMapper - The type mapper to register enums with
+ * @param namespace - The parsed GIR namespace containing enums
+ */
 export const registerEnumsFromNamespace = (typeMapper: TypeMapper, namespace: GirNamespace): void => {
     for (const enumeration of namespace.enumerations) {
         typeMapper.registerEnum(enumeration.name, toPascalCase(enumeration.name));
@@ -328,8 +428,17 @@ export const registerEnumsFromNamespace = (typeMapper: TypeMapper, namespace: Gi
 
 type TypeMapping = { ts: string; ffi: FfiTypeDescriptor };
 
+/**
+ * The kind of a registered type.
+ */
 export type TypeKind = "class" | "interface" | "enum" | "record" | "callback";
 
+/**
+ * A type registered in the type registry.
+ *
+ * Contains metadata about the type including its namespace,
+ * original name, and transformed TypeScript name.
+ */
 export type RegisteredType = {
     kind: TypeKind;
     name: string;
@@ -340,9 +449,27 @@ export type RegisteredType = {
     glibGetType?: string;
 };
 
+/**
+ * Registry for resolving types across multiple GIR namespaces.
+ *
+ * Enables cross-namespace type resolution by maintaining a map of
+ * all known types from all loaded namespaces.
+ *
+ * @example
+ * ```tsx
+ * const registry = TypeRegistry.fromNamespaces([gtkNamespace, gioNamespace]);
+ * const buttonType = registry.resolve("Gtk.Button");
+ * ```
+ */
 export class TypeRegistry {
     private types = new Map<string, RegisteredType>();
 
+    /**
+     * Registers a native class type.
+     *
+     * @param namespace - The GIR namespace (e.g., "Gtk")
+     * @param name - The class name (e.g., "Button")
+     */
     registerNativeClass(namespace: string, name: string): void {
         const transformedName = normalizeClassName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
@@ -353,6 +480,12 @@ export class TypeRegistry {
         });
     }
 
+    /**
+     * Registers an interface type.
+     *
+     * @param namespace - The GIR namespace
+     * @param name - The interface name
+     */
     registerInterface(namespace: string, name: string): void {
         const transformedName = normalizeClassName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
@@ -363,6 +496,12 @@ export class TypeRegistry {
         });
     }
 
+    /**
+     * Registers an enumeration type.
+     *
+     * @param namespace - The GIR namespace
+     * @param name - The enum name
+     */
     registerEnum(namespace: string, name: string): void {
         const transformedName = toPascalCase(name);
         this.types.set(`${namespace}.${name}`, {
@@ -373,6 +512,15 @@ export class TypeRegistry {
         });
     }
 
+    /**
+     * Registers a record (boxed) type.
+     *
+     * @param namespace - The GIR namespace
+     * @param name - The record name
+     * @param glibTypeName - Optional GLib type name for runtime type info
+     * @param sharedLibrary - Optional shared library containing the type
+     * @param glibGetType - Optional get_type function name
+     */
     registerRecord(
         namespace: string,
         name: string,
@@ -392,6 +540,12 @@ export class TypeRegistry {
         });
     }
 
+    /**
+     * Registers a callback type.
+     *
+     * @param namespace - The GIR namespace
+     * @param name - The callback name
+     */
     registerCallback(namespace: string, name: string): void {
         const transformedName = toPascalCase(name);
         this.types.set(`${namespace}.${name}`, {
@@ -402,10 +556,26 @@ export class TypeRegistry {
         });
     }
 
+    /**
+     * Resolves a fully qualified type name.
+     *
+     * @param qualifiedName - Type name in "Namespace.TypeName" format
+     * @returns The registered type, or undefined if not found
+     */
     resolve(qualifiedName: string): RegisteredType | undefined {
         return this.types.get(qualifiedName);
     }
 
+    /**
+     * Resolves a type name within a namespace context.
+     *
+     * First checks the current namespace, then falls back to
+     * searching all registered types.
+     *
+     * @param name - Type name (may be unqualified)
+     * @param currentNamespace - The namespace to search first
+     * @returns The registered type, or undefined if not found
+     */
     resolveInNamespace(name: string, currentNamespace: string): RegisteredType | undefined {
         if (name.includes(".")) {
             return this.resolve(name);
@@ -423,6 +593,20 @@ export class TypeRegistry {
         }
     }
 
+    /**
+     * Creates a type registry from multiple parsed namespaces.
+     *
+     * @param namespaces - Array of parsed GIR namespaces
+     * @returns A populated type registry
+     *
+     * @example
+     * ```tsx
+     * const parser = new GirParser();
+     * const gtk = parser.parse(gtkGir);
+     * const gio = parser.parse(gioGir);
+     * const registry = TypeRegistry.fromNamespaces([gtk, gio]);
+     * ```
+     */
     static fromNamespaces(namespaces: GirNamespace[]): TypeRegistry {
         const registry = new TypeRegistry();
         for (const ns of namespaces) {
@@ -578,6 +762,11 @@ const BASIC_TYPE_MAP = new Map<string, TypeMapping>([
     ["FreeFunc", { ts: "number", ffi: { type: "int", size: 64, unsigned: true } }],
 ]);
 
+/**
+ * Describes usage of a type from another namespace.
+ *
+ * Used to track import dependencies during code generation.
+ */
 export type ExternalTypeUsage = {
     namespace: string;
     name: string;
@@ -585,6 +774,9 @@ export type ExternalTypeUsage = {
     kind: TypeKind;
 };
 
+/**
+ * Result of mapping a GIR type to TypeScript and FFI representations.
+ */
 export type MappedType = {
     ts: string;
     ffi: FfiTypeDescriptor;
@@ -593,6 +785,25 @@ export type MappedType = {
     nullable?: boolean;
 };
 
+/**
+ * Maps GIR types to TypeScript and FFI type representations.
+ *
+ * Handles conversion of GIR type information into:
+ * - TypeScript type strings for generated declarations
+ * - FFI type descriptors for runtime marshalling
+ *
+ * Supports callbacks for tracking type usage dependencies.
+ *
+ * @example
+ * ```tsx
+ * const mapper = new TypeMapper();
+ * mapper.registerEnum("Orientation", "Orientation");
+ * mapper.setTypeRegistry(registry, "Gtk");
+ *
+ * const result = mapper.mapType({ name: "utf8" });
+ * // { ts: "string", ffi: { type: "string", borrowed: false } }
+ * ```
+ */
 export class TypeMapper {
     private enumNames: Set<string> = new Set();
     private enumTransforms: Map<string, string> = new Map();
@@ -608,6 +819,12 @@ export class TypeMapper {
     private currentNamespace?: string;
     private forceExternalNamespace?: string;
 
+    /**
+     * Registers an enumeration for type mapping.
+     *
+     * @param originalName - The GIR enum name
+     * @param transformedName - Optional transformed TypeScript name
+     */
     registerEnum(originalName: string, transformedName?: string): void {
         this.enumNames.add(originalName);
         if (transformedName) {
@@ -615,6 +832,13 @@ export class TypeMapper {
         }
     }
 
+    /**
+     * Registers a record for type mapping.
+     *
+     * @param originalName - The GIR record name
+     * @param transformedName - Optional transformed TypeScript name
+     * @param glibTypeName - Optional GLib type name for boxed type marshalling
+     */
     registerRecord(originalName: string, transformedName?: string, glibTypeName?: string): void {
         this.recordNames.add(originalName);
         if (transformedName) {
@@ -657,6 +881,12 @@ export class TypeMapper {
         return this.onSameNamespaceClassUsed ?? null;
     }
 
+    /**
+     * Sets the type registry for cross-namespace type resolution.
+     *
+     * @param registry - The type registry to use
+     * @param currentNamespace - The current namespace being processed
+     */
     setTypeRegistry(registry: TypeRegistry, currentNamespace: string): void {
         this.typeRegistry = registry;
         this.currentNamespace = currentNamespace;
@@ -674,6 +904,13 @@ export class TypeMapper {
         this.skippedClasses.clear();
     }
 
+    /**
+     * Maps a GIR type to TypeScript and FFI representations.
+     *
+     * @param girType - The GIR type to map
+     * @param isReturn - Whether this is a return type (affects ownership)
+     * @returns The mapped type with TypeScript and FFI descriptors
+     */
     mapType(girType: GirType, isReturn = false): MappedType {
         if (girType.isArray || girType.name === "array") {
             const listType = girType.cType?.includes("GSList")
@@ -961,6 +1198,15 @@ export class TypeMapper {
         return false;
     }
 
+    /**
+     * Maps a function parameter to TypeScript and FFI representations.
+     *
+     * Handles special cases like out parameters, callbacks, and
+     * ownership transfer.
+     *
+     * @param param - The GIR parameter to map
+     * @returns The mapped type with TypeScript and FFI descriptors
+     */
     mapParameter(param: GirParameter): MappedType {
         if (param.direction === "out" || param.direction === "inout") {
             const innerType = this.mapType(param.type);

@@ -3,10 +3,21 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as p from "@clack/prompts";
 
+/**
+ * Supported package managers for GTKX projects.
+ */
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun";
 
+/**
+ * Supported testing frameworks for GTKX projects.
+ */
 export type TestingFramework = "vitest" | "jest" | "node" | "none";
 
+/**
+ * Options for creating a new GTKX project.
+ *
+ * All options are optional; missing values will be prompted interactively.
+ */
 export type CreateOptions = {
     name?: string;
     appId?: string;
@@ -1304,6 +1315,34 @@ To run tests, you need xvfb installed:
     p.note(`${nextSteps}${testingNote}`, "Next steps");
 };
 
+/**
+ * Creates a new GTKX project with interactive prompts.
+ *
+ * Scaffolds a complete project structure including:
+ * - TypeScript configuration
+ * - React component template
+ * - Development server entry point
+ * - Optional testing setup
+ * - Optional Claude Code skills
+ *
+ * @param options - Pre-filled options to skip prompts
+ *
+ * @example
+ * ```tsx
+ * import { createApp } from "@gtkx/cli";
+ *
+ * // Interactive mode
+ * await createApp();
+ *
+ * // With pre-filled options
+ * await createApp({
+ *   name: "my-app",
+ *   appId: "com.example.myapp",
+ *   packageManager: "pnpm",
+ *   testing: "vitest",
+ * });
+ * ```
+ */
 export const createApp = async (options: CreateOptions = {}): Promise<void> => {
     p.intro("Create GTKX App");
 

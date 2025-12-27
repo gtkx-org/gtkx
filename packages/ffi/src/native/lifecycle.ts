@@ -29,6 +29,25 @@ const stopPolling = (): void => {
     }
 };
 
+/**
+ * Initializes the GTK application runtime.
+ *
+ * Creates a GTK Application instance, initializes Adwaita and GtkSource
+ * if available, and starts the event loop.
+ *
+ * @param appId - Application ID in reverse domain notation (e.g., "com.example.app")
+ * @param flags - Optional GIO application flags
+ * @returns The GTK Application instance
+ *
+ * @example
+ * ```tsx
+ * import { start } from "@gtkx/ffi";
+ *
+ * const app = start("com.example.myapp");
+ * ```
+ *
+ * @see {@link stop} for shutting down the application
+ */
 export const start = (appId: string, flags?: ApplicationFlags): Application => {
     if (application) {
         return application;
@@ -52,6 +71,15 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
     return application;
 };
 
+/**
+ * Shuts down the GTK application runtime.
+ *
+ * Stops the event loop, cleans up resources, and finalizes libraries.
+ * Emits a "stop" event before cleanup.
+ *
+ * @see {@link start} for initializing the application
+ * @see {@link events} for lifecycle event handling
+ */
 export const stop = (): void => {
     if (!application) {
         return;

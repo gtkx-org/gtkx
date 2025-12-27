@@ -26,6 +26,70 @@ const config: Config = {
         locales: ["en"],
     },
 
+    plugins: [
+        [
+            "docusaurus-plugin-typedoc",
+            {
+                id: "api-react",
+                entryPoints: ["../packages/react/src/index.ts"],
+                tsconfig: "../packages/react/tsconfig.lib.json",
+                out: "docs/api/react",
+                readme: "none",
+                indexFormat: "table",
+                parametersFormat: "table",
+                enumMembersFormat: "table",
+                typeDeclarationFormat: "table",
+                groupOrder: ["Functions", "Variables", "Interfaces", "*"],
+                excludeInternal: true,
+            },
+        ],
+        [
+            "docusaurus-plugin-typedoc",
+            {
+                id: "api-css",
+                entryPoints: ["../packages/css/src/index.ts"],
+                tsconfig: "../packages/css/tsconfig.lib.json",
+                out: "docs/api/css",
+                readme: "none",
+                indexFormat: "table",
+                parametersFormat: "table",
+                enumMembersFormat: "table",
+                typeDeclarationFormat: "table",
+                groupOrder: ["Functions", "Variables", "Interfaces", "*"],
+            },
+        ],
+        [
+            "docusaurus-plugin-typedoc",
+            {
+                id: "api-testing",
+                entryPoints: ["../packages/testing/src/index.ts"],
+                tsconfig: "../packages/testing/tsconfig.lib.json",
+                out: "docs/api/testing",
+                readme: "none",
+                indexFormat: "table",
+                parametersFormat: "table",
+                enumMembersFormat: "table",
+                typeDeclarationFormat: "table",
+                groupOrder: ["Functions", "Variables", "Interfaces", "*"],
+            },
+        ],
+        [
+            "docusaurus-plugin-typedoc",
+            {
+                id: "api-ffi",
+                entryPoints: ["../packages/ffi/src/index.ts"],
+                tsconfig: "../packages/ffi/tsconfig.lib.json",
+                out: "docs/api/ffi",
+                readme: "none",
+                indexFormat: "table",
+                parametersFormat: "table",
+                enumMembersFormat: "table",
+                typeDeclarationFormat: "table",
+                groupOrder: ["Functions", "Variables", "Interfaces", "*"],
+            },
+        ],
+    ],
+
     presets: [
         [
             "classic",
@@ -58,9 +122,15 @@ const config: Config = {
             items: [
                 {
                     type: "docSidebar",
-                    sidebarId: "docs",
+                    sidebarId: "docsSidebar",
                     position: "left",
                     label: "Docs",
+                },
+                {
+                    type: "docSidebar",
+                    sidebarId: "apiSidebar",
+                    position: "left",
+                    label: "API",
                 },
                 {
                     href: "https://github.com/eugeniodepalo/gtkx",
@@ -86,15 +156,23 @@ const config: Config = {
                     ],
                 },
                 {
-                    title: "Community",
+                    title: "API Reference",
                     items: [
                         {
-                            label: "GitHub Discussions",
-                            href: "https://github.com/eugeniodepalo/gtkx/discussions",
+                            label: "@gtkx/react",
+                            to: "/docs/api/react",
                         },
                         {
-                            label: "Issue Tracker",
-                            href: "https://github.com/eugeniodepalo/gtkx/issues",
+                            label: "@gtkx/css",
+                            to: "/docs/api/css",
+                        },
+                        {
+                            label: "@gtkx/testing",
+                            to: "/docs/api/testing",
+                        },
+                        {
+                            label: "@gtkx/ffi",
+                            to: "/docs/api/ffi",
                         },
                     ],
                 },

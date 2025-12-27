@@ -5,8 +5,13 @@ import { isReactRefreshBoundary, performRefresh } from "./refresh-runtime.js";
 import { gtkxRefresh } from "./vite-plugin-gtkx-refresh.js";
 import { swcSsrRefresh } from "./vite-plugin-swc-ssr-refresh.js";
 
+/**
+ * Options for the GTKX development server.
+ */
 export type DevServerOptions = {
+    /** Path to the entry file (e.g., "src/dev.tsx") */
     entry: string;
+    /** Additional Vite configuration */
     vite?: InlineConfig;
 };
 
@@ -14,6 +19,31 @@ type AppModule = {
     default: () => React.ReactNode;
 };
 
+/**
+ * Creates a Vite-based development server with hot module replacement.
+ *
+ * Provides fast refresh for React components and full reload for other changes.
+ * The server watches for file changes and automatically updates the running
+ * GTK application.
+ *
+ * @param options - Server configuration including entry point and Vite options
+ * @returns A Vite development server instance
+ *
+ * @example
+ * ```tsx
+ * import { createDevServer } from "@gtkx/cli";
+ * import { render } from "@gtkx/react";
+ *
+ * const server = await createDevServer({
+ *   entry: "./src/dev.tsx",
+ * });
+ *
+ * const mod = await server.ssrLoadModule("./src/dev.tsx");
+ * render(<mod.default />, mod.appId);
+ * ```
+ *
+ * @see {@link DevServerOptions} for configuration options
+ */
 export const createDevServer = async (options: DevServerOptions): Promise<ViteDevServer> => {
     const { entry, vite: viteConfig } = options;
 
