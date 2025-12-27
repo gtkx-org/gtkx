@@ -11,7 +11,7 @@ describe("screen", () => {
     });
 
     it("finds element by text", async () => {
-        await render(<GtkLabel label="Hello World" />);
+        await render("Hello World");
         const label = await screen.findByText("Hello World");
         expect(label).toBeDefined();
     });

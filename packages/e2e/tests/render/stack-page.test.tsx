@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkLabel, GtkStack, StackPage } from "@gtkx/react";
+import { GtkStack, StackPage } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -11,9 +11,7 @@ describe("render - StackPage", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <StackPage name="test-page">
-                        <GtkLabel label="Content" />
-                    </StackPage>
+                    <StackPage name="test-page">Content</StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -27,7 +25,7 @@ describe("render - StackPage", () => {
             await render(
                 <GtkStack ref={stackRef}>
                     <StackPage name="titled" title="Page Title">
-                        <GtkLabel label="Content" />
+                        Content
                     </StackPage>
                 </GtkStack>,
                 { wrapper: false },
@@ -44,7 +42,7 @@ describe("render - StackPage", () => {
             await render(
                 <GtkStack ref={stackRef}>
                     <StackPage name="iconic" iconName="dialog-information">
-                        <GtkLabel label="Content" />
+                        Content
                     </StackPage>
                 </GtkStack>,
                 { wrapper: false },
@@ -63,7 +61,7 @@ describe("render - StackPage", () => {
                     <GtkStack ref={stackRef}>
                         {pages.map((name) => (
                             <StackPage key={name} name={name}>
-                                <GtkLabel label={name} />
+                                {name}
                             </StackPage>
                         ))}
                     </GtkStack>

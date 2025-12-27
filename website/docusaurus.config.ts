@@ -186,7 +186,6 @@ const config: Config = {
                     ],
                 },
             ],
-            copyright: `Copyright © ${new Date().getFullYear()} Eugenio Depalo. Built with Docusaurus.`,
         },
         prism: {
             theme: prismThemes.github,

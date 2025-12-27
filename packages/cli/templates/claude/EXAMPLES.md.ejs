@@ -1,0 +1,364 @@
+# GTKX Code Examples
+
+## Application Structure
+
+### Basic App with State
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkApplicationWindow, GtkBox, GtkLabel, quit } from "@gtkx/react";
+import { useCallback, useState } from "react";
+
+interface Todo {
+    id: number;
+    text: string;
+    completed: boolean;
+}
+
+let nextId = 1;
+
+export const App = () => {
+    const [todos, setTodos] = useState<Todo[]>([]);
+
+    const addTodo = useCallback((text: string) => {
+        setTodos((prev) => [...prev, { id: nextId++, text, completed: false }]);
+    }, []);
+
+    const toggleTodo = useCallback((id: number) => {
+        setTodos((prev) =>
+            prev.map((todo) =>
+                todo.id === id ? { ...todo, completed: !todo.completed } : todo
+            )
+        );
+    }, []);
+
+    return (
+        <GtkApplicationWindow title="Todo App" defaultWidth={400} defaultHeight={500} onCloseRequest={quit}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={16} marginStart={16} marginEnd={16}>
+                Todo App
+            </GtkBox>
+        </GtkApplicationWindow>
+    );
+};
+
+export const appId = "com.gtkx.todo";
+```
+
+## Layout Patterns
+
+### Grid for Forms
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkButton, GtkEntry, GtkGrid, GtkLabel, GridChild } from "@gtkx/react";
+import { useState } from "react";
+
+const FormLayout = () => {
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+
+    return (
+        <GtkGrid rowSpacing={8} columnSpacing={12}>
+            <GridChild column={0} row={0}>
+                <GtkLabel label="Name:" halign={Gtk.Align.END} />
+            </GridChild>
+            <GridChild column={1} row={0}>
+                <GtkEntry text={name} onChanged={(e) => setName(e.getText())} hexpand />
+            </GridChild>
+            <GridChild column={0} row={1}>
+                <GtkLabel label="Email:" halign={Gtk.Align.END} />
+            </GridChild>
+            <GridChild column={1} row={1}>
+                <GtkEntry text={email} onChanged={(e) => setEmail(e.getText())} hexpand />
+            </GridChild>
+            <GridChild column={0} row={2} columnSpan={2}>
+                <GtkButton label="Submit" halign={Gtk.Align.END} marginTop={8} />
+            </GridChild>
+        </GtkGrid>
+    );
+};
+```
+
+### Stack with StackSwitcher
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkBox, GtkLabel, GtkStack, GtkStackSwitcher, StackPage } from "@gtkx/react";
+
+const TabContainer = () => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+        <GtkStackSwitcher
+            ref={(switcher: Gtk.StackSwitcher | null) => {
+                if (switcher) {
+                    const stack = switcher.getParent()?.getLastChild() as Gtk.Stack | null;
+                    if (stack) switcher.setStack(stack);
+                }
+            }}
+        />
+        <GtkStack transitionType={Gtk.StackTransitionType.SLIDE_LEFT_RIGHT} transitionDuration={200}>
+            <StackPage name="page1" title="First">First Page Content</StackPage>
+            <StackPage name="page2" title="Second">Second Page Content</StackPage>
+        </GtkStack>
+    </GtkBox>
+);
+```
+
+## Virtual Scrolling Lists
+
+### ListView with Selection
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkBox, GtkLabel, GtkScrolledWindow, ListView, ListItem } from "@gtkx/react";
+import { useState } from "react";
+
+interface Task {
+    id: string;
+    title: string;
+    completed: boolean;
+}
+
+const tasks: Task[] = [
+    { id: "1", title: "Learn GTK4", completed: true },
+    { id: "2", title: "Build React app", completed: false },
+];
+
+const TaskList = () => {
+    const [selectedId, setSelectedId] = useState<string | undefined>();
+
+    return (
+        <GtkBox cssClasses={["card"]} heightRequest={250}>
+            <GtkScrolledWindow vexpand>
+                <ListView<Task>
+                    vexpand
+                    selected={selectedId ? [selectedId] : []}
+                    onSelectionChanged={(ids) => setSelectedId(ids[0])}
+                    renderItem={(task) => (
+                        <GtkLabel
+                            label={task?.title ?? ""}
+                            cssClasses={task?.completed ? ["dim-label"] : []}
+                            halign={Gtk.Align.START}
+                            marginStart={12}
+                            marginTop={8}
+                            marginBottom={8}
+                        />
+                    )}
+                >
+                    {tasks.map((task) => (
+                        <ListItem key={task.id} id={task.id} value={task} />
+                    ))}
+                </ListView>
+            </GtkScrolledWindow>
+        </GtkBox>
+    );
+};
+```
+
+### HeaderBar with Navigation
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkWindow, Pack, Slot, quit } from "@gtkx/react";
+import { useState } from "react";
+
+const AppWithHeaderBar = () => {
+    const [page, setPage] = useState("home");
+
+    return (
+        <GtkApplicationWindow title="My App" defaultWidth={600} defaultHeight={400} onCloseRequest={quit}>
+            <Slot for={GtkWindow} id="titlebar">
+                <GtkHeaderBar>
+                    <Pack.Start>
+                        {page !== "home" && (
+                            <GtkButton iconName="go-previous-symbolic" onClicked={() => setPage("home")} />
+                        )}
+                    </Pack.Start>
+                    <Pack.End>
+                        <GtkButton iconName="emblem-system-symbolic" onClicked={() => setPage("settings")} />
+                    </Pack.End>
+                </GtkHeaderBar>
+            </Slot>
+            <GtkLabel label={page === "home" ? "Home Page" : "Settings Page"} vexpand />
+        </GtkApplicationWindow>
+    );
+};
+```
+
+## Menus
+
+### MenuButton with PopoverMenu
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkBox, GtkLabel, GtkMenuButton, GtkPopoverMenu, Menu, Slot } from "@gtkx/react";
+import { useState } from "react";
+
+const MenuDemo = () => {
+    const [lastAction, setLastAction] = useState<string | null>(null);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+            <GtkLabel label={`Last action: ${lastAction ?? "(none)"}`} />
+            <GtkMenuButton label="Actions">
+                <Slot for={GtkMenuButton} id="popover">
+                    <GtkPopoverMenu>
+                        <Menu.Item id="new" label="New" onActivate={() => setLastAction("New")} accels="<Control>n" />
+                        <Menu.Item id="open" label="Open" onActivate={() => setLastAction("Open")} accels="<Control>o" />
+                        <Menu.Item id="save" label="Save" onActivate={() => setLastAction("Save")} accels="<Control>s" />
+                    </GtkPopoverMenu>
+                </Slot>
+            </GtkMenuButton>
+        </GtkBox>
+    );
+};
+```
+
+## Component Props Pattern
+
+### List Item Component
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkBox, GtkButton, GtkCheckButton, GtkLabel } from "@gtkx/react";
+
+interface Todo {
+    id: number;
+    text: string;
+    completed: boolean;
+}
+
+interface TodoItemProps {
+    todo: Todo;
+    onToggle: (id: number) => void;
+    onDelete: (id: number) => void;
+}
+
+export const TodoItem = ({ todo, onToggle, onDelete }: TodoItemProps) => (
+    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+        <GtkCheckButton active={todo.completed} onToggled={() => onToggle(todo.id)} />
+        <GtkLabel label={todo.text} hexpand cssClasses={todo.completed ? ["dim-label"] : []} />
+        <GtkButton iconName="edit-delete-symbolic" onClicked={() => onDelete(todo.id)} cssClasses={["flat"]} />
+    </GtkBox>
+);
+```
+
+## Adwaita App Structure
+
+### Modern Adwaita App
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import {
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwToolbarView,
+    AdwWindowTitle,
+    AdwStatusPage,
+    AdwBanner,
+    GtkButton,
+    Slot,
+    Toolbar,
+    quit,
+} from "@gtkx/react";
+import { useState } from "react";
+
+export const App = () => {
+    const [showBanner, setShowBanner] = useState(true);
+
+    return (
+        <AdwApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+            <Slot for={AdwApplicationWindow} id="content">
+                <AdwToolbarView>
+                    <Toolbar.Top>
+                        <AdwHeaderBar>
+                            <Slot for={AdwHeaderBar} id="titleWidget">
+                                <AdwWindowTitle title="My App" subtitle="Welcome" />
+                            </Slot>
+                        </AdwHeaderBar>
+                    </Toolbar.Top>
+                    <AdwBanner
+                        title="Welcome to the app!"
+                        buttonLabel="Dismiss"
+                        revealed={showBanner}
+                        onButtonClicked={() => setShowBanner(false)}
+                    />
+                    <AdwStatusPage
+                        iconName="applications-system-symbolic"
+                        title="Welcome"
+                        description="Get started with your new GTKX app"
+                        vexpand
+                    >
+                        <GtkButton
+                            label="Get Started"
+                            cssClasses={["suggested-action", "pill"]}
+                            halign={Gtk.Align.CENTER}
+                        />
+                    </AdwStatusPage>
+                </AdwToolbarView>
+            </Slot>
+        </AdwApplicationWindow>
+    );
+};
+
+export const appId = "com.example.myapp";
+```
+
+### Settings Page with Preferences
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import {
+    AdwPreferencesPage,
+    AdwPreferencesGroup,
+    AdwActionRow,
+    AdwSwitchRow,
+    AdwExpanderRow,
+    AdwEntryRow,
+    GtkImage,
+    GtkScrolledWindow,
+    Slot,
+} from "@gtkx/react";
+import { useState } from "react";
+
+const SettingsPage = () => {
+    const [darkMode, setDarkMode] = useState(false);
+    const [notifications, setNotifications] = useState(true);
+    const [username, setUsername] = useState("");
+
+    return (
+        <GtkScrolledWindow vexpand>
+            <AdwPreferencesPage title="Settings">
+                <AdwPreferencesGroup title="Appearance" description="Customize the look and feel">
+                    <AdwSwitchRow
+                        title="Dark Mode"
+                        subtitle="Use dark color scheme"
+                        active={darkMode}
+                        onActivate={() => setDarkMode(!darkMode)}
+                    />
+                </AdwPreferencesGroup>
+
+                <AdwPreferencesGroup title="Account">
+                    <AdwEntryRow
+                        title="Username"
+                        text={username}
+                        onChanged={(e) => setUsername(e.getText())}
+                    />
+                    <AdwActionRow title="Profile" subtitle="Manage your profile">
+                        <Slot for={AdwActionRow} id="activatableWidget">
+                            <GtkImage iconName="go-next-symbolic" valign={Gtk.Align.CENTER} />
+                        </Slot>
+                    </AdwActionRow>
+                </AdwPreferencesGroup>
+
+                <AdwPreferencesGroup title="Notifications">
+                    <AdwExpanderRow title="Notification Settings" subtitle="Configure alerts">
+                        <AdwSwitchRow title="Sound" active />
+                        <AdwSwitchRow title="Badges" active />
+                        <AdwSwitchRow title="Lock Screen" active={false} />
+                    </AdwExpanderRow>
+                </AdwPreferencesGroup>
+            </AdwPreferencesPage>
+        </GtkScrolledWindow>
+    );
+};
+```

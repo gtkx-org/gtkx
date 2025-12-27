@@ -1,0 +1,518 @@
+# GTKX Widget Reference
+
+## Container Widgets
+
+### GtkBox
+Linear layout container.
+
+```tsx
+<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+    Child 1
+    Child 2
+</GtkBox>
+```
+
+Props:
+- `orientation`: `Gtk.Orientation.HORIZONTAL` | `Gtk.Orientation.VERTICAL`
+- `spacing`: number (pixels between children)
+- `homogeneous`: boolean (equal child sizes)
+
+### GtkGrid
+2D grid layout with explicit positioning.
+
+```tsx
+<GtkGrid rowSpacing={5} columnSpacing={5}>
+    <GridChild column={0} row={0}>Top-left</GridChild>
+    <GridChild column={1} row={0} columnSpan={2}>Spans 2 columns</GridChild>
+</GtkGrid>
+```
+
+GridChild props (consumed, not passed to GTK):
+- `column`: number (0-indexed)
+- `row`: number (0-indexed)
+- `columnSpan`: number (default 1)
+- `rowSpan`: number (default 1)
+
+### GtkStack
+Shows one child at a time, switchable by name.
+
+```tsx
+<GtkStack visibleChildName="page1">
+    <StackPage name="page1" title="First" iconName="document-new">
+        <Content1 />
+    </StackPage>
+    <StackPage name="page2" title="Second">
+        <Content2 />
+    </StackPage>
+</GtkStack>
+```
+
+StackPage props (consumed):
+- `name`: string (required, unique identifier)
+- `title`: string (display title)
+- `iconName`: string (icon name)
+- `needsAttention`: boolean (show attention indicator)
+- `visible`: boolean (visibility in switchers)
+- `useUnderline`: boolean (mnemonic underlines in title)
+- `badgeNumber`: number (badge on indicator, AdwViewStack only)
+
+### GtkNotebook
+Tabbed container with visible tabs.
+
+```tsx
+<GtkNotebook>
+    <NotebookPage label="Tab 1">
+        <Content1 />
+    </NotebookPage>
+    <NotebookPage label="Tab 2">
+        <Content2 />
+    </NotebookPage>
+</GtkNotebook>
+```
+
+NotebookPage props (consumed):
+- `label`: string (tab label)
+
+### GtkPaned
+Resizable split container with draggable divider.
+
+```tsx
+<GtkPaned
+    orientation={Gtk.Orientation.HORIZONTAL}
+    position={280}
+    shrinkStartChild={false}
+    shrinkEndChild={false}
+>
+    <Slot for={GtkPaned} id="startChild">
+        <SidePanel />
+    </Slot>
+    <Slot for={GtkPaned} id="endChild">
+        <MainContent />
+    </Slot>
+</GtkPaned>
+```
+
+Props:
+- `orientation`: `Gtk.Orientation.HORIZONTAL` | `Gtk.Orientation.VERTICAL`
+- `position`: number (divider position in pixels)
+- `shrinkStartChild`: boolean
+- `shrinkEndChild`: boolean
+
+## Virtual Scrolling Widgets
+
+### ListView
+High-performance scrollable list with virtual rendering and selection support.
+
+```tsx
+<ListView<Item>
+    vexpand
+    selected={[selectedId]}
+    selectionMode={Gtk.SelectionMode.SINGLE}
+    onSelectionChanged={(ids) => setSelectedId(ids[0])}
+    renderItem={(item) => (
+        <GtkLabel label={item?.text ?? ""} />
+    )}
+>
+    {items.map(item => (
+        <ListItem key={item.id} id={item.id} value={item} />
+    ))}
+</ListView>
+```
+
+Props:
+- `renderItem`: `(item: T | null) => ReactElement` (required)
+- `selected`: string[] (array of selected item IDs)
+- `selectionMode`: `Gtk.SelectionMode.SINGLE` | `MULTIPLE` | `NONE`
+- `onSelectionChanged`: `(ids: string[]) => void`
+
+ListItem props:
+- `id`: string (required, unique identifier for selection)
+- `value`: T (the data item)
+
+### GridView
+Grid-based virtual scrolling. Same API as ListView but renders items in a grid.
+
+```tsx
+<GridView<Item>
+    vexpand
+    minColumns={2}
+    maxColumns={4}
+    renderItem={(item) => (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkImage iconName={item?.icon ?? "image-missing"} />
+            <GtkLabel label={item?.name ?? ""} />
+        </GtkBox>
+    )}
+>
+    {items.map(item => (
+        <ListItem key={item.id} id={item.id} value={item} />
+    ))}
+</GridView>
+```
+
+### GtkColumnView
+Table with sortable columns.
+
+```tsx
+<GtkColumnView
+    sortColumn="name"
+    sortOrder={Gtk.SortType.ASCENDING}
+    onSortChange={(column, order) => handleSort(column, order)}
+>
+    <ColumnViewColumn<Item>
+        title="Name"
+        id="name"
+        expand
+        resizable
+        sortable
+        renderCell={(item) => (
+            <GtkLabel label={item?.name ?? ""} />
+        )}
+    />
+    {items.map(item => (
+        <ListItem key={item.id} id={item.id} value={item} />
+    ))}
+</GtkColumnView>
+```
+
+ColumnViewColumn props:
+- `title`: string (column header)
+- `id`: string (used for sorting)
+- `expand`: boolean (fill available space)
+- `resizable`: boolean (user can resize)
+- `sortable`: boolean (clicking header triggers sort)
+- `fixedWidth`: number (fixed width in pixels)
+- `renderCell`: `(item: T | null) => ReactElement`
+
+### GtkDropDown
+String selection dropdown with controlled state.
+
+```tsx
+<GtkDropDown selectedId={selectedId} onSelectionChanged={setSelectedId}>
+    {options.map(opt => (
+        <SimpleListItem key={opt.id} id={opt.id} value={opt.label} />
+    ))}
+</GtkDropDown>
+```
+
+Props:
+- `selectedId`: string (controlled selected item ID)
+- `onSelectionChanged`: `(id: string) => void`
+
+SimpleListItem props:
+- `id`: string (unique identifier)
+- `value`: string (display text)
+
+### GtkOverlay
+Stack widgets on top of each other. First child is the base layer.
+
+```tsx
+<GtkOverlay>
+    <GtkButton label="Main" widthRequest={120} heightRequest={40} />
+    <GtkLabel
+        label="3"
+        cssClasses={["badge"]}
+        halign={Gtk.Align.END}
+        valign={Gtk.Align.START}
+        marginEnd={4}
+        marginTop={4}
+    />
+</GtkOverlay>
+```
+
+Use `halign` and `valign` to position overlay children at corners or edges.
+
+## Header Widgets
+
+### GtkHeaderBar
+Title bar with packed widgets at start and end.
+
+```tsx
+<GtkHeaderBar>
+    <Pack.Start>
+        <GtkButton iconName="go-previous-symbolic" />
+    </Pack.Start>
+    <Slot for={GtkHeaderBar} id="titleWidget">
+        <GtkLabel label="My App" cssClasses={["title"]} />
+    </Slot>
+    <Pack.End>
+        <GtkMenuButton iconName="open-menu-symbolic" />
+    </Pack.End>
+</GtkHeaderBar>
+```
+
+### GtkActionBar
+Bottom action bar with start/end packing.
+
+```tsx
+<GtkActionBar>
+    <Pack.Start>
+        <GtkButton label="Cancel" />
+    </Pack.Start>
+    <Pack.End>
+        <GtkButton label="Save" cssClasses={["suggested-action"]} />
+    </Pack.End>
+</GtkActionBar>
+```
+
+## Input Widgets
+
+### GtkEntry
+Single-line text input. Requires two-way binding for controlled behavior.
+
+```tsx
+const [text, setText] = useState("");
+
+<GtkEntry
+    text={text}
+    onChanged={(entry) => setText(entry.getText())}
+    placeholderText="Enter text..."
+/>
+```
+
+### GtkToggleButton
+Toggle button with controlled state. Auto-prevents signal feedback loops.
+
+```tsx
+const [active, setActive] = useState(false);
+
+<GtkToggleButton
+    active={active}
+    onToggled={() => setActive(!active)}
+    label="Toggle me"
+/>
+```
+
+## Display Widgets
+
+### GtkLabel
+```tsx
+<GtkLabel label="Hello World" halign={Gtk.Align.START} wrap useMarkup />
+```
+
+### GtkButton
+```tsx
+<GtkButton label="Click me" onClicked={() => handleClick()} iconName="document-new" />
+```
+
+### GtkMenuButton
+```tsx
+<GtkMenuButton label="Options" iconName="open-menu">
+    <Slot for={GtkMenuButton} id="popover">
+        <GtkPopoverMenu>
+            <Menu.Item id="action" label="Action" onActivate={handle} />
+        </GtkPopoverMenu>
+    </Slot>
+</GtkMenuButton>
+```
+
+## Menu Widgets
+
+### GtkPopoverMenu
+```tsx
+<GtkPopoverMenu>
+    <Menu.Section>
+        <Menu.Item id="new" label="New" onActivate={handleNew} accels="<Control>n" />
+    </Menu.Section>
+    <Menu.Section>
+        <Menu.Submenu label="File">
+            <Menu.Item id="open" label="Open" onActivate={handleOpen} />
+            <Menu.Item id="save" label="Save" onActivate={handleSave} />
+        </Menu.Submenu>
+    </Menu.Section>
+    <Menu.Section>
+        <Menu.Item id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
+    </Menu.Section>
+</GtkPopoverMenu>
+```
+
+### Menu.Item
+Props:
+- `id`: string (required, unique identifier)
+- `label`: string
+- `onActivate`: `() => void`
+- `accels`: string | string[] (e.g., "<Control>n")
+
+### Menu.Section
+Groups menu items with optional label.
+
+### Menu.Submenu
+Nested submenu.
+
+## Window Widgets
+
+### GtkApplicationWindow
+```tsx
+<GtkApplicationWindow
+    title="My App"
+    defaultWidth={800}
+    defaultHeight={600}
+    showMenubar
+    onCloseRequest={quit}
+>
+    <MainContent />
+</GtkApplicationWindow>
+```
+
+## Adwaita (Libadwaita) Widgets
+
+Import from `@gtkx/ffi/adw` for enums and `@gtkx/react` for components.
+
+### AdwApplicationWindow
+Modern application window with required content slot.
+
+```tsx
+<AdwApplicationWindow title="App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+    <Slot for={AdwApplicationWindow} id="content">
+        <AdwToolbarView>...</AdwToolbarView>
+    </Slot>
+</AdwApplicationWindow>
+```
+
+### AdwToolbarView
+Layout container for apps with top/bottom toolbars.
+
+```tsx
+<AdwToolbarView>
+    <Toolbar.Top>
+        <AdwHeaderBar />
+    </Toolbar.Top>
+    <MainContent />
+    <Toolbar.Bottom>
+        <GtkActionBar />
+    </Toolbar.Bottom>
+</AdwToolbarView>
+```
+
+### AdwHeaderBar
+Modern header bar with title widget slot.
+
+```tsx
+<AdwHeaderBar>
+    <GtkButton iconName="go-previous-symbolic" />
+    <Slot for={AdwHeaderBar} id="titleWidget">
+        <AdwWindowTitle title="App" subtitle="Description" />
+    </Slot>
+</AdwHeaderBar>
+```
+
+### AdwStatusPage
+Welcome, error, or empty state pages.
+
+```tsx
+<AdwStatusPage
+    iconName="applications-system-symbolic"
+    title="Welcome"
+    description="Description text"
+    vexpand
+>
+    <GtkButton label="Get Started" cssClasses={["suggested-action", "pill"]} />
+</AdwStatusPage>
+```
+
+### AdwBanner
+Dismissable notification banner.
+
+Props:
+- `title`: string
+- `buttonLabel`: string
+- `revealed`: boolean
+- `onButtonClicked`: `() => void`
+
+### AdwPreferencesPage / AdwPreferencesGroup
+Settings UI layout.
+
+```tsx
+<AdwPreferencesPage title="Settings">
+    <AdwPreferencesGroup title="Section" description="Help text">
+        <AdwActionRow title="Item" subtitle="Description" />
+        <AdwSwitchRow title="Toggle" active={value} onActivate={toggle} />
+    </AdwPreferencesGroup>
+</AdwPreferencesPage>
+```
+
+### AdwActionRow
+List row with title, subtitle, and optional widgets.
+
+```tsx
+<AdwActionRow title="Setting" subtitle="Description">
+    <Slot for={AdwActionRow} id="activatableWidget">
+        <GtkImage iconName="go-next-symbolic" />
+    </Slot>
+</AdwActionRow>
+```
+
+### AdwSwitchRow
+Toggle switch in a list row.
+
+Props:
+- `title`: string
+- `subtitle`: string
+- `active`: boolean
+- `onActivate`: `() => void`
+
+### AdwExpanderRow
+Expandable row with nested children.
+
+```tsx
+<AdwExpanderRow title="Advanced" subtitle="More options" iconName="preferences-system-symbolic">
+    <AdwActionRow title="Child 1" />
+    <AdwSwitchRow title="Child 2" active />
+</AdwExpanderRow>
+```
+
+### AdwEntryRow / AdwPasswordEntryRow
+Text input in a list row.
+
+```tsx
+<AdwEntryRow title="Username" text={text} onChanged={(e) => setText(e.getText())} />
+<AdwPasswordEntryRow title="Password" />
+```
+
+### AdwButtonRow
+Button styled as a list row.
+
+```tsx
+<AdwButtonRow title="Add Item" startIconName="list-add-symbolic" />
+```
+
+### AdwClamp
+Limits content width for readability.
+
+```tsx
+<AdwClamp maximumSize={600}>
+    <GtkBox>...</GtkBox>
+</AdwClamp>
+```
+
+### AdwAvatar
+User avatar with initials fallback.
+
+Props:
+- `size`: number (32, 48, 64, 80, etc.)
+- `text`: string (for initials)
+- `showInitials`: boolean
+
+### AdwSpinner
+Loading spinner.
+
+```tsx
+<AdwSpinner widthRequest={32} heightRequest={32} />
+```
+
+### AdwWindowTitle
+Title and subtitle for header bars.
+
+```tsx
+<AdwWindowTitle title="App Name" subtitle="Page description" />
+```
+
+## Common Props
+
+All widgets support:
+- `hexpand` / `vexpand`: boolean (expand to fill space)
+- `halign` / `valign`: `Gtk.Align.START` | `CENTER` | `END` | `FILL`
+- `marginStart` / `marginEnd` / `marginTop` / `marginBottom`: number
+- `sensitive`: boolean (enabled/disabled)
+- `visible`: boolean
+- `cssClasses`: string[]

@@ -24,7 +24,7 @@ describe("render - Overlay", () => {
             const overlayRef = createRef<Gtk.Overlay>();
 
             function App({ showMain }: { showMain: boolean }) {
-                return <GtkOverlay ref={overlayRef}>{showMain && <GtkLabel label="Main" />}</GtkOverlay>;
+                return <GtkOverlay ref={overlayRef}>{showMain && "Main"}</GtkOverlay>;
             }
 
             await render(<App showMain={true} />, { wrapper: false });
@@ -64,7 +64,7 @@ describe("render - Overlay", () => {
             function App({ overlays }: { overlays: string[] }) {
                 return (
                     <GtkOverlay ref={overlayRef}>
-                        <GtkLabel label="Main" />
+                        Main
                         {overlays.map((label) => (
                             <GtkButton key={label} label={label} />
                         ))}
@@ -106,7 +106,7 @@ describe("render - Overlay", () => {
             function App({ overlays }: { overlays: string[] }) {
                 return (
                     <GtkOverlay ref={overlayRef}>
-                        <GtkLabel label="Main" />
+                        Main
                         {overlays.map((label) => (
                             <GtkButton key={label} label={label} />
                         ))}

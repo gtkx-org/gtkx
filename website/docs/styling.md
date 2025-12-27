@@ -275,7 +275,7 @@ const selectedStyle = css`
 `;
 
 <GtkBox cssClasses={[cx(itemStyle, isSelected && selectedStyle)]}>
-    <GtkLabel label={item.name} />
+    {item.name}
 </GtkBox>
 ```
 

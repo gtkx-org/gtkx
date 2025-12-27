@@ -43,7 +43,7 @@ describe("render - Slot", () => {
                 <GtkHeaderBar ref={headerBarRef}>
                     {showTitle && (
                         <Slot for={GtkHeaderBar} id="titleWidget">
-                            <GtkLabel label="Title" />
+                            Title
                         </Slot>
                     )}
                 </GtkHeaderBar>
@@ -109,9 +109,7 @@ describe("render - Slot", () => {
         await render(
             <GtkMenuButton ref={menuButtonRef}>
                 <Slot for={GtkMenuButton} id="popover">
-                    <GtkPopover ref={popoverRef}>
-                        <GtkLabel label="Popover Content" />
-                    </GtkPopover>
+                    <GtkPopover ref={popoverRef}>Popover Content</GtkPopover>
                 </Slot>
             </GtkMenuButton>,
         );

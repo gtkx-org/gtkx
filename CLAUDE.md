@@ -106,7 +106,7 @@ Named child positions for GTK's slot-based layout:
 ```tsx
 <GtkHeaderBar>
   <Slot for={GtkHeaderBar} id="titleWidget">
-    <GtkLabel label="Title" />
+    Title
   </Slot>
 </GtkHeaderBar>
 ```

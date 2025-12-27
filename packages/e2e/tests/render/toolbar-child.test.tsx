@@ -1,5 +1,5 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import { AdwHeaderBar, AdwToolbarView, GtkLabel, Toolbar } from "@gtkx/react";
+import { AdwHeaderBar, AdwToolbarView, Toolbar } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -14,7 +14,7 @@ describe("render - ToolbarChild", () => {
                     <Toolbar.Top>
                         <AdwHeaderBar />
                     </Toolbar.Top>
-                    <GtkLabel label="Content" />
+                    Content
                 </AdwToolbarView>,
             );
 
@@ -27,7 +27,7 @@ describe("render - ToolbarChild", () => {
 
             const { findByText } = await render(
                 <AdwToolbarView ref={toolbarRef}>
-                    <GtkLabel label="Content" />
+                    Content
                     <Toolbar.Bottom>
                         <AdwHeaderBar />
                     </Toolbar.Bottom>
@@ -46,10 +46,8 @@ describe("render - ToolbarChild", () => {
                     <Toolbar.Top>
                         <AdwHeaderBar />
                     </Toolbar.Top>
-                    <Toolbar.Top>
-                        <GtkLabel label="Second Top Bar" />
-                    </Toolbar.Top>
-                    <GtkLabel label="Content" />
+                    <Toolbar.Top>Second Top Bar</Toolbar.Top>
+                    Content
                 </AdwToolbarView>,
             );
 
@@ -68,7 +66,7 @@ describe("render - ToolbarChild", () => {
                                 <AdwHeaderBar />
                             </Toolbar.Top>
                         )}
-                        <GtkLabel label="Content" />
+                        Content
                     </AdwToolbarView>
                 );
             }

@@ -1,13 +1,13 @@
 import { getObjectId } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { ReactElement } from "react";
+import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { createFiberRoot } from "../../fiber-root.js";
 import { reconciler } from "../../reconciler.js";
 import type { ListStore } from "./list-store.js";
 import type { SignalStore } from "./signal-store.js";
 
-export type RenderItemFn<T> = (item: T | null) => ReactElement;
+export type RenderItemFn<T> = (item: T | null) => ReactNode;
 
 export class ListItemRenderer {
     private factory: Gtk.SignalListItemFactory;

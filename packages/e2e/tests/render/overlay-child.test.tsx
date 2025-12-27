@@ -31,7 +31,7 @@ describe("render - OverlayChild", () => {
 
             await render(
                 <GtkOverlay ref={overlayRef}>
-                    <GtkLabel label="Main" />
+                    Main
                     <OverlayChild measure={true}>
                         <GtkButton ref={buttonRef} label="Measured Overlay" />
                     </OverlayChild>
@@ -49,7 +49,7 @@ describe("render - OverlayChild", () => {
 
             await render(
                 <GtkOverlay ref={overlayRef}>
-                    <GtkLabel label="Main" />
+                    Main
                     <OverlayChild clipOverlay={true}>
                         <GtkButton ref={buttonRef} label="Clipped Overlay" />
                     </OverlayChild>
@@ -67,7 +67,7 @@ describe("render - OverlayChild", () => {
             function App({ showOverlay }: { showOverlay: boolean }) {
                 return (
                     <GtkOverlay ref={overlayRef}>
-                        <GtkLabel label="Main" />
+                        Main
                         {showOverlay && (
                             <OverlayChild>
                                 <GtkButton label="Removable Overlay" />
@@ -103,7 +103,7 @@ describe("render - OverlayChild", () => {
 
             await render(
                 <GtkOverlay ref={overlayRef}>
-                    <GtkLabel label="Main" />
+                    Main
                     <OverlayChild>
                         <GtkButton label="First Overlay" />
                     </OverlayChild>

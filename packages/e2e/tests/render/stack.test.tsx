@@ -21,9 +21,7 @@ describe("render - Stack", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <StackPage name="page1">
-                        <GtkLabel label="Page 1" />
-                    </StackPage>
+                    <StackPage name="page1">Page 1</StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -37,7 +35,7 @@ describe("render - Stack", () => {
             await render(
                 <GtkStack ref={stackRef}>
                     <StackPage title="Page Title" name="titled">
-                        <GtkLabel label="Titled Content" />
+                        Titled Content
                     </StackPage>
                 </GtkStack>,
                 { wrapper: false },
@@ -52,9 +50,7 @@ describe("render - Stack", () => {
 
             await render(
                 <GtkStack ref={stackRef}>
-                    <StackPage>
-                        <GtkLabel label="Unnamed Page" />
-                    </StackPage>
+                    <StackPage>Unnamed Page</StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );
@@ -68,7 +64,7 @@ describe("render - Stack", () => {
             await render(
                 <GtkStack ref={stackRef}>
                     <StackPage name="props-test" iconName="dialog-information" needsAttention={true}>
-                        <GtkLabel label="With Props" />
+                        With Props
                     </StackPage>
                 </GtkStack>,
                 { wrapper: false },
@@ -90,7 +86,7 @@ describe("render - Stack", () => {
                     <GtkStack ref={stackRef}>
                         {pages.map((name) => (
                             <StackPage key={name} name={name}>
-                                <GtkLabel label={name} />
+                                {name}
                             </StackPage>
                         ))}
                     </GtkStack>
@@ -114,7 +110,7 @@ describe("render - Stack", () => {
                     <GtkStack ref={stackRef}>
                         {pages.map((name) => (
                             <StackPage key={name} name={name}>
-                                <GtkLabel label={name} />
+                                {name}
                             </StackPage>
                         ))}
                     </GtkStack>
@@ -137,7 +133,7 @@ describe("render - Stack", () => {
                 return (
                     <GtkStack ref={stackRef}>
                         <StackPage name="dynamic" iconName={iconName}>
-                            <GtkLabel label="Dynamic" />
+                            Dynamic
                         </StackPage>
                     </GtkStack>
                 );
@@ -162,12 +158,8 @@ describe("render - Stack", () => {
 
             await render(
                 <GtkStack ref={stackRef} visibleChildName="page2">
-                    <StackPage name="page1">
-                        <GtkLabel label="Page 1" />
-                    </StackPage>
-                    <StackPage name="page2">
-                        <GtkLabel label="Page 2" />
-                    </StackPage>
+                    <StackPage name="page1">Page 1</StackPage>
+                    <StackPage name="page2">Page 2</StackPage>
                 </GtkStack>,
                 { wrapper: false },
             );

@@ -52,7 +52,7 @@ The `Slot` component:
     <Slot for={GtkMenuButton} id="popover">
         <GtkPopover>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="Popover content" />
+                Popover content
                 <GtkButton label="Action" />
             </GtkBox>
         </GtkPopover>
@@ -105,11 +105,11 @@ import { GtkOverlay, GtkLabel, GtkButton, Slot } from "@gtkx/react";
 ### GtkExpander
 
 ```tsx
-import { GtkExpander, GtkLabel, Slot } from "@gtkx/react";
+import { GtkExpander, Slot } from "@gtkx/react";
 
 <GtkExpander label="Show Details">
     <Slot for={GtkExpander} id="child">
-        <GtkLabel label="Hidden content revealed when expanded" />
+        Hidden content revealed when expanded
     </Slot>
 </GtkExpander>
 ```
@@ -117,26 +117,26 @@ import { GtkExpander, GtkLabel, Slot } from "@gtkx/react";
 ## Nested Panes Example
 
 ```tsx
-import { GtkPaned, GtkBox, GtkLabel, Slot } from "@gtkx/react";
+import { GtkPaned, GtkBox, Slot } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 const ThreePaneLayout = () => (
     <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} position={200}>
         <Slot for={GtkPaned} id="startChild">
             <GtkBox cssClasses={["sidebar"]}>
-                <GtkLabel label="Sidebar" />
+                Sidebar
             </GtkBox>
         </Slot>
         <Slot for={GtkPaned} id="endChild">
             <GtkPaned orientation={Gtk.Orientation.VERTICAL} position={400}>
                 <Slot for={GtkPaned} id="startChild">
                     <GtkBox cssClasses={["content"]}>
-                        <GtkLabel label="Main Content" />
+                        Main Content
                     </GtkBox>
                 </Slot>
                 <Slot for={GtkPaned} id="endChild">
                     <GtkBox cssClasses={["panel"]}>
-                        <GtkLabel label="Bottom Panel" />
+                        Bottom Panel
                     </GtkBox>
                 </Slot>
             </GtkPaned>

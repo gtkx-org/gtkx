@@ -102,7 +102,7 @@ describe("waitForElementToBeRemoved", () => {
             return (
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
                     <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
-                    {showLabel && <GtkLabel label="Temporary" />}
+                    {showLabel && "Temporary"}
                 </GtkBox>
             );
         };
@@ -149,7 +149,7 @@ describe("waitForElementToBeRemoved", () => {
     });
 
     it("respects custom timeout", async () => {
-        await render(<GtkLabel label="Permanent" />);
+        await render("Permanent");
 
         const label = await screen.findByText("Permanent");
 
@@ -158,13 +158,13 @@ describe("waitForElementToBeRemoved", () => {
 
     describe("error handling", () => {
         it("throws immediately if element is already removed", async () => {
-            await render(<GtkLabel label="Test" />);
+            await render("Test");
 
             await expect(waitForElementToBeRemoved(null as never)).rejects.toThrow("already removed");
         });
 
         it("throws if callback returns null initially", async () => {
-            await render(<GtkLabel label="Test" />);
+            await render("Test");
 
             await expect(waitForElementToBeRemoved(() => null)).rejects.toThrow("already removed");
         });

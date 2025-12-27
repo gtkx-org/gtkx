@@ -58,7 +58,7 @@ describe("render - children", () => {
             function App({ showChild }: { showChild: boolean }) {
                 return (
                     <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                        {showChild && <GtkLabel label="Removable" />}
+                        {showChild && "Removable"}
                     </GtkBox>
                 );
             }
@@ -76,7 +76,7 @@ describe("render - children", () => {
             const frameRef = createRef<Gtk.Frame>();
 
             function App({ showChild }: { showChild: boolean }) {
-                return <GtkFrame ref={frameRef}>{showChild && <GtkLabel label="Child" />}</GtkFrame>;
+                return <GtkFrame ref={frameRef}>{showChild && "Child"}</GtkFrame>;
             }
 
             await render(<App showChild={true} />, { wrapper: false });

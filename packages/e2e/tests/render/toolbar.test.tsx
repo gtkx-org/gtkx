@@ -37,7 +37,7 @@ describe("render - Toolbar", () => {
                     <Toolbar.Top>
                         <AdwHeaderBar />
                     </Toolbar.Top>
-                    <GtkLabel label="Content" />
+                    Content
                 </AdwToolbarView>,
             );
 
@@ -50,7 +50,7 @@ describe("render - Toolbar", () => {
 
             const { findByText } = await render(
                 <AdwToolbarView ref={toolbarRef}>
-                    <GtkLabel label="Content" />
+                    Content
                     <Toolbar.Bottom>
                         <AdwHeaderBar />
                     </Toolbar.Bottom>
@@ -69,7 +69,7 @@ describe("render - Toolbar", () => {
                     <Toolbar.Top>
                         <AdwHeaderBar />
                     </Toolbar.Top>
-                    <GtkLabel label="Content" />
+                    Content
                     <Toolbar.Bottom>
                         <AdwHeaderBar />
                     </Toolbar.Bottom>

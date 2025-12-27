@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkButton } from "@gtkx/react";
 import { describe, expect, it } from "vitest";
 import { cleanup, render } from "../src/index.js";
 
@@ -14,7 +14,7 @@ describe("render", () => {
         const { findByRole, findByText } = await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
                 <GtkButton label="First" />
-                <GtkLabel label="Second" />
+                Second
             </GtkBox>,
         );
 
@@ -26,7 +26,7 @@ describe("render", () => {
     });
 
     it("returns container as the GTK Application", async () => {
-        const { container } = await render(<GtkLabel label="Test" />);
+        const { container } = await render("Test");
         expect(container).toBeDefined();
         expect(container.getApplicationId()).toMatch(/com\.gtkx\.test/);
     });
@@ -60,10 +60,10 @@ describe("render", () => {
     });
 
     it("provides rerender function to update content", async () => {
-        const { findByText, rerender } = await render(<GtkLabel label="Initial" />);
+        const { findByText, rerender } = await render("Initial");
 
         await findByText("Initial");
-        await rerender(<GtkLabel label="Updated" />);
+        await rerender("Updated");
 
         const updatedLabel = await findByText("Updated");
         expect(updatedLabel).toBeDefined();
@@ -95,12 +95,12 @@ describe("cleanup", () => {
     });
 
     it("allows rendering again after cleanup", async () => {
-        const { findByText } = await render(<GtkLabel label="First" />);
+        const { findByText } = await render("First");
         await findByText("First");
 
         await cleanup();
 
-        const { findByText: findByText2 } = await render(<GtkLabel label="Second" />);
+        const { findByText: findByText2 } = await render("Second");
         const label = await findByText2("Second");
         expect(label).toBeDefined();
     });

@@ -86,7 +86,7 @@ export type ColumnViewColumnProps<T = unknown> = {
     /** Whether clicking the header sorts by this column */
     sortable?: boolean;
     /** Function to render the cell content for each row */
-    renderCell: (item: T | null) => ReactElement;
+    renderCell: (item: T | null) => ReactNode;
 };
 
 /**
@@ -325,7 +325,7 @@ export function ColumnViewColumn<T = unknown>(props: ColumnViewColumnProps<T>): 
  */
 export type ListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkListViewProps, "renderItem"> & {
     /** Function to render each list item */
-    renderItem: (item: T | null) => ReactElement;
+    renderItem: (item: T | null) => ReactNode;
 };
 
 /**
@@ -359,7 +359,7 @@ export function ListView<T = unknown>(props: ListViewProps<T>): ReactElement {
  */
 export type GridViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkGridViewProps, "renderItem"> & {
     /** Function to render each grid item */
-    renderItem: (item: T | null) => ReactElement;
+    renderItem: (item: T | null) => ReactNode;
 };
 
 /**

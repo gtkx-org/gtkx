@@ -69,7 +69,7 @@ const [selected, setSelected] = useState<string[]>([]);
     selectionMode={Gtk.SelectionMode.MULTIPLE}
     selected={selected}
     onSelectionChanged={setSelected}
-    renderItem={(item) => <GtkLabel label={item?.name ?? ""} />}
+    renderItem={(item) => item?.name ?? ""}
 >
     {items.map((item) => (
         <ListItem key={item.id} id={item.id} value={item} />
@@ -104,7 +104,7 @@ const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
             renderItem={(photo) => (
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                     <GtkBox heightRequest={100} cssClasses={[photoTile(photo?.color ?? "#ccc")]} />
-                    <GtkLabel label={photo?.title ?? ""} />
+                    {photo?.title ?? ""}
                 </GtkBox>
             )}
         >
@@ -229,7 +229,7 @@ const FrameworkSelector = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-            <GtkLabel label="Framework:" />
+            Framework:
             <GtkDropDown selectedId={selectedId} onSelectionChanged={setSelectedId}>
                 {frameworks.map((fw) => (
                     <SimpleListItem key={fw.id} id={fw.id} value={fw.name} />

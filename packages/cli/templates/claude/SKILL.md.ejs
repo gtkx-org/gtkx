@@ -1,0 +1,372 @@
+---
+name: developing-gtkx-apps
+description: Build GTK4 desktop applications with GTKX React framework. Use when creating GTKX components, working with GTK widgets, handling signals, or building Linux desktop UIs with React.
+---
+
+# Developing GTKX Applications
+
+GTKX is a React framework for building native GTK4 desktop applications on Linux. It uses a custom React reconciler to render React components as native GTK widgets.
+
+## Quick Start
+
+```tsx
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, render, quit } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+
+const App = () => (
+    <GtkApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+            Hello, GTKX!
+            <GtkButton label="Quit" onClicked={quit} />
+        </GtkBox>
+    </GtkApplicationWindow>
+);
+
+render(<App />, "com.example.myapp");
+```
+
+## Widget Patterns
+
+### Container Widgets
+
+**GtkBox** - Linear layout:
+```tsx
+<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+    First
+    Second
+</GtkBox>
+```
+
+**GtkGrid** - 2D positioning:
+```tsx
+<GtkGrid rowSpacing={10} columnSpacing={10}>
+    <GridChild column={0} row={0}>Top-left</GridChild>
+    <GridChild column={1} row={0} columnSpan={2}>Spans 2 columns</GridChild>
+</GtkGrid>
+```
+
+**GtkStack** - Page-based container:
+```tsx
+<GtkStack visibleChildName="page1">
+    <StackPage name="page1" title="Page 1">Content 1</StackPage>
+    <StackPage name="page2" title="Page 2">Content 2</StackPage>
+</GtkStack>
+```
+
+**GtkNotebook** - Tabbed container:
+```tsx
+<GtkNotebook>
+    <NotebookPage label="Tab 1">
+        <Content1 />
+    </NotebookPage>
+    <NotebookPage label="Tab 2">
+        <Content2 />
+    </NotebookPage>
+</GtkNotebook>
+```
+
+**GtkPaned** - Resizable split:
+```tsx
+<GtkPaned orientation={Gtk.Orientation.HORIZONTAL} position={280}>
+    <Slot for={GtkPaned} id="startChild">
+        <SideBar />
+    </Slot>
+    <Slot for={GtkPaned} id="endChild">
+        <MainContent />
+    </Slot>
+</GtkPaned>
+```
+
+### Virtual Scrolling Lists
+
+**ListView** - High-performance scrollable list with selection:
+```tsx
+<ListView<Item>
+    vexpand
+    selected={[selectedId]}
+    selectionMode={Gtk.SelectionMode.SINGLE}
+    onSelectionChanged={(ids) => setSelectedId(ids[0])}
+    renderItem={(item) => (
+        <GtkLabel label={item?.text ?? ""} />
+    )}
+>
+    {items.map(item => (
+        <ListItem key={item.id} id={item.id} value={item} />
+    ))}
+</ListView>
+```
+
+**GridView** - Grid-based virtual scrolling:
+```tsx
+<GridView<Item>
+    vexpand
+    minColumns={2}
+    maxColumns={4}
+    renderItem={(item) => (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkImage iconName={item?.icon ?? "image-missing"} />
+            <GtkLabel label={item?.name ?? ""} />
+        </GtkBox>
+    )}
+>
+    {items.map(item => (
+        <ListItem key={item.id} id={item.id} value={item} />
+    ))}
+</GridView>
+```
+
+**GtkColumnView** - Table with sortable columns:
+```tsx
+<GtkColumnView
+    sortColumn="name"
+    sortOrder={Gtk.SortType.ASCENDING}
+    onSortChange={handleSort}
+>
+    <ColumnViewColumn<Item>
+        title="Name"
+        id="name"
+        expand
+        sortable
+        renderCell={(item) => (
+            <GtkLabel label={item?.name ?? ""} />
+        )}
+    />
+    {items.map(item => (
+        <ListItem key={item.id} id={item.id} value={item} />
+    ))}
+</GtkColumnView>
+```
+
+**GtkDropDown** - String selection dropdown with controlled state:
+```tsx
+<GtkDropDown selectedId={selectedId} onSelectionChanged={setSelectedId}>
+    {options.map(opt => (
+        <SimpleListItem key={opt.id} id={opt.id} value={opt.label} />
+    ))}
+</GtkDropDown>
+```
+
+**GtkOverlay** - Stack widgets on top of each other (first child is base):
+```tsx
+<GtkOverlay>
+    <GtkButton label="Notifications" />
+    <GtkLabel
+        label="3"
+        cssClasses={["badge"]}
+        halign={Gtk.Align.END}
+        valign={Gtk.Align.START}
+    />
+</GtkOverlay>
+```
+
+### GtkHeaderBar
+
+Pack widgets at start and end of the title bar using Slot or Pack components:
+```tsx
+<GtkHeaderBar>
+    <Pack.Start>
+        <GtkButton iconName="go-previous-symbolic" />
+    </Pack.Start>
+    <Slot for={GtkHeaderBar} id="titleWidget">
+        <GtkLabel label="My App" cssClasses={["title"]} />
+    </Slot>
+    <Pack.End>
+        <GtkMenuButton iconName="open-menu-symbolic" />
+    </Pack.End>
+</GtkHeaderBar>
+```
+
+### GtkActionBar
+
+Bottom bar with packed widgets:
+```tsx
+<GtkActionBar>
+    <Pack.Start>
+        <GtkButton label="Cancel" />
+    </Pack.Start>
+    <Pack.End>
+        <GtkButton label="Save" cssClasses={["suggested-action"]} />
+    </Pack.End>
+</GtkActionBar>
+```
+
+### Controlled Input
+
+GtkEntry requires two-way binding:
+```tsx
+const [text, setText] = useState("");
+
+<GtkEntry
+    text={text}
+    onChanged={(entry) => setText(entry.getText())}
+    placeholderText="Type here..."
+/>
+```
+
+### Declarative Menus
+
+```tsx
+<GtkPopoverMenu>
+    <Menu.Section>
+        <Menu.Item
+            id="new"
+            label="New"
+            onActivate={handleNew}
+            accels="<Control>n"
+        />
+    </Menu.Section>
+    <Menu.Section>
+        <Menu.Submenu label="Export">
+            <Menu.Item id="pdf" label="PDF" onActivate={handleExportPdf} />
+            <Menu.Item id="csv" label="CSV" onActivate={handleExportCsv} />
+        </Menu.Submenu>
+    </Menu.Section>
+    <Menu.Section>
+        <Menu.Item id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
+    </Menu.Section>
+</GtkPopoverMenu>
+```
+
+## Signal Handling
+
+GTK signals map to `on<SignalName>` props:
+- `clicked` → `onClicked`
+- `toggled` → `onToggled`
+- `changed` → `onChanged`
+- `notify::selected` → `onNotifySelected`
+
+## Widget References
+
+```tsx
+import { useRef } from "react";
+
+const entryRef = useRef<Gtk.Entry | null>(null);
+<GtkEntry ref={entryRef} />
+```
+
+## Portals
+
+```tsx
+import { createPortal } from "@gtkx/react";
+
+{createPortal(<GtkAboutDialog programName="My App" />)}
+```
+
+## Adwaita (Libadwaita) Widgets
+
+Import Adwaita widgets and enums:
+```tsx
+import * as Adw from "@gtkx/ffi/adw";
+import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView, Toolbar } from "@gtkx/react";
+```
+
+### AdwToolbarView
+Modern app layout with top/bottom bars:
+```tsx
+<AdwToolbarView>
+    <Toolbar.Top>
+        <AdwHeaderBar>
+            <Slot for={AdwHeaderBar} id="titleWidget">
+                <AdwWindowTitle title="App" subtitle="Description" />
+            </Slot>
+        </AdwHeaderBar>
+    </Toolbar.Top>
+    <MainContent />
+    <Toolbar.Bottom>
+        <GtkActionBar>...</GtkActionBar>
+    </Toolbar.Bottom>
+</AdwToolbarView>
+```
+
+### AdwApplicationWindow
+Modern window requiring content slot:
+```tsx
+<AdwApplicationWindow title="My App" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+    <Slot for={AdwApplicationWindow} id="content">
+        <AdwToolbarView>...</AdwToolbarView>
+    </Slot>
+</AdwApplicationWindow>
+```
+
+### AdwStatusPage
+Welcome or empty state pages:
+```tsx
+<AdwStatusPage
+    iconName="applications-system-symbolic"
+    title="Welcome"
+    description="Get started with your app"
+    vexpand
+/>
+```
+
+### AdwBanner
+Dismissable notification banner:
+```tsx
+<AdwBanner
+    title="Update available!"
+    buttonLabel="Dismiss"
+    revealed={showBanner}
+    onButtonClicked={() => setShowBanner(false)}
+/>
+```
+
+### AdwPreferencesPage / AdwPreferencesGroup
+Settings UI layout:
+```tsx
+<AdwPreferencesPage title="Settings">
+    <AdwPreferencesGroup title="Appearance" description="Customize the look">
+        <AdwSwitchRow title="Dark Mode" active={dark} onActivate={() => setDark(!dark)} />
+        <AdwActionRow title="Theme" subtitle="Select color theme">
+            <Slot for={AdwActionRow} id="activatableWidget">
+                <GtkImage iconName="go-next-symbolic" />
+            </Slot>
+        </AdwActionRow>
+    </AdwPreferencesGroup>
+</AdwPreferencesPage>
+```
+
+### AdwExpanderRow
+Expandable row with nested content:
+```tsx
+<AdwExpanderRow title="Advanced" subtitle="More options">
+    <AdwSwitchRow title="Option 1" active />
+    <AdwSwitchRow title="Option 2" active={false} />
+</AdwExpanderRow>
+```
+
+### AdwEntryRow / AdwPasswordEntryRow
+Input fields in list rows:
+```tsx
+<AdwEntryRow title="Username" text={username} onChanged={(e) => setUsername(e.getText())} />
+<AdwPasswordEntryRow title="Password" />
+```
+
+### AdwClamp
+Limit content width for readability:
+```tsx
+<AdwClamp maximumSize={600}>
+    <GtkBox>...</GtkBox>
+</AdwClamp>
+```
+
+### AdwAvatar
+User avatar with initials fallback:
+```tsx
+<AdwAvatar size={48} text="John Doe" showInitials />
+```
+
+### AdwSpinner
+Loading indicator:
+```tsx
+{isLoading && <AdwSpinner widthRequest={32} heightRequest={32} />}
+```
+
+## Constraints
+
+- **GTK is single-threaded**: All widget operations on main thread
+- **Virtual lists need immutable data**: Use stable object references
+- **GtkToggleButton auto-prevents feedback loops**: Safe for controlled state
+- **GtkEntry needs two-way binding**: Use `onChanged` to sync state
+
+For detailed widget reference, see [WIDGETS.md](WIDGETS.md).
+For code examples, see [EXAMPLES.md](EXAMPLES.md).

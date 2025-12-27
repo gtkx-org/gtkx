@@ -6,7 +6,6 @@ import {
     GtkCheckButton,
     GtkDropDown,
     GtkEntry,
-    GtkLabel,
     GtkListBox,
     GtkListBoxRow,
     GtkSwitch,
@@ -192,12 +191,8 @@ describe("userEvent.selectOptions", () => {
     it("selects row in list box by index", async () => {
         await render(
             <GtkListBox selectionMode={Gtk.SelectionMode.SINGLE}>
-                <GtkListBoxRow>
-                    <GtkLabel label="Item 1" />
-                </GtkListBoxRow>
-                <GtkListBoxRow>
-                    <GtkLabel label="Item 2" />
-                </GtkListBoxRow>
+                <GtkListBoxRow>Item 1</GtkListBoxRow>
+                <GtkListBoxRow>Item 2</GtkListBoxRow>
             </GtkListBox>,
         );
 
@@ -235,12 +230,8 @@ describe("userEvent.deselectOptions", () => {
     it("deselects row in list box", async () => {
         await render(
             <GtkListBox selectionMode={Gtk.SelectionMode.MULTIPLE}>
-                <GtkListBoxRow>
-                    <GtkLabel label="Item 1" />
-                </GtkListBoxRow>
-                <GtkListBoxRow>
-                    <GtkLabel label="Item 2" />
-                </GtkListBoxRow>
+                <GtkListBoxRow>Item 1</GtkListBoxRow>
+                <GtkListBoxRow>Item 2</GtkListBoxRow>
             </GtkListBox>,
         );
 

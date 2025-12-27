@@ -31,7 +31,7 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                <GtkListView ref={ref} renderItem={() => "Item"}>
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkListView>,
                 { wrapper: false },
@@ -46,7 +46,7 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                <GtkListView ref={ref} renderItem={() => "Item"}>
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkListView>,
@@ -61,7 +61,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((item) => (
                             <ListItem key={item.id} id={item.id} value={item} />
                         ))}
@@ -100,7 +100,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: { id: string; name: string }[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((item) => (
                             <ListItem key={item.id} id={item.id} value={item} />
                         ))}
@@ -139,7 +139,7 @@ describe("render - ListView", () => {
 
             function App({ itemName }: { itemName: string }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         <ListItem id="1" value={{ name: itemName }} />
                     </GtkListView>
                 );
@@ -191,7 +191,7 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />} selected={["2"]}>
+                <GtkListView ref={ref} renderItem={() => "Item"} selected={["2"]}>
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkListView>,
@@ -204,11 +204,7 @@ describe("render - ListView", () => {
             const onSelectionChanged = vi.fn();
 
             await render(
-                <GtkListView
-                    ref={ref}
-                    renderItem={() => <GtkLabel label="Item" />}
-                    onSelectionChanged={onSelectionChanged}
-                >
+                <GtkListView ref={ref} renderItem={() => "Item"} onSelectionChanged={onSelectionChanged}>
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkListView>,
@@ -225,7 +221,7 @@ describe("render - ListView", () => {
 
             function App({ selected }: { selected: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />} selected={selected}>
+                    <GtkListView ref={ref} renderItem={() => "Item"} selected={selected}>
                         <ListItem id="1" value={{ name: "First" }} />
                     </GtkListView>
                 );
@@ -242,11 +238,7 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView
-                    ref={ref}
-                    renderItem={() => <GtkLabel label="Item" />}
-                    selectionMode={Gtk.SelectionMode.MULTIPLE}
-                >
+                <GtkListView ref={ref} renderItem={() => "Item"} selectionMode={Gtk.SelectionMode.MULTIPLE}>
                     <ListItem id="1" value={{ name: "First" }} />
                     <ListItem id="2" value={{ name: "Second" }} />
                 </GtkListView>,
@@ -260,7 +252,7 @@ describe("render - ListView", () => {
             await render(
                 <GtkListView
                     ref={ref}
-                    renderItem={() => <GtkLabel label="Item" />}
+                    renderItem={() => "Item"}
                     selectionMode={Gtk.SelectionMode.MULTIPLE}
                     selected={["1", "3"]}
                 >
@@ -279,7 +271,7 @@ describe("render - ListView", () => {
             await render(
                 <GtkListView
                     ref={ref}
-                    renderItem={() => <GtkLabel label="Item" />}
+                    renderItem={() => "Item"}
                     selectionMode={Gtk.SelectionMode.MULTIPLE}
                     onSelectionChanged={onSelectionChanged}
                 >
@@ -300,7 +292,7 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.GridView>();
 
             await render(
-                <GtkGridView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                <GtkGridView ref={ref} renderItem={() => "Item"}>
                     <ListItem id="1" value={{ name: "First" }} />
                 </GtkGridView>,
                 { wrapper: false },
@@ -319,7 +311,7 @@ describe("render - ListView", () => {
             const ref = createRef<Gtk.ListView>();
 
             await render(
-                <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                <GtkListView ref={ref} renderItem={() => "Item"}>
                     <ListItem id="c" value={{ name: "C" }} />
                     <ListItem id="a" value={{ name: "A" }} />
                     <ListItem id="b" value={{ name: "B" }} />
@@ -335,7 +327,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -355,7 +347,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -375,7 +367,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -395,7 +387,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -415,7 +407,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -435,7 +427,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -459,7 +451,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -479,7 +471,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -499,7 +491,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -519,7 +511,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -547,7 +539,7 @@ describe("render - ListView", () => {
                 });
 
                 return (
-                    <GtkListView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkListView ref={ref} renderItem={() => "Item"}>
                         {filteredItems.map((item) => (
                             <ListItem key={item.id} id={item.id} value={item} />
                         ))}
@@ -709,7 +701,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkGridView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkGridView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -729,7 +721,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkGridView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkGridView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}
@@ -749,7 +741,7 @@ describe("render - ListView", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkGridView ref={ref} renderItem={() => <GtkLabel label="Item" />}>
+                    <GtkGridView ref={ref} renderItem={() => "Item"}>
                         {items.map((id) => (
                             <ListItem key={id} id={id} value={{ name: id }} />
                         ))}

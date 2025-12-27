@@ -19,8 +19,7 @@ describe("render - Pack", () => {
 
             await render(
                 <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
-                    <GtkLabel label="First" />
-                    <GtkLabel label="Second" />
+                    First Second
                 </GtkBox>,
                 { wrapper: false },
             );

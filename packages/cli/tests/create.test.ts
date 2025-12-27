@@ -1,14 +1,6 @@
 import { vol } from "memfs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-    generatePackageJson,
-    generateTsConfig,
-    getAddCommand,
-    getRunCommand,
-    getTestScript,
-    isValidAppId,
-    isValidProjectName,
-} from "../src/create.js";
+import { getAddCommand, getRunCommand, isValidAppId, isValidProjectName } from "../src/create.js";
 
 vi.mock("node:fs", async () => {
     const memfs = await import("memfs");
@@ -51,6 +43,25 @@ vi.mock("@clack/prompts", () => ({
     cancel: vi.fn(),
     isCancel: vi.fn(() => false),
 }));
+
+vi.mock("../src/templates.js", async () => {
+    const { readFileSync } = await vi.importActual<typeof import("node:fs")>("node:fs");
+    const { dirname, join } = await vi.importActual<typeof import("node:path")>("node:path");
+    const { fileURLToPath } = await vi.importActual<typeof import("node:url")>("node:url");
+    const ejs = await vi.importActual<typeof import("ejs")>("ejs");
+
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const templatesDir = join(__dirname, "..", "templates");
+
+    return {
+        renderFile: (templateName: string, context: Record<string, unknown>) => {
+            const templatePath = join(templatesDir, templateName);
+            const templateContent = readFileSync(templatePath, "utf-8");
+            return ejs.render(templateContent, context);
+        },
+    };
+});
 
 describe("isValidProjectName", () => {
     it("accepts lowercase letters", () => {
@@ -180,26 +191,6 @@ describe("isValidAppId", () => {
     });
 });
 
-describe("getTestScript", () => {
-    const env = "GDK_BACKEND=x11 GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1";
-
-    it("returns vitest script", () => {
-        expect(getTestScript("vitest")).toBe(`${env} xvfb-run -a vitest`);
-    });
-
-    it("returns jest script", () => {
-        expect(getTestScript("jest")).toBe(`${env} xvfb-run -a jest`);
-    });
-
-    it("returns node test runner script", () => {
-        expect(getTestScript("node")).toBe(`${env} xvfb-run -a node --import tsx --test tests/**/*.test.ts`);
-    });
-
-    it("returns undefined for none", () => {
-        expect(getTestScript("none")).toBeUndefined();
-    });
-});
-
 describe("getAddCommand", () => {
     const testDeps = ["react", "typescript"];
 
@@ -261,102 +252,6 @@ describe("getRunCommand", () => {
 
     it("returns bun dev", () => {
         expect(getRunCommand("bun")).toBe("bun dev");
-    });
-});
-
-describe("generatePackageJson", () => {
-    it("generates valid JSON structure", () => {
-        const result = generatePackageJson("my-app", "com.example.app", "vitest");
-        const parsed = JSON.parse(result);
-
-        expect(parsed.name).toBe("my-app");
-        expect(parsed.version).toBe("0.0.1");
-        expect(parsed.private).toBe(true);
-        expect(parsed.type).toBe("module");
-        expect(parsed.gtkx.appId).toBe("com.example.app");
-    });
-
-    it("includes test script for vitest", () => {
-        const result = generatePackageJson("app", "org.app", "vitest");
-        const parsed = JSON.parse(result);
-
-        expect(parsed.scripts.test).toContain("xvfb-run -a vitest");
-        expect(parsed.scripts.test).toContain("GDK_BACKEND=x11");
-        expect(parsed.scripts.test).toContain("GSK_RENDERER=cairo");
-        expect(parsed.scripts.test).toContain("LIBGL_ALWAYS_SOFTWARE=1");
-    });
-
-    it("includes test script for jest", () => {
-        const result = generatePackageJson("app", "org.app", "jest");
-        const parsed = JSON.parse(result);
-
-        expect(parsed.scripts.test).toContain("xvfb-run -a jest");
-        expect(parsed.scripts.test).toContain("GDK_BACKEND=x11");
-    });
-
-    it("includes test script for node runner", () => {
-        const result = generatePackageJson("app", "org.app", "node");
-        const parsed = JSON.parse(result);
-
-        expect(parsed.scripts.test).toContain("xvfb-run -a node --import tsx --test tests/**/*.test.ts");
-        expect(parsed.scripts.test).toContain("GDK_BACKEND=x11");
-    });
-
-    it("excludes test script for none", () => {
-        const result = generatePackageJson("app", "org.app", "none");
-        const parsed = JSON.parse(result);
-
-        expect(parsed.scripts.test).toBeUndefined();
-    });
-
-    it("always includes dev, build, start scripts", () => {
-        const result = generatePackageJson("app", "org.app", "none");
-        const parsed = JSON.parse(result);
-
-        expect(parsed.scripts.dev).toBe("gtkx dev src/dev.tsx");
-        expect(parsed.scripts.build).toBe("tsc -b");
-        expect(parsed.scripts.start).toBe("node dist/index.js");
-    });
-});
-
-describe("generateTsConfig", () => {
-    it("generates valid JSON structure", () => {
-        const result = generateTsConfig();
-        const parsed = JSON.parse(result);
-
-        expect(parsed.compilerOptions).toBeDefined();
-        expect(parsed.include).toEqual(["src/**/*"]);
-    });
-
-    it("configures jsx for react-jsx", () => {
-        const result = generateTsConfig();
-        const parsed = JSON.parse(result);
-
-        expect(parsed.compilerOptions.jsx).toBe("react-jsx");
-    });
-
-    it("enables strict mode", () => {
-        const result = generateTsConfig();
-        const parsed = JSON.parse(result);
-
-        expect(parsed.compilerOptions.strict).toBe(true);
-    });
-
-    it("configures ESNext module settings", () => {
-        const result = generateTsConfig();
-        const parsed = JSON.parse(result);
-
-        expect(parsed.compilerOptions.target).toBe("ESNext");
-        expect(parsed.compilerOptions.module).toBe("NodeNext");
-        expect(parsed.compilerOptions.moduleResolution).toBe("NodeNext");
-    });
-
-    it("sets output directory to dist", () => {
-        const result = generateTsConfig();
-        const parsed = JSON.parse(result);
-
-        expect(parsed.compilerOptions.outDir).toBe("dist");
-        expect(parsed.compilerOptions.rootDir).toBe("src");
     });
 });
 

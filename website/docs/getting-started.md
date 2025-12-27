@@ -82,7 +82,7 @@ export default function App() {
     return (
         <GtkApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginTop={40} marginStart={40} marginEnd={40}>
-                <GtkLabel label="Welcome to GTKX!" />
+                Welcome to GTKX!
                 <GtkLabel label={`Count: ${count}`} />
                 <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
             </GtkBox>

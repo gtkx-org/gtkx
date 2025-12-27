@@ -1,0 +1,17 @@
+import { useState } from "react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
+
+export default function App() {
+    const [count, setCount] = useState(0);
+
+    return (
+        <GtkApplicationWindow title="<%= title %>" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginTop={40} marginStart={40} marginEnd={40}>
+                Welcome to GTKX!
+                <GtkLabel label={`Count: ${count}`} />
+                <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+            </GtkBox>
+        </GtkApplicationWindow>
+    );
+}

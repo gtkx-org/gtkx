@@ -125,7 +125,7 @@ describe("render - GridChild", () => {
                     <GtkGrid ref={gridRef}>
                         {showChild && (
                             <GridChild column={0} row={0}>
-                                <GtkLabel label="Removable" />
+                                Removable
                             </GridChild>
                         )}
                     </GtkGrid>

@@ -11,9 +11,7 @@ describe("render - PackChild", () => {
 
             const { findByText } = await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.Start>
-                        <GtkLabel label="Start" />
-                    </Pack.Start>
+                    <Pack.Start>Start</Pack.Start>
                 </GtkHeaderBar>,
             );
 
@@ -25,9 +23,7 @@ describe("render - PackChild", () => {
 
             const { findByText } = await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.End>
-                        <GtkLabel label="End" />
-                    </Pack.End>
+                    <Pack.End>End</Pack.End>
                 </GtkHeaderBar>,
             );
 
@@ -39,12 +35,8 @@ describe("render - PackChild", () => {
 
             const { findByText } = await render(
                 <GtkHeaderBar ref={headerBarRef}>
-                    <Pack.Start>
-                        <GtkLabel label="Start" />
-                    </Pack.Start>
-                    <Pack.End>
-                        <GtkLabel label="End" />
-                    </Pack.End>
+                    <Pack.Start>Start</Pack.Start>
+                    <Pack.End>End</Pack.End>
                 </GtkHeaderBar>,
             );
 
@@ -58,13 +50,9 @@ describe("render - PackChild", () => {
             function App({ showStart }: { showStart: boolean }) {
                 return (
                     <GtkHeaderBar ref={headerBarRef}>
-                        {showStart && (
-                            <Pack.Start>
-                                <GtkLabel label="Start" />
-                            </Pack.Start>
-                        )}
+                        {showStart && <Pack.Start>Start</Pack.Start>}
                         <Slot for={GtkHeaderBar} id="titleWidget">
-                            <GtkLabel label="Always" />
+                            Always
                         </Slot>
                     </GtkHeaderBar>
                 );

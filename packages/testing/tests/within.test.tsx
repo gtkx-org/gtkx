@@ -27,9 +27,9 @@ describe("within", () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
                 <GtkFrame name="inner-frame" label="Inner">
-                    <GtkLabel label="Inside" />
+                    Inside
                 </GtkFrame>
-                <GtkLabel label="Outside" />
+                Outside
             </GtkBox>,
         );
 
@@ -53,11 +53,7 @@ describe("within", () => {
     });
 
     it("provides findByText query", async () => {
-        await render(
-            <GtkFrame name="container">
-                <GtkLabel label="Hello World" />
-            </GtkFrame>,
-        );
+        await render(<GtkFrame name="container">Hello World</GtkFrame>);
 
         const frame = await screen.findByTestId("container");
         const { findByText } = within(frame);

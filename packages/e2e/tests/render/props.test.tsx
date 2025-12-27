@@ -105,7 +105,7 @@ describe("render - props", () => {
 
             await render(
                 <GtkBox ref={ref} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel label="Child" />
+                    Child
                 </GtkBox>,
                 { wrapper: false },
             );

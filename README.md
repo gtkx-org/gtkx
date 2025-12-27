@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./logo.svg" alt="GTKX" width="80" height="80">
+  <img src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/logo.svg" alt="GTKX" width="80" height="80">
 </p>
 
 <h1 align="center">GTKX</h1>
@@ -24,14 +24,20 @@ GTKX lets you write Linux desktop applications using React. Your components rend
 ```bash
 npx @gtkx/cli create my-app
 cd my-app
-npm install
 npm run dev
 ```
 
 ## Example
 
 ```tsx
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit, render } from "@gtkx/react";
+import {
+  GtkApplicationWindow,
+  GtkBox,
+  GtkButton,
+  GtkLabel,
+  quit,
+  render,
+} from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -39,10 +45,19 @@ const App = () => {
   const [count, setCount] = useState(0);
 
   return (
-    <GtkApplicationWindow title="Counter" defaultWidth={300} defaultHeight={200} onCloseRequest={quit}>
-      <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} valign={Gtk.Align.CENTER}>
+    <GtkApplicationWindow
+      title="Counter"
+      defaultWidth={300}
+      defaultHeight={200}
+      onCloseRequest={quit}
+    >
+      <GtkBox
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={20}
+        valign={Gtk.Align.CENTER}
+      >
         <GtkLabel label={`Count: ${count}`} cssClasses={["title-1"]} />
-        <GtkButton label="Increment" onClicked={() => setCount(c => c + 1)} />
+        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
       </GtkBox>
     </GtkApplicationWindow>
   );
@@ -64,7 +79,7 @@ render(<App />, "com.example.counter");
 ## Platform Support
 
 | Platform | GTK Version | Status |
-|----------|-------------|--------|
+| -------- | ----------- | ------ |
 | Linux    | 4.x         | Stable |
 | Fedora   | 38+         | Tested |
 | Ubuntu   | 22.04+      | Tested |
@@ -93,4 +108,4 @@ Contributions are welcome! Please see the [contributing guidelines](./CONTRIBUTI
 
 ## License
 
-[MPL-2.0](./LICENSE) — Copyright (c) 2024 Eugenio Depalo
+[MPL-2.0](./LICENSE)

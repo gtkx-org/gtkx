@@ -36,9 +36,7 @@ describe("render - Notebook", () => {
 
             await render(
                 <GtkNotebook ref={notebookRef}>
-                    <NotebookPage label="Tab 1">
-                        <GtkLabel label="Page 1 Content" />
-                    </NotebookPage>
+                    <NotebookPage label="Tab 1">Page 1 Content</NotebookPage>
                 </GtkNotebook>,
                 { wrapper: false },
             );
@@ -102,9 +100,7 @@ describe("render - Notebook", () => {
             function App({ label }: { label: string }) {
                 return (
                     <GtkNotebook ref={notebookRef}>
-                        <NotebookPage label={label}>
-                            <GtkLabel label="Content" />
-                        </NotebookPage>
+                        <NotebookPage label={label}>Content</NotebookPage>
                     </GtkNotebook>
                 );
             }

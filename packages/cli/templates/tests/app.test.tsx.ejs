@@ -1,0 +1,27 @@
+<% if (testing === 'vitest') { -%>
+import { describe, it, expect, afterEach } from "vitest";
+<% } else if (testing === 'jest') { -%>
+import { describe, it, expect, afterEach } from "@jest/globals";
+<% } else { -%>
+import { describe, it, after } from "node:test";
+import { strict as assert } from "node:assert";
+<% } -%>
+import * as Gtk from "@gtkx/ffi/gtk";
+import { cleanup, render, screen } from "@gtkx/testing";
+import App from "../src/app.js";
+
+<%= testing === 'node' ? 'after' : 'afterEach' %>(async () => {
+    await cleanup();
+});
+
+describe("App", () => {
+    it("renders the increment button", async () => {
+        await render(<App />, { wrapper: false });
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Increment" });
+<% if (testing === 'node') { -%>
+        assert.ok(button, "Button should be rendered");
+<% } else { -%>
+        expect(button).toBeDefined();
+<% } -%>
+    });
+});

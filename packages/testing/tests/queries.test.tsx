@@ -81,11 +81,9 @@ describe("findByRole", () => {
     it("finds expander by label", async () => {
         const { container } = await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                <GtkExpander label="Collapsed">
-                    <GtkLabel label="Content" />
-                </GtkExpander>
+                <GtkExpander label="Collapsed">Content</GtkExpander>
                 <GtkExpander label="Expanded" expanded>
-                    <GtkLabel label="Content" />
+                    Content
                 </GtkExpander>
             </GtkBox>,
         );
@@ -214,11 +212,7 @@ describe("findByLabelText", () => {
     });
 
     it("finds frame by label", async () => {
-        const { container } = await render(
-            <GtkFrame label="Settings">
-                <GtkLabel label="Content" />
-            </GtkFrame>,
-        );
+        const { container } = await render(<GtkFrame label="Settings">Content</GtkFrame>);
 
         const frame = await findByRole(container, Gtk.AccessibleRole.GROUP, { name: "Settings" });
         expect(frame).toBeDefined();

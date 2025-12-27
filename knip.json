@@ -5,17 +5,17 @@
         "examples/*/src/app.tsx": ["exports", "duplicates"],
         "packages/cli/src/create.ts": ["exports", "types"],
         "packages/cli/src/dev-server.tsx": ["exports", "types"],
-        "packages/cli/src/refresh-runtime.ts": ["exports"]
+        "packages/cli/src/refresh-runtime.ts": ["exports"],
+        "packages/ffi/src/types.ts": ["types"]
     },
     "workspaces": {
         "packages/native": {
             "entry": [],
-            "project": ["src/**/*", "tests/**/*"]
+            "project": ["src/**/*"]
         },
         "examples/deploying": {
             "project": ["src/**/*", "scripts/**/*"],
-            "ignoreDependencies": ["postject", "@gtkx/cli"],
-            "ignoreBinaries": ["gtkx"],
+            "ignoreDependencies": ["postject"],
             "entry": ["src/app.tsx", "src/index.tsx", "src/dev.tsx"]
         },
         "website": {
@@ -24,30 +24,33 @@
             "ignoreDependencies": ["typedoc", "@docusaurus/*", "@theme/*"]
         },
         "packages/*": {
-            "project": ["src/**/*", "tests/**/*"],
+            "project": ["src/**/*"],
             "entry": ["src/index.ts"]
         },
         "examples/*": {
-            "project": ["src/**/*", "tests/**/*"],
+            "project": ["src/**/*"],
             "entry": ["src/app.tsx", "src/dev.tsx", "src/index.tsx"]
         },
         "packages/cli": {
             "entry": ["src/cli.tsx", "src/index.ts"],
-            "project": ["src/**/*", "tests/**/*"],
-            "ignore": ["src/global.d.ts"],
-            "ignoreDependencies": ["@swc/core"]
+            "project": ["src/**/*"],
+            "ignore": ["src/global.d.ts"]
         },
         "packages/codegen": {
             "entry": ["src/cli.ts", "src/index.ts"],
-            "project": ["src/**/*", "tests/**/*"]
+            "project": ["src/**/*"]
         },
         "packages/ffi": {
-            "project": ["src/**/*", "tests/**/*"],
+            "project": ["src/**/*"],
             "ignore": ["src/generated/**"],
             "entry": ["src/index.ts", "src/*/index.ts"]
         },
         "packages/react": {
-            "project": ["src/**/*", "tests/**/*"]
+            "project": ["src/**/*"]
+        },
+        "packages/e2e": {
+            "project": ["tests/**/*"],
+            "entry": ["tests/**/*.test.tsx"]
         }
     }
 }

@@ -33,7 +33,7 @@ import { AdwHeaderBar, GtkButton, GtkLabel, Slot } from "@gtkx/react";
 Tab-like navigation between views:
 
 ```tsx
-import { AdwViewStack, AdwViewStackPage, AdwViewSwitcher, GtkBox, GtkLabel } from "@gtkx/react";
+import { AdwViewStack, AdwViewStackPage, AdwViewSwitcher, GtkBox } from "@gtkx/react";
 import { useState } from "react";
 
 const TabbedView = () => {
@@ -45,10 +45,10 @@ const TabbedView = () => {
 
             <AdwViewStack visibleChild={currentPage}>
                 <AdwViewStackPage name="home" title="Home" iconName="go-home-symbolic">
-                    <GtkLabel label="Home content" />
+                    Home content
                 </AdwViewStackPage>
                 <AdwViewStackPage name="settings" title="Settings" iconName="preferences-system-symbolic">
-                    <GtkLabel label="Settings content" />
+                    Settings content
                 </AdwViewStackPage>
             </AdwViewStack>
         </GtkBox>
@@ -120,12 +120,12 @@ import { AdwPreferencesGroup, AdwActionRow, GtkSwitch, GtkSpinButton } from "@gt
 Constrain content width for readability:
 
 ```tsx
-import { AdwClamp, GtkBox, GtkLabel } from "@gtkx/react";
+import { AdwClamp, GtkBox } from "@gtkx/react";
 
 <AdwClamp maximumSize={600} tighteningThreshold={400}>
     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-        <GtkLabel label="This content is constrained to a readable width" />
-        <GtkLabel label="On wide screens, it won't stretch too far" />
+        This content is constrained to a readable width
+        On wide screens, it won't stretch too far
     </GtkBox>
 </AdwClamp>
 ```

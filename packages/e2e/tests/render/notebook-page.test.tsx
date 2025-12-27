@@ -11,9 +11,7 @@ describe("render - NotebookPage", () => {
 
             await render(
                 <GtkNotebook ref={notebookRef}>
-                    <NotebookPage label="Page 1">
-                        <GtkLabel label="Content 1" />
-                    </NotebookPage>
+                    <NotebookPage label="Page 1">Content 1</NotebookPage>
                 </GtkNotebook>,
                 { wrapper: false },
             );
@@ -66,15 +64,9 @@ describe("render - NotebookPage", () => {
 
             await render(
                 <GtkNotebook ref={notebookRef}>
-                    <NotebookPage label="Page 1">
-                        <GtkLabel label="Content 1" />
-                    </NotebookPage>
-                    <NotebookPage label="Page 2">
-                        <GtkLabel label="Content 2" />
-                    </NotebookPage>
-                    <NotebookPage label="Page 3">
-                        <GtkLabel label="Content 3" />
-                    </NotebookPage>
+                    <NotebookPage label="Page 1">Content 1</NotebookPage>
+                    <NotebookPage label="Page 2">Content 2</NotebookPage>
+                    <NotebookPage label="Page 3">Content 3</NotebookPage>
                 </GtkNotebook>,
                 { wrapper: false },
             );
@@ -90,7 +82,7 @@ describe("render - NotebookPage", () => {
                     <GtkNotebook ref={notebookRef}>
                         {pages.map((label) => (
                             <NotebookPage key={label} label={label}>
-                                <GtkLabel label={label} />
+                                {label}
                             </NotebookPage>
                         ))}
                     </GtkNotebook>
@@ -112,7 +104,7 @@ describe("render - NotebookPage", () => {
                     <GtkNotebook ref={notebookRef}>
                         {pages.map((label) => (
                             <NotebookPage key={label} label={label}>
-                                <GtkLabel label={label} />
+                                {label}
                             </NotebookPage>
                         ))}
                     </GtkNotebook>

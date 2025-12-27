@@ -400,7 +400,7 @@ export class JsxGenerator {
             lines.push(`\t * Render function for list items.`);
             lines.push(`\t * Called with null during setup (for loading state) and with the actual item during bind.`);
             lines.push(`\t */`);
-            lines.push(`\trenderItem: (item: any) => import("react").ReactElement;`);
+            lines.push(`\trenderItem: (item: any) => import("react").ReactNode;`);
         }
 
         if (isDropDownWidget(widgetName)) {
