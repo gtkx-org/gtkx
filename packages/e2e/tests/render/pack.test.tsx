@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -9,7 +9,7 @@ describe("render - Pack", () => {
         it("creates Box widget", async () => {
             const ref = createRef<Gtk.Box>();
 
-            await render(<GtkBox ref={ref} />, { wrapper: false });
+            await render(<GtkBox ref={ref} spacing={0} orientation={Gtk.Orientation.HORIZONTAL} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
         });
@@ -18,7 +18,7 @@ describe("render - Pack", () => {
             const boxRef = createRef<Gtk.Box>();
 
             await render(
-                <GtkBox ref={boxRef}>
+                <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
                     <GtkLabel label="First" />
                     <GtkLabel label="Second" />
                 </GtkBox>,
@@ -34,7 +34,7 @@ describe("render - Pack", () => {
 
             function App({ count }: { count: number }) {
                 return (
-                    <GtkBox ref={boxRef}>
+                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
                         {Array.from({ length: count }, (_, i) => (
                             // biome-ignore lint/suspicious/noArrayIndexKey: Test intentionally uses index keys
                             <GtkLabel key={`label-${i}`} label={`Label ${i}`} />
@@ -47,7 +47,7 @@ describe("render - Pack", () => {
             await render(<App count={1} />, { wrapper: false });
 
             expect(boxRef.current?.getFirstChild()).not.toBeNull();
-            expect(boxRef.current?.getFirstChild()).toBe(boxRef.current?.getLastChild());
+            expect(boxRef.current?.getFirstChild()?.equals(boxRef.current?.getLastChild())).toBe(true);
         });
     });
 });

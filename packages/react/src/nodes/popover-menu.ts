@@ -6,6 +6,7 @@ import type { Container, Props } from "../types.js";
 import { isContainerType } from "./internal/utils.js";
 import { MenuNode } from "./menu.js";
 import { Menu } from "./models/menu.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 const ACTION_PREFIX = "menu";
@@ -41,7 +42,7 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | 
     }
 
     public override appendChild(child: Node): void {
-        if (child instanceof WidgetNode) {
+        if (child instanceof SlotNode || child instanceof WidgetNode) {
             super.appendChild(child);
             return;
         }
@@ -54,7 +55,7 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | 
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof WidgetNode) {
+        if (child instanceof SlotNode || child instanceof WidgetNode) {
             super.insertBefore(child, before);
             return;
         }
@@ -67,7 +68,7 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | 
     }
 
     public override removeChild(child: Node): void {
-        if (child instanceof WidgetNode) {
+        if (child instanceof SlotNode || child instanceof WidgetNode) {
             super.removeChild(child);
             return;
         }

@@ -4,6 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "build": "tsc -b",
         "test": "../../scripts/run-tests.sh"
     },
     "dependencies": {

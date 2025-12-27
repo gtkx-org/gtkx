@@ -1,3 +1,5 @@
+import { getObjectId } from "@gtkx/native";
+
 export abstract class NativeObject {
     static readonly glibTypeName: string;
 
@@ -8,6 +10,11 @@ export abstract class NativeObject {
     // biome-ignore lint/complexity/noUselessConstructor: Required for NativeClass type compatibility
     // biome-ignore lint/suspicious/noExplicitAny: Required for NativeClass type compatibility
     constructor(..._args: any[]) {}
+
+    equals(other: unknown): boolean {
+        if (!(other instanceof NativeObject)) return false;
+        return getObjectId(this.id) === getObjectId(other.id);
+    }
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior

@@ -1,4 +1,3 @@
-import { getObjectId } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
@@ -62,7 +61,7 @@ class OverlayNode extends WidgetNode<Gtk.Overlay> {
         }
 
         const currentChild = this.container.getChild();
-        if (currentChild && getObjectId(currentChild.id) === getObjectId(child.container.id)) {
+        if (currentChild?.equals(child.container)) {
             this.container.setChild(undefined);
         } else {
             this.container.removeOverlay(child.container);

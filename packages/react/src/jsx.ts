@@ -153,6 +153,8 @@ export const Toolbar = {
 
 export const Overlay = "Overlay" as const;
 
+export const OverlayChild = "OverlayChild" as const;
+
 export const Menu = {
     Item: "Menu.Item" as const,
     Section: "Menu.Section" as const,

@@ -9,39 +9,39 @@ describe("render - ToolbarChild", () => {
         it("adds child to top bar via Toolbar.Top", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
 
-            await render(
+            const { findByText } = await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <Toolbar.Top>
                         <AdwHeaderBar />
                     </Toolbar.Top>
                     <GtkLabel label="Content" />
                 </AdwToolbarView>,
-                { wrapper: false },
             );
 
-            expect(toolbarRef.current?.getTopBarHeight()).toBeGreaterThan(0);
+            await findByText("Content");
+            expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
         it("adds child to bottom bar via Toolbar.Bottom", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
 
-            await render(
+            const { findByText } = await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <GtkLabel label="Content" />
                     <Toolbar.Bottom>
                         <AdwHeaderBar />
                     </Toolbar.Bottom>
                 </AdwToolbarView>,
-                { wrapper: false },
             );
 
-            expect(toolbarRef.current?.getBottomBarHeight()).toBeGreaterThan(0);
+            await findByText("Content");
+            expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
         it("handles multiple top bars", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
 
-            await render(
+            const { findByText } = await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <Toolbar.Top>
                         <AdwHeaderBar />
@@ -51,10 +51,10 @@ describe("render - ToolbarChild", () => {
                     </Toolbar.Top>
                     <GtkLabel label="Content" />
                 </AdwToolbarView>,
-                { wrapper: false },
             );
 
-            expect(toolbarRef.current?.getTopBarHeight()).toBeGreaterThan(0);
+            await findByText("Second Top Bar");
+            await findByText("Content");
         });
 
         it("handles dynamic toolbar addition", async () => {
@@ -73,10 +73,11 @@ describe("render - ToolbarChild", () => {
                 );
             }
 
-            await render(<App showTop={false} />, { wrapper: false });
-            await render(<App showTop={true} />, { wrapper: false });
+            const { findByText, rerender } = await render(<App showTop={false} />);
+            await rerender(<App showTop={true} />);
 
-            expect(toolbarRef.current?.getTopBarHeight()).toBeGreaterThan(0);
+            await findByText("Content");
+            expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
     });
 });

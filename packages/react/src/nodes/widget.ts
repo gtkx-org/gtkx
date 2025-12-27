@@ -1,4 +1,4 @@
-import { batch, getObjectId, NativeObject } from "@gtkx/ffi";
+import { batch, NativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS, PROPS, SIGNALS } from "../generated/internal.js";
 import { Node } from "../node.js";
@@ -110,7 +110,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 let beforeChild = this.container.getFirstChild();
 
                 while (beforeChild) {
-                    if (getObjectId(beforeChild.id) === getObjectId(before.container.id)) {
+                    if (beforeChild.equals(before.container)) {
                         break;
                     }
 
@@ -123,8 +123,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
                 const previousSibling = beforeChild.getPrevSibling() ?? undefined;
                 const currentParent = child.container.getParent();
-                const isChildOfThisContainer =
-                    currentParent !== null && getObjectId(currentParent.id) === getObjectId(this.container.id);
+                const isChildOfThisContainer = currentParent?.equals(this.container);
 
                 if (isChildOfThisContainer) {
                     this.container.reorderChildAfter(child.container, previousSibling);
@@ -144,7 +143,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 let currentChild = this.container.getFirstChild();
 
                 while (currentChild) {
-                    if (getObjectId(currentChild.id) === getObjectId(before.container.id)) {
+                    if (currentChild.equals(before.container)) {
                         break;
                     }
 
@@ -205,12 +204,11 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         if (getter && typeof getter === "function") {
             const currentValue = getter.call(this.container);
 
-            const isSameObject =
-                currentValue instanceof NativeObject &&
-                value instanceof NativeObject &&
-                getObjectId(currentValue.id) === getObjectId(value.id);
+            if (currentValue === value) {
+                return;
+            }
 
-            if (isSameObject || currentValue === value) {
+            if (currentValue instanceof NativeObject && currentValue.equals(value)) {
                 return;
             }
         }

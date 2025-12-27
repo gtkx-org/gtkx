@@ -19,8 +19,8 @@ describe("render - PopoverMenu", () => {
 
             await render(
                 <GtkPopoverMenu ref={popoverRef}>
-                    <Menu.Item label="Item 1" />
-                    <Menu.Item label="Item 2" />
+                    <Menu.Item id="item1" label="Item 1" onActivate={() => {}} />
+                    <Menu.Item id="item2" label="Item 2" onActivate={() => {}} />
                 </GtkPopoverMenu>,
                 { wrapper: false },
             );
@@ -33,8 +33,8 @@ describe("render - PopoverMenu", () => {
 
             await render(
                 <GtkMenuButton ref={buttonRef}>
-                    <Menu.Item label="Option 1" />
-                    <Menu.Item label="Option 2" />
+                    <Menu.Item id="opt1" label="Option 1" onActivate={() => {}} />
+                    <Menu.Item id="opt2" label="Option 2" onActivate={() => {}} />
                 </GtkMenuButton>,
                 { wrapper: false },
             );
@@ -47,9 +47,9 @@ describe("render - PopoverMenu", () => {
 
             await render(
                 <GtkPopoverMenu ref={popoverRef}>
-                    <Menu.Item label="First" />
-                    <Menu.Item label="Second" />
-                    <Menu.Item label="Third" />
+                    <Menu.Item id="first" label="First" onActivate={() => {}} />
+                    <Menu.Item id="second" label="Second" onActivate={() => {}} />
+                    <Menu.Item id="third" label="Third" onActivate={() => {}} />
                 </GtkPopoverMenu>,
                 { wrapper: false },
             );
@@ -59,11 +59,11 @@ describe("render - PopoverMenu", () => {
 
         it("handles menu item with action", async () => {
             const popoverRef = createRef<Gtk.PopoverMenu>();
-            const action = vi.fn();
+            const onActivate = vi.fn();
 
             await render(
                 <GtkPopoverMenu ref={popoverRef}>
-                    <Menu.Item label="Click Me" action={action} />
+                    <Menu.Item id="click" label="Click Me" onActivate={onActivate} />
                 </GtkPopoverMenu>,
                 { wrapper: false },
             );
@@ -78,7 +78,7 @@ describe("render - PopoverMenu", () => {
                 return (
                     <GtkPopoverMenu ref={popoverRef}>
                         {items.map((label) => (
-                            <Menu.Item key={label} label={label} />
+                            <Menu.Item key={label} id={label} label={label} onActivate={() => {}} />
                         ))}
                     </GtkPopoverMenu>
                 );
@@ -97,10 +97,10 @@ describe("render - PopoverMenu", () => {
             await render(
                 <GtkPopoverMenu ref={popoverRef}>
                     <Menu.Section>
-                        <Menu.Item label="Section 1 Item" />
+                        <Menu.Item id="s1item" label="Section 1 Item" onActivate={() => {}} />
                     </Menu.Section>
                     <Menu.Section>
-                        <Menu.Item label="Section 2 Item" />
+                        <Menu.Item id="s2item" label="Section 2 Item" onActivate={() => {}} />
                     </Menu.Section>
                 </GtkPopoverMenu>,
                 { wrapper: false },

@@ -25,6 +25,8 @@ export class GridChildNode extends SlotNode<Props> {
     }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
+        super.updateProps(oldProps, newProps);
+
         if (
             !oldProps ||
             oldProps.column !== newProps.column ||
@@ -46,11 +48,15 @@ export class GridChildNode extends SlotNode<Props> {
         const rowSpan = this.props.rowSpan ?? 1;
         const existingChild = grid.getChildAt(column, row);
 
-        if (existingChild) {
+        if (existingChild && !existingChild.equals(this.child)) {
             grid.remove(existingChild);
         }
 
         if (this.child) {
+            const currentParent = this.child.getParent();
+            if (currentParent !== null && currentParent.equals(grid)) {
+                grid.remove(this.child);
+            }
             grid.attach(this.child, column, row, columnSpan, rowSpan);
         }
     }

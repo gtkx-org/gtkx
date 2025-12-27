@@ -21,8 +21,8 @@ describe("render - OverlayChild", () => {
                 { wrapper: false },
             );
 
-            expect(overlayRef.current?.getChild()?.id).toBe(mainRef.current?.id);
-            expect(overlayChildRef.current?.getParent()?.id).toBe(overlayRef.current?.id);
+            expect(overlayRef.current?.getChild()?.equals(mainRef.current)).toBe(true);
+            expect(overlayChildRef.current?.getParent()?.equals(overlayRef.current)).toBe(true);
         });
 
         it("sets measure property", async () => {

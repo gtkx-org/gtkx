@@ -1,4 +1,4 @@
-import { batch, getObjectId } from "@gtkx/ffi";
+import { batch } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
@@ -135,7 +135,7 @@ export class Menu extends VirtualNode<MenuProps> {
             } else {
                 const link = parent.getItemLink(i, this.type);
 
-                if (link && getObjectId(link.id) === getObjectId(this.menu.id)) {
+                if (link?.equals(this.menu)) {
                     return i;
                 }
             }

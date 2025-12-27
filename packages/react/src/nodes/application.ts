@@ -38,7 +38,7 @@ class ApplicationNode extends Node<Gtk.Application> {
         if (child instanceof MenuNode) {
             this.menu.removeChild(child);
 
-            if (child.getMenu().getNItems() === 0) {
+            if (this.menu.getMenu().getNItems() === 0) {
                 this.container.setMenubar(undefined);
             }
         }

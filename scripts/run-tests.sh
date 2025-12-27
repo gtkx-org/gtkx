@@ -9,5 +9,9 @@ export NO_AT_BRIDGE=1
 if [ -n "${CI:-}" ]; then
     exec vitest run "$@"
 else
-    exec xvfb-run -a vitest run "$@"
+    exit_code=0
+    xvfb-run -a vitest run "$@" || exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        exit $exit_code
+    fi
 fi

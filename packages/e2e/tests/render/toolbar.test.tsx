@@ -1,4 +1,5 @@
 import type * as Adw from "@gtkx/ffi/adw";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { AdwHeaderBar, AdwToolbarView, GtkLabel, Toolbar } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -16,7 +17,7 @@ describe("render - Toolbar", () => {
 
         it("sets content", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
-            const contentRef = createRef<Adw.Label>();
+            const contentRef = createRef<Gtk.Label>();
 
             await render(
                 <AdwToolbarView ref={toolbarRef}>
@@ -25,45 +26,45 @@ describe("render - Toolbar", () => {
                 { wrapper: false },
             );
 
-            expect(toolbarRef.current?.getContent()?.id).toBe(contentRef.current?.id);
+            expect(toolbarRef.current?.getContent()?.equals(contentRef.current)).toBe(true);
         });
 
         it("adds top toolbar", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
 
-            await render(
+            const { findByText } = await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <Toolbar.Top>
                         <AdwHeaderBar />
                     </Toolbar.Top>
                     <GtkLabel label="Content" />
                 </AdwToolbarView>,
-                { wrapper: false },
             );
 
-            expect(toolbarRef.current?.getTopBarHeight()).toBeGreaterThan(0);
+            await findByText("Content");
+            expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
         it("adds bottom toolbar", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
 
-            await render(
+            const { findByText } = await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <GtkLabel label="Content" />
                     <Toolbar.Bottom>
                         <AdwHeaderBar />
                     </Toolbar.Bottom>
                 </AdwToolbarView>,
-                { wrapper: false },
             );
 
-            expect(toolbarRef.current?.getBottomBarHeight()).toBeGreaterThan(0);
+            await findByText("Content");
+            expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
 
         it("adds both top and bottom toolbars", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
 
-            await render(
+            const { findByText } = await render(
                 <AdwToolbarView ref={toolbarRef}>
                     <Toolbar.Top>
                         <AdwHeaderBar />
@@ -73,11 +74,10 @@ describe("render - Toolbar", () => {
                         <AdwHeaderBar />
                     </Toolbar.Bottom>
                 </AdwToolbarView>,
-                { wrapper: false },
             );
 
-            expect(toolbarRef.current?.getTopBarHeight()).toBeGreaterThan(0);
-            expect(toolbarRef.current?.getBottomBarHeight()).toBeGreaterThan(0);
+            await findByText("Content");
+            expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
     });
 });

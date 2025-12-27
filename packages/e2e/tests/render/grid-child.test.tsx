@@ -20,7 +20,7 @@ describe("render - GridChild", () => {
             );
 
             const childAt = gridRef.current?.getChildAt(1, 2);
-            expect(childAt?.id).toBe(labelRef.current?.id);
+            expect(childAt?.equals(labelRef.current)).toBe(true);
         });
 
         it("positions child at default (0,0) when no position specified", async () => {
@@ -37,7 +37,7 @@ describe("render - GridChild", () => {
             );
 
             const childAt = gridRef.current?.getChildAt(0, 0);
-            expect(childAt?.id).toBe(labelRef.current?.id);
+            expect(childAt?.equals(labelRef.current)).toBe(true);
         });
 
         it("sets column span", async () => {
@@ -53,9 +53,9 @@ describe("render - GridChild", () => {
                 { wrapper: false },
             );
 
-            expect(gridRef.current?.getChildAt(0, 0)?.id).toBe(labelRef.current?.id);
-            expect(gridRef.current?.getChildAt(1, 0)?.id).toBe(labelRef.current?.id);
-            expect(gridRef.current?.getChildAt(2, 0)?.id).toBe(labelRef.current?.id);
+            expect(gridRef.current?.getChildAt(0, 0)?.equals(labelRef.current)).toBe(true);
+            expect(gridRef.current?.getChildAt(1, 0)?.equals(labelRef.current)).toBe(true);
+            expect(gridRef.current?.getChildAt(2, 0)?.equals(labelRef.current)).toBe(true);
         });
 
         it("sets row span", async () => {
@@ -71,8 +71,8 @@ describe("render - GridChild", () => {
                 { wrapper: false },
             );
 
-            expect(gridRef.current?.getChildAt(0, 0)?.id).toBe(labelRef.current?.id);
-            expect(gridRef.current?.getChildAt(0, 1)?.id).toBe(labelRef.current?.id);
+            expect(gridRef.current?.getChildAt(0, 0)?.equals(labelRef.current)).toBe(true);
+            expect(gridRef.current?.getChildAt(0, 1)?.equals(labelRef.current)).toBe(true);
         });
 
         it("updates position on prop change", async () => {
@@ -90,10 +90,10 @@ describe("render - GridChild", () => {
             }
 
             await render(<App col={0} row={0} />, { wrapper: false });
-            expect(gridRef.current?.getChildAt(0, 0)?.id).toBe(labelRef.current?.id);
+            expect(gridRef.current?.getChildAt(0, 0)?.equals(labelRef.current)).toBe(true);
 
             await render(<App col={2} row={1} />, { wrapper: false });
-            expect(gridRef.current?.getChildAt(2, 1)?.id).toBe(labelRef.current?.id);
+            expect(gridRef.current?.getChildAt(2, 1)?.equals(labelRef.current)).toBe(true);
         });
 
         it("places multiple children in grid", async () => {
@@ -113,8 +113,8 @@ describe("render - GridChild", () => {
                 { wrapper: false },
             );
 
-            expect(gridRef.current?.getChildAt(0, 0)?.id).toBe(label1Ref.current?.id);
-            expect(gridRef.current?.getChildAt(1, 1)?.id).toBe(label2Ref.current?.id);
+            expect(gridRef.current?.getChildAt(0, 0)?.equals(label1Ref.current)).toBe(true);
+            expect(gridRef.current?.getChildAt(1, 1)?.equals(label2Ref.current)).toBe(true);
         });
 
         it("removes child from grid", async () => {

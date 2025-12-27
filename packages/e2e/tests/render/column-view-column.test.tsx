@@ -11,7 +11,7 @@ describe("render - ColumnViewColumn", () => {
 
             await render(
                 <GtkColumnView ref={columnViewRef}>
-                    <ColumnViewColumn title="Name" renderCell={() => <GtkLabel label="Cell" />} />
+                    <ColumnViewColumn id="name" title="Name" renderCell={() => <GtkLabel label="Cell" />} />
                 </GtkColumnView>,
                 { wrapper: false },
             );
@@ -24,13 +24,13 @@ describe("render - ColumnViewColumn", () => {
 
             await render(
                 <GtkColumnView ref={columnViewRef}>
-                    <ColumnViewColumn title="My Column" renderCell={() => <GtkLabel label="Cell" />} />
+                    <ColumnViewColumn id="col" title="My Column" renderCell={() => <GtkLabel label="Cell" />} />
                 </GtkColumnView>,
                 { wrapper: false },
             );
 
             const columns = columnViewRef.current?.getColumns();
-            const column = columns?.getItem(0) as Gtk.ColumnViewColumn;
+            const column = columns?.getObject(0) as Gtk.ColumnViewColumn;
             expect(column?.getTitle()).toBe("My Column");
         });
 
@@ -39,13 +39,13 @@ describe("render - ColumnViewColumn", () => {
 
             await render(
                 <GtkColumnView ref={columnViewRef}>
-                    <ColumnViewColumn title="Expandable" expand={true} renderCell={() => <GtkLabel label="Cell" />} />
+                    <ColumnViewColumn id="expand" title="Expandable" expand={true} renderCell={() => <GtkLabel label="Cell" />} />
                 </GtkColumnView>,
                 { wrapper: false },
             );
 
             const columns = columnViewRef.current?.getColumns();
-            const column = columns?.getItem(0) as Gtk.ColumnViewColumn;
+            const column = columns?.getObject(0) as Gtk.ColumnViewColumn;
             expect(column?.getExpand()).toBe(true);
         });
 
@@ -54,13 +54,13 @@ describe("render - ColumnViewColumn", () => {
 
             await render(
                 <GtkColumnView ref={columnViewRef}>
-                    <ColumnViewColumn title="Resizable" resizable={true} renderCell={() => <GtkLabel label="Cell" />} />
+                    <ColumnViewColumn id="resize" title="Resizable" resizable={true} renderCell={() => <GtkLabel label="Cell" />} />
                 </GtkColumnView>,
                 { wrapper: false },
             );
 
             const columns = columnViewRef.current?.getColumns();
-            const column = columns?.getItem(0) as Gtk.ColumnViewColumn;
+            const column = columns?.getObject(0) as Gtk.ColumnViewColumn;
             expect(column?.getResizable()).toBe(true);
         });
 
@@ -69,9 +69,9 @@ describe("render - ColumnViewColumn", () => {
 
             await render(
                 <GtkColumnView ref={columnViewRef}>
-                    <ColumnViewColumn title="Column 1" renderCell={() => <GtkLabel label="Cell 1" />} />
-                    <ColumnViewColumn title="Column 2" renderCell={() => <GtkLabel label="Cell 2" />} />
-                    <ColumnViewColumn title="Column 3" renderCell={() => <GtkLabel label="Cell 3" />} />
+                    <ColumnViewColumn id="col1" title="Column 1" renderCell={() => <GtkLabel label="Cell 1" />} />
+                    <ColumnViewColumn id="col2" title="Column 2" renderCell={() => <GtkLabel label="Cell 2" />} />
+                    <ColumnViewColumn id="col3" title="Column 3" renderCell={() => <GtkLabel label="Cell 3" />} />
                 </GtkColumnView>,
                 { wrapper: false },
             );
@@ -85,17 +85,17 @@ describe("render - ColumnViewColumn", () => {
             function App({ title }: { title: string }) {
                 return (
                     <GtkColumnView ref={columnViewRef}>
-                        <ColumnViewColumn title={title} renderCell={() => <GtkLabel label="Cell" />} />
+                        <ColumnViewColumn id="col" title={title} renderCell={() => <GtkLabel label="Cell" />} />
                     </GtkColumnView>
                 );
             }
 
             await render(<App title="Initial" />, { wrapper: false });
-            let column = columnViewRef.current?.getColumns()?.getItem(0) as Gtk.ColumnViewColumn;
+            let column = columnViewRef.current?.getColumns()?.getObject(0) as Gtk.ColumnViewColumn;
             expect(column?.getTitle()).toBe("Initial");
 
             await render(<App title="Updated" />, { wrapper: false });
-            column = columnViewRef.current?.getColumns()?.getItem(0) as Gtk.ColumnViewColumn;
+            column = columnViewRef.current?.getColumns()?.getObject(0) as Gtk.ColumnViewColumn;
             expect(column?.getTitle()).toBe("Updated");
         });
 
@@ -106,7 +106,7 @@ describe("render - ColumnViewColumn", () => {
                 return (
                     <GtkColumnView ref={columnViewRef}>
                         {columns.map((title) => (
-                            <ColumnViewColumn key={title} title={title} renderCell={() => <GtkLabel label={title} />} />
+                            <ColumnViewColumn key={title} id={title} title={title} renderCell={() => <GtkLabel label={title} />} />
                         ))}
                     </GtkColumnView>
                 );

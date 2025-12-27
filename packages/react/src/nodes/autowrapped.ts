@@ -1,4 +1,4 @@
-import { batch, getObjectId } from "@gtkx/ffi";
+import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
@@ -111,7 +111,7 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         while (currentChild) {
             const widgetToCompare = beforeIsWrapper ? currentChild : this.unwrapChild(currentChild);
 
-            if (widgetToCompare && getObjectId(widgetToCompare.id) === getObjectId(before.container.id)) {
+            if (widgetToCompare?.equals(before.container)) {
                 return position;
             }
 
