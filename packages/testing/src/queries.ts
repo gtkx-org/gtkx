@@ -326,13 +326,6 @@ const getByTestId = (container: Container, testId: TextMatch, options?: TextMatc
     return first;
 };
 
-/**
- * Waits for and finds a single widget matching the specified accessible role.
- * @param container - The container to search within
- * @param role - The accessible role to match
- * @param options - Additional filtering options (name, checked, expanded)
- * @returns Promise resolving to the matching widget
- */
 export const findByRole = async (
     container: Container,
     role: Gtk.AccessibleRole,
@@ -342,13 +335,6 @@ export const findByRole = async (
         timeout: options?.timeout,
     });
 
-/**
- * Waits for and finds all widgets matching the specified accessible role.
- * @param container - The container to search within
- * @param role - The accessible role to match
- * @param options - Additional filtering options (name, checked, expanded)
- * @returns Promise resolving to array of matching widgets
- */
 export const findAllByRole = async (
     container: Container,
     role: Gtk.AccessibleRole,
@@ -358,13 +344,6 @@ export const findAllByRole = async (
         timeout: options?.timeout,
     });
 
-/**
- * Waits for and finds a single widget matching the specified label text.
- * @param container - The container to search within
- * @param text - The text, pattern, or matcher function
- * @param options - Text matching options (exact, normalizer, timeout)
- * @returns Promise resolving to the matching widget
- */
 export const findByLabelText = async (
     container: Container,
     text: TextMatch,
@@ -374,13 +353,6 @@ export const findByLabelText = async (
         timeout: options?.timeout,
     });
 
-/**
- * Waits for and finds all widgets matching the specified label text.
- * @param container - The container to search within
- * @param text - The text, pattern, or matcher function
- * @param options - Text matching options (exact, normalizer, timeout)
- * @returns Promise resolving to array of matching widgets
- */
 export const findAllByLabelText = async (
     container: Container,
     text: TextMatch,
@@ -390,13 +362,6 @@ export const findAllByLabelText = async (
         timeout: options?.timeout,
     });
 
-/**
- * Waits for and finds a single widget matching the specified text content.
- * @param container - The container to search within
- * @param text - The text, pattern, or matcher function
- * @param options - Text matching options (exact, normalizer, timeout)
- * @returns Promise resolving to the matching widget
- */
 export const findByText = async (
     container: Container,
     text: TextMatch,
@@ -406,13 +371,6 @@ export const findByText = async (
         timeout: options?.timeout,
     });
 
-/**
- * Waits for and finds all widgets matching the specified text content.
- * @param container - The container to search within
- * @param text - The text, pattern, or matcher function
- * @param options - Text matching options (exact, normalizer, timeout)
- * @returns Promise resolving to array of matching widgets
- */
 export const findAllByText = async (
     container: Container,
     text: TextMatch,
@@ -422,13 +380,6 @@ export const findAllByText = async (
         timeout: options?.timeout,
     });
 
-/**
- * Waits for and finds a single widget matching the specified test ID.
- * @param container - The container to search within
- * @param testId - The test ID, pattern, or matcher function
- * @param options - Text matching options (exact, normalizer, timeout)
- * @returns Promise resolving to the matching widget
- */
 export const findByTestId = async (
     container: Container,
     testId: TextMatch,
@@ -438,13 +389,6 @@ export const findByTestId = async (
         timeout: options?.timeout,
     });
 
-/**
- * Waits for and finds all widgets matching the specified test ID.
- * @param container - The container to search within
- * @param testId - The test ID, pattern, or matcher function
- * @param options - Text matching options (exact, normalizer, timeout)
- * @returns Promise resolving to array of matching widgets
- */
 export const findAllByTestId = async (
     container: Container,
     testId: TextMatch,

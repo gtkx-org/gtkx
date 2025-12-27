@@ -1,8 +1,4 @@
-//! FFI Call Interface (CIF) value types and conversions.
-//!
-//! This module provides types for representing values in libffi calls,
-//! including owned pointers that manage memory lifetime and conversion
-//! from argument types to CIF-compatible representations.
+
 
 use std::{
     any::Any,
@@ -22,80 +18,61 @@ use crate::{
     value,
 };
 
-/// A pointer that owns its referenced data.
-///
-/// This struct ensures that heap-allocated data passed to FFI calls
-/// remains valid for the duration of the call. The `value` field holds
-/// the actual Rust value, while `ptr` points to its memory location.
 #[derive(Debug)]
 #[repr(C)]
 pub struct OwnedPtr {
-    /// Raw pointer to the data.
+
     pub ptr: *mut c_void,
-    /// Boxed value that owns the data, ensuring it lives long enough.
+
     pub value: Box<dyn Any>,
 }
 
-/// A value representation for libffi function calls.
-///
-/// Each variant corresponds to a C type that can be passed to or returned
-/// from FFI calls. This includes primitive types, pointers, and special
-/// callback trampolines for GTK signal handlers.
 #[derive(Debug)]
 pub enum Value {
-    /// Unsigned 8-bit integer.
+
     U8(u8),
-    /// Signed 8-bit integer.
+
     I8(i8),
-    /// Unsigned 16-bit integer.
+
     U16(u16),
-    /// Signed 16-bit integer.
+
     I16(i16),
-    /// Unsigned 32-bit integer.
+
     U32(u32),
-    /// Signed 32-bit integer.
+
     I32(i32),
-    /// Unsigned 64-bit integer.
+
     U64(u64),
-    /// Signed 64-bit integer.
+
     I64(i64),
-    /// 32-bit floating point.
+
     F32(f32),
-    /// 64-bit floating point.
+
     F64(f64),
-    /// Raw pointer (borrowed, not owned).
+
     Ptr(*mut c_void),
-    /// Pointer with owned data that must outlive the FFI call.
+
     OwnedPtr(OwnedPtr),
-    /// Callback with trampoline function for GTK signals.
+
     TrampolineCallback(TrampolineCallbackValue),
-    /// Void (no value).
+
     Void,
 }
 
-/// A callback value with a trampoline for GTK signal handling.
-///
-/// GTK callbacks require C-compatible function pointers, but we need to
-/// invoke JavaScript callbacks. This struct holds the trampoline function
-/// pointer (the C-compatible wrapper) and the closure containing the
-/// actual JavaScript callback.
 #[derive(Debug)]
 pub struct TrampolineCallbackValue {
-    /// Pointer to the C trampoline function.
+
     pub trampoline_ptr: *mut c_void,
-    /// The GLib closure containing the JavaScript callback.
+
     pub closure: OwnedPtr,
-    /// Optional destroy notify function pointer.
+
     pub destroy_ptr: Option<*mut c_void>,
-    /// Whether to emit closure pointer before trampoline pointer.
-    /// Used for GDestroyNotify-style callbacks where data precedes the function.
+
     pub data_first: bool,
 }
 
 impl OwnedPtr {
-    /// Creates a new owned pointer from a value and its raw pointer.
-    ///
-    /// The value is boxed to ensure it outlives the FFI call.
+
     pub fn new<T: 'static>(value: T, ptr: *mut c_void) -> Self {
         Self {
             value: Box::new(value),
@@ -158,23 +135,12 @@ where
     wait_for_js_result(rx, on_result)
 }
 
-/// Transfers ownership of a closure to C, returning a raw pointer.
-///
-/// This adds a reference to the closure (and sinks any floating reference),
-/// returning a pointer that the caller is responsible for eventually unreffing.
-/// Use this when Rust retains ownership and will drop the closure later.
 fn closure_to_glib_full(closure: &glib::Closure) -> *mut c_void {
     use glib::translate::ToGlibPtr as _;
     let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
     ptr as *mut c_void
 }
 
-/// Transfers full ownership of a closure to C for async callbacks.
-///
-/// Unlike `closure_to_glib_full`, this completely transfers ownership to C
-/// by using `forget()` to prevent Rust from dropping the closure. Use this
-/// for callbacks that may be invoked asynchronously after the FFI call returns
-/// (e.g., idle sources, timeouts) where a destroy notify will handle cleanup.
 fn closure_ptr_for_transfer(closure: glib::Closure) -> *mut c_void {
     use glib::translate::ToGlibPtr as _;
     let stash: glib::translate::Stash<*mut glib::gobject_ffi::GClosure, _> = closure.to_glib_none();
@@ -356,12 +322,7 @@ impl TryFrom<arg::Arg> for Value {
 }
 
 impl Value {
-    /// Returns a raw pointer to this value's data.
-    ///
-    /// # Panics
-    ///
-    /// Panics if called on a `TrampolineCallback` variant, which requires
-    /// special multi-pointer handling in the call module.
+
     pub fn as_ptr(&self) -> *mut c_void {
         match self {
             Value::U8(value) => value as *const u8 as *mut c_void,
@@ -672,24 +633,18 @@ impl Value {
             _ => bail!("Expected a Ref for ref type, got {:?}", arg.value),
         };
 
-        // For Boxed and GObject types, check if caller allocated the memory.
-        // - If value is an ObjectId: caller-allocates, pass pointer directly (GTK writes INTO memory)
-        // - If value is null/undefined: GTK-allocates, pass pointer-to-pointer (GTK writes pointer back)
         match &*type_.inner_type {
             Type::Boxed(_) | Type::GObject(_) | Type::GVariant(_) => {
                 match &*r#ref.value {
                     value::Value::Object(id) => {
-                        // Caller-allocates: pass the pointer directly
+
                         let ptr = id.as_ptr().ok_or_else(|| {
                             anyhow::anyhow!("Ref object has been garbage collected")
                         })?;
                         Ok(Value::Ptr(ptr))
                     }
                     value::Value::Null | value::Value::Undefined => {
-                        // GTK-allocates: need pointer-to-pointer semantics
-                        // Create heap storage for the pointer, initialized to null.
-                        // FFI passes the value at &owned_ptr.ptr to C, which is the address
-                        // of this storage. C writes the allocated pointer into this storage.
+
                         let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
                         let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
                         Ok(Value::OwnedPtr(OwnedPtr {
@@ -704,7 +659,7 @@ impl Value {
                 }
             }
             _ => {
-                // For primitive types, create storage and pass pointer to it
+
                 let ref_arg = Arg::new(*type_.inner_type.clone(), *r#ref.value.clone());
                 let ref_value = Box::new(Value::try_from(ref_arg)?);
                 let ref_ptr = ref_value.as_ptr();

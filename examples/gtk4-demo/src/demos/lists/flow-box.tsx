@@ -64,7 +64,7 @@ const FlowBoxDemo = () => {
                     >
                         {colors.map((color, index) => (
                             <GtkBox
-                                // biome-ignore lint/suspicious/noArrayIndexKey: ignore
+
                                 key={index}
                                 orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={0}

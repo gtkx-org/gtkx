@@ -1,9 +1,4 @@
-//! Callback trampolines for bridging JavaScript functions to GTK signals.
-//!
-//! GTK uses C function pointers for callbacks, but we need to invoke JavaScript
-//! functions. This module provides trampoline functions that act as C-compatible
-//! wrappers, receiving arguments from GTK and forwarding them to the appropriate
-//! GLib closure which then invokes the JavaScript callback.
+
 
 use std::ffi::c_void;
 
@@ -16,18 +11,11 @@ use gtk4::{
     },
 };
 
-/// Data for draw function callbacks, holding the closure and pre-computed GTypes.
 pub struct DrawFuncData {
     pub closure: *mut gobject_ffi::GClosure,
     pub arg_gtypes: Vec<glib::Type>,
 }
 
-/// Trampoline for GTK DrawingArea draw functions.
-///
-/// # Safety
-///
-/// This function is called from C code. The `user_data` pointer must be a valid
-/// pointer to a `DrawFuncData`, and all other pointers must be valid GTK objects.
 unsafe extern "C" fn draw_func_trampoline(
     drawing_area: *mut c_void,
     cr: *mut c_void,
@@ -95,17 +83,10 @@ unsafe extern "C" fn draw_func_trampoline(
     }
 }
 
-/// Returns the function pointer to the draw function trampoline.
 pub fn get_draw_func_trampoline_ptr() -> *mut c_void {
     draw_func_trampoline as *mut c_void
 }
 
-/// Trampoline for GDestroyNotify callbacks.
-///
-/// # Safety
-///
-/// This function is called from C code. The `user_data` pointer must be a valid
-/// pointer to a `GClosure`.
 unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
     let closure_ptr = user_data as *mut gobject_ffi::GClosure;
 
@@ -126,19 +107,10 @@ unsafe extern "C" fn destroy_trampoline(user_data: *mut c_void) {
     }
 }
 
-/// Returns the function pointer to the destroy trampoline.
 pub fn get_destroy_trampoline_ptr() -> *mut c_void {
     destroy_trampoline as *mut c_void
 }
 
-/// Destroy function for DrawFuncData.
-///
-/// Unrefs the closure and frees the DrawFuncData struct.
-///
-/// # Safety
-///
-/// This function is called from C code. The `user_data` pointer must be a valid
-/// pointer to a `DrawFuncData` that was created via `Box::into_raw`.
 unsafe extern "C" fn draw_func_data_destroy(user_data: *mut c_void) {
     let data_ptr = user_data as *mut DrawFuncData;
 
@@ -154,17 +126,10 @@ unsafe extern "C" fn draw_func_data_destroy(user_data: *mut c_void) {
     }
 }
 
-/// Returns the function pointer to the draw func data destroy function.
 pub fn get_draw_func_data_destroy_ptr() -> *mut c_void {
     draw_func_data_destroy as *mut c_void
 }
 
-/// Trampoline for GAsyncReadyCallback (async operation completion).
-///
-/// # Safety
-///
-/// This function is called from C code. All pointers must be valid GObject
-/// instances or null, and `user_data` must be a valid `GClosure` pointer.
 unsafe extern "C" fn async_ready_trampoline(
     source_object: *mut gobject_ffi::GObject,
     res: *mut GAsyncResult,
@@ -200,7 +165,6 @@ unsafe extern "C" fn async_ready_trampoline(
     }
 }
 
-/// Returns the function pointer to the async ready trampoline.
 pub fn get_async_ready_trampoline_ptr() -> *mut c_void {
     async_ready_trampoline as *mut c_void
 }

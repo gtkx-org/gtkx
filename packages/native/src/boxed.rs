@@ -1,17 +1,9 @@
-//! GLib boxed type wrapper with ownership tracking.
-//!
-//! Boxed types in GLib are heap-allocated structs that can be copied and freed.
-//! This module provides a wrapper that tracks ownership and properly frees
-//! the memory when dropped.
+
 
 use std::ffi::c_void;
 
 use gtk4::glib::{self, translate::IntoGlib as _};
 
-/// A wrapper around a GLib boxed type pointer.
-///
-/// Tracks whether we own the memory (and thus should free it on drop) or
-/// whether it's borrowed from another owner.
 #[derive(Debug)]
 pub struct Boxed {
     ptr: *mut c_void,
@@ -20,10 +12,7 @@ pub struct Boxed {
 }
 
 impl Boxed {
-    /// Creates a Boxed from a pointer with full ownership transfer.
-    ///
-    /// The caller transfers ownership of the memory to this Boxed, which will
-    /// free it when dropped.
+
     pub fn from_glib_full(type_: Option<glib::Type>, ptr: *mut c_void) -> Self {
         Self {
             ptr,
@@ -32,10 +21,6 @@ impl Boxed {
         }
     }
 
-    /// Creates a Boxed from a borrowed pointer.
-    ///
-    /// If the type is known, creates a copy using `g_boxed_copy`. Otherwise,
-    /// stores the pointer without ownership (caller must ensure it stays valid).
     pub fn from_glib_none(type_: Option<glib::Type>, ptr: *mut c_void) -> Self {
         if ptr.is_null() {
             return Self {

@@ -1,24 +1,14 @@
-/**
- * OpenGL function bindings via libGL.
- * These wrap raw OpenGL calls for use in GtkGLArea render handlers.
- */
+
 
 import { call, createRef } from "@gtkx/native";
 import { GL_INFO_LOG_LENGTH } from "./constants.js";
 
 const LIB = "libGL.so.1";
 
-/**
- * Clear buffers to preset values.
- * @param mask - Bitwise OR of masks indicating buffers to clear (GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT, etc.)
- */
 export function glClear(mask: number): void {
     call(LIB, "glClear", [{ type: { type: "int", size: 32, unsigned: true }, value: mask }], { type: "undefined" });
 }
 
-/**
- * Specify clear values for the color buffers.
- */
 export function glClearColor(red: number, green: number, blue: number, alpha: number): void {
     call(
         LIB,
@@ -33,9 +23,6 @@ export function glClearColor(red: number, green: number, blue: number, alpha: nu
     );
 }
 
-/**
- * Set the viewport.
- */
 export function glViewport(x: number, y: number, width: number, height: number): void {
     call(
         LIB,
@@ -50,39 +37,22 @@ export function glViewport(x: number, y: number, width: number, height: number):
     );
 }
 
-/**
- * Enable server-side GL capabilities.
- */
 export function glEnable(cap: number): void {
     call(LIB, "glEnable", [{ type: { type: "int", size: 32, unsigned: true }, value: cap }], { type: "undefined" });
 }
 
-/**
- * Disable server-side GL capabilities.
- */
 export function glDisable(cap: number): void {
     call(LIB, "glDisable", [{ type: { type: "int", size: 32, unsigned: true }, value: cap }], { type: "undefined" });
 }
 
-/**
- * Specify the clear value for the depth buffer.
- */
 export function glClearDepth(depth: number): void {
     call(LIB, "glClearDepth", [{ type: { type: "float", size: 64 }, value: depth }], { type: "undefined" });
 }
 
-/**
- * Specify the value used for depth buffer comparisons.
- */
 export function glDepthFunc(func: number): void {
     call(LIB, "glDepthFunc", [{ type: { type: "int", size: 32, unsigned: true }, value: func }], { type: "undefined" });
 }
 
-/**
- * Creates a shader object.
- * @param type - GL_VERTEX_SHADER or GL_FRAGMENT_SHADER
- * @returns Shader object ID
- */
 export function glCreateShader(type: number): number {
     return call(LIB, "glCreateShader", [{ type: { type: "int", size: 32, unsigned: true }, value: type }], {
         type: "int",
@@ -91,10 +61,6 @@ export function glCreateShader(type: number): number {
     }) as number;
 }
 
-/**
- * Replaces the source code in a shader object.
- * Note: This simplified version passes a single null-terminated string.
- */
 export function glShaderSource(shader: number, source: string): void {
     call(
         LIB,
@@ -109,18 +75,12 @@ export function glShaderSource(shader: number, source: string): void {
     );
 }
 
-/**
- * Compiles a shader object.
- */
 export function glCompileShader(shader: number): void {
     call(LIB, "glCompileShader", [{ type: { type: "int", size: 32, unsigned: true }, value: shader }], {
         type: "undefined",
     });
 }
 
-/**
- * Returns a parameter from a shader object.
- */
 export function glGetShaderiv(shader: number, pname: number): number {
     const params = createRef(0);
     call(
@@ -136,9 +96,6 @@ export function glGetShaderiv(shader: number, pname: number): number {
     return params.value;
 }
 
-/**
- * Returns the information log for a shader object.
- */
 export function glGetShaderInfoLog(shader: number, _maxLength: number): string {
     const logLength = glGetShaderiv(shader, GL_INFO_LOG_LENGTH);
     if (logLength <= 0) {
@@ -148,25 +105,16 @@ export function glGetShaderInfoLog(shader: number, _maxLength: number): string {
     return `Shader info log length: ${logLength} (use console.error for details)`;
 }
 
-/**
- * Deletes a shader object.
- */
 export function glDeleteShader(shader: number): void {
     call(LIB, "glDeleteShader", [{ type: { type: "int", size: 32, unsigned: true }, value: shader }], {
         type: "undefined",
     });
 }
 
-/**
- * Creates a program object.
- */
 export function glCreateProgram(): number {
     return call(LIB, "glCreateProgram", [], { type: "int", size: 32, unsigned: true }) as number;
 }
 
-/**
- * Attaches a shader object to a program object.
- */
 export function glAttachShader(program: number, shader: number): void {
     call(
         LIB,
@@ -179,27 +127,18 @@ export function glAttachShader(program: number, shader: number): void {
     );
 }
 
-/**
- * Links a program object.
- */
 export function glLinkProgram(program: number): void {
     call(LIB, "glLinkProgram", [{ type: { type: "int", size: 32, unsigned: true }, value: program }], {
         type: "undefined",
     });
 }
 
-/**
- * Installs a program object as part of current rendering state.
- */
 export function glUseProgram(program: number): void {
     call(LIB, "glUseProgram", [{ type: { type: "int", size: 32, unsigned: true }, value: program }], {
         type: "undefined",
     });
 }
 
-/**
- * Returns a parameter from a program object.
- */
 export function glGetProgramiv(program: number, pname: number): number {
     const params = createRef(0);
     call(
@@ -215,9 +154,6 @@ export function glGetProgramiv(program: number, pname: number): number {
     return params.value;
 }
 
-/**
- * Returns the information log for a program object.
- */
 export function glGetProgramInfoLog(program: number, _maxLength: number): string {
     const logLength = glGetProgramiv(program, GL_INFO_LOG_LENGTH);
     if (logLength <= 0) {
@@ -226,18 +162,12 @@ export function glGetProgramInfoLog(program: number, _maxLength: number): string
     return `Program info log length: ${logLength} (use console.error for details)`;
 }
 
-/**
- * Deletes a program object.
- */
 export function glDeleteProgram(program: number): void {
     call(LIB, "glDeleteProgram", [{ type: { type: "int", size: 32, unsigned: true }, value: program }], {
         type: "undefined",
     });
 }
 
-/**
- * Returns the location of a uniform variable.
- */
 export function glGetUniformLocation(program: number, name: string): number {
     return call(
         LIB,
@@ -250,9 +180,6 @@ export function glGetUniformLocation(program: number, name: string): number {
     ) as number;
 }
 
-/**
- * Specify the value of a uniform variable (1 float).
- */
 export function glUniform1f(location: number, v0: number): void {
     call(
         LIB,
@@ -265,9 +192,6 @@ export function glUniform1f(location: number, v0: number): void {
     );
 }
 
-/**
- * Specify the value of a uniform variable (2 floats).
- */
 export function glUniform2f(location: number, v0: number, v1: number): void {
     call(
         LIB,
@@ -281,9 +205,6 @@ export function glUniform2f(location: number, v0: number, v1: number): void {
     );
 }
 
-/**
- * Specify the value of a uniform variable (3 floats).
- */
 export function glUniform3f(location: number, v0: number, v1: number, v2: number): void {
     call(
         LIB,
@@ -298,9 +219,6 @@ export function glUniform3f(location: number, v0: number, v1: number, v2: number
     );
 }
 
-/**
- * Specify the value of a uniform variable (4 floats).
- */
 export function glUniform4f(location: number, v0: number, v1: number, v2: number, v3: number): void {
     call(
         LIB,
@@ -316,9 +234,6 @@ export function glUniform4f(location: number, v0: number, v1: number, v2: number
     );
 }
 
-/**
- * Specify the value of a uniform variable (1 int).
- */
 export function glUniform1i(location: number, v0: number): void {
     call(
         LIB,
@@ -331,9 +246,6 @@ export function glUniform1i(location: number, v0: number): void {
     );
 }
 
-/**
- * Specify the value of a 4x4 matrix uniform variable.
- */
 export function glUniformMatrix4fv(location: number, count: number, transpose: boolean, value: number[]): void {
     call(
         LIB,
@@ -348,9 +260,6 @@ export function glUniformMatrix4fv(location: number, count: number, transpose: b
     );
 }
 
-/**
- * Generate a single vertex array object name.
- */
 export function glGenVertexArray(): number {
     const array = createRef(0);
     call(
@@ -365,18 +274,12 @@ export function glGenVertexArray(): number {
     return array.value;
 }
 
-/**
- * Bind a vertex array object.
- */
 export function glBindVertexArray(array: number): void {
     call(LIB, "glBindVertexArray", [{ type: { type: "int", size: 32, unsigned: true }, value: array }], {
         type: "undefined",
     });
 }
 
-/**
- * Delete a vertex array object.
- */
 export function glDeleteVertexArray(array: number): void {
     call(
         LIB,
@@ -389,9 +292,6 @@ export function glDeleteVertexArray(array: number): void {
     );
 }
 
-/**
- * Generate a single buffer object name.
- */
 export function glGenBuffer(): number {
     const buffer = createRef(0);
     call(
@@ -406,9 +306,6 @@ export function glGenBuffer(): number {
     return buffer.value;
 }
 
-/**
- * Bind a named buffer object.
- */
 export function glBindBuffer(target: number, buffer: number): void {
     call(
         LIB,
@@ -421,9 +318,6 @@ export function glBindBuffer(target: number, buffer: number): void {
     );
 }
 
-/**
- * Delete a buffer object.
- */
 export function glDeleteBuffer(buffer: number): void {
     call(
         LIB,
@@ -436,12 +330,6 @@ export function glDeleteBuffer(buffer: number): void {
     );
 }
 
-/**
- * Creates and initializes a buffer object's data store.
- * @param target - Buffer target (GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER, etc.)
- * @param data - Array of float values
- * @param usage - Usage hint (GL_STATIC_DRAW, GL_DYNAMIC_DRAW, etc.)
- */
 export function glBufferData(target: number, data: number[], usage: number): void {
     const size = data.length * 4;
 
@@ -458,9 +346,6 @@ export function glBufferData(target: number, data: number[], usage: number): voi
     );
 }
 
-/**
- * Define an array of generic vertex attribute data.
- */
 export function glVertexAttribPointer(
     index: number,
     size: number,
@@ -484,27 +369,18 @@ export function glVertexAttribPointer(
     );
 }
 
-/**
- * Enable a generic vertex attribute array.
- */
 export function glEnableVertexAttribArray(index: number): void {
     call(LIB, "glEnableVertexAttribArray", [{ type: { type: "int", size: 32, unsigned: true }, value: index }], {
         type: "undefined",
     });
 }
 
-/**
- * Disable a generic vertex attribute array.
- */
 export function glDisableVertexAttribArray(index: number): void {
     call(LIB, "glDisableVertexAttribArray", [{ type: { type: "int", size: 32, unsigned: true }, value: index }], {
         type: "undefined",
     });
 }
 
-/**
- * Render primitives from array data.
- */
 export function glDrawArrays(mode: number, first: number, count: number): void {
     call(
         LIB,
@@ -518,13 +394,6 @@ export function glDrawArrays(mode: number, first: number, count: number): void {
     );
 }
 
-/**
- * Creates and initializes a buffer object's data store with unsigned short data.
- * Use this for element/index buffers with GL_UNSIGNED_SHORT type.
- * @param target - Buffer target (typically GL_ELEMENT_ARRAY_BUFFER)
- * @param data - Array of unsigned short values (indices)
- * @param usage - Usage hint (GL_STATIC_DRAW, GL_DYNAMIC_DRAW, etc.)
- */
 export function glBufferDataUshort(target: number, data: number[], usage: number): void {
     const size = data.length * 2;
 
@@ -541,9 +410,6 @@ export function glBufferDataUshort(target: number, data: number[], usage: number
     );
 }
 
-/**
- * Render primitives from array data with indices.
- */
 export function glDrawElements(mode: number, count: number, type: number, offset: number): void {
     call(
         LIB,
@@ -558,9 +424,6 @@ export function glDrawElements(mode: number, count: number, type: number, offset
     );
 }
 
-/**
- * Returns the location of an attribute variable.
- */
 export function glGetAttribLocation(program: number, name: string): number {
     return call(
         LIB,
@@ -573,9 +436,6 @@ export function glGetAttribLocation(program: number, name: string): number {
     ) as number;
 }
 
-/**
- * Associate a generic vertex attribute index with a named attribute variable.
- */
 export function glBindAttribLocation(program: number, index: number, name: string): void {
     call(
         LIB,
@@ -589,9 +449,6 @@ export function glBindAttribLocation(program: number, index: number, name: strin
     );
 }
 
-/**
- * Return error information.
- */
 export function glGetError(): number {
     return call(LIB, "glGetError", [], { type: "int", size: 32, unsigned: true }) as number;
 }

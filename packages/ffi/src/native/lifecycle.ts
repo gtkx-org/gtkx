@@ -29,14 +29,6 @@ const stopPolling = (): void => {
     }
 };
 
-/**
- * Starts the GTK application with the given application ID.
- * Sets up a keep-alive timer to prevent Node.js from exiting.
- * This function is idempotent - calling it multiple times returns the same application.
- * @param appId - The application ID (e.g., "com.example.myapp")
- * @param flags - Optional GIO application flags
- * @returns The GTK Application instance
- */
 export const start = (appId: string, flags?: ApplicationFlags): Application => {
     if (application) {
         return application;
@@ -60,11 +52,6 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
     return application;
 };
 
-/**
- * Stops the GTK application and cleans up the keep-alive timer.
- * Emits the "stop" event before shutting down to allow cleanup.
- * This function is idempotent - calling it when not started does nothing.
- */
 export const stop = (): void => {
     if (!application) {
         return;

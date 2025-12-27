@@ -89,12 +89,6 @@ const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"] = tru
     return <Wrapper>{element}</Wrapper>;
 };
 
-/**
- * Renders a React element into a GTK application for testing.
- * @param element - The React element to render
- * @param options - Render options including wrapper component
- * @returns Object containing query methods, container, and utility functions
- */
 export const render = async (element: ReactNode, options?: RenderOptions): Promise<RenderResult> => {
     const { app: application, container: fiberRoot } = ensureInitialized();
     const instance = reconciler.getInstance();
@@ -133,10 +127,6 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
     };
 };
 
-/**
- * Cleans up the rendered component by unmounting it and destroying windows.
- * Should be called after each test to reset state.
- */
 export const cleanup = async (): Promise<void> => {
     if (container && application) {
         const instance = reconciler.getInstance();
@@ -146,10 +136,6 @@ export const cleanup = async (): Promise<void> => {
     setScreenRoot(null);
 };
 
-/**
- * Tears down the testing environment by cleaning up and stopping GTK.
- * Can be used as global teardown in your test runner configuration.
- */
 export const teardown = async (): Promise<void> => {
     await cleanup();
 };

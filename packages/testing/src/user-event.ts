@@ -4,11 +4,8 @@ import { fireEvent } from "./fire-event.js";
 import { tick } from "./timing.js";
 import { isEditable } from "./widget.js";
 
-/**
- * Options for the tab user event.
- */
 export type TabOptions = {
-    /** If true, navigates backwards (Shift+Tab behavior). */
+
     shift?: boolean;
 };
 
@@ -205,10 +202,6 @@ const deselectOptions = async (element: Gtk.Widget, values: number | number[]): 
     await tick();
 };
 
-/**
- * Simulates user interactions with GTK widgets. Provides methods that mimic
- * real user behavior like clicking, typing, and clearing input fields.
- */
 export const userEvent = {
     click,
     dblClick,

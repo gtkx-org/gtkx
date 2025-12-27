@@ -25,8 +25,4 @@ class Reconciler {
     }
 }
 
-/**
- * The singleton GTKX React reconciler instance.
- * @internal This is an internal API used only by @gtkx/testing. Do not use directly.
- */
 export const reconciler = new Reconciler();

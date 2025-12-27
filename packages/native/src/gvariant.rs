@@ -1,7 +1,4 @@
-//! GVariant wrapper with reference counting.
-//!
-//! GVariant uses reference counting with g_variant_ref/g_variant_unref,
-//! not the boxed copy/free functions.
+
 
 use std::ffi::c_void;
 

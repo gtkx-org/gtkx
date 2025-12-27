@@ -1,12 +1,4 @@
-//! Dispatching operations to the GTK thread.
-//!
-//! This module provides a cross-thread queue for dispatching operations from
-//! the JavaScript thread to the GTK thread.
-//!
-//! Two paths exist:
-//! - Normal: `schedule()` uses `glib::idle_add_once` to let the GLib main loop process callbacks
-//! - Re-entrant: `dispatch_pending()` processes queued callbacks synchronously when the GTK
-//!   thread is blocked waiting for a JavaScript callback result
+
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
@@ -93,13 +85,6 @@ fn dispatch_batch() {
     }
 }
 
-/// Dispatches all pending tasks without processing other GTK events.
-///
-/// This is called from the GTK thread's wait loop to process tasks that
-/// were scheduled by JS during signal handling, without triggering the full
-/// GTK main loop iteration.
-///
-/// Returns `true` if any tasks were dispatched.
 pub fn dispatch_pending() -> bool {
     let mut dispatched = false;
 

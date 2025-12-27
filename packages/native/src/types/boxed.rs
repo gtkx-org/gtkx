@@ -1,4 +1,4 @@
-//! Boxed type descriptor.
+
 
 use gtk4::glib::{self, translate::FromGlib as _};
 use libffi::middle as ffi;
@@ -6,24 +6,20 @@ use neon::prelude::*;
 
 use crate::state::GtkThreadState;
 
-/// Type descriptor for GLib boxed types.
-///
-/// Boxed types are heap-allocated structs that are copied and freed using
-/// type-specific functions registered with the GLib type system.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoxedType {
-    /// Whether the memory is borrowed from the callee.
+
     pub is_borrowed: bool,
-    /// The GLib type name (e.g., "GdkRGBA").
+
     pub type_: String,
-    /// Optional library name for dynamic type lookup.
+
     pub lib: Option<String>,
-    /// Optional explicit get_type function name (when naive transformation doesn't work).
+
     pub get_type_fn: Option<String>,
 }
 
 impl BoxedType {
-    /// Creates a new boxed type descriptor.
+
     pub fn new(
         is_borrowed: bool,
         type_: String,
@@ -38,11 +34,6 @@ impl BoxedType {
         }
     }
 
-    /// Parses a boxed type from a JavaScript object.
-    ///
-    /// # Errors
-    ///
-    /// Returns a `NeonResult` error if the object is malformed.
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let is_borrowed_prop: Handle<'_, JsValue> = obj.prop(cx, "borrowed").get()?;
@@ -76,10 +67,6 @@ impl BoxedType {
         Ok(Self::new(is_borrowed, type_, lib, get_type_fn))
     }
 
-    /// Gets the GLib type for this boxed type.
-    ///
-    /// First tries to look up the type by name. If not registered, tries to
-    /// load it dynamically from the specified library.
     pub fn get_gtype(&self) -> Option<glib::Type> {
         if let Some(gtype) = glib::Type::from_name(&self.type_) {
             return Some(gtype);

@@ -819,10 +819,6 @@ declare global {
 `;
     }
 
-    /**
-     * Generates a type mapping widgets to their valid slot names.
-     * Used for type-safe <Slot for={Widget} id="..."> autocomplete.
-     */
     private generateWidgetSlotNamesType(widgets: WidgetInfo[]): string {
         const entries: string[] = [];
 
@@ -830,7 +826,6 @@ declare global {
             this.currentNamespace = namespace;
             const widgetName = this.getWidgetExportName(widget);
 
-            // Find properties that accept widgets (potential slots)
             const slotNames = widget.properties
                 .filter((prop) => {
                     if (!prop.writable) return false;

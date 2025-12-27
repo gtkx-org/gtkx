@@ -1305,11 +1305,6 @@ To run tests, you need xvfb installed:
     p.note(`${nextSteps}${testingNote}`, "Next steps");
 };
 
-/**
- * Creates a new GTKX application with interactive prompts.
- * Scaffolds project structure, installs dependencies, and sets up configuration.
- * @param options - Pre-filled options to skip interactive prompts
- */
 export const createApp = async (options: CreateOptions = {}): Promise<void> => {
     p.intro("Create GTKX App");
 

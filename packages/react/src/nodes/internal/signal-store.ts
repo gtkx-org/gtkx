@@ -2,7 +2,6 @@ import { getObjectId } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
 import { isCommitting } from "../../host-config.js";
 
-// biome-ignore lint/suspicious/noExplicitAny: ignore
 export type SignalHandler = (...args: any[]) => any;
 
 const LIFECYCLE_SIGNALS = new Set([

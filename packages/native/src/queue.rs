@@ -1,4 +1,4 @@
-//! Thread-safe FIFO queue for cross-thread communication.
+
 
 use std::{collections::VecDeque, sync::Mutex};
 

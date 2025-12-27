@@ -67,14 +67,9 @@ const extractDoc = (node: Record<string, unknown>): string | undefined => {
 const ensureArray = (value: unknown): Record<string, unknown>[] =>
     Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
 
-/**
- * Parser for GObject Introspection (GIR) XML files.
- * Converts GIR XML into structured TypeScript interfaces.
- */
 export class GirParser {
     private parser: XMLParser;
 
-    /** Creates a new GIR parser instance. */
     constructor() {
         this.parser = new XMLParser({
             ignoreAttributes: false,
@@ -87,12 +82,6 @@ export class GirParser {
         });
     }
 
-    /**
-     * Parses a GIR XML string into a structured namespace definition.
-     * @param girXml - The GIR XML content to parse
-     * @returns The parsed namespace containing all type definitions
-     * @throws Error if the XML is invalid or missing required elements
-     */
     parse(girXml: string): GirNamespace {
         const parsed = this.parser.parse(girXml);
         const repository = parsed.repository;

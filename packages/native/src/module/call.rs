@@ -1,4 +1,4 @@
-//! FFI function call handling.
+
 
 use std::{
     ffi::{c_char, c_void},
@@ -26,16 +26,6 @@ struct BatchCallDescriptor {
     args: Vec<Arg>,
 }
 
-/// Waits for a result from the GTK thread while processing JS dispatches.
-///
-/// This spins on the receiver, processing any pending JS dispatches using the
-/// provided context. This enables synchronous callback invocation from GTK
-/// signal handlers during re-entrant calls.
-///
-/// IMPORTANT: Callers must call `gtk_dispatch::enter_js_wait()` BEFORE scheduling
-/// the task to the GTK thread. This ensures that any signals triggered by the task
-/// see `is_js_waiting() = true` and use the synchronous queue path. This function
-/// calls `exit_js_wait()` when done.
 fn wait_for_result<'a, R, C: Context<'a>>(
     cx: &mut C,
     rx: &mpsc::Receiver<anyhow::Result<R>>,
@@ -59,12 +49,6 @@ fn wait_for_result<'a, R, C: Context<'a>>(
     result
 }
 
-/// Calls a native function via FFI.
-///
-/// JavaScript signature: `call(library: string, symbol: string, args: Arg[], returnType: Type) => Value`
-///
-/// Dispatches the call to the GTK thread, waits for the result, and updates
-/// any ref (out) parameters.
 pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     let library_name = cx.argument::<JsString>(0)?.value(&mut cx);
     let symbol_name = cx.argument::<JsString>(1)?.value(&mut cx);
@@ -217,19 +201,15 @@ fn handle_call(
 
     for (i, arg) in args.iter().enumerate() {
         if let Value::Ref(r#ref) = &arg.value {
-            // For Ref<Boxed> and Ref<GObject> out parameters:
-            // - Caller-allocates (value is ObjectId): the original ObjectId already points
-            //   to the memory that was modified by the FFI call, no update needed.
-            // - GTK-allocates (value is null): GTK allocated new memory and wrote the pointer
-            //   into our OwnedPtr, we need to read it back and update the ref.
+
             if let Type::Ref(ref_type) = &arg.type_ {
                 match &*ref_type.inner_type {
                     Type::Boxed(_) | Type::GObject(_) => {
                         if matches!(&*r#ref.value, Value::Object(_)) {
-                            // Caller-allocates: original ObjectId is still valid
+
                             continue;
                         }
-                        // GTK-allocates: fall through to update the ref with the new pointer
+
                     }
                     _ => {}
                 }
@@ -242,12 +222,6 @@ fn handle_call(
     Ok((Value::from_cif_value(&result, &result_type)?, ref_updates))
 }
 
-/// Executes multiple void FFI calls in a single GTK thread dispatch.
-///
-/// JavaScript signature: `batchCall(calls: { library: string, symbol: string, args: Arg[] }[]) => void`
-///
-/// All calls are dispatched together to the GTK thread, reducing synchronization overhead.
-/// Only supports void return types since batched calls are typically property setters.
 pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let js_calls = cx.argument::<JsArray>(0)?;
     let len = js_calls.len(&mut cx);

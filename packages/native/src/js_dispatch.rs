@@ -1,12 +1,4 @@
-//! Dispatching callbacks to the JavaScript thread.
-//!
-//! This module provides a mechanism for invoking JavaScript callbacks from GTK signal handlers.
-//!
-//! Callbacks are always queued and can be processed in two ways:
-//! - **Synchronous**: When JavaScript is in a wait loop (e.g., waiting for FFI results),
-//!   `process_pending()` is called repeatedly and processes the queue.
-//! - **Asynchronous**: When JavaScript is idle, a wake-up message is sent via a Neon channel,
-//!   which triggers `process_pending()` on the UV event loop.
+
 
 use std::sync::{Arc, mpsc};
 
@@ -14,25 +6,19 @@ use neon::prelude::*;
 
 use crate::{queue::Queue, value::Value};
 
-/// A pending callback waiting to be executed on the JS thread.
 pub struct PendingCallback {
-    /// The rooted JavaScript function to call.
+
     pub callback: Arc<Root<JsFunction>>,
-    /// Arguments to pass to the function.
+
     pub args: Vec<Value>,
-    /// Whether to capture and return the result.
+
     pub capture_result: bool,
-    /// Channel to send the result back to the GTK thread.
+
     pub result_tx: mpsc::Sender<Result<Value, ()>>,
 }
 
 static QUEUE: Queue<PendingCallback> = Queue::new();
 
-/// Queues a callback for execution on the JS thread.
-///
-/// The callback is added to a queue that will be processed either:
-/// - Synchronously by `process_pending()` in the JS wait loop, or
-/// - Asynchronously when the channel wake-up triggers `process_pending()`
 pub fn queue(
     callback: Arc<Root<JsFunction>>,
     args: Vec<Value>,
@@ -50,10 +36,6 @@ pub fn queue(
     rx
 }
 
-/// Queues a callback and sends a wake-up message via the channel.
-///
-/// Use this when JS might be idle (not in a wait loop). The channel message
-/// ensures the queue gets processed even if JS isn't actively polling.
 pub fn queue_with_wakeup(
     channel: &Channel,
     callback: Arc<Root<JsFunction>>,
@@ -70,11 +52,6 @@ pub fn queue_with_wakeup(
     rx
 }
 
-/// Processes all pending callbacks using the provided context.
-///
-/// This should be called from the JS thread's wait loop while waiting for
-/// GTK dispatch results. Each callback is executed synchronously and its result
-/// is sent back through the callback's result channel.
 pub fn process_pending<'a, C: Context<'a>>(cx: &mut C) {
     while let Some(pending) = QUEUE.pop() {
         let result = execute_callback(cx, &pending.callback, &pending.args, pending.capture_result);

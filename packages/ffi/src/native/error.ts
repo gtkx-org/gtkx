@@ -1,23 +1,13 @@
 import { read } from "@gtkx/native";
 
-/**
- * Error class that wraps a GLib GError.
- * Extends the native JavaScript Error with GError-specific properties.
- */
 export class NativeError extends Error {
-    /** The GError object id */
+
     readonly id: unknown;
 
-    /** The GLib error domain (GQuark) */
     readonly domain: number;
 
-    /** The error code within the domain */
     readonly code: number;
 
-    /**
-     * Creates a NativeError from a GError object id.
-     * @param id - The GError object id from a failed FFI call
-     */
     constructor(id: unknown) {
         const message = read(id, { type: "string" }, 8) as string;
         super(message ?? "Unknown error");

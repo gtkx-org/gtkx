@@ -25,13 +25,12 @@ const flushPendingStyles = (): void => {
 
 const resetGtkState = (): void => {
     isGtkReady = false;
-    // Re-register the start listener for the next start() call
+
     events.once("start", flushPendingStyles);
 };
 
-// Initial registration
 events.once("start", flushPendingStyles);
-// Handle stop to reset state and prepare for potential restart
+
 events.on("stop", resetGtkState);
 
 export class StyleSheet {

@@ -3,385 +3,329 @@ import { toCamelCase, toPascalCase } from "./naming.js";
 
 export { toCamelCase, toPascalCase };
 
-/**
- * Represents a parsed GIR namespace containing all type definitions.
- */
 export type GirNamespace = {
-    /** The namespace name (e.g., "Gtk", "Gio"). */
+
     name: string;
-    /** The namespace version (e.g., "4.0"). */
+
     version: string;
-    /** The shared library file name. */
+
     sharedLibrary: string;
-    /** The C identifier prefix for this namespace. */
+
     cPrefix: string;
-    /** All classes defined in this namespace. */
+
     classes: GirClass[];
-    /** All interfaces defined in this namespace. */
+
     interfaces: GirInterface[];
-    /** All standalone functions defined in this namespace. */
+
     functions: GirFunction[];
-    /** All enumerations defined in this namespace. */
+
     enumerations: GirEnumeration[];
-    /** All bitfield enumerations defined in this namespace. */
+
     bitfields: GirEnumeration[];
-    /** All records (structs) defined in this namespace. */
+
     records: GirRecord[];
-    /** All callback types defined in this namespace. */
+
     callbacks: GirCallback[];
-    /** All constants defined in this namespace. */
+
     constants: GirConstant[];
-    /** Documentation for the namespace. */
+
     doc?: string;
 };
 
-/**
- * Represents a GIR constant definition.
- */
 export type GirConstant = {
-    /** The constant name. */
+
     name: string;
-    /** The C type name. */
+
     cType: string;
-    /** The constant value (as a string, may be numeric or string literal). */
+
     value: string;
-    /** The type of the constant value. */
+
     type: GirType;
-    /** Documentation for the constant. */
+
     doc?: string;
 };
 
-/**
- * Represents a GIR callback type definition.
- */
 export type GirCallback = {
-    /** The callback name. */
+
     name: string;
-    /** The C type name. */
+
     cType: string;
-    /** The return type. */
+
     returnType: GirType;
-    /** The callback parameters. */
+
     parameters: GirParameter[];
-    /** Documentation for the callback. */
+
     doc?: string;
 };
 
-/**
- * Represents a GIR interface definition.
- */
 export type GirInterface = {
-    /** The interface name. */
+
     name: string;
-    /** The C type name. */
+
     cType: string;
-    /** The GLib type name. */
+
     glibTypeName?: string;
-    /** List of prerequisite interface names this interface requires. */
+
     prerequisites: string[];
-    /** Methods defined on this interface. */
+
     methods: GirMethod[];
-    /** Properties defined on this interface. */
+
     properties: GirProperty[];
-    /** Signals defined on this interface. */
+
     signals: GirSignal[];
-    /** Documentation for the interface. */
+
     doc?: string;
 };
 
-/**
- * Represents a GIR class definition.
- */
 export type GirClass = {
-    /** The class name. */
+
     name: string;
-    /** The C type name. */
+
     cType: string;
-    /** The parent class name, if any. */
+
     parent?: string;
-    /** Whether this is an abstract class. */
+
     abstract?: boolean;
-    /** The GLib type name. */
+
     glibTypeName?: string;
-    /** The GLib get-type function. */
+
     glibGetType?: string;
-    /** The C symbol prefix for this class. */
+
     cSymbolPrefix?: string;
-    /** List of interface names this class implements. */
+
     implements: string[];
-    /** Methods defined on this class. */
+
     methods: GirMethod[];
-    /** Constructor functions for this class. */
+
     constructors: GirConstructor[];
-    /** Static functions defined on this class. */
+
     functions: GirFunction[];
-    /** Properties defined on this class. */
+
     properties: GirProperty[];
-    /** Signals defined on this class. */
+
     signals: GirSignal[];
-    /** Documentation for the class. */
+
     doc?: string;
 };
 
-/**
- * Represents a GIR record (struct) definition.
- */
 export type GirRecord = {
-    /** The record name. */
+
     name: string;
-    /** The C type name. */
+
     cType: string;
-    /** Whether this record is opaque (no field access). */
+
     opaque?: boolean;
-    /** Whether this record is disguised (typically internal). */
+
     disguised?: boolean;
-    /** The GLib type name for boxed types. */
+
     glibTypeName?: string;
-    /** The GLib get-type function. */
+
     glibGetType?: string;
-    /** Fields defined in this record. */
+
     fields: GirField[];
-    /** Methods defined on this record. */
+
     methods: GirMethod[];
-    /** Constructor functions for this record. */
+
     constructors: GirConstructor[];
-    /** Static functions defined on this record. */
+
     functions: GirFunction[];
-    /** Documentation for the record. */
+
     doc?: string;
 };
 
-/**
- * Represents a GIR field definition in a record.
- */
 export type GirField = {
-    /** The field name. */
+
     name: string;
-    /** The field type. */
+
     type: GirType;
-    /** Whether this field is writable. */
+
     writable?: boolean;
-    /** Whether this field is readable. */
+
     readable?: boolean;
-    /** Whether this field is private. */
+
     private?: boolean;
-    /** Documentation for the field. */
+
     doc?: string;
 };
 
-/**
- * Represents a GIR method definition.
- */
 export type GirMethod = {
-    /** The method name. */
+
     name: string;
-    /** The C function identifier. */
+
     cIdentifier: string;
-    /** The return type. */
+
     returnType: GirType;
-    /** The method parameters. */
+
     parameters: GirParameter[];
-    /** Whether this method can throw a GError. */
+
     throws?: boolean;
-    /** Documentation for the method. */
+
     doc?: string;
-    /** Documentation for the return value. */
+
     returnDoc?: string;
 };
 
-/**
- * Represents a GIR constructor definition.
- */
 export type GirConstructor = {
-    /** The constructor name. */
+
     name: string;
-    /** The C function identifier. */
+
     cIdentifier: string;
-    /** The return type (typically the class type). */
+
     returnType: GirType;
-    /** The constructor parameters. */
+
     parameters: GirParameter[];
-    /** Whether this constructor can throw a GError. */
+
     throws?: boolean;
-    /** Documentation for the constructor. */
+
     doc?: string;
-    /** Documentation for the return value. */
+
     returnDoc?: string;
 };
 
-/**
- * Represents a GIR standalone function definition.
- */
 export type GirFunction = {
-    /** The function name. */
+
     name: string;
-    /** The C function identifier. */
+
     cIdentifier: string;
-    /** The return type. */
+
     returnType: GirType;
-    /** The function parameters. */
+
     parameters: GirParameter[];
-    /** Whether this function can throw a GError. */
+
     throws?: boolean;
-    /** Documentation for the function. */
+
     doc?: string;
-    /** Documentation for the return value. */
+
     returnDoc?: string;
 };
 
-/**
- * Represents a GIR parameter definition.
- */
 export type GirParameter = {
-    /** The parameter name. */
+
     name: string;
-    /** The parameter type. */
+
     type: GirType;
-    /** The parameter direction (in, out, or inout). */
+
     direction?: "in" | "out" | "inout";
-    /** Whether the caller allocates memory for out parameters. */
+
     callerAllocates?: boolean;
-    /** Whether this parameter can be null. */
+
     nullable?: boolean;
-    /** Whether this parameter is optional. */
+
     optional?: boolean;
-    /** The scope of the callback (async, call, notified). */
+
     scope?: "async" | "call" | "notified";
-    /** Index of the closure/user_data parameter for callbacks. */
+
     closure?: number;
-    /** Index of the destroy notifier parameter for callbacks. */
+
     destroy?: number;
-    /** Transfer ownership semantics for the parameter. */
+
     transferOwnership?: "none" | "full" | "container";
-    /** Documentation for the parameter. */
+
     doc?: string;
 };
 
-/**
- * Represents a GIR type reference.
- */
 export type GirType = {
-    /** The type name. */
+
     name: string;
-    /** The C type name. */
+
     cType?: string;
-    /** Whether this is an array type. */
+
     isArray?: boolean;
-    /** The element type for array types. */
+
     elementType?: GirType;
-    /** Transfer ownership semantics for return types. */
+
     transferOwnership?: "none" | "full" | "container";
-    /** Whether this type can be null (for return types). */
+
     nullable?: boolean;
 };
 
-/**
- * Represents a GIR property definition.
- */
 export type GirProperty = {
-    /** The property name. */
+
     name: string;
-    /** The property type. */
+
     type: GirType;
-    /** Whether this property is readable. */
+
     readable?: boolean;
-    /** Whether this property is writable. */
+
     writable?: boolean;
-    /** Whether this property can only be set at construction time. */
+
     constructOnly?: boolean;
-    /** Whether this property has a default value. */
+
     hasDefault?: boolean;
-    /** The getter method name for this property. */
+
     getter?: string;
-    /** The setter method name for this property. */
+
     setter?: string;
-    /** Documentation for the property. */
+
     doc?: string;
 };
 
-/**
- * Represents a GIR signal definition.
- */
 export type GirSignal = {
-    /** The signal name. */
+
     name: string;
-    /** When the signal handler runs relative to the default handler. */
+
     when?: "first" | "last" | "cleanup";
-    /** The signal return type. */
+
     returnType?: GirType;
-    /** The signal parameters passed to handlers. */
+
     parameters?: GirParameter[];
-    /** Documentation for the signal. */
+
     doc?: string;
 };
 
-/**
- * Represents a GIR enumeration or bitfield definition.
- */
 export type GirEnumeration = {
-    /** The enumeration name. */
+
     name: string;
-    /** The C type name. */
+
     cType: string;
-    /** The enumeration members. */
+
     members: GirEnumerationMember[];
-    /** Documentation for the enumeration. */
+
     doc?: string;
 };
 
-/**
- * Represents a single enumeration member.
- */
 export type GirEnumerationMember = {
-    /** The member name. */
+
     name: string;
-    /** The numeric value. */
+
     value: string;
-    /** The C identifier. */
+
     cIdentifier: string;
-    /** Documentation for the member. */
+
     doc?: string;
 };
 
-/**
- * Describes an FFI type for code generation.
- */
 export type FfiTypeDescriptor = {
-    /** The FFI type category. */
+
     type: string;
-    /** Size in bits for integer/float types. */
+
     size?: number;
-    /** Whether the integer type is unsigned. */
+
     unsigned?: boolean;
-    /** Whether the pointer is borrowed (not owned). */
+
     borrowed?: boolean;
-    /** Inner type for ref types (as descriptor) or boxed types (as GLib type name string). */
+
     innerType?: FfiTypeDescriptor | string;
-    /** Library name for boxed types that need dynamic type lookup. */
+
     lib?: string;
-    /** Explicit get_type function name for boxed types (when naive transformation doesn't work). */
+
     getTypeFn?: string;
-    /** Item type for array types. */
+
     itemType?: FfiTypeDescriptor;
-    /** List type for arrays (glist, gslist) - indicates native GList/GSList iteration. */
+
     listType?: "glist" | "gslist";
-    /** Trampoline type for callbacks. Default is "closure". */
+
     trampoline?: "asyncReady" | "destroy" | "drawFunc" | "scaleFormatValueFunc";
-    /** Source type for asyncReady callback (the GObject source). */
+
     sourceType?: FfiTypeDescriptor;
-    /** Result type for asyncReady callback (the GAsyncResult). */
+
     resultType?: FfiTypeDescriptor;
-    /** Argument types for callbacks that need explicit type info (e.g., drawFunc). */
+
     argTypes?: FfiTypeDescriptor[];
-    /** Whether this argument is optional (can be null/undefined for pointer types). */
+
     optional?: boolean;
 };
 
-/**
- * Builds a map of class names to class definitions for quick lookup.
- * @param classes - Array of GIR class definitions
- * @returns Map from class name to class definition
- */
 export const buildClassMap = (classes: GirClass[]): Map<string, GirClass> => {
     const classMap = new Map<string, GirClass>();
     for (const cls of classes) {
@@ -390,11 +334,6 @@ export const buildClassMap = (classes: GirClass[]): Map<string, GirClass> => {
     return classMap;
 };
 
-/**
- * Registers all enumerations and bitfields from a namespace with a type mapper.
- * @param typeMapper - The TypeMapper instance to register with
- * @param namespace - The GIR namespace containing enums to register
- */
 export const registerEnumsFromNamespace = (typeMapper: TypeMapper, namespace: GirNamespace): void => {
     for (const enumeration of namespace.enumerations) {
         typeMapper.registerEnum(enumeration.name, toPascalCase(enumeration.name));
@@ -418,18 +357,9 @@ export type RegisteredType = {
     glibGetType?: string;
 };
 
-/**
- * Registry for tracking all types across GIR namespaces.
- * Used for cross-namespace type resolution during code generation.
- */
 export class TypeRegistry {
     private types = new Map<string, RegisteredType>();
 
-    /**
-     * Registers a class type.
-     * @param namespace - The namespace containing the class
-     * @param name - The class name
-     */
     registerNativeClass(namespace: string, name: string): void {
         const transformedName = normalizeClassName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
@@ -440,11 +370,6 @@ export class TypeRegistry {
         });
     }
 
-    /**
-     * Registers an interface type.
-     * @param namespace - The namespace containing the interface
-     * @param name - The interface name
-     */
     registerInterface(namespace: string, name: string): void {
         const transformedName = normalizeClassName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
@@ -455,11 +380,6 @@ export class TypeRegistry {
         });
     }
 
-    /**
-     * Registers an enumeration type.
-     * @param namespace - The namespace containing the enum
-     * @param name - The enum name
-     */
     registerEnum(namespace: string, name: string): void {
         const transformedName = toPascalCase(name);
         this.types.set(`${namespace}.${name}`, {
@@ -470,14 +390,6 @@ export class TypeRegistry {
         });
     }
 
-    /**
-     * Registers a record (struct) type.
-     * @param namespace - The namespace containing the record
-     * @param name - The record name
-     * @param glibTypeName - Optional GLib type name for boxed type handling
-     * @param sharedLibrary - The shared library containing this record's type
-     * @param glibGetType - The GLib get_type function name
-     */
     registerRecord(
         namespace: string,
         name: string,
@@ -497,11 +409,6 @@ export class TypeRegistry {
         });
     }
 
-    /**
-     * Registers a callback type.
-     * @param namespace - The namespace containing the callback
-     * @param name - The callback name
-     */
     registerCallback(namespace: string, name: string): void {
         const transformedName = toPascalCase(name);
         this.types.set(`${namespace}.${name}`, {
@@ -512,22 +419,10 @@ export class TypeRegistry {
         });
     }
 
-    /**
-     * Resolves a type by its fully qualified name (Namespace.TypeName).
-     * @param qualifiedName - The fully qualified type name
-     * @returns The registered type or undefined if not found
-     */
     resolve(qualifiedName: string): RegisteredType | undefined {
         return this.types.get(qualifiedName);
     }
 
-    /**
-     * Resolves a type name within a namespace context.
-     * First tries the current namespace, then searches all namespaces.
-     * @param name - The type name (may or may not be qualified)
-     * @param currentNamespace - The namespace to try first if name is not qualified
-     * @returns The registered type or undefined if not found
-     */
     resolveInNamespace(name: string, currentNamespace: string): RegisteredType | undefined {
         if (name.includes(".")) {
             return this.resolve(name);
@@ -545,11 +440,6 @@ export class TypeRegistry {
         }
     }
 
-    /**
-     * Creates a TypeRegistry populated with all types from the given namespaces.
-     * @param namespaces - Array of GIR namespaces to register
-     * @returns A new TypeRegistry containing all types
-     */
     static fromNamespaces(namespaces: GirNamespace[]): TypeRegistry {
         const registry = new TypeRegistry();
         for (const ns of namespaces) {
@@ -720,10 +610,6 @@ export type MappedType = {
     nullable?: boolean;
 };
 
-/**
- * Maps GIR types to TypeScript types and FFI type descriptors.
- * Handles basic types, enumerations, records, arrays, and object references.
- */
 export class TypeMapper {
     private enumNames: Set<string> = new Set();
     private enumTransforms: Map<string, string> = new Map();
@@ -739,11 +625,6 @@ export class TypeMapper {
     private currentNamespace?: string;
     private forceExternalNamespace?: string;
 
-    /**
-     * Registers an enumeration type for mapping.
-     * @param originalName - The original GIR enum name
-     * @param transformedName - The transformed TypeScript enum name
-     */
     registerEnum(originalName: string, transformedName?: string): void {
         this.enumNames.add(originalName);
         if (transformedName) {
@@ -751,12 +632,6 @@ export class TypeMapper {
         }
     }
 
-    /**
-     * Registers a record type for mapping.
-     * @param originalName - The original GIR record name
-     * @param transformedName - The transformed TypeScript class name
-     * @param glibTypeName - The GLib type name for boxed type handling
-     */
     registerRecord(originalName: string, transformedName?: string, glibTypeName?: string): void {
         this.recordNames.add(originalName);
         if (transformedName) {
@@ -767,86 +642,43 @@ export class TypeMapper {
         }
     }
 
-    /**
-     * Sets a callback to track enum usage during type mapping.
-     * @param callback - Called when an enum is used, or null to clear
-     */
     setEnumUsageCallback(callback: ((enumName: string) => void) | null): void {
         this.onEnumUsed = callback ?? undefined;
     }
 
-    /**
-     * Gets the current enum usage callback.
-     * @returns The callback or null if not set
-     */
     getEnumUsageCallback(): ((enumName: string) => void) | null {
         return this.onEnumUsed ?? null;
     }
 
-    /**
-     * Sets a callback to track record usage during type mapping.
-     * @param callback - Called when a record is used, or null to clear
-     */
     setRecordUsageCallback(callback: ((recordName: string) => void) | null): void {
         this.onRecordUsed = callback ?? undefined;
     }
 
-    /**
-     * Gets the current record usage callback.
-     * @returns The callback or null if not set
-     */
     getRecordUsageCallback(): ((recordName: string) => void) | null {
         return this.onRecordUsed ?? null;
     }
 
-    /**
-     * Sets a callback to track external type usage during type mapping.
-     * @param callback - Called when an external type is used, or null to clear
-     */
     setExternalTypeUsageCallback(callback: ((usage: ExternalTypeUsage) => void) | null): void {
         this.onExternalTypeUsed = callback ?? undefined;
     }
 
-    /**
-     * Gets the current external type usage callback.
-     * @returns The callback or null if not set
-     */
     getExternalTypeUsageCallback(): ((usage: ExternalTypeUsage) => void) | null {
         return this.onExternalTypeUsed ?? null;
     }
 
-    /**
-     * Sets a callback to track same-namespace class/interface usage during type mapping.
-     * @param callback - Called when a same-namespace class is used, or null to clear
-     */
     setSameNamespaceClassUsageCallback(callback: ((className: string, originalName: string) => void) | null): void {
         this.onSameNamespaceClassUsed = callback ?? undefined;
     }
 
-    /**
-     * Gets the current same-namespace class usage callback.
-     * @returns The callback or null if not set
-     */
     getSameNamespaceClassUsageCallback(): ((className: string, originalName: string) => void) | null {
         return this.onSameNamespaceClassUsed ?? null;
     }
 
-    /**
-     * Sets the type registry for cross-namespace type resolution.
-     * @param registry - The TypeRegistry instance
-     * @param currentNamespace - The current namespace being processed
-     */
     setTypeRegistry(registry: TypeRegistry, currentNamespace: string): void {
         this.typeRegistry = registry;
         this.currentNamespace = currentNamespace;
     }
 
-    /**
-     * Sets a namespace that should always be treated as external when resolving types.
-     * This is used when generating cross-namespace interface methods where types
-     * from the interface's namespace should use qualified names.
-     * @param namespace - The namespace to treat as external, or null to clear
-     */
     setForceExternalNamespace(namespace: string | null): void {
         this.forceExternalNamespace = namespace ?? undefined;
     }
@@ -859,12 +691,6 @@ export class TypeMapper {
         this.skippedClasses.clear();
     }
 
-    /**
-     * Maps a GIR type to TypeScript and FFI type descriptors.
-     * @param girType - The GIR type to map
-     * @param isReturn - Whether this is a return type (affects pointer ownership)
-     * @returns The TypeScript type string and FFI descriptor
-     */
     mapType(girType: GirType, isReturn = false): MappedType {
         if (girType.isArray || girType.name === "array") {
             const listType = girType.cType?.includes("GSList")
@@ -1142,11 +968,6 @@ export class TypeMapper {
         return mapCType(girType.cType);
     }
 
-    /**
-     * Checks if a type name refers to a callback type.
-     * @param typeName - The type name to check
-     * @returns True if the type is a callback
-     */
     isCallback(typeName: string): boolean {
         if (this.typeRegistry) {
             const resolved = this.currentNamespace
@@ -1157,12 +978,6 @@ export class TypeMapper {
         return false;
     }
 
-    /**
-     * Maps a GIR parameter to TypeScript and FFI type descriptors.
-     * Handles out/inout parameters by wrapping in Ref type.
-     * @param param - The GIR parameter to map
-     * @returns The TypeScript type string and FFI descriptor
-     */
     mapParameter(param: GirParameter): MappedType {
         if (param.direction === "out" || param.direction === "inout") {
             const innerType = this.mapType(param.type);
@@ -1283,13 +1098,6 @@ export class TypeMapper {
         return mapped;
     }
 
-    /**
-     * Checks if a parameter is a closure/user_data target or destroy notifier for a callback that uses trampolines.
-     * These parameters are handled automatically by the trampoline mechanism.
-     * @param paramIndex - The index of the parameter to check
-     * @param allParams - All parameters in the method
-     * @returns True if this parameter is user_data or destroy for a trampoline callback
-     */
     isClosureTarget(paramIndex: number, allParams: GirParameter[]): boolean {
         const trampolineCallbacks = [
             "Gio.AsyncReadyCallback",
@@ -1307,11 +1115,6 @@ export class TypeMapper {
         );
     }
 
-    /**
-     * Checks if a parameter can accept null values.
-     * @param param - The parameter to check
-     * @returns True if the parameter is nullable or optional
-     */
     isNullable(param: GirParameter): boolean {
         return param.nullable === true || param.optional === true;
     }

@@ -1,7 +1,7 @@
 import type { Container, ContainerClass, Props } from "../../types.js";
 
 export const isContainerType = (
-    // biome-ignore lint/suspicious/noExplicitAny: ignore
+
     cls: new (...args: any[]) => Container,
     containerOrClass?: Container | ContainerClass,
 ): boolean => {

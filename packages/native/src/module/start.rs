@@ -1,4 +1,4 @@
-//! GTK application initialization and main loop startup.
+
 
 use std::sync::mpsc;
 
@@ -10,13 +10,6 @@ use crate::{
     state::{set_gtk_thread_handle, GtkThreadState},
 };
 
-/// Starts the GTK application and main loop.
-///
-/// JavaScript signature: `start(appId: string, flags?: number) => ObjectId`
-///
-/// Creates a GTK Application with the given ID, starts the main loop on a
-/// dedicated thread, and returns the application's ObjectId. The function
-/// blocks until the application is activated.
 pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
     let app_id = cx.argument::<JsString>(0)?.value(&mut cx);
 
@@ -45,8 +38,7 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
         });
 
         app.connect_activate(move |_| {
-            // Ignore SendError - the receiver may have been dropped after the first activation
-            // This can happen if the app is re-activated via D-Bus while already running
+
             let _ = tx.send(app_object_id);
         });
 

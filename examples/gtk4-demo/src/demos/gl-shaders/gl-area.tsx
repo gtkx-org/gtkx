@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getSourcePath } from "../source-path.js";
 import type { Demo } from "../types.js";
 
-// Vertex shader - handles position transformation and color passing
 const VERTEX_SHADER = `#version 300 es
 precision mediump float;
 
@@ -23,7 +22,6 @@ void main() {
 }
 `;
 
-// Fragment shader - outputs the interpolated vertex color
 const FRAGMENT_SHADER = `#version 300 es
 precision mediump float;
 
@@ -35,27 +33,26 @@ void main() {
 }
 `;
 
-// Vertex data: position (x, y, z) and color (r, g, b) for each vertex of a triangle
 const VERTEX_DATA = [
-    // Position          // Color
+
     0.0,
     0.5,
     0.0,
     1.0,
     0.0,
-    0.0, // Top vertex (red)
+    0.0, 
     -0.5,
     -0.5,
     0.0,
     0.0,
     1.0,
-    0.0, // Bottom left (green)
+    0.0, 
     0.5,
     -0.5,
     0.0,
     0.0,
     0.0,
-    1.0, // Bottom right (blue)
+    1.0, 
 ];
 
 interface GLResources {
@@ -65,9 +62,6 @@ interface GLResources {
     mvpLocation: number;
 }
 
-/**
- * Creates a 4x4 rotation matrix from Euler angles (in radians)
- */
 function createRotationMatrix(rotX: number, rotY: number, rotZ: number): number[] {
     const cosX = Math.cos(rotX);
     const sinX = Math.sin(rotX);
@@ -76,7 +70,6 @@ function createRotationMatrix(rotX: number, rotY: number, rotZ: number): number[
     const cosZ = Math.cos(rotZ);
     const sinZ = Math.sin(rotZ);
 
-    // Combined rotation matrix: Rz * Ry * Rx
     return [
         cosY * cosZ,
         cosX * sinZ + sinX * sinY * cosZ,
@@ -97,9 +90,6 @@ function createRotationMatrix(rotX: number, rotY: number, rotZ: number): number[
     ];
 }
 
-/**
- * Compiles a shader and returns its ID, or throws on error
- */
 function compileShader(type: number, source: string): number {
     const shader = GL.glCreateShader(type);
     GL.glShaderSource(shader, source);
@@ -116,9 +106,6 @@ function compileShader(type: number, source: string): number {
     return shader;
 }
 
-/**
- * Creates and links a shader program, returns the program ID
- */
 function createShaderProgram(vertexSource: string, fragmentSource: string): number {
     const vertexShader = compileShader(GL.GL_VERTEX_SHADER, vertexSource);
     const fragmentShader = compileShader(GL.GL_FRAGMENT_SHADER, fragmentSource);
@@ -138,7 +125,6 @@ function createShaderProgram(vertexSource: string, fragmentSource: string): numb
         throw new Error(`Program linking failed: ${log}`);
     }
 
-    // Shaders can be deleted after linking
     GL.glDeleteShader(vertexShader);
     GL.glDeleteShader(fragmentShader);
 
@@ -151,16 +137,13 @@ const GLAreaDemo = () => {
     const [rotationZ, setRotationZ] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
-    // Store GL resources outside React state (they're native handles)
     const glResources = useRef<GLResources | null>(null);
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
 
-    // Adjustments for the rotation sliders
     const xAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 360, 1, 10, 0), []);
     const yAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 360, 1, 10, 0), []);
     const zAdjustment = useMemo(() => new Gtk.Adjustment(0, 0, 360, 1, 10, 0), []);
 
-    // Sync adjustment values when React state changes (one-way: React -> GTK)
     useEffect(() => {
         if (xAdjustment.getValue() !== rotationX) xAdjustment.setValue(rotationX);
     }, [xAdjustment, rotationX]);
@@ -237,10 +220,8 @@ const GLAreaDemo = () => {
             GL.glClearColor(0.2, 0.2, 0.2, 1.0);
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
 
-            // Use our shader program
             GL.glUseProgram(program);
 
-            // Convert degrees to radians and create rotation matrix
             const radX = (rotationX * Math.PI) / 180;
             const radY = (rotationY * Math.PI) / 180;
             const radZ = (rotationZ * Math.PI) / 180;
@@ -248,7 +229,6 @@ const GLAreaDemo = () => {
 
             GL.glUniformMatrix4fv(mvpLocation, 1, false, mvp);
 
-            // Draw the triangle
             GL.glBindVertexArray(vao);
             GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3);
             GL.glBindVertexArray(0);

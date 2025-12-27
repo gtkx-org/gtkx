@@ -16,11 +16,6 @@ const getRoot = (): Gtk.Application => {
     return currentRoot;
 };
 
-/**
- * Global screen object providing query methods bound to the current render root.
- * Similar to Testing Library's screen, it provides all query variants without
- * needing to destructure from render().
- */
 export const screen = {
     findByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => queries.findByRole(getRoot(), role, options),
     findByLabelText: (text: TextMatch, options?: TextMatchOptions) => queries.findByLabelText(getRoot(), text, options),

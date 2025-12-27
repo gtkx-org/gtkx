@@ -1,35 +1,33 @@
-//! Array type descriptor.
+
 
 use libffi::middle as ffi;
 use neon::prelude::*;
 
 use crate::types::Type;
 
-/// The underlying list implementation for an array type.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum ListType {
-    /// Standard C array (null-terminated for strings, sized otherwise).
+
     #[default]
     Array,
-    /// GLib doubly-linked list.
+
     GList,
-    /// GLib singly-linked list.
+
     GSList,
 }
 
-/// Type descriptor for array types.
 #[derive(Debug, Clone)]
 pub struct ArrayType {
-    /// The type of elements in the array.
+
     pub item_type: Box<Type>,
-    /// The underlying list implementation.
+
     pub list_type: ListType,
-    /// Whether the array memory is borrowed from the callee.
+
     pub is_borrowed: bool,
 }
 
 impl ArrayType {
-    /// Creates a new array type with the given item type.
+
     pub fn new(item_type: Type) -> Self {
         ArrayType {
             item_type: Box::new(item_type),
@@ -38,11 +36,6 @@ impl ArrayType {
         }
     }
 
-    /// Parses an array type from a JavaScript object.
-    ///
-    /// # Errors
-    ///
-    /// Returns a `NeonResult` error if the object is malformed.
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let item_type_value: Handle<'_, JsValue> = obj.prop(cx, "itemType").get()?;

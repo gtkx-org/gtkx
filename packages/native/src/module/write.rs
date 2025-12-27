@@ -1,4 +1,4 @@
-//! Field writing to native objects.
+
 
 use std::sync::mpsc;
 
@@ -12,12 +12,6 @@ use crate::{
     value::Value,
 };
 
-/// Writes a field to a native object at the given offset.
-///
-/// JavaScript signature: `write(objectId: ObjectId, type: Type, offset: number, value: Value) => void`
-///
-/// Writes a value of the specified type to the object's memory at the given
-/// byte offset.
 pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let object_id = cx.argument::<JsBox<ObjectId>>(0)?;
     let js_type = cx.argument::<JsObject>(1)?;

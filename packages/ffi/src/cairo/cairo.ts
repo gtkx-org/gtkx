@@ -1,7 +1,4 @@
-/**
- * Cairo drawing function bindings via libcairo.
- * These wrap Cairo calls for use in GtkDrawingArea draw callbacks.
- */
+
 
 import { call } from "@gtkx/native";
 import type { LineCap, LineJoin, Operator } from "../generated/cairo/enums.js";
@@ -9,9 +6,6 @@ import type { LineCap, LineJoin, Operator } from "../generated/cairo/enums.js";
 const LIB = "libcairo.so.2";
 const CAIRO_T = { type: "boxed", innerType: "cairo_t", lib: LIB, borrowed: true } as const;
 
-/**
- * Begin a new sub-path. After this call the current point will be (x, y).
- */
 export function moveTo(cr: unknown, x: number, y: number): void {
     call(
         LIB,
@@ -25,9 +19,6 @@ export function moveTo(cr: unknown, x: number, y: number): void {
     );
 }
 
-/**
- * Adds a line to the path from the current point to position (x, y).
- */
 export function lineTo(cr: unknown, x: number, y: number): void {
     call(
         LIB,
@@ -41,9 +32,6 @@ export function lineTo(cr: unknown, x: number, y: number): void {
     );
 }
 
-/**
- * Adds a cubic Bezier spline to the path.
- */
 export function curveTo(cr: unknown, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
     call(
         LIB,
@@ -61,14 +49,6 @@ export function curveTo(cr: unknown, x1: number, y1: number, x2: number, y2: num
     );
 }
 
-/**
- * Adds a circular arc to the current path.
- * @param xc - X position of the center of the arc
- * @param yc - Y position of the center of the arc
- * @param radius - The radius of the arc
- * @param angle1 - The start angle, in radians
- * @param angle2 - The end angle, in radians
- */
 export function arc(cr: unknown, xc: number, yc: number, radius: number, angle1: number, angle2: number): void {
     call(
         LIB,
@@ -85,9 +65,6 @@ export function arc(cr: unknown, xc: number, yc: number, radius: number, angle1:
     );
 }
 
-/**
- * Adds a circular arc to the current path (counter-clockwise).
- */
 export function arcNegative(cr: unknown, xc: number, yc: number, radius: number, angle1: number, angle2: number): void {
     call(
         LIB,
@@ -104,9 +81,6 @@ export function arcNegative(cr: unknown, xc: number, yc: number, radius: number,
     );
 }
 
-/**
- * Adds a closed sub-path rectangle to the current path.
- */
 export function rectangle(cr: unknown, x: number, y: number, width: number, height: number): void {
     call(
         LIB,
@@ -122,65 +96,38 @@ export function rectangle(cr: unknown, x: number, y: number, width: number, heig
     );
 }
 
-/**
- * Adds a line segment to the path from the current point to the beginning of the current sub-path.
- */
 export function closePath(cr: unknown): void {
     call(LIB, "cairo_close_path", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Clears the current path.
- */
 export function newPath(cr: unknown): void {
     call(LIB, "cairo_new_path", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Begin a new sub-path without clearing the current path.
- */
 export function newSubPath(cr: unknown): void {
     call(LIB, "cairo_new_sub_path", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Stroke the current path according to the current line width, line join, line cap, and dash settings.
- */
 export function stroke(cr: unknown): void {
     call(LIB, "cairo_stroke", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Stroke the current path but preserve the path for further use.
- */
 export function strokePreserve(cr: unknown): void {
     call(LIB, "cairo_stroke_preserve", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Fill the current path according to the current fill rule.
- */
 export function fill(cr: unknown): void {
     call(LIB, "cairo_fill", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Fill the current path but preserve the path for further use.
- */
 export function fillPreserve(cr: unknown): void {
     call(LIB, "cairo_fill_preserve", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Paint the current source everywhere within the current clip region.
- */
 export function paint(cr: unknown): void {
     call(LIB, "cairo_paint", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Paint the current source using alpha as a mask.
- */
 export function paintWithAlpha(cr: unknown, alpha: number): void {
     call(
         LIB,
@@ -193,9 +140,6 @@ export function paintWithAlpha(cr: unknown, alpha: number): void {
     );
 }
 
-/**
- * Sets the source pattern to an opaque color (RGB).
- */
 export function setSourceRgb(cr: unknown, red: number, green: number, blue: number): void {
     call(
         LIB,
@@ -210,9 +154,6 @@ export function setSourceRgb(cr: unknown, red: number, green: number, blue: numb
     );
 }
 
-/**
- * Sets the source pattern to a translucent color (RGBA).
- */
 export function setSourceRgba(cr: unknown, red: number, green: number, blue: number, alpha: number): void {
     call(
         LIB,
@@ -228,9 +169,6 @@ export function setSourceRgba(cr: unknown, red: number, green: number, blue: num
     );
 }
 
-/**
- * Sets the current line width.
- */
 export function setLineWidth(cr: unknown, width: number): void {
     call(
         LIB,
@@ -243,9 +181,6 @@ export function setLineWidth(cr: unknown, width: number): void {
     );
 }
 
-/**
- * Sets the current line cap style.
- */
 export function setLineCap(cr: unknown, lineCap: LineCap): void {
     call(
         LIB,
@@ -258,9 +193,6 @@ export function setLineCap(cr: unknown, lineCap: LineCap): void {
     );
 }
 
-/**
- * Sets the current line join style.
- */
 export function setLineJoin(cr: unknown, lineJoin: LineJoin): void {
     call(
         LIB,
@@ -273,9 +205,6 @@ export function setLineJoin(cr: unknown, lineJoin: LineJoin): void {
     );
 }
 
-/**
- * Sets the dash pattern to be used by stroke.
- */
 export function setDash(cr: unknown, dashes: number[], offset: number): void {
     call(
         LIB,
@@ -290,23 +219,14 @@ export function setDash(cr: unknown, dashes: number[], offset: number): void {
     );
 }
 
-/**
- * Makes a copy of the current state and saves it on an internal stack.
- */
 export function save(cr: unknown): void {
     call(LIB, "cairo_save", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Restores the state saved by a preceding call to save().
- */
 export function restore(cr: unknown): void {
     call(LIB, "cairo_restore", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Modifies the current transformation matrix by translating.
- */
 export function translate(cr: unknown, tx: number, ty: number): void {
     call(
         LIB,
@@ -320,9 +240,6 @@ export function translate(cr: unknown, tx: number, ty: number): void {
     );
 }
 
-/**
- * Modifies the current transformation matrix by scaling.
- */
 export function scale(cr: unknown, sx: number, sy: number): void {
     call(
         LIB,
@@ -336,10 +253,6 @@ export function scale(cr: unknown, sx: number, sy: number): void {
     );
 }
 
-/**
- * Modifies the current transformation matrix by rotating.
- * @param angle - Angle of rotation in radians
- */
 export function rotate(cr: unknown, angle: number): void {
     call(
         LIB,
@@ -352,30 +265,18 @@ export function rotate(cr: unknown, angle: number): void {
     );
 }
 
-/**
- * Establishes a new clip region by intersecting the current clip region with the current path.
- */
 export function clip(cr: unknown): void {
     call(LIB, "cairo_clip", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Establishes a new clip region but preserves the path for further use.
- */
 export function clipPreserve(cr: unknown): void {
     call(LIB, "cairo_clip_preserve", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Reset the current clip region to its original, unrestricted state.
- */
 export function resetClip(cr: unknown): void {
     call(LIB, "cairo_reset_clip", [{ type: CAIRO_T, value: cr }], { type: "undefined" });
 }
 
-/**
- * Sets the compositing operator.
- */
 export function setOperator(cr: unknown, op: Operator): void {
     call(
         LIB,

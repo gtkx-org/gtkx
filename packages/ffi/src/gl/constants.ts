@@ -1,7 +1,4 @@
-/**
- * OpenGL constants for use with GL functions.
- * These are standard OpenGL enum values.
- */
+
 
 export const GL_DEPTH_BUFFER_BIT = 0x00000100;
 export const GL_STENCIL_BUFFER_BIT = 0x00000400;

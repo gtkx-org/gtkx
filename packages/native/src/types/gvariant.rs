@@ -1,4 +1,4 @@
-//! GVariant type descriptor.
+
 
 use libffi::middle as ffi;
 use neon::prelude::*;

@@ -7,10 +7,6 @@ import { reconciler } from "../../reconciler.js";
 import type { ListStore } from "./list-store.js";
 import type { SignalStore } from "./signal-store.js";
 
-/**
- * Render function for ListView/GridView items.
- * Called with null during setup (for loading state) and with the actual item during bind.
- */
 export type RenderItemFn<T> = (item: T | null) => ReactElement;
 
 export class ListItemRenderer {
