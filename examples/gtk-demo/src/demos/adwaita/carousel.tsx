@@ -8,6 +8,7 @@ import {
     GtkBox,
     GtkButton,
     GtkFrame,
+    GtkImage,
     GtkLabel,
 } from "@gtkx/react";
 import { useRef, useState } from "react";
@@ -95,7 +96,7 @@ const CarouselDemo = () => {
                                     marginEnd={24}
                                     valign={Gtk.Align.CENTER}
                                 >
-                                    <GtkLabel label={page.icon} cssClasses={["title-1"]} useMarkup={false} />
+                                    <GtkImage iconName={page.icon} pixelSize={64} />
                                     <GtkLabel label={page.title} cssClasses={["title-1"]} />
                                     <GtkLabel
                                         label={page.description}

@@ -5,6 +5,7 @@ import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import {
+    isAddable,
     isAppendable,
     isEditable,
     isInsertable,
@@ -54,6 +55,14 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 }
 
                 this.container.append(child.container);
+            } else if (isAddable(this.container)) {
+                const currentParent = child.container.getParent();
+
+                if (currentParent !== null && isRemovable(currentParent)) {
+                    currentParent.remove(child.container);
+                }
+
+                this.container.add(child.container);
             } else if (isSingleChild(this.container)) {
                 this.container.setChild(child.container);
             } else {

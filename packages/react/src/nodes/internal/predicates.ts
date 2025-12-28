@@ -4,6 +4,10 @@ export const isAppendable = (obj: unknown): obj is Gtk.Widget & { append: (child
     return obj instanceof Gtk.Widget && "append" in obj && typeof obj.append === "function";
 };
 
+export const isAddable = (obj: unknown): obj is Gtk.Widget & { add: (child: Gtk.Widget) => void } => {
+    return obj instanceof Gtk.Widget && "add" in obj && typeof obj.add === "function";
+};
+
 export const isSingleChild = (obj: unknown): obj is Gtk.Widget & { setChild: (child: Gtk.Widget | null) => void } => {
     return obj instanceof Gtk.Widget && "setChild" in obj && typeof obj.setChild === "function";
 };
