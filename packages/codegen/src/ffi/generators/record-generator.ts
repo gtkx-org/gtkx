@@ -41,6 +41,8 @@ export class RecordGenerator extends BaseGenerator {
             sections.push(`  static readonly glibTypeName: string = "${record.glibTypeName}";`);
             const objectType = record.glibTypeName === "GVariant" ? "gvariant" : "boxed";
             sections.push(`  static readonly objectType = "${objectType}" as const;\n`);
+        } else {
+            sections.push(`  static readonly objectType = "struct" as const;\n`);
         }
 
         sections.push(this.generateRecordConstructors(record, sharedLibrary));
@@ -165,16 +167,20 @@ export class RecordGenerator extends BaseGenerator {
         const mainConstructor = supportedConstructors.find((c) => !c.parameters.some((p) => this.isVararg(p)));
 
         if (!mainConstructor) {
-            if (record.glibTypeName && record.fields.length > 0) {
+            if (record.fields.length > 0) {
                 const structSize = this.calculateStructSize(record.fields);
                 const initFields = this.getWritableFields(record.fields);
                 this.ctx.usesAlloc = true;
+
+                const allocFn = record.glibTypeName
+                    ? `alloc(${structSize}, "${record.glibTypeName}", "${sharedLibrary}")`
+                    : `alloc(${structSize})`;
 
                 if (initFields.length > 0) {
                     const fieldWrites = this.generateFieldWrites(record.fields);
                     this.ctx.usesWrite = true;
                     return `  protected createPtr(init: ${recordName}Init): unknown {
-    const ptr = alloc(${structSize}, "${record.glibTypeName}", "${sharedLibrary}");
+    const ptr = ${allocFn};
 ${fieldWrites}
     return ptr;
   }
@@ -182,7 +188,7 @@ ${fieldWrites}
                 }
 
                 return `  protected createPtr(_init: Record<string, unknown>): unknown {
-    return alloc(${structSize}, "${record.glibTypeName}", "${sharedLibrary}");
+    return ${allocFn};
   }
 `;
             }

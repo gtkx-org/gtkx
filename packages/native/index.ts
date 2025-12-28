@@ -114,14 +114,14 @@ export function write(objectId: unknown, type: Type, offset: number, value: unkn
 }
 
 /**
- * Allocates memory for a boxed type.
+ * Allocates memory for a boxed type or plain struct.
  *
  * @param size - Size in bytes to allocate
- * @param glibTypeName - GLib type name for the boxed type
+ * @param glibTypeName - GLib type name for boxed types (optional for plain structs)
  * @param lib - Optional library containing the type
  * @returns Native pointer to allocated memory
  */
-export function alloc(size: number, glibTypeName: string, lib?: string): unknown {
+export function alloc(size: number, glibTypeName?: string, lib?: string): unknown {
     return native.alloc(size, glibTypeName, lib);
 }
 

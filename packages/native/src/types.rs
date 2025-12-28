@@ -41,6 +41,7 @@ mod gvariant;
 mod integer;
 mod r#ref;
 mod string;
+mod struct_type;
 
 pub use array::*;
 pub use boxed::*;
@@ -51,6 +52,7 @@ pub use gvariant::*;
 pub use integer::*;
 pub use r#ref::*;
 pub use string::*;
+pub use struct_type::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallbackTrampoline {
@@ -101,6 +103,9 @@ pub enum Type {
 
     Boxed(BoxedType),
 
+    /// Plain C struct without GType registration.
+    Struct(StructType),
+
     GVariant(GVariantType),
 
     Array(ArrayType),
@@ -130,6 +135,7 @@ impl Type {
             "undefined" => Ok(Type::Undefined),
             "gobject" => Ok(Type::GObject(GObjectType::from_js_value(cx, value)?)),
             "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
+            "struct" => Ok(Type::Struct(StructType::from_js_value(cx, value)?)),
             "gvariant" => Ok(Type::GVariant(GVariantType::from_js_value(cx, value)?)),
             "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
             "callback" => {
@@ -199,6 +205,7 @@ impl From<&Type> for ffi::Type {
             Type::Null => ffi::Type::pointer(),
             Type::GObject(type_) => type_.into(),
             Type::Boxed(type_) => type_.into(),
+            Type::Struct(type_) => type_.into(),
             Type::GVariant(type_) => type_.into(),
             Type::Array(type_) => type_.into(),
             Type::Callback(_) => ffi::Type::pointer(),
@@ -397,5 +404,44 @@ mod tests {
         let ref_type = RefType::new(int_type);
         let type_ = Type::Ref(ref_type);
         let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_struct() {
+        let struct_type = StructType::new(false, "PangoRectangle".to_string(), Some(16));
+        let type_ = Type::Struct(struct_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_struct_borrowed() {
+        let struct_type = StructType::new(true, "GtkTextIter".to_string(), None);
+        let type_ = Type::Struct(struct_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_struct_variant_debug() {
+        let struct_type = StructType::new(true, "PangoRectangle".to_string(), Some(16));
+        let type_ = Type::Struct(struct_type);
+        let debug_str = format!("{:?}", type_);
+
+        assert!(debug_str.contains("Struct"));
+        assert!(debug_str.contains("PangoRectangle"));
+    }
+
+    #[test]
+    fn type_struct_variant_clone() {
+        let struct_type = StructType::new(false, "CustomStruct".to_string(), Some(32));
+        let type_ = Type::Struct(struct_type);
+        let cloned = type_.clone();
+
+        if let Type::Struct(s) = cloned {
+            assert!(!s.is_borrowed);
+            assert_eq!(s.type_, "CustomStruct");
+            assert_eq!(s.size, Some(32));
+        } else {
+            panic!("Expected Type::Struct");
+        }
     }
 }

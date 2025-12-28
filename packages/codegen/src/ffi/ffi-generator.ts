@@ -1,4 +1,4 @@
-import type { GirClass, GirNamespace, TypeRegistry } from "@gtkx/gir";
+import type { GirClass, GirNamespace, GirRecord, TypeRegistry } from "@gtkx/gir";
 import { normalizeClassName, TypeMapper, toKebabCase, toPascalCase } from "@gtkx/gir";
 import { format } from "prettier";
 import { GenerationContext } from "./generation-context.js";
@@ -148,13 +148,30 @@ export class CodeGenerator {
         }
     }
 
-    private shouldGenerateRecord(record: { disguised?: boolean; name: string; glibTypeName?: string }): boolean {
+    private shouldGenerateRecord(record: GirRecord): boolean {
         if (record.disguised) return false;
-        if (record.name.endsWith("Class")) return false;
+        // Filter out widget class vtables but keep core GObject types
+        if (record.name.endsWith("Class") && record.name !== "TypeClass") return false;
         if (record.name.endsWith("Private")) return false;
         if (record.name.endsWith("Iface")) return false;
-        if (!record.glibTypeName) return false;
-        return true;
+        if (record.name.endsWith("Interface") && record.name !== "TypeInterface") return false;
+
+        if (record.glibTypeName) return true;
+
+        if (record.opaque || record.fields.length === 0) return false;
+
+        // Plain structs must have at least one public primitive field
+        // Records with only private fields are opaque and not plain structs
+        const publicFields = record.fields.filter((f) => !f.private);
+        if (publicFields.length === 0) return false;
+
+        const primitiveTypes = new Set([
+            "gint", "guint", "gint8", "guint8", "gint16", "guint16",
+            "gint32", "guint32", "gint64", "guint64", "gfloat", "gdouble",
+            "gboolean", "gchar", "guchar", "gsize", "gssize", "glong", "gulong",
+        ]);
+
+        return publicFields.every((field) => primitiveTypes.has(field.type.name));
     }
 
     private buildClassMap(namespace: GirNamespace): Map<string, GirClass> {

@@ -12,8 +12,8 @@ export abstract class NativeObject {
     /** The GLib type name (e.g., "GtkButton", "AdwHeaderBar") */
     static readonly glibTypeName: string;
 
-    /** The type category: gobject, interface, boxed, or gvariant */
-    static readonly objectType: "gobject" | "interface" | "boxed" | "gvariant";
+    /** The type category: gobject, interface, boxed, gvariant, or struct */
+    static readonly objectType: "gobject" | "interface" | "boxed" | "gvariant" | "struct";
 
     /** Native object pointer/ID */
     id: unknown;

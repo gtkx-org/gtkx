@@ -11,8 +11,13 @@ import type {
     Operator,
     SubpixelOrder,
 } from "../generated/cairo/enums.js";
+import { FontOptions } from "../generated/cairo/font-options.js";
+import { getNativeObject } from "../native/object.js";
+
+export { FontOptions };
 
 const LIB = "libcairo.so.2";
+
 const FONT_OPTIONS_T = { type: "boxed", innerType: "cairo_font_options_t", lib: LIB, borrowed: true } as const;
 const CAIRO_T = { type: "boxed", innerType: "cairo_t", lib: LIB, borrowed: true } as const;
 const PATTERN_T = { type: "boxed", innerType: "cairo_pattern_t", lib: LIB, borrowed: false } as const;
@@ -501,13 +506,14 @@ export function textExtents(cr: unknown, text: string): TextExtents {
     };
 }
 
-export function fontOptionsCreate(): unknown {
-    return call(LIB, "cairo_font_options_create", [], {
+export function fontOptionsCreate(): FontOptions {
+    const ptr = call(LIB, "cairo_font_options_create", [], {
         type: "boxed",
         innerType: "cairo_font_options_t",
         lib: LIB,
         borrowed: false,
     });
+    return getNativeObject(ptr, FontOptions)!;
 }
 
 export function fontOptionsDestroy(options: unknown): void {
@@ -606,7 +612,7 @@ export function setFontOptions(cr: unknown, options: unknown): void {
     );
 }
 
-export function getFontOptions(cr: unknown): unknown {
+export function getFontOptions(cr: unknown): FontOptions {
     const options = fontOptionsCreate();
     call(
         LIB,

@@ -207,7 +207,7 @@ fn handle_call(
                 cif::Value::Ptr(ptr as *mut c_void)
             }
             Type::Boolean => cif::Value::U8(cif.call::<u8>(symbol_ptr, &ffi_args)),
-            Type::GObject(_) | Type::Boxed(_) | Type::GVariant(_) => {
+            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::GVariant(_) => {
                 let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
                 cif::Value::Ptr(ptr)
             }
@@ -227,7 +227,7 @@ fn handle_call(
 
             if let Type::Ref(ref_type) = &arg.type_ {
                 match &*ref_type.inner_type {
-                    Type::Boxed(_) | Type::GObject(_) => {
+                    Type::Boxed(_) | Type::Struct(_) | Type::GObject(_) => {
                         if matches!(&*r#ref.value, Value::Object(_)) {
 
                             continue;

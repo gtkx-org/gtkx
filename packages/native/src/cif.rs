@@ -299,6 +299,22 @@ impl TryFrom<arg::Arg> for Value {
 
                 Ok(Value::Ptr(ptr))
             }
+            Type::Struct(_) => {
+                let object_id = match &arg.value {
+                    value::Value::Object(id) => Some(id),
+                    value::Value::Null | value::Value::Undefined => None,
+                    _ => bail!("Expected an Object for struct type, got {:?}", arg.value),
+                };
+
+                let ptr = match object_id {
+                    Some(id) => id.as_ptr().ok_or_else(|| {
+                        anyhow::anyhow!("Struct object has been garbage collected")
+                    })?,
+                    None => std::ptr::null_mut(),
+                };
+
+                Ok(Value::Ptr(ptr))
+            }
             Type::GVariant(type_) => {
                 let object_id = match &arg.value {
                     value::Value::Object(id) => Some(id),
@@ -454,7 +470,7 @@ impl Value {
 
                 Ok(Value::OwnedPtr(OwnedPtr::new((cstrings, ptrs), ptr)))
             }
-            Type::GObject(_) | Type::Boxed(_) | Type::GVariant(_) => {
+            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::GVariant(_) => {
                 let mut ids = Vec::new();
 
                 for value in array {
@@ -735,7 +751,7 @@ impl Value {
         };
 
         match &*type_.inner_type {
-            Type::Boxed(_) | Type::GObject(_) | Type::GVariant(_) => {
+            Type::Boxed(_) | Type::Struct(_) | Type::GObject(_) | Type::GVariant(_) => {
                 match &*r#ref.value {
                     value::Value::Object(id) => {
 
@@ -1388,5 +1404,106 @@ mod tests {
         let owned = OwnedPtr::from_vec(vec![1u8, 2, 3]);
         let v = Value::OwnedPtr(owned);
         let _arg: libffi::Arg = (&v).into();
+    }
+
+    #[test]
+    fn try_from_struct_null() {
+        let struct_type = crate::types::StructType::new(false, "TestStruct".to_string(), Some(16));
+        let arg = arg::Arg::new(
+            Type::Struct(struct_type),
+            value::Value::Null,
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::Ptr(ptr) = result.unwrap() {
+            assert!(ptr.is_null());
+        } else {
+            panic!("Expected Value::Ptr for null struct");
+        }
+    }
+
+    #[test]
+    fn try_from_struct_undefined() {
+        let struct_type = crate::types::StructType::new(true, "TestRect".to_string(), None);
+        let arg = arg::Arg::new(
+            Type::Struct(struct_type),
+            value::Value::Undefined,
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_ok());
+        if let Value::Ptr(ptr) = result.unwrap() {
+            assert!(ptr.is_null());
+        } else {
+            panic!("Expected Value::Ptr for undefined struct");
+        }
+    }
+
+    #[test]
+    fn try_from_struct_invalid_type() {
+        let struct_type = crate::types::StructType::new(false, "TestStruct".to_string(), Some(16));
+        let arg = arg::Arg::new(
+            Type::Struct(struct_type),
+            value::Value::String("invalid".to_string()),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_from_struct_invalid_number() {
+        let struct_type = crate::types::StructType::new(false, "TestStruct".to_string(), Some(16));
+        let arg = arg::Arg::new(
+            Type::Struct(struct_type),
+            value::Value::Number(42.0),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_from_struct_invalid_boolean() {
+        let struct_type = crate::types::StructType::new(true, "TestRect".to_string(), Some(8));
+        let arg = arg::Arg::new(
+            Type::Struct(struct_type),
+            value::Value::Boolean(true),
+        );
+
+        let result = Value::try_from(arg);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_from_struct_borrowed_vs_owned() {
+        // Test that borrowed flag doesn't affect conversion (just affects memory management later)
+        let borrowed_type = crate::types::StructType::new(true, "TestStruct".to_string(), Some(16));
+        let owned_type = crate::types::StructType::new(false, "TestStruct".to_string(), Some(16));
+
+        let borrowed_arg = arg::Arg::new(
+            Type::Struct(borrowed_type),
+            value::Value::Null,
+        );
+
+        let owned_arg = arg::Arg::new(
+            Type::Struct(owned_type),
+            value::Value::Null,
+        );
+
+        let borrowed_result = Value::try_from(borrowed_arg);
+        let owned_result = Value::try_from(owned_arg);
+
+        assert!(borrowed_result.is_ok());
+        assert!(owned_result.is_ok());
+
+        // Both should produce null pointers for null values
+        if let (Value::Ptr(ptr1), Value::Ptr(ptr2)) = (borrowed_result.unwrap(), owned_result.unwrap()) {
+            assert!(ptr1.is_null());
+            assert!(ptr2.is_null());
+        } else {
+            panic!("Expected Value::Ptr for both");
+        }
     }
 }

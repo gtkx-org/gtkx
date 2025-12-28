@@ -84,12 +84,16 @@ impl Clone for Boxed {
 
 impl Drop for Boxed {
     fn drop(&mut self) {
-        if self.is_owned
-            && !self.ptr.is_null()
-            && let Some(gtype) = self.type_
-        {
+        if self.is_owned && !self.ptr.is_null() {
             unsafe {
-                glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
+                match self.type_ {
+                    Some(gtype) => {
+                        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
+                    }
+                    None => {
+                        glib::ffi::g_free(self.ptr);
+                    }
+                }
             }
         }
     }
@@ -236,5 +240,108 @@ mod tests {
         unsafe {
             glib::gobject_ffi::g_boxed_free(gtype.into_glib(), ptr);
         }
+    }
+
+    // Tests for plain structs (without GType)
+
+    #[test]
+    fn from_glib_full_none_type_plain_struct() {
+        test_utils::ensure_gtk_init();
+
+        // Allocate a plain struct without GType
+        let ptr = unsafe { glib::ffi::g_malloc0(16) };
+
+        let boxed = Boxed::from_glib_full(None, ptr);
+
+        assert!(boxed.is_owned);
+        assert!(!boxed.ptr.is_null());
+        assert_eq!(boxed.type_, None);
+        // Will be freed with g_free on drop
+    }
+
+    #[test]
+    fn from_glib_full_none_type_null_ptr() {
+        test_utils::ensure_gtk_init();
+
+        let boxed = Boxed::from_glib_full(None, std::ptr::null_mut());
+
+        assert!(boxed.is_owned);
+        assert!(boxed.ptr.is_null());
+        assert_eq!(boxed.type_, None);
+    }
+
+    #[test]
+    fn drop_plain_struct_uses_g_free() {
+        test_utils::ensure_gtk_init();
+
+        // Allocate with g_malloc, should be freed with g_free
+        let ptr = unsafe { glib::ffi::g_malloc0(32) };
+
+        let boxed = Boxed::from_glib_full(None, ptr);
+        drop(boxed);
+        // If this doesn't crash, g_free was used correctly
+    }
+
+    #[test]
+    fn drop_plain_struct_null_ptr_safe() {
+        test_utils::ensure_gtk_init();
+
+        let boxed = Boxed::from_glib_full(None, std::ptr::null_mut());
+        drop(boxed);
+        // Should not crash on null pointer
+    }
+
+    #[test]
+    fn plain_struct_not_owned_does_not_free() {
+        test_utils::ensure_gtk_init();
+
+        let ptr = unsafe { glib::ffi::g_malloc0(16) };
+
+        let boxed = Boxed {
+            ptr,
+            type_: None,
+            is_owned: false,
+        };
+        drop(boxed);
+
+        // Pointer should still be valid - we need to free it manually
+        unsafe {
+            glib::ffi::g_free(ptr);
+        }
+    }
+
+    #[test]
+    fn from_glib_none_null_ptr_with_none_type() {
+        test_utils::ensure_gtk_init();
+
+        let boxed = Boxed::from_glib_none(None, std::ptr::null_mut());
+
+        assert!(!boxed.is_owned);
+        assert!(boxed.ptr.is_null());
+        assert_eq!(boxed.type_, None);
+    }
+
+    #[test]
+    fn as_ref_returns_ptr_for_plain_struct() {
+        test_utils::ensure_gtk_init();
+
+        let ptr = unsafe { glib::ffi::g_malloc0(24) };
+        let boxed = Boxed::from_glib_full(None, ptr);
+
+        let ptr_ref: &*mut c_void = boxed.as_ref();
+        assert_eq!(*ptr_ref, ptr);
+    }
+
+    #[test]
+    fn plain_struct_debug_format() {
+        test_utils::ensure_gtk_init();
+
+        let ptr = unsafe { glib::ffi::g_malloc0(8) };
+        let boxed = Boxed::from_glib_full(None, ptr);
+
+        let debug_str = format!("{:?}", boxed);
+        assert!(debug_str.contains("Boxed"));
+        assert!(debug_str.contains("None")); // type_ is None
+        assert!(debug_str.contains("true")); // is_owned is true
     }
 }

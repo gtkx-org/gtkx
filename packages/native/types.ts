@@ -10,6 +10,8 @@ type GObjectType = { type: "gobject"; borrowed?: boolean };
 
 type BoxedType = { type: "boxed"; borrowed?: boolean; innerType: string; lib?: string; getTypeFn?: string };
 
+type StructType = { type: "struct"; borrowed?: boolean; innerType?: string; size?: number };
+
 type GVariantType = { type: "gvariant"; borrowed?: boolean };
 
 type ArrayType = { type: "array"; itemType: Type; listType?: "glist" | "gslist"; borrowed?: boolean };
@@ -45,6 +47,7 @@ export type Type =
     | StringType
     | GObjectType
     | BoxedType
+    | StructType
     | GVariantType
     | ArrayType
     | RefType

@@ -1,5 +1,4 @@
 import * as Cairo from "@gtkx/ffi/cairo";
-import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -106,7 +105,7 @@ const FontRenderPreview = ({
 
             // Create Pango layout with the font options
             const context = PangoCairo.createContext(cr);
-            PangoCairo.contextSetFontOptions(context, Cairo.FontOptions.fromPtr(fontOptions));
+            PangoCairo.contextSetFontOptions(context, fontOptions);
 
             const layout = new Pango.Layout(context);
             const fontDesc = Pango.FontDescription.fromString(`Sans ${fontSize}px`);
@@ -114,7 +113,7 @@ const FontRenderPreview = ({
             layout.setText(text, -1);
 
             // Position text
-            const logicalRect = new Gdk.Rectangle();
+            const logicalRect = new Pango.Rectangle();
             layout.getPixelExtents(undefined, logicalRect);
             const scaledWidth = width / scale;
             const scaledHeight = height / scale;

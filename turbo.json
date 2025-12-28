@@ -5,12 +5,14 @@
     "tasks": {
         "lint": {
             "inputs": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "scripts/**/*.ts"],
-            "outputs": []
+            "outputs": [],
+            "outputLogs": "new-only"
         },
         "codegen": {
             "dependsOn": ["@gtkx/codegen#build"],
             "inputs": ["$TURBO_ROOT$/girs/**", "$TURBO_ROOT$/packages/gir/src/**"],
-            "outputs": ["src/generated/**"]
+            "outputs": ["src/generated/**"],
+            "outputLogs": "new-only"
         },
         "build": {
             "dependsOn": ["^build", "codegen", "native-build"],
@@ -22,15 +24,18 @@
                 "tsconfig.app.json",
                 "tsconfig.test.json"
             ],
-            "outputs": ["dist/**", "out-tsc/**", "build/**", "*.tsbuildinfo"]
+            "outputs": ["dist/**", "out-tsc/**", "build/**", "*.tsbuildinfo"],
+            "outputLogs": "new-only"
         },
         "native-build": {
             "inputs": ["Cargo.toml", "Cargo.lock", "src/**/*.rs"],
-            "outputs": ["index.node"]
+            "outputs": ["index.node"],
+            "outputLogs": "new-only"
         },
         "native-test": {
             "inputs": ["Cargo.toml", "src/**/*.rs"],
-            "outputs": []
+            "outputs": [],
+            "outputLogs": "new-only"
         },
         "start": {
             "dependsOn": ["build"],
@@ -46,19 +51,23 @@
                 "tests/**/*.tsx",
                 "$TURBO_ROOT$/vitest.config.ts",
                 "$TURBO_ROOT$/vitest.setup.ts"
-            ]
+            ],
+            "outputLogs": "new-only"
         },
         "@gtkx/gir#build": {
             "dependsOn": ["^build"],
-            "outputs": ["dist/**", "*.tsbuildinfo"]
+            "outputs": ["dist/**", "*.tsbuildinfo"],
+            "outputLogs": "new-only"
         },
         "@gtkx/codegen#build": {
             "dependsOn": ["@gtkx/gir#build"],
-            "outputs": ["dist/**", "*.tsbuildinfo"]
+            "outputs": ["dist/**", "*.tsbuildinfo"],
+            "outputLogs": "new-only"
         },
         "website#build": {
             "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
-            "outputs": ["build/**", ".docusaurus/**", "docs/api/**"]
+            "outputs": ["build/**", ".docusaurus/**", "docs/api/**"],
+            "outputLogs": "new-only"
         },
         "website#start": {
             "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],

@@ -1,5 +1,4 @@
 import * as Cairo from "@gtkx/ffi/cairo";
-import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -57,7 +56,7 @@ const TextmaskDemo = () => {
             layout.setText(text, -1);
 
             // Get text dimensions
-            const logicalRect = new Gdk.Rectangle();
+            const logicalRect = new Pango.Rectangle();
             layout.getPixelExtents(undefined, logicalRect);
             const textWidth = logicalRect.width;
             const textHeight = logicalRect.height;

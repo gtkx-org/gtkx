@@ -368,8 +368,14 @@ export type GirEnumerationMember = {
  * for the native module.
  */
 export type FfiTypeDescriptor = {
+    /**
+     * The FFI type: "int", "float", "string", "boolean", "boxed", "struct", "gobject", etc.
+     */
     type: string;
 
+    /**
+     * Size in bits for numeric types, or bytes for struct types.
+     */
     size?: number;
 
     unsigned?: boolean;
@@ -455,6 +461,19 @@ export type RegisteredType = {
     glibTypeName?: string;
     sharedLibrary?: string;
     glibGetType?: string;
+    /**
+     * If true, this is a plain C struct without GType registration.
+     * These require different FFI handling than boxed types.
+     */
+    isPlainStruct?: boolean;
+    /**
+     * Size in bytes for plain structs (for allocation).
+     */
+    structSize?: number;
+    /**
+     * Field definitions for plain structs.
+     */
+    structFields?: Array<{ name: string; offset: number; type: string }>;
 };
 
 /**
@@ -528,6 +547,9 @@ export class TypeRegistry {
      * @param glibTypeName - Optional GLib type name for runtime type info
      * @param sharedLibrary - Optional shared library containing the type
      * @param glibGetType - Optional get_type function name
+     * @param isPlainStruct - If true, this is a plain C struct without GType
+     * @param structSize - Size in bytes for plain structs
+     * @param structFields - Field definitions for plain structs
      */
     registerRecord(
         namespace: string,
@@ -535,6 +557,9 @@ export class TypeRegistry {
         glibTypeName?: string,
         sharedLibrary?: string,
         glibGetType?: string,
+        isPlainStruct?: boolean,
+        structSize?: number,
+        structFields?: Array<{ name: string; offset: number; type: string }>,
     ): void {
         const transformedName = normalizeClassName(name, namespace);
         this.types.set(`${namespace}.${name}`, {
@@ -545,6 +570,9 @@ export class TypeRegistry {
             glibTypeName,
             sharedLibrary,
             glibGetType,
+            isPlainStruct,
+            structSize,
+            structFields,
         });
     }
 
@@ -631,13 +659,31 @@ export class TypeRegistry {
                 registry.registerEnum(ns.name, bitfield.name);
             }
             for (const record of ns.records) {
-                if (record.glibTypeName && !record.disguised) {
+                if (record.disguised) continue;
+
+                if (record.glibTypeName) {
                     registry.registerRecord(
                         ns.name,
                         record.name,
                         record.glibTypeName,
                         ns.sharedLibrary,
                         record.glibGetType,
+                    );
+                } else if (
+                    record.fields.length > 0 &&
+                    !record.opaque &&
+                    hasOnlyPrimitiveFields(record.fields)
+                ) {
+                    const { size, fields } = calculateStructLayout(record.fields);
+                    registry.registerRecord(
+                        ns.name,
+                        record.name,
+                        undefined,
+                        ns.sharedLibrary,
+                        undefined,
+                        true,
+                        size,
+                        fields,
                     );
                 }
             }
@@ -650,6 +696,107 @@ export class TypeRegistry {
 }
 
 const STRING_TYPES = new Set(["utf8", "filename"]);
+
+const PRIMITIVE_TYPES = new Set([
+    "gint",
+    "guint",
+    "gint8",
+    "guint8",
+    "gint16",
+    "guint16",
+    "gint32",
+    "guint32",
+    "gint64",
+    "guint64",
+    "gfloat",
+    "gdouble",
+    "gboolean",
+    "gchar",
+    "guchar",
+    "gsize",
+    "gssize",
+    "glong",
+    "gulong",
+]);
+
+/**
+ * Checks if a record has at least one public primitive field and all public fields are primitive.
+ * Used to determine if a plain struct can be safely generated.
+ * Records with only private fields are considered opaque and should not be plain structs.
+ */
+const hasOnlyPrimitiveFields = (fields: GirField[]): boolean => {
+    const publicFields = fields.filter((f) => !f.private);
+    if (publicFields.length === 0) return false;
+    return publicFields.every((field) => PRIMITIVE_TYPES.has(field.type.name));
+};
+
+/**
+ * Gets the size and alignment of a field type in bytes.
+ */
+const getFieldSizeAndAlignment = (type: GirType): { size: number; alignment: number } => {
+    const typeName = type.name;
+
+    if (["gboolean", "guint8", "gint8", "guchar", "gchar"].includes(typeName)) {
+        return { size: 1, alignment: 1 };
+    }
+    if (["gint16", "guint16", "gshort", "gushort"].includes(typeName)) {
+        return { size: 2, alignment: 2 };
+    }
+    if (
+        ["gint", "guint", "gint32", "guint32", "gfloat", "float", "Quark", "GQuark"].includes(typeName)
+    ) {
+        return { size: 4, alignment: 4 };
+    }
+    if (
+        [
+            "gint64",
+            "guint64",
+            "gdouble",
+            "double",
+            "glong",
+            "gulong",
+            "gsize",
+            "gssize",
+            "GType",
+            "gpointer",
+        ].includes(typeName)
+    ) {
+        return { size: 8, alignment: 8 };
+    }
+    return { size: 8, alignment: 8 };
+};
+
+/**
+ * Calculates the memory layout of a struct (size and field offsets).
+ */
+const calculateStructLayout = (
+    fields: GirField[],
+): { size: number; fields: Array<{ name: string; offset: number; type: string }> } => {
+    const result: Array<{ name: string; offset: number; type: string }> = [];
+    let currentOffset = 0;
+    let maxAlignment = 1;
+
+    for (const field of fields) {
+        if (field.private) continue;
+
+        const { size, alignment } = getFieldSizeAndAlignment(field.type);
+        maxAlignment = Math.max(maxAlignment, alignment);
+
+        currentOffset = Math.ceil(currentOffset / alignment) * alignment;
+
+        result.push({
+            name: field.name,
+            offset: currentOffset,
+            type: field.type.name,
+        });
+
+        currentOffset += size;
+    }
+
+    const finalSize = Math.ceil(currentOffset / maxAlignment) * maxAlignment;
+
+    return { size: finalSize, fields: result };
+};
 
 const POINTER_TYPE: TypeMapping = { ts: "number", ffi: { type: "int", size: 64, unsigned: true } };
 
@@ -1006,6 +1153,19 @@ export class TypeMapper {
                             kind: registered.kind,
                         };
                     }
+                    if (registered.isPlainStruct) {
+                        return {
+                            ts: qualifiedName,
+                            ffi: {
+                                type: "struct",
+                                borrowed: isReturn,
+                                innerType: registered.transformedName,
+                                size: registered.structSize,
+                            } as FfiTypeDescriptor,
+                            externalType,
+                            kind: registered.kind,
+                        };
+                    }
                     return {
                         ts: qualifiedName,
                         ffi: {
@@ -1106,6 +1266,19 @@ export class TypeMapper {
                                 externalType: isExternal ? externalType : undefined,
                             };
                         }
+                        if (registered.isPlainStruct) {
+                            return {
+                                ts: qualifiedName,
+                                ffi: {
+                                    type: "struct",
+                                    borrowed: isReturn,
+                                    innerType: registered.transformedName,
+                                    size: registered.structSize,
+                                } as FfiTypeDescriptor,
+                                externalType: isExternal ? externalType : undefined,
+                                kind: registered.kind,
+                            };
+                        }
                         return {
                             ts: qualifiedName,
                             ffi: {
@@ -1168,6 +1341,19 @@ export class TypeMapper {
                     };
                 }
                 if (registered.kind === "record") {
+                    if (registered.isPlainStruct) {
+                        return {
+                            ts: qualifiedName,
+                            ffi: {
+                                type: "struct",
+                                borrowed: isReturn,
+                                innerType: registered.transformedName,
+                                size: registered.structSize,
+                            } as FfiTypeDescriptor,
+                            externalType,
+                            kind: registered.kind,
+                        };
+                    }
                     return {
                         ts: qualifiedName,
                         ffi: {
@@ -1218,9 +1404,12 @@ export class TypeMapper {
     mapParameter(param: GirParameter): MappedType {
         if (param.direction === "out" || param.direction === "inout") {
             const innerType = this.mapType(param.type);
-            const isBoxedOrGObject = innerType.ffi.type === "boxed" || innerType.ffi.type === "gobject";
+            const isBoxedOrGObjectOrStruct =
+                innerType.ffi.type === "boxed" ||
+                innerType.ffi.type === "gobject" ||
+                innerType.ffi.type === "struct";
 
-            if (param.callerAllocates && isBoxedOrGObject) {
+            if (param.callerAllocates && isBoxedOrGObjectOrStruct) {
                 return {
                     ...innerType,
                     ffi: {
@@ -1230,7 +1419,7 @@ export class TypeMapper {
                 };
             }
 
-            if (!isBoxedOrGObject) {
+            if (!isBoxedOrGObjectOrStruct) {
                 return {
                     ts: `Ref<${innerType.ts}>`,
                     ffi: {

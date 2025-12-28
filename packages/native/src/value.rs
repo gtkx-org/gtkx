@@ -320,6 +320,29 @@ impl Value {
 
                 Ok(Value::Object(ObjectId::new(boxed)))
             }
+            Type::Struct(type_) => {
+                let struct_ptr = match cif_value {
+                    cif::Value::Ptr(ptr) => *ptr,
+                    _ => {
+                        bail!(
+                            "Expected a pointer cif::Value for Struct, got {:?}",
+                            cif_value
+                        )
+                    }
+                };
+
+                if struct_ptr.is_null() {
+                    return Ok(Value::Null);
+                }
+
+                let boxed = if type_.is_borrowed {
+                    Boxed::from_glib_none(None, struct_ptr)
+                } else {
+                    Boxed::from_glib_full(None, struct_ptr)
+                };
+
+                Ok(Value::Object(ObjectId::new(Object::Boxed(boxed))))
+            }
             Type::GVariant(type_) => {
                 let variant_ptr = match cif_value {
                     cif::Value::Ptr(ptr) => *ptr,
@@ -589,7 +612,7 @@ impl Value {
                             .map(|v| Value::Boolean(*v != 0))
                             .collect::<Vec<Value>>()
                     }
-                    Type::GObject(_) | Type::Boxed(_) | Type::GVariant(_) => {
+                    Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::GVariant(_) => {
                         let (ids, _) = array_ptr
                             .value
                             .downcast_ref::<(Vec<ObjectId>, Vec<*mut c_void>)>()
@@ -873,6 +896,11 @@ impl Value {
                 Ok(Value::Object(ObjectId::new(Object::GVariant(variant))))
             }
             Type::Null | Type::Undefined => Ok(Value::Null),
+            Type::Struct(_) => {
+                bail!(
+                    "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
+                )
+            }
             Type::Array(_) | Type::Ref(_) | Type::Callback(_) => {
                 bail!(
                     "Type {:?} should not appear in glib value conversion - this indicates a bug in the type mapping",
@@ -1912,6 +1940,138 @@ mod tests {
 
         unsafe {
             glib::ffi::g_list_free(list);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(debug_assertions, should_panic(expected = "Boxed::from_glib_none called with unknown type"))]
+    fn from_cif_value_struct_borrowed() {
+        test_utils::ensure_gtk_init();
+
+        // Allocate a simple struct (16 bytes for a rectangle-like struct)
+        let struct_ptr = unsafe { glib::ffi::g_malloc0(16) };
+
+        let struct_type = crate::types::StructType::new(true, "TestRect".to_string(), Some(16));
+        let type_ = Type::Struct(struct_type);
+
+        let cif_value = cif::Value::Ptr(struct_ptr);
+        let result = Value::from_cif_value(&cif_value, &type_);
+
+        // In release mode, this succeeds but holds a non-owned reference
+        // In debug mode, this panics to warn about potential dangling pointer
+        assert!(result.is_ok());
+        if let Value::Object(_id) = result.unwrap() {
+            // Struct was wrapped correctly
+        } else {
+            panic!("Expected Value::Object for struct");
+        }
+
+        // Since borrowed, we need to free the original
+        unsafe {
+            glib::ffi::g_free(struct_ptr);
+        }
+    }
+
+    #[test]
+    fn from_cif_value_struct_full_transfer() {
+        test_utils::ensure_gtk_init();
+
+        // Allocate a simple struct (32 bytes)
+        let struct_ptr = unsafe { glib::ffi::g_malloc0(32) };
+
+        let struct_type = crate::types::StructType::new(false, "CustomStruct".to_string(), Some(32));
+        let type_ = Type::Struct(struct_type);
+
+        let cif_value = cif::Value::Ptr(struct_ptr);
+        let result = Value::from_cif_value(&cif_value, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Object(_id) = result.unwrap() {
+            // Struct was wrapped and ownership transferred
+            // The Boxed wrapper will free it on drop
+        } else {
+            panic!("Expected Value::Object for struct");
+        }
+    }
+
+    #[test]
+    fn from_cif_value_struct_null_returns_null_value() {
+        test_utils::ensure_gtk_init();
+
+        let struct_type = crate::types::StructType::new(false, "TestStruct".to_string(), Some(16));
+        let type_ = Type::Struct(struct_type);
+
+        let cif_value = cif::Value::Ptr(std::ptr::null_mut());
+        let result = Value::from_cif_value(&cif_value, &type_);
+
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), Value::Null));
+    }
+
+    #[test]
+    fn from_glib_value_struct_fails() {
+        test_utils::ensure_gtk_init();
+
+        // Plain structs can't be stored in GValue, so this should fail
+        let gvalue: glib::Value = glib::Value::from_type(glib::types::Type::POINTER);
+
+        let struct_type = crate::types::StructType::new(false, "PlainStruct".to_string(), Some(16));
+        let type_ = Type::Struct(struct_type);
+
+        let result = Value::from_glib_value(&gvalue, &type_);
+
+        // Should fail because plain structs can't appear in GValue
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[cfg_attr(debug_assertions, should_panic(expected = "Boxed::from_glib_none called with unknown type"))]
+    fn from_cif_value_struct_borrowed_without_size() {
+        test_utils::ensure_gtk_init();
+
+        // Allocate memory without specifying size in the type
+        let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
+
+        // is_borrowed = true triggers from_glib_none which panics in debug for None type
+        let struct_type = crate::types::StructType::new(true, "UnknownSizeStruct".to_string(), None);
+        let type_ = Type::Struct(struct_type);
+
+        let cif_value = cif::Value::Ptr(struct_ptr);
+        let result = Value::from_cif_value(&cif_value, &type_);
+
+        // In release mode, this succeeds
+        // In debug mode, this panics
+        assert!(result.is_ok());
+        if let Value::Object(_id) = result.unwrap() {
+            // Works even without size specified
+        } else {
+            panic!("Expected Value::Object for struct");
+        }
+
+        unsafe {
+            glib::ffi::g_free(struct_ptr);
+        }
+    }
+
+    #[test]
+    fn from_cif_value_struct_owned_without_size() {
+        test_utils::ensure_gtk_init();
+
+        // Allocate memory without specifying size in the type
+        let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };
+
+        // is_borrowed = false uses from_glib_full which works with None type
+        let struct_type = crate::types::StructType::new(false, "UnknownSizeStruct".to_string(), None);
+        let type_ = Type::Struct(struct_type);
+
+        let cif_value = cif::Value::Ptr(struct_ptr);
+        let result = Value::from_cif_value(&cif_value, &type_);
+
+        assert!(result.is_ok());
+        if let Value::Object(_id) = result.unwrap() {
+            // Works even without size specified, memory will be freed on drop
+        } else {
+            panic!("Expected Value::Object for struct");
         }
     }
 }

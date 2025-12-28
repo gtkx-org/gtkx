@@ -1,5 +1,4 @@
 import * as Cairo from "@gtkx/ffi/cairo";
-import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -58,7 +57,7 @@ const RotatedTextDemo = () => {
                 layout.setText(text, -1);
 
                 // Center the text
-                const logicalRect = new Gdk.Rectangle();
+                const logicalRect = new Pango.Rectangle();
                 layout.getPixelExtents(undefined, logicalRect);
                 Cairo.translate(cr, -logicalRect.width / 2, -logicalRect.height / 2);
 
