@@ -234,8 +234,10 @@ export class ClassGenerator extends BaseGenerator {
         this.ctx.usesInstantiating = true;
         const ctorDoc = this.formatMethodDoc(ctor.doc, ctor.parameters);
         const params = this.generateParameterList(ctor.parameters);
-        const args = this.generateCallArguments(ctor.parameters);
+        const { wrapperCode, paramMappings } = this.generateCallbackWrappers(ctor.parameters);
+        const args = this.generateCallArguments(ctor.parameters, "        ", paramMappings);
         const docComment = ctorDoc ? `${ctorDoc.trimEnd()}\n` : "";
+        const wrapperSection = wrapperCode ? `${wrapperCode}\n` : "";
 
         return `${docComment}  constructor(${params}) {
     if (!isInstantiating) {
@@ -243,7 +245,7 @@ export class ClassGenerator extends BaseGenerator {
       // @ts-ignore
       super();
       setInstantiating(false);
-      this.id = call(
+${wrapperSection}      this.id = call(
         "${sharedLibrary}",
         "${ctor.cIdentifier}",
         [

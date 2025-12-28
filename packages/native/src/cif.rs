@@ -25,7 +25,7 @@ use std::{
 };
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::IntoGlib as _, value::ToValue as _};
+use gtk4::glib::{self, translate::{FromGlibPtrNone as _, IntoGlib as _}, value::ToValue as _};
 use libffi::middle as libffi;
 use neon::prelude::*;
 
@@ -666,6 +666,54 @@ impl Value {
 
                 let trampoline_ptr = callback::get_shortcut_func_trampoline_ptr();
                 let destroy_ptr = callback::get_shortcut_func_data_destroy_ptr();
+
+                Ok(Value::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr,
+                    closure: OwnedPtr::new((), data_ptr),
+                    destroy_ptr: Some(destroy_ptr),
+                    data_first: false,
+                }))
+            }
+
+            CallbackTrampoline::TreeListModelCreateFunc => {
+                let arg_types = type_.arg_types.clone();
+                let arg_gtypes = arg_types_to_glib_types(&arg_types);
+
+                let closure = glib::Closure::new(move |args: &[glib::Value]| {
+                    let args_values = convert_glib_args(args, &arg_types)
+                        .expect("Failed to convert GLib tree list model callback arguments");
+
+                    invoke_and_wait_for_js_result(
+                        &channel,
+                        &callback,
+                        args_values,
+                        true,
+                        |result| match result {
+                            Ok(value::Value::Object(obj_id)) => {
+                                if let Some(ptr) = obj_id.as_ptr() {
+                                    let obj: glib::Object = unsafe {
+                                        glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
+                                    };
+                                    Some(obj.to_value())
+                                } else {
+                                    Some(None::<glib::Object>.to_value())
+                                }
+                            }
+                            _ => Some(None::<glib::Object>.to_value()),
+                        },
+                    )
+                });
+
+                let closure_ptr = closure_ptr_for_transfer(closure);
+
+                let create_func_data = Box::new(callback::TreeListModelCreateFuncData {
+                    closure: closure_ptr as *mut glib::gobject_ffi::GClosure,
+                    arg_gtypes,
+                });
+                let data_ptr = Box::into_raw(create_func_data) as *mut c_void;
+
+                let trampoline_ptr = callback::get_tree_list_model_create_func_trampoline_ptr();
+                let destroy_ptr = callback::get_tree_list_model_create_func_data_destroy_ptr();
 
                 Ok(Value::TrampolineCallback(TrampolineCallbackValue {
                     trampoline_ptr,

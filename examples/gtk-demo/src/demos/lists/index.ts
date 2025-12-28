@@ -7,6 +7,7 @@ import { listviewColorsDemo } from "./listview-colors.js";
 import { listviewFilebrowserDemo } from "./listview-filebrowser.js";
 import { listviewSelectionsDemo } from "./listview-selections.js";
 import { listviewSettingsDemo } from "./listview-settings.js";
+import { listviewSettings2Demo } from "./listview-settings2.js";
 import { listviewUcdDemo } from "./listview-ucd.js";
 import { listviewWeatherDemo } from "./listview-weather.js";
 import { listviewWordsDemo } from "./listview-words.js";
@@ -20,6 +21,7 @@ export const listsDemos: Demo[] = [
     listviewFilebrowserDemo,
     listviewSelectionsDemo,
     listviewSettingsDemo,
+    listviewSettings2Demo,
     listviewUcdDemo,
     listviewWeatherDemo,
     listviewWordsDemo,

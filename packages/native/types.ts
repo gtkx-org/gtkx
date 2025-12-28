@@ -30,7 +30,8 @@ type CallbackType = {
         | "drawFunc"
         | "compareDataFunc"
         | "tickFunc"
-        | "shortcutFunc";
+        | "shortcutFunc"
+        | "treeListModelCreateFunc";
     argTypes?: Type[];
     sourceType?: Type;
     resultType?: Type;

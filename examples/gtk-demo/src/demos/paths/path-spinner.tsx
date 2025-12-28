@@ -131,7 +131,7 @@ const createMultiArcSpinnerDrawFunc = (rotation: number, strokeWidth: number) =>
             const currentRotation = rotation * speed * direction;
             const arcLength = Math.PI * (0.5 + 0.2 * i);
 
-            const [r, g, b] = colors[i]!;
+            const [r, g, b] = colors[i] as [number, number, number];
             cairo.setSourceRgb(cr, r, g, b);
             cairo.arc(cr, centerX, centerY, radius, currentRotation, currentRotation + arcLength);
             cairo.stroke(cr);

@@ -7,6 +7,7 @@ import {
     toValidIdentifier,
 } from "@gtkx/gir";
 import type { GenerationContext } from "../generation-context.js";
+import { generateCallbackWrapperCode } from "../utils/callback-wrapper.js";
 
 export type GeneratorOptions = {
     namespace: string;
@@ -73,19 +74,63 @@ export abstract class BaseGenerator {
         return [...required, ...optional].join(", ");
     }
 
-    protected generateCallArguments(parameters: GirParameter[], indent = "      "): string {
+    protected generateCallArguments(
+        parameters: GirParameter[],
+        indent = "      ",
+        paramMappings?: Map<string, string>,
+    ): string {
         return parameters
             .filter((p, i) => !this.isVararg(p) && !this.typeMapper.isClosureTarget(i, parameters))
             .map((param) => {
                 const mapped = this.typeMapper.mapParameter(param);
                 const jsParamName = toValidIdentifier(toCamelCase(param.name));
                 const needsPtr = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
-                const valueName = needsPtr ? `(${jsParamName} as any)?.id ?? ${jsParamName}` : jsParamName;
+                const effectiveName = paramMappings?.get(jsParamName) ?? jsParamName;
+                const valueName = needsPtr ? `(${effectiveName} as any)?.id ?? ${effectiveName}` : effectiveName;
                 const isOptional = this.typeMapper.isNullable(param);
                 const optionalPart = isOptional ? `,\n${indent}    optional: true` : "";
                 return `${indent}  {\n${indent}    type: ${this.generateTypeDescriptor(mapped.ffi)},\n${indent}    value: ${valueName}${optionalPart},\n${indent}  }`;
             })
             .join(",\n");
+    }
+
+    /**
+     * Generates wrapper code for callbacks that have gobject argTypes.
+     * Returns the wrapper declarations and a mapping from original param names to wrapper names.
+     */
+    protected generateCallbackWrappers(
+        parameters: GirParameter[],
+        indent = "      ",
+    ): { wrapperCode: string; paramMappings: Map<string, string> } {
+        const wrapperCode: string[] = [];
+        const paramMappings = new Map<string, string>();
+
+        for (const param of parameters) {
+            const mapped = this.typeMapper.mapParameter(param);
+            if (mapped.ffi.type !== "callback") continue;
+
+            const jsParamName = toValidIdentifier(toCamelCase(param.name));
+            const wrappedName = `_wrapped_${jsParamName}`;
+
+            const result = generateCallbackWrapperCode({
+                callbackName: jsParamName,
+                wrappedName,
+                argTypes: mapped.ffi.argTypes,
+                returnType: mapped.ffi.returnType,
+                hasSelfArg: false,
+                indent,
+            });
+
+            if (!result.code) continue;
+
+            paramMappings.set(jsParamName, wrappedName);
+            wrapperCode.push(result.code);
+
+            if (result.usesGetNativeObject) this.ctx.usesGetNativeObject = true;
+            if (result.usesGetNativeClass) this.ctx.usesGetClassByTypeName = true;
+        }
+
+        return { wrapperCode: wrapperCode.join("\n"), paramMappings };
     }
 
     protected generateTypeDescriptor(type: FfiTypeDescriptor): string {

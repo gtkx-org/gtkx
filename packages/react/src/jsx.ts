@@ -3,6 +3,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
+import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 
 /**
  * Props for EventController-based event handlers.
@@ -51,6 +52,26 @@ export type ListItemProps<T = unknown> = {
     id: string;
     /** The data value for this item */
     value: T;
+};
+
+/**
+ * Props for items in a {@link TreeListView}.
+ *
+ * @typeParam T - The type of data associated with this tree item
+ */
+export type TreeListItemProps<T = unknown> = {
+    /** Unique identifier for this item */
+    id: string;
+    /** The data value for this item */
+    value: T;
+    /** Whether to indent based on tree depth (default: true) */
+    indentForDepth?: boolean;
+    /** Whether to indent for expander icon width */
+    indentForIcon?: boolean;
+    /** Whether to hide the expand/collapse arrow */
+    hideExpander?: boolean;
+    /** Nested tree items (children of this item) */
+    children?: ReactNode;
 };
 
 /**
@@ -513,6 +534,75 @@ export function GridView<T = unknown>(props: GridViewProps<T>): ReactElement {
 }
 
 /**
+ * Props for the TreeListView component.
+ *
+ * @typeParam T - The type of items in the tree
+ */
+export type TreeListViewProps<T = unknown> = Omit<import("./generated/jsx.js").GtkListViewProps, "renderItem"> & {
+    /** Function to render each tree item */
+    renderItem: TreeRenderItemFn<T>;
+    /** Whether to automatically expand new rows (default: false) */
+    autoexpand?: boolean;
+    /** Selection mode for the tree */
+    selectionMode?: Gtk.SelectionMode;
+    /** Currently selected item IDs */
+    selected?: string[];
+    /** Callback when selection changes */
+    onSelectionChanged?: (ids: string[]) => void;
+};
+
+/**
+ * Tree list component with hierarchical data and expand/collapse support.
+ *
+ * Renders a tree structure with expandable/collapsible rows using GTK's TreeListModel.
+ * Items are defined declaratively by nesting TreeListItem components.
+ *
+ * @typeParam T - The type of items in the tree
+ *
+ * @example
+ * ```tsx
+ * interface Category { name: string; }
+ * interface Setting { key: string; value: string; }
+ *
+ * <TreeListView<Category | Setting>
+ *   renderItem={(item, row) => (
+ *     <GtkLabel label={'name' in item ? item.name : item.key} />
+ *   )}
+ * >
+ *   {categories.map(cat => (
+ *     <TreeListItem key={cat.name} id={cat.name} value={cat}>
+ *       {cat.settings?.map(setting => (
+ *         <TreeListItem key={setting.key} id={setting.key} value={setting} />
+ *       ))}
+ *     </TreeListItem>
+ *   ))}
+ * </TreeListView>
+ * ```
+ *
+ * @internal
+ */
+export function TreeListView<T = unknown>(props: TreeListViewProps<T>): ReactElement {
+    return createElement("TreeListView", props);
+}
+
+/**
+ * Element type for items in a TreeListView.
+ *
+ * Nesting TreeListItem components defines the tree hierarchy.
+ *
+ * @example
+ * ```tsx
+ * <TreeListView renderItem={(item) => <GtkLabel label={item.name} />}>
+ *   <TreeListItem id="parent" value={{ name: "Parent" }}>
+ *     <TreeListItem id="child1" value={{ name: "Child 1" }} />
+ *     <TreeListItem id="child2" value={{ name: "Child 2" }} />
+ *   </TreeListItem>
+ * </TreeListView>
+ * ```
+ */
+export const TreeListItem = "TreeListItem" as const;
+
+/**
  * Element type for simple string-based list items.
  *
  * Use when list items only need string values without complex data.
@@ -660,6 +750,8 @@ declare global {
                 "Notebook.PageTab": NotebookPageTabProps;
 
                 ListItem: ListItemProps;
+                // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
+                TreeListItem: TreeListItemProps<any>;
 
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 ColumnViewColumn: ColumnViewColumnProps<any>;

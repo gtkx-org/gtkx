@@ -51,7 +51,7 @@ const buildPathTable = (
         points.push(point);
 
         if (i > 0) {
-            const prev = points[i - 1]!;
+            const prev = points[i - 1] as PathPoint;
             const segmentLength = Math.sqrt((point.x - prev.x) ** 2 + (point.y - prev.y) ** 2);
             totalLength += segmentLength;
             lengths.push(totalLength);
@@ -74,7 +74,7 @@ const getPointAtLength = (
 
     while (low < high) {
         const mid = Math.floor((low + high) / 2);
-        if (lengths[mid]! < targetLength) {
+        if ((lengths[mid] as number) < targetLength) {
             low = mid + 1;
         } else {
             high = mid;
@@ -85,17 +85,17 @@ const getPointAtLength = (
     const nextIdx = Math.min(lengths.length - 1, idx + 1);
 
     if (idx === nextIdx) {
-        return points[idx]!;
+        return points[idx] as PathPoint;
     }
 
     // Interpolate between points
-    const segmentStart = lengths[idx]!;
-    const segmentEnd = lengths[nextIdx]!;
+    const segmentStart = lengths[idx] as number;
+    const segmentEnd = lengths[nextIdx] as number;
     const segmentLength = segmentEnd - segmentStart;
     const t = segmentLength > 0 ? (targetLength - segmentStart) / segmentLength : 0;
 
-    const p1 = points[idx]!;
-    const p2 = points[nextIdx]!;
+    const p1 = points[idx] as PathPoint;
+    const p2 = points[nextIdx] as PathPoint;
 
     return {
         x: p1.x + (p2.x - p1.x) * t,

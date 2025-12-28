@@ -386,7 +386,13 @@ export type FfiTypeDescriptor = {
 
     listType?: "glist" | "gslist";
 
-    trampoline?: "asyncReady" | "destroy" | "drawFunc" | "scaleFormatValueFunc" | "shortcutFunc";
+    trampoline?:
+        | "asyncReady"
+        | "destroy"
+        | "drawFunc"
+        | "scaleFormatValueFunc"
+        | "shortcutFunc"
+        | "treeListModelCreateFunc";
 
     sourceType?: FfiTypeDescriptor;
 
@@ -1318,6 +1324,33 @@ export class TypeMapper {
             };
         }
 
+        if (
+            param.type.name === "Gtk.TreeListModelCreateModelFunc" ||
+            param.type.name === "TreeListModelCreateModelFunc"
+        ) {
+            this.onExternalTypeUsed?.({
+                namespace: "GObject",
+                name: "Object",
+                transformedName: "GObject",
+                kind: "class",
+            });
+            this.onExternalTypeUsed?.({
+                namespace: "Gio",
+                name: "ListModel",
+                transformedName: "ListModel",
+                kind: "interface",
+            });
+            return {
+                ts: "(item: GObject.GObject) => Gio.ListModel | null",
+                ffi: {
+                    type: "callback",
+                    trampoline: "treeListModelCreateFunc",
+                    argTypes: [{ type: "gobject", borrowed: true }],
+                    returnType: { type: "gobject", borrowed: true },
+                },
+            };
+        }
+
         if (param.type.name === "GLib.Closure" || this.isCallback(param.type.name)) {
             return {
                 ts: "(...args: unknown[]) => unknown",
@@ -1364,6 +1397,8 @@ export class TypeMapper {
             "TickCallback",
             "Gtk.ShortcutFunc",
             "ShortcutFunc",
+            "Gtk.TreeListModelCreateModelFunc",
+            "TreeListModelCreateModelFunc",
         ];
         return allParams.some(
             (p) => trampolineCallbacks.includes(p.type.name) && (p.closure === paramIndex || p.destroy === paramIndex),
@@ -1383,6 +1418,8 @@ export class TypeMapper {
             "DrawingAreaDrawFunc",
             "Gtk.ShortcutFunc",
             "ShortcutFunc",
+            "Gtk.TreeListModelCreateModelFunc",
+            "TreeListModelCreateModelFunc",
         ];
 
         if (supportedCallbacks.includes(param.type.name)) {

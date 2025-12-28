@@ -27,6 +27,8 @@ import "./toast-overlay.js";
 import "./toast.js";
 import "./toolbar-child.js";
 import "./toolbar.js";
+import "./tree-list-item.js";
+import "./tree-list-view.js";
 import "./virtual.js";
 import "./widget.js";
 import "./window.js";

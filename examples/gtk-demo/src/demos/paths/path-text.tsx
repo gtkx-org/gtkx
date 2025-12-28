@@ -104,7 +104,7 @@ const drawTextOnCurve = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numbe
         cairo.translate(cr, pos.x, pos.y);
         cairo.rotate(cr, angle);
         cairo.moveTo(cr, -charWidth / 4, fontSize / 3);
-        cairo.showText(cr, text[i]!);
+        cairo.showText(cr, text.charAt(i));
         cairo.restore(cr);
 
         currentLength += charWidth;
@@ -149,7 +149,7 @@ const drawTextOnWave = (_self: Gtk.DrawingArea, cr: cairo.Context, width: number
         cairo.translate(cr, x, y);
         cairo.rotate(cr, angle);
         cairo.moveTo(cr, 0, fontSize / 3);
-        cairo.showText(cr, text[i]!);
+        cairo.showText(cr, text.charAt(i));
         cairo.restore(cr);
     }
 };
@@ -186,7 +186,7 @@ const drawTextOnCircle = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numb
         cairo.translate(cr, x, y);
         cairo.rotate(cr, angle + Math.PI / 2);
         cairo.moveTo(cr, -fontSize / 4, 0);
-        cairo.showText(cr, text[i]!);
+        cairo.showText(cr, text.charAt(i));
         cairo.restore(cr);
     }
 };
@@ -235,7 +235,7 @@ const drawTextOnSpiral = (_self: Gtk.DrawingArea, cr: cairo.Context, width: numb
         cairo.translate(cr, x, y);
         cairo.rotate(cr, angle + Math.PI / 2);
         cairo.moveTo(cr, 0, fontSize / 3);
-        cairo.showText(cr, text[i]!);
+        cairo.showText(cr, text.charAt(i));
         cairo.restore(cr);
     }
 };

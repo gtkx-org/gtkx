@@ -1,5 +1,6 @@
 import type { GirClass, GirParameter, GirSignal } from "@gtkx/gir";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "@gtkx/gir";
+import { generateSignalWrapperCode } from "../utils/callback-wrapper.js";
 import { BaseGenerator } from "./base-generator.js";
 
 export class SignalGenerator extends BaseGenerator {
@@ -122,39 +123,18 @@ export class SignalGenerator extends BaseGenerator {
     const returnType = meta?.returnType;`
                 : `const selfType: Type = { type: "gobject", borrowed: true };\n    const argTypes = [selfType];\n    const returnType = undefined;`;
 
-        const boxedHandling = hasBoxedSignalParams
-            ? `
-        if (m.type === "boxed" && signalArgs[i] != null) {
-          const cls = getNativeClass(m.innerType);
-          return cls ? getNativeObject(signalArgs[i], cls) : signalArgs[i];
-        }`
-            : "";
+        const hasAnySignalParams = signalMetadata.length > 0;
+        const wrapperResult = generateSignalWrapperCode({
+            handlerName: "handler",
+            wrappedName: "wrappedHandler",
+            metadataVar: "meta",
+            hasGObjectParams: hasAnySignalParams,
+            hasBoxedParams: hasBoxedSignalParams,
+            hasGVariantParams: hasGVariantSignalParams,
+            indent: "    ",
+        });
 
-        const gvariantHandling = hasGVariantSignalParams
-            ? `
-        if (m.type === "gvariant" && signalArgs[i] != null) {
-          return getNativeObject(signalArgs[i], GLib.Variant);
-        }`
-            : "";
-
-        const wrapperCode =
-            signalMetadata.length > 0
-                ? `const wrappedHandler = (...args: unknown[]) => {
-      const self = getNativeObject(args[0]);
-      const signalArgs = args.slice(1);
-      if (!meta) return handler(self, ...signalArgs);
-      const wrapped = meta.params.map((m, i) => {
-        if (m.type === "gobject" && signalArgs[i] != null) {
-          return getNativeObject(signalArgs[i]);
-        }${boxedHandling}${gvariantHandling}
-        return signalArgs[i];
-      });
-      return handler(self, ...wrapped);
-    };`
-                : `const wrappedHandler = (...args: unknown[]) => {
-      const self = getNativeObject(args[0]);
-      return handler(self, ...args.slice(1));
-    };`;
+        const wrapperCode = wrapperResult.code;
 
         const overloadsSection = signalOverloads.length > 0 ? `${signalOverloads.join("\n")}\n` : "";
 

@@ -188,7 +188,7 @@ function mat4Multiply(a: number[], b: number[]): number[] {
     for (let i = 0; i < 4; i++) {
         for (let j = 0; j < 4; j++) {
             for (let k = 0; k < 4; k++) {
-                result[i * 4 + j]! += a[i * 4 + k]! * b[k * 4 + j]!;
+                (result[i * 4 + j] as number) += (a[i * 4 + k] as number) * (b[k * 4 + j] as number);
             }
         }
     }
@@ -229,15 +229,15 @@ function mat4Perspective(fovy: number, aspect: number, near: number, far: number
 
 function mat4Inverse3x3(m: number[]): number[] {
     // Extract 3x3 from 4x4 and compute inverse for normal matrix
-    const a00 = m[0]!,
-        a01 = m[1]!,
-        a02 = m[2]!;
-    const a10 = m[4]!,
-        a11 = m[5]!,
-        a12 = m[6]!;
-    const a20 = m[8]!,
-        a21 = m[9]!,
-        a22 = m[10]!;
+    const a00 = m[0] as number,
+        a01 = m[1] as number,
+        a02 = m[2] as number;
+    const a10 = m[4] as number,
+        a11 = m[5] as number,
+        a12 = m[6] as number;
+    const a20 = m[8] as number,
+        a21 = m[9] as number,
+        a22 = m[10] as number;
 
     const det = a00 * (a11 * a22 - a12 * a21) - a01 * (a10 * a22 - a12 * a20) + a02 * (a10 * a21 - a11 * a20);
 

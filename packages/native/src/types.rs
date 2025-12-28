@@ -64,6 +64,8 @@ pub enum CallbackTrampoline {
     DrawFunc,
 
     ShortcutFunc,
+
+    TreeListModelCreateFunc,
 }
 
 #[derive(Debug, Clone)]
@@ -138,6 +140,7 @@ impl Type {
                     Some("destroy") => CallbackTrampoline::Destroy,
                     Some("drawFunc") => CallbackTrampoline::DrawFunc,
                     Some("shortcutFunc") => CallbackTrampoline::ShortcutFunc,
+                    Some("treeListModelCreateFunc") => CallbackTrampoline::TreeListModelCreateFunc,
                     _ => CallbackTrampoline::Closure,
                 };
 
@@ -215,7 +218,99 @@ mod tests {
         assert_eq!(CallbackTrampoline::AsyncReady, CallbackTrampoline::AsyncReady);
         assert_eq!(CallbackTrampoline::Destroy, CallbackTrampoline::Destroy);
         assert_eq!(CallbackTrampoline::DrawFunc, CallbackTrampoline::DrawFunc);
+        assert_eq!(CallbackTrampoline::ShortcutFunc, CallbackTrampoline::ShortcutFunc);
+        assert_eq!(
+            CallbackTrampoline::TreeListModelCreateFunc,
+            CallbackTrampoline::TreeListModelCreateFunc
+        );
         assert_ne!(CallbackTrampoline::Closure, CallbackTrampoline::AsyncReady);
+        assert_ne!(CallbackTrampoline::ShortcutFunc, CallbackTrampoline::TreeListModelCreateFunc);
+        assert_ne!(CallbackTrampoline::DrawFunc, CallbackTrampoline::ShortcutFunc);
+    }
+
+    #[test]
+    fn callback_trampoline_debug() {
+        // Verify Debug impl works for all variants
+        assert_eq!(format!("{:?}", CallbackTrampoline::Closure), "Closure");
+        assert_eq!(format!("{:?}", CallbackTrampoline::AsyncReady), "AsyncReady");
+        assert_eq!(format!("{:?}", CallbackTrampoline::Destroy), "Destroy");
+        assert_eq!(format!("{:?}", CallbackTrampoline::DrawFunc), "DrawFunc");
+        assert_eq!(format!("{:?}", CallbackTrampoline::ShortcutFunc), "ShortcutFunc");
+        assert_eq!(
+            format!("{:?}", CallbackTrampoline::TreeListModelCreateFunc),
+            "TreeListModelCreateFunc"
+        );
+    }
+
+    #[test]
+    fn callback_trampoline_clone() {
+        let original = CallbackTrampoline::ShortcutFunc;
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+
+        let original = CallbackTrampoline::TreeListModelCreateFunc;
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+    }
+
+    #[test]
+    fn callback_type_with_shortcut_func_trampoline() {
+        let callback_type = CallbackType {
+            trampoline: CallbackTrampoline::ShortcutFunc,
+            arg_types: Some(vec![
+                Type::GObject(GObjectType::new(false)),
+                Type::GVariant(GVariantType::new(false)),
+            ]),
+            return_type: Some(Box::new(Type::Boolean)),
+            source_type: None,
+            result_type: None,
+        };
+        assert_eq!(callback_type.trampoline, CallbackTrampoline::ShortcutFunc);
+        assert!(callback_type.arg_types.is_some());
+        assert_eq!(callback_type.arg_types.as_ref().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn callback_type_with_tree_list_model_create_func_trampoline() {
+        let callback_type = CallbackType {
+            trampoline: CallbackTrampoline::TreeListModelCreateFunc,
+            arg_types: Some(vec![Type::GObject(GObjectType::new(false))]),
+            return_type: Some(Box::new(Type::GObject(GObjectType::new(false)))),
+            source_type: None,
+            result_type: None,
+        };
+        assert_eq!(
+            callback_type.trampoline,
+            CallbackTrampoline::TreeListModelCreateFunc
+        );
+        assert!(callback_type.arg_types.is_some());
+        assert_eq!(callback_type.arg_types.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn type_to_ffi_callback_shortcut_func() {
+        let callback_type = CallbackType {
+            trampoline: CallbackTrampoline::ShortcutFunc,
+            arg_types: None,
+            return_type: None,
+            source_type: None,
+            result_type: None,
+        };
+        let type_ = Type::Callback(callback_type);
+        let _ffi_type: ffi::Type = (&type_).into();
+    }
+
+    #[test]
+    fn type_to_ffi_callback_tree_list_model_create_func() {
+        let callback_type = CallbackType {
+            trampoline: CallbackTrampoline::TreeListModelCreateFunc,
+            arg_types: None,
+            return_type: None,
+            source_type: None,
+            result_type: None,
+        };
+        let type_ = Type::Callback(callback_type);
+        let _ffi_type: ffi::Type = (&type_).into();
     }
 
     #[test]

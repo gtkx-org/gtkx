@@ -113,6 +113,7 @@ fn handle_call(
 
                 if cb.trampoline == CallbackTrampoline::DrawFunc
                     || cb.trampoline == CallbackTrampoline::ShortcutFunc
+                    || cb.trampoline == CallbackTrampoline::TreeListModelCreateFunc
                 {
                     arg_types.push(libffi::Type::pointer());
                 }
