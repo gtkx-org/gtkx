@@ -3,6 +3,7 @@ import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
+import { signalStore } from "./internal/signal-store.js";
 import { filterProps, isContainerType } from "./internal/utils.js";
 import { ListItemNode } from "./list-item.js";
 import { List, type ListProps } from "./models/list.js";
@@ -111,7 +112,7 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
                     onSortChange?.(sorter.getPrimarySortColumn()?.getId() ?? null, sorter.getPrimarySortOrder());
                 };
 
-                this.signalStore.set(sorter, "changed", this.handleSortChange);
+                signalStore.set(this, sorter, "changed", this.handleSortChange);
             }
         }
 

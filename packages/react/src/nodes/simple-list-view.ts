@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
+import { signalStore } from "./internal/signal-store.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";
 import { filterProps, isContainerType } from "./internal/utils.js";
 import { SimpleListItemNode } from "./simple-list-item.js";
@@ -48,7 +49,7 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
                   }
                 : undefined;
 
-            this.signalStore.set(this.container, "notify::selected", handleSelectionChange);
+            signalStore.set(this, this.container, "notify::selected", handleSelectionChange);
         }
 
         if (!oldProps || oldProps.selectedId !== newProps.selectedId) {

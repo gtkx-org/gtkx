@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { createFiberRoot } from "../../fiber-root.js";
 import { reconciler } from "../../reconciler.js";
-import type { SignalStore } from "./signal-store.js";
+import { signalStore } from "./signal-store.js";
 import type { TreeStore } from "./tree-store.js";
 
 export type TreeRenderItemFn<T> = (item: T | null, row: Gtk.TreeListRow | null) => ReactNode;
@@ -14,10 +14,8 @@ export class TreeListItemRenderer {
     private store?: TreeStore;
     private fiberRoots = new Map<number, Reconciler.FiberRoot>();
     private renderFn?: TreeRenderItemFn<unknown> = () => null as never;
-    private signalStore: SignalStore;
 
-    constructor(signalStore: SignalStore) {
-        this.signalStore = signalStore;
+    constructor() {
         this.factory = new Gtk.SignalListItemFactory();
         this.initialize();
     }
@@ -43,7 +41,7 @@ export class TreeListItemRenderer {
     }
 
     private initialize(): void {
-        this.signalStore.set(this.factory, "setup", (_self, listItem: Gtk.ListItem) => {
+        signalStore.set(this, this.factory, "setup", (_self, listItem: Gtk.ListItem) => {
             const ptr = getObjectId(listItem.id);
 
             const expander = new Gtk.TreeExpander();
@@ -58,7 +56,7 @@ export class TreeListItemRenderer {
             reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
         });
 
-        this.signalStore.set(this.factory, "bind", (_self, listItem: Gtk.ListItem) => {
+        signalStore.set(this, this.factory, "bind", (_self, listItem: Gtk.ListItem) => {
             const ptr = getObjectId(listItem.id);
             const fiberRoot = this.fiberRoots.get(ptr);
 
@@ -93,7 +91,7 @@ export class TreeListItemRenderer {
             reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
         });
 
-        this.signalStore.set(this.factory, "unbind", (_self, listItem: Gtk.ListItem) => {
+        signalStore.set(this, this.factory, "unbind", (_self, listItem: Gtk.ListItem) => {
             const ptr = getObjectId(listItem.id);
             const fiberRoot = this.fiberRoots.get(ptr);
 
@@ -105,7 +103,7 @@ export class TreeListItemRenderer {
             reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
         });
 
-        this.signalStore.set(this.factory, "teardown", (_self, listItem) => {
+        signalStore.set(this, this.factory, "teardown", (_self, listItem) => {
             const ptr = getObjectId(listItem.id);
             const fiberRoot = this.fiberRoots.get(ptr);
 

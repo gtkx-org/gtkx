@@ -2,6 +2,7 @@ import type * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
+import { signalStore } from "../internal/signal-store.js";
 import { TreeStore } from "../internal/tree-store.js";
 import { TreeListItemNode } from "../tree-list-item.js";
 import { VirtualNode } from "../virtual.js";
@@ -113,7 +114,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         }
 
         if (!oldProps || oldProps.selectionMode !== newProps.selectionMode) {
-            this.signalStore.set(this.selectionModel, "selection-changed", undefined);
+            signalStore.set(this, this.selectionModel, "selection-changed", undefined);
             this.selectionModel = this.createSelectionModel(newProps.selectionMode);
             this.selectionModel.setModel(this.treeListModel);
         }
@@ -129,7 +130,8 @@ export class TreeList extends VirtualNode<TreeListProps> {
                 onSelectionChanged?.(this.getSelection());
             };
 
-            this.signalStore.set(
+            signalStore.set(
+                this,
                 this.selectionModel,
                 "selection-changed",
                 newProps.onSelectionChanged ? this.handleSelectionChange : undefined,

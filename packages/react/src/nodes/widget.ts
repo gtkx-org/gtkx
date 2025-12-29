@@ -15,7 +15,7 @@ import {
     isReorderable,
     isSingleChild,
 } from "./internal/predicates.js";
-import type { SignalHandler } from "./internal/signal-store.js";
+import { type SignalHandler, signalStore } from "./internal/signal-store.js";
 import { filterProps, isContainerType } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 
@@ -219,8 +219,15 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
             if (signals.has(signalName)) {
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-                this.signalStore.set(this.container, signalName, handler);
+                signalStore.set(this, this.container, signalName, handler);
             } else if (newValue !== undefined) {
+                const expectedValue = this.getProperty(name);
+                const isEditableText = name === "text" && isEditable(this.container);
+
+                if (isEditableText && expectedValue !== undefined && expectedValue !== newValue) {
+                    continue;
+                }
+
                 this.setProperty(name, newValue);
             }
         }
@@ -236,7 +243,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                     this.container.addController(this.motionController);
                 }
                 const signalName = propName === "onEnter" ? "enter" : propName === "onLeave" ? "leave" : "motion";
-                this.signalStore.set(this.motionController, signalName, handler);
+                signalStore.set(this, this.motionController, signalName, handler);
                 break;
             }
             case "onPressed":
@@ -246,7 +253,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                     this.container.addController(this.clickController);
                 }
                 const signalName = propName === "onPressed" ? "pressed" : "released";
-                this.signalStore.set(this.clickController, signalName, handler);
+                signalStore.set(this, this.clickController, signalName, handler);
                 break;
             }
             case "onKeyPressed":
@@ -256,7 +263,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                     this.container.addController(this.keyController);
                 }
                 const signalName = propName === "onKeyPressed" ? "key-pressed" : "key-released";
-                this.signalStore.set(this.keyController, signalName, handler);
+                signalStore.set(this, this.keyController, signalName, handler);
                 break;
             }
             case "onScroll": {
@@ -264,7 +271,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                     this.scrollController = new Gtk.EventControllerScroll(Gtk.EventControllerScrollFlags.BOTH_AXES);
                     this.container.addController(this.scrollController);
                 }
-                this.signalStore.set(this.scrollController, "scroll", handler);
+                signalStore.set(this, this.scrollController, "scroll", handler);
                 break;
             }
             case "onNotify": {
@@ -273,7 +280,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                           handler(obj, pspec.getName());
                       }
                     : undefined;
-                this.signalStore.set(this.container, "notify", wrappedHandler);
+
+                signalStore.set(this, this.container, "notify", wrappedHandler);
                 break;
             }
         }
@@ -285,6 +293,18 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             .replace(/([A-Z])/g, "-$1")
             .toLowerCase()
             .replace(/^-/, "");
+    }
+
+    private getProperty(key: string): unknown {
+        const WidgetClass = this.container.constructor as typeof Gtk.Widget;
+        const [getterName] = PROPS[WidgetClass.glibTypeName]?.[key] || [];
+        const getter = getterName ? this.container[getterName as keyof typeof this.container] : undefined;
+
+        if (getter && typeof getter === "function") {
+            return getter.call(this.container);
+        }
+
+        return undefined;
     }
 
     private setProperty(key: string, value: unknown): void {
@@ -306,16 +326,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
 
         if (setter && typeof setter === "function") {
-            const editable = isEditable(this.container) ? this.container : null;
-            const shouldPreserveCursor = key === "text" && editable !== null;
-            const cursorPosition = shouldPreserveCursor ? editable.getPosition() : 0;
-
             setter.call(this.container, value);
-
-            if (shouldPreserveCursor && editable !== null) {
-                const textLength = editable.getText().length;
-                editable.setPosition(Math.min(cursorPosition, textLength));
-            }
         }
     }
 }

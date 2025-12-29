@@ -1,6 +1,7 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { ToastProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
+import { signalStore } from "./internal/signal-store.js";
 import { VirtualNode } from "./virtual.js";
 
 type Props = ToastProps;
@@ -51,12 +52,12 @@ export class ToastNode extends VirtualNode<Props> {
         this.toast = this.createToast();
 
         if (this.props.onButtonClicked) {
-            this.signalStore.set(this.toast, "button-clicked", () => {
+            signalStore.set(this, this.toast, "button-clicked", () => {
                 this.props.onButtonClicked?.();
             });
         }
 
-        this.signalStore.set(this.toast, "dismissed", () => {
+        signalStore.set(this, this.toast, "dismissed", () => {
             this.props.onDismissed?.();
         });
 

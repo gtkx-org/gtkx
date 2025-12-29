@@ -1,4 +1,4 @@
-import { SignalStore } from "./nodes/internal/signal-store.js";
+import { signalStore } from "./nodes/internal/signal-store.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
 export class Node<T = unknown, P = Props> {
@@ -14,12 +14,10 @@ export class Node<T = unknown, P = Props> {
 
     container: T;
     typeName: string;
-    protected signalStore: SignalStore;
 
     constructor(typeName: string, _props = {} as P, container: T, _rootContainer?: Container) {
         this.typeName = typeName;
         this.container = container;
-        this.signalStore = new SignalStore();
     }
 
     public appendChild(_child: Node) {}
@@ -29,6 +27,6 @@ export class Node<T = unknown, P = Props> {
     public mount() {}
 
     public unmount() {
-        this.signalStore.clear();
+        signalStore.clear(this);
     }
 }

@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
 import { ListStore } from "../internal/list-store.js";
+import { signalStore } from "../internal/signal-store.js";
 import { ListItemNode } from "../list-item.js";
 import { VirtualNode } from "../virtual.js";
 
@@ -61,7 +62,7 @@ export class List extends VirtualNode<ListProps> {
         super.updateProps(oldProps, newProps);
 
         if (!oldProps || oldProps.selectionMode !== newProps.selectionMode) {
-            this.signalStore.set(this.selectionModel, "selection-changed", undefined);
+            signalStore.set(this, this.selectionModel, "selection-changed", undefined);
             this.selectionModel = this.createSelectionModel(newProps.selectionMode);
         }
 
@@ -76,7 +77,8 @@ export class List extends VirtualNode<ListProps> {
                 onSelectionChanged?.(this.getSelection());
             };
 
-            this.signalStore.set(
+            signalStore.set(
+                this,
                 this.selectionModel,
                 "selection-changed",
                 newProps.onSelectionChanged ? this.handleSelectionChange : undefined,

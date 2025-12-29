@@ -32,7 +32,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
     ) {
         super(typeName, props, container, rootContainer);
         this.list = new List();
-        this.itemRenderer = new ListItemRenderer(this.signalStore);
+        this.itemRenderer = new ListItemRenderer();
         this.itemRenderer.setStore(this.list.getStore());
         this.container.setFactory(this.itemRenderer.getFactory());
     }

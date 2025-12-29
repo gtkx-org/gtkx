@@ -4,7 +4,7 @@ import React from "react";
 import type ReactReconciler from "react-reconciler";
 import { createNode } from "./factory.js";
 import type { Node } from "./node.js";
-import { clearFiredSignals } from "./nodes/internal/signal-store.js";
+import { signalStore } from "./nodes/internal/signal-store.js";
 import { flushAfterCommit } from "./scheduler.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
@@ -15,10 +15,6 @@ declare global {
 if (!globalThis.__GTKX_CONTAINER_NODE_CACHE__) {
     globalThis.__GTKX_CONTAINER_NODE_CACHE__ = new Map<number, Node>();
 }
-
-let committing = false;
-
-export const isCommitting = (): boolean => committing;
 
 const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__ as Map<number, Node>;
 
@@ -126,15 +122,14 @@ export function createHostConfig(): HostConfig {
             parent.insertBefore(child, beforeChild);
         },
         prepareForCommit: () => {
-            committing = true;
+            signalStore.blockAll();
             beginBatch();
             return null;
         },
         resetAfterCommit: () => {
             endBatch();
-            clearFiredSignals();
+            signalStore.unblockAll();
             flushAfterCommit();
-            committing = false;
         },
         commitTextUpdate: (textInstance, oldText, newText) => {
             textInstance.updateProps({ label: oldText }, { label: newText });

@@ -20,7 +20,7 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
 
     constructor(typeName: string, props: Props, container: undefined, rootContainer?: Container) {
         super(typeName, props, container, rootContainer);
-        this.itemRenderer = new ListItemRenderer(this.signalStore);
+        this.itemRenderer = new ListItemRenderer();
         this.column = new Gtk.ColumnViewColumn();
         this.column.setFactory(this.itemRenderer.getFactory());
     }

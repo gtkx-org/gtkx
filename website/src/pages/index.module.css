@@ -58,20 +58,26 @@
     padding: 0.875rem 2rem;
     font-size: 1.125rem;
     font-weight: 600;
-    color: white;
-    background-color: var(--ifm-color-primary);
+    color: black;
+    background: linear-gradient(135deg, #8ff0a4 0%, #57e389 50%, #33d17a 100%);
     border-radius: 8px;
     text-decoration: none;
+    box-shadow:
+        0 4px 15px rgba(143, 240, 164, 0.5),
+        0 2px 6px rgba(87, 227, 137, 0.4);
     transition:
-        background-color 0.2s,
-        transform 0.2s;
+        transform 0.2s,
+        box-shadow 0.2s;
 }
 
 .heroButtonPrimary:hover {
-    background-color: var(--ifm-color-primary-dark);
-    color: white;
+    background: linear-gradient(135deg, #8ff0a4 0%, #57e389 50%, #33d17a 100%);
+    color: black;
     text-decoration: none;
     transform: translateY(-2px);
+    box-shadow:
+        0 6px 20px rgba(143, 240, 164, 0.6),
+        0 4px 10px rgba(87, 227, 137, 0.5);
 }
 
 .heroButtonSecondary {

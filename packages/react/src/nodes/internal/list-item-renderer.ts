@@ -5,7 +5,7 @@ import type Reconciler from "react-reconciler";
 import { createFiberRoot } from "../../fiber-root.js";
 import { reconciler } from "../../reconciler.js";
 import type { ListStore } from "./list-store.js";
-import type { SignalStore } from "./signal-store.js";
+import { signalStore } from "./signal-store.js";
 
 export type RenderItemFn<T> = (item: T | null) => ReactNode;
 
@@ -14,10 +14,8 @@ export class ListItemRenderer {
     private store?: ListStore;
     private fiberRoots = new Map<number, Reconciler.FiberRoot>();
     private renderFn?: RenderItemFn<unknown> = () => null as never;
-    private signalStore: SignalStore;
 
-    constructor(signalStore: SignalStore) {
-        this.signalStore = signalStore;
+    constructor() {
         this.factory = new Gtk.SignalListItemFactory();
         this.initialize();
     }
@@ -43,7 +41,7 @@ export class ListItemRenderer {
     }
 
     private initialize(): void {
-        this.signalStore.set(this.factory, "setup", (_self, listItem: Gtk.ListItem) => {
+        signalStore.set(this, this.factory, "setup", (_self, listItem: Gtk.ListItem) => {
             const ptr = getObjectId(listItem.id);
 
             const box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
@@ -56,7 +54,7 @@ export class ListItemRenderer {
             reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
         });
 
-        this.signalStore.set(this.factory, "bind", (_self, listItem: Gtk.ListItem) => {
+        signalStore.set(this, this.factory, "bind", (_self, listItem: Gtk.ListItem) => {
             const ptr = getObjectId(listItem.id);
             const fiberRoot = this.fiberRoots.get(ptr);
 
@@ -69,7 +67,7 @@ export class ListItemRenderer {
             reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
         });
 
-        this.signalStore.set(this.factory, "unbind", (_self, listItem: Gtk.ListItem) => {
+        signalStore.set(this, this.factory, "unbind", (_self, listItem: Gtk.ListItem) => {
             const ptr = getObjectId(listItem.id);
             const fiberRoot = this.fiberRoots.get(ptr);
 
@@ -78,7 +76,7 @@ export class ListItemRenderer {
             reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
         });
 
-        this.signalStore.set(this.factory, "teardown", (_self, listItem) => {
+        signalStore.set(this, this.factory, "teardown", (_self, listItem) => {
             const ptr = getObjectId(listItem.id);
             const fiberRoot = this.fiberRoots.get(ptr);
 

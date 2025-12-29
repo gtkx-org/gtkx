@@ -37,7 +37,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
         const listView = container ?? new Gtk.ListView();
         super(typeName, props, listView, rootContainer);
         this.treeList = new TreeList(props.autoexpand, props.selectionMode);
-        this.itemRenderer = new TreeListItemRenderer(this.signalStore);
+        this.itemRenderer = new TreeListItemRenderer();
         this.itemRenderer.setStore(this.treeList.getStore());
         this.container.setFactory(this.itemRenderer.getFactory());
     }

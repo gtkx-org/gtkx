@@ -1,6 +1,7 @@
 import { getObjectId } from "@gtkx/ffi";
 import * as GObject from "@gtkx/ffi/gobject";
-import { isCommitting } from "../../host-config.js";
+
+type SignalOwner = object;
 
 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
 export type SignalHandler = (...args: any[]) => any;
@@ -21,63 +22,86 @@ const LIFECYCLE_SIGNALS = new Set([
     "teardown",
 ]);
 
-const firedThisCommit = new Set<string>();
+type HandlerEntry = { obj: GObject.GObject; handlerId: number };
 
-export const clearFiredSignals = (): void => {
-    firedThisCommit.clear();
-};
+class SignalStore {
+    private ownerHandlers: Map<SignalOwner, Map<string, HandlerEntry>> = new Map();
+    private blockedHandlers: Set<number> = new Set();
 
-export class SignalStore {
-    private signalHandlers: Map<string, { obj: GObject.GObject; handlerId: number }> = new Map();
+    private getOwnerMap(owner: SignalOwner): Map<string, HandlerEntry> {
+        let map = this.ownerHandlers.get(owner);
+        if (!map) {
+            map = new Map();
+            this.ownerHandlers.set(owner, map);
+        }
+        return map;
+    }
 
-    private disconnect(obj: GObject.GObject, signal: string): void {
+    private disconnect(owner: SignalOwner, obj: GObject.GObject, signal: string): void {
         const objectId = getObjectId(obj.id);
         const key = `${objectId}:${signal}`;
-        const existing = this.signalHandlers.get(key);
+        const ownerMap = this.ownerHandlers.get(owner);
+        const existing = ownerMap?.get(key);
 
         if (existing) {
             GObject.signalHandlerDisconnect(existing.obj, existing.handlerId);
-            this.signalHandlers.delete(key);
+            ownerMap?.delete(key);
         }
     }
 
-    private connect(obj: GObject.GObject, signal: string, handler: SignalHandler): void {
+    private connect(owner: SignalOwner, obj: GObject.GObject, signal: string, handler: SignalHandler): void {
         const objectId = getObjectId(obj.id);
         const key = `${objectId}:${signal}`;
-
-        const wrappedHandler: SignalHandler = (...args) => {
-            if (LIFECYCLE_SIGNALS.has(signal)) {
-                return handler(...args);
-            }
-
-            if (isCommitting()) {
-                if (firedThisCommit.has(key)) {
-                    return;
-                }
-
-                firedThisCommit.add(key);
-            }
-
-            return handler(...args);
-        };
-
-        const handlerId = obj.connect(signal, wrappedHandler);
-        this.signalHandlers.set(key, { obj, handlerId });
+        const handlerId = obj.connect(signal, handler);
+        this.getOwnerMap(owner).set(key, { obj, handlerId });
     }
 
-    public set(obj: GObject.GObject, signal: string, handler?: SignalHandler): void {
-        this.disconnect(obj, signal);
+    public set(owner: SignalOwner, obj: GObject.GObject, signal: string, handler?: SignalHandler): void {
+        this.disconnect(owner, obj, signal);
 
         if (handler) {
-            this.connect(obj, signal, handler);
+            this.connect(owner, obj, signal, handler);
         }
     }
 
-    public clear(): void {
-        for (const [_, { obj, handlerId }] of this.signalHandlers) {
-            GObject.signalHandlerDisconnect(obj, handlerId);
+    public clear(owner: SignalOwner): void {
+        const ownerMap = this.ownerHandlers.get(owner);
+
+        if (ownerMap) {
+            for (const { obj, handlerId } of ownerMap.values()) {
+                GObject.signalHandlerDisconnect(obj, handlerId);
+            }
+
+            this.ownerHandlers.delete(owner);
+        }
+    }
+
+    public blockAll(): void {
+        this.blockedHandlers.clear();
+
+        for (const ownerMap of this.ownerHandlers.values()) {
+            for (const [key, { obj, handlerId }] of ownerMap.entries()) {
+                if (LIFECYCLE_SIGNALS.has(key.split(":")[1] ?? "")) {
+                    continue;
+                }
+
+                GObject.signalHandlerBlock(obj, handlerId);
+                this.blockedHandlers.add(handlerId);
+            }
+        }
+    }
+
+    public unblockAll(): void {
+        for (const ownerMap of this.ownerHandlers.values()) {
+            for (const { obj, handlerId } of ownerMap.values()) {
+                if (this.blockedHandlers.has(handlerId)) {
+                    GObject.signalHandlerUnblock(obj, handlerId);
+                }
+            }
         }
 
-        this.signalHandlers.clear();
+        this.blockedHandlers.clear();
     }
 }
+
+export const signalStore = new SignalStore();

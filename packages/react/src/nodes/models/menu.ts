@@ -3,6 +3,7 @@ import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
 import { scheduleAfterCommit } from "../../scheduler.js";
+import { signalStore } from "../internal/signal-store.js";
 import { VirtualNode } from "../virtual.js";
 
 export type MenuType = "root" | "item" | "section" | "submenu";
@@ -95,11 +96,11 @@ export class Menu extends VirtualNode<MenuProps> {
     public createAction(): void {
         batch(() => {
             if (this.action) {
-                this.signalStore.set(this.action, "activate", undefined);
+                signalStore.set(this, this.action, "activate", undefined);
             }
 
             this.action = new Gio.SimpleAction(this.getId());
-            this.signalStore.set(this.action, "activate", this.getOnActivate());
+            signalStore.set(this, this.action, "activate", this.getOnActivate());
             this.getActionMap().addAction(this.action);
 
             if (this.application && this.props.accels) {
@@ -116,7 +117,7 @@ export class Menu extends VirtualNode<MenuProps> {
 
             if (this.action) {
                 this.getActionMap().removeAction(this.getId());
-                this.signalStore.set(this.action, "activate", undefined);
+                signalStore.set(this, this.action, "activate", undefined);
                 this.action = undefined;
             }
         });
@@ -296,7 +297,7 @@ export class Menu extends VirtualNode<MenuProps> {
         }
 
         if (oldProps.onActivate !== newProps.onActivate) {
-            this.signalStore.set(this.getAction(), "activate", newProps.onActivate);
+            signalStore.set(this, this.getAction(), "activate", newProps.onActivate);
         }
 
         if (oldProps.accels !== newProps.accels) {
