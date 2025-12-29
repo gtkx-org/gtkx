@@ -32,8 +32,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -71,8 +71,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -95,8 +95,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -143,8 +143,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label1 },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label1 },
                 ],
                 UNDEFINED,
             );
@@ -153,8 +153,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label2 },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label2 },
                 ],
                 UNDEFINED,
             );
@@ -186,8 +186,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -210,8 +210,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -236,8 +236,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label1 },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label1 },
                 ],
                 UNDEFINED,
             );
@@ -245,8 +245,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label2 },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label2 },
                 ],
                 UNDEFINED,
             );
@@ -254,8 +254,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label3 },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label3 },
                 ],
                 UNDEFINED,
             );
@@ -294,8 +294,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -312,8 +312,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_remove",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -338,8 +338,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -376,8 +376,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -388,8 +388,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_remove",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -420,8 +420,8 @@ describe("call - gobject types", () => {
                     GTK_LIB,
                     "gtk_box_append",
                     [
-                        { type: GOBJECT, value: box },
-                        { type: GOBJECT, value: label },
+                        { type: GOBJECT_BORROWED, value: box },
+                        { type: GOBJECT_BORROWED, value: label },
                     ],
                     UNDEFINED,
                 );
@@ -452,8 +452,8 @@ describe("call - gobject types", () => {
                     GTK_LIB,
                     "gtk_box_append",
                     [
-                        { type: GOBJECT, value: box },
-                        { type: GOBJECT, value: label },
+                        { type: GOBJECT_BORROWED, value: box },
+                        { type: GOBJECT_BORROWED, value: label },
                     ],
                     UNDEFINED,
                 );
@@ -464,8 +464,8 @@ describe("call - gobject types", () => {
                     GTK_LIB,
                     "gtk_box_remove",
                     [
-                        { type: GOBJECT, value: box },
-                        { type: GOBJECT, value: label },
+                        { type: GOBJECT_BORROWED, value: box },
+                        { type: GOBJECT_BORROWED, value: label },
                     ],
                     UNDEFINED,
                 );
@@ -508,8 +508,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -518,7 +518,7 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_label_set_text",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Updated" },
                 ],
                 UNDEFINED,
@@ -544,8 +544,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: outerBox },
-                    { type: GOBJECT, value: middleBox },
+                    { type: GOBJECT_BORROWED, value: outerBox },
+                    { type: GOBJECT_BORROWED, value: middleBox },
                 ],
                 UNDEFINED,
             );
@@ -553,8 +553,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: middleBox },
-                    { type: GOBJECT, value: innerBox },
+                    { type: GOBJECT_BORROWED, value: middleBox },
+                    { type: GOBJECT_BORROWED, value: innerBox },
                 ],
                 UNDEFINED,
             );
@@ -562,8 +562,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: innerBox },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: innerBox },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );

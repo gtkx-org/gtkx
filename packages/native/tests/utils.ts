@@ -109,7 +109,7 @@ export function connectSignal(obj: unknown, signalName: string, callback: (...ar
         GOBJECT_LIB,
         "g_signal_connect_data",
         [
-            { type: GOBJECT, value: obj },
+            { type: GOBJECT_BORROWED, value: obj },
             { type: STRING, value: signalName },
             { type: { type: "callback", trampoline: "closure" }, value: callback },
             { type: NULL, value: null },
@@ -125,7 +125,7 @@ export function disconnectSignal(obj: unknown, handlerId: number): void {
         GOBJECT_LIB,
         "g_signal_handler_disconnect",
         [
-            { type: GOBJECT, value: obj },
+            { type: GOBJECT_BORROWED, value: obj },
             { type: UINT64, value: handlerId },
         ],
         UNDEFINED,

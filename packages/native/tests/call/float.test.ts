@@ -20,7 +20,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_widget_set_opacity",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.5 },
                 ],
                 UNDEFINED,
@@ -38,7 +38,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_widget_set_opacity",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.1 },
                 ],
                 UNDEFINED,
@@ -56,7 +56,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_widget_set_opacity",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 1.0 },
                 ],
                 UNDEFINED,
@@ -76,7 +76,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_widget_set_opacity",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.75 },
                 ],
                 UNDEFINED,
@@ -95,7 +95,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_widget_set_opacity",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: preciseValue },
                 ],
                 UNDEFINED,
@@ -113,7 +113,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_widget_set_opacity",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.05 },
                 ],
                 UNDEFINED,
@@ -131,7 +131,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_range_set_value",
                 [
-                    { type: GOBJECT, value: scale },
+                    { type: GOBJECT_BORROWED, value: scale },
                     { type: FLOAT64, value: 42.5 },
                 ],
                 UNDEFINED,
@@ -149,7 +149,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_progress_bar_set_fraction",
                 [
-                    { type: GOBJECT, value: progressBar },
+                    { type: GOBJECT_BORROWED, value: progressBar },
                     { type: FLOAT64, value: 0.65 },
                 ],
                 UNDEFINED,
@@ -193,7 +193,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_adjustment_set_value",
                 [
-                    { type: GOBJECT, value: adjustment },
+                    { type: GOBJECT_BORROWED, value: adjustment },
                     { type: FLOAT64, value: 75.0 },
                 ],
                 UNDEFINED,
@@ -218,7 +218,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_widget_set_opacity",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.0 },
                 ],
                 UNDEFINED,
@@ -238,7 +238,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_range_set_value",
                 [
-                    { type: GOBJECT, value: scale },
+                    { type: GOBJECT_BORROWED, value: scale },
                     { type: FLOAT64, value: preciseValue },
                 ],
                 UNDEFINED,
@@ -256,7 +256,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_widget_set_opacity",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 0.0 },
                 ],
                 UNDEFINED,
@@ -270,7 +270,7 @@ describe("call - float types", () => {
                 GTK_LIB,
                 "gtk_widget_set_opacity",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: FLOAT64, value: 1.0 },
                 ],
                 UNDEFINED,

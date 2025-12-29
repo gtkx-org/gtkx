@@ -5,7 +5,6 @@ import {
     createBox,
     createButton,
     createLabel,
-    GOBJECT,
     GOBJECT_BORROWED,
     GTK_LIB,
     INT32,
@@ -22,7 +21,7 @@ describe("call - undefined type", () => {
             GTK_LIB,
             "gtk_label_set_text",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: STRING, value: "Updated" },
             ],
             UNDEFINED,
@@ -34,7 +33,7 @@ describe("call - undefined type", () => {
     it("handles void function with no args", () => {
         const button = createButton("Test");
 
-        const result = call(GTK_LIB, "gtk_widget_show", [{ type: GOBJECT, value: button }], UNDEFINED);
+        const result = call(GTK_LIB, "gtk_widget_show", [{ type: GOBJECT_BORROWED, value: button }], UNDEFINED);
 
         expect(result).toBeUndefined();
     });
@@ -47,8 +46,8 @@ describe("call - undefined type", () => {
             GTK_LIB,
             "gtk_box_append",
             [
-                { type: GOBJECT, value: box },
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: box },
+                { type: GOBJECT_BORROWED, value: label },
             ],
             UNDEFINED,
         );
@@ -59,7 +58,7 @@ describe("call - undefined type", () => {
     it("handles gtk_widget_hide", () => {
         const button = createButton("Test");
 
-        const result = call(GTK_LIB, "gtk_widget_hide", [{ type: GOBJECT, value: button }], UNDEFINED);
+        const result = call(GTK_LIB, "gtk_widget_hide", [{ type: GOBJECT_BORROWED, value: button }], UNDEFINED);
 
         expect(result).toBeUndefined();
     });
@@ -71,7 +70,7 @@ describe("call - undefined type", () => {
             GTK_LIB,
             "gtk_widget_set_sensitive",
             [
-                { type: GOBJECT, value: button },
+                { type: GOBJECT_BORROWED, value: button },
                 { type: BOOLEAN, value: false },
             ],
             UNDEFINED,
@@ -88,8 +87,8 @@ describe("call - undefined type", () => {
             GTK_LIB,
             "gtk_box_append",
             [
-                { type: GOBJECT, value: box },
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: box },
+                { type: GOBJECT_BORROWED, value: label },
             ],
             UNDEFINED,
         );
@@ -98,8 +97,8 @@ describe("call - undefined type", () => {
             GTK_LIB,
             "gtk_box_remove",
             [
-                { type: GOBJECT, value: box },
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: box },
+                { type: GOBJECT_BORROWED, value: label },
             ],
             UNDEFINED,
         );
@@ -114,7 +113,7 @@ describe("call - undefined type", () => {
             GTK_LIB,
             "gtk_box_set_spacing",
             [
-                { type: GOBJECT, value: box },
+                { type: GOBJECT_BORROWED, value: box },
                 { type: INT32, value: 10 },
             ],
             UNDEFINED,
@@ -131,7 +130,7 @@ describe("call - undefined type", () => {
                 GTK_LIB,
                 "gtk_label_set_text",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Test" },
                 ],
                 UNDEFINED,
@@ -150,7 +149,7 @@ describe("call - undefined type", () => {
                 GTK_LIB,
                 "gtk_label_set_text",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "First" },
                 ],
                 UNDEFINED,
@@ -160,7 +159,7 @@ describe("call - undefined type", () => {
                 GTK_LIB,
                 "gtk_label_set_text",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Second" },
                 ],
                 UNDEFINED,
@@ -177,7 +176,7 @@ describe("call - undefined type", () => {
                 GTK_LIB,
                 "gtk_label_set_text",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Modified" },
                 ],
                 UNDEFINED,

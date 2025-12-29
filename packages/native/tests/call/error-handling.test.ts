@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../index.js";
-import { createLabel, GOBJECT, GTK_LIB, INT32, STRING, UNDEFINED } from "../utils.js";
+import { createLabel, GOBJECT, GOBJECT_BORROWED, GTK_LIB, INT32, STRING, UNDEFINED } from "../utils.js";
 
 describe("call - error handling", () => {
     describe("symbol errors", () => {
@@ -61,7 +61,7 @@ describe("call - error handling", () => {
                     GTK_LIB,
                     "gtk_label_set_max_width_chars",
                     [
-                        { type: GOBJECT, value: createLabel("Test") },
+                        { type: GOBJECT_BORROWED, value: createLabel("Test") },
                         { type: { type: "int", size: 7 as 8 }, value: 42 },
                     ],
                     UNDEFINED,
@@ -75,7 +75,7 @@ describe("call - error handling", () => {
                     GTK_LIB,
                     "gtk_widget_set_opacity",
                     [
-                        { type: GOBJECT, value: createLabel("Test") },
+                        { type: GOBJECT_BORROWED, value: createLabel("Test") },
                         { type: { type: "float", size: 16 as 32 }, value: 0.5 },
                     ],
                     UNDEFINED,
@@ -91,7 +91,7 @@ describe("call - error handling", () => {
                     GTK_LIB,
                     "gtk_label_set_max_width_chars",
                     [
-                        { type: GOBJECT, value: createLabel("Test") },
+                        { type: GOBJECT_BORROWED, value: createLabel("Test") },
                         { type: INT32, value: "not a number" },
                     ],
                     UNDEFINED,
@@ -111,7 +111,7 @@ describe("call - error handling", () => {
                     GTK_LIB,
                     "g_signal_connect_data",
                     [
-                        { type: GOBJECT, value: createLabel("Test") },
+                        { type: GOBJECT_BORROWED, value: createLabel("Test") },
                         { type: STRING, value: "clicked" },
                         { type: { type: "callback", trampoline: "closure" }, value: "not a function" },
                         { type: { type: "null" }, value: null },

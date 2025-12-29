@@ -23,7 +23,7 @@ describe("call - string types", () => {
                 GTK_LIB,
                 "gtk_label_set_text",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Updated" },
                 ],
                 UNDEFINED,
@@ -138,7 +138,7 @@ describe("call - string types", () => {
                 GTK_LIB,
                 "gtk_button_set_label",
                 [
-                    { type: GOBJECT, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "Updated Label" },
                 ],
                 UNDEFINED,
@@ -201,7 +201,7 @@ describe("call - string types", () => {
                     GTK_LIB,
                     "gtk_label_set_text",
                     [
-                        { type: GOBJECT, value: label },
+                        { type: GOBJECT_BORROWED, value: label },
                         { type: STRING, value: `String ${i}` },
                     ],
                     UNDEFINED,
@@ -243,7 +243,7 @@ describe("call - string types", () => {
                     GTK_LIB,
                     "gtk_label_set_text",
                     [
-                        { type: GOBJECT, value: label },
+                        { type: GOBJECT_BORROWED, value: label },
                         { type: STRING, value: `${longString}_${i}` },
                     ],
                     UNDEFINED,
@@ -347,7 +347,7 @@ describe("call - string types", () => {
                 GTK_LIB,
                 "gtk_label_set_markup",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "<b>Bold</b> and <i>italic</i>" },
                 ],
                 UNDEFINED,

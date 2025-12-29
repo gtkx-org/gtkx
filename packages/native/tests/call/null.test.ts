@@ -29,7 +29,7 @@ describe("call - null type", () => {
             GTK_LIB,
             "gtk_widget_measure",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: INT32, value: 0 },
                 { type: INT32, value: -1 },
                 { type: NULL, value: null },
@@ -62,8 +62,8 @@ describe("call - null type", () => {
             GTK_LIB,
             "gtk_box_append",
             [
-                { type: GOBJECT, value: box },
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: box },
+                { type: GOBJECT_BORROWED, value: label },
             ],
             UNDEFINED,
         );
@@ -98,7 +98,7 @@ describe("call - null type", () => {
             GTK_LIB,
             "gtk_widget_measure",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: INT32, value: 0 },
                 { type: INT32, value: -1 },
                 { type: NULL, value: null },
@@ -141,8 +141,8 @@ describe("call - null type", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT, value: box },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -164,7 +164,7 @@ describe("call - null type", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: minRef },
@@ -185,7 +185,7 @@ describe("call - null type", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: NULL, value: null },

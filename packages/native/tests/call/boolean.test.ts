@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../index.js";
-import { BOOLEAN, createButton, createLabel, GOBJECT, GOBJECT_BORROWED, GTK_LIB, UNDEFINED } from "../utils.js";
+import { BOOLEAN, createButton, createLabel, GOBJECT_BORROWED, GTK_LIB, UNDEFINED } from "../utils.js";
 
 describe("call - boolean type", () => {
     it("passes true and returns true", () => {
@@ -10,7 +10,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
             UNDEFINED,
@@ -28,7 +28,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
             UNDEFINED,
@@ -38,7 +38,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: false },
             ],
             UNDEFINED,
@@ -56,7 +56,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: false },
             ],
             UNDEFINED,
@@ -70,7 +70,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
             UNDEFINED,
@@ -84,7 +84,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: false },
             ],
             UNDEFINED,
@@ -102,7 +102,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_label_set_selectable",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
             UNDEFINED,
@@ -120,7 +120,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_widget_set_visible",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: false },
             ],
             UNDEFINED,
@@ -138,7 +138,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_widget_set_sensitive",
             [
-                { type: GOBJECT, value: button },
+                { type: GOBJECT_BORROWED, value: button },
                 { type: BOOLEAN, value: false },
             ],
             UNDEFINED,
@@ -161,7 +161,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_button_set_has_frame",
             [
-                { type: GOBJECT, value: button },
+                { type: GOBJECT_BORROWED, value: button },
                 { type: BOOLEAN, value: false },
             ],
             UNDEFINED,
@@ -184,7 +184,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_label_set_wrap",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
             UNDEFINED,
@@ -202,7 +202,7 @@ describe("call - boolean type", () => {
             GTK_LIB,
             "gtk_label_set_use_markup",
             [
-                { type: GOBJECT, value: label },
+                { type: GOBJECT_BORROWED, value: label },
                 { type: BOOLEAN, value: true },
             ],
             UNDEFINED,
@@ -239,7 +239,7 @@ describe("call - boolean type", () => {
                 GTK_LIB,
                 "gtk_label_set_selectable",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: BOOLEAN, value: true },
                 ],
                 UNDEFINED,
@@ -249,7 +249,7 @@ describe("call - boolean type", () => {
                 GTK_LIB,
                 "gtk_label_set_wrap",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: BOOLEAN, value: true },
                 ],
                 UNDEFINED,
@@ -259,7 +259,7 @@ describe("call - boolean type", () => {
                 GTK_LIB,
                 "gtk_label_set_use_markup",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: BOOLEAN, value: false },
                 ],
                 UNDEFINED,

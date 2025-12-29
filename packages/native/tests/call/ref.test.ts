@@ -3,7 +3,7 @@ import { call } from "../../index.js";
 import {
     createLabel,
     createRef,
-    GOBJECT,
+    GOBJECT_BORROWED,
     GTK_LIB,
     getRefCount,
     INT32,
@@ -23,7 +23,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: minRef },
@@ -51,7 +51,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: minWidthRef },
@@ -78,7 +78,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: horizontalMinRef },
@@ -96,7 +96,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 1 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: verticalMinRef },
@@ -120,7 +120,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 1 },
                     { type: INT32, value: 100 },
                     { type: { type: "ref", innerType: INT32 }, value: minRef },
@@ -145,7 +145,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: minRef },
@@ -167,7 +167,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: NULL, value: null },
@@ -188,7 +188,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: NULL, value: null },
@@ -215,7 +215,7 @@ describe("call - ref types", () => {
                     GTK_LIB,
                     "gtk_widget_measure",
                     [
-                        { type: GOBJECT, value: label },
+                        { type: GOBJECT_BORROWED, value: label },
                         { type: INT32, value: 0 },
                         { type: INT32, value: -1 },
                         { type: { type: "ref", innerType: INT32 }, value: minRef },
@@ -243,7 +243,7 @@ describe("call - ref types", () => {
                     GTK_LIB,
                     "gtk_widget_measure",
                     [
-                        { type: GOBJECT, value: label },
+                        { type: GOBJECT_BORROWED, value: label },
                         { type: INT32, value: i % 2 },
                         { type: INT32, value: -1 },
                         {
@@ -275,7 +275,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: ref },
@@ -298,7 +298,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: minRef },
@@ -322,7 +322,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label1 },
+                    { type: GOBJECT_BORROWED, value: label1 },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: ref },
@@ -339,7 +339,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label2 },
+                    { type: GOBJECT_BORROWED, value: label2 },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: ref },
@@ -364,7 +364,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: ref1 },
@@ -379,7 +379,7 @@ describe("call - ref types", () => {
                 GTK_LIB,
                 "gtk_widget_measure",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: -1 },
                     { type: { type: "ref", innerType: INT32 }, value: ref2 },

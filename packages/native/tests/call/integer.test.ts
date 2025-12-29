@@ -31,7 +31,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_selectable",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT8, value: 1 },
                 ],
                 UNDEFINED,
@@ -49,7 +49,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_selectable",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT8, value: 0 },
                 ],
                 UNDEFINED,
@@ -69,7 +69,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_selectable",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: UINT8, value: 1 },
                 ],
                 UNDEFINED,
@@ -89,7 +89,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_max_width_chars",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT16, value: 100 },
                 ],
                 UNDEFINED,
@@ -112,7 +112,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_max_width_chars",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT16, value: -1 },
                 ],
                 UNDEFINED,
@@ -137,7 +137,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_max_width_chars",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: UINT16, value: 500 },
                 ],
                 UNDEFINED,
@@ -162,7 +162,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_max_width_chars",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 42 },
                 ],
                 UNDEFINED,
@@ -185,7 +185,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_max_width_chars",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: -1 },
                 ],
                 UNDEFINED,
@@ -208,7 +208,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_max_width_chars",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                 ],
                 UNDEFINED,
@@ -231,7 +231,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_max_width_chars",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 100000 },
                 ],
                 UNDEFINED,
@@ -295,7 +295,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_max_width_chars",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: UINT32, value: 200 },
                 ],
                 UNDEFINED,
@@ -318,7 +318,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_box_set_spacing",
                 [
-                    { type: GOBJECT, value: box },
+                    { type: GOBJECT_BORROWED, value: box },
                     { type: UINT32, value: 10 },
                 ],
                 UNDEFINED,
@@ -338,7 +338,7 @@ describe("call - integer types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_data",
                 [
-                    { type: GOBJECT, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
                     { type: { type: "callback", trampoline: "closure" }, value: () => {} },
                     { type: NULL, value: null },
@@ -361,7 +361,7 @@ describe("call - integer types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_data",
                 [
-                    { type: GOBJECT, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
                     { type: { type: "callback", trampoline: "closure" }, value: () => {} },
                     { type: NULL, value: null },
@@ -382,7 +382,7 @@ describe("call - integer types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_data",
                 [
-                    { type: GOBJECT, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
                     { type: { type: "callback", trampoline: "closure" }, value: () => {} },
                     { type: NULL, value: null },
@@ -396,7 +396,7 @@ describe("call - integer types", () => {
                 GOBJECT_LIB,
                 "g_signal_handler_disconnect",
                 [
-                    { type: GOBJECT, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: UINT64, value: handlerId },
                 ],
                 UNDEFINED,
@@ -424,7 +424,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_label_set_max_width_chars",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 50 },
                 ],
                 UNDEFINED,
@@ -448,8 +448,8 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_grid_attach",
                 [
-                    { type: GOBJECT, value: grid },
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: grid },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: INT32, value: 0 },
                     { type: INT32, value: 0 },
                     { type: INT32, value: 1 },
@@ -475,7 +475,7 @@ describe("call - integer types", () => {
                 GTK_LIB,
                 "gtk_box_set_spacing",
                 [
-                    { type: GOBJECT, value: box },
+                    { type: GOBJECT_BORROWED, value: box },
                     { type: INT32, value: 15 },
                 ],
                 UNDEFINED,

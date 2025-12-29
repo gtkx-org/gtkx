@@ -254,7 +254,7 @@ impl TryFrom<arg::Arg> for Value {
             }
             Type::Null => Ok(Value::Ptr(std::ptr::null_mut())),
             Type::Undefined => Ok(Value::Ptr(std::ptr::null_mut())),
-            Type::GObject(_) => {
+            Type::GObject(type_) => {
                 let object_id = match &arg.value {
                     value::Value::Object(id) => Some(id),
                     value::Value::Null | value::Value::Undefined => None,
@@ -267,6 +267,14 @@ impl TryFrom<arg::Arg> for Value {
                         .ok_or_else(|| anyhow::anyhow!("GObject has been garbage collected"))?,
                     None => std::ptr::null_mut(),
                 };
+
+                let is_transfer_full = !type_.is_borrowed && !ptr.is_null();
+
+                if is_transfer_full {
+                    unsafe {
+                        glib::gobject_ffi::g_object_ref(ptr as *mut _);
+                    }
+                }
 
                 Ok(Value::Ptr(ptr))
             }

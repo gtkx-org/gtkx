@@ -238,6 +238,7 @@ export class ClassGenerator extends BaseGenerator {
         const args = this.generateCallArguments(ctor.parameters, "        ", paramMappings);
         const docComment = ctorDoc ? `${ctorDoc.trimEnd()}\n` : "";
         const wrapperSection = wrapperCode ? `${wrapperCode}\n` : "";
+        const borrowed = ctor.returnType.transferOwnership !== "full";
 
         return `${docComment}  constructor(${params}) {
     if (!isInstantiating) {
@@ -251,7 +252,7 @@ ${wrapperSection}      this.id = call(
         [
 ${args ? `${args},` : ""}
         ],
-        { type: "gobject", borrowed: true }
+        { type: "gobject", borrowed: ${borrowed} }
       );
     } else {
       // @ts-ignore
@@ -282,7 +283,7 @@ ${args ? `${args},` : ""}
           { type: { type: "int", size: 64, unsigned: true }, value: gtype },
           { type: { type: "null" }, value: null },
         ],
-        { type: "gobject", borrowed: true }
+        { type: "gobject", borrowed: false }
       );
     } else {
       // @ts-ignore
@@ -305,7 +306,7 @@ ${args ? `${args},` : ""}
         const params = this.generateParameterList(ctor.parameters);
         const args = this.generateCallArguments(ctor.parameters);
         const ctorDoc = this.formatMethodDoc(ctor.doc, ctor.parameters);
-        const borrowed = true;
+        const borrowed = ctor.returnType.transferOwnership !== "full";
 
         const errorArg = ctor.throws ? this.generateErrorArgument() : "";
         const allArgs = errorArg ? args + (args ? ",\n" : "") + errorArg : args;

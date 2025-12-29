@@ -3,7 +3,6 @@ import { call } from "../../index.js";
 import {
     createLabel,
     forceGC,
-    GOBJECT,
     GOBJECT_BORROWED,
     GTK_LIB,
     getRefCount,
@@ -23,7 +22,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["class-a", "class-b", "class-c"] },
                 ],
                 UNDEFINED,
@@ -46,7 +45,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["foo", "bar"] },
                 ],
                 UNDEFINED,
@@ -71,7 +70,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: [] },
                 ],
                 UNDEFINED,
@@ -94,7 +93,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["single"] },
                 ],
                 UNDEFINED,
@@ -117,7 +116,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["class-世界", "class-🎉"] },
                 ],
                 UNDEFINED,
@@ -141,7 +140,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_add_css_class",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "my-class" },
                 ],
                 UNDEFINED,
@@ -164,7 +163,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["keep", "remove"] },
                 ],
                 UNDEFINED,
@@ -174,7 +173,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_remove_css_class",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "remove" },
                 ],
                 UNDEFINED,
@@ -199,7 +198,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: classes },
                 ],
                 UNDEFINED,
@@ -226,7 +225,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["owned-class"] },
                 ],
                 UNDEFINED,
@@ -253,7 +252,7 @@ describe("call - array types", () => {
                     GTK_LIB,
                     "gtk_widget_set_css_classes",
                     [
-                        { type: GOBJECT, value: label },
+                        { type: GOBJECT_BORROWED, value: label },
                         { type: STRING_ARRAY, value: [`class-${i}-a`, `class-${i}-b`] },
                     ],
                     UNDEFINED,
@@ -283,7 +282,7 @@ describe("call - array types", () => {
                     GTK_LIB,
                     "gtk_widget_set_css_classes",
                     [
-                        { type: GOBJECT, value: label },
+                        { type: GOBJECT_BORROWED, value: label },
                         { type: STRING_ARRAY, value: Array.from({ length: 10 }, (_, j) => `class-${i}-${j}`) },
                     ],
                     UNDEFINED,
@@ -304,7 +303,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["test-class"] },
                 ],
                 UNDEFINED,
@@ -327,7 +326,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["a", "b", "c"] },
                 ],
                 UNDEFINED,
@@ -350,7 +349,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["old-1", "old-2"] },
                 ],
                 UNDEFINED,
@@ -360,7 +359,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["new-1", "new-2", "new-3"] },
                 ],
                 UNDEFINED,
@@ -387,7 +386,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_set_css_classes",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING_ARRAY, value: ["dup", "dup", "unique"] },
                 ],
                 UNDEFINED,
@@ -411,7 +410,7 @@ describe("call - array types", () => {
                 GTK_LIB,
                 "gtk_widget_add_css_class",
                 [
-                    { type: GOBJECT, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "valid-class" },
                 ],
                 UNDEFINED,
