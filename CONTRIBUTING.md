@@ -34,8 +34,8 @@ This project follows the [Contributor Covenant Code of Conduct](https://www.cont
 
 ### Prerequisites
 
-- **Node.js** 24 or later
-- **pnpm** 10.26.2 or later
+- **Node.js** 22 or later
+- **pnpm** (latest recommended)
 - **Rust** stable toolchain with `clippy`
 - **Linux** with GTK4 development libraries
 

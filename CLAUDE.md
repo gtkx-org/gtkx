@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Note:** This document is for **contributors and AI assistants** working on the GTKX codebase itself. If you're building an application with GTKX, see the [documentation](https://eugeniodepalo.github.io/gtkx/) instead.
+
 # GTKX
 
 React framework for building native GTK4 desktop applications on Linux.

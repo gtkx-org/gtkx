@@ -6,9 +6,8 @@ This guide walks you through creating your first GTKX application.
 
 Before you begin, ensure you have:
 
-- **Node.js 18+** — GTKX requires a modern Node.js runtime
-- **GTK4 development libraries** — The native GTK4 headers and libraries
-- **Rust toolchain** — For compiling the native module
+- **Node.js 22+** — GTKX requires a modern Node.js runtime
+- **GTK4 libraries** — The native GTK4 runtime libraries
 
 ### Installing GTK4 on Linux
 
