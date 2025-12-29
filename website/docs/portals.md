@@ -282,19 +282,4 @@ return (
 
 ### Error Handling
 
-Always wrap async dialogs in try/catch:
-
-```tsx
-const showFileDialog = async () => {
-    const dialog = new Gtk.FileDialog();
-
-    try {
-        const file = await dialog.open(window);
-        // Handle success
-        processFile(file.getPath());
-    } catch (error) {
-        // User cancelled or error occurred
-        console.log("Dialog cancelled");
-    }
-};
-```
+GTK dialogs throw `NativeError` when dismissed. See [Error Handling](./error-handling.md) for how to distinguish cancellation from actual errors, and [Async Operations](./async-operations.md) for comprehensive dialog examples.

@@ -97,6 +97,25 @@ import * as Gtk from "@gtkx/ffi/gtk";
 </GtkListBox>;
 ```
 
+#### ActionRow Slots
+
+Use `ActionRow.Prefix` and `ActionRow.Suffix` to position widgets at the start or end of the row. These work with `AdwActionRow`, `AdwEntryRow`, and `AdwExpanderRow`:
+
+```tsx
+import { AdwActionRow, ActionRow, GtkListBox, GtkImage, GtkSwitch } from "@gtkx/react";
+
+<GtkListBox cssClasses={["boxed-list"]}>
+  <AdwActionRow title="Airplane Mode">
+    <ActionRow.Prefix>
+      <GtkImage iconName="airplane-mode-symbolic" />
+    </ActionRow.Prefix>
+    <ActionRow.Suffix>
+      <GtkSwitch valign={Gtk.Align.CENTER} />
+    </ActionRow.Suffix>
+  </AdwActionRow>
+</GtkListBox>;
+```
+
 ### AdwExpanderRow
 
 Expandable list row:
@@ -156,44 +175,114 @@ import { AdwClamp, GtkBox } from "@gtkx/react";
 </AdwClamp>;
 ```
 
-### AdwToastOverlay
+### AdwToolbarView
 
-Show toast notifications:
+Container for header bars and toolbars with content:
 
 ```tsx
-import { AdwToastOverlay, GtkButton, GtkBox } from "@gtkx/react";
-import * as Adw from "@gtkx/ffi/adw";
-import { useRef } from "react";
+import { AdwToolbarView, AdwHeaderBar, GtkActionBar, GtkButton, GtkLabel, Toolbar } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+
+<AdwToolbarView>
+  <Toolbar.Top>
+    <AdwHeaderBar />
+  </Toolbar.Top>
+
+  <GtkLabel label="Main content area" vexpand />
+
+  <Toolbar.Bottom>
+    <GtkActionBar>
+      <GtkButton label="Cancel" />
+      <GtkButton label="Save" cssClasses={["suggested-action"]} />
+    </GtkActionBar>
+  </Toolbar.Bottom>
+</AdwToolbarView>;
+```
+
+The `Toolbar.Top` and `Toolbar.Bottom` components position header bars, action bars, or other toolbars at the top and bottom of the view.
+
+### AdwToastOverlay
+
+Show toast notifications declaratively using the `Toast` component:
+
+```tsx
+import { AdwToastOverlay, Toast, GtkButton, GtkBox } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
 
 const ToastExample = () => {
-  const overlayRef = useRef<Adw.ToastOverlay | null>(null);
-
-  const showToast = () => {
-    if (overlayRef.current) {
-      const toast = new Adw.Toast({ title: "Action completed!" });
-      toast.setTimeout(3);
-      overlayRef.current.addToast(toast);
-    }
-  };
+  const [showToast, setShowToast] = useState(false);
 
   return (
-    <AdwToastOverlay ref={overlayRef}>
+    <AdwToastOverlay>
       <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER}>
-        <GtkButton label="Show Toast" onClicked={showToast} />
+        <GtkButton label="Show Toast" onClicked={() => setShowToast(true)} />
       </GtkBox>
+
+      {showToast && (
+        <Toast
+          title="Action completed!"
+          timeout={3}
+          onDismissed={() => setShowToast(false)}
+        />
+      )}
     </AdwToastOverlay>
   );
 };
 ```
 
-### AdwNavigationView / NavigationPage
+#### Toast with Action Button
+
+```tsx
+const [showToast, setShowToast] = useState(false);
+const [lastDeleted, setLastDeleted] = useState<Item | null>(null);
+
+const handleDelete = (item: Item) => {
+  setLastDeleted(item);
+  setShowToast(true);
+  // Delete item...
+};
+
+const handleUndo = () => {
+  // Restore lastDeleted...
+  setShowToast(false);
+};
+
+<AdwToastOverlay>
+  {/* ... content ... */}
+
+  {showToast && lastDeleted && (
+    <Toast
+      title={`Deleted "${lastDeleted.name}"`}
+      timeout={5}
+      buttonLabel="Undo"
+      onButtonClicked={handleUndo}
+      onDismissed={() => setShowToast(false)}
+    />
+  )}
+</AdwToastOverlay>;
+```
+
+#### Toast Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `string` | The toast message text |
+| `timeout` | `number` | Auto-dismiss timeout in seconds (0 for indefinite) |
+| `buttonLabel` | `string` | Label for the action button |
+| `onButtonClicked` | `() => void` | Callback when action button is clicked |
+| `onDismissed` | `() => void` | Callback when toast is dismissed |
+| `priority` | `Adw.ToastPriority` | Interrupt priority level |
+| `useMarkup` | `boolean` | Whether to use Pango markup in title |
+
+### AdwNavigationView
 
 Stack-based navigation with push/pop transitions:
 
 ```tsx
 import {
   AdwNavigationView,
-  NavigationPage,
+  AdwNavigationPage,
   AdwHeaderBar,
   GtkBox,
   GtkButton,
@@ -219,7 +308,7 @@ const NavigationExample = () => {
 
   return (
     <AdwNavigationView ref={navViewRef}>
-      <NavigationPage title="Main" tag="main">
+      <AdwNavigationPage title="Main" tag="main">
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
           <AdwHeaderBar />
           <GtkBox
@@ -237,10 +326,10 @@ const NavigationExample = () => {
             />
           </GtkBox>
         </GtkBox>
-      </NavigationPage>
+      </AdwNavigationPage>
 
       {showDetail && (
-        <NavigationPage title="Details" tag="detail">
+        <AdwNavigationPage title="Details" tag="detail">
           <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <AdwHeaderBar />
             <GtkBox
@@ -254,14 +343,14 @@ const NavigationExample = () => {
               <GtkButton label="Go Back" onClicked={popToMain} />
             </GtkBox>
           </GtkBox>
-        </NavigationPage>
+        </AdwNavigationPage>
       )}
     </AdwNavigationView>
   );
 };
 ```
 
-#### NavigationPage Props
+#### AdwNavigationPage Props
 
 | Prop        | Type         | Description                                       |
 | ----------- | ------------ | ------------------------------------------------- |

@@ -221,11 +221,14 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
                 signalStore.set(this, this.container, signalName, handler);
             } else if (newValue !== undefined) {
-                const expectedValue = this.getProperty(name);
                 const isEditableText = name === "text" && isEditable(this.container);
 
-                if (isEditableText && expectedValue !== undefined && expectedValue !== newValue) {
-                    continue;
+                if (isEditableText && oldValue !== undefined) {
+                    const currentValue = this.getProperty(name);
+
+                    if (oldValue !== currentValue) {
+                        continue;
+                    }
                 }
 
                 this.setProperty(name, newValue);

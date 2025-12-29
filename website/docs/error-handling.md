@@ -1,270 +1,213 @@
 # Error Handling
 
-This guide covers error handling patterns in GTKX applications.
+This guide covers GTKX-specific error handling patterns, particularly how GTK/GLib errors are exposed in JavaScript.
 
-## Try/Catch in Event Handlers
+## NativeError
 
-Always wrap async operations:
-
-```tsx
-const handleSave = async () => {
-    try {
-        await saveDocument();
-        showToast("Saved successfully");
-    } catch (error) {
-        console.error("Save failed:", error);
-        showToast("Failed to save document");
-    }
-};
-```
-
-## Error States in Components
-
-Track errors with React state:
+When GTK or GLib operations fail, GTKX throws a `NativeError` that wraps the underlying `GError`. This class provides access to the error domain, code, and message from the native error.
 
 ```tsx
-import { useState, useEffect } from "react";
+import { NativeError } from "@gtkx/ffi";
+import * as Gio from "@gtkx/ffi/gio";
 
-const DataLoader = () => {
-    const [data, setData] = useState<Data | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const load = async () => {
-            try {
-                const result = await fetchData();
-                setData(result);
-                setError(null);
-            } catch (e) {
-                setError(e instanceof Error ? e.message : "Unknown error");
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
-    }, []);
-
-    if (loading) {
-        return <GtkSpinner spinning />;
-    }
-
-    if (error) {
-        return (
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} valign={Gtk.Align.CENTER}>
-                <GtkLabel label="Error" cssClasses={["title-2", "error"]} />
-                <GtkLabel label={error} cssClasses={["dim-label"]} />
-                <GtkButton label="Retry" onClicked={() => { setLoading(true); setError(null); }} />
-            </GtkBox>
-        );
-    }
-
-    return <DataView data={data} />;
-};
-```
-
-## Dialog Errors
-
-File and alert dialogs throw when cancelled:
-
-```tsx
-const openFile = async () => {
-    const dialog = new Gtk.FileDialog();
+const loadFile = async (path: string) => {
+    const file = Gio.File.newForPath(path);
 
     try {
-        const file = await dialog.open(window);
-        const path = file.getPath();
-        if (path) {
-            processFile(path);
-        }
+        const [contents] = await file.loadContentsAsync(null);
+        return new TextDecoder().decode(contents);
     } catch (error) {
-        // User cancelled - this is expected, not an error
-        console.log("File dialog cancelled");
+        if (error instanceof NativeError) {
+            console.log(`GLib error: domain=${error.domain}, code=${error.code}`);
+            console.log(`Message: ${error.message}`);
+        }
+        throw error;
     }
 };
 ```
 
-Distinguish between user cancellation and actual errors:
+### NativeError Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `message` | `string` | Human-readable error message from GLib |
+| `domain` | `number` | GLib error domain (quark) identifying the error category |
+| `code` | `number` | Error code within the domain |
+
+### Common Error Domains
+
+GLib uses error domains to categorize errors. Common domains include:
+
+- **`Gio.IOErrorEnum`** — File I/O errors (file not found, permission denied, etc.)
+- **`Gtk.DialogError`** — Dialog-related errors (dismissed, etc.)
 
 ```tsx
-const saveWithDialog = async () => {
-    const dialog = new Gtk.FileDialog();
-    dialog.setInitialName("document.txt");
+import { NativeError } from "@gtkx/ffi";
+import * as Gio from "@gtkx/ffi/gio";
 
-    try {
-        const file = await dialog.save(window);
-        await writeToFile(file.getPath());
-    } catch (error) {
-        // Check if it's a cancellation vs actual error
-        if (error instanceof Error && error.message.includes("cancelled")) {
-            return; // User cancelled, do nothing
+try {
+    const file = Gio.File.newForPath("/nonexistent/path");
+    await file.loadContentsAsync(null);
+} catch (error) {
+    if (error instanceof NativeError) {
+        // Check for specific error codes
+        if (error.code === Gio.IOErrorEnum.NOT_FOUND) {
+            console.log("File not found");
+        } else if (error.code === Gio.IOErrorEnum.PERMISSION_DENIED) {
+            console.log("Permission denied");
         }
-        // Real error - show to user
-        showErrorDialog("Failed to save file", error);
     }
-};
+}
 ```
 
-## Toast Notifications
+## Dialog Dismissal
 
-Show non-blocking errors with toasts:
+GTK dialogs throw errors when dismissed or cancelled. This is expected behavior, not a failure.
+
+### File Dialogs
+
+`Gtk.FileDialog` methods (`open`, `save`, `selectFolder`) throw when the user cancels:
 
 ```tsx
-import * as Adw from "@gtkx/ffi/adw";
-import { useRef } from "react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { NativeError } from "@gtkx/ffi";
+import { useApplication } from "@gtkx/react";
 
-const AppWithToasts = () => {
-    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
+const FileOpener = () => {
+    const app = useApplication();
 
-    const showError = (message: string) => {
-        if (toastOverlayRef.current) {
-            const toast = new Adw.Toast({ title: message });
-            toast.setTimeout(5);
-            toastOverlayRef.current.addToast(toast);
-        }
-    };
+    const openFile = async () => {
+        const dialog = new Gtk.FileDialog();
 
-    const handleAction = async () => {
         try {
-            await riskyOperation();
+            const file = await dialog.open(app.getActiveWindow() ?? undefined);
+            const path = file.getPath();
+            if (path) {
+                processFile(path);
+            }
         } catch (error) {
-            showError("Operation failed. Please try again.");
+            if (error instanceof NativeError && error.code === Gtk.DialogError.DISMISSED) {
+                // User cancelled - this is expected, not an error
+                return;
+            }
+            // Actual error - rethrow or handle
+            throw error;
         }
     };
 
-    return (
-        <AdwToastOverlay ref={toastOverlayRef}>
-            <GtkButton label="Do Something" onClicked={handleAction} />
-        </AdwToastOverlay>
-    );
+    return <GtkButton label="Open File" onClicked={openFile} />;
 };
 ```
 
-## Alert Dialogs for Critical Errors
+### Alert Dialogs
 
-Use alert dialogs for errors that require user acknowledgment:
+`Gtk.AlertDialog.choose()` also throws on dismissal:
 
 ```tsx
-const showErrorDialog = async (title: string, detail: string) => {
+import * as Gtk from "@gtkx/ffi/gtk";
+import { NativeError } from "@gtkx/ffi";
+
+const showConfirmation = async (window: Gtk.Window): Promise<boolean> => {
     const dialog = new Gtk.AlertDialog();
-    dialog.setMessage(title);
-    dialog.setDetail(detail);
-    dialog.setButtons(["OK"]);
-    dialog.setDefaultButton(0);
+    dialog.setMessage("Confirm Action");
+    dialog.setButtons(["Cancel", "OK"]);
+    dialog.setCancelButton(0);
+    dialog.setDefaultButton(1);
 
     try {
-        await dialog.choose(window);
-    } catch {
-        // Dialog dismissed
-    }
-};
-
-const criticalOperation = async () => {
-    try {
-        await performCriticalTask();
+        const response = await dialog.choose(window);
+        return response === 1; // OK button
     } catch (error) {
-        await showErrorDialog(
-            "Critical Error",
-            error instanceof Error ? error.message : "An unexpected error occurred"
-        );
+        if (error instanceof NativeError && error.code === Gtk.DialogError.DISMISSED) {
+            return false; // Treated as cancel
+        }
+        throw error;
     }
 };
 ```
 
-## Validation Errors
+## Async Operation Errors
 
-Show inline validation feedback:
+GTKX wraps GTK's async/finish pattern into JavaScript Promises. When the underlying operation fails, the Promise rejects with a `NativeError`.
 
 ```tsx
-const FormWithValidation = () => {
-    const [email, setEmail] = useState("");
-    const [error, setError] = useState<string | null>(null);
+import * as Gio from "@gtkx/ffi/gio";
+import { NativeError } from "@gtkx/ffi";
 
-    const validate = (value: string) => {
-        if (!value.includes("@")) {
-            setError("Please enter a valid email address");
-            return false;
+const readFileWithRetry = async (path: string, retries = 3): Promise<string> => {
+    const file = Gio.File.newForPath(path);
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const [contents] = await file.loadContentsAsync(null);
+            return new TextDecoder().decode(contents);
+        } catch (error) {
+            if (error instanceof NativeError) {
+                console.log(`Attempt ${attempt} failed: ${error.message}`);
+
+                if (error.code === Gio.IOErrorEnum.NOT_FOUND) {
+                    throw error; // Don't retry for missing files
+                }
+
+                if (attempt === retries) {
+                    throw error;
+                }
+            } else {
+                throw error;
+            }
         }
-        setError(null);
-        return true;
-    };
+    }
 
-    const handleSubmit = () => {
-        if (validate(email)) {
-            submitForm(email);
-        }
-    };
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-            <GtkEntry
-                text={email}
-                onChanged={(entry) => {
-                    const value = entry.getText() ?? "";
-                    setEmail(value);
-                    if (error) validate(value);
-                }}
-                cssClasses={error ? ["error"] : []}
-            />
-            {error && <GtkLabel label={error} cssClasses={["error", "caption"]} />}
-            <GtkButton label="Submit" onClicked={handleSubmit} cssClasses={["suggested-action"]} />
-        </GtkBox>
-    );
+    throw new Error("Unreachable");
 };
 ```
 
-## Global Error Handling
+## Error Propagation from Signals
 
-Catch unhandled promise rejections:
+Errors thrown in signal handlers propagate normally:
 
 ```tsx
-// In your app entry point
-process.on("unhandledRejection", (reason, promise) => {
-    console.error("Unhandled Rejection:", reason);
-    // Log to error reporting service
-});
+const RiskyButton = () => {
+    const handleClick = () => {
+        try {
+            const result = someFfiOperation();
+            // Use result
+        } catch (error) {
+            if (error instanceof NativeError) {
+                console.error(`Native error: ${error.message}`);
+            }
+            // Handle or display error to user
+        }
+    };
 
-process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception:", error);
-    // Log to error reporting service
-});
+    return <GtkButton label="Do Something" onClicked={handleClick} />;
+};
 ```
 
-## Error Logging
+## Distinguishing Error Types
 
-Create a logging utility:
+Use `instanceof` to distinguish between GTKX native errors and regular JavaScript errors:
 
 ```tsx
-const logger = {
-    error: (message: string, error?: unknown) => {
-        console.error(`[ERROR] ${message}`, error);
-        // Send to error reporting service in production
-    },
-    warn: (message: string) => {
-        console.warn(`[WARN] ${message}`);
-    },
-    info: (message: string) => {
-        console.log(`[INFO] ${message}`);
-    },
-};
+import { NativeError } from "@gtkx/ffi";
 
-// Usage
-const handleOperation = async () => {
-    try {
-        await riskyOperation();
-    } catch (error) {
-        logger.error("Operation failed", error);
-        showUserError("Something went wrong");
+const handleError = (error: unknown) => {
+    if (error instanceof NativeError) {
+        // Error from GTK/GLib
+        console.log(`Native error [${error.domain}:${error.code}]: ${error.message}`);
+    } else if (error instanceof Error) {
+        // Regular JavaScript error
+        console.log(`JS error: ${error.message}`);
+    } else {
+        console.log("Unknown error:", error);
     }
 };
 ```
 
 ## Best Practices
 
-1. **Never swallow errors silently** — At minimum, log them
-2. **Show user-friendly messages** — Don't expose technical details
-3. **Distinguish recoverable vs fatal errors** — Toasts for minor, dialogs for critical
-4. **Provide retry options** — Let users try again when appropriate
-5. **Log errors for debugging** — Include stack traces and context
-6. **Handle cancellation gracefully** — Dialog cancellation isn't an error
-7. **Validate early** — Check inputs before making async calls
+1. **Check for `NativeError`** — Use `instanceof NativeError` to identify GTK/GLib errors
+2. **Handle dismissal gracefully** — Dialog cancellation is expected; check for `Gtk.DialogError.DISMISSED`
+3. **Use error codes** — Check `error.code` against GLib enum values for specific error handling
+4. **Don't swallow errors** — At minimum, log errors to aid debugging
+5. **Provide user feedback** — Use toasts or dialogs to inform users of failures
