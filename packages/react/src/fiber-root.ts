@@ -7,7 +7,7 @@ export const createFiberRoot = (container: Gtk.Widget): Reconciler.FiberRoot => 
 
     return instance.createContainer(
         container,
-        0,
+        1,
         null,
         false,
         null,

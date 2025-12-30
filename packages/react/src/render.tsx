@@ -98,7 +98,7 @@ export const render = (element: ReactNode, appId: string, flags?: Gio.Applicatio
 
     container = instance.createContainer(
         app,
-        0,
+        1,
         null,
         false,
         null,

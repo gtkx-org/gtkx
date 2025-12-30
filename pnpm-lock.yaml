@@ -11,9 +11,6 @@ importers:
       '@biomejs/biome':
         specifier: ^2.3.10
         version: 2.3.10
-      '@gtkx/ffi':
-        specifier: workspace:*
-        version: link:packages/ffi
       '@types/node':
         specifier: ^25.0.3
         version: 25.0.3

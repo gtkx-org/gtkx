@@ -75,7 +75,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
         const instance = reconciler.getInstance();
         container = instance.createContainer(
             application,
-            0,
+            1,
             null,
             false,
             null,
