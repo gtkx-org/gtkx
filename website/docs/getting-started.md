@@ -9,31 +9,6 @@ Before you begin, ensure you have:
 - **Node.js 22+** — GTKX requires a modern Node.js runtime
 - **GTK4 libraries** — The native GTK4 runtime libraries
 
-### Installing GTK4 on Linux
-
-**Fedora:**
-```bash
-sudo dnf install gtk4-devel
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo apt install libgtk-4-dev
-```
-
-**Arch Linux:**
-```bash
-sudo pacman -S gtk4
-```
-
-### Installing Rust
-
-If you don't have Rust installed:
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
 ## Create a New Project
 
 The fastest way to start is with the GTKX CLI:
@@ -43,6 +18,7 @@ npx @gtkx/cli create my-app
 ```
 
 The CLI will prompt you for:
+
 - **Project name** — lowercase letters, numbers, and hyphens
 - **App ID** — reverse domain notation (e.g., `com.example.myapp`)
 - **Package manager** — pnpm (recommended), npm, yarn, or bun
@@ -73,20 +49,37 @@ my-app/
 ```tsx
 import { useState } from "react";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, quit } from "@gtkx/react";
+import {
+  GtkApplicationWindow,
+  GtkBox,
+  GtkButton,
+  GtkLabel,
+  quit,
+} from "@gtkx/react";
 
 export default function App() {
-    const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0);
 
-    return (
-        <GtkApplicationWindow title="My App" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginTop={40} marginStart={40} marginEnd={40}>
-                Welcome to GTKX!
-                <GtkLabel label={`Count: ${count}`} />
-                <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
-            </GtkBox>
-        </GtkApplicationWindow>
-    );
+  return (
+    <GtkApplicationWindow
+      title="My App"
+      defaultWidth={400}
+      defaultHeight={300}
+      onCloseRequest={quit}
+    >
+      <GtkBox
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={20}
+        marginTop={40}
+        marginStart={40}
+        marginEnd={40}
+      >
+        Welcome to GTKX!
+        <GtkLabel label={`Count: ${count}`} />
+        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+      </GtkBox>
+    </GtkApplicationWindow>
+  );
 }
 ```
 
@@ -144,6 +137,7 @@ Tests run in a real GTK environment using `xvfb-run` for headless execution.
 ### Components Map to Widgets
 
 GTKX components correspond to GTK widgets. The naming convention:
+
 - GTK widgets: `GtkButton`, `GtkLabel`, `GtkBox`, `GtkEntry`
 - Adwaita widgets: `AdwHeaderBar`, `AdwViewStack`, `AdwActionRow`
 
@@ -153,9 +147,9 @@ Component props map to GTK widget properties:
 
 ```tsx
 <GtkButton
-    label="Click me"           // Sets the button label
-    sensitive={false}          // Disables the button
-    cssClasses={["suggested-action"]}  // Adds CSS classes
+  label="Click me" // Sets the button label
+  sensitive={false} // Disables the button
+  cssClasses={["suggested-action"]} // Adds CSS classes
 />
 ```
 

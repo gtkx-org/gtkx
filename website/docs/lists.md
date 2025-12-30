@@ -36,8 +36,8 @@ const contacts: Contact[] = [
 
 const ContactList = () => (
     <GtkScrolledWindow vexpand>
-        <ListView<Contact>
-            renderItem={(contact) => (
+        <ListView
+            renderItem={(contact: Contact | null) => (
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                     <GtkLabel label={contact?.name ?? ""} hexpand halign={Gtk.Align.START} />
                     <GtkLabel label={contact?.email ?? ""} cssClasses={["dim-label"]} />
@@ -99,10 +99,10 @@ const photoTile = (color: string) => css`
 
 const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
     <GtkScrolledWindow vexpand hexpand>
-        <GridView<Photo>
+        <GridView
             minColumns={2}
             maxColumns={6}
-            renderItem={(photo) => (
+            renderItem={(photo: Photo | null) => (
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                     <GtkBox heightRequest={100} cssClasses={[photoTile(photo?.color ?? "#ccc")]} />
                     {photo?.title ?? ""}
@@ -347,8 +347,8 @@ const categories: CategoryWithChildren[] = [
 
 const SettingsTree = () => (
     <GtkScrolledWindow vexpand>
-        <TreeListView<TreeItem>
-            renderItem={(item, row) => {
+        <TreeListView
+            renderItem={(item: TreeItem | null) => {
                 if (!item) return <GtkLabel label="Loading..." />;
 
                 if (item.type === "category") {

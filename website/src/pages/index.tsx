@@ -13,8 +13,10 @@ function HeroSection() {
     return (
         <header className={styles.hero}>
             <div className={styles.heroInner}>
-                <img src={logoUrl} alt="GTKX Logo" className={styles.heroLogo} />
-                <h1 className={styles.heroTitle}>{siteConfig.title}</h1>
+                <div className={styles.heroHeader}>
+                    <h1 className={styles.heroTitle}>GTK</h1>
+                    <img src={logoUrl} alt="GTKX Logo" className={styles.heroLogo} />
+                </div>
                 <p className={styles.heroSubtitle}>{siteConfig.tagline}</p>
                 <div className={styles.heroButtons}>
                     <Link className={styles.heroButtonPrimary} to="/docs/getting-started">
