@@ -436,7 +436,7 @@ export const registerEnumsFromNamespace = (typeMapper: TypeMapper, namespace: Gi
         typeMapper.registerEnum(enumeration.name, toPascalCase(enumeration.name));
     }
     for (const bitfield of namespace.bitfields) {
-        typeMapper.registerEnum(bitfield.name, toPascalCase(bitfield.name));
+        typeMapper.registerFlags(bitfield.name, toPascalCase(bitfield.name));
     }
 };
 
@@ -445,7 +445,7 @@ type TypeMapping = { ts: string; ffi: FfiTypeDescriptor };
 /**
  * The kind of a registered type.
  */
-export type TypeKind = "class" | "interface" | "enum" | "record" | "callback";
+export type TypeKind = "class" | "interface" | "enum" | "flags" | "record" | "callback";
 
 /**
  * A type registered in the type registry.
@@ -533,6 +533,22 @@ export class TypeRegistry {
         const transformedName = toPascalCase(name);
         this.types.set(`${namespace}.${name}`, {
             kind: "enum",
+            name,
+            namespace,
+            transformedName,
+        });
+    }
+
+    /**
+     * Registers a flags (bitfield) type.
+     *
+     * @param namespace - The GIR namespace
+     * @param name - The flags name
+     */
+    registerFlags(namespace: string, name: string): void {
+        const transformedName = toPascalCase(name);
+        this.types.set(`${namespace}.${name}`, {
+            kind: "flags",
             name,
             namespace,
             transformedName,
@@ -656,7 +672,7 @@ export class TypeRegistry {
                 registry.registerEnum(ns.name, enumeration.name);
             }
             for (const bitfield of ns.bitfields) {
-                registry.registerEnum(ns.name, bitfield.name);
+                registry.registerFlags(ns.name, bitfield.name);
             }
             for (const record of ns.records) {
                 if (record.disguised) continue;
@@ -947,6 +963,8 @@ export type MappedType = {
 export class TypeMapper {
     private enumNames: Set<string> = new Set();
     private enumTransforms: Map<string, string> = new Map();
+    private flagsNames: Set<string> = new Set();
+    private flagsTransforms: Map<string, string> = new Map();
     private recordNames: Set<string> = new Set();
     private recordTransforms: Map<string, string> = new Map();
     private recordGlibTypes: Map<string, string> = new Map();
@@ -969,6 +987,19 @@ export class TypeMapper {
         this.enumNames.add(originalName);
         if (transformedName) {
             this.enumTransforms.set(originalName, transformedName);
+        }
+    }
+
+    /**
+     * Registers a flags (bitfield) type for type mapping.
+     *
+     * @param originalName - The GIR flags name
+     * @param transformedName - Optional transformed TypeScript name
+     */
+    registerFlags(originalName: string, transformedName?: string): void {
+        this.flagsNames.add(originalName);
+        if (transformedName) {
+            this.flagsTransforms.set(originalName, transformedName);
         }
     }
 
@@ -1049,9 +1080,10 @@ export class TypeMapper {
      *
      * @param girType - The GIR type to map
      * @param isReturn - Whether this is a return type (affects ownership)
+     * @param parentTransferOwnership - Transfer ownership from parent (used for array elements)
      * @returns The mapped type with TypeScript and FFI descriptors
      */
-    mapType(girType: GirType, isReturn = false): MappedType {
+    mapType(girType: GirType, isReturn = false, parentTransferOwnership?: string): MappedType {
         if (girType.isArray || girType.name === "array") {
             const listType = girType.cType?.includes("GSList")
                 ? "gslist"
@@ -1059,7 +1091,8 @@ export class TypeMapper {
                   ? "glist"
                   : undefined;
             if (girType.elementType) {
-                const elementType = this.mapType(girType.elementType);
+                const elementTransferOwnership = girType.transferOwnership ?? parentTransferOwnership;
+                const elementType = this.mapType(girType.elementType, isReturn, elementTransferOwnership);
                 return {
                     ts: `${elementType.ts}[]`,
                     ffi: listType
@@ -1076,7 +1109,8 @@ export class TypeMapper {
         }
 
         if (STRING_TYPES.has(girType.name)) {
-            const borrowed = girType.transferOwnership === "none";
+            const effectiveTransferOwnership = girType.transferOwnership ?? parentTransferOwnership;
+            const borrowed = effectiveTransferOwnership === "none";
             return {
                 ts: "string",
                 ffi: { type: "string", borrowed },
@@ -1115,7 +1149,7 @@ export class TypeMapper {
                         };
                     }
                     this.onSameNamespaceClassUsed?.(registered.transformedName, registered.name);
-                } else if (registered.kind === "enum") {
+                } else if (registered.kind === "enum" || registered.kind === "flags") {
                     this.onEnumUsed?.(registered.transformedName);
                 } else if (registered.kind === "record") {
                     this.onRecordUsed?.(registered.transformedName);
@@ -1125,6 +1159,14 @@ export class TypeMapper {
                     return {
                         ts: qualifiedName,
                         ffi: { type: "int", size: 32, unsigned: false },
+                        externalType,
+                    };
+                }
+
+                if (registered.kind === "flags") {
+                    return {
+                        ts: qualifiedName,
+                        ffi: { type: "int", size: 32, unsigned: true },
                         externalType,
                     };
                 }
@@ -1196,6 +1238,15 @@ export class TypeMapper {
             };
         }
 
+        if (this.flagsNames.has(girType.name)) {
+            const transformedName = this.flagsTransforms.get(girType.name) ?? girType.name;
+            this.onEnumUsed?.(transformedName);
+            return {
+                ts: transformedName,
+                ffi: { type: "int", size: 32, unsigned: true },
+            };
+        }
+
         if (this.recordNames.has(girType.name)) {
             const transformedName = this.recordTransforms.get(girType.name) ?? girType.name;
             const glibTypeName = this.recordGlibTypes.get(girType.name) ?? transformedName;
@@ -1215,6 +1266,14 @@ export class TypeMapper {
                     return {
                         ts: transformedName,
                         ffi: { type: "int", size: 32, unsigned: false },
+                    };
+                }
+                if (this.flagsNames.has(typeName)) {
+                    const transformedName = this.flagsTransforms.get(typeName) ?? typeName;
+                    this.onEnumUsed?.(transformedName);
+                    return {
+                        ts: transformedName,
+                        ffi: { type: "int", size: 32, unsigned: true },
                     };
                 }
                 if (this.recordNames.has(typeName)) {
@@ -1249,6 +1308,13 @@ export class TypeMapper {
                         return {
                             ts: qualifiedName,
                             ffi: { type: "int", size: 32, unsigned: false },
+                            externalType: isExternal ? externalType : undefined,
+                        };
+                    }
+                    if (registered.kind === "flags") {
+                        return {
+                            ts: qualifiedName,
+                            ffi: { type: "int", size: 32, unsigned: true },
                             externalType: isExternal ? externalType : undefined,
                         };
                     }
@@ -1339,6 +1405,13 @@ export class TypeMapper {
                     return {
                         ts: qualifiedName,
                         ffi: { type: "int", size: 32, unsigned: false },
+                        externalType,
+                    };
+                }
+                if (registered.kind === "flags") {
+                    return {
+                        ts: qualifiedName,
+                        ffi: { type: "int", size: 32, unsigned: true },
                         externalType,
                     };
                 }
@@ -1555,7 +1628,7 @@ export class TypeMapper {
             };
         }
 
-        const mapped = this.mapType(param.type);
+        const mapped = this.mapType(param.type, false, param.transferOwnership);
         const isObjectType = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
         const isTransferFull = param.transferOwnership === "full";
         const isTransferNone = param.transferOwnership === "none" || param.transferOwnership === undefined;
