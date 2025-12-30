@@ -78,6 +78,14 @@ runs:
           DOCKER_ARGS="$DOCKER_ARGS $INPUT_EXTRA_ENV"
         fi
 
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
+          DOCKER_ARGS="$DOCKER_ARGS -e ACTIONS_ID_TOKEN_REQUEST_URL -e ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+          
+          for var in $(env | grep '^GITHUB_' | cut -d= -f1); do
+            DOCKER_ARGS="$DOCKER_ARGS -e $var"
+          done
+        fi
+
         if [ "$INPUT_XVFB" = "true" ]; then
           WRAPPED_COMMAND="Xvfb :99 -screen 0 1024x768x24 &>/dev/null & export DISPLAY=:99; $INPUT_COMMAND"
         else
