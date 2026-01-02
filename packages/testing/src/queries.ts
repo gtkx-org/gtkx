@@ -162,9 +162,9 @@ const getWidgetTestId = (widget: Gtk.Widget): string | null => {
     return widget.getName();
 };
 
-const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
+const getWidgetCheckedState = (widget: Gtk.Widget): boolean | null => {
     const accessible = getNativeObject(widget.id, Gtk.Accessible);
-    if (!accessible) return undefined;
+    if (!accessible) return null;
 
     const role = accessible.getAccessibleRole();
 
@@ -177,20 +177,23 @@ const getWidgetCheckedState = (widget: Gtk.Widget): boolean | undefined => {
         case Gtk.AccessibleRole.SWITCH:
             return (widget as Gtk.Switch).getActive();
         default:
+            return null;
     }
 };
 
-const getWidgetExpandedState = (widget: Gtk.Widget): boolean | undefined => {
+const getWidgetExpandedState = (widget: Gtk.Widget): boolean | null => {
     const accessible = getNativeObject(widget.id, Gtk.Accessible);
-    if (!accessible) return undefined;
+    if (!accessible) return null;
 
     const role = accessible.getAccessibleRole();
 
     if (role === Gtk.AccessibleRole.BUTTON) {
         const parent = widget.getParent();
-        if (!parent) return undefined;
-        return (parent as Gtk.Expander).getExpanded?.();
+        if (!parent) return null;
+        return (parent as Gtk.Expander).getExpanded?.() ?? null;
     }
+
+    return null;
 };
 
 const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {

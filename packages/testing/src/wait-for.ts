@@ -23,14 +23,14 @@ const DEFAULT_INTERVAL = 50;
  * }, { timeout: 2000 });
  * ```
  */
-export const waitFor = async <T>(callback: () => T, options?: WaitForOptions): Promise<T> => {
+export const waitFor = async <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
     const { timeout = DEFAULT_TIMEOUT, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
     const startTime = Date.now();
     let lastError: Error | null = null;
 
     while (Date.now() - startTime < timeout) {
         try {
-            return callback();
+            return await callback();
         } catch (error) {
             lastError = error as Error;
             await new Promise((resolve) => setTimeout(resolve, interval));
@@ -88,7 +88,7 @@ export const waitForElementToBeRemoved = async (
     const { timeout = DEFAULT_TIMEOUT, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
 
     const initialElement = getElement(elementOrCallback);
-    if (initialElement === null) {
+    if (initialElement === null || isElementRemoved(initialElement)) {
         throw new Error(
             "Elements already removed: waitForElementToBeRemoved requires elements to be present initially",
         );
