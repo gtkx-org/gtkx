@@ -21,8 +21,8 @@ importers:
         specifier: ^19.2.7
         version: 19.2.7
       knip:
-        specifier: ^5.78.0
-        version: 5.78.0(@types/node@25.0.3)(typescript@5.9.3)
+        specifier: ^5.79.0
+        version: 5.79.0(@types/node@25.0.3)(typescript@5.9.3)
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -4182,8 +4182,8 @@ packages:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
 
-  knip@5.78.0:
-    resolution: {integrity: sha512-nB7i/fgiJl7WVxdv5lX4ZPfDt9/zrw/lOgZtyioy988xtFhKuFJCRdHWT1Zg9Avc0yaojvnmEuAXU8SeMblKww==}
+  knip@5.79.0:
+    resolution: {integrity: sha512-rcg+mNdqm6UiTuRVyy6UuuHw1n4ABMpNXDtrfGaCeUtJoRBAvAENIebr8YMtOz6XE7iVHZ8+rY7skgEtosczhQ==}
     engines: {node: '>=18.18.0'}
     hasBin: true
     peerDependencies:
@@ -6280,41 +6280,41 @@ packages:
     resolution: {integrity: sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==}
     engines: {node: '>=12.20'}
 
-  zod@4.2.1:
-    resolution: {integrity: sha512-0wZ1IRqGGhMP76gLqz8EyfBXKk0J2qo2+H3fi4mcUP/KtTocoX08nmIAHl1Z2kJIZbZee8KOpBCSNPRgauucjw==}
+  zod@4.3.4:
+    resolution: {integrity: sha512-Zw/uYiiyF6pUT1qmKbZziChgNPRu+ZRneAsMUDU6IwmXdWt5JwcUfy2bvLOCUtz5UniaN/Zx5aFttZYbYc7O/A==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
 
-  '@ai-sdk/gateway@2.0.24(zod@4.2.1)':
+  '@ai-sdk/gateway@2.0.24(zod@4.3.4)':
     dependencies:
       '@ai-sdk/provider': 2.0.1
-      '@ai-sdk/provider-utils': 3.0.20(zod@4.2.1)
+      '@ai-sdk/provider-utils': 3.0.20(zod@4.3.4)
       '@vercel/oidc': 3.0.5
-      zod: 4.2.1
+      zod: 4.3.4
 
-  '@ai-sdk/provider-utils@3.0.20(zod@4.2.1)':
+  '@ai-sdk/provider-utils@3.0.20(zod@4.3.4)':
     dependencies:
       '@ai-sdk/provider': 2.0.1
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.0.6
-      zod: 4.2.1
+      zod: 4.3.4
 
   '@ai-sdk/provider@2.0.1':
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@2.0.119(react@19.2.3)(zod@4.2.1)':
+  '@ai-sdk/react@2.0.119(react@19.2.3)(zod@4.3.4)':
     dependencies:
-      '@ai-sdk/provider-utils': 3.0.20(zod@4.2.1)
-      ai: 5.0.117(zod@4.2.1)
+      '@ai-sdk/provider-utils': 3.0.20(zod@4.3.4)
+      ai: 5.0.117(zod@4.3.4)
       react: 19.2.3
       swr: 2.3.8(react@19.2.3)
       throttleit: 2.1.0
     optionalDependencies:
-      zod: 4.2.1
+      zod: 4.3.4
 
   '@algolia/abtesting@1.12.2':
     dependencies:
@@ -7583,14 +7583,14 @@ snapshots:
 
   '@docsearch/react@4.4.0(@algolia/client-search@5.46.2)(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(search-insights@2.17.3)':
     dependencies:
-      '@ai-sdk/react': 2.0.119(react@19.2.3)(zod@4.2.1)
+      '@ai-sdk/react': 2.0.119(react@19.2.3)(zod@4.3.4)
       '@algolia/autocomplete-core': 1.19.2(@algolia/client-search@5.46.2)(algoliasearch@5.46.2)(search-insights@2.17.3)
       '@docsearch/core': 4.4.0(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@docsearch/css': 4.4.0
-      ai: 5.0.117(zod@4.2.1)
+      ai: 5.0.117(zod@4.3.4)
       algoliasearch: 5.46.2
       marked: 16.4.2
-      zod: 4.2.1
+      zod: 4.3.4
     optionalDependencies:
       '@types/react': 19.2.7
       react: 19.2.3
@@ -9347,13 +9347,13 @@ snapshots:
       clean-stack: 2.2.0
       indent-string: 4.0.0
 
-  ai@5.0.117(zod@4.2.1):
+  ai@5.0.117(zod@4.3.4):
     dependencies:
-      '@ai-sdk/gateway': 2.0.24(zod@4.2.1)
+      '@ai-sdk/gateway': 2.0.24(zod@4.3.4)
       '@ai-sdk/provider': 2.0.1
-      '@ai-sdk/provider-utils': 3.0.20(zod@4.2.1)
+      '@ai-sdk/provider-utils': 3.0.20(zod@4.3.4)
       '@opentelemetry/api': 1.9.0
-      zod: 4.2.1
+      zod: 4.3.4
 
   ajv-formats@2.1.1(ajv@8.17.1):
     optionalDependencies:
@@ -10985,7 +10985,7 @@ snapshots:
 
   kleur@3.0.3: {}
 
-  knip@5.78.0(@types/node@25.0.3)(typescript@5.9.3):
+  knip@5.79.0(@types/node@25.0.3)(typescript@5.9.3):
     dependencies:
       '@nodelib/fs.walk': 1.2.8
       '@types/node': 25.0.3
@@ -11000,7 +11000,7 @@ snapshots:
       smol-toml: 1.6.0
       strip-json-comments: 5.0.3
       typescript: 5.9.3
-      zod: 4.2.1
+      zod: 4.3.4
 
   latest-version@7.0.0:
     dependencies:
@@ -13552,6 +13552,6 @@ snapshots:
 
   yocto-queue@1.2.2: {}
 
-  zod@4.2.1: {}
+  zod@4.3.4: {}
 
   zwitch@2.0.4: {}
