@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,9 +5,8 @@ import type { Plugin } from "vitest/config";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const getStateDir = (projectRoot: string): string => {
-    const hash = createHash("md5").update(projectRoot).digest("hex").slice(0, 8);
-    return join(tmpdir(), `gtkx-vitest-${hash}`);
+const getStateDir = (): string => {
+    return join(tmpdir(), `gtkx-vitest-${process.pid}`);
 };
 
 export interface GtkxOptions {
@@ -53,8 +51,7 @@ const gtkx = (options?: GtkxOptions): Plugin => {
         config(config) {
             const existingGlobalSetup = config.test?.globalSetup ?? [];
 
-            const projectRoot = config.root ?? process.cwd();
-            const stateDir = getStateDir(projectRoot);
+            const stateDir = getStateDir();
             process.env.GTKX_STATE_DIR = stateDir;
 
             return {
