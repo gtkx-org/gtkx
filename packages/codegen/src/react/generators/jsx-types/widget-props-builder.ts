@@ -39,10 +39,6 @@ export class WidgetPropsBuilder {
         this.usedNamespaces.clear();
     }
 
-    /**
-     * Tracks namespaces from PropertyAnalysis or SignalAnalysis.
-     * Uses the structured referencedNamespaces field instead of parsing strings.
-     */
     private trackNamespacesFromAnalysis(referencedNamespaces: readonly string[]): void {
         for (const ns of referencedNamespaces) {
             this.usedNamespaces.add(ns);
@@ -186,9 +182,6 @@ export class WidgetPropsBuilder {
         });
     }
 
-    /**
-     * Returns property structures for list widgets.
-     */
     private getListWidgetPropertyStructures(): PropStructure[] {
         return [
             {
@@ -212,9 +205,6 @@ export class WidgetPropsBuilder {
         ];
     }
 
-    /**
-     * Returns property structures for column view widgets.
-     */
     private getColumnViewPropertyStructures(): PropStructure[] {
         return [
             {
@@ -238,9 +228,6 @@ export class WidgetPropsBuilder {
         ];
     }
 
-    /**
-     * Returns property structures for list render props.
-     */
     private getListRenderPropertyStructures(): PropStructure[] {
         return [
             {
@@ -257,9 +244,6 @@ export class WidgetPropsBuilder {
         ];
     }
 
-    /**
-     * Returns property structures for dropdown widgets.
-     */
     private getDropDownPropertyStructures(): PropStructure[] {
         return [
             {
@@ -277,10 +261,6 @@ export class WidgetPropsBuilder {
         ];
     }
 
-    /**
-     * Gets the parent props interface name for a widget.
-     * Handles cross-namespace inheritance (e.g., Adw.Window extends Gtk.Window).
-     */
     private getParentPropsName(widget: JsxWidget): string {
         const { meta } = widget;
         const parentClassName = meta.parentClassName;
@@ -294,10 +274,6 @@ export class WidgetPropsBuilder {
         return `Omit<${parentNamespace}${baseName}Props, "onNotify">`;
     }
 
-    /**
-     * Builds the handler type string for a signal.
-     * Namespaces are tracked via trackNamespacesFromAnalysis in the caller.
-     */
     private buildHandlerType(signal: SignalAnalysis, widgetName: string, namespace: string): string {
         const selfParam = `self: ${namespace}.${toPascalCase(widgetName)}`;
         const otherParams = signal.parameters.map((p: SignalParam) => `${p.name}: ${p.type}`).join(", ");
@@ -305,9 +281,6 @@ export class WidgetPropsBuilder {
         return `(${params}) => ${signal.returnType}`;
     }
 
-    /**
-     * Qualifies a type string with the namespace prefix.
-     */
     private qualifyType(tsType: string, namespace: string): string {
         return baseQualifyType(tsType, namespace);
     }

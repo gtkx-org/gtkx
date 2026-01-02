@@ -9,12 +9,6 @@ export type SignalMetaEntry = {
 };
 
 /**
- * Legacy signal metadata type.
- * @deprecated Use SignalMetaEntry with WIDGET_META.signals instead.
- */
-export type SignalMeta = Record<string, SignalMetaEntry>;
-
-/**
  * Widget metadata structure.
  * Contains generic FFI metadata for widgets.
  * React-specific classification is derived from internal.ts constants in React.

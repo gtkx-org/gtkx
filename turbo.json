@@ -11,7 +11,7 @@
             "outputLogs": "new-only"
         },
         "//#knip:all": {
-            "dependsOn": ["//#codegen:all", "@gtkx/vitest:build"],
+            "dependsOn": ["//#codegen:all", "@gtkx/vitest#build"],
             "inputs": ["**/*.ts", "**/*.tsx", "knip.json", "package.json"],
             "outputs": [],
             "outputLogs": "new-only"

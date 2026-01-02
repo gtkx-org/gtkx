@@ -38,11 +38,8 @@ import {
 /**
  * Maps normalized GIR types to TypeScript and FFI representations.
  *
- * Key differences from legacy TypeMapper:
- * - Works with NormalizedType instead of GirType
- * - Uses GirRepository for type resolution instead of TypeRegistry
- * - Returns imports in the result instead of using callbacks
- * - No registration methods (repository already has all types)
+ * Works with NormalizedType from GirRepository and returns type mappings
+ * including TypeScript type strings, FFI descriptors, and required imports.
  *
  * @example
  * ```typescript
@@ -264,9 +261,6 @@ export class FfiMapper {
         return ns?.callbacks.has(typeName) ?? false;
     }
 
-    /**
-     * Qualifies a type name with the current namespace if not already qualified.
-     */
     private qualifyTypeName(typeName: string): string {
         if (typeName.includes(".")) {
             return typeName;
@@ -274,10 +268,6 @@ export class FfiMapper {
         return `${this.currentNamespace}.${typeName}`;
     }
 
-    /**
-     * Core type resolution from a namespace.
-     * Extracted to eliminate duplication between resolveType and resolveQualifiedType.
-     */
     private resolveFromNamespace(
         ns: NormalizedNamespace,
         name: string,
@@ -486,11 +476,6 @@ export class FfiMapper {
         }
     }
 
-    /**
-     * Maps a callback type using GIR metadata.
-     * The trampoline name comes from the registry, but the TypeScript signature
-     * and FFI descriptors are derived from the callback's GIR definition.
-     */
     private mapCallback(qualifiedName: string, imports: TypeImport[]): MappedType | null {
         const trampoline = getTrampolineName(qualifiedName);
         if (!trampoline) {
@@ -510,10 +495,6 @@ export class FfiMapper {
         return { ts, ffi, imports };
     }
 
-    /**
-     * Builds TypeScript parameter strings for a callback.
-     * Filters out user_data/data parameters (handled by trampoline).
-     */
     private buildCallbackTsParams(callback: NormalizedCallback, imports: TypeImport[]): string[] {
         const result: string[] = [];
 
@@ -530,9 +511,6 @@ export class FfiMapper {
         return result;
     }
 
-    /**
-     * Builds TypeScript return type for a callback.
-     */
     private buildCallbackTsReturn(returnType: NormalizedType): string {
         if (returnType.name === "none" || returnType.name === "void") {
             return "void";
@@ -542,9 +520,6 @@ export class FfiMapper {
         return `${mapped.ts}${nullable}`;
     }
 
-    /**
-     * Builds FFI descriptor for a callback.
-     */
     private buildCallbackFfiDescriptor(
         callback: NormalizedCallback,
         trampoline: TrampolineName,

@@ -160,9 +160,6 @@ export class CallExpressionBuilder {
         return allArgs;
     }
 
-    /**
-     * Writes a single argument using ts-morph writer.
-     */
     private writeArgument(
         writer: ReturnType<typeof Writers.object> extends (w: infer W) => void ? W : never,
         arg: { type: FfiTypeDescriptor; value: string; optional?: boolean },

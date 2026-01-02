@@ -2,7 +2,6 @@
  * Constructor Analyzer
  *
  * Analyzes GIR constructors to determine which properties are constructor parameters.
- * Replaces the "first 3 props" heuristic with actual constructor analysis.
  */
 
 import type { GirRepository, NormalizedClass } from "@gtkx/gir";

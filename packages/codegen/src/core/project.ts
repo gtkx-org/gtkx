@@ -188,9 +188,6 @@ export class CodegenProject {
         return this.project;
     }
 
-    /**
-     * Formats code using Biome.
-     */
     private async formatCode(code: string, filePath: string): Promise<string> {
         try {
             const { biome, projectKey } = await getBiome();

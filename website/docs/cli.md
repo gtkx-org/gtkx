@@ -68,6 +68,7 @@ Dev:
 Testing (if enabled):
 
 - `@gtkx/testing` — Testing utilities
+- `@gtkx/vitest` — Vitest plugin for display management
 - `vitest` — Test runner
 
 ### `gtkx dev`

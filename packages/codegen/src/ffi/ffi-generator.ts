@@ -49,9 +49,6 @@ export class FfiGenerator {
         this.namespacePrefix = `${options.namespace.toLowerCase()}/`;
     }
 
-    /**
-     * Creates a source file with the namespace prefix in the FFI directory.
-     */
     private createSourceFile(fileName: string): SourceFile {
         return this.project.createFfiSourceFile(`${this.namespacePrefix}${fileName}`);
     }
@@ -64,10 +61,6 @@ export class FfiGenerator {
         return this.project;
     }
 
-    /**
-     * Gets the primary shared library from a namespace.
-     * Handles comma-separated library lists by returning the first one.
-     */
     private getNamespaceLibrary(namespaceName: string): string {
         const ns = this.options.repository.getNamespace(namespaceName);
         if (!ns || !ns.sharedLibrary) {
@@ -285,13 +278,6 @@ export class FfiGenerator {
         }
     }
 
-    /**
-     * Determines if a record should be fully generated as a class.
-     *
-     * Uses GIR attributes (`disguised`, `opaque`, `isGtypeStructFor`) where available,
-     * with suffix-based heuristics only for private data types that GIR doesn't
-     * explicitly mark.
-     */
     private shouldGenerateRecord(record: NormalizedRecord): boolean {
         if (record.disguised) return false;
 
@@ -309,16 +295,6 @@ export class FfiGenerator {
         return publicFields.every((field) => isPrimitiveFieldType(field.type.name as string));
     }
 
-    /**
-     * Determines if a record should get a stub type alias.
-     *
-     * Records that are not fully generated but may be referenced in method
-     * signatures get stub types to avoid "module not found" errors.
-     * This includes opaque/disguised records that may be returned by functions.
-     *
-     * Uses GIR attributes (`glibTypeName`, `isGtypeStructFor`) where available,
-     * with suffix-based heuristics only for private data types.
-     */
     private isUsableStubRecord(record: NormalizedRecord): boolean {
         if (record.glibTypeName) return true;
 

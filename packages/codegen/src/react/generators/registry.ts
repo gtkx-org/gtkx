@@ -42,10 +42,6 @@ export class RegistryGenerator {
         });
     }
 
-    /**
-     * Creates a WriterFunction for the namespace registry array.
-     * Uses ts-morph writer for proper formatting.
-     */
     private writeRegistryArray(namespaces: string[]): WriterFunction {
         const sortedByLength = [...namespaces].sort((a, b) => b.length - a.length || a.localeCompare(b));
 

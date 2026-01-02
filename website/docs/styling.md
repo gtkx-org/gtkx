@@ -102,9 +102,9 @@ injectGlobal`
 
 Use sparingly—prefer scoped styles with `css()` when possible.
 
-## GTK CSS Differences
+## Nesting
 
-GTK CSS is similar to web CSS with a few differences. The `css` function supports nesting with `&`:
+The `css` function supports nesting with `&`:
 
 ```typescript
 const buttonStyle = css`
@@ -120,33 +120,12 @@ const buttonStyle = css`
 `;
 ```
 
-GTK uses `@` for theme variables instead of CSS custom properties:
+## GTK CSS Reference
 
-```typescript
-const themedStyle = css`
-    background: @theme_bg_color;
-    color: @theme_fg_color;
-    border-color: @borders;
-`;
-```
+GTK CSS is similar to web CSS but with its own selectors, properties, and theme variables. For the full reference, see:
 
-For the full GTK CSS reference (selectors, properties, theme variables), see the [GTK4 CSS Overview](https://docs.gtk.org/gtk4/css-overview.html).
-
-## Adwaita CSS Classes
-
-Libadwaita provides built-in CSS classes. Common ones:
-
-- **Typography:** `title-1` through `title-4`, `heading`, `body`, `caption`, `dim-label`
-- **Buttons:** `suggested-action`, `destructive-action`, `flat`, `pill`, `circular`
-- **Containers:** `card`, `boxed-list`, `toolbar`, `osd`
-
-```tsx
-<GtkLabel cssClasses={["title-1"]} label="Heading" />
-<GtkButton cssClasses={["suggested-action"]} label="Primary" />
-<GtkBox cssClasses={["card"]} />
-```
-
-For the complete list, see the [Libadwaita Style Classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html).
+- [GTK4 CSS Overview](https://docs.gtk.org/gtk4/css-overview.html) — Selectors, properties, and `@theme_*` variables
+- [Libadwaita Style Classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html) — Built-in CSS classes for typography, buttons, and containers
 
 ## Practical Examples
 

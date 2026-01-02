@@ -129,23 +129,6 @@ export class GirRepository {
     }
 
     /**
-     * Gets all raw namespaces for backward compatibility during migration.
-     * @deprecated Use normalized types via getNamespace() instead.
-     * This will be removed once all generators are migrated.
-     */
-    getRawNamespaces(): Map<string, RawNamespace> {
-        return this.rawNamespaces;
-    }
-
-    /**
-     * Gets a raw namespace by name for backward compatibility.
-     * @deprecated Use getNamespace() for normalized types instead.
-     */
-    getRawNamespace(name: string): RawNamespace | null {
-        return this.rawNamespaces.get(name) ?? null;
-    }
-
-    /**
      * Resolves a class by qualified name.
      * @example repo.resolveClass("Gtk.Button" as QualifiedName)
      */

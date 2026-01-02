@@ -93,9 +93,6 @@ export class JsxTypesGenerator {
         this.intrinsicBuilder.addModuleExport(sourceFile);
     }
 
-    /**
-     * Gets widgets from metadata, converting to JsxWidget.
-     */
     private getWidgets(): JsxWidget[] {
         const allMeta = this.reader.getAllCodegenMeta();
 
@@ -126,17 +123,10 @@ export class JsxTypesGenerator {
         };
     }
 
-    /**
-     * Gets widget container metadata for a class.
-     */
     private getContainerMeta(namespace: string, className: string): WidgetContainerMeta | null {
         return this.ffiAnalyzer.getWidgetMeta(namespace, className);
     }
 
-    /**
-     * Adds import declarations to the source file.
-     * Uses namespaces tracked during props generation instead of hardcoded list.
-     */
     private addImports(sourceFile: SourceFile, widgets: JsxWidget[]): void {
         sourceFile.addImportDeclaration({
             moduleSpecifier: "react",
@@ -156,9 +146,6 @@ export class JsxTypesGenerator {
         addNamespaceImports(sourceFile, usedNamespaces, { isTypeOnly: true });
     }
 
-    /**
-     * Generates the WidgetNotifyProps type.
-     */
     private generateWidgetNotifyProps(sourceFile: SourceFile, widgets: JsxWidget[]): void {
         const widgetMeta = widgets.find((w) => w.className === "Widget");
         if (!widgetMeta) return;
@@ -174,9 +161,6 @@ export class JsxTypesGenerator {
         });
     }
 
-    /**
-     * Generates the base WidgetProps interface.
-     */
     private generateBaseWidgetProps(sourceFile: SourceFile, widgets: JsxWidget[]): void {
         const widgetMeta = widgets.find((w) => w.className === "Widget");
         if (!widgetMeta) return;
@@ -190,9 +174,6 @@ export class JsxTypesGenerator {
         );
     }
 
-    /**
-     * Generates widget-specific props interfaces.
-     */
     private generateWidgetPropsInterfaces(sourceFile: SourceFile, widgets: JsxWidget[]): void {
         for (const widget of widgets) {
             if (widget.className === "Widget") continue;

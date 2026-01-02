@@ -319,54 +319,6 @@ navViewRef.current?.popToTag("main");
 navViewRef.current?.replaceWithTags(["main", "settings"]);
 ```
 
-## CSS Classes
-
-Adwaita provides many built-in CSS classes:
-
-### Typography
-
-```tsx
-<GtkLabel cssClasses={["title-1"]} label="Large Title" />
-<GtkLabel cssClasses={["title-2"]} label="Medium Title" />
-<GtkLabel cssClasses={["title-3"]} label="Small Title" />
-<GtkLabel cssClasses={["heading"]} label="Heading" />
-<GtkLabel cssClasses={["body"]} label="Body text" />
-<GtkLabel cssClasses={["caption"]} label="Caption" />
-<GtkLabel cssClasses={["dim-label"]} label="Dimmed" />
-<GtkLabel cssClasses={["numeric"]} label="12345" />
-```
-
-### Buttons
-
-```tsx
-<GtkButton cssClasses={["suggested-action"]} label="Primary" />
-<GtkButton cssClasses={["destructive-action"]} label="Danger" />
-<GtkButton cssClasses={["flat"]} label="Flat" />
-<GtkButton cssClasses={["pill"]} label="Pill" />
-<GtkButton cssClasses={["circular"]} iconName="list-add-symbolic" />
-<GtkButton cssClasses={["raised"]} label="Raised" />
-<GtkButton cssClasses={["opaque"]} label="Opaque" />
-```
-
-### Containers
-
-```tsx
-<GtkBox cssClasses={["card"]} />
-<GtkListBox cssClasses={["boxed-list"]} />
-<GtkBox cssClasses={["toolbar"]} />
-<GtkBox cssClasses={["content"]} />
-<GtkBox cssClasses={["view"]} />
-```
-
-### Status Colors
-
-```tsx
-<GtkLabel cssClasses={["success"]} label="Success" />
-<GtkLabel cssClasses={["warning"]} label="Warning" />
-<GtkLabel cssClasses={["error"]} label="Error" />
-<GtkLabel cssClasses={["accent"]} label="Accent" />
-```
-
 ## Settings Page Example
 
 ```tsx
@@ -459,3 +411,7 @@ const SettingsPage = () => {
 3. **Use boxed-list class** — Gives lists a modern card-like appearance
 4. **Prefer Adw components** — They handle responsive behavior automatically
 5. **Follow GNOME HIG** — Check the [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/) for design patterns
+
+## Reference
+
+For the complete list of Adwaita CSS classes (typography, buttons, containers, status colors), see the [Libadwaita Style Classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html).

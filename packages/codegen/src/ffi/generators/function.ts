@@ -66,9 +66,6 @@ export class FunctionGenerator {
         return supportedFunctions.length > 0;
     }
 
-    /**
-     * Filters functions and tracks feature usage in context.
-     */
     private filterAndTrackFeatures(functions: NormalizedFunction[]): NormalizedFunction[] {
         const supportedFunctions = filterSupportedFunctions(functions, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
@@ -78,9 +75,6 @@ export class FunctionGenerator {
         return supportedFunctions;
     }
 
-    /**
-     * Builds a variable statement structure for a function.
-     */
     private buildFunctionStructure(func: NormalizedFunction): VariableStatementStructure {
         const funcName = toValidIdentifier(toCamelCase(func.name));
         const params = this.methodBody.buildParameterList(func.parameters);

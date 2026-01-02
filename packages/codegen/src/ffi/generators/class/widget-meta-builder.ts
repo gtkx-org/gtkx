@@ -126,10 +126,6 @@ export class WidgetMetaBuilder {
         return true;
     }
 
-    /**
-     * Writes the WIDGET_META initializer using ts-morph Writers.object().
-     * Uses structured signal data to avoid string parsing.
-     */
     private writeWidgetMetaInitializer(): WriterFunction {
         const meta = this.computeMetadata();
 
@@ -156,9 +152,6 @@ export class WidgetMetaBuilder {
         });
     }
 
-    /**
-     * Computes widget metadata (excluding signals which are set separately).
-     */
     computeMetadata(): Omit<RuntimeWidgetMeta, "signals"> {
         const properties = this.analyzers.property.analyzeWidgetProperties(this.cls);
         return {
@@ -168,17 +161,10 @@ export class WidgetMetaBuilder {
         };
     }
 
-    /**
-     * Checks if the class is a widget.
-     */
     isWidget(): boolean {
         return this.cls.isSubclassOf(this.widgetQualifiedName);
     }
 
-    /**
-     * Detects if the widget is a container.
-     * Uses isContainerMethod and isWidgetType from utils/widget-detection.ts.
-     */
     private detectIsContainer(): boolean {
         const allMethods = this.cls.getAllMethods();
         for (const method of allMethods) {
@@ -197,9 +183,6 @@ export class WidgetMetaBuilder {
         return false;
     }
 
-    /**
-     * Detects named slots (writable widget-type properties).
-     */
     private detectSlots(): string[] {
         const slots: string[] = [];
 
@@ -253,9 +236,6 @@ export class WidgetMetaBuilder {
         };
     }
 
-    /**
-     * Extracts parent class info including namespace for cross-namespace inheritance.
-     */
     private extractParentInfo(): { className: string; namespace: string } | null {
         const parent = this.cls.parent;
         if (!parent) return null;

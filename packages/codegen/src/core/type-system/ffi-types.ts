@@ -75,8 +75,7 @@ export type TypeKind = "class" | "interface" | "enum" | "flags" | "record" | "ca
 /**
  * Represents a type import required by generated code.
  *
- * Used to collect all necessary imports during type mapping,
- * replacing the old callback-based import tracking.
+ * Used to collect all necessary imports during type mapping.
  */
 export type TypeImport = {
     /** The kind of type being imported */
@@ -111,9 +110,6 @@ export const collectExternalNamespaces = (imports: readonly TypeImport[]): strin
 
 /**
  * Result of mapping a GIR type to TypeScript and FFI representations.
- *
- * The `imports` array replaces the old callback-based import tracking,
- * making it easier to collect all required imports.
  */
 export type MappedType = {
     /** TypeScript type string */
@@ -370,8 +366,7 @@ export const isMemoryWritableType = (typeName: string): boolean => MEMORY_WRITAB
 /**
  * Type-safe self type descriptor for instance method calls.
  *
- * Discriminated union that replaces the previous string-based approach,
- * eliminating the need for regex parsing and providing compile-time safety.
+ * Discriminated union providing compile-time safety for method call FFI.
  */
 export type SelfTypeDescriptor =
     | { type: "gobject"; ownership: "none" }

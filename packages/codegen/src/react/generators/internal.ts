@@ -73,17 +73,10 @@ export class InternalGenerator {
         return sourceFile;
     }
 
-    /**
-     * Collects all widgets from metadata.
-     */
     private collectAllWidgets(): WidgetInfo[] {
         return sortWidgetsByClassName(this.reader.getAllWidgets());
     }
 
-    /**
-     * Collects namespaces that are actually used in the classification arrays.
-     * Only these namespaces need to be imported.
-     */
     private collectUsedNamespaces(widgets: WidgetInfo[]): Set<string> {
         const usedNamespaces = new Set<string>();
 
@@ -105,17 +98,10 @@ export class InternalGenerator {
         return usedNamespaces;
     }
 
-    /**
-     * Adds import declarations for namespaces used in classification.
-     */
     private addImports(sourceFile: SourceFile, usedNamespaces: Set<string>): void {
         addNamespaceImports(sourceFile, usedNamespaces);
     }
 
-    /**
-     * Generates widget classification constants.
-     * These are the SINGLE SOURCE OF TRUTH for widget classification.
-     */
     private generateClassificationConstants(sourceFile: SourceFile, widgets: WidgetInfo[]): void {
         const listWidgets: string[] = [];
         const dropDownWidgets: string[] = [];
@@ -204,9 +190,6 @@ export class InternalGenerator {
         this.generateInterfaceMethodConstants(sourceFile);
     }
 
-    /**
-     * Generates interface method constants for duck-typing in node matching.
-     */
     private generateInterfaceMethodConstants(sourceFile: SourceFile): void {
         sourceFile.addVariableStatement(
             createConstExport("PACK_INTERFACE_METHODS", writeStringArray([...PACK_INTERFACE_METHODS]), {
@@ -225,10 +208,6 @@ export class InternalGenerator {
         );
     }
 
-    /**
-     * Generates constructor props.
-     * Uses actual constructor parameter analysis from CodegenWidgetMeta.
-     */
     private generateConstructorProps(sourceFile: SourceFile, widgets: WidgetInfo[]): void {
         const objectProperties: Record<string, WriterFunction> = {};
 
@@ -246,9 +225,6 @@ export class InternalGenerator {
         );
     }
 
-    /**
-     * Generates props map using actual getter/setter names from property analysis.
-     */
     private generatePropsMap(sourceFile: SourceFile, widgets: WidgetInfo[]): void {
         const widgetProperties: Record<string, WriterFunction> = {};
 
@@ -282,10 +258,6 @@ export class InternalGenerator {
         );
     }
 
-    /**
-     * Generates signals map.
-     * Uses WriterFunction for Set literals.
-     */
     private generateSignalsMap(sourceFile: SourceFile, widgets: WidgetInfo[]): void {
         const objectProperties: Record<string, WriterFunction> = {};
 

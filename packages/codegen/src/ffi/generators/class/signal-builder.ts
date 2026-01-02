@@ -61,8 +61,6 @@ export class SignalBuilder {
      * Builds signal metadata entries for WIDGET_META.signals.
      * Only includes signals defined directly on this class.
      *
-     * Returns structured data instead of strings for proper ts-morph integration.
-     *
      * @returns Array of structured signal metadata entries
      */
     buildSignalMetaEntries(): SignalMetaEntry[] {

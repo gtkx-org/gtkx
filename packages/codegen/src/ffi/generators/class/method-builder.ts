@@ -171,8 +171,7 @@ export class MethodBuilder {
 
     /**
      * Filters parameters for async wrapper.
-     * Uses GIR callback metadata instead of name suffix heuristics.
-     * Excludes:
+     * Uses GIR callback metadata to exclude:
      * - Varargs
      * - All callback types (GIR-defined callbacks, including AsyncReadyCallback)
      * - All closure targets (user_data for any callback)

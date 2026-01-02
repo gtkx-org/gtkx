@@ -128,9 +128,6 @@ export class FfiTypeWriter {
         return Writers.object({ type: '"gobject"', ownership: '"none"' });
     }
 
-    /**
-     * Builds properties array for a type descriptor.
-     */
     private buildProperties(type: FfiTypeDescriptor): ObjectProperty[] {
         switch (type.type) {
             case "int":
@@ -278,10 +275,6 @@ export class FfiTypeWriter {
         return props;
     }
 
-    /**
-     * Converts properties to a Writers.object-compatible object.
-     * Numbers and booleans are converted to their string representations.
-     */
     private propertiesToWriterObject(properties: ObjectProperty[]): Record<string, string | WriterFunction> {
         const result: Record<string, string | WriterFunction> = {};
         for (const prop of properties) {

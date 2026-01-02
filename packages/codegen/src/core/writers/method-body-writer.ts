@@ -506,10 +506,6 @@ export class MethodBodyWriter {
         });
     }
 
-    /**
-     * Unified callable body writer for both methods and functions.
-     * Consolidates the common patterns shared between writeMethodBody and writeFunctionBody.
-     */
     private writeCallableBody(options: CallableBodyOptions): WriterFunction {
         return (writer) => {
             const isNullable = options.returnType.nullable === true;
@@ -625,9 +621,6 @@ export class MethodBodyWriter {
         };
     }
 
-    /**
-     * Writes error check using ts-morph writer.
-     */
     private writeErrorCheck(writer: Parameters<WriterFunction>[0]): void {
         this.ctx.usesNativeError = true;
         writer.writeLine("if (error.value !== null) {");
@@ -637,10 +630,6 @@ export class MethodBodyWriter {
         writer.writeLine("}");
     }
 
-    /**
-     * Writes ref parameter rewrap statements using ts-morph writer.
-     * Always uses null check because Ref params may be optional due to preceding optional params.
-     */
     private writeRefRewrap(writer: Parameters<WriterFunction>[0], refs: GtkAllocatedRef[]): void {
         for (const ref of refs) {
             this.ctx.usesGetNativeObject = true;

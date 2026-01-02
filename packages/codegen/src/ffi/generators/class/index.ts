@@ -165,10 +165,6 @@ export class ClassGenerator {
         return { success: true, widgetMeta };
     }
 
-    /**
-     * Adds the class declaration to the source file.
-     * Includes static properties in the initial addClass() call for optimal ts-morph usage.
-     */
     private addClassDeclaration(
         sourceFile: SourceFile,
         parentInfo: ParentInfo,
@@ -322,17 +318,10 @@ export class ClassGenerator {
         return parseParentReference(this.cls.parent, this.options.namespace);
     }
 
-    /**
-     * Checks if this class is GParamSpec or any of its subclasses.
-     * Used to determine the correct self-type descriptor for FFI calls.
-     */
     private isParamSpecClass(): boolean {
         return this.isOrExtendsParamSpec(this.cls);
     }
 
-    /**
-     * Recursively checks if a class is ParamSpec or extends it.
-     */
     private isOrExtendsParamSpec(cls: NormalizedClass): boolean {
         if (cls.name === "ParamSpec" || cls.glibTypeName === "GParam") {
             return true;

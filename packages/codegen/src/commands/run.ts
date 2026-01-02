@@ -1,10 +1,8 @@
 /**
  * Run Command
  *
- * Unified code generation command that runs both FFI and React generation
+ * Code generation command that runs both FFI and React generation
  * in a single pass using the CodegenOrchestrator.
- *
- * This replaces the separate `ffi` and `react` commands.
  */
 
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";

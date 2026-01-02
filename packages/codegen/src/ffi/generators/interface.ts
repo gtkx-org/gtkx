@@ -100,9 +100,6 @@ export class InterfaceGenerator {
         return true;
     }
 
-    /**
-     * Builds method structures for ts-morph.
-     */
     private buildMethodStructures(methods: readonly NormalizedMethod[]): MethodDeclarationStructure[] {
         const supportedMethods = filterSupportedMethods(methods, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
@@ -110,9 +107,6 @@ export class InterfaceGenerator {
         return supportedMethods.map((method) => this.buildMethodStructure(method));
     }
 
-    /**
-     * Builds a single method structure for ts-morph.
-     */
     private buildMethodStructure(method: NormalizedMethod): MethodDeclarationStructure {
         const dynamicRename = this.ctx.methodRenames.get(method.cIdentifier);
         const camelName = toCamelCase(method.name);
@@ -126,10 +120,6 @@ export class InterfaceGenerator {
         });
     }
 
-    /**
-     * Collects methods from prerequisite interfaces.
-     * Handles method name conflicts by renaming.
-     */
     private collectPrerequisiteMethods(
         iface: NormalizedInterface,
         existingMethodNames: Set<string>,

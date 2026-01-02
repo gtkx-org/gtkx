@@ -508,23 +508,4 @@ describe("GirRepository", () => {
             expect(all.has("GObject")).toBe(true);
         });
     });
-
-    describe("backward compatibility", () => {
-        it("getRawNamespaces returns raw data", () => {
-            const repo = new GirRepository();
-            repo.loadFromXml(createMinimalGir("Gtk", "4.0", ""));
-
-            const raw = repo.getRawNamespaces();
-            expect(raw.size).toBe(1);
-            expect(raw.has("Gtk")).toBe(true);
-        });
-
-        it("getRawNamespace returns single raw namespace", () => {
-            const repo = new GirRepository();
-            repo.loadFromXml(createMinimalGir("Gtk", "4.0", ""));
-
-            const raw = repo.getRawNamespace("Gtk");
-            expect(raw?.name).toBe("Gtk");
-        });
-    });
 });

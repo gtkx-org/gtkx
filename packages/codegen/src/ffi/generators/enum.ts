@@ -40,9 +40,6 @@ export class EnumGenerator {
         }
     }
 
-    /**
-     * Builds an enum declaration structure for a single enumeration.
-     */
     private buildEnumStructure(enumeration: NormalizedEnumeration): EnumDeclarationStructure {
         const enumName = toPascalCase(enumeration.name);
 

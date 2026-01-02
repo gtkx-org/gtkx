@@ -45,9 +45,6 @@ export class ConstantGenerator {
         }
     }
 
-    /**
-     * Builds a variable statement structure for a single constant.
-     */
     private buildConstantStructure(constant: NormalizedConstant): VariableStatementStructure | null {
         const constName = constant.name;
 

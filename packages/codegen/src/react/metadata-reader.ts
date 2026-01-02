@@ -2,7 +2,7 @@
  * Metadata Reader
  *
  * Reads widget data from CodegenWidgetMeta.
- * Provides access to property/signal analysis that was pre-computed during FFI generation.
+ * Provides access to property/signal analysis computed during FFI generation.
  *
  * Note: Widget classification (isContainer, slots, isListWidget, etc.) is NOT provided here.
  * Those values are derived from the FFI AST by the JSX generators.
@@ -53,9 +53,8 @@ export type WidgetInfo = Pick<
 /**
  * Reads widget data from CodegenWidgetMeta.
  *
- * This provides access to metadata that was pre-computed during FFI generation
- * (properties, signals, etc.). Widget classification (isContainer, slots)
- * is derived from the FFI AST by JSX generators.
+ * Provides access to metadata computed during FFI generation (properties, signals, etc.).
+ * Widget classification (isContainer, slots) is derived from the FFI AST by JSX generators.
  *
  * @example
  * ```typescript

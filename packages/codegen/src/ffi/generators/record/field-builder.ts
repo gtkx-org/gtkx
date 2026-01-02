@@ -118,18 +118,10 @@ export class FieldBuilder {
         return isMemoryWritableType(String(type.name));
     }
 
-    /**
-     * Gets the size in bytes for a field type.
-     * Uses getPrimitiveTypeSize from type-system/ffi-types.ts.
-     */
     private getFieldSize(type: { name: string | unknown; cType?: string }): number {
         return getPrimitiveTypeSize(String(type.name));
     }
 
-    /**
-     * Gets the alignment for a field type.
-     * For most types, alignment equals size.
-     */
     private getFieldAlignment(type: { name: string | unknown; cType?: string }): number {
         return this.getFieldSize(type);
     }

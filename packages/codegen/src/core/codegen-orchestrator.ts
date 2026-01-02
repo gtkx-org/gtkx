@@ -7,8 +7,8 @@
  * 3. Runs React generation (consumes Project + Metadata)
  * 4. Emits all files at the end
  *
- * This unifies the previously separate `ffi` and `react` commands into a single
- * pipeline that shares an in-memory ts-morph Project and WeakMap-based metadata.
+ * The pipeline shares an in-memory ts-morph Project and WeakMap-based metadata
+ * between FFI and React generation phases.
  */
 
 import { readdir } from "node:fs/promises";
