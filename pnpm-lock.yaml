@@ -223,9 +223,6 @@ importers:
         specifier: workspace:*
         version: link:../native
     devDependencies:
-      '@gtkx/codegen':
-        specifier: workspace:*
-        version: link:../codegen
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../vitest
@@ -260,9 +257,6 @@ importers:
         specifier: ^0.33.0
         version: 0.33.0(react@19.2.3)
     devDependencies:
-      '@gtkx/codegen':
-        specifier: workspace:*
-        version: link:../codegen
       '@types/react-reconciler':
         specifier: ^0.32.3
         version: 0.32.3(@types/react@19.2.7)

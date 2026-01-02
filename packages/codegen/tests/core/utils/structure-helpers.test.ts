@@ -71,7 +71,9 @@ describe("writeConstIdentifierArray", () => {
     });
 
     it("writes multi-line array when singleLine is false", () => {
-        const result = executeWriterFunction(writeConstIdentifierArray(["Gtk.Button", "Gtk.Label"], { singleLine: false }));
+        const result = executeWriterFunction(
+            writeConstIdentifierArray(["Gtk.Button", "Gtk.Label"], { singleLine: false }),
+        );
         expect(result).toContain("\n");
         expect(result).toContain("Gtk.Button");
         expect(result).toContain("Gtk.Label");

@@ -11,6 +11,7 @@
             "outputLogs": "new-only"
         },
         "//#knip:all": {
+            "dependsOn": ["//#codegen:all"],
             "inputs": ["**/*.ts", "**/*.tsx", "knip.json", "package.json"],
             "outputs": [],
             "outputLogs": "new-only"

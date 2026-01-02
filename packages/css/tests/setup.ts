@@ -1,10 +1,12 @@
 import { start, stop } from "@gtkx/ffi";
 import { afterAll, beforeAll } from "vitest";
 
-const APP_ID = `com.gtkx.css.test${process.pid}`;
+const toAppId = (name: string) => {
+    return `com.gtkx.css.${name.replace(/[^a-zA-Z0-9]/g, "_")}`;
+};
 
-beforeAll(() => {
-    start(APP_ID);
+beforeAll((context) => {
+    start(toAppId(context.name));
 });
 
 afterAll(() => {
