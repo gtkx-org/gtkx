@@ -37,12 +37,15 @@
         "dist"
     ],
     "scripts": {
-        "build": "tsc -b"
+        "build": "tsc -p tsconfig.lib.json",
+        "test": "vitest run"
     },
     "devDependencies": {
+        "@biomejs/js-api": "^4.0.0",
+        "@biomejs/wasm-nodejs": "^2.3.10",
         "@clack/prompts": "^0.11.0",
         "@gtkx/gir": "workspace:*",
         "citty": "^0.1.6",
-        "prettier": "^3.7.4"
+        "ts-morph": "^25.0.0"
     }
 }

@@ -1,7 +1,8 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { defineCommand } from "citty";
-import { intro, log, outro } from "../progress.js";
+import { intro, log, outro } from "../core/utils/progress.js";
+import { GIRS_DIR, SYSTEM_GIRS_DIR } from "./constants.js";
 
 const GIRS_TO_SYNC = new Set([
     "Adw-1.gir",
@@ -43,39 +44,24 @@ export const sync = defineCommand({
         name: "sync",
         description: "Sync GIR files from system to workspace",
     },
-    args: {
-        "girs-dir": {
-            type: "string",
-            description: "Target directory for GIR files",
-            required: true,
-        },
-        "system-girs-dir": {
-            type: "string",
-            description: "System GIR directory",
-            default: "/usr/share/gir-1.0",
-        },
-    },
-    run: async ({ args }) => {
-        const girsDir = args["girs-dir"];
-        const systemGirsDir = args["system-girs-dir"];
-
+    run: async () => {
         intro("Syncing GIR files");
 
-        if (!existsSync(girsDir)) {
-            mkdirSync(girsDir, { recursive: true });
-            log.info(`Created directory: ${girsDir}`);
+        if (!existsSync(GIRS_DIR)) {
+            mkdirSync(GIRS_DIR, { recursive: true });
+            log.info(`Created directory: ${GIRS_DIR}`);
         }
 
-        const files = readdirSync(systemGirsDir).filter((f) => f.endsWith(".gir"));
-        log.info(`Found ${files.length} GIR files in ${systemGirsDir}`);
+        const files = readdirSync(SYSTEM_GIRS_DIR).filter((f) => f.endsWith(".gir"));
+        log.info(`Found ${files.length} GIR files in ${SYSTEM_GIRS_DIR}`);
 
         let syncedCount = 0;
         for (const file of files) {
             if (!GIRS_TO_SYNC.has(file)) continue;
-            copyFileSync(join(systemGirsDir, file), join(girsDir, file));
+            copyFileSync(join(SYSTEM_GIRS_DIR, file), join(GIRS_DIR, file));
             syncedCount++;
         }
 
-        outro(`Synced ${syncedCount} GIR files to ${girsDir}`);
+        outro(`Synced ${syncedCount} GIR files to ${GIRS_DIR}`);
     },
 });

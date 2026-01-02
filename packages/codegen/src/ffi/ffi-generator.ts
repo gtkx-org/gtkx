@@ -1,228 +1,362 @@
-import type { GirClass, GirNamespace, GirRecord, TypeRegistry } from "@gtkx/gir";
-import { normalizeClassName, TypeMapper, toKebabCase, toPascalCase } from "@gtkx/gir";
-import { format } from "prettier";
-import { GenerationContext } from "./generation-context.js";
-import { generateConstants } from "./generators/constant-generator.js";
-import { generateEnums } from "./generators/enum-generator.js";
-import {
-    ClassGenerator,
-    FunctionGenerator,
-    type GeneratorOptions,
-    InterfaceGenerator,
-    RecordGenerator,
-} from "./generators/index.js";
-import { generateIndex } from "./generators/index-generator.js";
+import type { GirRepository, NormalizedClass, NormalizedNamespace, NormalizedRecord } from "@gtkx/gir";
+import { parseQualifiedName } from "@gtkx/gir";
+import type { SourceFile } from "ts-morph";
+import { GenerationContext } from "../core/generation-context.js";
+import { CodegenProject } from "../core/project.js";
+import { FfiMapper } from "../core/type-system/ffi-mapper.js";
+import { isPrimitiveFieldType } from "../core/type-system/ffi-types.js";
+import { generateIndex } from "../core/utils/index-generator.js";
+import { normalizeClassName, toKebabCase, toPascalCase } from "../core/utils/naming.js";
+import { parseParentReference } from "../core/utils/parent-reference.js";
+import { buildFromPtrStatements } from "../core/utils/structure-helpers.js";
+import { ImportsBuilder } from "../core/writers/imports-builder.js";
+import { createWriters } from "../core/writers/index.js";
+import { ClassGenerator } from "./generators/class/index.js";
+import { ConstantGenerator } from "./generators/constant.js";
+import { EnumGenerator } from "./generators/enum.js";
+import { FunctionGenerator } from "./generators/function.js";
+import { InterfaceGenerator } from "./generators/interface.js";
+import { RecordGenerator } from "./generators/record/index.js";
 
-type CodeGeneratorOptions = {
+/**
+ * Configuration for generating a namespace's FFI bindings.
+ *
+ * Note: This is distinct from `FfiGeneratorOptions` in core/types.ts which
+ * defines the shared options passed to sub-generators (sharedLibrary, etc.).
+ */
+type FfiNamespaceConfig = {
     outputDir: string;
     namespace: string;
-    prettierConfig?: unknown;
-    typeRegistry?: TypeRegistry;
-    allNamespaces?: Map<string, GirNamespace>;
+    repository: GirRepository;
+    /** Optional external project to use (for orchestrator mode) */
+    project?: CodegenProject;
+    /** If true, skip emit() and return files from memory (for orchestrator mode) */
+    skipEmit?: boolean;
 };
 
-export class CodeGenerator {
-    private typeMapper: TypeMapper;
+export class FfiGenerator {
     private ctx: GenerationContext;
-    private options: CodeGeneratorOptions;
+    private options: FfiNamespaceConfig;
+    private ffiMapper: FfiMapper;
+    private project: CodegenProject;
+    private namespacePrefix: string;
 
-    private classGenerator: ClassGenerator;
-    private interfaceGenerator: InterfaceGenerator;
-    private recordGenerator: RecordGenerator;
-    private functionGenerator: FunctionGenerator;
-
-    constructor(options: CodeGeneratorOptions) {
+    constructor(options: FfiNamespaceConfig) {
         this.options = options;
-        this.typeMapper = new TypeMapper();
         this.ctx = new GenerationContext();
+        this.ffiMapper = new FfiMapper(options.repository, options.namespace);
+        this.project = options.project ?? new CodegenProject();
+        this.namespacePrefix = `${options.namespace.toLowerCase()}/`;
+    }
 
-        if (options.typeRegistry) {
-            this.typeMapper.setTypeRegistry(options.typeRegistry, options.namespace);
+    /**
+     * Creates a source file with the namespace prefix in the FFI directory.
+     */
+    private createSourceFile(fileName: string): SourceFile {
+        return this.project.createFfiSourceFile(`${this.namespacePrefix}${fileName}`);
+    }
+
+    /**
+     * Gets the underlying CodegenProject.
+     * Useful for orchestrator mode to access generated files and metadata.
+     */
+    getProject(): CodegenProject {
+        return this.project;
+    }
+
+    /**
+     * Gets the primary shared library from a namespace.
+     * Handles comma-separated library lists by returning the first one.
+     */
+    private getNamespaceLibrary(namespaceName: string): string {
+        const ns = this.options.repository.getNamespace(namespaceName);
+        if (!ns || !ns.sharedLibrary) {
+            throw new Error(`No shared library found for namespace: ${namespaceName}`);
+        }
+        const firstLib = ns.sharedLibrary.split(",")[0];
+        if (!firstLib) {
+            throw new Error(`Invalid shared library format for namespace: ${namespaceName}`);
+        }
+        return firstLib.trim();
+    }
+
+    async generateNamespace(namespaceName: string): Promise<Map<string, string>> {
+        const namespace = this.options.repository.getNamespace(namespaceName);
+        if (!namespace) {
+            throw new Error(`Namespace ${namespaceName} not found in repository`);
         }
 
-        const generatorOptions: GeneratorOptions = {
-            namespace: options.namespace,
-            prettierConfig: options.prettierConfig,
-            typeRegistry: options.typeRegistry,
-            allNamespaces: options.allNamespaces,
-        };
+        const glibLibrary = this.getNamespaceLibrary("GLib");
+        const gobjectLibrary = this.getNamespaceLibrary("GObject");
 
-        this.classGenerator = new ClassGenerator(this.typeMapper, this.ctx, generatorOptions);
-        this.interfaceGenerator = new InterfaceGenerator(this.typeMapper, this.ctx, generatorOptions);
-        this.recordGenerator = new RecordGenerator(this.typeMapper, this.ctx, generatorOptions);
-        this.functionGenerator = new FunctionGenerator(this.typeMapper, this.ctx, generatorOptions);
-    }
-
-    private get formatOptions() {
-        return { namespace: this.options.namespace, prettierConfig: this.options.prettierConfig };
-    }
-
-    async generateNamespace(namespace: GirNamespace): Promise<Map<string, string>> {
-        const files = new Map<string, string>();
-
-        this.ctx.currentSharedLibrary = namespace.sharedLibrary;
-        this.typeMapper.clearSkippedClasses();
-        this.registerEnumsAndBitfields(namespace);
+        this.ffiMapper.clearSkippedClasses();
         this.registerRecords(namespace);
         this.registerInterfaces(namespace);
-        const classMap = this.buildClassMap(namespace);
-        const interfaceMap = this.buildInterfaceMap(namespace);
 
-        const allEnums = [...namespace.enumerations, ...namespace.bitfields];
+        const writers = createWriters({
+            sharedLibrary: namespace.sharedLibrary,
+            glibLibrary,
+        });
+
+        const allEnums = [...namespace.enumerations.values(), ...namespace.bitfields.values()];
         if (allEnums.length > 0) {
-            files.set("enums.ts", await generateEnums(allEnums, this.formatOptions));
+            const enumFile = this.createSourceFile("enums.ts");
+            const enumGenerator = new EnumGenerator(enumFile, { namespace: this.options.namespace });
+            enumGenerator.addEnums(allEnums);
         }
 
-        for (const record of namespace.records) {
+        const generatorOptions = {
+            namespace: this.options.namespace,
+            sharedLibrary: namespace.sharedLibrary,
+            glibLibrary,
+            gobjectLibrary,
+        };
+
+        const recordGenerator = new RecordGenerator(this.ffiMapper, this.ctx, writers, generatorOptions);
+
+        for (const [, record] of namespace.records) {
             if (this.shouldGenerateRecord(record)) {
-                this.ctx.reset(this.typeMapper);
-                const code = await this.recordGenerator.generateRecord(record, namespace.sharedLibrary);
-                const imports = this.generateImports(normalizeClassName(record.name, this.options.namespace));
-                files.set(`${toKebabCase(record.name)}.ts`, await this.formatCode(imports + code));
+                this.ctx.reset();
+                const fileName = `${toKebabCase(record.name)}.ts`;
+                const sourceFile = this.createSourceFile(fileName);
+
+                recordGenerator.generateToSourceFile(record, sourceFile);
+
+                const importsBuilder = new ImportsBuilder(this.ctx, {
+                    namespace: this.options.namespace,
+                    currentClassName: normalizeClassName(record.name, this.options.namespace),
+                });
+                importsBuilder.applyToSourceFile(sourceFile);
+            } else if (this.isUsableStubRecord(record)) {
+                const fileName = `${toKebabCase(record.name)}.ts`;
+                const sourceFile = this.createSourceFile(fileName);
+                const recordName = normalizeClassName(record.name, this.options.namespace);
+
+                sourceFile.addImportDeclaration({
+                    moduleSpecifier: "../../native/base.js",
+                    namedImports: ["NativeObject"],
+                });
+
+                const classDecl = sourceFile.addClass({
+                    name: recordName,
+                    isExported: true,
+                    extends: "NativeObject",
+                    docs: [{ description: `Stub class for ${record.name} (opaque type not fully generated)` }],
+                });
+
+                if (record.glibTypeName) {
+                    classDecl.addProperty({
+                        name: "glibTypeName",
+                        isStatic: true,
+                        isReadonly: true,
+                        type: "string",
+                        initializer: `"${record.glibTypeName}"`,
+                    });
+                }
+
+                classDecl.addProperty({
+                    name: "objectType",
+                    isStatic: true,
+                    isReadonly: true,
+                    initializer: '"boxed" as const',
+                });
+
+                classDecl.addMethod({
+                    name: "fromPtr",
+                    isStatic: true,
+                    parameters: [{ name: "ptr", type: "unknown" }],
+                    returnType: recordName,
+                    statements: buildFromPtrStatements(recordName),
+                });
             }
         }
 
-        const sortedClasses = this.topologicalSortClasses(namespace.classes, classMap);
+        const sortedClasses = this.topologicalSortClasses([...namespace.classes.values()]);
         for (const cls of sortedClasses) {
-            this.ctx.reset(this.typeMapper);
-            const generatedClass = await this.classGenerator.generateClass(
+            this.ctx.reset();
+
+            const classGenerator = new ClassGenerator(
                 cls,
-                namespace.sharedLibrary,
-                classMap,
-                interfaceMap,
+                this.ffiMapper,
+                this.ctx,
+                this.options.repository,
+                writers,
+                generatorOptions,
             );
-            if (generatedClass !== null) {
+
+            const fileName = `${toKebabCase(cls.name)}.ts`;
+            const sourceFile = this.createSourceFile(fileName);
+
+            const result = classGenerator.generateToSourceFile(sourceFile);
+            if (result.success) {
                 const className = normalizeClassName(cls.name, this.options.namespace);
-                const parentInfo = this.parseParentReference(cls.parent, classMap);
-                const imports = this.generateImports(
-                    className,
-                    parentInfo.hasParent && !parentInfo.isCrossNamespace ? parentInfo.className : undefined,
-                    parentInfo.isCrossNamespace ? parentInfo.namespace : undefined,
-                );
-                files.set(`${toKebabCase(cls.name)}.ts`, await this.formatCode(imports + generatedClass));
+                const parentInfo = this.getParentInfo(cls.parent);
+
+                const importsBuilder = new ImportsBuilder(this.ctx, {
+                    namespace: this.options.namespace,
+                    currentClassName: className,
+                    parentClassName:
+                        parentInfo.hasParent && !parentInfo.isCrossNamespace ? parentInfo.className : undefined,
+                    parentOriginalName:
+                        parentInfo.hasParent && !parentInfo.isCrossNamespace ? parentInfo.originalName : undefined,
+                    parentNamespace: parentInfo.isCrossNamespace ? parentInfo.namespace : undefined,
+                });
+                importsBuilder.applyToSourceFile(sourceFile);
+
+                if (result.widgetMeta) {
+                    this.project.metadata.setWidgetMeta(sourceFile, result.widgetMeta);
+                }
             } else {
-                this.typeMapper.registerSkippedClass(cls.name);
+                this.project.getProject().removeSourceFile(sourceFile);
+                this.ffiMapper.registerSkippedClass(cls.name);
             }
         }
 
-        for (const iface of namespace.interfaces) {
-            this.ctx.reset(this.typeMapper);
-            const code = await this.interfaceGenerator.generateInterface(iface, namespace.sharedLibrary, interfaceMap);
-            const imports = this.generateImports(toPascalCase(iface.name));
-            files.set(`${toKebabCase(iface.name)}.ts`, await this.formatCode(imports + code));
+        const interfaceGenerator = new InterfaceGenerator(
+            this.ffiMapper,
+            this.ctx,
+            writers,
+            this.options.repository,
+            generatorOptions,
+        );
+
+        for (const [, iface] of namespace.interfaces) {
+            this.ctx.reset();
+            const fileName = `${toKebabCase(iface.name)}.ts`;
+            const sourceFile = this.createSourceFile(fileName);
+
+            interfaceGenerator.generateToSourceFile(iface, sourceFile);
+
+            const importsBuilder = new ImportsBuilder(this.ctx, {
+                namespace: this.options.namespace,
+                currentClassName: toPascalCase(iface.name),
+            });
+            importsBuilder.applyToSourceFile(sourceFile);
         }
 
-        const standaloneFunctions = namespace.functions;
+        const standaloneFunctions = [...namespace.functions.values()];
         if (standaloneFunctions.length > 0) {
-            this.ctx.reset(this.typeMapper);
-            const code = await this.functionGenerator.generateFunctions(standaloneFunctions, namespace.sharedLibrary);
-            const imports = this.generateImports();
-            files.set("functions.ts", await this.formatCode(imports + code));
+            this.ctx.reset();
+
+            const functionGenerator = new FunctionGenerator(this.ffiMapper, this.ctx, writers, generatorOptions);
+
+            const sourceFile = this.createSourceFile("functions.ts");
+            functionGenerator.generateToSourceFile(standaloneFunctions, sourceFile);
+
+            const importsBuilder = new ImportsBuilder(this.ctx, {
+                namespace: this.options.namespace,
+            });
+            importsBuilder.applyToSourceFile(sourceFile);
         }
 
-        if (namespace.constants.length > 0) {
-            files.set("constants.ts", await generateConstants(namespace.constants, this.formatOptions));
+        if (namespace.constants.size > 0) {
+            const constantsFile = this.createSourceFile("constants.ts");
+            const constantGenerator = new ConstantGenerator(constantsFile, { namespace: this.options.namespace });
+            constantGenerator.addConstants([...namespace.constants.values()]);
         }
 
-        files.set("index.ts", await generateIndex(files.keys(), this.options.prettierConfig));
+        if (this.options.skipEmit) {
+            const namespaceFiles = this.project.getSourceFilesInNamespace(this.options.namespace);
+            const ffiNamespacePrefix = `ffi/${this.namespacePrefix}`;
+            const relativeNames = namespaceFiles.map((sf) => {
+                const fullPath = sf.getFilePath().replace(/^\//, "");
+                return fullPath.replace(ffiNamespacePrefix, "");
+            });
+            const indexContent = await generateIndex(relativeNames[Symbol.iterator]());
+            const indexFile = this.createSourceFile("index.ts");
+            indexFile.replaceWithText(indexContent);
+            return new Map();
+        }
+
+        const files = await this.project.emit();
+        const relativeNames = [...files.keys()].map((path) => path.replace(this.namespacePrefix, ""));
+        const indexPath = `${this.namespacePrefix}index.ts`;
+        files.set(indexPath, await generateIndex(relativeNames[Symbol.iterator]()));
 
         return files;
     }
 
-    private registerEnumsAndBitfields(namespace: GirNamespace): void {
-        for (const enumeration of namespace.enumerations) {
-            this.typeMapper.registerEnum(enumeration.name, toPascalCase(enumeration.name));
-        }
-        for (const bitfield of namespace.bitfields) {
-            this.typeMapper.registerEnum(bitfield.name, toPascalCase(bitfield.name));
-        }
-    }
-
-    private registerRecords(namespace: GirNamespace): void {
-        for (const record of namespace.records) {
+    private registerRecords(namespace: NormalizedNamespace): void {
+        for (const [, record] of namespace.records) {
             if (this.shouldGenerateRecord(record)) {
                 const normalizedName = normalizeClassName(record.name, this.options.namespace);
-                this.typeMapper.registerRecord(record.name, normalizedName, record.glibTypeName);
                 this.ctx.recordNameToFile.set(normalizedName, record.name);
             }
         }
     }
 
-    private shouldGenerateRecord(record: GirRecord): boolean {
+    /**
+     * Determines if a record should be fully generated as a class.
+     *
+     * Uses GIR attributes (`disguised`, `opaque`, `isGtypeStructFor`) where available,
+     * with suffix-based heuristics only for private data types that GIR doesn't
+     * explicitly mark.
+     */
+    private shouldGenerateRecord(record: NormalizedRecord): boolean {
         if (record.disguised) return false;
-        // Filter out widget class vtables but keep core GObject types
-        if (record.name.endsWith("Class") && record.name !== "TypeClass") return false;
+
+        if (record.isGtypeStruct()) return false;
+
         if (record.name.endsWith("Private")) return false;
-        if (record.name.endsWith("Iface")) return false;
-        if (record.name.endsWith("Interface") && record.name !== "TypeInterface") return false;
 
         if (record.glibTypeName) return true;
 
         if (record.opaque || record.fields.length === 0) return false;
 
-        // Plain structs must have at least one public primitive field
-        // Records with only private fields are opaque and not plain structs
-        const publicFields = record.fields.filter((f) => !f.private);
+        const publicFields = record.getPublicFields();
         if (publicFields.length === 0) return false;
 
-        const primitiveTypes = new Set([
-            "gint",
-            "guint",
-            "gint8",
-            "guint8",
-            "gint16",
-            "guint16",
-            "gint32",
-            "guint32",
-            "gint64",
-            "guint64",
-            "gfloat",
-            "gdouble",
-            "gboolean",
-            "gchar",
-            "guchar",
-            "gsize",
-            "gssize",
-            "glong",
-            "gulong",
-        ]);
-
-        return publicFields.every((field) => primitiveTypes.has(field.type.name));
+        return publicFields.every((field) => isPrimitiveFieldType(field.type.name as string));
     }
 
-    private buildClassMap(namespace: GirNamespace): Map<string, GirClass> {
-        const classMap = new Map<string, GirClass>();
-        for (const cls of namespace.classes) {
-            classMap.set(cls.name, cls);
-        }
-        return classMap;
+    /**
+     * Determines if a record should get a stub type alias.
+     *
+     * Records that are not fully generated but may be referenced in method
+     * signatures get stub types to avoid "module not found" errors.
+     * This includes opaque/disguised records that may be returned by functions.
+     *
+     * Uses GIR attributes (`glibTypeName`, `isGtypeStructFor`) where available,
+     * with suffix-based heuristics only for private data types.
+     */
+    private isUsableStubRecord(record: NormalizedRecord): boolean {
+        if (record.glibTypeName) return true;
+
+        if (record.name.endsWith("Private")) return false;
+
+        const coreTypeStructs = ["TypeClass", "TypeInterface", "EnumClass", "FlagsClass", "ObjectClass", "AttrClass"];
+        if (coreTypeStructs.includes(record.name)) return true;
+
+        if (record.isGtypeStruct()) return false;
+
+        return true;
     }
 
-    private registerInterfaces(namespace: GirNamespace): void {
-        for (const iface of namespace.interfaces) {
+    private registerInterfaces(namespace: NormalizedNamespace): void {
+        for (const [, iface] of namespace.interfaces) {
             const normalizedName = toPascalCase(iface.name);
             this.ctx.interfaceNameToFile.set(normalizedName, iface.name);
         }
     }
 
-    private buildInterfaceMap(namespace: GirNamespace): Map<string, (typeof namespace.interfaces)[number]> {
-        const interfaceMap = new Map<string, (typeof namespace.interfaces)[number]>();
-        for (const iface of namespace.interfaces) {
-            interfaceMap.set(iface.name, iface);
+    private topologicalSortClasses(classes: NormalizedClass[]): NormalizedClass[] {
+        const classMap = new Map<string, NormalizedClass>();
+        for (const cls of classes) {
+            classMap.set(cls.name, cls);
         }
-        return interfaceMap;
-    }
 
-    private topologicalSortClasses(classes: GirClass[], classMap: Map<string, GirClass>): GirClass[] {
-        const sorted: GirClass[] = [];
+        const sorted: NormalizedClass[] = [];
         const visited = new Set<string>();
 
-        const visit = (cls: GirClass) => {
+        const visit = (cls: NormalizedClass) => {
             if (visited.has(cls.name)) return;
             visited.add(cls.name);
-            if (cls.parent && classMap.has(cls.parent)) {
-                const parent = classMap.get(cls.parent) as GirClass;
-                visit(parent);
+            if (cls.parent) {
+                const { name: parentName } = parseQualifiedName(cls.parent);
+                const parent = classMap.get(parentName);
+                if (parent) {
+                    visit(parent);
+                }
             }
             sorted.push(cls);
         };
@@ -234,163 +368,7 @@ export class CodeGenerator {
         return sorted;
     }
 
-    private parseParentReference(
-        parent: string | undefined,
-        classMap: Map<string, GirClass>,
-    ): { hasParent: boolean; isCrossNamespace: boolean; namespace?: string; className: string } {
-        if (!parent) {
-            return { hasParent: false, isCrossNamespace: false, className: "" };
-        }
-
-        if (parent.includes(".")) {
-            const [ns, className] = parent.split(".", 2);
-            if (ns && className) {
-                const normalizedClass = normalizeClassName(className, ns);
-                return {
-                    hasParent: true,
-                    isCrossNamespace: true,
-                    namespace: ns,
-                    className: normalizedClass,
-                };
-            }
-        }
-
-        if (classMap.has(parent)) {
-            const normalizedClass = normalizeClassName(parent, this.options.namespace);
-            return {
-                hasParent: true,
-                isCrossNamespace: false,
-                className: normalizedClass,
-            };
-        }
-
-        return { hasParent: false, isCrossNamespace: false, className: "" };
-    }
-
-    private generateImports(currentClassName?: string, parentClassName?: string, parentNamespace?: string): string {
-        const nativeImports: string[] = [];
-        if (this.ctx.usesAlloc) nativeImports.push("alloc");
-        if (this.ctx.usesRead) nativeImports.push("read");
-        if (this.ctx.usesWrite) nativeImports.push("write");
-        if (this.ctx.usesRef) nativeImports.push("Ref");
-        if (this.ctx.usesType) nativeImports.push("Type");
-
-        const lines: string[] = [];
-        if (nativeImports.length > 0) {
-            lines.push(`import { ${nativeImports.join(", ")} } from "@gtkx/native";`);
-        }
-        if (this.ctx.usesCall) {
-            lines.push(`import { call } from "../../batch.js";`);
-        }
-        if (this.ctx.usesNativeError) {
-            lines.push(`import { NativeError } from "../../native/error.js";`);
-        }
-        if (this.ctx.usesGetNativeObject) {
-            lines.push(`import { getNativeObject } from "../../native/object.js";`);
-        }
-        const baseImports: string[] = [];
-        if (this.ctx.usesInstantiating) baseImports.push("isInstantiating", "setInstantiating");
-        if (this.ctx.usesNativeObject) baseImports.push("NativeObject");
-        if (baseImports.length > 0) {
-            lines.push(`import { ${baseImports.join(", ")} } from "../../native/base.js";`);
-        }
-        const registryImports: string[] = [];
-        if (this.ctx.usesRegisterNativeClass) registryImports.push("registerNativeClass");
-        if (this.ctx.usesGetClassByTypeName) registryImports.push("getNativeClass");
-        if (registryImports.length > 0) {
-            lines.push(`import { ${registryImports.join(", ")} } from "../../registry.js";`);
-        }
-        if (this.ctx.usesSignalMeta) {
-            lines.push(`import type { SignalMeta } from "../../types.js";`);
-        }
-        if (this.ctx.usedEnums.size > 0) {
-            const enumList = Array.from(this.ctx.usedEnums).sort().join(", ");
-            lines.push(`import { ${enumList} } from "./enums.js";`);
-        }
-
-        for (const normalizedRecordName of Array.from(this.ctx.usedRecords).sort()) {
-            const normalizedCurrentClass = currentClassName
-                ? normalizeClassName(currentClassName, this.options.namespace)
-                : "";
-            const normalizedParentClass = parentClassName
-                ? normalizeClassName(parentClassName, this.options.namespace)
-                : "";
-            if (normalizedRecordName !== normalizedCurrentClass && normalizedRecordName !== normalizedParentClass) {
-                const originalName = this.ctx.recordNameToFile.get(normalizedRecordName) ?? normalizedRecordName;
-                lines.push(`import { ${normalizedRecordName} } from "./${toKebabCase(originalName)}.js";`);
-            }
-        }
-
-        for (const [interfaceName, originalName] of Array.from(this.ctx.usedInterfaces.entries()).sort((a, b) =>
-            a[0].localeCompare(b[0]),
-        )) {
-            const originalFileName = this.ctx.interfaceNameToFile.get(interfaceName) ?? originalName;
-            lines.push(`import { ${interfaceName} } from "./${toKebabCase(originalFileName)}.js";`);
-        }
-
-        for (const [className, originalName] of Array.from(this.ctx.usedSameNamespaceClasses.entries()).sort((a, b) =>
-            a[0].localeCompare(b[0]),
-        )) {
-            const normalizedCurrentClass = currentClassName
-                ? normalizeClassName(currentClassName, this.options.namespace)
-                : "";
-            const normalizedParentClass = parentClassName
-                ? normalizeClassName(parentClassName, this.options.namespace)
-                : "";
-            if (
-                className !== normalizedCurrentClass &&
-                className !== normalizedParentClass &&
-                !this.ctx.signalClasses.has(className) &&
-                !this.ctx.usedInterfaces.has(className)
-            ) {
-                if (this.ctx.cyclicReturnTypes.has(className)) {
-                    lines.push(`import type { ${className} } from "./${toKebabCase(originalName)}.js";`);
-                } else {
-                    lines.push(`import { ${className} } from "./${toKebabCase(originalName)}.js";`);
-                }
-            }
-        }
-
-        for (const [className, originalName] of Array.from(this.ctx.signalClasses.entries()).sort((a, b) =>
-            a[0].localeCompare(b[0]),
-        )) {
-            if (className !== currentClassName && className !== parentClassName) {
-                lines.push(`import { ${className} } from "./${toKebabCase(originalName)}.js";`);
-            }
-        }
-
-        const externalNamespaces = new Set<string>();
-        for (const usage of this.ctx.usedExternalTypes.values()) {
-            if (usage.namespace === this.options.namespace) continue;
-            externalNamespaces.add(usage.namespace);
-        }
-        if (this.ctx.addGioImport && this.options.namespace !== "Gio") {
-            externalNamespaces.add("Gio");
-        }
-        if (parentNamespace && parentNamespace !== this.options.namespace) {
-            externalNamespaces.add(parentNamespace);
-        }
-        for (const namespace of Array.from(externalNamespaces).sort()) {
-            const nsLower = namespace.toLowerCase();
-            lines.push(`import * as ${namespace} from "../${nsLower}/index.js";`);
-        }
-
-        return lines.length > 0 ? `${lines.join("\n")}\n` : "";
-    }
-
-    private async formatCode(code: string): Promise<string> {
-        try {
-            return await format(code, {
-                parser: "typescript",
-                ...(this.options.prettierConfig &&
-                typeof this.options.prettierConfig === "object" &&
-                this.options.prettierConfig !== null
-                    ? (this.options.prettierConfig as Record<string, unknown>)
-                    : {}),
-            });
-        } catch (error) {
-            console.warn("Failed to format code:", error);
-            return code;
-        }
+    private getParentInfo(parent: string | null) {
+        return parseParentReference(parent, this.options.namespace);
     }
 }
