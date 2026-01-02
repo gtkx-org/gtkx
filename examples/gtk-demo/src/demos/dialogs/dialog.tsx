@@ -16,7 +16,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("ok");
         dialog.setCloseResponse("ok");
 
-        const response = await dialog.choose(app.getActiveWindow() ?? undefined);
+        const response = await dialog.chooseAsync(app.getActiveWindow() ?? undefined);
         setLastResponse(response);
     };
 
@@ -31,7 +31,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("confirm");
         dialog.setCloseResponse("cancel");
 
-        const response = await dialog.choose(app.getActiveWindow() ?? undefined);
+        const response = await dialog.chooseAsync(app.getActiveWindow() ?? undefined);
         setConfirmResult(response === "confirm" ? "Confirmed" : "Cancelled");
     };
 
@@ -46,7 +46,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("cancel");
         dialog.setCloseResponse("cancel");
 
-        const response = await dialog.choose(app.getActiveWindow() ?? undefined);
+        const response = await dialog.chooseAsync(app.getActiveWindow() ?? undefined);
         setLastResponse(response === "delete" ? "Item deleted" : "Delete cancelled");
     };
 
@@ -60,7 +60,7 @@ const DialogDemo = () => {
         dialog.setDefaultResponse("save");
         dialog.setCloseResponse("cancel");
 
-        const response = await dialog.choose(app.getActiveWindow() ?? undefined);
+        const response = await dialog.chooseAsync(app.getActiveWindow() ?? undefined);
         const messages: Record<string, string> = {
             save: "Changes saved",
             discard: "Changes discarded",
@@ -95,7 +95,11 @@ const DialogDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkButton label="Show Simple Dialog" onClicked={showSimpleDialog} halign={Gtk.Align.START} />
+                    <GtkButton
+                        label="Show Simple Dialog"
+                        onClicked={() => void showSimpleDialog()}
+                        halign={Gtk.Align.START}
+                    />
                 </GtkBox>
             </GtkFrame>
 
@@ -115,7 +119,7 @@ const DialogDemo = () => {
                         cssClasses={["dim-label"]}
                     />
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <GtkButton label="Show Confirm Dialog" onClicked={showConfirmDialog} />
+                        <GtkButton label="Show Confirm Dialog" onClicked={() => void showConfirmDialog()} />
                         {confirmResult && <GtkLabel label={`Result: ${confirmResult}`} cssClasses={["dim-label"]} />}
                     </GtkBox>
                 </GtkBox>
@@ -136,7 +140,11 @@ const DialogDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkButton label="Show Delete Dialog" onClicked={showDestructiveDialog} halign={Gtk.Align.START} />
+                    <GtkButton
+                        label="Show Delete Dialog"
+                        onClicked={() => void showDestructiveDialog()}
+                        halign={Gtk.Align.START}
+                    />
                 </GtkBox>
             </GtkFrame>
 
@@ -157,7 +165,7 @@ const DialogDemo = () => {
                     />
                     <GtkButton
                         label="Show Save Changes Dialog"
-                        onClicked={showMultipleChoiceDialog}
+                        onClicked={() => void showMultipleChoiceDialog()}
                         halign={Gtk.Align.START}
                     />
                 </GtkBox>

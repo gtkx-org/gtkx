@@ -14,7 +14,7 @@ function createMemoryTexture(
     pixelData: number[],
     stride: number,
 ): Gdk.MemoryTexture {
-    const bytes = new GLib.Bytes(pixelData.length, pixelData);
+    const bytes = new GLib.Bytes(pixelData, pixelData.length);
     return new Gdk.MemoryTexture(width, height, format, bytes, stride);
 }
 
@@ -113,7 +113,7 @@ const PaintableSvgDemo = () => {
             const encoder = new TextEncoder();
             const svgBytes = encoder.encode(svgContent);
             const byteArray = Array.from(svgBytes);
-            const gBytes = new GLib.Bytes(byteArray.length, byteArray);
+            const gBytes = new GLib.Bytes(byteArray, byteArray.length);
             return Gdk.Texture.newFromBytes(gBytes);
         } catch (_e) {
             // If texture creation fails, create a fallback placeholder

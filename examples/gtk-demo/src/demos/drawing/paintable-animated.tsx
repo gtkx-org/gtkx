@@ -14,7 +14,7 @@ function createMemoryTexture(
     pixelData: number[],
     stride: number,
 ): Gdk.MemoryTexture {
-    const bytes = new GLib.Bytes(pixelData.length, pixelData);
+    const bytes = new GLib.Bytes(pixelData, pixelData.length);
     return new Gdk.MemoryTexture(width, height, format, bytes, stride);
 }
 

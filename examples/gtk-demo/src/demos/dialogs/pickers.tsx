@@ -46,7 +46,7 @@ const PickersDemo = () => {
             colorDialog.setTitle("Choose a Color");
             colorDialog.setModal(true);
 
-            const rgba = await colorDialog.chooseRgba(app.getActiveWindow() ?? undefined);
+            const rgba = await colorDialog.chooseRgbaAsync(app.getActiveWindow() ?? undefined);
             setSelectedColor(formatRgba(rgba));
         } catch {
             // User cancelled
@@ -59,7 +59,7 @@ const PickersDemo = () => {
             fontDialog.setTitle("Choose a Font");
             fontDialog.setModal(true);
 
-            const fontDesc = await fontDialog.chooseFont(app.getActiveWindow() ?? undefined);
+            const fontDesc = await fontDialog.chooseFontAsync(app.getActiveWindow() ?? undefined);
             setSelectedFont(fontDesc.toString());
         } catch {
             // User cancelled
@@ -72,7 +72,7 @@ const PickersDemo = () => {
             fileDialog.setTitle("Open File");
             fileDialog.setModal(true);
 
-            const file = await fileDialog.open(app.getActiveWindow() ?? undefined);
+            const file = await fileDialog.openAsync(app.getActiveWindow() ?? undefined);
             setSelectedFile(file.getPath() ?? file.getUri());
         } catch {
             // User cancelled
@@ -85,7 +85,7 @@ const PickersDemo = () => {
             fileDialog.setTitle("Select Folder");
             fileDialog.setModal(true);
 
-            const folder = await fileDialog.selectFolder(app.getActiveWindow() ?? undefined);
+            const folder = await fileDialog.selectFolderAsync(app.getActiveWindow() ?? undefined);
             setSelectedFolder(folder.getPath() ?? folder.getUri());
         } catch {
             // User cancelled
@@ -99,7 +99,7 @@ const PickersDemo = () => {
             fileDialog.setModal(true);
             fileDialog.setInitialName("untitled.txt");
 
-            const file = await fileDialog.save(app.getActiveWindow() ?? undefined);
+            const file = await fileDialog.saveAsync(app.getActiveWindow() ?? undefined);
             setSaveLocation(file.getPath() ?? file.getUri());
         } catch {
             // User cancelled
@@ -112,7 +112,7 @@ const PickersDemo = () => {
             fileDialog.setTitle("Select Multiple Files");
             fileDialog.setModal(true);
 
-            const files = await fileDialog.openMultiple(app.getActiveWindow() ?? undefined);
+            const files = await fileDialog.openMultipleAsync(app.getActiveWindow() ?? undefined);
             const count = files.getNItems();
             setSelectedFile(`${count} file(s) selected`);
         } catch {
@@ -148,7 +148,7 @@ const PickersDemo = () => {
                         wrap
                     />
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <GtkButton label="Choose Color..." onClicked={handleColorPick} />
+                        <GtkButton label="Choose Color..." onClicked={() => void handleColorPick()} />
                         <GtkColorDialogButton dialog={new Gtk.ColorDialog()} onNotify={handleColorButtonNotify} />
                     </GtkBox>
                     {selectedColor && (
@@ -178,7 +178,7 @@ const PickersDemo = () => {
                         wrap
                     />
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <GtkButton label="Choose Font..." onClicked={handleFontPick} />
+                        <GtkButton label="Choose Font..." onClicked={() => void handleFontPick()} />
                         <GtkFontDialogButton dialog={new Gtk.FontDialog()} onNotify={handleFontButtonNotify} />
                     </GtkBox>
                     {selectedFont && (
@@ -208,10 +208,10 @@ const PickersDemo = () => {
                         wrap
                     />
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                        <GtkButton label="Open File" onClicked={handleFileOpen} />
-                        <GtkButton label="Select Multiple" onClicked={handleMultipleFiles} />
-                        <GtkButton label="Select Folder" onClicked={handleFolderSelect} />
-                        <GtkButton label="Save As..." onClicked={handleFileSave} />
+                        <GtkButton label="Open File" onClicked={() => void handleFileOpen()} />
+                        <GtkButton label="Select Multiple" onClicked={() => void handleMultipleFiles()} />
+                        <GtkButton label="Select Folder" onClicked={() => void handleFolderSelect()} />
+                        <GtkButton label="Save As..." onClicked={() => void handleFileSave()} />
                     </GtkBox>
                     {selectedFile && (
                         <GtkLabel

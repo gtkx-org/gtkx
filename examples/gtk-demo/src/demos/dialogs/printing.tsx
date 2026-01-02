@@ -238,7 +238,7 @@ const PrintingDemo = () => {
             fileDialog.setModal(true);
             fileDialog.setInitialName("document.pdf");
 
-            const file = await fileDialog.save(app.getActiveWindow() ?? undefined);
+            const file = await fileDialog.saveAsync(app.getActiveWindow() ?? undefined);
             const filePath = file.getPath();
 
             if (filePath) {
@@ -332,7 +332,7 @@ const PrintingDemo = () => {
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                         <GtkButton label="Print..." onClicked={handlePrint} />
                         <GtkButton label="Print Preview" onClicked={handlePrintPreview} />
-                        <GtkButton label="Export to PDF..." onClicked={handleExportPdf} />
+                        <GtkButton label="Export to PDF..." onClicked={() => void handleExportPdf()} />
                     </GtkBox>
                     {printStatus && (
                         <GtkLabel

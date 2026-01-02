@@ -88,7 +88,7 @@ const CursorsDemo = () => {
             const cursor = new Gdk.Cursor(customCursor);
             preview.setCursor(cursor);
         } else {
-            preview.setCursor(undefined);
+            preview.setCursor(null);
         }
     }, [customCursor]);
 
@@ -208,7 +208,7 @@ const CursorsDemo = () => {
             </GtkFrame>
 
             <GtkLabel
-                label="Use widget.setCursor(new Gdk.Cursor('cursor-name')) to set a cursor. Pass undefined to reset to the default cursor."
+                label="Use widget.setCursor(new Gdk.Cursor('cursor-name')) to set a cursor. Pass null to reset to the default cursor."
                 wrap
                 cssClasses={["dim-label", "caption"]}
                 halign={Gtk.Align.START}

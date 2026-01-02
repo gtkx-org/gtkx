@@ -326,7 +326,7 @@ Note: For menu accels, use an array: accels={["F5", "<Control>r"]}`}
             </GtkFrame>
 
             {/* Focus indicator */}
-            <GtkButton label="Click here to focus this demo" onClicked={() => boxRef.current?.grabFocus()} />
+            <GtkButton label="Click here to focus this demo" onClicked={() => void boxRef.current?.grabFocus()} />
         </GtkBox>
     );
 };
