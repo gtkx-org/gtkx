@@ -11,7 +11,7 @@ export type TreeRenderItemFn<T> = (item: T | null, row: Gtk.TreeListRow | null) 
 
 export class TreeListItemRenderer {
     private factory: Gtk.SignalListItemFactory;
-    private store?: TreeStore;
+    private store?: TreeStore | null;
     private fiberRoots = new Map<number, Reconciler.FiberRoot>();
     private renderFn?: TreeRenderItemFn<unknown> = () => null as never;
 
@@ -28,7 +28,7 @@ export class TreeListItemRenderer {
         this.renderFn = renderFn;
     }
 
-    public setStore(store?: TreeStore): void {
+    public setStore(store?: TreeStore | null): void {
         this.store = store;
     }
 
@@ -62,14 +62,15 @@ export class TreeListItemRenderer {
 
             if (!fiberRoot) return;
 
-            const treeListRow = listItem.getItem() as Gtk.TreeListRow;
-            if (!treeListRow) return;
+            const treeListRow = listItem.getItem();
+            if (!(treeListRow instanceof Gtk.TreeListRow)) return;
 
-            const expander = listItem.getChild() as Gtk.TreeExpander;
+            const expander = listItem.getChild();
+            if (!(expander instanceof Gtk.TreeExpander)) return;
             expander.setListRow(treeListRow);
 
-            const stringObject = treeListRow.getItem() as Gtk.StringObject;
-            if (!stringObject) return;
+            const stringObject = treeListRow.getItem();
+            if (!(stringObject instanceof Gtk.StringObject)) return;
 
             const id = stringObject.getString();
             const itemData = this.getStore().getItem(id);
@@ -97,8 +98,10 @@ export class TreeListItemRenderer {
 
             if (!fiberRoot) return;
 
-            const expander = listItem.getChild() as Gtk.TreeExpander;
-            expander.setListRow(undefined);
+            const expander = listItem.getChild();
+            if (expander instanceof Gtk.TreeExpander) {
+                expander.setListRow(null);
+            }
 
             reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
         });

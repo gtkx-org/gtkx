@@ -55,14 +55,14 @@ export class List extends VirtualNode<ListProps> {
         }
 
         this.store.removeItem(child.props.id);
-        child.setStore(undefined);
+        child.setStore(null);
     }
 
     public updateProps(oldProps: ListProps | null, newProps: ListProps): void {
         super.updateProps(oldProps, newProps);
 
         if (!oldProps || oldProps.selectionMode !== newProps.selectionMode) {
-            signalStore.set(this, this.selectionModel, "selection-changed", undefined);
+            signalStore.set(this, this.selectionModel, "selection-changed", null);
             this.selectionModel = this.createSelectionModel(newProps.selectionMode);
         }
 
@@ -81,7 +81,7 @@ export class List extends VirtualNode<ListProps> {
                 this,
                 this.selectionModel,
                 "selection-changed",
-                newProps.onSelectionChanged ? this.handleSelectionChange : undefined,
+                newProps.onSelectionChanged ? this.handleSelectionChange : null,
             );
         }
 

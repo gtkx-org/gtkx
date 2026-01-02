@@ -35,7 +35,7 @@ export class NotebookPageTabNode extends SlotNode<Props> {
         return this.page;
     }
 
-    protected override onChildChange(_oldChild: Gtk.Widget | undefined): void {
+    protected override onChildChange(_oldChild: Gtk.Widget | null): void {
         if (!this.notebook || !this.page) {
             return;
         }

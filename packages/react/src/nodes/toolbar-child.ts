@@ -24,7 +24,7 @@ class ToolbarChildNode extends SlotNode {
         return this.typeName === "Toolbar.Top" ? "top" : "bottom";
     }
 
-    protected override onChildChange(oldChild: Gtk.Widget | undefined): void {
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const toolbar = this.getToolbar();
 
         if (oldChild) {

@@ -1,16 +1,17 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { NOTEBOOK_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
-import { isContainerType } from "./internal/utils.js";
+import { matchesAnyClass } from "./internal/utils.js";
 import { NotebookPageNode } from "./notebook-page.js";
 import { WidgetNode } from "./widget.js";
 
 class NotebookNode extends WidgetNode<Gtk.Notebook> {
     public static override priority = 1;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
-        return isContainerType(Gtk.Notebook, containerOrClass);
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
+        return matchesAnyClass(NOTEBOOK_CLASSES, containerOrClass);
     }
 
     public override appendChild(child: Node): void {
@@ -36,7 +37,7 @@ class NotebookNode extends WidgetNode<Gtk.Notebook> {
             throw new Error(`Cannot remove '${child.typeName}' from 'Notebook': expected Notebook.Page`);
         }
 
-        child.setPosition(undefined);
+        child.setPosition(null);
     }
 }
 

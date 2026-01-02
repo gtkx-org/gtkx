@@ -4,7 +4,7 @@ import type { Container, ContainerClass, Props } from "./types.js";
 export class Node<T = unknown, P = Props> {
     public static priority = 0;
 
-    public static matches(_type: string, _containerOrClass?: Container | ContainerClass): boolean {
+    public static matches(_type: string, _containerOrClass?: Container | ContainerClass | null): boolean {
         return false;
     }
 

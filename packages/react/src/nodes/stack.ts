@@ -1,9 +1,10 @@
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Adw from "@gtkx/ffi/adw";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { STACK_CLASSES } from "../generated/internal.js";
 import { registerNodeClass } from "../registry.js";
 import { scheduleAfterCommit } from "../scheduler.js";
 import type { Container, ContainerClass } from "../types.js";
-import { filterProps, isContainerType } from "./internal/utils.js";
+import { filterProps, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const PROPS = ["visibleChildName"];
@@ -15,8 +16,8 @@ type StackProps = {
 class StackNode extends WidgetNode<Gtk.Stack | Adw.ViewStack, StackProps> {
     public static override priority = 1;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
-        return isContainerType(Gtk.Stack, containerOrClass) || isContainerType(Adw.ViewStack, containerOrClass);
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
+        return matchesAnyClass(STACK_CLASSES, containerOrClass);
     }
 
     public override updateProps(oldProps: StackProps | null, newProps: StackProps): void {

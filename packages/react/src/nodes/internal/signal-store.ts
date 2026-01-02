@@ -56,7 +56,7 @@ class SignalStore {
         this.getOwnerMap(owner).set(key, { obj, handlerId });
     }
 
-    public set(owner: SignalOwner, obj: GObject.GObject, signal: string, handler?: SignalHandler): void {
+    public set(owner: SignalOwner, obj: GObject.GObject, signal: string, handler?: SignalHandler | null): void {
         this.disconnect(owner, obj, signal);
 
         if (handler) {

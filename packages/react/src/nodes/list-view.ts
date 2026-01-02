@@ -1,9 +1,10 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { LIST_WIDGET_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { ListItemRenderer, type RenderItemFn } from "./internal/list-item-renderer.js";
-import { filterProps, isContainerType } from "./internal/utils.js";
+import { filterProps, matchesAnyClass } from "./internal/utils.js";
 import { ListItemNode } from "./list-item.js";
 import { List } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
@@ -20,8 +21,8 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
     private itemRenderer: ListItemRenderer;
     private list: List;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
-        return isContainerType(Gtk.ListView, containerOrClass) || isContainerType(Gtk.GridView, containerOrClass);
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
+        return matchesAnyClass(LIST_WIDGET_CLASSES, containerOrClass);
     }
 
     constructor(

@@ -1,7 +1,9 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { PACK_INTERFACE_METHODS } from "../generated/internal.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
+import { matchesInterface } from "./internal/utils.js";
 import { PackChild } from "./pack-child.js";
 import { WidgetNode } from "./widget.js";
 
@@ -14,16 +16,8 @@ type PackableWidget = Gtk.Widget & {
 class PackNode extends WidgetNode<PackableWidget> {
     public static override priority = 0;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
-        if (
-            !containerOrClass ||
-            (typeof containerOrClass !== "function" && !(containerOrClass instanceof Gtk.Widget))
-        ) {
-            return false;
-        }
-
-        const protoOrInstance = typeof containerOrClass === "function" ? containerOrClass.prototype : containerOrClass;
-        return "packStart" in protoOrInstance && "packEnd" in protoOrInstance && "remove" in protoOrInstance;
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
+        return matchesInterface(PACK_INTERFACE_METHODS, containerOrClass);
     }
 
     public override appendChild(child: Node): void {

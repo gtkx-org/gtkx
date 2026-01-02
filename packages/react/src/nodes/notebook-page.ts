@@ -12,7 +12,7 @@ type Props = Partial<NotebookPageProps>;
 export class NotebookPageNode extends SlotNode<Props> {
     public static override priority = 1;
 
-    position?: number;
+    position?: number | null;
     private tabNode?: NotebookPageTabNode;
 
     public static override matches(type: string): boolean {
@@ -24,7 +24,7 @@ export class NotebookPageNode extends SlotNode<Props> {
         this.updateTabNode();
     }
 
-    public setPosition(position?: number): void {
+    public setPosition(position?: number | null): void {
         this.position = position;
     }
 
@@ -62,7 +62,7 @@ export class NotebookPageNode extends SlotNode<Props> {
 
         scheduleAfterCommit(() => {
             if (this.parent) {
-                this.onChildChange(oldChild);
+                this.onChildChange(oldChild ?? null);
             }
             this.updateTabNode();
         });
@@ -106,7 +106,7 @@ export class NotebookPageNode extends SlotNode<Props> {
         }
 
         if (this.position !== undefined) {
-            notebook.insertPage(child, this.position, tabLabel);
+            notebook.insertPage(child, tabLabel, this.position);
             return;
         }
 
@@ -119,7 +119,7 @@ export class NotebookPageNode extends SlotNode<Props> {
         notebook.removePage(pageNum);
     }
 
-    protected override onChildChange(oldChild: Gtk.Widget | undefined): void {
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
         if (oldChild) {
             this.detachPage(oldChild);
         }

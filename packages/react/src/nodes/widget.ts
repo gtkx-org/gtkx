@@ -1,7 +1,7 @@
 import { batch, NativeObject } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { CONSTRUCTOR_PROPS, PROPS, SIGNALS } from "../generated/internal.js";
+import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
@@ -16,7 +16,7 @@ import {
     isSingleChild,
 } from "./internal/predicates.js";
 import { type SignalHandler, signalStore } from "./internal/signal-store.js";
-import { filterProps, isContainerType } from "./internal/utils.js";
+import { filterProps, isContainerType, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 
 const EVENT_CONTROLLER_PROPS = new Set([
@@ -39,11 +39,11 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     private keyController?: Gtk.EventControllerKey;
     private scrollController?: Gtk.EventControllerScroll;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return isContainerType(Gtk.Widget, containerOrClass);
     }
 
-    public static override createContainer(props: Props, containerClass: typeof Gtk.Widget): Container | undefined {
+    public static override createContainer(props: Props, containerClass: typeof Gtk.Widget): Container | null {
         const WidgetClass = containerClass;
         const typeName = WidgetClass.glibTypeName;
         const args = (CONSTRUCTOR_PROPS[typeName] ?? []).map((name) => props[name]);
@@ -111,7 +111,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             if (isRemovable(this.container)) {
                 this.container.remove(child.container);
             } else if (hasSingleContent(this.container)) {
-                this.container.setContent(undefined);
+                this.container.setContent(null);
             } else if (isSingleChild(this.container)) {
                 this.container.setChild(null);
             } else {
@@ -201,9 +201,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             ...Object.keys(filterProps(newProps ?? {}, ["children"])),
         ]);
 
-        const WidgetClass = this.container.constructor as typeof Gtk.Widget;
-        const signals = SIGNALS[WidgetClass.glibTypeName] || new Set();
-
         for (const name of propNames) {
             const oldValue = oldProps?.[name];
             const newValue = newProps[name];
@@ -211,13 +208,13 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             if (oldValue === newValue) continue;
 
             if (EVENT_CONTROLLER_PROPS.has(name)) {
-                this.updateEventControllerProp(name, newValue as SignalHandler | undefined);
+                this.updateEventControllerProp(name, (newValue as SignalHandler) ?? null);
                 continue;
             }
 
             const signalName = this.propNameToSignalName(name);
 
-            if (signals.has(signalName)) {
+            if (resolveSignal(this.container, signalName)) {
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
                 signalStore.set(this, this.container, signalName, handler);
             } else if (newValue !== undefined) {
@@ -236,7 +233,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
     }
 
-    private updateEventControllerProp(propName: string, handler: SignalHandler | undefined): void {
+    private updateEventControllerProp(propName: string, handler: SignalHandler | null): void {
         switch (propName) {
             case "onEnter":
             case "onLeave":
@@ -299,8 +296,10 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     private getProperty(key: string): unknown {
-        const WidgetClass = this.container.constructor as typeof Gtk.Widget;
-        const [getterName] = PROPS[WidgetClass.glibTypeName]?.[key] || [];
+        const propMeta = resolvePropMeta(this.container, key);
+        if (!propMeta) return undefined;
+
+        const [getterName] = propMeta;
         const getter = getterName ? this.container[getterName as keyof typeof this.container] : undefined;
 
         if (getter && typeof getter === "function") {
@@ -311,10 +310,12 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     private setProperty(key: string, value: unknown): void {
-        const WidgetClass = this.container.constructor as typeof Gtk.Widget;
-        const [getterName, setterName] = PROPS[WidgetClass.glibTypeName]?.[key] || [];
+        const propMeta = resolvePropMeta(this.container, key);
+        if (!propMeta) return;
+
+        const [getterName, setterName] = propMeta;
         const setter = this.container[setterName as keyof typeof this.container];
-        const getter = this.container[getterName as keyof typeof this.container];
+        const getter = getterName ? this.container[getterName as keyof typeof this.container] : undefined;
 
         if (getter && typeof getter === "function") {
             const currentValue = getter.call(this.container);

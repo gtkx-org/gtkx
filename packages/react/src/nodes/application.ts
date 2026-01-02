@@ -11,7 +11,7 @@ class ApplicationNode extends Node<Gtk.Application> {
 
     private menu: Menu;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass) {
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null) {
         return isContainerType(Gtk.Application, containerOrClass);
     }
 
@@ -39,7 +39,7 @@ class ApplicationNode extends Node<Gtk.Application> {
             this.menu.removeChild(child);
 
             if (this.menu.getMenu().getNItems() === 0) {
-                this.container.setMenubar(undefined);
+                this.container.setMenubar(null);
             }
         }
     }

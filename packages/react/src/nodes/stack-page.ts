@@ -55,9 +55,9 @@ class StackPageNode extends SlotNode<Props> {
 
         if (parent instanceof Adw.ViewStack) {
             if (this.props.title && this.props.iconName) {
-                page = parent.addTitledWithIcon(child, this.props.title, this.props.iconName, this.props.name);
+                page = parent.addTitledWithIcon(child, this.props.name, this.props.title, this.props.iconName);
             } else if (this.props.title) {
-                page = parent.addTitled(child, this.props.title, this.props.name);
+                page = parent.addTitled(child, this.props.name, this.props.title);
             } else if (this.props.name) {
                 page = parent.addNamed(child, this.props.name);
             } else {
@@ -65,7 +65,7 @@ class StackPageNode extends SlotNode<Props> {
             }
         } else {
             if (this.props.title) {
-                page = parent.addTitled(child, this.props.title, this.props.name);
+                page = parent.addTitled(child, this.props.name, this.props.title);
             } else if (this.props.name) {
                 page = parent.addNamed(child, this.props.name);
             } else {
@@ -77,7 +77,7 @@ class StackPageNode extends SlotNode<Props> {
         this.updateProps(null, this.props);
     }
 
-    private removePage(oldChild?: Gtk.Widget): void {
+    private removePage(oldChild: Gtk.Widget | null): void {
         const parent = this.getParent() as Gtk.Stack | Adw.ViewStack;
 
         if (!oldChild) {
@@ -91,7 +91,7 @@ class StackPageNode extends SlotNode<Props> {
         }
     }
 
-    protected override onChildChange(oldChild?: Gtk.Widget): void {
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
         this.removePage(oldChild);
 
         if (this.child) {

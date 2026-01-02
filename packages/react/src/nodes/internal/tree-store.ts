@@ -114,8 +114,8 @@ export class TreeStore {
         }
     }
 
-    public getItem(id: string): TreeItemData | undefined {
-        return this.items.get(id);
+    public getItem(id: string): TreeItemData | null {
+        return this.items.get(id) ?? null;
     }
 
     public getRootModel(): Gtk.StringList {

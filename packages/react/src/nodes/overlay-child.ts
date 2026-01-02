@@ -20,7 +20,7 @@ class OverlayChildNode extends SlotNode<Props> {
         return this.parent as Gtk.Overlay;
     }
 
-    protected override onChildChange(oldChild: Gtk.Widget | undefined): void {
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const overlay = this.getOverlay();
 
         if (oldChild) {

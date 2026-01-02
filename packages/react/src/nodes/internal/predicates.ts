@@ -10,7 +10,7 @@ export const isAddable = (obj: unknown): obj is Gtk.Widget & { add: (child: Gtk.
 
 export const hasSingleContent = (
     obj: unknown,
-): obj is Gtk.Widget & { setContent: (content: Gtk.Widget | undefined) => void } => {
+): obj is Gtk.Widget & { setContent: (content?: Gtk.Widget | null) => void } => {
     return obj instanceof Gtk.Widget && "setContent" in obj && typeof obj.setContent === "function";
 };
 

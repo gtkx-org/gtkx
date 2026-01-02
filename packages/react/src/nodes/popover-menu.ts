@@ -1,9 +1,10 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { POPOVER_MENU_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import type { Container, Props } from "../types.js";
-import { isContainerType } from "./internal/utils.js";
+import type { Container, ContainerClass, Props } from "../types.js";
+import { matchesAnyClass } from "./internal/utils.js";
 import { MenuNode } from "./menu.js";
 import { Menu } from "./models/menu.js";
 import { SlotNode } from "./slot.js";
@@ -16,12 +17,8 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | 
 
     private menu: Menu;
 
-    public static override matches(_type: string, containerOrClass?: Container): boolean {
-        return (
-            isContainerType(Gtk.PopoverMenu, containerOrClass) ||
-            isContainerType(Gtk.PopoverMenuBar, containerOrClass) ||
-            isContainerType(Gtk.MenuButton, containerOrClass)
-        );
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
+        return matchesAnyClass(POPOVER_MENU_CLASSES, containerOrClass);
     }
 
     constructor(

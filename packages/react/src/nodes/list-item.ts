@@ -11,13 +11,13 @@ export class ListItemNode<
 > extends VirtualNode<P> {
     public static override priority = 1;
 
-    private store?: T;
+    private store?: T | null;
 
     public static override matches(type: string): boolean {
         return type === "ListItem";
     }
 
-    public setStore(store?: T): void {
+    public setStore(store?: T | null): void {
         this.store = store;
     }
 

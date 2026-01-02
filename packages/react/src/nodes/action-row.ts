@@ -1,8 +1,10 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { PREFIX_SUFFIX_INTERFACE_METHODS } from "../generated/internal.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { ActionRowChild } from "./action-row-child.js";
+import { matchesInterface } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type PrefixSuffixWidget = Gtk.Widget & {
@@ -14,16 +16,8 @@ type PrefixSuffixWidget = Gtk.Widget & {
 class ActionRowNode extends WidgetNode<PrefixSuffixWidget> {
     public static override priority = 0;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
-        if (
-            !containerOrClass ||
-            (typeof containerOrClass !== "function" && !(containerOrClass instanceof Gtk.Widget))
-        ) {
-            return false;
-        }
-
-        const protoOrInstance = typeof containerOrClass === "function" ? containerOrClass.prototype : containerOrClass;
-        return "addPrefix" in protoOrInstance && "addSuffix" in protoOrInstance && "remove" in protoOrInstance;
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
+        return matchesInterface(PREFIX_SUFFIX_INTERFACE_METHODS, containerOrClass);
     }
 
     public override appendChild(child: Node): void {

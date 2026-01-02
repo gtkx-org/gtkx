@@ -19,7 +19,7 @@ class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
 
     private menu: Menu;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return isContainerType(Gtk.Window, containerOrClass);
     }
 
@@ -67,7 +67,7 @@ class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
 
     public override removeChild(child: Node): void {
         if (child.container instanceof Gtk.Window) {
-            child.container.setTransientFor(undefined);
+            child.container.setTransientFor(null);
             return;
         }
 

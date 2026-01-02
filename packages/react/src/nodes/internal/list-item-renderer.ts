@@ -11,7 +11,7 @@ export type RenderItemFn<T> = (item: T | null) => ReactNode;
 
 export class ListItemRenderer {
     private factory: Gtk.SignalListItemFactory;
-    private store?: ListStore;
+    private store?: ListStore | null;
     private fiberRoots = new Map<number, Reconciler.FiberRoot>();
     private renderFn?: RenderItemFn<unknown> = () => null as never;
 
@@ -28,7 +28,7 @@ export class ListItemRenderer {
         this.renderFn = renderFn;
     }
 
-    public setStore(store?: ListStore): void {
+    public setStore(store?: ListStore | null): void {
         this.store = store;
     }
 
@@ -60,8 +60,9 @@ export class ListItemRenderer {
 
             if (!fiberRoot) return;
 
-            const id = listItem.getItem() as Gtk.StringObject;
-            const item = this.getStore().getItem(id.getString());
+            const stringObject = listItem.getItem();
+            if (!(stringObject instanceof Gtk.StringObject)) return;
+            const item = this.getStore().getItem(stringObject.getString());
             const element = this.renderFn?.(item);
 
             reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});

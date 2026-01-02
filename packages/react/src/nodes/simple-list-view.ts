@@ -1,11 +1,12 @@
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Adw from "@gtkx/ffi/adw";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import { DROP_DOWN_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { signalStore } from "./internal/signal-store.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";
-import { filterProps, isContainerType } from "./internal/utils.js";
+import { filterProps, matchesAnyClass } from "./internal/utils.js";
 import { SimpleListItemNode } from "./simple-list-item.js";
 import { WidgetNode } from "./widget.js";
 
@@ -19,8 +20,8 @@ type SimpleListViewProps = Props & {
 class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleListViewProps> {
     public static override priority = -1;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
-        return isContainerType(Gtk.DropDown, containerOrClass) || isContainerType(Adw.ComboRow, containerOrClass);
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
+        return matchesAnyClass(DROP_DOWN_CLASSES, containerOrClass);
     }
 
     private store = new SimpleListStore();
@@ -43,7 +44,7 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
                 ? () => {
                       const selectedIndex = this.container.getSelected();
                       const id = this.store.getIdAtIndex(selectedIndex);
-                      if (id !== undefined) {
+                      if (id !== null) {
                           onSelectionChanged(id);
                       }
                   }
@@ -53,9 +54,9 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
         }
 
         if (!oldProps || oldProps.selectedId !== newProps.selectedId) {
-            const index = newProps.selectedId !== undefined ? this.store.getIndexById(newProps.selectedId) : undefined;
+            const index = newProps.selectedId !== undefined ? this.store.getIndexById(newProps.selectedId) : null;
 
-            if (index !== undefined) {
+            if (index !== null) {
                 this.container.setSelected(index);
             }
         }

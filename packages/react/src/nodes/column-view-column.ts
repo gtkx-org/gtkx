@@ -62,7 +62,7 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
             if (newProps.sortable) {
                 this.column.setSorter(new Gtk.StringSorter());
             } else {
-                this.column.setSorter(undefined);
+                this.column.setSorter(null);
             }
         }
     }

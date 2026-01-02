@@ -36,7 +36,7 @@
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",
-        "codegen": "gtkx-codegen jsx --girs-dir ../../girs --output-dir src/generated"
+        "codegen": "echo 'Use pnpm codegen from repo root'"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
@@ -44,7 +44,6 @@
         "react-reconciler": "^0.33.0"
     },
     "devDependencies": {
-        "@gtkx/codegen": "workspace:*",
         "@types/react-reconciler": "^0.32.3"
     },
     "peerDependencies": {

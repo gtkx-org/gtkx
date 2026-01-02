@@ -56,13 +56,13 @@ export class SimpleListStore {
         return this.model.getString(this.ids.indexOf(id));
     }
 
-    public getIdAtIndex(index: number): string | undefined {
-        return this.ids[index];
+    public getIdAtIndex(index: number): string | null {
+        return this.ids[index] ?? null;
     }
 
-    public getIndexById(id: string): number | undefined {
+    public getIndexById(id: string): number | null {
         const index = this.ids.indexOf(id);
-        return index >= 0 ? index : undefined;
+        return index >= 0 ? index : null;
     }
 
     public getModel(): Gtk.StringList {

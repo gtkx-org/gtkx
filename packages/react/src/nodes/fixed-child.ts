@@ -51,7 +51,7 @@ class FixedChildNode extends SlotNode<Props> {
         }
     }
 
-    protected override onChildChange(oldChild: Gtk.Widget | undefined): void {
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const fixed = this.getFixed();
 
         if (oldChild) {

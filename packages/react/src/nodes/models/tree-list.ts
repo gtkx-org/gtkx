@@ -36,8 +36,8 @@ export class TreeList extends VirtualNode<TreeListProps> {
     }
 
     private createChildModel(item: GObject.GObject): Gio.ListModel | null {
-        const stringObject = item as Gtk.StringObject;
-        const parentId = stringObject.getString();
+        if (!(item instanceof Gtk.StringObject)) return null;
+        const parentId = item.getString();
         return this.store.getChildrenModel(parentId);
     }
 
@@ -103,7 +103,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         }
 
         this.store.removeItem(child.props.id);
-        child.setStore(undefined);
+        child.setStore(null);
     }
 
     public updateProps(oldProps: TreeListProps | null, newProps: TreeListProps): void {
@@ -114,7 +114,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         }
 
         if (!oldProps || oldProps.selectionMode !== newProps.selectionMode) {
-            signalStore.set(this, this.selectionModel, "selection-changed", undefined);
+            signalStore.set(this, this.selectionModel, "selection-changed", null);
             this.selectionModel = this.createSelectionModel(newProps.selectionMode);
             this.selectionModel.setModel(this.treeListModel);
         }
@@ -134,7 +134,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
                 this,
                 this.selectionModel,
                 "selection-changed",
-                newProps.onSelectionChanged ? this.handleSelectionChange : undefined,
+                newProps.onSelectionChanged ? this.handleSelectionChange : null,
             );
         }
 
@@ -169,9 +169,9 @@ export class TreeList extends VirtualNode<TreeListProps> {
             const row = this.treeListModel.getRow(index);
             if (!row) continue;
 
-            const stringObject = row.getItem() as Gtk.StringObject;
-            if (stringObject) {
-                ids.push(stringObject.getString());
+            const item = row.getItem();
+            if (item instanceof Gtk.StringObject) {
+                ids.push(item.getString());
             }
         }
 
@@ -188,8 +188,8 @@ export class TreeList extends VirtualNode<TreeListProps> {
                 const row = this.treeListModel.getRow(i);
                 if (!row) continue;
 
-                const stringObject = row.getItem() as Gtk.StringObject;
-                if (stringObject && ids.includes(stringObject.getString())) {
+                const item = row.getItem();
+                if (item instanceof Gtk.StringObject && ids.includes(item.getString())) {
                     selected.add(i);
                 }
             }

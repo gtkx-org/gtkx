@@ -1,10 +1,11 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { COLUMN_VIEW_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
 import { signalStore } from "./internal/signal-store.js";
-import { filterProps, isContainerType } from "./internal/utils.js";
+import { filterProps, matchesAnyClass } from "./internal/utils.js";
 import { ListItemNode } from "./list-item.js";
 import { List, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
@@ -23,8 +24,8 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
     private handleSortChange?: () => void;
     private list: List;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
-        return isContainerType(Gtk.ColumnView, containerOrClass);
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
+        return matchesAnyClass(COLUMN_VIEW_CLASSES, containerOrClass);
     }
 
     constructor(typeName: string, props: ColumnViewProps, container: Gtk.ColumnView, rootContainer?: Container) {
@@ -121,9 +122,9 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             const sortOrder = newProps.sortOrder ?? Gtk.SortType.ASCENDING;
 
             if (!sortColumn) {
-                this.container.sortByColumn(sortOrder);
+                this.container.sortByColumn(undefined, sortOrder);
             } else {
-                this.container.sortByColumn(sortOrder, this.getColumn(sortColumn));
+                this.container.sortByColumn(this.getColumn(sortColumn), sortOrder);
             }
         }
 

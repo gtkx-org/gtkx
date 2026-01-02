@@ -145,7 +145,7 @@ export class Menu extends VirtualNode<MenuProps> {
         return 0;
     }
 
-    private setParent(parent: Gio.Menu | undefined): void {
+    private setParent(parent: Gio.Menu): void {
         this.parent = parent;
     }
 
@@ -186,10 +186,10 @@ export class Menu extends VirtualNode<MenuProps> {
                     break;
                 }
                 case "section":
-                    parent.insertSection(beforePosition, this.menu, this.props.label);
+                    parent.insertSection(beforePosition, this.props.label, this.menu);
                     break;
                 case "submenu":
-                    parent.insertSubmenu(beforePosition, this.menu, this.props.label);
+                    parent.insertSubmenu(beforePosition, this.props.label, this.menu);
                     break;
             }
         });
@@ -208,10 +208,10 @@ export class Menu extends VirtualNode<MenuProps> {
                     parent.append(this.props.label, this.getActionName());
                     break;
                 case "section":
-                    parent.appendSection(this.menu, this.props.label);
+                    parent.appendSection(this.props.label, this.menu);
                     break;
                 case "submenu":
-                    parent.appendSubmenu(this.menu, this.props.label);
+                    parent.appendSubmenu(this.props.label, this.menu);
                     break;
             }
         });
@@ -319,9 +319,9 @@ export class Menu extends VirtualNode<MenuProps> {
             this.removeFromParent();
 
             if (this.type === "section") {
-                parent.insertSection(position, this.menu, newProps.label);
+                parent.insertSection(position, newProps.label, this.menu);
             } else if (this.type === "submenu") {
-                parent.insertSubmenu(position, this.menu, newProps.label);
+                parent.insertSubmenu(position, newProps.label, this.menu);
             }
         }
     }

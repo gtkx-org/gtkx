@@ -10,27 +10,27 @@ type Props = Partial<TreeListItemProps>;
 export class TreeListItemNode extends VirtualNode<Props> {
     public static override priority = 1;
 
-    private store?: TreeStore;
-    private parentItemId?: string;
+    private store?: TreeStore | null;
+    private parentItemId?: string | null;
     private childNodes: TreeListItemNode[] = [];
 
     public static override matches(type: string): boolean {
         return type === "TreeListItem";
     }
 
-    public setStore(store?: TreeStore): void {
+    public setStore(store?: TreeStore | null): void {
         this.store = store;
         for (const child of this.childNodes) {
             child.setStore(store);
         }
     }
 
-    public setParentItemId(parentId?: string): void {
+    public setParentItemId(parentId?: string | null): void {
         this.parentItemId = parentId;
     }
 
-    public getParentItemId(): string | undefined {
-        return this.parentItemId;
+    public getParentItemId(): string | null {
+        return this.parentItemId ?? null;
     }
 
     public override appendChild(child: Node): void {
@@ -104,8 +104,8 @@ export class TreeListItemNode extends VirtualNode<Props> {
             this.store.removeItem(child.props.id, this.props.id);
         }
 
-        child.setStore(undefined);
-        child.setParentItemId(undefined);
+        child.setStore(null);
+        child.setParentItemId(null);
     }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {

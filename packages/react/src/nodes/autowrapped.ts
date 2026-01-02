@@ -1,10 +1,11 @@
 import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { AUTOWRAP_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass } from "../types.js";
 import { isRemovable, isSingleChild } from "./internal/predicates.js";
-import { isContainerType } from "./internal/utils.js";
+import { matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type AutowrappingContainer = Gtk.ListBox | Gtk.FlowBox;
@@ -17,8 +18,8 @@ const isAutowrappedChild = (obj: unknown): obj is AutowrappedChild => {
 class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
     public static override priority = 2;
 
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass): boolean {
-        return isContainerType(Gtk.ListBox, containerOrClass) || isContainerType(Gtk.FlowBox, containerOrClass);
+    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
+        return matchesAnyClass(AUTOWRAP_CLASSES, containerOrClass);
     }
 
     public override appendChild(child: Node): void {
@@ -85,7 +86,7 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
 
             const position = this.findChildPosition(before);
 
-            if (position !== undefined) {
+            if (position !== null) {
                 this.container.insert(child.container, position);
             } else {
                 this.container.append(child.container);
@@ -106,7 +107,7 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         }
     }
 
-    private findChildPosition(before: WidgetNode): number | undefined {
+    private findChildPosition(before: WidgetNode): number | null {
         let position = 0;
         let currentChild = this.container.getFirstChild();
         const beforeIsWrapper = isAutowrappedChild(before.container);
@@ -121,6 +122,8 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             position++;
             currentChild = currentChild.getNextSibling();
         }
+
+        return null;
     }
 
     private unwrapChild(child: Gtk.Widget): Gtk.Widget | null {
