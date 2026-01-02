@@ -1,31 +1,31 @@
 /**
- * GObject Introspection XML (GIR) parser module.
+ * GObject Introspection XML (GIR) parser.
  *
  * Parses GIR files to extract type information for GTK/GLib libraries.
- * Used by the code generator to create TypeScript bindings.
+ * Outputs raw GIR types that are then normalized by the normalizer.
  *
- * @packageDocumentation
+ * @internal
  */
 
 import { XMLParser } from "fast-xml-parser";
 import type {
-    GirCallback,
-    GirClass,
-    GirConstant,
-    GirConstructor,
-    GirEnumeration,
-    GirEnumerationMember,
-    GirField,
-    GirFunction,
-    GirInterface,
-    GirMethod,
-    GirNamespace,
-    GirParameter,
-    GirProperty,
-    GirRecord,
-    GirSignal,
-    GirType,
-} from "./types.js";
+    RawCallback,
+    RawClass,
+    RawConstant,
+    RawConstructor,
+    RawEnumeration,
+    RawEnumerationMember,
+    RawField,
+    RawFunction,
+    RawInterface,
+    RawMethod,
+    RawNamespace,
+    RawParameter,
+    RawProperty,
+    RawRecord,
+    RawSignal,
+    RawType,
+} from "./raw-types.js";
 
 const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.class",
@@ -79,26 +79,9 @@ const ensureArray = (value: unknown): Record<string, unknown>[] =>
 /**
  * Parser for GObject Introspection XML (GIR) files.
  *
- * Converts GIR XML into structured TypeScript objects that can be used
- * for code generation. Handles all GIR elements including classes,
- * interfaces, functions, signals, properties, and type information.
- *
- * @example
- * ```tsx
- * import { GirParser } from "@gtkx/gir";
- * import { readFileSync } from "fs";
- *
- * const parser = new GirParser();
- * const xml = readFileSync("Gtk-4.0.gir", "utf-8");
- * const namespace = parser.parse(xml);
- *
- * console.log(namespace.name); // "Gtk"
- * console.log(namespace.classes.length); // Number of GTK classes
- * ```
- *
- * @see {@link GirNamespace} for the parsed output structure
+ * Converts GIR XML into raw TypeScript objects.
  */
-export class GirParser {
+export class RawGirParser {
     private parser: XMLParser;
 
     constructor() {
@@ -114,28 +97,9 @@ export class GirParser {
     }
 
     /**
-     * Parses a GIR XML string into a structured namespace object.
-     *
-     * @param girXml - The raw XML content of a GIR file
-     * @returns A parsed namespace containing all type information
-     * @throws Error if the XML is missing required repository or namespace elements
-     *
-     * @example
-     * ```tsx
-     * const namespace = parser.parse(girXml);
-     *
-     * // Access parsed classes
-     * for (const cls of namespace.classes) {
-     *   console.log(`Class: ${cls.name}, Parent: ${cls.parent}`);
-     * }
-     *
-     * // Access parsed functions
-     * for (const fn of namespace.functions) {
-     *   console.log(`Function: ${fn.name} -> ${fn.returnType.name}`);
-     * }
-     * ```
+     * Parses a GIR XML string into a raw namespace object.
      */
-    parse(girXml: string): GirNamespace {
+    parse(girXml: string): RawNamespace {
         const parsed = this.parser.parse(girXml);
         const repository = parsed.repository;
 
@@ -161,7 +125,7 @@ export class GirParser {
         };
     }
 
-    private parseCallbacks(callbacks: Record<string, unknown>[]): GirCallback[] {
+    private parseCallbacks(callbacks: Record<string, unknown>[]): RawCallback[] {
         if (!callbacks || !Array.isArray(callbacks)) {
             return [];
         }
@@ -180,11 +144,11 @@ export class GirParser {
             }));
     }
 
-    private parseClasses(classes: Record<string, unknown>[]): GirClass[] {
+    private parseClasses(classes: Record<string, unknown>[]): RawClass[] {
         return classes.map((cls) => ({
             name: String(cls["@_name"] ?? ""),
             cType: String(cls["@_c:type"] ?? cls["@_glib:type-name"] ?? ""),
-            parent: String(cls["@_parent"] ?? ""),
+            parent: cls["@_parent"] ? String(cls["@_parent"]) : undefined,
             abstract: cls["@_abstract"] === "1",
             glibTypeName: cls["@_glib:type-name"] ? String(cls["@_glib:type-name"]) : undefined,
             glibGetType: cls["@_glib:get-type"] ? String(cls["@_glib:get-type"]) : undefined,
@@ -207,7 +171,7 @@ export class GirParser {
         return arr.map((impl) => String(impl["@_name"] ?? "")).filter(Boolean);
     }
 
-    private parseInterfaces(interfaces: Record<string, unknown>[]): GirInterface[] {
+    private parseInterfaces(interfaces: Record<string, unknown>[]): RawInterface[] {
         if (!interfaces || !Array.isArray(interfaces)) {
             return [];
         }
@@ -233,7 +197,7 @@ export class GirParser {
         return arr.map((prereq) => String(prereq["@_name"] ?? "")).filter(Boolean);
     }
 
-    private parseMethods(methods: Record<string, unknown>[]): GirMethod[] {
+    private parseMethods(methods: Record<string, unknown>[]): RawMethod[] {
         if (!methods || !Array.isArray(methods)) {
             return [];
         }
@@ -241,6 +205,7 @@ export class GirParser {
             .filter((method) => method["@_introspectable"] !== "0")
             .map((method) => {
                 const returnValue = method["return-value"] as Record<string, unknown> | undefined;
+                const finishFunc = method["@_glib:finish-func"] as string | undefined;
                 return {
                     name: String(method["@_name"] ?? ""),
                     cIdentifier: String(method["@_c:identifier"] ?? ""),
@@ -253,11 +218,12 @@ export class GirParser {
                     throws: method["@_throws"] === "1",
                     doc: extractDoc(method),
                     returnDoc: returnValue ? extractDoc(returnValue) : undefined,
+                    finishFunc: finishFunc || undefined,
                 };
             });
     }
 
-    private parseConstructors(constructors: Record<string, unknown>[]): GirConstructor[] {
+    private parseConstructors(constructors: Record<string, unknown>[]): RawConstructor[] {
         if (!constructors || !Array.isArray(constructors)) {
             return [];
         }
@@ -281,7 +247,7 @@ export class GirParser {
             });
     }
 
-    private parseFunctions(functions: Record<string, unknown>[]): GirFunction[] {
+    private parseFunctions(functions: Record<string, unknown>[]): RawFunction[] {
         if (!functions || !Array.isArray(functions)) {
             return [];
         }
@@ -305,7 +271,7 @@ export class GirParser {
             });
     }
 
-    private parseParameters(parametersNode: Record<string, unknown>): GirParameter[] {
+    private parseParameters(parametersNode: Record<string, unknown>): RawParameter[] {
         if (!parametersNode?.parameter) {
             return [];
         }
@@ -337,7 +303,7 @@ export class GirParser {
         });
     }
 
-    private parseReturnType(returnValue: Record<string, unknown> | undefined): GirType {
+    private parseReturnType(returnValue: Record<string, unknown> | undefined): RawType {
         if (!returnValue) {
             return { name: "void" };
         }
@@ -352,7 +318,7 @@ export class GirParser {
         return type;
     }
 
-    private parseType(typeNode: Record<string, unknown> | undefined): GirType {
+    private parseType(typeNode: Record<string, unknown> | undefined): RawType {
         if (!typeNode) {
             return { name: "void" };
         }
@@ -393,7 +359,7 @@ export class GirParser {
         return { name: "void" };
     }
 
-    private parseProperties(properties: Record<string, unknown>[]): GirProperty[] {
+    private parseProperties(properties: Record<string, unknown>[]): RawProperty[] {
         if (!properties || !Array.isArray(properties)) {
             return [];
         }
@@ -410,7 +376,7 @@ export class GirParser {
         }));
     }
 
-    private parseSignals(signals: Record<string, unknown>[]): GirSignal[] {
+    private parseSignals(signals: Record<string, unknown>[]): RawSignal[] {
         if (!signals || !Array.isArray(signals)) {
             return [];
         }
@@ -432,7 +398,7 @@ export class GirParser {
         });
     }
 
-    private parseRecords(records: Record<string, unknown>[]): GirRecord[] {
+    private parseRecords(records: Record<string, unknown>[]): RawRecord[] {
         if (!records || !Array.isArray(records)) {
             return [];
         }
@@ -443,6 +409,9 @@ export class GirParser {
             disguised: record["@_disguised"] === "1",
             glibTypeName: record["@_glib:type-name"] ? String(record["@_glib:type-name"]) : undefined,
             glibGetType: record["@_glib:get-type"] ? String(record["@_glib:get-type"]) : undefined,
+            isGtypeStructFor: record["@_glib:is-gtype-struct-for"]
+                ? String(record["@_glib:is-gtype-struct-for"])
+                : undefined,
             fields: this.parseFields(ensureArray(record.field)),
             methods: this.parseMethods(ensureArray(record.method)),
             constructors: this.parseConstructors(ensureArray(record.constructor)),
@@ -451,7 +420,7 @@ export class GirParser {
         }));
     }
 
-    private parseFields(fields: Record<string, unknown>[]): GirField[] {
+    private parseFields(fields: Record<string, unknown>[]): RawField[] {
         if (!fields || !Array.isArray(fields)) {
             return [];
         }
@@ -470,7 +439,7 @@ export class GirParser {
             }));
     }
 
-    private parseEnumerations(enumerations: Record<string, unknown>[]): GirEnumeration[] {
+    private parseEnumerations(enumerations: Record<string, unknown>[]): RawEnumeration[] {
         if (!enumerations || !Array.isArray(enumerations)) {
             return [];
         }
@@ -482,7 +451,7 @@ export class GirParser {
         }));
     }
 
-    private parseEnumerationMembers(members: Record<string, unknown>[]): GirEnumerationMember[] {
+    private parseEnumerationMembers(members: Record<string, unknown>[]): RawEnumerationMember[] {
         if (!members || !Array.isArray(members)) {
             return [];
         }
@@ -494,7 +463,7 @@ export class GirParser {
         }));
     }
 
-    private parseConstants(constants: Record<string, unknown>[]): GirConstant[] {
+    private parseConstants(constants: Record<string, unknown>[]): RawConstant[] {
         if (!constants || !Array.isArray(constants)) {
             return [];
         }

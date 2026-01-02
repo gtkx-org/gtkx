@@ -1,890 +1,506 @@
-import { describe, expect, it, vi } from "vitest";
-import type { GirParameter } from "../src/index.js";
-import { buildClassMap, registerEnumsFromNamespace, TypeMapper, TypeRegistry } from "../src/index.js";
+import { describe, expect, it } from "vitest";
+import {
+    NormalizedEnumeration,
+    NormalizedEnumerationMember,
+    NormalizedField,
+    NormalizedMethod,
+    NormalizedParameter,
+    NormalizedProperty,
+    NormalizedRecord,
+    NormalizedSignal,
+    NormalizedType,
+    parseQualifiedName,
+    type QualifiedName,
+    qualifiedName,
+} from "../src/types.js";
 
-describe("TypeMapper", () => {
-    describe("basic type mapping", () => {
-        it("maps gboolean to boolean", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "gboolean" });
-
-            expect(result.ts).toBe("boolean");
-            expect(result.ffi.type).toBe("boolean");
-        });
-
-        it("maps gint to number with int32", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "gint" });
-
-            expect(result.ts).toBe("number");
-            expect(result.ffi.type).toBe("int");
-            expect(result.ffi.size).toBe(32);
-            expect(result.ffi.unsigned).toBe(false);
-        });
-
-        it("maps guint to number with unsigned int32", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "guint" });
-
-            expect(result.ts).toBe("number");
-            expect(result.ffi.type).toBe("int");
-            expect(result.ffi.size).toBe(32);
-            expect(result.ffi.unsigned).toBe(true);
-        });
-
-        it("maps gint64 to number with int64", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "gint64" });
-
-            expect(result.ts).toBe("number");
-            expect(result.ffi.type).toBe("int");
-            expect(result.ffi.size).toBe(64);
-        });
-
-        it("maps gfloat to number with float32", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "gfloat" });
-
-            expect(result.ts).toBe("number");
-            expect(result.ffi.type).toBe("float");
-            expect(result.ffi.size).toBe(32);
-        });
-
-        it("maps gdouble to number with float64", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "gdouble" });
-
-            expect(result.ts).toBe("number");
-            expect(result.ffi.type).toBe("float");
-            expect(result.ffi.size).toBe(64);
-        });
-
-        it("maps void to void with undefined ffi", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "void" });
-
-            expect(result.ts).toBe("void");
-            expect(result.ffi.type).toBe("undefined");
-        });
-
-        it("maps none to void", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "none" });
-
-            expect(result.ts).toBe("void");
-        });
-
-        it("maps gpointer to number", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "gpointer" });
-
-            expect(result.ts).toBe("number");
-            expect(result.ffi.type).toBe("int");
-            expect(result.ffi.size).toBe(64);
-            expect(result.ffi.unsigned).toBe(true);
-        });
-
-        it("maps GType to number", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "GType" });
-
-            expect(result.ts).toBe("number");
-            expect(result.ffi.type).toBe("int");
-            expect(result.ffi.size).toBe(64);
-        });
+describe("qualifiedName", () => {
+    it("creates a QualifiedName from namespace and name", () => {
+        const qn = qualifiedName("Gtk", "Button");
+        expect(qn).toBe("Gtk.Button");
     });
 
-    describe("string type mapping", () => {
-        it("maps utf8 to string", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "utf8" });
-
-            expect(result.ts).toBe("string");
-            expect(result.ffi.type).toBe("string");
-        });
-
-        it("maps filename to string", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "filename" });
-
-            expect(result.ts).toBe("string");
-            expect(result.ffi.type).toBe("string");
-        });
-
-        it("marks string as borrowed when transfer-ownership is none", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "utf8", transferOwnership: "none" });
-
-            expect(result.ffi.borrowed).toBe(true);
-        });
+    it("handles various namespace combinations", () => {
+        expect(qualifiedName("GLib", "Variant")).toBe("GLib.Variant");
+        expect(qualifiedName("GObject", "Object")).toBe("GObject.Object");
+        expect(qualifiedName("Gio", "File")).toBe("Gio.File");
     });
 
-    describe("array type mapping", () => {
-        it("maps array type with element type", () => {
-            const mapper = new TypeMapper();
+    it("handles names with special characters", () => {
+        expect(qualifiedName("Gtk", "Widget")).toBe("Gtk.Widget");
+    });
+});
 
-            const result = mapper.mapType({
-                name: "array",
-                isArray: true,
-                elementType: { name: "utf8" },
-            });
-
-            expect(result.ts).toBe("string[]");
-            expect(result.ffi.type).toBe("array");
-            expect(result.ffi.itemType?.type).toBe("string");
-        });
-
-        it("maps array without element type to unknown[]", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "array", isArray: true });
-
-            expect(result.ts).toBe("unknown[]");
-            expect(result.ffi.type).toBe("array");
-        });
-
-        it("handles GList with listType", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({
-                name: "array",
-                isArray: true,
-                elementType: { name: "utf8" },
-                cType: "GList*",
-            });
-
-            expect(result.ffi.listType).toBe("glist");
-        });
-
-        it("handles GSList with listType", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({
-                name: "array",
-                isArray: true,
-                elementType: { name: "utf8" },
-                cType: "GSList*",
-            });
-
-            expect(result.ffi.listType).toBe("gslist");
-        });
+describe("parseQualifiedName", () => {
+    it("parses a QualifiedName into namespace and name", () => {
+        const result = parseQualifiedName("Gtk.Button" as QualifiedName);
+        expect(result.namespace).toBe("Gtk");
+        expect(result.name).toBe("Button");
     });
 
-    describe("enum type mapping", () => {
-        it("maps registered enum", () => {
-            const mapper = new TypeMapper();
-            mapper.registerEnum("Orientation", "Orientation");
+    it("handles various qualified names", () => {
+        const result1 = parseQualifiedName("GLib.Variant" as QualifiedName);
+        expect(result1.namespace).toBe("GLib");
+        expect(result1.name).toBe("Variant");
 
-            const result = mapper.mapType({ name: "Orientation" });
-
-            expect(result.ts).toBe("Orientation");
-            expect(result.ffi.type).toBe("int");
-            expect(result.ffi.size).toBe(32);
-        });
-
-        it("uses transformed name for enum", () => {
-            const mapper = new TypeMapper();
-            mapper.registerEnum("text_direction", "TextDirection");
-
-            const result = mapper.mapType({ name: "text_direction" });
-
-            expect(result.ts).toBe("TextDirection");
-        });
-
-        it("calls enum usage callback when enum is mapped", () => {
-            const mapper = new TypeMapper();
-            mapper.registerEnum("Orientation", "Orientation");
-            const callback = vi.fn();
-            mapper.setEnumUsageCallback(callback);
-
-            mapper.mapType({ name: "Orientation" });
-
-            expect(callback).toHaveBeenCalledWith("Orientation");
-        });
+        const result2 = parseQualifiedName("GObject.Object" as QualifiedName);
+        expect(result2.namespace).toBe("GObject");
+        expect(result2.name).toBe("Object");
     });
 
-    describe("record type mapping", () => {
-        it("maps registered record to boxed type", () => {
-            const mapper = new TypeMapper();
-            mapper.registerRecord("Rectangle", "Rectangle", "GdkRectangle");
+    it("handles names with dots in the name part", () => {
+        const result = parseQualifiedName("Gtk.Widget.Class" as QualifiedName);
+        expect(result.namespace).toBe("Gtk");
+        expect(result.name).toBe("Widget.Class");
+    });
+});
 
-            const result = mapper.mapType({ name: "Rectangle" });
-
-            expect(result.ts).toBe("Rectangle");
-            expect(result.ffi.type).toBe("boxed");
-            expect(result.ffi.innerType).toBe("GdkRectangle");
+describe("NormalizedType", () => {
+    it("identifies intrinsic types", () => {
+        const type = new NormalizedType({
+            name: "gint",
+            isArray: false,
+            elementType: null,
+            nullable: false,
         });
-
-        it("calls record usage callback when record is mapped", () => {
-            const mapper = new TypeMapper();
-            mapper.registerRecord("Rectangle", "Rectangle", "GdkRectangle");
-            const callback = vi.fn();
-            mapper.setRecordUsageCallback(callback);
-
-            mapper.mapType({ name: "Rectangle" });
-
-            expect(callback).toHaveBeenCalledWith("Rectangle");
-        });
+        expect(type.isIntrinsic()).toBe(true);
+        expect(type.isNumeric()).toBe(true);
     });
 
-    describe("type registry integration", () => {
-        it("resolves types from registry", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gtk", "Widget");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
+    it("identifies string types", () => {
+        const type = new NormalizedType({
+            name: "utf8",
+            isArray: false,
+            elementType: null,
+            nullable: false,
+        });
+        expect(type.isString()).toBe(true);
+    });
 
-            const result = mapper.mapType({ name: "Widget" });
+    it("identifies boolean types", () => {
+        const type = new NormalizedType({
+            name: "gboolean",
+            isArray: false,
+            elementType: null,
+            nullable: false,
+        });
+        expect(type.isBoolean()).toBe(true);
+    });
 
-            expect(result.ts).toBe("Widget");
-            expect(result.ffi.type).toBe("gobject");
+    it("identifies void types", () => {
+        const type = new NormalizedType({
+            name: "none",
+            isArray: false,
+            elementType: null,
+            nullable: false,
+        });
+        expect(type.isVoid()).toBe(true);
+    });
+
+    it("identifies GVariant types", () => {
+        const type = new NormalizedType({
+            name: "GVariant",
+            isArray: false,
+            elementType: null,
+            nullable: false,
+        });
+        expect(type.isVariant()).toBe(true);
+    });
+
+    it("identifies GParamSpec types", () => {
+        const type = new NormalizedType({
+            name: "GParamSpec",
+            isArray: false,
+            elementType: null,
+            nullable: false,
+        });
+        expect(type.isParamSpec()).toBe(true);
+    });
+
+    it("gets namespace from qualified names", () => {
+        const type = new NormalizedType({
+            name: "Gtk.Widget" as QualifiedName,
+            isArray: false,
+            elementType: null,
+            nullable: false,
+        });
+        expect(type.getNamespace()).toBe("Gtk");
+    });
+
+    it("returns null namespace for intrinsic types", () => {
+        const type = new NormalizedType({
+            name: "gint",
+            isArray: false,
+            elementType: null,
+            nullable: false,
+        });
+        expect(type.getNamespace()).toBeNull();
+    });
+
+    it("gets simple name from qualified names", () => {
+        const type = new NormalizedType({
+            name: "Gtk.Widget" as QualifiedName,
+            isArray: false,
+            elementType: null,
+            nullable: false,
+        });
+        expect(type.getSimpleName()).toBe("Widget");
+    });
+
+    it("gets simple name for intrinsic types", () => {
+        const type = new NormalizedType({
+            name: "gint",
+            isArray: false,
+            elementType: null,
+            nullable: false,
+        });
+        expect(type.getSimpleName()).toBe("gint");
+    });
+});
+
+describe("NormalizedEnumeration", () => {
+    const createEnum = () =>
+        new NormalizedEnumeration({
+            name: "Align",
+            qualifiedName: "Gtk.Align" as QualifiedName,
+            cType: "GtkAlign",
+            members: [
+                new NormalizedEnumerationMember({ name: "fill", value: "0", cIdentifier: "GTK_ALIGN_FILL" }),
+                new NormalizedEnumerationMember({ name: "start", value: "1", cIdentifier: "GTK_ALIGN_START" }),
+                new NormalizedEnumerationMember({ name: "end", value: "2", cIdentifier: "GTK_ALIGN_END" }),
+            ],
         });
 
-        it("resolves external namespace types", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gdk", "Display");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
+    it("finds member by name", () => {
+        const enumType = createEnum();
+        const member = enumType.getMember("start");
+        expect(member).toBeDefined();
+        expect(member?.value).toBe("1");
+    });
 
-            const result = mapper.mapType({ name: "Gdk.Display" });
+    it("finds member by value", () => {
+        const enumType = createEnum();
+        const member = enumType.getMemberByValue("2");
+        expect(member).toBeDefined();
+        expect(member?.name).toBe("end");
+    });
 
-            expect(result.ts).toBe("Gdk.Display");
-            expect(result.externalType?.namespace).toBe("Gdk");
-            expect(result.externalType?.name).toBe("Display");
-        });
+    it("gets all member names", () => {
+        const enumType = createEnum();
+        expect(enumType.getMemberNames()).toEqual(["fill", "start", "end"]);
+    });
 
-        it("calls external type usage callback", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gdk", "Display");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
-            const callback = vi.fn();
-            mapper.setExternalTypeUsageCallback(callback);
+    it("returns null for non-existent member", () => {
+        const enumType = createEnum();
+        expect(enumType.getMember("nonexistent")).toBeNull();
+    });
+});
 
-            mapper.mapType({ name: "Gdk.Display" });
-
-            expect(callback).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    namespace: "Gdk",
-                    name: "Display",
+describe("NormalizedRecord", () => {
+    const createRecord = (options: Partial<ConstructorParameters<typeof NormalizedRecord>[0]> = {}) =>
+        new NormalizedRecord({
+            name: "Rectangle",
+            qualifiedName: "Gdk.Rectangle" as QualifiedName,
+            cType: "GdkRectangle",
+            opaque: false,
+            disguised: false,
+            fields: [
+                new NormalizedField({
+                    name: "x",
+                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    writable: true,
+                    readable: true,
+                    private: false,
                 }),
-            );
+                new NormalizedField({
+                    name: "y",
+                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    writable: true,
+                    readable: true,
+                    private: false,
+                }),
+                new NormalizedField({
+                    name: "_priv",
+                    type: new NormalizedType({ name: "gpointer", isArray: false, elementType: null, nullable: false }),
+                    writable: false,
+                    readable: false,
+                    private: true,
+                }),
+            ],
+            methods: [],
+            constructors: [],
+            staticFunctions: [],
+            ...options,
         });
 
-        it("calls same-namespace class usage callback", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gtk", "Widget");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
-            const callback = vi.fn();
-            mapper.setSameNamespaceClassUsageCallback(callback);
-
-            mapper.mapType({ name: "Widget" });
-
-            expect(callback).toHaveBeenCalledWith("Widget", "Widget");
-        });
-
-        it("resolves enums from registry", () => {
-            const registry = new TypeRegistry();
-            registry.registerEnum("Gtk", "Orientation");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
-
-            const result = mapper.mapType({ name: "Orientation" });
-
-            expect(result.ts).toBe("Orientation");
-            expect(result.ffi.type).toBe("int");
-        });
-
-        it("resolves records from registry", () => {
-            const registry = new TypeRegistry();
-            registry.registerRecord("Gdk", "Rectangle", "GdkRectangle");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gdk");
-
-            const result = mapper.mapType({ name: "Rectangle" });
-
-            expect(result.ts).toBe("Rectangle");
-            expect(result.ffi.type).toBe("boxed");
-        });
-
-        it("includes sharedLibrary in external record FFI descriptor", () => {
-            const registry = new TypeRegistry();
-            registry.registerRecord("Gdk", "RGBA", "GdkRGBA", "libgdk-4.so.1");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
-
-            const result = mapper.mapType({ name: "Gdk.RGBA" });
-
-            expect(result.ts).toBe("Gdk.RGBA");
-            expect(result.ffi.type).toBe("boxed");
-            expect(result.ffi.innerType).toBe("GdkRGBA");
-            expect(result.ffi.lib).toBe("libgdk-4.so.1");
-            expect(result.externalType?.namespace).toBe("Gdk");
-        });
-
-        it("includes getTypeFn in external record FFI descriptor", () => {
-            const registry = new TypeRegistry();
-            registry.registerRecord("Gdk", "RGBA", "GdkRGBA", "libgdk-4.so.1", "gdk_rgba_get_type");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
-
-            const result = mapper.mapType({ name: "Gdk.RGBA" });
-
-            expect(result.ts).toBe("Gdk.RGBA");
-            expect(result.ffi.type).toBe("boxed");
-            expect(result.ffi.innerType).toBe("GdkRGBA");
-            expect(result.ffi.lib).toBe("libgdk-4.so.1");
-            expect(result.ffi.getTypeFn).toBe("gdk_rgba_get_type");
-        });
+    it("identifies boxed types", () => {
+        const record = createRecord({ glibTypeName: "GdkRectangle" });
+        expect(record.isBoxed()).toBe(true);
     });
 
-    describe("parameter mapping", () => {
-        it("maps out parameter to Ref type", () => {
-            const mapper = new TypeMapper();
-            const param: GirParameter = {
-                name: "value",
-                type: { name: "gint" },
-                direction: "out",
-            };
-
-            const result = mapper.mapParameter(param);
-
-            expect(result.ts).toBe("Ref<number>");
-            expect(result.ffi.type).toBe("ref");
-            expect(result.ffi.innerType).toEqual({ type: "int", size: 32, unsigned: false });
-        });
-
-        it("maps inout parameter to Ref type", () => {
-            const mapper = new TypeMapper();
-            const param: GirParameter = {
-                name: "value",
-                type: { name: "gint" },
-                direction: "inout",
-            };
-
-            const result = mapper.mapParameter(param);
-
-            expect(result.ts).toBe("Ref<number>");
-            expect(result.ffi.type).toBe("ref");
-        });
-
-        it("passes caller-allocates boxed types directly", () => {
-            const registry = new TypeRegistry();
-            registry.registerRecord("Gdk", "Rectangle", "GdkRectangle");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gdk");
-            const param: GirParameter = {
-                name: "rect",
-                type: { name: "Rectangle" },
-                direction: "out",
-                callerAllocates: true,
-            };
-
-            const result = mapper.mapParameter(param);
-
-            expect(result.ts).toBe("Rectangle");
-            expect(result.ffi.borrowed).toBe(true);
-        });
-
-        it("maps AsyncReadyCallback to special callback type", () => {
-            const mapper = new TypeMapper();
-            const param: GirParameter = {
-                name: "callback",
-                type: { name: "Gio.AsyncReadyCallback" },
-            };
-
-            const result = mapper.mapParameter(param);
-
-            expect(result.ts).toBe("(source: unknown, result: unknown) => void");
-            expect(result.ffi.type).toBe("callback");
-            expect(result.ffi.trampoline).toBe("asyncReady");
-        });
-
-        it("maps DestroyNotify to destroy callback", () => {
-            const mapper = new TypeMapper();
-            const param: GirParameter = {
-                name: "destroy",
-                type: { name: "GLib.DestroyNotify" },
-            };
-
-            const result = mapper.mapParameter(param);
-
-            expect(result.ts).toBe("() => void");
-            expect(result.ffi.trampoline).toBe("destroy");
-        });
-
-        it("maps DrawingAreaDrawFunc to drawFunc callback", () => {
-            const mapper = new TypeMapper();
-            const param: GirParameter = {
-                name: "draw_func",
-                type: { name: "Gtk.DrawingAreaDrawFunc" },
-            };
-
-            const result = mapper.mapParameter(param);
-
-            expect(result.ts).toBe("(self: DrawingArea, cr: cairo.Context, width: number, height: number) => void");
-            expect(result.ffi.trampoline).toBe("drawFunc");
-            expect(result.ffi.argTypes).toEqual([
-                { type: "gobject", borrowed: true },
-                {
-                    type: "boxed",
-                    borrowed: true,
-                    innerType: "CairoContext",
-                    lib: "libcairo-gobject.so.2",
-                    getTypeFn: "cairo_gobject_context_get_type",
-                },
-                { type: "int", size: 32, unsigned: false },
-                { type: "int", size: 32, unsigned: false },
-            ]);
-        });
-
-        it("handles transfer-ownership full for gobject params", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gtk", "Widget");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
-            const param: GirParameter = {
-                name: "widget",
-                type: { name: "Widget" },
-                transferOwnership: "full",
-            };
-
-            const result = mapper.mapParameter(param);
-
-            expect(result.ffi.borrowed).toBe(false);
-        });
-
-        it("handles transfer-ownership none for gobject params", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gtk", "Widget");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
-            const param: GirParameter = {
-                name: "widget",
-                type: { name: "Widget" },
-                transferOwnership: "none",
-            };
-
-            const result = mapper.mapParameter(param);
-
-            expect(result.ffi.borrowed).toBe(true);
-        });
+    it("identifies non-boxed types", () => {
+        const record = createRecord();
+        expect(record.isBoxed()).toBe(false);
     });
 
-    describe("isCallback", () => {
-        it("returns true for callback type", () => {
-            const registry = new TypeRegistry();
-            registry.registerCallback("Gtk", "TickCallback");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
-
-            expect(mapper.isCallback("TickCallback")).toBe(true);
-        });
-
-        it("returns false for non-callback type", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gtk", "Widget");
-            const mapper = new TypeMapper();
-            mapper.setTypeRegistry(registry, "Gtk");
-
-            expect(mapper.isCallback("Widget")).toBe(false);
-        });
-
-        it("returns false without registry", () => {
-            const mapper = new TypeMapper();
-
-            expect(mapper.isCallback("SomeCallback")).toBe(false);
-        });
+    it("identifies GType structs", () => {
+        const record = createRecord({ isGtypeStructFor: "GtkWidget" });
+        expect(record.isGtypeStruct()).toBe(true);
     });
 
-    describe("isClosureTarget", () => {
-        it("returns true for user_data parameter of trampoline callback", () => {
-            const mapper = new TypeMapper();
-            const params: GirParameter[] = [
-                { name: "callback", type: { name: "Gio.AsyncReadyCallback" }, closure: 1 },
-                { name: "user_data", type: { name: "gpointer" } },
-            ];
-
-            expect(mapper.isClosureTarget(1, params)).toBe(true);
-        });
-
-        it("returns true for destroy parameter of trampoline callback", () => {
-            const mapper = new TypeMapper();
-            const params: GirParameter[] = [
-                { name: "callback", type: { name: "Gio.AsyncReadyCallback" }, destroy: 2 },
-                { name: "user_data", type: { name: "gpointer" } },
-                { name: "destroy", type: { name: "GLib.DestroyNotify" } },
-            ];
-
-            expect(mapper.isClosureTarget(2, params)).toBe(true);
-        });
-
-        it("returns false for non-closure parameters", () => {
-            const mapper = new TypeMapper();
-            const params: GirParameter[] = [
-                { name: "widget", type: { name: "Widget" } },
-                { name: "label", type: { name: "utf8" } },
-            ];
-
-            expect(mapper.isClosureTarget(0, params)).toBe(false);
-            expect(mapper.isClosureTarget(1, params)).toBe(false);
-        });
+    it("identifies plain structs", () => {
+        const record = createRecord();
+        expect(record.isPlainStruct()).toBe(true);
     });
 
-    describe("isNullable", () => {
-        it("returns true for nullable parameter", () => {
-            const mapper = new TypeMapper();
-            const param: GirParameter = {
-                name: "value",
-                type: { name: "utf8" },
-                nullable: true,
-            };
-
-            expect(mapper.isNullable(param)).toBe(true);
-        });
-
-        it("returns true for optional parameter", () => {
-            const mapper = new TypeMapper();
-            const param: GirParameter = {
-                name: "value",
-                type: { name: "utf8" },
-                optional: true,
-            };
-
-            expect(mapper.isNullable(param)).toBe(true);
-        });
-
-        it("returns false for required parameter", () => {
-            const mapper = new TypeMapper();
-            const param: GirParameter = {
-                name: "value",
-                type: { name: "utf8" },
-            };
-
-            expect(mapper.isNullable(param)).toBe(false);
-        });
+    it("gets public fields only", () => {
+        const record = createRecord();
+        const publicFields = record.getPublicFields();
+        expect(publicFields).toHaveLength(2);
+        expect(publicFields.map((f) => f.name)).toEqual(["x", "y"]);
     });
 
-    describe("callback usage", () => {
-        it("getEnumUsageCallback returns null by default", () => {
-            const mapper = new TypeMapper();
-
-            expect(mapper.getEnumUsageCallback()).toBeNull();
-        });
-
-        it("setEnumUsageCallback with null clears callback", () => {
-            const mapper = new TypeMapper();
-            mapper.setEnumUsageCallback(() => {});
-            mapper.setEnumUsageCallback(null);
-
-            expect(mapper.getEnumUsageCallback()).toBeNull();
-        });
-
-        it("getRecordUsageCallback returns null by default", () => {
-            const mapper = new TypeMapper();
-
-            expect(mapper.getRecordUsageCallback()).toBeNull();
-        });
-
-        it("getExternalTypeUsageCallback returns null by default", () => {
-            const mapper = new TypeMapper();
-
-            expect(mapper.getExternalTypeUsageCallback()).toBeNull();
-        });
-
-        it("getSameNamespaceClassUsageCallback returns null by default", () => {
-            const mapper = new TypeMapper();
-
-            expect(mapper.getSameNamespaceClassUsageCallback()).toBeNull();
-        });
-    });
-
-    describe("edge cases", () => {
-        it("falls back to C type mapping for unknown types", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "UnknownType", cType: "gint" });
-
-            expect(result.ts).toBe("number");
-            expect(result.ffi.type).toBe("int");
-        });
-
-        it("falls back to pointer type for completely unknown types", () => {
-            const mapper = new TypeMapper();
-
-            const result = mapper.mapType({ name: "CompletelyUnknown" });
-
-            expect(result.ts).toBe("number");
-            expect(result.ffi.type).toBe("int");
-            expect(result.ffi.size).toBe(64);
-            expect(result.ffi.unsigned).toBe(true);
-        });
-
-        it("handles qualified names with current namespace prefix", () => {
-            const mapper = new TypeMapper();
-            mapper.registerEnum("Orientation", "Orientation");
-            mapper.setTypeRegistry(new TypeRegistry(), "Gtk");
-
-            const result = mapper.mapType({ name: "Gtk.Orientation" });
-
-            expect(result.ts).toBe("Orientation");
-        });
+    it("finds field by name", () => {
+        const record = createRecord();
+        const field = record.getField("x");
+        expect(field).toBeDefined();
+        expect(field?.name).toBe("x");
     });
 });
 
-describe("TypeRegistry", () => {
-    it("registers and resolves class types", () => {
-        const registry = new TypeRegistry();
-        registry.registerNativeClass("Gtk", "Widget");
-
-        const result = registry.resolve("Gtk.Widget");
-
-        expect(result).toBeDefined();
-        expect(result?.kind).toBe("class");
-        expect(result?.name).toBe("Widget");
-        expect(result?.namespace).toBe("Gtk");
-        expect(result?.transformedName).toBe("Widget");
-    });
-
-    it("registers and resolves interface types", () => {
-        const registry = new TypeRegistry();
-        registry.registerInterface("Gtk", "Buildable");
-
-        const result = registry.resolve("Gtk.Buildable");
-
-        expect(result).toBeDefined();
-        expect(result?.kind).toBe("interface");
-        expect(result?.name).toBe("Buildable");
-    });
-
-    it("registers and resolves enum types", () => {
-        const registry = new TypeRegistry();
-        registry.registerEnum("Gtk", "Orientation");
-
-        const result = registry.resolve("Gtk.Orientation");
-
-        expect(result).toBeDefined();
-        expect(result?.kind).toBe("enum");
-        expect(result?.name).toBe("Orientation");
-    });
-
-    it("registers and resolves record types", () => {
-        const registry = new TypeRegistry();
-        registry.registerRecord("Gdk", "Rectangle", "GdkRectangle");
-
-        const result = registry.resolve("Gdk.Rectangle");
-
-        expect(result).toBeDefined();
-        expect(result?.kind).toBe("record");
-        expect(result?.glibTypeName).toBe("GdkRectangle");
-    });
-
-    it("registers record types with sharedLibrary and glibGetType", () => {
-        const registry = new TypeRegistry();
-        registry.registerRecord("Gdk", "RGBA", "GdkRGBA", "libgdk-4.so.1", "gdk_rgba_get_type");
-
-        const result = registry.resolve("Gdk.RGBA");
-
-        expect(result?.sharedLibrary).toBe("libgdk-4.so.1");
-        expect(result?.glibGetType).toBe("gdk_rgba_get_type");
-    });
-
-    it("registers and resolves callback types", () => {
-        const registry = new TypeRegistry();
-        registry.registerCallback("Gio", "AsyncReadyCallback");
-
-        const result = registry.resolve("Gio.AsyncReadyCallback");
-
-        expect(result).toBeDefined();
-        expect(result?.kind).toBe("callback");
-    });
-
-    it("returns undefined for unregistered types", () => {
-        const registry = new TypeRegistry();
-
-        const result = registry.resolve("Gtk.NonExistent");
-
-        expect(result).toBeUndefined();
-    });
-
-    describe("type name normalization", () => {
-        it("renames Error to GError", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("GLib", "Error");
-
-            const result = registry.resolve("GLib.Error");
-
-            expect(result?.transformedName).toBe("GError");
+describe("NormalizedMethod", () => {
+    const createMethod = (options: Partial<ConstructorParameters<typeof NormalizedMethod>[0]> = {}) =>
+        new NormalizedMethod({
+            name: "get_name",
+            cIdentifier: "gtk_widget_get_name",
+            returnType: new NormalizedType({
+                name: "utf8",
+                isArray: false,
+                elementType: null,
+                nullable: false,
+            }),
+            parameters: [],
+            throws: false,
+            ...options,
         });
 
-        it("prefixes Object in GObject namespace", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("GObject", "Object");
-
-            const result = registry.resolve("GObject.Object");
-
-            expect(result?.transformedName).toBe("GObject");
-        });
-
-        it("prefixes Object in other namespaces with namespace name", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Pango", "Object");
-
-            const result = registry.resolve("Pango.Object");
-
-            expect(result?.transformedName).toBe("PangoObject");
-        });
-
-        it("converts snake_case names to PascalCase", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gtk", "text_view");
-
-            const result = registry.resolve("Gtk.text_view");
-
-            expect(result?.transformedName).toBe("TextView");
-        });
+    it("identifies async methods by name suffix", () => {
+        const method = createMethod({ name: "load_async" });
+        expect(method.isAsync()).toBe(true);
     });
 
-    describe("resolveInNamespace", () => {
-        it("resolves qualified names directly", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gtk", "Widget");
+    it("identifies async finish methods", () => {
+        const method = createMethod({ name: "load_finish" });
+        expect(method.isAsyncFinish()).toBe(true);
+    });
 
-            const result = registry.resolveInNamespace("Gtk.Widget", "Gdk");
+    it("gets finish method name for async methods", () => {
+        const method = createMethod({ name: "load_async" });
+        expect(method.getFinishMethodName()).toBe("load_finish");
+    });
 
-            expect(result).toBeDefined();
-            expect(result?.name).toBe("Widget");
+    it("returns null finish name for non-async methods", () => {
+        const method = createMethod({ name: "get_name" });
+        expect(method.getFinishMethodName()).toBeNull();
+    });
+
+    it("identifies methods with out parameters", () => {
+        const method = createMethod({
+            parameters: [
+                new NormalizedParameter({
+                    name: "result",
+                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    direction: "out",
+                    callerAllocates: false,
+                    nullable: false,
+                    optional: false,
+                }),
+            ],
         });
+        expect(method.hasOutParameters()).toBe(true);
+    });
 
-        it("resolves unqualified names in current namespace first", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gtk", "Button");
-            registry.registerNativeClass("Custom", "Button");
-
-            const result = registry.resolveInNamespace("Button", "Gtk");
-
-            expect(result?.namespace).toBe("Gtk");
+    it("gets out parameters only", () => {
+        const method = createMethod({
+            parameters: [
+                new NormalizedParameter({
+                    name: "input",
+                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    direction: "in",
+                    callerAllocates: false,
+                    nullable: false,
+                    optional: false,
+                }),
+                new NormalizedParameter({
+                    name: "output",
+                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    direction: "out",
+                    callerAllocates: false,
+                    nullable: false,
+                    optional: false,
+                }),
+            ],
         });
+        const outParams = method.getOutParameters();
+        expect(outParams).toHaveLength(1);
+        expect(outParams[0].name).toBe("output");
+    });
 
-        it("searches all namespaces if not in current namespace", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gtk", "Widget");
-
-            const result = registry.resolveInNamespace("Widget", "Gdk");
-
-            expect(result?.namespace).toBe("Gtk");
+    it("gets required parameters", () => {
+        const method = createMethod({
+            parameters: [
+                new NormalizedParameter({
+                    name: "required",
+                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    direction: "in",
+                    callerAllocates: false,
+                    nullable: false,
+                    optional: false,
+                }),
+                new NormalizedParameter({
+                    name: "optional",
+                    type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+                    direction: "in",
+                    callerAllocates: false,
+                    nullable: false,
+                    optional: true,
+                }),
+            ],
         });
-
-        it("matches by transformed name", () => {
-            const registry = new TypeRegistry();
-            registry.registerNativeClass("Gtk", "text_view");
-
-            const result = registry.resolveInNamespace("TextView", "Gdk");
-
-            expect(result?.name).toBe("text_view");
-            expect(result?.transformedName).toBe("TextView");
-        });
+        const requiredParams = method.getRequiredParameters();
+        expect(requiredParams).toHaveLength(1);
+        expect(requiredParams[0].name).toBe("required");
     });
 });
 
-describe("buildClassMap", () => {
-    it("builds map from class array", () => {
-        const classes = [
-            {
-                name: "Widget",
-                cType: "GtkWidget",
-                implements: [],
-                methods: [],
-                constructors: [],
-                functions: [],
-                properties: [],
-                signals: [],
-            },
-            {
-                name: "Button",
-                cType: "GtkButton",
-                implements: [],
-                methods: [],
-                constructors: [],
-                functions: [],
-                properties: [],
-                signals: [],
-            },
-        ];
+describe("NormalizedParameter", () => {
+    const createParam = (options: Partial<ConstructorParameters<typeof NormalizedParameter>[0]> = {}) =>
+        new NormalizedParameter({
+            name: "param",
+            type: new NormalizedType({ name: "gint", isArray: false, elementType: null, nullable: false }),
+            direction: "in",
+            callerAllocates: false,
+            nullable: false,
+            optional: false,
+            ...options,
+        });
 
-        const map = buildClassMap(classes);
-
-        expect(map.size).toBe(2);
-        expect(map.get("Widget")).toBe(classes[0]);
-        expect(map.get("Button")).toBe(classes[1]);
+    it("identifies input parameters", () => {
+        const param = createParam({ direction: "in" });
+        expect(param.isIn()).toBe(true);
+        expect(param.isOut()).toBe(false);
     });
 
-    it("handles empty array", () => {
-        const map = buildClassMap([]);
+    it("identifies output parameters", () => {
+        const param = createParam({ direction: "out" });
+        expect(param.isIn()).toBe(false);
+        expect(param.isOut()).toBe(true);
+    });
 
-        expect(map.size).toBe(0);
+    it("identifies inout parameters as output", () => {
+        const param = createParam({ direction: "inout" });
+        expect(param.isOut()).toBe(true);
+    });
+
+    it("identifies callback parameters", () => {
+        const param = createParam({ scope: "async" });
+        expect(param.isCallback()).toBe(true);
+    });
+
+    it("identifies closure data parameters", () => {
+        const param = createParam({ closure: 1 });
+        expect(param.isClosureData()).toBe(true);
+    });
+
+    it("identifies destroy notify parameters", () => {
+        const param = createParam({ destroy: 2 });
+        expect(param.isDestroyNotify()).toBe(true);
+    });
+
+    it("identifies caller-allocates parameters", () => {
+        const param = createParam({ direction: "out", callerAllocates: true });
+        expect(param.requiresCallerAllocation()).toBe(true);
     });
 });
 
-describe("registerEnumsFromNamespace", () => {
-    it("registers enumerations from namespace", () => {
-        const typeMapper = new TypeMapper();
-        const namespace = {
-            name: "Gtk",
-            version: "4.0",
-            sharedLibrary: "",
-            cPrefix: "",
-            classes: [],
-            interfaces: [],
-            functions: [],
-            enumerations: [{ name: "Orientation", cType: "GtkOrientation", members: [] }],
-            bitfields: [],
-            records: [],
-            callbacks: [],
-            constants: [],
-        };
+describe("NormalizedProperty", () => {
+    const createProperty = (options: Partial<ConstructorParameters<typeof NormalizedProperty>[0]> = {}) =>
+        new NormalizedProperty({
+            name: "visible",
+            type: new NormalizedType({ name: "gboolean", isArray: false, elementType: null, nullable: false }),
+            readable: true,
+            writable: true,
+            constructOnly: false,
+            hasDefault: false,
+            ...options,
+        });
 
-        registerEnumsFromNamespace(typeMapper, namespace);
-
-        const result = typeMapper.mapType({ name: "Orientation" });
-        expect(result.ts).toBe("Orientation");
-        expect(result.ffi.type).toBe("int");
+    it("identifies read-only properties", () => {
+        const prop = createProperty({ readable: true, writable: false });
+        expect(prop.isReadOnly()).toBe(true);
+        expect(prop.isWriteOnly()).toBe(false);
     });
 
-    it("registers bitfields from namespace", () => {
-        const typeMapper = new TypeMapper();
-        const namespace = {
-            name: "Gtk",
-            version: "4.0",
-            sharedLibrary: "",
-            cPrefix: "",
-            classes: [],
-            interfaces: [],
-            functions: [],
-            enumerations: [],
-            bitfields: [{ name: "StateFlags", cType: "GtkStateFlags", members: [] }],
-            records: [],
-            callbacks: [],
-            constants: [],
-        };
+    it("identifies write-only properties", () => {
+        const prop = createProperty({ readable: false, writable: true });
+        expect(prop.isReadOnly()).toBe(false);
+        expect(prop.isWriteOnly()).toBe(true);
+    });
 
-        registerEnumsFromNamespace(typeMapper, namespace);
+    it("identifies construct-only properties", () => {
+        const prop = createProperty({ constructOnly: true });
+        expect(prop.isConstructOnly()).toBe(true);
+    });
 
-        const result = typeMapper.mapType({ name: "StateFlags" });
-        expect(result.ts).toBe("StateFlags");
+    it("identifies properties with accessors", () => {
+        const prop = createProperty({ getter: "get_visible", setter: "set_visible" });
+        expect(prop.hasAccessors()).toBe(true);
+    });
+
+    it("identifies properties without full accessors", () => {
+        const prop = createProperty({ getter: "get_visible" });
+        expect(prop.hasAccessors()).toBe(false);
+    });
+});
+
+describe("NormalizedSignal", () => {
+    it("identifies signals with return values", () => {
+        const signal = new NormalizedSignal({
+            name: "clicked",
+            when: "first",
+            returnType: new NormalizedType({
+                name: "gboolean",
+                isArray: false,
+                elementType: null,
+                nullable: false,
+            }),
+            parameters: [],
+        });
+        expect(signal.hasReturnValue()).toBe(true);
+    });
+
+    it("identifies signals without return values", () => {
+        const signal = new NormalizedSignal({
+            name: "clicked",
+            when: "first",
+            returnType: new NormalizedType({
+                name: "none",
+                isArray: false,
+                elementType: null,
+                nullable: false,
+            }),
+            parameters: [],
+        });
+        expect(signal.hasReturnValue()).toBe(false);
+    });
+
+    it("handles null return type", () => {
+        const signal = new NormalizedSignal({
+            name: "clicked",
+            when: "first",
+            returnType: null,
+            parameters: [],
+        });
+        expect(signal.hasReturnValue()).toBe(false);
     });
 });
