@@ -7,7 +7,7 @@ edition = "2024"
 exclude = ["index.node"]
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 neon = "1.1.1"

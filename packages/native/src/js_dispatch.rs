@@ -23,13 +23,9 @@ use neon::prelude::*;
 use crate::{queue::Queue, value::Value};
 
 pub struct PendingCallback {
-
     pub callback: Arc<Root<JsFunction>>,
-
     pub args: Vec<Value>,
-
     pub capture_result: bool,
-
     pub result_tx: mpsc::Sender<Result<Value, ()>>,
 }
 
@@ -71,10 +67,7 @@ pub fn queue_with_wakeup(
 pub fn process_pending<'a, C: Context<'a>>(cx: &mut C) {
     while let Some(pending) = QUEUE.pop() {
         let result = execute_callback(cx, &pending.callback, &pending.args, pending.capture_result);
-        pending
-            .result_tx
-            .send(result)
-            .expect("Pending callback result channel disconnected");
+        let _ = pending.result_tx.send(result);
     }
 }
 

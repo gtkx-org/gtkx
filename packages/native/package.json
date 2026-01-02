@@ -35,7 +35,7 @@
     ],
     "scripts": {
         "build": "tsc -b && cp index.node dist/ && cp ../../README.md .",
-        "lint": "cargo clippy -- -D warnings",
+        "lint:all": "cargo clippy -- -D warnings",
         "native-build": "cargo build --message-format=json-render-diagnostics --release > cargo.log && neon dist < cargo.log",
         "native-test": "xvfb-run -a cargo test -- --test-threads=1",
         "test": "vitest run"

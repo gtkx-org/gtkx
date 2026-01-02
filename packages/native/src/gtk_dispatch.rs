@@ -22,11 +22,28 @@
 //! [`mark_stopped`] signals that the application is shutting down. After this,
 //! new tasks are silently dropped to allow clean termination.
 
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::{
+    atomic::{AtomicBool, AtomicUsize, Ordering},
+    mpsc,
+};
 
 use gtk4::glib;
 
 use crate::queue::Queue;
+
+pub fn run_on_gtk_thread<F, T>(task: F) -> mpsc::Receiver<T>
+where
+    F: FnOnce() -> T + Send + 'static,
+    T: Send + 'static,
+{
+    let (tx, rx) = mpsc::channel();
+
+    schedule(move || {
+        let _ = tx.send(task());
+    });
+
+    rx
+}
 
 type Task = Box<dyn FnOnce() + Send + 'static>;
 
@@ -107,133 +124,3 @@ pub fn dispatch_pending() -> bool {
     dispatched
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::test_utils;
-    use std::sync::{
-        Arc,
-        atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering},
-    };
-
-    #[test]
-    fn js_wait_depth_starts_at_zero() {
-        assert!(!is_js_waiting());
-    }
-
-    #[test]
-    fn enter_exit_js_wait_tracks_depth() {
-        let initial = is_js_waiting();
-        assert!(!initial);
-
-        enter_js_wait();
-        assert!(is_js_waiting());
-
-        enter_js_wait();
-        assert!(is_js_waiting());
-
-        exit_js_wait();
-        assert!(is_js_waiting());
-
-        exit_js_wait();
-        assert!(!is_js_waiting());
-    }
-
-    #[test]
-    fn dispatch_pending_executes_tasks() {
-        test_utils::ensure_gtk_init();
-
-        let executed = Arc::new(AtomicBool::new(false));
-        let executed_clone = executed.clone();
-
-        QUEUE.push(Box::new(move || {
-            executed_clone.store(true, AtomicOrdering::SeqCst);
-        }));
-
-        let dispatched = dispatch_pending();
-
-        assert!(dispatched);
-        assert!(executed.load(AtomicOrdering::SeqCst));
-    }
-
-    #[test]
-    fn dispatch_pending_returns_false_when_empty() {
-        test_utils::ensure_gtk_init();
-
-        while QUEUE.pop().is_some() {}
-
-        let dispatched = dispatch_pending();
-        assert!(!dispatched);
-    }
-
-    #[test]
-    fn dispatch_pending_executes_multiple_tasks_in_order() {
-        test_utils::ensure_gtk_init();
-
-        let order = Arc::new(std::sync::Mutex::new(Vec::new()));
-
-        for i in 0..5 {
-            let order_clone = order.clone();
-            QUEUE.push(Box::new(move || {
-                order_clone.lock().unwrap().push(i);
-            }));
-        }
-
-        dispatch_pending();
-
-        let result = order.lock().unwrap();
-        assert_eq!(*result, vec![0, 1, 2, 3, 4]);
-    }
-
-    #[test]
-    fn task_can_schedule_another_task() {
-        test_utils::ensure_gtk_init();
-
-        let counter = Arc::new(AtomicUsize::new(0));
-        let counter_clone = counter.clone();
-
-        QUEUE.push(Box::new(move || {
-            counter_clone.fetch_add(1, AtomicOrdering::SeqCst);
-
-            let counter_inner = counter_clone.clone();
-            QUEUE.push(Box::new(move || {
-                counter_inner.fetch_add(1, AtomicOrdering::SeqCst);
-            }));
-        }));
-
-        dispatch_pending();
-
-        assert_eq!(counter.load(AtomicOrdering::SeqCst), 2);
-    }
-
-    #[test]
-    fn task_closure_dropped_after_execution() {
-        test_utils::ensure_gtk_init();
-
-        let drop_counter = Arc::new(AtomicUsize::new(0));
-
-        struct DropTracker {
-            counter: Arc<AtomicUsize>,
-        }
-
-        impl Drop for DropTracker {
-            fn drop(&mut self) {
-                self.counter.fetch_add(1, AtomicOrdering::SeqCst);
-            }
-        }
-
-        let tracker = DropTracker {
-            counter: drop_counter.clone(),
-        };
-
-        QUEUE.push(Box::new(move || {
-            let _t = tracker;
-        }));
-
-        assert_eq!(drop_counter.load(AtomicOrdering::SeqCst), 0);
-
-        dispatch_pending();
-
-        assert_eq!(drop_counter.load(AtomicOrdering::SeqCst), 1);
-    }
-}

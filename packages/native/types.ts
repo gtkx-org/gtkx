@@ -1,22 +1,24 @@
-type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned?: boolean };
+type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned: boolean };
 
 type FloatType = { type: "float"; size: 32 | 64 };
 
 type BooleanType = { type: "boolean" };
 
-type StringType = { type: "string"; borrowed?: boolean; length?: number };
+type Ownership = "full" | "none";
 
-type GObjectType = { type: "gobject"; borrowed?: boolean };
+type StringType = { type: "string"; ownership: Ownership; length?: number };
 
-type GParamType = { type: "gparam"; borrowed?: boolean };
+type GObjectType = { type: "gobject"; ownership: Ownership };
 
-type BoxedType = { type: "boxed"; borrowed?: boolean; innerType: string; lib?: string; getTypeFn?: string };
+type GParamType = { type: "gparam"; ownership: Ownership };
 
-type StructType = { type: "struct"; borrowed?: boolean; innerType?: string; size?: number };
+type BoxedType = { type: "boxed"; ownership: Ownership; innerType: string; lib?: string; getTypeFn?: string };
 
-type GVariantType = { type: "gvariant"; borrowed?: boolean };
+type StructType = { type: "struct"; ownership: Ownership; innerType: string; size?: number };
 
-type ArrayType = { type: "array"; itemType: Type; listType?: "glist" | "gslist"; borrowed?: boolean };
+type GVariantType = { type: "gvariant"; ownership: Ownership };
+
+type ArrayType = { type: "array"; itemType: Type; listType: "array" | "glist" | "gslist"; ownership: Ownership };
 
 type RefType = { type: "ref"; innerType: Type };
 
@@ -26,16 +28,7 @@ type UndefinedType = { type: "undefined" };
 
 type CallbackType = {
     type: "callback";
-    trampoline?:
-        | "closure"
-        | "asyncReady"
-        | "destroy"
-        | "sourceFunc"
-        | "drawFunc"
-        | "compareDataFunc"
-        | "tickFunc"
-        | "shortcutFunc"
-        | "treeListModelCreateFunc";
+    trampoline: "closure" | "asyncReady" | "destroy" | "drawFunc" | "shortcutFunc" | "treeListModelCreateFunc";
     argTypes?: Type[];
     sourceType?: Type;
     resultType?: Type;

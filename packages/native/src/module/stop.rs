@@ -11,8 +11,6 @@
 //! 2. Wait for confirmation that the task completed
 //! 3. Join the GTK thread, waiting for it to fully terminate
 
-use std::sync::mpsc;
-
 use neon::prelude::*;
 
 use crate::{
@@ -21,16 +19,12 @@ use crate::{
 };
 
 pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let (tx, rx) = mpsc::channel::<()>();
-
-    gtk_dispatch::schedule(move || {
+    let rx = gtk_dispatch::run_on_gtk_thread(|| {
         gtk_dispatch::mark_stopped();
 
         GtkThreadState::with(|state| {
             state.app_hold_guard.take();
         });
-
-        let _ = tx.send(());
     });
 
     rx.recv()

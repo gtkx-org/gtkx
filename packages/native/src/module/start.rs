@@ -20,7 +20,7 @@ use neon::prelude::*;
 
 use crate::{
     object::{Object, ObjectId},
-    state::{set_gtk_thread_handle, GtkThreadState},
+    state::{GtkThreadState, set_gtk_thread_handle},
 };
 
 pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
@@ -44,14 +44,13 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
             .flags(flags)
             .build();
 
-        let app_object_id = ObjectId::new(Object::GObject(app.clone().into()));
+        let app_object_id: ObjectId = Object::GObject(app.clone().into()).into();
 
         GtkThreadState::with(|state| {
             state.app_hold_guard = Some(app.hold());
         });
 
         app.connect_activate(move |_| {
-
             let _ = tx.send(app_object_id);
         });
 

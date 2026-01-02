@@ -9,14 +9,11 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct Callback {
-
     pub js_func: Arc<Root<JsFunction>>,
-
     pub channel: Channel,
 }
 
 impl Callback {
-
     pub fn new(js_func: Arc<Root<JsFunction>>, channel: Channel) -> Self {
         Callback { js_func, channel }
     }

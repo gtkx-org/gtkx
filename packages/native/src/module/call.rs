@@ -224,17 +224,13 @@ fn handle_call(
 
     for (i, arg) in args.iter().enumerate() {
         if let Value::Ref(r#ref) = &arg.value {
-
             if let Type::Ref(ref_type) = &arg.type_ {
-                match &*ref_type.inner_type {
-                    Type::Boxed(_) | Type::Struct(_) | Type::GObject(_) => {
-                        if matches!(&*r#ref.value, Value::Object(_)) {
-
-                            continue;
-                        }
-
-                    }
-                    _ => {}
+                let is_object_passthrough = matches!(
+                    (&*ref_type.inner_type, &*r#ref.value),
+                    (Type::Boxed(_) | Type::Struct(_) | Type::GObject(_), Value::Object(_))
+                );
+                if is_object_passthrough {
+                    continue;
                 }
             }
             let new_value = Value::from_cif_value(&cif_args[i], &arg.type_)?;

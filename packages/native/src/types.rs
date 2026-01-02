@@ -23,9 +23,9 @@
 //!
 //! ## Ownership
 //!
-//! Many types have an `is_borrowed` flag that distinguishes:
-//! - **Owned**: Caller takes ownership, responsible for freeing
-//! - **Borrowed**: Caller receives a reference, must not free
+//! Many types have an `is_transfer_full` flag that distinguishes:
+//! - **Transfer full**: Caller takes ownership, responsible for freeing
+//! - **Transfer none**: Caller receives a reference, must not free
 //!
 //! This is critical for correct memory management across the FFI boundary.
 
@@ -42,7 +42,7 @@ mod gvariant;
 mod integer;
 mod r#ref;
 mod string;
-mod struct_type;
+mod r#struct;
 
 pub use array::*;
 pub use boxed::*;
@@ -54,65 +54,64 @@ pub use gvariant::*;
 pub use integer::*;
 pub use r#ref::*;
 pub use string::*;
-pub use struct_type::*;
+pub use r#struct::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallbackTrampoline {
     Closure,
-
     AsyncReady,
-
     Destroy,
-
     DrawFunc,
-
     ShortcutFunc,
-
     TreeListModelCreateFunc,
 }
 
 #[derive(Debug, Clone)]
 pub struct CallbackType {
     pub trampoline: CallbackTrampoline,
-
     pub arg_types: Option<Vec<Type>>,
-
     pub return_type: Option<Box<Type>>,
-
     pub source_type: Option<Box<Type>>,
-
     pub result_type: Option<Box<Type>>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Type {
     Integer(IntegerType),
-
     Float(FloatType),
-
     String(StringType),
-
     Null,
-
     Undefined,
-
     Boolean,
-
     GObject(GObjectType),
-
     GParam(GParamType),
-
     Boxed(BoxedType),
-
     Struct(StructType),
-
     GVariant(GVariantType),
-
     Array(ArrayType),
-
     Callback(CallbackType),
-
     Ref(RefType),
+}
+
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Type::Integer(t) => write!(f, "Integer({}, {})", t.size, t.sign),
+            Type::Float(t) => write!(f, "Float({})", t.size),
+            Type::String(_) => write!(f, "String"),
+            Type::Null => write!(f, "Null"),
+            Type::Undefined => write!(f, "Undefined"),
+            Type::Boolean => write!(f, "Boolean"),
+            Type::GObject(_) => write!(f, "GObject"),
+            Type::GParam(_) => write!(f, "GParam"),
+            Type::Boxed(t) => write!(f, "Boxed({})", t.type_),
+            Type::Struct(t) => write!(f, "Struct({})", t.type_),
+            Type::GVariant(_) => write!(f, "GVariant"),
+            Type::Array(_) => write!(f, "Array"),
+            Type::Callback(t) => write!(f, "Callback({:?})", t.trampoline),
+            Type::Ref(t) => write!(f, "Ref({})", t.inner_type),
+        }
+    }
 }
 
 impl Type {
@@ -139,15 +138,22 @@ impl Type {
             "gvariant" => Ok(Type::GVariant(GVariantType::from_js_value(cx, value)?)),
             "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
             "callback" => {
-                let trampoline_handle: Option<Handle<JsString>> = obj.get_opt(cx, "trampoline")?;
-                let trampoline_str = trampoline_handle.map(|h| h.value(cx));
-                let trampoline = match trampoline_str.as_deref() {
-                    Some("asyncReady") => CallbackTrampoline::AsyncReady,
-                    Some("destroy") => CallbackTrampoline::Destroy,
-                    Some("drawFunc") => CallbackTrampoline::DrawFunc,
-                    Some("shortcutFunc") => CallbackTrampoline::ShortcutFunc,
-                    Some("treeListModelCreateFunc") => CallbackTrampoline::TreeListModelCreateFunc,
-                    _ => CallbackTrampoline::Closure,
+                let trampoline_prop: Handle<'_, JsValue> = obj.prop(cx, "trampoline").get()?;
+                let trampoline_str = trampoline_prop
+                    .downcast::<JsString, _>(cx)
+                    .or_else(|_| {
+                        cx.throw_type_error("'trampoline' property is required for callback types")
+                    })?
+                    .value(cx);
+
+                let trampoline = match trampoline_str.as_str() {
+                    "closure" => CallbackTrampoline::Closure,
+                    "asyncReady" => CallbackTrampoline::AsyncReady,
+                    "destroy" => CallbackTrampoline::Destroy,
+                    "drawFunc" => CallbackTrampoline::DrawFunc,
+                    "shortcutFunc" => CallbackTrampoline::ShortcutFunc,
+                    "treeListModelCreateFunc" => CallbackTrampoline::TreeListModelCreateFunc,
+                    _ => return cx.throw_type_error("'trampoline' must be one of: 'closure', 'asyncReady', 'destroy', 'drawFunc', 'shortcutFunc', 'treeListModelCreateFunc'"),
                 };
 
                 let arg_types: Option<Handle<JsArray>> = obj.get_opt(cx, "argTypes")?;
@@ -212,255 +218,6 @@ impl From<&Type> for ffi::Type {
             Type::Callback(_) => ffi::Type::pointer(),
             Type::Ref(type_) => type_.into(),
             Type::Undefined => ffi::Type::void(),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn callback_trampoline_equality() {
-        assert_eq!(CallbackTrampoline::Closure, CallbackTrampoline::Closure);
-        assert_eq!(
-            CallbackTrampoline::AsyncReady,
-            CallbackTrampoline::AsyncReady
-        );
-        assert_eq!(CallbackTrampoline::Destroy, CallbackTrampoline::Destroy);
-        assert_eq!(CallbackTrampoline::DrawFunc, CallbackTrampoline::DrawFunc);
-        assert_eq!(
-            CallbackTrampoline::ShortcutFunc,
-            CallbackTrampoline::ShortcutFunc
-        );
-        assert_eq!(
-            CallbackTrampoline::TreeListModelCreateFunc,
-            CallbackTrampoline::TreeListModelCreateFunc
-        );
-        assert_ne!(CallbackTrampoline::Closure, CallbackTrampoline::AsyncReady);
-        assert_ne!(
-            CallbackTrampoline::ShortcutFunc,
-            CallbackTrampoline::TreeListModelCreateFunc
-        );
-        assert_ne!(
-            CallbackTrampoline::DrawFunc,
-            CallbackTrampoline::ShortcutFunc
-        );
-    }
-
-    #[test]
-    fn callback_trampoline_debug() {
-        // Verify Debug impl works for all variants
-        assert_eq!(format!("{:?}", CallbackTrampoline::Closure), "Closure");
-        assert_eq!(
-            format!("{:?}", CallbackTrampoline::AsyncReady),
-            "AsyncReady"
-        );
-        assert_eq!(format!("{:?}", CallbackTrampoline::Destroy), "Destroy");
-        assert_eq!(format!("{:?}", CallbackTrampoline::DrawFunc), "DrawFunc");
-        assert_eq!(
-            format!("{:?}", CallbackTrampoline::ShortcutFunc),
-            "ShortcutFunc"
-        );
-        assert_eq!(
-            format!("{:?}", CallbackTrampoline::TreeListModelCreateFunc),
-            "TreeListModelCreateFunc"
-        );
-    }
-
-    #[test]
-    fn callback_trampoline_clone() {
-        let original = CallbackTrampoline::ShortcutFunc;
-        let cloned = original.clone();
-        assert_eq!(original, cloned);
-
-        let original = CallbackTrampoline::TreeListModelCreateFunc;
-        let cloned = original.clone();
-        assert_eq!(original, cloned);
-    }
-
-    #[test]
-    fn callback_type_with_shortcut_func_trampoline() {
-        let callback_type = CallbackType {
-            trampoline: CallbackTrampoline::ShortcutFunc,
-            arg_types: Some(vec![
-                Type::GObject(GObjectType::new(false)),
-                Type::GVariant(GVariantType::new(false)),
-            ]),
-            return_type: Some(Box::new(Type::Boolean)),
-            source_type: None,
-            result_type: None,
-        };
-        assert_eq!(callback_type.trampoline, CallbackTrampoline::ShortcutFunc);
-        assert!(callback_type.arg_types.is_some());
-        assert_eq!(callback_type.arg_types.as_ref().unwrap().len(), 2);
-    }
-
-    #[test]
-    fn callback_type_with_tree_list_model_create_func_trampoline() {
-        let callback_type = CallbackType {
-            trampoline: CallbackTrampoline::TreeListModelCreateFunc,
-            arg_types: Some(vec![Type::GObject(GObjectType::new(false))]),
-            return_type: Some(Box::new(Type::GObject(GObjectType::new(false)))),
-            source_type: None,
-            result_type: None,
-        };
-        assert_eq!(
-            callback_type.trampoline,
-            CallbackTrampoline::TreeListModelCreateFunc
-        );
-        assert!(callback_type.arg_types.is_some());
-        assert_eq!(callback_type.arg_types.as_ref().unwrap().len(), 1);
-    }
-
-    #[test]
-    fn type_to_ffi_callback_shortcut_func() {
-        let callback_type = CallbackType {
-            trampoline: CallbackTrampoline::ShortcutFunc,
-            arg_types: None,
-            return_type: None,
-            source_type: None,
-            result_type: None,
-        };
-        let type_ = Type::Callback(callback_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_callback_tree_list_model_create_func() {
-        let callback_type = CallbackType {
-            trampoline: CallbackTrampoline::TreeListModelCreateFunc,
-            arg_types: None,
-            return_type: None,
-            source_type: None,
-            result_type: None,
-        };
-        let type_ = Type::Callback(callback_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_boolean() {
-        let _ffi_type: ffi::Type = (&Type::Boolean).into();
-    }
-
-    #[test]
-    fn type_to_ffi_null() {
-        let _ffi_type: ffi::Type = (&Type::Null).into();
-    }
-
-    #[test]
-    fn type_to_ffi_undefined() {
-        let _ffi_type: ffi::Type = (&Type::Undefined).into();
-    }
-
-    #[test]
-    fn type_to_ffi_callback() {
-        let callback_type = CallbackType {
-            trampoline: CallbackTrampoline::Closure,
-            arg_types: None,
-            return_type: None,
-            source_type: None,
-            result_type: None,
-        };
-        let type_ = Type::Callback(callback_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_integer() {
-        let int_type = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
-        let type_ = Type::Integer(int_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_float() {
-        let float_type = FloatType::new(FloatSize::_64);
-        let type_ = Type::Float(float_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_string() {
-        let string_type = StringType::new(false);
-        let type_ = Type::String(string_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_gobject() {
-        let gobject_type = GObjectType::new(false);
-        let type_ = Type::GObject(gobject_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_boxed() {
-        let boxed_type = BoxedType::new(false, "Test".to_string(), None, None);
-        let type_ = Type::Boxed(boxed_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_gvariant() {
-        let gvariant_type = GVariantType::new(false);
-        let type_ = Type::GVariant(gvariant_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_array() {
-        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
-        let array_type = ArrayType::new(int_type);
-        let type_ = Type::Array(array_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_ref() {
-        let int_type = Type::Integer(IntegerType::new(IntegerSize::_32, IntegerSign::Signed));
-        let ref_type = RefType::new(int_type);
-        let type_ = Type::Ref(ref_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_struct() {
-        let struct_type = StructType::new(false, "PangoRectangle".to_string(), Some(16));
-        let type_ = Type::Struct(struct_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_to_ffi_struct_borrowed() {
-        let struct_type = StructType::new(true, "GtkTextIter".to_string(), None);
-        let type_ = Type::Struct(struct_type);
-        let _ffi_type: ffi::Type = (&type_).into();
-    }
-
-    #[test]
-    fn type_struct_variant_debug() {
-        let struct_type = StructType::new(true, "PangoRectangle".to_string(), Some(16));
-        let type_ = Type::Struct(struct_type);
-        let debug_str = format!("{:?}", type_);
-
-        assert!(debug_str.contains("Struct"));
-        assert!(debug_str.contains("PangoRectangle"));
-    }
-
-    #[test]
-    fn type_struct_variant_clone() {
-        let struct_type = StructType::new(false, "CustomStruct".to_string(), Some(32));
-        let type_ = Type::Struct(struct_type);
-        let cloned = type_.clone();
-
-        if let Type::Struct(s) = cloned {
-            assert!(!s.is_borrowed);
-            assert_eq!(s.type_, "CustomStruct");
-            assert_eq!(s.size, Some(32));
-        } else {
-            panic!("Expected Type::Struct");
         }
     }
 }

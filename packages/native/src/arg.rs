@@ -19,16 +19,12 @@ use crate::{types::Type, value::Value};
 
 #[derive(Debug, Clone)]
 pub struct Arg {
-
     pub type_: Type,
-
     pub value: Value,
-
     pub optional: bool,
 }
 
 impl Arg {
-
     pub fn new(type_: Type, value: Value) -> Self {
         Arg {
             type_,
@@ -58,8 +54,23 @@ impl Arg {
         let type_ = Type::from_js_value(cx, type_prop)?;
         let value = Value::from_js_value(cx, value_prop)?;
 
-        let optional_prop: Option<Handle<JsBoolean>> = obj.get_opt(cx, "optional")?;
-        let optional = optional_prop.map(|h| h.value(cx)).unwrap_or(false);
+        let optional = {
+            let optional_prop: Result<Handle<JsValue>, _> = obj.prop(cx, "optional").get();
+            match optional_prop {
+                Ok(prop) => {
+                    // Check if it's undefined/null (which means false) or a boolean
+                    if prop.is_a::<JsUndefined, _>(cx) || prop.is_a::<JsNull, _>(cx) {
+                        false
+                    } else {
+                        prop
+                            .downcast::<JsBoolean, _>(cx)
+                            .or_else(|_| cx.throw_type_error("'optional' property must be a boolean"))?
+                            .value(cx)
+                    }
+                }
+                Err(_) => false,
+            }
+        };
 
         Ok(Arg {
             type_,

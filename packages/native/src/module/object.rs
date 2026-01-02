@@ -3,21 +3,15 @@
 //! The [`get_object_id`] function returns the raw pointer value for a managed
 //! object. This is primarily used for debugging and introspection.
 
-use std::sync::mpsc;
-
 use neon::prelude::*;
 
 use crate::{gtk_dispatch, object::ObjectId};
 
 pub fn get_object_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let object_id = cx.argument::<JsBox<ObjectId>>(0)?;
-
-    let (tx, rx) = mpsc::channel::<Option<usize>>();
     let id = *object_id.as_inner();
 
-    gtk_dispatch::schedule(move || {
-        let _ = tx.send(id.try_as_ptr());
-    });
+    let rx = gtk_dispatch::run_on_gtk_thread(move || id.try_as_ptr());
 
     let ptr = rx
         .recv()

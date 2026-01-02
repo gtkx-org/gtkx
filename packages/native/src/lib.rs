@@ -35,24 +35,22 @@
 //! - `Type`: Type system describing all FFI-compatible types
 //! - `cif::Value`: Low-level libffi argument representation
 
-#[macro_use]
-mod macros;
-mod arg;
-mod boxed;
-mod callback;
-mod gvariant;
-mod cif;
-mod gtk_dispatch;
+pub mod arg;
+pub mod boxed;
+pub mod callback;
+pub mod cif;
+pub mod error;
+pub mod gtk_dispatch;
+pub mod integer;
 mod js_dispatch;
 mod module;
-mod object;
-mod queue;
-mod state;
-mod types;
-mod value;
-
-#[cfg(test)]
-mod test_utils;
+pub mod object;
+pub mod ownership;
+pub mod queue;
+pub mod state;
+pub mod types;
+pub mod value;
+pub mod variant;
 
 use neon::prelude::*;
 

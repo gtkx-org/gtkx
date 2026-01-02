@@ -11,6 +11,7 @@
 //!
 //! - `object_map`: Maps object IDs to managed [`Object`] instances
 //! - `next_object_id`: Counter for generating unique object IDs
+//! - `free_object_ids`: Recycled object IDs available for reuse
 //! - `libraries`: Cache of dynamically loaded native libraries
 //! - `app_hold_guard`: Keeps the GTK application alive while running
 //!
@@ -52,13 +53,10 @@ pub fn join_gtk_thread() {
 }
 
 pub struct GtkThreadState {
-
     pub object_map: ManuallyDrop<HashMap<usize, Object>>,
-
     pub next_object_id: usize,
-
-    libraries: ManuallyDrop<HashMap<String, Library>>,
-
+    pub free_object_ids: Vec<usize>,
+    pub libraries: ManuallyDrop<HashMap<String, Library>>,
     pub app_hold_guard: Option<ApplicationHoldGuard>,
 }
 
@@ -67,6 +65,7 @@ impl Default for GtkThreadState {
         GtkThreadState {
             object_map: ManuallyDrop::new(HashMap::new()),
             next_object_id: 1,
+            free_object_ids: Vec::new(),
             libraries: ManuallyDrop::new(HashMap::new()),
             app_hold_guard: None,
         }
@@ -74,7 +73,6 @@ impl Default for GtkThreadState {
 }
 
 impl GtkThreadState {
-
     pub fn with<F, R>(f: F) -> R
     where
         F: FnOnce(&mut GtkThreadState) -> R,
@@ -115,104 +113,3 @@ impl GtkThreadState {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::test_utils;
-
-    #[test]
-    fn gtk_thread_state_default_initializes_correctly() {
-        test_utils::ensure_gtk_init();
-
-        GtkThreadState::with(|state| {
-            assert!(state.object_map.is_empty());
-            assert!(state.next_object_id >= 1);
-        });
-    }
-
-    #[test]
-    fn gtk_thread_state_with_provides_mutable_access() {
-        test_utils::ensure_gtk_init();
-
-        GtkThreadState::with(|state| {
-            let initial_id = state.next_object_id;
-            state.next_object_id += 1;
-            assert_eq!(state.next_object_id, initial_id + 1);
-        });
-    }
-
-    #[test]
-    fn gtk_thread_state_persists_across_calls() {
-        test_utils::ensure_gtk_init();
-
-        let id_before = GtkThreadState::with(|state| {
-            state.next_object_id += 100;
-            state.next_object_id
-        });
-
-        let id_after = GtkThreadState::with(|state| state.next_object_id);
-
-        assert_eq!(id_before, id_after);
-    }
-
-    #[test]
-    fn get_library_loads_glib() {
-        test_utils::ensure_gtk_init();
-
-        let success = GtkThreadState::with(|state| state.get_library("libglib-2.0.so.0").is_ok());
-
-        assert!(success);
-    }
-
-    #[test]
-    fn get_library_caches_loaded_libraries() {
-        test_utils::ensure_gtk_init();
-
-        GtkThreadState::with(|state| {
-            let _ = state.get_library("libglib-2.0.so.0");
-
-            let lib1_ptr = state.libraries.get("libglib-2.0.so.0").map(|l| l as *const _);
-
-            let _ = state.get_library("libglib-2.0.so.0");
-
-            let lib2_ptr = state.libraries.get("libglib-2.0.so.0").map(|l| l as *const _);
-
-            assert_eq!(lib1_ptr, lib2_ptr);
-        });
-    }
-
-    #[test]
-    fn get_library_returns_error_for_nonexistent() {
-        test_utils::ensure_gtk_init();
-
-        let is_err = GtkThreadState::with(|state| {
-            state
-                .get_library("libnonexistent_library_12345.so")
-                .is_err()
-        });
-
-        assert!(is_err);
-    }
-
-    #[test]
-    fn get_library_tries_comma_separated_names() {
-        test_utils::ensure_gtk_init();
-
-        let success = GtkThreadState::with(|state| {
-            state
-                .get_library("libnonexistent.so,libglib-2.0.so.0")
-                .is_ok()
-        });
-
-        assert!(success);
-    }
-
-    #[test]
-    fn manually_drop_object_map_prevents_automatic_drop() {
-        let state = GtkThreadState::default();
-
-        assert!(!std::mem::needs_drop::<ManuallyDrop<HashMap<usize, Object>>>());
-
-        drop(state);
-    }
-}

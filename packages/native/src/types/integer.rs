@@ -9,46 +9,68 @@ use neon::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntegerSize {
-
     _8,
-
     _16,
-
     _32,
-
     _64,
 }
 
-impl IntegerSize {
+impl std::fmt::Display for IntegerSize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IntegerSize::_8 => write!(f, "8"),
+            IntegerSize::_16 => write!(f, "16"),
+            IntegerSize::_32 => write!(f, "32"),
+            IntegerSize::_64 => write!(f, "64"),
+        }
+    }
+}
 
-    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
-        let size = value.downcast::<JsNumber, _>(cx).or_throw(cx)?;
+impl TryFrom<u64> for IntegerSize {
+    type Error = ();
 
-        match size.value(cx) as u64 {
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        match value {
             8 => Ok(IntegerSize::_8),
             16 => Ok(IntegerSize::_16),
             32 => Ok(IntegerSize::_32),
             64 => Ok(IntegerSize::_64),
-            _ => cx.throw_type_error("Invalid integer size"),
+            _ => Err(()),
         }
+    }
+}
+
+impl IntegerSize {
+    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
+        let size = value.downcast::<JsNumber, _>(cx).or_throw(cx)?;
+
+        (size.value(cx) as u64)
+            .try_into()
+            .or_else(|_| cx.throw_type_error("Invalid integer size"))
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntegerSign {
-
     Unsigned,
-
     Signed,
 }
 
-impl IntegerSign {
+impl std::fmt::Display for IntegerSign {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IntegerSign::Unsigned => write!(f, "unsigned"),
+            IntegerSign::Signed => write!(f, "signed"),
+        }
+    }
+}
 
+impl IntegerSign {
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let is_unsigned = value
             .downcast::<JsBoolean, _>(cx)
-            .map(|b| b.value(cx))
-            .unwrap_or(true);
+            .or_else(|_| cx.throw_type_error("'unsigned' property is required for integer types"))?
+            .value(cx);
 
         Ok(if is_unsigned {
             IntegerSign::Unsigned
@@ -60,14 +82,11 @@ impl IntegerSign {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IntegerType {
-
     pub size: IntegerSize,
-
     pub sign: IntegerSign,
 }
 
 impl IntegerType {
-
     pub fn new(size: IntegerSize, sign: IntegerSign) -> Self {
         IntegerType { size, sign }
     }
@@ -98,85 +117,3 @@ impl From<&IntegerType> for ffi::Type {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn integer_type_new_creates_correct_type() {
-        let int_type = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
-        assert_eq!(int_type.size, IntegerSize::_32);
-        assert_eq!(int_type.sign, IntegerSign::Signed);
-    }
-
-    #[test]
-    fn integer_size_equality() {
-        assert_eq!(IntegerSize::_8, IntegerSize::_8);
-        assert_eq!(IntegerSize::_16, IntegerSize::_16);
-        assert_eq!(IntegerSize::_32, IntegerSize::_32);
-        assert_eq!(IntegerSize::_64, IntegerSize::_64);
-        assert_ne!(IntegerSize::_8, IntegerSize::_16);
-    }
-
-    #[test]
-    fn integer_sign_equality() {
-        assert_eq!(IntegerSign::Signed, IntegerSign::Signed);
-        assert_eq!(IntegerSign::Unsigned, IntegerSign::Unsigned);
-        assert_ne!(IntegerSign::Signed, IntegerSign::Unsigned);
-    }
-
-    #[test]
-    fn integer_type_to_ffi_type_u8() {
-        let int_type = IntegerType::new(IntegerSize::_8, IntegerSign::Unsigned);
-        let _ffi_type: ffi::Type = (&int_type).into();
-    }
-
-    #[test]
-    fn integer_type_to_ffi_type_i8() {
-        let int_type = IntegerType::new(IntegerSize::_8, IntegerSign::Signed);
-        let _ffi_type: ffi::Type = (&int_type).into();
-    }
-
-    #[test]
-    fn integer_type_to_ffi_type_u16() {
-        let int_type = IntegerType::new(IntegerSize::_16, IntegerSign::Unsigned);
-        let _ffi_type: ffi::Type = (&int_type).into();
-    }
-
-    #[test]
-    fn integer_type_to_ffi_type_i16() {
-        let int_type = IntegerType::new(IntegerSize::_16, IntegerSign::Signed);
-        let _ffi_type: ffi::Type = (&int_type).into();
-    }
-
-    #[test]
-    fn integer_type_to_ffi_type_u32() {
-        let int_type = IntegerType::new(IntegerSize::_32, IntegerSign::Unsigned);
-        let _ffi_type: ffi::Type = (&int_type).into();
-    }
-
-    #[test]
-    fn integer_type_to_ffi_type_i32() {
-        let int_type = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
-        let _ffi_type: ffi::Type = (&int_type).into();
-    }
-
-    #[test]
-    fn integer_type_to_ffi_type_u64() {
-        let int_type = IntegerType::new(IntegerSize::_64, IntegerSign::Unsigned);
-        let _ffi_type: ffi::Type = (&int_type).into();
-    }
-
-    #[test]
-    fn integer_type_to_ffi_type_i64() {
-        let int_type = IntegerType::new(IntegerSize::_64, IntegerSign::Signed);
-        let _ffi_type: ffi::Type = (&int_type).into();
-    }
-
-    #[test]
-    fn integer_type_clone() {
-        let original = IntegerType::new(IntegerSize::_32, IntegerSign::Signed);
-        let cloned = original;
-        assert_eq!(original, cloned);
-    }
-}
