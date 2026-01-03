@@ -1,12 +1,16 @@
 {
     "name": "@gtkx/cli",
-    "version": "0.11.0",
+    "version": "0.11.1",
     "description": "CLI for GTKX - create and develop GTK4 React applications",
     "keywords": [
+        "gtkx",
         "gtk",
+        "gtk4",
         "react",
+        "typescript",
         "native",
         "linux",
+        "desktop",
         "cli",
         "scaffold",
         "hmr",

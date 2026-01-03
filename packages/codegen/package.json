@@ -3,13 +3,6 @@
     "version": "0.0.0",
     "private": true,
     "description": "Code generation tools for GTKX",
-    "keywords": [
-        "gtk",
-        "react",
-        "codegen",
-        "gir",
-        "bindings"
-    ],
     "homepage": "https://eugeniodepalo.github.io/gtkx",
     "bugs": {
         "url": "https://github.com/eugeniodepalo/gtkx/issues"

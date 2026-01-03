@@ -1,13 +1,17 @@
 {
     "name": "@gtkx/testing",
-    "version": "0.11.0",
+    "version": "0.11.1",
     "description": "Testing utilities for GTKX applications",
     "keywords": [
+        "gtkx",
         "gtk",
         "gtk4",
         "react",
+        "typescript",
         "testing",
-        "testing-library"
+        "testing-library",
+        "linux",
+        "desktop"
     ],
     "homepage": "https://eugeniodepalo.github.io/gtkx",
     "bugs": {

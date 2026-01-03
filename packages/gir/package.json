@@ -1,14 +1,16 @@
 {
     "name": "@gtkx/gir",
-    "version": "0.11.0",
+    "version": "0.11.1",
     "description": "GObject Introspection file parser for GTKX",
     "keywords": [
+        "gtkx",
         "gtk",
         "gtk4",
         "gir",
         "gobject",
         "introspection",
-        "parser"
+        "parser",
+        "typescript"
     ],
     "homepage": "https://eugeniodepalo.github.io/gtkx",
     "bugs": {

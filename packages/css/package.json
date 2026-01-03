@@ -1,14 +1,18 @@
 {
     "name": "@gtkx/css",
-    "version": "0.11.0",
+    "version": "0.11.1",
     "description": "Emotion-style CSS-in-JS for GTKX applications",
     "keywords": [
+        "gtkx",
         "gtk",
         "gtk4",
+        "react",
         "css",
         "emotion",
         "css-in-js",
-        "styling"
+        "styling",
+        "linux",
+        "desktop"
     ],
     "homepage": "https://eugeniodepalo.github.io/gtkx",
     "bugs": {
