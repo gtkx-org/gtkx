@@ -335,7 +335,6 @@ describe("createDevServer", () => {
         it("handles non-function default export during hot reload", async () => {
             const changedModule = { id: "/path/to/changed-file.tsx", importers: new Set() };
             mockModuleGraph.getModuleById.mockReturnValue(changedModule);
-            // First call loads the changed module, second call loads the entry module
             mockViteServer.ssrLoadModule
                 .mockResolvedValueOnce({ default: vi.fn() })
                 .mockResolvedValueOnce({ default: "not-a-function" });

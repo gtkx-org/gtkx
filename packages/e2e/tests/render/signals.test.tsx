@@ -41,7 +41,7 @@ describe("render - signals", () => {
                 ref.current as Gtk.Widget,
                 "state-set",
                 { type: { type: "boolean" }, value: true },
-                { type: { type: "ref", innerType: { type: "int", size: 32 } }, value: { value: 0 } },
+                { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: { value: 0 } },
             );
 
             expect(handleStateSet).toHaveBeenCalledTimes(1);
@@ -137,7 +137,7 @@ describe("render - signals", () => {
                 ref.current as Gtk.Widget,
                 "state-set",
                 { type: { type: "boolean" }, value: true },
-                { type: { type: "ref", innerType: { type: "int", size: 32 } }, value: { value: 0 } },
+                { type: { type: "ref", innerType: { type: "int", size: 32, unsigned: false } }, value: { value: 0 } },
             );
 
             expect(handleStateSet).toHaveBeenCalledWith(expect.anything(), true);

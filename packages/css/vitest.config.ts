@@ -5,6 +5,7 @@ export default defineConfig({
     plugins: [gtkx()],
     test: {
         include: ["tests/**/*.test.{ts,tsx}"],
+        setupFiles: ["./tests/setup.ts"],
         bail: 1,
     },
 });
