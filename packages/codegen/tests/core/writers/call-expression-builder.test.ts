@@ -336,7 +336,7 @@ describe("CallExpressionBuilder", () => {
     });
 
     describe("errorCheckWriter", () => {
-        it("builds error check code", () => {
+        it("builds error check code with default GLib.GError reference", () => {
             const builder = new CallExpressionBuilder();
             const project = createTestProject();
             const sourceFile = createTestSourceFile(project, "test.ts");
@@ -347,7 +347,21 @@ describe("CallExpressionBuilder", () => {
             const output = sourceFile.getFullText();
 
             expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("throw new NativeError(error.value)");
+            expect(output).toContain("throw new NativeError(getNativeObject(error.value, GLib.GError)!)");
+        });
+
+        it("builds error check code with custom GError reference", () => {
+            const builder = new CallExpressionBuilder();
+            const project = createTestProject();
+            const sourceFile = createTestSourceFile(project, "test.ts");
+            sourceFile.addFunction({
+                name: "test",
+                statements: builder.errorCheckWriter("GError"),
+            });
+            const output = sourceFile.getFullText();
+
+            expect(output).toContain("if (error.value !== null)");
+            expect(output).toContain("throw new NativeError(getNativeObject(error.value, GError)!)");
         });
     });
 

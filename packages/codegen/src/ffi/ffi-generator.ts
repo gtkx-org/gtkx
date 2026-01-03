@@ -109,6 +109,7 @@ export class FfiGenerator {
         for (const [, record] of namespace.records) {
             if (this.shouldGenerateRecord(record)) {
                 this.ctx.reset();
+                this.ctx.currentNamespace = this.options.namespace;
                 const fileName = `${toKebabCase(record.name)}.ts`;
                 const sourceFile = this.createSourceFile(fileName);
 
@@ -166,6 +167,7 @@ export class FfiGenerator {
         const sortedClasses = this.topologicalSortClasses([...namespace.classes.values()]);
         for (const cls of sortedClasses) {
             this.ctx.reset();
+            this.ctx.currentNamespace = this.options.namespace;
 
             const classGenerator = new ClassGenerator(
                 cls,
@@ -214,6 +216,7 @@ export class FfiGenerator {
 
         for (const [, iface] of namespace.interfaces) {
             this.ctx.reset();
+            this.ctx.currentNamespace = this.options.namespace;
             const fileName = `${toKebabCase(iface.name)}.ts`;
             const sourceFile = this.createSourceFile(fileName);
 
@@ -229,6 +232,7 @@ export class FfiGenerator {
         const standaloneFunctions = [...namespace.functions.values()];
         if (standaloneFunctions.length > 0) {
             this.ctx.reset();
+            this.ctx.currentNamespace = this.options.namespace;
 
             const functionGenerator = new FunctionGenerator(this.ffiMapper, this.ctx, writers, generatorOptions);
 

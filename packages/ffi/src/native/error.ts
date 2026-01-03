@@ -1,4 +1,10 @@
-import { read } from "@gtkx/native";
+import type { NativeObject } from "./base.js";
+
+export interface GErrorLike extends NativeObject {
+    readonly domain: number;
+    readonly code: number;
+    readonly message: string;
+}
 
 /**
  * Error class wrapping GLib GError structures.
@@ -18,28 +24,29 @@ import { read } from "@gtkx/native";
  * ```
  */
 export class NativeError extends Error {
-    /** Native error pointer */
-    readonly id: unknown;
+    readonly gerror: GErrorLike;
 
-    /** GLib error domain (quark) */
-    readonly domain: number;
+    get id(): unknown {
+        return this.gerror.id;
+    }
 
-    /** Error code within the domain */
-    readonly code: number;
+    get domain(): number {
+        return this.gerror.domain;
+    }
+
+    get code(): number {
+        return this.gerror.code;
+    }
 
     /**
-     * Creates a NativeError from a GError pointer.
+     * Creates a NativeError from a GError instance.
      *
-     * @param id - Native GError pointer
+     * @param gerror - GError wrapper instance
      */
-    constructor(id: unknown) {
-        const message = read(id, { type: "string", ownership: "none" }, 8) as string;
-        super(message ?? "Unknown error");
+    constructor(gerror: GErrorLike) {
+        super(gerror.message ?? "Unknown error");
 
-        this.id = id;
-        this.domain = read(id, { type: "int", size: 32, unsigned: true }, 0) as number;
-        this.code = read(id, { type: "int", size: 32, unsigned: false }, 4) as number;
-
+        this.gerror = gerror;
         this.name = "NativeError";
 
         if (Error.captureStackTrace) {

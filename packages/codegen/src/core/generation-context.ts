@@ -69,6 +69,9 @@ export class GenerationContext {
     /** Whether the module uses NativeError */
     usesNativeError = false;
 
+    /** Current namespace being generated (for determining GError import path) */
+    currentNamespace: string | undefined = undefined;
+
     /** Whether the module uses NativeObject base class */
     usesNativeObject = false;
 
@@ -130,6 +133,7 @@ export class GenerationContext {
         this.usesWrite = false;
         this.usesAlloc = false;
         this.usesNativeError = false;
+        this.currentNamespace = undefined;
         this.usesNativeObject = false;
         this.usesGetNativeObject = false;
         this.usesRegisterNativeClass = false;

@@ -646,11 +646,40 @@ export class MethodBodyWriter {
         };
     }
 
-    private writeErrorCheck(writer: Parameters<WriterFunction>[0]): void {
+    /**
+     * Sets up GError import tracking and returns the appropriate GError reference.
+     * Call this when generating error handling code that uses getNativeObject with GError.
+     *
+     * @returns The GError class reference to use (e.g., "GLib.GError" or "GError")
+     */
+    setupGErrorImports(): string {
         this.ctx.usesNativeError = true;
+        this.ctx.usesGetNativeObject = true;
+
+        const isGLibNamespace = this.ctx.currentNamespace === "GLib";
+        const gerrorRef = isGLibNamespace ? "GError" : "GLib.GError";
+
+        if (isGLibNamespace) {
+            this.ctx.usedRecords.add("GError");
+            this.ctx.recordNameToFile.set("GError", "Error");
+        } else {
+            this.ctx.usedExternalTypes.set("GLib.GError", {
+                namespace: "GLib",
+                name: "Error",
+                transformedName: "GError",
+                kind: "record",
+            });
+        }
+
+        return gerrorRef;
+    }
+
+    private writeErrorCheck(writer: Parameters<WriterFunction>[0]): void {
+        const gerrorRef = this.setupGErrorImports();
+
         writer.writeLine("if (error.value !== null) {");
         writer.indent(() => {
-            writer.writeLine("throw new NativeError(error.value);");
+            writer.writeLine(`throw new NativeError(getNativeObject(error.value, ${gerrorRef})!);`);
         });
         writer.writeLine("}");
     }
@@ -746,12 +775,7 @@ export class MethodBodyWriter {
             writer.writeLine(");");
 
             if (throws) {
-                this.ctx.usesNativeError = true;
-                writer.writeLine("if (error.value !== null) {");
-                writer.indent(() => {
-                    writer.writeLine("throw new NativeError(error.value);");
-                });
-                writer.writeLine("}");
+                this.writeErrorCheck(writer);
             }
 
             this.ctx.usesGetNativeObject = true;

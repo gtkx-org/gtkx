@@ -135,12 +135,14 @@ export class CallExpressionBuilder {
 
     /**
      * Builds error checking code as WriterFunction.
+     *
+     * @param gerrorRef - The GError class reference (e.g., "GLib.GError" or "GError")
      */
-    errorCheckWriter(): WriterFunction {
+    errorCheckWriter(gerrorRef = "GLib.GError"): WriterFunction {
         return (writer) => {
             writer.writeLine("if (error.value !== null) {");
             writer.indent(() => {
-                writer.writeLine("throw new NativeError(error.value);");
+                writer.writeLine(`throw new NativeError(getNativeObject(error.value, ${gerrorRef})!);`);
             });
             writer.writeLine("}");
         };

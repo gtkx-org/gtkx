@@ -290,10 +290,13 @@ export class MethodBuilder {
                                 }
 
                                 if (finishMethod.throws) {
-                                    this.ctx.usesNativeError = true;
+                                    const gerrorRef = this.methodBody.setupGErrorImports();
+
                                     writer.writeLine("if (error.value !== null) {");
                                     writer.indent(() => {
-                                        writer.writeLine("reject(new NativeError(error.value));");
+                                        writer.writeLine(
+                                            `reject(new NativeError(getNativeObject(error.value, ${gerrorRef})!));`,
+                                        );
                                         writer.writeLine("return;");
                                     });
                                     writer.writeLine("}");
