@@ -19,6 +19,3 @@ export const FFI_IMPORT_NATIVE_BASE = "../../native/base.js";
 
 /** Path to class registry module. */
 export const FFI_IMPORT_REGISTRY = "../../registry.js";
-
-/** Path to type definitions and signal resolution module. */
-export const FFI_IMPORT_TYPES = "../../types.js";

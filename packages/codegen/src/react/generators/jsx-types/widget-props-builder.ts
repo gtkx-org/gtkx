@@ -11,7 +11,7 @@ import type { OptionalKind, PropertySignatureStructure, SourceFile } from "ts-mo
 import type { PropertyAnalysis, SignalAnalysis, SignalParam } from "../../../core/generator-types.js";
 import { sanitizeDoc } from "../../../core/utils/doc-formatter.js";
 import { toPascalCase } from "../../../core/utils/naming.js";
-import { qualifyType as baseQualifyType } from "../../../core/utils/type-qualification.js";
+import { qualifyType } from "../../../core/utils/type-qualification.js";
 import type { JsxWidget } from "./generator.js";
 
 type PropStructure = OptionalKind<PropertySignatureStructure>;
@@ -67,7 +67,7 @@ export class WidgetPropsBuilder {
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
             return {
                 name: prop.camelName,
-                type: `${this.qualifyType(prop.type, namespace)} | null`,
+                type: `${qualifyType(prop.type, namespace)} | null`,
                 hasQuestionToken: true,
                 docs: prop.doc ? [{ description: this.formatDocDescription(prop.doc, namespace) }] : undefined,
             };
@@ -110,7 +110,7 @@ export class WidgetPropsBuilder {
 
         for (const prop of properties) {
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
-            const qualifiedType = this.qualifyType(prop.type, namespace);
+            const qualifiedType = qualifyType(prop.type, namespace);
             const isOptional = !prop.isRequired;
             allPropertyStructures.push({
                 name: prop.camelName,
@@ -279,10 +279,6 @@ export class WidgetPropsBuilder {
         const otherParams = signal.parameters.map((p: SignalParam) => `${p.name}: ${p.type}`).join(", ");
         const params = otherParams ? `${selfParam}, ${otherParams}` : selfParam;
         return `(${params}) => ${signal.returnType}`;
-    }
-
-    private qualifyType(tsType: string, namespace: string): string {
-        return baseQualifyType(tsType, namespace);
     }
 
     private formatDocDescription(doc: string, namespace: string): string {

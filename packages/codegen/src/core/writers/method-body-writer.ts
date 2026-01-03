@@ -12,6 +12,7 @@ import type { GenerationContext } from "../generation-context.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType, SelfTypeDescriptor } from "../type-system/ffi-types.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
+import { isVararg } from "../utils/filtering.js";
 import { toCamelCase, toValidIdentifier } from "../utils/naming.js";
 import { formatNullableReturn } from "../utils/type-qualification.js";
 import { type CallArgument, type CallbackWrapperInfo, CallExpressionBuilder } from "./call-expression-builder.js";
@@ -153,18 +154,11 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Checks if a parameter is varargs.
-     */
-    isVararg(param: NormalizedParameter): boolean {
-        return param.name === "..." || param.name === "";
-    }
-
-    /**
      * Filters parameters to get only the ones that should be in the function signature.
      * Removes varargs and closure target parameters.
      */
     filterParameters(parameters: readonly NormalizedParameter[]): NormalizedParameter[] {
-        return parameters.filter((p) => !this.isVararg(p) && !this.ffiMapper.isClosureTarget(p, parameters));
+        return parameters.filter((p) => !isVararg(p) && !this.ffiMapper.isClosureTarget(p, parameters));
     }
 
     /**
@@ -205,7 +199,7 @@ export class MethodBodyWriter {
      */
     selectConstructors(constructors: readonly NormalizedConstructor[]): ConstructorSelection {
         const supported = constructors.filter((c) => !this.hasUnsupportedCallbacks(c.parameters));
-        const main = supported.find((c) => !c.parameters.some((p) => this.isVararg(p)));
+        const main = supported.find((c) => !c.parameters.some(isVararg));
         return { supported, main };
     }
 
@@ -428,10 +422,7 @@ export class MethodBodyWriter {
         };
     }
 
-    writeCallbackWrapperDeclarations(
-        writer: Parameters<WriterFunction>[0],
-        args: readonly CallArgument[],
-    ): void {
+    writeCallbackWrapperDeclarations(writer: Parameters<WriterFunction>[0], args: readonly CallArgument[]): void {
         for (const arg of args) {
             if (arg.callbackWrapper) {
                 writer.write(`const ${arg.callbackWrapper.wrappedName} = `);

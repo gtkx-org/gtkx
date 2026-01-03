@@ -1,6 +1,5 @@
 import type { GirRepository } from "@gtkx/gir";
 import { describe, expect, it } from "vitest";
-import { GenerationContext } from "../../../../src/core/generation-context.js";
 import {
     type WidgetMetaAnalyzers,
     WidgetMetaBuilder,
@@ -14,7 +13,6 @@ import {
     qualifiedName,
 } from "../../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../../fixtures/mock-repository.js";
-import { createTestProject, createTestSourceFile, getGeneratedCode } from "../../../fixtures/ts-morph-helpers.js";
 
 function createMockAnalyzers(): WidgetMetaAnalyzers {
     return {
@@ -54,16 +52,11 @@ function createTestSetup(
     ns.classes.set(cls.name, cls);
 
     const repo = createMockRepository(namespaces);
-    const ctx = new GenerationContext();
     const analyzers = { ...createMockAnalyzers(), ...analyzerOverrides };
 
-    const project = createTestProject();
-    const sourceFile = createTestSourceFile(project, "button.ts");
-    const classDecl = sourceFile.addClass({ name: "Button" });
+    const builder = new WidgetMetaBuilder(cls, repo as unknown as GirRepository, "Gtk", analyzers);
 
-    const builder = new WidgetMetaBuilder(cls, repo as unknown as GirRepository, ctx, "Gtk", analyzers);
-
-    return { cls, builder, ctx, classDecl, sourceFile, analyzers, repo };
+    return { cls, builder, analyzers, repo };
 }
 
 describe("WidgetMetaBuilder", () => {
@@ -76,10 +69,8 @@ describe("WidgetMetaBuilder", () => {
 
     describe("isWidget", () => {
         it("returns true for class that extends Widget", () => {
-            const { cls } = createTestSetup();
-
-            const isSubclass = cls.isSubclassOf(qualifiedName("Gtk", "Widget"));
-            expect(isSubclass).toBe(true);
+            const { builder } = createTestSetup();
+            expect(builder.isWidget()).toBe(true);
         });
 
         it("returns false for class that does not extend Widget", () => {
@@ -91,145 +82,12 @@ describe("WidgetMetaBuilder", () => {
             });
             ns.classes.set("Object", cls);
             const namespaces = new Map([["GObject", ns]]);
-            createMockRepository(namespaces);
-
-            const isSubclass = cls.isSubclassOf(qualifiedName("Gtk", "Widget"));
-            expect(isSubclass).toBe(false);
-        });
-    });
-
-    describe("setSignalEntries", () => {
-        it("accepts signal entries array", () => {
-            const { builder } = createTestSetup();
-
-            expect(() =>
-                builder.setSignalEntries([
-                    {
-                        name: "clicked",
-                        params: [],
-                        returnType: (w) => w.write('{ type: "undefined" }'),
-                    },
-                ]),
-            ).not.toThrow();
-        });
-    });
-
-    describe("addToClass", () => {
-        it("returns false for non-widget class", () => {
-            const { classDecl } = createTestSetup();
-
-            const cls = createNormalizedClass({
-                name: "Object",
-                qualifiedName: qualifiedName("GObject", "Object"),
-                parent: null,
-            });
-
-            const repo = createMockRepository(new Map());
-            const ctx = new GenerationContext();
+            const repo = createMockRepository(namespaces);
             const analyzers = createMockAnalyzers();
 
-            const builder = new WidgetMetaBuilder(cls, repo as unknown as GirRepository, ctx, "GObject", analyzers);
+            const builder = new WidgetMetaBuilder(cls, repo as unknown as GirRepository, "GObject", analyzers);
 
-            const result = builder.addToClass(classDecl);
-
-            expect(result).toBe(false);
-        });
-
-        it("adds WIDGET_META property to class", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup();
-
-            builder.addToClass(classDecl);
-
-            const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("WIDGET_META");
-        });
-
-        it("WIDGET_META is static", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup();
-
-            builder.addToClass(classDecl);
-
-            const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("static");
-        });
-
-        it("WIDGET_META is readonly", () => {
-            const { builder, classDecl, sourceFile } = createTestSetup();
-
-            builder.addToClass(classDecl);
-
-            const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("readonly");
-        });
-    });
-
-    describe("context updates", () => {
-        it("sets usesRuntimeWidgetMeta flag when adding WIDGET_META", () => {
-            const { builder, classDecl, ctx } = createTestSetup();
-
-            builder.addToClass(classDecl);
-
-            expect(ctx.usesRuntimeWidgetMeta).toBe(true);
-        });
-    });
-
-    describe("computeMetadata", () => {
-        it("returns metadata object with isContainer", () => {
-            const { builder } = createTestSetup();
-
-            const metadata = builder.computeMetadata();
-
-            expect(metadata).toHaveProperty("isContainer");
-        });
-
-        it("returns metadata object with slots array", () => {
-            const { builder } = createTestSetup();
-
-            const metadata = builder.computeMetadata();
-
-            expect(metadata).toHaveProperty("slots");
-            expect(Array.isArray(metadata.slots)).toBe(true);
-        });
-
-        it("returns metadata object with propNames array", () => {
-            const { builder } = createTestSetup();
-
-            const metadata = builder.computeMetadata();
-
-            expect(metadata).toHaveProperty("propNames");
-            expect(Array.isArray(metadata.propNames)).toBe(true);
-        });
-
-        it("detects container from append method", () => {
-            const { builder } = createTestSetup({
-                methods: [
-                    createNormalizedMethod({
-                        name: "append",
-                        cIdentifier: "gtk_box_append",
-                        returnType: createNormalizedType({ name: "none" }),
-                    }),
-                ],
-            });
-
-            const metadata = builder.computeMetadata();
-
-            expect(metadata.isContainer).toBe(true);
-        });
-
-        it("detects container from set_child method", () => {
-            const { builder } = createTestSetup({
-                methods: [
-                    createNormalizedMethod({
-                        name: "set_child",
-                        cIdentifier: "gtk_button_set_child",
-                        returnType: createNormalizedType({ name: "none" }),
-                    }),
-                ],
-            });
-
-            const metadata = builder.computeMetadata();
-
-            expect(metadata.isContainer).toBe(true);
+            expect(builder.isWidget()).toBe(false);
         });
     });
 
@@ -242,10 +100,9 @@ describe("WidgetMetaBuilder", () => {
             });
 
             const repo = createMockRepository(new Map());
-            const ctx = new GenerationContext();
             const analyzers = createMockAnalyzers();
 
-            const builder = new WidgetMetaBuilder(cls, repo as unknown as GirRepository, ctx, "GObject", analyzers);
+            const builder = new WidgetMetaBuilder(cls, repo as unknown as GirRepository, "GObject", analyzers);
 
             const result = builder.buildCodegenWidgetMeta();
 
@@ -291,6 +148,56 @@ describe("WidgetMetaBuilder", () => {
 
             expect(result?.modulePath).toBe("./button.js");
         });
+
+        it("includes isContainer in CodegenWidgetMeta", () => {
+            const { builder } = createTestSetup();
+
+            const result = builder.buildCodegenWidgetMeta();
+
+            expect(result).toHaveProperty("isContainer");
+            expect(typeof result?.isContainer).toBe("boolean");
+        });
+
+        it("includes slots in CodegenWidgetMeta", () => {
+            const { builder } = createTestSetup();
+
+            const result = builder.buildCodegenWidgetMeta();
+
+            expect(result).toHaveProperty("slots");
+            expect(Array.isArray(result?.slots)).toBe(true);
+        });
+
+        it("detects container from append method", () => {
+            const { builder } = createTestSetup({
+                methods: [
+                    createNormalizedMethod({
+                        name: "append",
+                        cIdentifier: "gtk_box_append",
+                        returnType: createNormalizedType({ name: "none" }),
+                    }),
+                ],
+            });
+
+            const result = builder.buildCodegenWidgetMeta();
+
+            expect(result?.isContainer).toBe(true);
+        });
+
+        it("detects container from set_child method", () => {
+            const { builder } = createTestSetup({
+                methods: [
+                    createNormalizedMethod({
+                        name: "set_child",
+                        cIdentifier: "gtk_button_set_child",
+                        returnType: createNormalizedType({ name: "none" }),
+                    }),
+                ],
+            });
+
+            const result = builder.buildCodegenWidgetMeta();
+
+            expect(result?.isContainer).toBe(true);
+        });
     });
 
     describe("slot detection", () => {
@@ -299,9 +206,9 @@ describe("WidgetMetaBuilder", () => {
                 properties: [],
             });
 
-            const metadata = builder.computeMetadata();
+            const result = builder.buildCodegenWidgetMeta();
 
-            expect(metadata.slots).toHaveLength(0);
+            expect(result?.slots).toHaveLength(0);
         });
 
         it("includes writable widget-type properties as slots", () => {
@@ -328,9 +235,9 @@ describe("WidgetMetaBuilder", () => {
                 namespaces,
             );
 
-            const metadata = builder.computeMetadata();
+            const result = builder.buildCodegenWidgetMeta();
 
-            expect(metadata.slots).toContain("child");
+            expect(result?.slots).toContain("child");
         });
 
         it("excludes non-writable widget properties from slots", () => {
@@ -344,9 +251,9 @@ describe("WidgetMetaBuilder", () => {
                 ],
             });
 
-            const metadata = builder.computeMetadata();
+            const result = builder.buildCodegenWidgetMeta();
 
-            expect(metadata.slots).not.toContain("child");
+            expect(result?.slots).not.toContain("child");
         });
     });
 
@@ -404,10 +311,9 @@ describe("WidgetMetaBuilder", () => {
             gtkNs.classes.set("Widget", widgetClass);
             const namespaces = new Map([["Gtk", gtkNs]]);
             const repo = createMockRepository(namespaces);
-            const ctx = new GenerationContext();
             const analyzers = createMockAnalyzers();
 
-            const builder = new WidgetMetaBuilder(widgetClass, repo as unknown as GirRepository, ctx, "Gtk", analyzers);
+            const builder = new WidgetMetaBuilder(widgetClass, repo as unknown as GirRepository, "Gtk", analyzers);
 
             const result = builder.buildCodegenWidgetMeta();
 

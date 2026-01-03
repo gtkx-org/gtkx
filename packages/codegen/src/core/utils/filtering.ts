@@ -1,5 +1,11 @@
 import { toCamelCase } from "./naming.js";
 
+type ParameterLike = { readonly name: string };
+
+export const isVararg = (param: ParameterLike): boolean => param.name === "..." || param.name === "";
+
+export const filterVarargs = <T extends ParameterLike>(params: readonly T[]): T[] => params.filter((p) => !isVararg(p));
+
 const toMethodKey = (name: string, cIdentifier: string): string => `${toCamelCase(name)}:${cIdentifier}`;
 
 export const isMethodDuplicate = (name: string, cIdentifier: string, seen: Set<string>): boolean => {

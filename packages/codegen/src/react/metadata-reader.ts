@@ -2,10 +2,7 @@
  * Metadata Reader
  *
  * Reads widget data from CodegenWidgetMeta.
- * Provides access to property/signal analysis computed during FFI generation.
- *
- * Note: Widget classification (isContainer, slots, isListWidget, etc.) is NOT provided here.
- * Those values are derived from the FFI AST by the JSX generators.
+ * Provides access to all widget metadata computed during FFI generation.
  */
 
 import type { CodegenWidgetMeta } from "../core/codegen-metadata.js";
@@ -34,8 +31,7 @@ export function sortWidgetsByClassName<T extends { className: string }>(widgets:
 }
 
 /**
- * Simplified widget info from metadata.
- * Does NOT include derived fields (isContainer, slots) or analysis results (properties, signals).
+ * Widget info from metadata.
  * Uses Pick<> to derive from CodegenWidgetMeta for DRY compliance.
  */
 export type WidgetInfo = Pick<
@@ -43,6 +39,8 @@ export type WidgetInfo = Pick<
     | "className"
     | "jsxName"
     | "namespace"
+    | "isContainer"
+    | "slots"
     | "propNames"
     | "signalNames"
     | "parentClassName"
@@ -50,63 +48,38 @@ export type WidgetInfo = Pick<
     | "constructorParams"
 >;
 
-/**
- * Reads widget data from CodegenWidgetMeta.
- *
- * Provides access to metadata computed during FFI generation (properties, signals, etc.).
- * Widget classification (isContainer, slots) is derived from the FFI AST by JSX generators.
- *
- * @example
- * ```typescript
- * const reader = new MetadataReader(widgetMetaArray);
- *
- * // Get all widgets
- * const widgets = reader.getAllWidgets();
- * const sortedWidgets = reader.getWidgetsSorted();
- * ```
- */
 export class MetadataReader {
     private readonly widgetsByJsxName = new Map<string, WidgetInfo>();
+    private readonly widgetsByNamespaceClass = new Map<string, WidgetInfo>();
 
     constructor(private readonly allMeta: readonly CodegenWidgetMeta[]) {
         for (const meta of allMeta) {
             const widgetInfo = this.toWidgetInfo(meta);
             this.widgetsByJsxName.set(meta.jsxName, widgetInfo);
+            this.widgetsByNamespaceClass.set(`${meta.namespace}.${meta.className}`, widgetInfo);
         }
     }
 
-    /**
-     * Gets all widgets.
-     */
     getAllWidgets(): WidgetInfo[] {
         return Array.from(this.widgetsByJsxName.values());
     }
 
-    /**
-     * Gets a specific widget by JSX name (e.g., "GtkButton", "AdwHeaderBar").
-     */
     getWidget(jsxName: string): WidgetInfo | null {
         return this.widgetsByJsxName.get(jsxName) ?? null;
     }
 
-    /**
-     * Gets all widgets sorted for JSX generation.
-     * Widget first, then Window, then alphabetically.
-     */
+    getWidgetByNamespaceClass(namespace: string, className: string): WidgetInfo | null {
+        return this.widgetsByNamespaceClass.get(`${namespace}.${className}`) ?? null;
+    }
+
     getWidgetsSorted(): WidgetInfo[] {
         return sortWidgetsByClassName(this.getAllWidgets());
     }
 
-    /**
-     * Gets prop names for a widget by JSX name.
-     */
     getPropNames(jsxName: string): readonly string[] {
         return this.getWidget(jsxName)?.propNames ?? [];
     }
 
-    /**
-     * Gets all CodegenWidgetMeta.
-     */
     getAllCodegenMeta(): readonly CodegenWidgetMeta[] {
         return this.allMeta;
     }

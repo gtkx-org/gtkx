@@ -130,28 +130,6 @@ describe("ImportsBuilder", () => {
             });
         });
 
-        describe("signal meta imports", () => {
-            it("collects resolveSignalMeta", () => {
-                const { ctx, builder } = createTestSetup();
-                ctx.usesResolveSignalMeta = true;
-
-                const imports = builder.collectImports();
-
-                const import_ = imports.find((i) => i.namedImports?.includes("resolveSignalMeta"));
-                expect(import_).toBeDefined();
-            });
-
-            it("collects RuntimeWidgetMeta as type-only", () => {
-                const { ctx, builder } = createTestSetup();
-                ctx.usesRuntimeWidgetMeta = true;
-
-                const imports = builder.collectImports();
-
-                const import_ = imports.find((i) => i.typeOnlyImports?.includes("RuntimeWidgetMeta"));
-                expect(import_).toBeDefined();
-            });
-        });
-
         describe("enum imports", () => {
             it("collects enums from ./enums.js", () => {
                 const { ctx, builder } = createTestSetup();
@@ -477,22 +455,6 @@ describe("ImportsBuilder", () => {
             const imports = sourceFile.getImportDeclarations();
             const gdkImport = imports.find((i) => i.getNamespaceImport()?.getText() === "Gdk");
             expect(gdkImport).toBeDefined();
-        });
-
-        it("creates type-only imports correctly", () => {
-            const project = createTestProject();
-            const sourceFile = createTestSourceFile(project, "test.ts");
-
-            const { ctx, builder } = createTestSetup();
-            ctx.usesRuntimeWidgetMeta = true;
-
-            builder.applyToSourceFile(sourceFile);
-
-            const imports = sourceFile.getImportDeclarations();
-            const typeImport = imports.find((i) =>
-                i.getNamedImports().some((n) => n.getName() === "RuntimeWidgetMeta" && n.isTypeOnly()),
-            );
-            expect(typeImport).toBeDefined();
         });
     });
 });

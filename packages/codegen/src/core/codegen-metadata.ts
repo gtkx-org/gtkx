@@ -14,9 +14,8 @@ import type { PropertyAnalysis, SignalAnalysis } from "./generator-types.js";
 /**
  * Codegen-only widget metadata attached to SourceFiles.
  *
- * Contains information that would be LOST after GIR parsing and cannot be
- * derived from the generated FFI AST. React generators derive other information
- * (isContainer, slots, widget classification) directly from the FFI AST.
+ * All widget metadata is computed once during FFI generation and passed
+ * to React generators via this structure. Nothing is written to output files.
  */
 export type CodegenWidgetMeta = {
     /** Class name (e.g., "Button") */
@@ -25,6 +24,10 @@ export type CodegenWidgetMeta = {
     readonly namespace: string;
     /** Full JSX element name (e.g., "GtkButton") */
     readonly jsxName: string;
+    /** Widget can contain children */
+    readonly isContainer: boolean;
+    /** Named slots for child widgets (kebab-case) */
+    readonly slots: readonly string[];
     /** All writable property names (kebab-case) - for internal.ts PROPS map */
     readonly propNames: readonly string[];
     /** All signal names (kebab-case) */
@@ -48,28 +51,6 @@ export type CodegenWidgetMeta = {
  *
  * Metadata is populated by FfiGenerator and consumed by React generators.
  * Since codegen is a short-lived process, we use a simple Map for storage.
- *
- * @example
- * ```typescript
- * const metadata = new CodegenMetadata();
- *
- * // FFI generator attaches metadata
- * metadata.setWidgetMeta(buttonSourceFile, {
- *     className: "Button",
- *     namespace: "Gtk",
- *     jsxName: "GtkButton",
- *     propNames: ["label", "icon-name"],
- *     signalNames: ["clicked"],
- *     parentClassName: "Widget",
- *     modulePath: "./gtk/button.js",
- *     properties: [...],
- *     signals: [...],
- * });
- *
- * // React generator reads metadata (no GIR or AST parsing needed)
- * // isContainer/slots are derived from FFI AST, not stored in metadata
- * const meta = metadata.getWidgetMeta(buttonSourceFile);
- * ```
  */
 export class CodegenMetadata {
     private readonly widgetMeta = new Map<SourceFile, CodegenWidgetMeta>();

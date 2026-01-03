@@ -58,9 +58,7 @@ export class ParamWrapWriter {
         return `getNativeObject(${argName}) as ${wrapInfo.tsType}`;
     }
 
-    buildWrapParamsFunction(
-        params: Array<{ mappedType: MappedType; paramName: string }>,
-    ): WriterFunction | null {
+    buildWrapParamsFunction(params: Array<{ mappedType: MappedType; paramName: string }>): WriterFunction | null {
         const wrapInfos = params.map((p) => ({
             ...p,
             wrapInfo: this.needsParamWrap(p.mappedType),
@@ -79,10 +77,7 @@ export class ParamWrapWriter {
         };
     }
 
-    buildCallbackWrapperExpression(
-        jsParamName: string,
-        wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>,
-    ): WriterFunction {
+    buildCallbackWrapperExpression(jsParamName: string, wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>): WriterFunction {
         return (writer) => {
             writer.write(`${jsParamName} ? (...args: unknown[]) => `);
             writer.write(`${jsParamName}(`);

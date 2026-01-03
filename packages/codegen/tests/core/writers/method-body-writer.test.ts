@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GenerationContext } from "../../../src/core/generation-context.js";
 import { FfiMapper } from "../../../src/core/type-system/ffi-mapper.js";
 import type { MappedType } from "../../../src/core/type-system/ffi-types.js";
+import { isVararg } from "../../../src/core/utils/filtering.js";
 import { FfiTypeWriter } from "../../../src/core/writers/ffi-type-writer.js";
 import { MethodBodyWriter } from "../../../src/core/writers/method-body-writer.js";
 import {
@@ -40,29 +41,23 @@ describe("MethodBodyWriter", () => {
         });
     });
 
-    describe("isVararg", () => {
+    describe("isVararg (standalone function)", () => {
         it("returns true for ... parameter", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const param = createNormalizedParameter({ name: "..." });
 
-            expect(writer.isVararg(param)).toBe(true);
+            expect(isVararg(param)).toBe(true);
         });
 
         it("returns true for empty name parameter", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const param = createNormalizedParameter({ name: "" });
 
-            expect(writer.isVararg(param)).toBe(true);
+            expect(isVararg(param)).toBe(true);
         });
 
         it("returns false for regular parameter", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const param = createNormalizedParameter({ name: "label" });
 
-            expect(writer.isVararg(param)).toBe(false);
+            expect(isVararg(param)).toBe(false);
         });
     });
 

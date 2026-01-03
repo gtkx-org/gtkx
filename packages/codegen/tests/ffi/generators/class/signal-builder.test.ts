@@ -53,124 +53,6 @@ describe("SignalBuilder", () => {
         });
     });
 
-    describe("collectOwnSignals", () => {
-        it("returns empty array when no signals", () => {
-            const { builder } = createTestSetup({ signals: [] });
-
-            const signals = builder.collectOwnSignals();
-
-            expect(signals).toHaveLength(0);
-        });
-
-        it("returns signals defined on the class", () => {
-            const { builder } = createTestSetup({
-                signals: [createNormalizedSignal({ name: "clicked" }), createNormalizedSignal({ name: "activate" })],
-            });
-
-            const signals = builder.collectOwnSignals();
-
-            expect(signals).toHaveLength(2);
-            expect(signals[0].name).toBe("clicked");
-            expect(signals[1].name).toBe("activate");
-        });
-    });
-
-    describe("buildSignalMetaEntries", () => {
-        it("returns empty array when no signals", () => {
-            const { builder } = createTestSetup({ signals: [] });
-
-            const entries = builder.buildSignalMetaEntries();
-
-            expect(entries).toHaveLength(0);
-        });
-
-        it("builds entry for signal without parameters", () => {
-            const { builder } = createTestSetup({
-                signals: [createNormalizedSignal({ name: "clicked", parameters: [] })],
-            });
-
-            const entries = builder.buildSignalMetaEntries();
-
-            expect(entries).toHaveLength(1);
-            expect(entries[0].name).toBe("clicked");
-            expect(entries[0].params).toHaveLength(0);
-        });
-
-        it("builds entry for signal with parameters", () => {
-            const { builder } = createTestSetup({
-                signals: [
-                    createNormalizedSignal({
-                        name: "value_changed",
-                        parameters: [
-                            createNormalizedParameter({
-                                name: "value",
-                                type: createNormalizedType({ name: "gint" }),
-                            }),
-                        ],
-                    }),
-                ],
-            });
-
-            const entries = builder.buildSignalMetaEntries();
-
-            expect(entries).toHaveLength(1);
-            expect(entries[0].name).toBe("value_changed");
-            expect(entries[0].params).toHaveLength(1);
-        });
-
-        it("filters out varargs from signal parameters", () => {
-            const { builder } = createTestSetup({
-                signals: [
-                    createNormalizedSignal({
-                        name: "custom",
-                        parameters: [
-                            createNormalizedParameter({
-                                name: "value",
-                                type: createNormalizedType({ name: "gint" }),
-                            }),
-                            createNormalizedParameter({ name: "..." }),
-                        ],
-                    }),
-                ],
-            });
-
-            const entries = builder.buildSignalMetaEntries();
-
-            expect(entries[0].params).toHaveLength(1);
-        });
-
-        it("includes return type when signal has return value", () => {
-            const { builder } = createTestSetup({
-                signals: [
-                    createNormalizedSignal({
-                        name: "query",
-                        returnType: createNormalizedType({ name: "gboolean" }),
-                        parameters: [],
-                    }),
-                ],
-            });
-
-            const entries = builder.buildSignalMetaEntries();
-
-            expect(entries[0].returnType).toBeDefined();
-        });
-
-        it("builds entries for multiple signals", () => {
-            const { builder } = createTestSetup({
-                signals: [
-                    createNormalizedSignal({ name: "clicked" }),
-                    createNormalizedSignal({ name: "activate" }),
-                    createNormalizedSignal({ name: "toggled" }),
-                ],
-            });
-
-            const entries = builder.buildSignalMetaEntries();
-
-            expect(entries).toHaveLength(3);
-            expect(entries.map((e) => e.name)).toEqual(["clicked", "activate", "toggled"]);
-        });
-    });
-
     describe("buildConnectMethodStructures", () => {
         it("returns empty array when no signals", () => {
             const { builder } = createTestSetup({ signals: [] });
@@ -266,26 +148,6 @@ describe("SignalBuilder", () => {
             expect(ctx.usesCall).toBe(true);
         });
 
-        it("sets usesResolveSignalMeta flag when building connect method", () => {
-            const { builder, ctx } = createTestSetup({
-                signals: [createNormalizedSignal({ name: "clicked" })],
-            });
-
-            builder.buildConnectMethodStructures();
-
-            expect(ctx.usesResolveSignalMeta).toBe(true);
-        });
-
-        it("sets usesType flag when building connect method", () => {
-            const { builder, ctx } = createTestSetup({
-                signals: [createNormalizedSignal({ name: "clicked" })],
-            });
-
-            builder.buildConnectMethodStructures();
-
-            expect(ctx.usesType).toBe(true);
-        });
-
         it("sets usesGetNativeObject flag when building connect method", () => {
             const { builder, ctx } = createTestSetup({
                 signals: [createNormalizedSignal({ name: "clicked" })],
@@ -347,7 +209,7 @@ describe("SignalBuilder", () => {
     });
 
     describe("integration", () => {
-        it("builds complete signal infrastructure", () => {
+        it("builds connect method with switch cases for signals", () => {
             const { builder } = createTestSetup({
                 signals: [
                     createNormalizedSignal({
@@ -366,10 +228,8 @@ describe("SignalBuilder", () => {
                 ],
             });
 
-            const metaEntries = builder.buildSignalMetaEntries();
             const connectStructures = builder.buildConnectMethodStructures();
 
-            expect(metaEntries).toHaveLength(2);
             expect(connectStructures).toHaveLength(1);
             expect(connectStructures[0].overloads?.length).toBeGreaterThanOrEqual(2);
         });

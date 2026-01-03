@@ -643,5 +643,4 @@ type ResolvedType = {
     glibTypeName?: string;
     glibGetType?: string;
     isPlainStruct?: boolean;
-    sharedLibrary?: string;
 };

@@ -13,7 +13,6 @@ import {
     FFI_IMPORT_NATIVE_ERROR,
     FFI_IMPORT_NATIVE_OBJECT,
     FFI_IMPORT_REGISTRY,
-    FFI_IMPORT_TYPES,
 } from "../constants/index.js";
 import type { GenerationContext } from "../generation-context.js";
 import { normalizeClassName, toKebabCase } from "../utils/naming.js";
@@ -118,11 +117,6 @@ export class ImportsBuilder {
             });
         }
 
-        const signalImports = this.collectSignalMetaImports();
-        if (signalImports) {
-            imports.push(signalImports);
-        }
-
         if (this.ctx.usedEnums.size > 0) {
             imports.push({
                 moduleSpecifier: "./enums.js",
@@ -219,28 +213,6 @@ export class ImportsBuilder {
         if (this.ctx.usesRegisterNativeClass) imports.push("registerNativeClass");
         if (this.ctx.usesGetClassByTypeName) imports.push("getNativeClass");
         return imports;
-    }
-
-    private collectSignalMetaImports(): ImportSpec | null {
-        const namedImports: string[] = [];
-        const typeOnlyImports: string[] = [];
-
-        if (this.ctx.usesResolveSignalMeta) {
-            namedImports.push("resolveSignalMeta");
-        }
-        if (this.ctx.usesRuntimeWidgetMeta) {
-            typeOnlyImports.push("RuntimeWidgetMeta");
-        }
-
-        if (namedImports.length === 0 && typeOnlyImports.length === 0) {
-            return null;
-        }
-
-        return {
-            moduleSpecifier: FFI_IMPORT_TYPES,
-            namedImports: namedImports.length > 0 ? namedImports : undefined,
-            typeOnlyImports: typeOnlyImports.length > 0 ? typeOnlyImports : undefined,
-        };
     }
 
     private collectRecordImports(): ImportSpec[] {

@@ -229,10 +229,7 @@ describe("FfiMapper", () => {
                     name: qualifiedName("GLib", "HashTable"),
                     isArray: false,
                     containerType: "ghashtable",
-                    typeParameters: [
-                        createNormalizedType({ name: "utf8" }),
-                        createNormalizedType({ name: "gint" }),
-                    ],
+                    typeParameters: [createNormalizedType({ name: "utf8" }), createNormalizedType({ name: "gint" })],
                 });
                 const result = mapper.mapType(type);
 

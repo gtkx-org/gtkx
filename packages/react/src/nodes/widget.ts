@@ -5,8 +5,10 @@ import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
+import { EVENT_CONTROLLER_PROPS } from "./internal/constants.js";
 import {
     hasSingleContent,
+    type InsertableWidget,
     isAddable,
     isAppendable,
     isEditable,
@@ -14,22 +16,11 @@ import {
     isRemovable,
     isReorderable,
     isSingleChild,
+    type ReorderableWidget,
 } from "./internal/predicates.js";
 import { type SignalHandler, signalStore } from "./internal/signal-store.js";
 import { filterProps, isContainerType, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
-
-const EVENT_CONTROLLER_PROPS = new Set([
-    "onEnter",
-    "onLeave",
-    "onMotion",
-    "onPressed",
-    "onReleased",
-    "onKeyPressed",
-    "onKeyReleased",
-    "onScroll",
-    "onNotify",
-]);
 
 export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Props> extends Node<T, P> {
     public static override priority = 3;
@@ -65,33 +56,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             throw new Error(`Cannot append 'Window' to '${this.typeName}': windows must be top-level containers`);
         }
 
-        batch(() => {
-            if (isAppendable(this.container)) {
-                const currentParent = child.container.getParent();
-
-                if (currentParent !== null && isRemovable(currentParent)) {
-                    currentParent.remove(child.container);
-                }
-
-                this.container.append(child.container);
-            } else if (isAddable(this.container)) {
-                const currentParent = child.container.getParent();
-
-                if (currentParent !== null && isRemovable(currentParent)) {
-                    currentParent.remove(child.container);
-                }
-
-                this.container.add(child.container);
-            } else if (hasSingleContent(this.container)) {
-                this.container.setContent(child.container);
-            } else if (isSingleChild(this.container)) {
-                this.container.setChild(child.container);
-            } else {
-                throw new Error(
-                    `Cannot append '${child.typeName}' to '${this.container.constructor.name}': container does not support children`,
-                );
-            }
-        });
+        batch(() => this.attachChild(child));
     }
 
     public removeChild(child: Node): void {
@@ -107,19 +72,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             throw new Error(`Cannot remove 'Window' from '${this.typeName}': windows must be top-level containers`);
         }
 
-        batch(() => {
-            if (isRemovable(this.container)) {
-                this.container.remove(child.container);
-            } else if (hasSingleContent(this.container)) {
-                this.container.setContent(null);
-            } else if (isSingleChild(this.container)) {
-                this.container.setChild(null);
-            } else {
-                throw new Error(
-                    `Cannot remove '${child.typeName}' from '${this.container.constructor.name}': container does not support child removal`,
-                );
-            }
-        });
+        batch(() => this.detachChild(child));
     }
 
     public insertBefore(child: Node, before: Node): void {
@@ -140,59 +93,32 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
         batch(() => {
             if (isReorderable(this.container)) {
-                let beforeChild = this.container.getFirstChild();
-
-                while (beforeChild) {
-                    if (beforeChild.equals(before.container)) {
-                        break;
-                    }
-
-                    beforeChild = beforeChild.getNextSibling();
-                }
-
-                if (!beforeChild) {
-                    throw new Error(`Cannot insert '${child.typeName}': 'before' child not found in container`);
-                }
-
-                const previousSibling = beforeChild.getPrevSibling() ?? undefined;
-                const currentParent = child.container.getParent();
-                const isChildOfThisContainer = currentParent?.equals(this.container);
-
-                if (isChildOfThisContainer) {
-                    this.container.reorderChildAfter(child.container, previousSibling);
-                } else {
-                    if (currentParent !== null && isRemovable(currentParent)) {
-                        currentParent.remove(child.container);
-                    }
-                    this.container.insertChildAfter(child.container, previousSibling);
-                }
+                this.insertBeforeReorderable(this.container, child, before);
             } else if (isInsertable(this.container)) {
-                const currentParent = child.container.getParent();
-                if (currentParent !== null && isRemovable(currentParent)) {
-                    currentParent.remove(child.container);
-                }
-
-                let position = 0;
-                let currentChild = this.container.getFirstChild();
-
-                while (currentChild) {
-                    if (currentChild.equals(before.container)) {
-                        break;
-                    }
-
-                    position++;
-                    currentChild = currentChild.getNextSibling();
-                }
-
-                if (!currentChild) {
-                    throw new Error(`Cannot insert '${child.typeName}': 'before' child not found in container`);
-                }
-
-                this.container.insert(child.container, position);
+                this.insertBeforeInsertable(this.container, child, before);
             } else {
                 this.appendChild(child);
             }
         });
+    }
+
+    private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {
+        const previousSibling = this.findPreviousSibling(before);
+        const currentParent = child.container.getParent();
+        const isChildOfThisContainer = currentParent?.equals(container);
+
+        if (isChildOfThisContainer) {
+            container.reorderChildAfter(child.container, previousSibling);
+        } else {
+            this.detachChildFromParent(child);
+            container.insertChildAfter(child.container, previousSibling);
+        }
+    }
+
+    private insertBeforeInsertable(container: InsertableWidget, child: WidgetNode, before: WidgetNode): void {
+        this.detachChildFromParent(child);
+        const position = this.findInsertPosition(before);
+        container.insert(child.container, position);
     }
 
     public updateProps(oldProps: P | null, newProps: P): void {
@@ -209,6 +135,11 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
             if (EVENT_CONTROLLER_PROPS.has(name)) {
                 this.updateEventControllerProp(name, (newValue as SignalHandler) ?? null);
+                continue;
+            }
+
+            if (name === "onNotify") {
+                this.updateNotifyHandler((newValue as SignalHandler) ?? null);
                 continue;
             }
 
@@ -274,17 +205,17 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 signalStore.set(this, this.scrollController, "scroll", handler);
                 break;
             }
-            case "onNotify": {
-                const wrappedHandler = handler
-                    ? (obj: Gtk.Widget, pspec: GObject.ParamSpec) => {
-                          handler(obj, pspec.getName());
-                      }
-                    : undefined;
-
-                signalStore.set(this, this.container, "notify", wrappedHandler);
-                break;
-            }
         }
+    }
+
+    private updateNotifyHandler(handler: SignalHandler | null): void {
+        const wrappedHandler = handler
+            ? (obj: Gtk.Widget, pspec: GObject.ParamSpec) => {
+                  handler(obj, pspec.getName());
+              }
+            : undefined;
+
+        signalStore.set(this, this.container, "notify", wrappedHandler);
     }
 
     private propNameToSignalName(name: string): string {
@@ -332,6 +263,73 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         if (setter && typeof setter === "function") {
             setter.call(this.container, value);
         }
+    }
+
+    private detachChildFromParent(child: WidgetNode): void {
+        const currentParent = child.container.getParent();
+        if (currentParent !== null && isRemovable(currentParent)) {
+            currentParent.remove(child.container);
+        }
+    }
+
+    private attachChild(child: WidgetNode): void {
+        if (isAppendable(this.container)) {
+            this.detachChildFromParent(child);
+            this.container.append(child.container);
+        } else if (isAddable(this.container)) {
+            this.detachChildFromParent(child);
+            this.container.add(child.container);
+        } else if (hasSingleContent(this.container)) {
+            this.container.setContent(child.container);
+        } else if (isSingleChild(this.container)) {
+            this.container.setChild(child.container);
+        } else {
+            throw new Error(
+                `Cannot append '${child.typeName}' to '${this.container.constructor.name}': container does not support children`,
+            );
+        }
+    }
+
+    private detachChild(child: WidgetNode): void {
+        if (isRemovable(this.container)) {
+            this.container.remove(child.container);
+        } else if (hasSingleContent(this.container)) {
+            this.container.setContent(null);
+        } else if (isSingleChild(this.container)) {
+            this.container.setChild(null);
+        } else {
+            throw new Error(
+                `Cannot remove '${child.typeName}' from '${this.container.constructor.name}': container does not support child removal`,
+            );
+        }
+    }
+
+    private findPreviousSibling(before: WidgetNode): Gtk.Widget | undefined {
+        let beforeChild = this.container.getFirstChild();
+
+        while (beforeChild) {
+            if (beforeChild.equals(before.container)) {
+                return beforeChild.getPrevSibling() ?? undefined;
+            }
+            beforeChild = beforeChild.getNextSibling();
+        }
+
+        throw new Error(`Cannot find 'before' child in container`);
+    }
+
+    private findInsertPosition(before: WidgetNode): number {
+        let position = 0;
+        let currentChild = this.container.getFirstChild();
+
+        while (currentChild) {
+            if (currentChild.equals(before.container)) {
+                return position;
+            }
+            position++;
+            currentChild = currentChild.getNextSibling();
+        }
+
+        throw new Error(`Cannot find 'before' child in container`);
     }
 }
 

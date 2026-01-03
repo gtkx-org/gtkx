@@ -222,18 +222,6 @@ describe("ClassGenerator", () => {
 
             expect(result.widgetMeta?.namespace).toBe("Gtk");
         });
-
-        it("adds WIDGET_META to class for widgets", () => {
-            const { generator, sourceFile } = createTestSetup({
-                name: "Button",
-                parent: qualifiedName("Gtk", "Widget"),
-            });
-
-            generator.generateToSourceFile(sourceFile);
-
-            const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("WIDGET_META");
-        });
     });
 
     describe("context updates", () => {

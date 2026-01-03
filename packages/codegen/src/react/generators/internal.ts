@@ -21,17 +21,7 @@ import {
     writeStringArray,
     writeStringSet,
 } from "../../core/utils/structure-helpers.js";
-import {
-    AUTOWRAP_WIDGET_NAMES,
-    COLUMN_VIEW_WIDGET_NAMES,
-    DROP_DOWN_WIDGET_NAMES,
-    LIST_WIDGET_NAMES,
-    NOTEBOOK_WIDGET_NAMES,
-    PACK_INTERFACE_METHODS,
-    POPOVER_MENU_WIDGET_NAMES,
-    PREFIX_SUFFIX_INTERFACE_METHODS,
-    STACK_WIDGET_NAMES,
-} from "../constants/index.js";
+import { PACK_INTERFACE_METHODS, PREFIX_SUFFIX_INTERFACE_METHODS, WIDGET_CLASSIFICATIONS } from "../constants/index.js";
 import { type MetadataReader, sortWidgetsByClassName, type WidgetInfo } from "../metadata-reader.js";
 
 /**
@@ -81,15 +71,7 @@ export class InternalGenerator {
         const usedNamespaces = new Set<string>();
 
         for (const widget of widgets) {
-            const isClassified =
-                LIST_WIDGET_NAMES.has(widget.className) ||
-                DROP_DOWN_WIDGET_NAMES.has(widget.className) ||
-                COLUMN_VIEW_WIDGET_NAMES.has(widget.className) ||
-                AUTOWRAP_WIDGET_NAMES.has(widget.className) ||
-                STACK_WIDGET_NAMES.has(widget.className) ||
-                NOTEBOOK_WIDGET_NAMES.has(widget.className) ||
-                POPOVER_MENU_WIDGET_NAMES.has(widget.className);
-
+            const isClassified = WIDGET_CLASSIFICATIONS.some((c) => c.classNames.has(widget.className));
             if (isClassified) {
                 usedNamespaces.add(widget.namespace);
             }
@@ -103,85 +85,13 @@ export class InternalGenerator {
     }
 
     private generateClassificationConstants(sourceFile: SourceFile, widgets: WidgetInfo[]): void {
-        const listWidgets: string[] = [];
-        const dropDownWidgets: string[] = [];
-        const columnViewWidgets: string[] = [];
-        const autowrapWidgets: string[] = [];
-        const stackWidgets: string[] = [];
-        const notebookWidgets: string[] = [];
-        const popoverMenuWidgets: string[] = [];
+        for (const classification of WIDGET_CLASSIFICATIONS) {
+            const matchingWidgets = widgets
+                .filter((w) => classification.classNames.has(w.className))
+                .map((w) => `${w.namespace}.${w.className}`);
 
-        for (const widget of widgets) {
-            const qualifiedRef = `${widget.namespace}.${widget.className}`;
-
-            if (LIST_WIDGET_NAMES.has(widget.className)) {
-                listWidgets.push(qualifiedRef);
-            }
-            if (DROP_DOWN_WIDGET_NAMES.has(widget.className)) {
-                dropDownWidgets.push(qualifiedRef);
-            }
-            if (COLUMN_VIEW_WIDGET_NAMES.has(widget.className)) {
-                columnViewWidgets.push(qualifiedRef);
-            }
-            if (AUTOWRAP_WIDGET_NAMES.has(widget.className)) {
-                autowrapWidgets.push(qualifiedRef);
-            }
-            if (STACK_WIDGET_NAMES.has(widget.className)) {
-                stackWidgets.push(qualifiedRef);
-            }
-            if (NOTEBOOK_WIDGET_NAMES.has(widget.className)) {
-                notebookWidgets.push(qualifiedRef);
-            }
-            if (POPOVER_MENU_WIDGET_NAMES.has(widget.className)) {
-                popoverMenuWidgets.push(qualifiedRef);
-            }
-        }
-
-        const classifications: Array<{
-            name: string;
-            widgets: string[];
-            doc: string;
-        }> = [
-            {
-                name: "LIST_WIDGET_CLASSES",
-                widgets: listWidgets,
-                doc: "List widgets that require renderItem prop.",
-            },
-            {
-                name: "DROP_DOWN_CLASSES",
-                widgets: dropDownWidgets,
-                doc: "Dropdown widgets with special item handling.",
-            },
-            {
-                name: "COLUMN_VIEW_CLASSES",
-                widgets: columnViewWidgets,
-                doc: "Column view widgets with column-based layout.",
-            },
-            {
-                name: "AUTOWRAP_CLASSES",
-                widgets: autowrapWidgets,
-                doc: "Widgets that auto-wrap children (ListBox wraps in ListBoxRow, FlowBox wraps in FlowBoxChild).",
-            },
-            {
-                name: "STACK_CLASSES",
-                widgets: stackWidgets,
-                doc: "Stack widgets that show one child at a time.",
-            },
-            {
-                name: "NOTEBOOK_CLASSES",
-                widgets: notebookWidgets,
-                doc: "Notebook widgets with tabbed interface.",
-            },
-            {
-                name: "POPOVER_MENU_CLASSES",
-                widgets: popoverMenuWidgets,
-                doc: "Widgets that support popover menu children.",
-            },
-        ];
-
-        for (const classification of classifications) {
             sourceFile.addVariableStatement(
-                createConstExport(classification.name, writeConstIdentifierArray(classification.widgets), {
+                createConstExport(classification.name, writeConstIdentifierArray(matchingWidgets), {
                     docs: classification.doc,
                 }),
             );

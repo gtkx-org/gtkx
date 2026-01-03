@@ -9,43 +9,46 @@
  * Used by both InternalGenerator and JsxTypesGenerator.
  */
 
-/**
- * Widget names that are list widgets (require renderItem prop).
- * These are hardcoded business decisions, not derived from AST.
- */
-export const LIST_WIDGET_NAMES = new Set(["ListView", "GridView"]);
+export const LIST_WIDGET_NAMES: ReadonlySet<string> = new Set(["ListView", "GridView"]);
+export const DROP_DOWN_WIDGET_NAMES: ReadonlySet<string> = new Set(["DropDown", "ComboRow"]);
+export const COLUMN_VIEW_WIDGET_NAMES: ReadonlySet<string> = new Set(["ColumnView"]);
 
-/**
- * Widget names that are dropdown widgets (special item handling).
- * These are hardcoded business decisions, not derived from AST.
- */
-export const DROP_DOWN_WIDGET_NAMES = new Set(["DropDown", "ComboRow"]);
+const AUTOWRAP_WIDGET_NAMES: ReadonlySet<string> = new Set(["ListBox", "FlowBox"]);
+const STACK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Stack", "ViewStack"]);
+const NOTEBOOK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Notebook"]);
+const POPOVER_MENU_WIDGET_NAMES: ReadonlySet<string> = new Set(["PopoverMenu", "PopoverMenuBar", "MenuButton"]);
 
-/**
- * Widget names that are column view widgets (column-based layout).
- * These are hardcoded business decisions, not derived from AST.
- */
-export const COLUMN_VIEW_WIDGET_NAMES = new Set(["ColumnView"]);
+type WidgetClassification = {
+    readonly name: string;
+    readonly classNames: ReadonlySet<string>;
+    readonly doc: string;
+};
 
-/**
- * Widget names that auto-wrap children (ListBox wraps in ListBoxRow, FlowBox wraps in FlowBoxChild).
- */
-export const AUTOWRAP_WIDGET_NAMES = new Set(["ListBox", "FlowBox"]);
-
-/**
- * Widget names that are stack containers (show one child at a time).
- */
-export const STACK_WIDGET_NAMES = new Set(["Stack", "ViewStack"]);
-
-/**
- * Widget names that are notebook containers (tabbed interface).
- */
-export const NOTEBOOK_WIDGET_NAMES = new Set(["Notebook"]);
-
-/**
- * Widget names that support popover menu children.
- */
-export const POPOVER_MENU_WIDGET_NAMES = new Set(["PopoverMenu", "PopoverMenuBar", "MenuButton"]);
+export const WIDGET_CLASSIFICATIONS: readonly WidgetClassification[] = [
+    { name: "LIST_WIDGET_CLASSES", classNames: LIST_WIDGET_NAMES, doc: "List widgets that require renderItem prop." },
+    {
+        name: "DROP_DOWN_CLASSES",
+        classNames: DROP_DOWN_WIDGET_NAMES,
+        doc: "Dropdown widgets with special item handling.",
+    },
+    {
+        name: "COLUMN_VIEW_CLASSES",
+        classNames: COLUMN_VIEW_WIDGET_NAMES,
+        doc: "Column view widgets with column-based layout.",
+    },
+    {
+        name: "AUTOWRAP_CLASSES",
+        classNames: AUTOWRAP_WIDGET_NAMES,
+        doc: "Widgets that auto-wrap children (ListBox wraps in ListBoxRow, FlowBox wraps in FlowBoxChild).",
+    },
+    { name: "STACK_CLASSES", classNames: STACK_WIDGET_NAMES, doc: "Stack widgets that show one child at a time." },
+    { name: "NOTEBOOK_CLASSES", classNames: NOTEBOOK_WIDGET_NAMES, doc: "Notebook widgets with tabbed interface." },
+    {
+        name: "POPOVER_MENU_CLASSES",
+        classNames: POPOVER_MENU_WIDGET_NAMES,
+        doc: "Widgets that support popover menu children.",
+    },
+];
 
 /**
  * Methods that define the "packable" interface (pack start/end positioning).

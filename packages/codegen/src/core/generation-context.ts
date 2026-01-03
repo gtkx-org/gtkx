@@ -84,12 +84,6 @@ export class GenerationContext {
     /** Whether the module uses getNativeClass lookup */
     usesGetClassByTypeName = false;
 
-    /** Whether the module uses resolveSignalMeta helper for signal resolution */
-    usesResolveSignalMeta = false;
-
-    /** Whether the module uses RuntimeWidgetMeta type */
-    usesRuntimeWidgetMeta = false;
-
     /** Whether the module needs GObject namespace import (for ParamSpec in signals) */
     usesGObjectNamespace = false;
 
@@ -138,8 +132,6 @@ export class GenerationContext {
         this.usesGetNativeObject = false;
         this.usesRegisterNativeClass = false;
         this.usesGetClassByTypeName = false;
-        this.usesResolveSignalMeta = false;
-        this.usesRuntimeWidgetMeta = false;
         this.usesGObjectNamespace = false;
 
         this.usedEnums.clear();

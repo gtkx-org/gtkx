@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { CodegenProject } from "../../../../src/core/project.js";
-import { FfiAstAnalyzer } from "../../../../src/react/analyzers/ffi-ast-analyzer.js";
 import { JsxTypesGenerator } from "../../../../src/react/generators/jsx-types/generator.js";
 import { MetadataReader } from "../../../../src/react/metadata-reader.js";
 import {
@@ -10,19 +9,12 @@ import {
     createSignalAnalysis,
     createWidgetMeta,
 } from "../../../fixtures/metadata-fixtures.js";
-import { createFfiProjectWithWidgets, type FfiWidgetConfig } from "../../../fixtures/ts-morph-helpers.js";
 
-function createTestSetup(
-    metas = [createWidgetMeta(), createButtonMeta()],
-    ffiWidgets: FfiWidgetConfig[] = [],
-    namespaceNames = ["Gtk"],
-) {
+function createTestSetup(metas = [createWidgetMeta(), createButtonMeta()], namespaceNames = ["Gtk"]) {
     const reader = new MetadataReader(metas);
-    const ffiProject = createFfiProjectWithWidgets(ffiWidgets);
-    const ffiAnalyzer = new FfiAstAnalyzer(ffiProject);
     const project = new CodegenProject();
-    const generator = new JsxTypesGenerator(reader, ffiAnalyzer, project, namespaceNames);
-    return { reader, ffiProject, ffiAnalyzer, project, generator };
+    const generator = new JsxTypesGenerator(reader, project, namespaceNames);
+    return { reader, project, generator };
 }
 
 describe("JsxTypesGenerator", () => {
@@ -350,11 +342,9 @@ describe("JsxTypesGenerator", () => {
             const boxMeta = createCodegenWidgetMeta({
                 className: "Box",
                 jsxName: "GtkBox",
+                isContainer: true,
             });
-            const { project, generator } = createTestSetup(
-                [createWidgetMeta(), boxMeta],
-                [{ namespace: "Gtk", className: "Box", isContainer: true }],
-            );
+            const { project, generator } = createTestSetup([createWidgetMeta(), boxMeta]);
 
             generator.generate();
 
@@ -371,7 +361,7 @@ describe("JsxTypesGenerator", () => {
                 jsxName: "AdwHeaderBar",
                 namespace: "Adw",
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), adwHeaderBarMeta], [], ["Gtk", "Adw"]);
+            const { project, generator } = createTestSetup([createWidgetMeta(), adwHeaderBarMeta], ["Gtk", "Adw"]);
 
             generator.generate();
 
@@ -386,7 +376,7 @@ describe("JsxTypesGenerator", () => {
                 jsxName: "AdwHeaderBar",
                 namespace: "Adw",
             });
-            const { project, generator } = createTestSetup([createWidgetMeta(), adwHeaderBarMeta], [], ["Gtk"]);
+            const { project, generator } = createTestSetup([createWidgetMeta(), adwHeaderBarMeta], ["Gtk"]);
 
             generator.generate();
 
@@ -453,11 +443,10 @@ describe("JsxTypesGenerator", () => {
             const boxMeta = createCodegenWidgetMeta({
                 className: "Box",
                 jsxName: "GtkBox",
+                isContainer: true,
+                slots: ["start", "end"],
             });
-            const { project, generator } = createTestSetup(
-                [createWidgetMeta(), boxMeta],
-                [{ namespace: "Gtk", className: "Box", isContainer: true, slots: ["start", "end"] }],
-            );
+            const { project, generator } = createTestSetup([createWidgetMeta(), boxMeta]);
 
             generator.generate();
 

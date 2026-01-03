@@ -2,9 +2,11 @@ use std::ffi::c_void;
 use std::ptr::NonNull;
 
 use gtk4::{
+    cairo,
     gio::ffi::GAsyncResult,
     glib::{
         self, gobject_ffi,
+        prelude::StaticType as _,
         translate::{FromGlibPtrNone as _, ToGlibPtr as _, ToGlibPtrMut as _},
         value::ToValue as _,
     },
@@ -84,7 +86,9 @@ impl TrampolineSpec {
 }
 
 fn marshal_gvalue_at_index(data: &CallbackData, index: usize, fallback: glib::Type) -> glib::Value {
-    unsafe { glib::Value::from_type_unchecked(data.arg_gtypes.get(index).copied().unwrap_or(fallback)) }
+    unsafe {
+        glib::Value::from_type_unchecked(data.arg_gtypes.get(index).copied().unwrap_or(fallback))
+    }
 }
 
 unsafe extern "C" fn draw_func_trampoline(
@@ -104,7 +108,7 @@ unsafe extern "C" fn draw_func_trampoline(
     unsafe {
         let mut args: [glib::Value; 4] = [
             marshal_gvalue_at_index(data, 0, glib::types::Type::OBJECT),
-            marshal_gvalue_at_index(data, 1, glib::types::Type::POINTER),
+            marshal_gvalue_at_index(data, 1, cairo::Context::static_type()),
             marshal_gvalue_at_index(data, 2, glib::types::Type::I32),
             marshal_gvalue_at_index(data, 3, glib::types::Type::I32),
         ];
@@ -237,7 +241,9 @@ unsafe extern "C" fn tree_list_model_create_func_trampoline(
     user_data: *mut c_void,
 ) -> *mut gobject_ffi::GObject {
     let Some(data_ptr) = NonNull::new(user_data as *mut CallbackData) else {
-        eprintln!("[gtkx] WARNING: tree_list_model_create_func_trampoline: user_data is null, callback skipped");
+        eprintln!(
+            "[gtkx] WARNING: tree_list_model_create_func_trampoline: user_data is null, callback skipped"
+        );
         return std::ptr::null_mut();
     };
 

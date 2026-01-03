@@ -40,6 +40,8 @@ export function createCodegenWidgetMeta(overrides: Partial<CodegenWidgetMeta> = 
         className: "Button",
         namespace: "Gtk",
         jsxName: "GtkButton",
+        isContainer: true,
+        slots: [],
         propNames: ["label", "icon-name"],
         signalNames: ["clicked"],
         parentClassName: "Widget",
@@ -56,6 +58,8 @@ export function createWidgetMeta(overrides: Partial<CodegenWidgetMeta> = {}): Co
     return createCodegenWidgetMeta({
         className: "Widget",
         jsxName: "GtkWidget",
+        isContainer: false,
+        slots: [],
         parentClassName: null,
         parentNamespace: null,
         modulePath: "./gtk/widget.js",
@@ -78,6 +82,8 @@ export function createWindowMeta(overrides: Partial<CodegenWidgetMeta> = {}): Co
     return createCodegenWidgetMeta({
         className: "Window",
         jsxName: "GtkWindow",
+        isContainer: true,
+        slots: ["child"],
         parentClassName: "Widget",
         parentNamespace: "Gtk",
         modulePath: "./gtk/window.js",
@@ -112,6 +118,8 @@ export function createButtonMeta(overrides: Partial<CodegenWidgetMeta> = {}): Co
     return createCodegenWidgetMeta({
         className: "Button",
         jsxName: "GtkButton",
+        isContainer: true,
+        slots: ["child"],
         parentClassName: "Widget",
         parentNamespace: "Gtk",
         modulePath: "./gtk/button.js",
@@ -138,6 +146,8 @@ export function createLabelMeta(overrides: Partial<CodegenWidgetMeta> = {}): Cod
     return createCodegenWidgetMeta({
         className: "Label",
         jsxName: "GtkLabel",
+        isContainer: false,
+        slots: [],
         parentClassName: "Widget",
         parentNamespace: "Gtk",
         modulePath: "./gtk/label.js",
@@ -159,6 +169,8 @@ export function createAdwHeaderBarMeta(overrides: Partial<CodegenWidgetMeta> = {
         className: "HeaderBar",
         namespace: "Adw",
         jsxName: "AdwHeaderBar",
+        isContainer: true,
+        slots: ["title-widget"],
         parentClassName: "Widget",
         parentNamespace: "Gtk",
         modulePath: "./adw/header-bar.js",

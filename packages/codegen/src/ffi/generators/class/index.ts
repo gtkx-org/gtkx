@@ -87,7 +87,7 @@ export class ClassGenerator {
             signal: new SignalAnalyzer(repository, ffiMapper),
             constructor: new ConstructorAnalyzer(repository),
         };
-        this.widgetMetaBuilder = new WidgetMetaBuilder(cls, repository, ctx, options.namespace, analyzers);
+        this.widgetMetaBuilder = new WidgetMetaBuilder(cls, repository, options.namespace, analyzers);
     }
 
     /**
@@ -154,11 +154,6 @@ export class ClassGenerator {
             this.ctx.usesRegisterNativeClass = true;
             sourceFile.addStatements(`registerNativeClass(${this.className});`);
         }
-
-        const signalEntries = this.signalBuilder.buildSignalMetaEntries();
-        this.widgetMetaBuilder.setSignalEntries(signalEntries);
-
-        this.widgetMetaBuilder.addToClass(classDecl);
 
         const widgetMeta = this.widgetMetaBuilder.buildCodegenWidgetMeta();
 
@@ -301,8 +296,7 @@ export class ClassGenerator {
         const hasStaticFactoryMethods =
             this.cls.constructors.some((c) => c !== mainConstructor) ||
             (this.cls.constructors.length > 0 && !hasParent);
-        const { allSignals, hasCrossNamespaceParent } = this.signalBuilder.collectAllSignals();
-        const hasSignalConnect = allSignals.length > 0 || hasCrossNamespaceParent;
+        const hasSignalConnect = this.signalBuilder.collectOwnSignals().length > 0;
 
         this.ctx.usesCall =
             this.cls.methods.length > 0 ||

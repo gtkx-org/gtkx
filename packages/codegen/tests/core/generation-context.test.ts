@@ -20,8 +20,6 @@ describe("GenerationContext", () => {
             expect(ctx.usesGetNativeObject).toBe(false);
             expect(ctx.usesRegisterNativeClass).toBe(false);
             expect(ctx.usesGetClassByTypeName).toBe(false);
-            expect(ctx.usesResolveSignalMeta).toBe(false);
-            expect(ctx.usesRuntimeWidgetMeta).toBe(false);
             expect(ctx.usesGObjectNamespace).toBe(false);
         });
 
@@ -336,8 +334,6 @@ describe("GenerationContext", () => {
             ctx.usesGetNativeObject = true;
             ctx.usesRegisterNativeClass = true;
             ctx.usesGetClassByTypeName = true;
-            ctx.usesResolveSignalMeta = true;
-            ctx.usesRuntimeWidgetMeta = true;
             ctx.usesGObjectNamespace = true;
 
             ctx.reset();
@@ -355,8 +351,6 @@ describe("GenerationContext", () => {
             expect(ctx.usesGetNativeObject).toBe(false);
             expect(ctx.usesRegisterNativeClass).toBe(false);
             expect(ctx.usesGetClassByTypeName).toBe(false);
-            expect(ctx.usesResolveSignalMeta).toBe(false);
-            expect(ctx.usesRuntimeWidgetMeta).toBe(false);
             expect(ctx.usesGObjectNamespace).toBe(false);
         });
 
