@@ -5,7 +5,7 @@
  * Interfaces in GObject are like mixins/traits that classes can implement.
  */
 
-import type { GirRepository, NormalizedInterface, NormalizedMethod, QualifiedName } from "@gtkx/gir";
+import type { GirRepository, GirInterface, GirMethod, QualifiedName } from "@gtkx/gir";
 import type { MethodDeclarationStructure, SourceFile } from "ts-morph";
 import type { GenerationContext } from "../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
@@ -51,7 +51,7 @@ export class InterfaceGenerator {
      * generator.generateToSourceFile(iface, sourceFile);
      * ```
      */
-    generateToSourceFile(iface: NormalizedInterface, sourceFile: SourceFile): boolean {
+    generateToSourceFile(iface: GirInterface, sourceFile: SourceFile): boolean {
         const interfaceName = toPascalCase(iface.name);
 
         const interfaceMethodNames = new Set(iface.methods.map((m) => m.name));
@@ -99,14 +99,14 @@ export class InterfaceGenerator {
         return true;
     }
 
-    private buildMethodStructures(methods: readonly NormalizedMethod[]): MethodDeclarationStructure[] {
+    private buildMethodStructures(methods: readonly GirMethod[]): MethodDeclarationStructure[] {
         const supportedMethods = filterSupportedMethods(methods, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
         );
         return supportedMethods.map((method) => this.buildMethodStructure(method));
     }
 
-    private buildMethodStructure(method: NormalizedMethod): MethodDeclarationStructure {
+    private buildMethodStructure(method: GirMethod): MethodDeclarationStructure {
         const dynamicRename = this.ctx.methodRenames.get(method.cIdentifier);
         const camelName = toCamelCase(method.name);
         const methodName = dynamicRename ?? camelName;
@@ -120,10 +120,10 @@ export class InterfaceGenerator {
     }
 
     private collectPrerequisiteMethods(
-        iface: NormalizedInterface,
+        iface: GirInterface,
         existingMethodNames: Set<string>,
-    ): NormalizedMethod[] {
-        const methods: NormalizedMethod[] = [];
+    ): GirMethod[] {
+        const methods: GirMethod[] = [];
         const seenMethodNames = new Set(existingMethodNames);
         const visitedInterfaces = new Set<string>();
 

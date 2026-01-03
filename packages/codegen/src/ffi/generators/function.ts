@@ -4,7 +4,7 @@
  * Generates standalone exported functions using ts-morph AST.
  */
 
-import type { NormalizedFunction } from "@gtkx/gir";
+import type { GirFunction } from "@gtkx/gir";
 import type { SourceFile, VariableStatementStructure, WriterFunction } from "ts-morph";
 import { StructureKind, VariableDeclarationKind } from "ts-morph";
 import type { GenerationContext } from "../../core/generation-context.js";
@@ -50,7 +50,7 @@ export class FunctionGenerator {
      * generator.generateToSourceFile(functions, sourceFile);
      * ```
      */
-    generateToSourceFile(functions: NormalizedFunction[], sourceFile: SourceFile): boolean {
+    generateToSourceFile(functions: GirFunction[], sourceFile: SourceFile): boolean {
         const supportedFunctions = this.filterAndTrackFeatures(functions);
 
         const structures: VariableStatementStructure[] = [];
@@ -65,7 +65,7 @@ export class FunctionGenerator {
         return supportedFunctions.length > 0;
     }
 
-    private filterAndTrackFeatures(functions: NormalizedFunction[]): NormalizedFunction[] {
+    private filterAndTrackFeatures(functions: GirFunction[]): GirFunction[] {
         const supportedFunctions = filterSupportedFunctions(functions, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
         );
@@ -74,7 +74,7 @@ export class FunctionGenerator {
         return supportedFunctions;
     }
 
-    private buildFunctionStructure(func: NormalizedFunction): VariableStatementStructure {
+    private buildFunctionStructure(func: GirFunction): VariableStatementStructure {
         const funcName = toValidIdentifier(toCamelCase(func.name));
         const params = this.methodBody.buildParameterList(func.parameters);
         const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true, func.returnType.transferOwnership);

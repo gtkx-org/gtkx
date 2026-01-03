@@ -6,12 +6,12 @@
  */
 
 import type {
-    NormalizedConstructor,
-    NormalizedField,
-    NormalizedFunction,
-    NormalizedMethod,
-    NormalizedParameter,
-    NormalizedRecord,
+    GirConstructor,
+    GirField,
+    GirFunction,
+    GirMethod,
+    GirParameter,
+    GirRecord,
 } from "@gtkx/gir";
 import {
     type ClassDeclaration,
@@ -58,7 +58,7 @@ export class RecordGenerator {
     /**
      * Generates a record class into a ts-morph SourceFile.
      */
-    generateToSourceFile(record: NormalizedRecord, sourceFile: SourceFile): void {
+    generateToSourceFile(record: GirRecord, sourceFile: SourceFile): void {
         this.trackFeatureUsage(record);
 
         const recordName = normalizeClassName(record.name, this.options.namespace);
@@ -89,7 +89,7 @@ export class RecordGenerator {
         }
     }
 
-    private trackFeatureUsage(record: NormalizedRecord): void {
+    private trackFeatureUsage(record: GirRecord): void {
         this.ctx.usesRef =
             record.methods.some((m) => this.methodBody.hasRefParameter(m.parameters)) ||
             record.constructors.some((c) => this.methodBody.hasRefParameter(c.parameters)) ||
@@ -103,7 +103,7 @@ export class RecordGenerator {
         }
     }
 
-    private generateInitInterface(record: NormalizedRecord, recordName: string, sourceFile: SourceFile): void {
+    private generateInitInterface(record: GirRecord, recordName: string, sourceFile: SourceFile): void {
         const { main: mainConstructor } = this.methodBody.selectConstructors(record.constructors);
 
         if (mainConstructor) return;
@@ -130,7 +130,7 @@ export class RecordGenerator {
         });
     }
 
-    private generateClass(record: NormalizedRecord, recordName: string, sourceFile: SourceFile): ClassDeclaration {
+    private generateClass(record: GirRecord, recordName: string, sourceFile: SourceFile): ClassDeclaration {
         this.ctx.usesNativeObject = true;
 
         const classDecl = sourceFile.addClass({
@@ -169,7 +169,7 @@ export class RecordGenerator {
     }
 
     private generateConstructors(
-        record: NormalizedRecord,
+        record: GirRecord,
         recordName: string,
         classDecl: ClassDeclaration,
         methodStructures: MethodDeclarationStructure[],
@@ -189,7 +189,7 @@ export class RecordGenerator {
             } else {
                 const params = this.methodBody.buildParameterList(mainConstructor.parameters);
                 const paramNames = filteredParams.map((p) => toValidIdentifier(toCamelCase(p.name)));
-                const mapped = this.ffiMapper.mapParameter(filteredParams[0] as NormalizedParameter);
+                const mapped = this.ffiMapper.mapParameter(filteredParams[0] as GirParameter);
                 this.ctx.addTypeImports(mapped.imports);
                 if (mapped.ffi.type === "ref") {
                     this.ctx.usesRef = true;
@@ -249,7 +249,7 @@ export class RecordGenerator {
         methodStructures.push(this.buildCreatePtrStructure(record, recordName));
     }
 
-    private buildCreatePtrStructure(record: NormalizedRecord, recordName: string): MethodDeclarationStructure {
+    private buildCreatePtrStructure(record: GirRecord, recordName: string): MethodDeclarationStructure {
         const { main: mainConstructor } = this.methodBody.selectConstructors(record.constructors);
 
         if (!mainConstructor) {
@@ -269,7 +269,7 @@ export class RecordGenerator {
                         name: "createPtr",
                         scope: Scope.Protected,
                         parameters: [{ name: "init", type: `${recordName}Init` }],
-                        returnType: "unknown",
+                        returnType: "ObjectId",
                         statements: this.writeCreatePtrWithFieldsBody(allocFn, record.fields),
                     };
                 }
@@ -278,9 +278,9 @@ export class RecordGenerator {
                     name: "createPtr",
                     scope: Scope.Protected,
                     parameters: [{ name: "_init", type: "Record<string, unknown>" }],
-                    returnType: "unknown",
+                    returnType: "ObjectId",
                     statements: (writer) => {
-                        writer.writeLine(`return ${allocFn};`);
+                        writer.writeLine(`return ${allocFn} as ObjectId;`);
                     },
                 };
             }
@@ -289,9 +289,9 @@ export class RecordGenerator {
                 name: "createPtr",
                 scope: Scope.Protected,
                 parameters: [{ name: "_init", type: "Record<string, unknown>" }],
-                returnType: "unknown",
+                returnType: "ObjectId",
                 statements: (writer) => {
-                    writer.writeLine("return null;");
+                    writer.writeLine("return null as unknown as ObjectId;");
                 },
             };
         }
@@ -301,22 +301,22 @@ export class RecordGenerator {
             name: "createPtr",
             scope: Scope.Protected,
             parameters: [{ name: "_args", type: "unknown[]" }],
-            returnType: "unknown",
+            returnType: "ObjectId",
             statements: this.writeCreatePtrWithConstructorBody(mainConstructor, record),
         };
     }
 
-    private writeCreatePtrWithFieldsBody(allocFn: string, fields: readonly NormalizedField[]): WriterFunction {
+    private writeCreatePtrWithFieldsBody(allocFn: string, fields: readonly GirField[]): WriterFunction {
         return (writer) => {
             writer.writeLine(`const ptr = ${allocFn};`);
             this.fieldBuilder.writeFieldWrites(fields)(writer);
-            writer.writeLine("return ptr;");
+            writer.writeLine("return ptr as ObjectId;");
         };
     }
 
     private writeCreatePtrWithConstructorBody(
-        mainConstructor: NormalizedConstructor,
-        record: NormalizedRecord,
+        mainConstructor: GirConstructor,
+        record: GirRecord,
     ): WriterFunction {
         const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
         const paramTypes = filteredParams.map((p) => {
@@ -356,7 +356,7 @@ export class RecordGenerator {
                     `{ type: "boxed", ownership: "none", innerType: "${glibTypeName}", lib: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
                 );
             });
-            writer.writeLine(");");
+            writer.writeLine(") as ObjectId;");
         };
     }
 
@@ -365,14 +365,14 @@ export class RecordGenerator {
             kind: StructureKind.Method,
             name: "fromPtr",
             isStatic: true,
-            parameters: [{ name: "ptr", type: "unknown" }],
+            parameters: [{ name: "ptr", type: "ObjectId" }],
             returnType: recordName,
             statements: buildFromPtrStatements(recordName),
         };
     }
 
     private buildStaticFactoryMethodStructure(
-        ctor: NormalizedConstructor,
+        ctor: GirConstructor,
         recordName: string,
         glibTypeName?: string,
         glibGetType?: string,
@@ -393,7 +393,7 @@ export class RecordGenerator {
     }
 
     private writeStaticFactoryMethodBody(
-        ctor: NormalizedConstructor,
+        ctor: GirConstructor,
         recordName: string,
         glibTypeName?: string,
         glibGetType?: string,
@@ -419,7 +419,7 @@ export class RecordGenerator {
     }
 
     private buildStaticFunctionStructures(
-        functions: readonly NormalizedFunction[],
+        functions: readonly GirFunction[],
         recordName: string,
         originalName: string,
     ): MethodDeclarationStructure[] {
@@ -430,7 +430,7 @@ export class RecordGenerator {
     }
 
     private buildStaticFunctionStructure(
-        func: NormalizedFunction,
+        func: GirFunction,
         className: string,
         originalClassName: string,
     ): MethodDeclarationStructure {
@@ -443,7 +443,7 @@ export class RecordGenerator {
     }
 
     private buildMethodStructures(
-        methods: readonly NormalizedMethod[],
+        methods: readonly GirMethod[],
         glibTypeName: string | undefined,
     ): MethodDeclarationStructure[] {
         const supportedMethods = filterSupportedMethods(methods, (params) =>
@@ -452,7 +452,7 @@ export class RecordGenerator {
         return supportedMethods.map((method) => this.buildMethodStructure(method, glibTypeName));
     }
 
-    private buildMethodStructure(method: NormalizedMethod, className: string | undefined): MethodDeclarationStructure {
+    private buildMethodStructure(method: GirMethod, className: string | undefined): MethodDeclarationStructure {
         const methodName = toCamelCase(method.name);
         const selfTypeDescriptor = className ? boxedSelfType(className, this.options.sharedLibrary) : SELF_TYPE_GOBJECT;
 
@@ -466,8 +466,8 @@ export class RecordGenerator {
     }
 
     private generateFields(
-        fields: readonly NormalizedField[],
-        methods: readonly NormalizedMethod[],
+        fields: readonly GirField[],
+        methods: readonly GirMethod[],
         classDecl: ClassDeclaration,
     ): void {
         const layout = this.fieldBuilder.calculateLayout(fields);

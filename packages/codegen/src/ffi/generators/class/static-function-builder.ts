@@ -4,7 +4,7 @@
  * Builds static function code for classes.
  */
 
-import type { NormalizedClass, NormalizedFunction } from "@gtkx/gir";
+import type { GirClass, GirFunction } from "@gtkx/gir";
 import type { MethodDeclarationStructure } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
@@ -21,7 +21,7 @@ export class StaticFunctionBuilder {
     private readonly methodBody: MethodBodyWriter;
 
     constructor(
-        private readonly cls: NormalizedClass,
+        private readonly cls: GirClass,
         ffiMapper: FfiMapper,
         ctx: GenerationContext,
         writers: Writers,
@@ -52,7 +52,7 @@ export class StaticFunctionBuilder {
         return supportedFunctions.map((func) => this.buildStaticFunctionStructure(func));
     }
 
-    private buildStaticFunctionStructure(func: NormalizedFunction): MethodDeclarationStructure {
+    private buildStaticFunctionStructure(func: GirFunction): MethodDeclarationStructure {
         return this.methodBody.buildStaticFunctionStructure(func, {
             className: this.className,
             originalClassName: this.cls.name,

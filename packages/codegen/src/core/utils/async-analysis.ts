@@ -4,7 +4,7 @@
  * Provides analysis of async/finish method pairs in GIR data.
  */
 
-import type { NormalizedMethod } from "@gtkx/gir";
+import type { GirMethod } from "@gtkx/gir";
 
 /**
  * Result of async method analysis.
@@ -35,7 +35,7 @@ export type AsyncMethodAnalysis = {
  * }
  * ```
  */
-export const analyzeAsyncMethods = (methods: readonly NormalizedMethod[]): AsyncMethodAnalysis => {
+export const analyzeAsyncMethods = (methods: readonly GirMethod[]): AsyncMethodAnalysis => {
     const asyncMethods = new Set<string>();
     const finishMethods = new Set<string>();
     const asyncPairs = new Map<string, string>();

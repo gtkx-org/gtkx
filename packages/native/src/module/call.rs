@@ -104,6 +104,13 @@ fn handle_call(
     args: Vec<Arg>,
     result_type: Type,
 ) -> anyhow::Result<(Value, Vec<RefUpdate>)> {
+    GtkThreadState::with(|state| {
+        if state.app_hold_guard.is_none() {
+            bail!("GTK application has not been started. Call start() first.");
+        }
+        Ok(())
+    })?;
+
     let mut arg_types: Vec<libffi::Type> = Vec::with_capacity(args.len() + 1);
     for arg in &args {
         match &arg.type_ {

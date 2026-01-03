@@ -254,7 +254,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("widget", mappedType);
 
-            expect(result).toBe("(widget as any)?.id ?? widget");
+            expect(result).toBe("widget.id");
         });
 
         it("returns ID extraction expression for boxed type", () => {
@@ -266,7 +266,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("color", mappedType);
 
-            expect(result).toBe("(color as any)?.id ?? color");
+            expect(result).toBe("color.id");
         });
 
         it("returns ID extraction expression for struct type", () => {
@@ -278,7 +278,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("allocation", mappedType);
 
-            expect(result).toBe("(allocation as any)?.id ?? allocation");
+            expect(result).toBe("allocation.id");
         });
 
         it("handles complex value names", () => {
@@ -290,7 +290,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("this.child", mappedType);
 
-            expect(result).toBe("(this.child as any)?.id ?? this.child");
+            expect(result).toBe("this.child.id");
         });
 
         it("handles array value names", () => {
@@ -302,7 +302,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("widgets[0]", mappedType);
 
-            expect(result).toBe("(widgets[0] as any)?.id ?? widgets[0]");
+            expect(result).toBe("widgets[0].id");
         });
     });
 

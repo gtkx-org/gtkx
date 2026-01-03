@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import ejs from "ejs";
 import type { TestingOption } from "./create.js";
 
@@ -11,11 +10,8 @@ export interface TemplateContext {
     testing: TestingOption;
 }
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 const getTemplatesDir = (): string => {
-    return join(__dirname, "..", "templates");
+    return join(import.meta.dirname, "..", "templates");
 };
 
 const renderTemplate = (templatePath: string, context: TemplateContext): string => {

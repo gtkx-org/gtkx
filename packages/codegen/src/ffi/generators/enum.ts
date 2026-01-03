@@ -4,7 +4,7 @@
  * Generates enum definitions using ts-morph AST.
  */
 
-import type { NormalizedEnumeration } from "@gtkx/gir";
+import type { GirEnumeration } from "@gtkx/gir";
 import { type EnumDeclarationStructure, type SourceFile, StructureKind } from "ts-morph";
 import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
@@ -28,7 +28,7 @@ export class EnumGenerator {
     /**
      * Adds multiple enums to the source file using batched insertion for performance.
      */
-    addEnums(enumerations: readonly NormalizedEnumeration[]): void {
+    addEnums(enumerations: readonly GirEnumeration[]): void {
         const structures: EnumDeclarationStructure[] = [];
 
         for (const enumeration of enumerations) {
@@ -40,7 +40,7 @@ export class EnumGenerator {
         }
     }
 
-    private buildEnumStructure(enumeration: NormalizedEnumeration): EnumDeclarationStructure {
+    private buildEnumStructure(enumeration: GirEnumeration): EnumDeclarationStructure {
         const enumName = toPascalCase(enumeration.name);
 
         const members = enumeration.members.map((member) => {

@@ -5,7 +5,7 @@
  * Delegates to specialized builders for each component.
  */
 
-import type { GirRepository, NormalizedClass, NormalizedMethod, QualifiedName } from "@gtkx/gir";
+import type { GirRepository, GirClass, GirMethod, QualifiedName } from "@gtkx/gir";
 import type { ClassDeclaration, SourceFile } from "ts-morph";
 import { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
@@ -68,7 +68,7 @@ export class ClassGenerator {
     private readonly widgetMetaBuilder: WidgetMetaBuilder;
 
     constructor(
-        private readonly cls: NormalizedClass,
+        private readonly cls: GirClass,
         ffiMapper: FfiMapper,
         private readonly ctx: GenerationContext,
         private readonly repository: GirRepository,
@@ -225,12 +225,12 @@ export class ClassGenerator {
     }
 
     private collectInterfaceMethods(parentMethodNames: Set<string>): {
-        interfaceMethods: NormalizedMethod[];
-        interfaceMethodsByNamespace: Map<string, NormalizedMethod[]>;
+        interfaceMethods: GirMethod[];
+        interfaceMethodsByNamespace: Map<string, GirMethod[]>;
     } {
         const classMethodNames = new Set(this.cls.methods.map((m) => m.name));
         const seenInterfaceMethodNames = new Set<string>();
-        const interfaceMethodsByNamespace = new Map<string, NormalizedMethod[]>();
+        const interfaceMethodsByNamespace = new Map<string, GirMethod[]>();
 
         for (const ifaceQualifiedName of this.cls.implements) {
             const iface = this.repository.resolveInterface(ifaceQualifiedName as QualifiedName);
@@ -262,12 +262,12 @@ export class ClassGenerator {
         return { interfaceMethods, interfaceMethodsByNamespace };
     }
 
-    private handleInterfaceMethodRename(method: NormalizedMethod, ifaceName: string): void {
+    private handleInterfaceMethodRename(method: GirMethod, ifaceName: string): void {
         const renamedMethod = generateConflictingMethodName(ifaceName, method.name);
         this.ctx.methodRenames.set(method.cIdentifier, renamedMethod);
     }
 
-    private filterClassMethods(parentMethodNames: Set<string>): NormalizedMethod[] {
+    private filterClassMethods(parentMethodNames: Set<string>): GirMethod[] {
         return this.cls.methods.filter((m) => {
             const needsRename = parentMethodNames.has(m.name) || (m.name === "connect" && this.cls.parent);
             if (needsRename) {
@@ -279,9 +279,9 @@ export class ClassGenerator {
     }
 
     private updateContextFlags(
-        syncMethods: NormalizedMethod[],
-        syncInterfaceMethods: NormalizedMethod[],
-        interfaceMethods: NormalizedMethod[],
+        syncMethods: GirMethod[],
+        syncInterfaceMethods: GirMethod[],
+        interfaceMethods: GirMethod[],
     ): void {
         this.ctx.usesRef =
             syncMethods.some((m) => this.methodBuilder.hasRefParameter(m.parameters)) ||
@@ -316,7 +316,7 @@ export class ClassGenerator {
         return this.isOrExtendsParamSpec(this.cls);
     }
 
-    private isOrExtendsParamSpec(cls: NormalizedClass): boolean {
+    private isOrExtendsParamSpec(cls: GirClass): boolean {
         if (cls.name === "ParamSpec" || cls.glibTypeName === "GParam") {
             return true;
         }

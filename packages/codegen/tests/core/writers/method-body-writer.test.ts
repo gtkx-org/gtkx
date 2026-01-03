@@ -829,7 +829,7 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildValueExpression("widget", mappedType);
 
-            expect(result).toBe("(widget as any)?.id ?? widget");
+            expect(result).toBe("widget.id");
         });
 
         it("returns simple value for primitives", () => {

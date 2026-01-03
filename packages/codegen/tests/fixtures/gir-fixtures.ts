@@ -1,46 +1,46 @@
 import {
-    NormalizedCallback,
-    NormalizedClass,
-    NormalizedConstant,
-    NormalizedConstructor,
-    NormalizedEnumeration,
-    NormalizedEnumerationMember,
-    NormalizedField,
-    NormalizedFunction,
-    NormalizedInterface,
-    NormalizedMethod,
-    NormalizedNamespace,
-    NormalizedParameter,
-    NormalizedProperty,
-    NormalizedRecord,
-    NormalizedSignal,
-    NormalizedType,
+    GirCallback,
+    GirClass,
+    GirConstant,
+    GirConstructor,
+    GirEnumeration,
+    GirEnumerationMember,
+    GirField,
+    GirFunction,
+    GirInterface,
+    GirMethod,
+    GirNamespace,
+    GirParameter,
+    GirProperty,
+    GirRecord,
+    GirSignal,
+    GirType,
     type QualifiedName,
     qualifiedName,
 } from "@gtkx/gir";
 
-type NormalizedTypeData = ConstructorParameters<typeof NormalizedType>[0];
-type NormalizedParameterData = ConstructorParameters<typeof NormalizedParameter>[0];
-type NormalizedMethodData = ConstructorParameters<typeof NormalizedMethod>[0];
-type NormalizedPropertyData = ConstructorParameters<typeof NormalizedProperty>[0];
-type NormalizedSignalData = ConstructorParameters<typeof NormalizedSignal>[0];
-type NormalizedConstructorData = ConstructorParameters<typeof NormalizedConstructor>[0];
-type NormalizedFunctionData = ConstructorParameters<typeof NormalizedFunction>[0];
-type NormalizedClassData = ConstructorParameters<typeof NormalizedClass>[0];
-type NormalizedInterfaceData = ConstructorParameters<typeof NormalizedInterface>[0];
-type NormalizedRecordData = ConstructorParameters<typeof NormalizedRecord>[0];
-type NormalizedFieldData = ConstructorParameters<typeof NormalizedField>[0];
-type NormalizedEnumerationData = ConstructorParameters<typeof NormalizedEnumeration>[0];
-type NormalizedEnumerationMemberData = ConstructorParameters<typeof NormalizedEnumerationMember>[0];
-type NormalizedCallbackData = ConstructorParameters<typeof NormalizedCallback>[0];
-type NormalizedConstantData = ConstructorParameters<typeof NormalizedConstant>[0];
-type NormalizedNamespaceData = ConstructorParameters<typeof NormalizedNamespace>[0];
+type NormalizedTypeData = ConstructorParameters<typeof GirType>[0];
+type NormalizedParameterData = ConstructorParameters<typeof GirParameter>[0];
+type NormalizedMethodData = ConstructorParameters<typeof GirMethod>[0];
+type NormalizedPropertyData = ConstructorParameters<typeof GirProperty>[0];
+type NormalizedSignalData = ConstructorParameters<typeof GirSignal>[0];
+type NormalizedConstructorData = ConstructorParameters<typeof GirConstructor>[0];
+type NormalizedFunctionData = ConstructorParameters<typeof GirFunction>[0];
+type NormalizedClassData = ConstructorParameters<typeof GirClass>[0];
+type NormalizedInterfaceData = ConstructorParameters<typeof GirInterface>[0];
+type NormalizedRecordData = ConstructorParameters<typeof GirRecord>[0];
+type NormalizedFieldData = ConstructorParameters<typeof GirField>[0];
+type NormalizedEnumerationData = ConstructorParameters<typeof GirEnumeration>[0];
+type NormalizedEnumerationMemberData = ConstructorParameters<typeof GirEnumerationMember>[0];
+type NormalizedCallbackData = ConstructorParameters<typeof GirCallback>[0];
+type NormalizedConstantData = ConstructorParameters<typeof GirConstant>[0];
+type NormalizedNamespaceData = ConstructorParameters<typeof GirNamespace>[0];
 
 export { qualifiedName };
 export type { QualifiedName };
 
-export function createNormalizedType(overrides: Partial<NormalizedTypeData> = {}): NormalizedType {
-    return new NormalizedType({
+export function createNormalizedType(overrides: Partial<NormalizedTypeData> = {}): GirType {
+    return new GirType({
         name: "gint",
         isArray: false,
         elementType: null,
@@ -49,8 +49,8 @@ export function createNormalizedType(overrides: Partial<NormalizedTypeData> = {}
     });
 }
 
-export function createNormalizedParameter(overrides: Partial<NormalizedParameterData> = {}): NormalizedParameter {
-    return new NormalizedParameter({
+export function createNormalizedParameter(overrides: Partial<NormalizedParameterData> = {}): GirParameter {
+    return new GirParameter({
         name: "value",
         type: createNormalizedType(),
         direction: "in",
@@ -61,8 +61,8 @@ export function createNormalizedParameter(overrides: Partial<NormalizedParameter
     });
 }
 
-export function createNormalizedMethod(overrides: Partial<NormalizedMethodData> = {}): NormalizedMethod {
-    return new NormalizedMethod({
+export function createNormalizedMethod(overrides: Partial<NormalizedMethodData> = {}): GirMethod {
+    return new GirMethod({
         name: "activate",
         cIdentifier: "gtk_widget_activate",
         returnType: createNormalizedType({ name: "none" }),
@@ -72,8 +72,8 @@ export function createNormalizedMethod(overrides: Partial<NormalizedMethodData> 
     });
 }
 
-export function createNormalizedProperty(overrides: Partial<NormalizedPropertyData> = {}): NormalizedProperty {
-    return new NormalizedProperty({
+export function createNormalizedProperty(overrides: Partial<NormalizedPropertyData> = {}): GirProperty {
+    return new GirProperty({
         name: "label",
         type: createNormalizedType({ name: "utf8" }),
         readable: true,
@@ -86,8 +86,8 @@ export function createNormalizedProperty(overrides: Partial<NormalizedPropertyDa
     });
 }
 
-export function createNormalizedSignal(overrides: Partial<NormalizedSignalData> = {}): NormalizedSignal {
-    return new NormalizedSignal({
+export function createNormalizedSignal(overrides: Partial<NormalizedSignalData> = {}): GirSignal {
+    return new GirSignal({
         name: "clicked",
         when: "first",
         returnType: null,
@@ -96,8 +96,8 @@ export function createNormalizedSignal(overrides: Partial<NormalizedSignalData> 
     });
 }
 
-export function createNormalizedConstructor(overrides: Partial<NormalizedConstructorData> = {}): NormalizedConstructor {
-    return new NormalizedConstructor({
+export function createNormalizedConstructor(overrides: Partial<NormalizedConstructorData> = {}): GirConstructor {
+    return new GirConstructor({
         name: "new",
         cIdentifier: "gtk_button_new",
         returnType: createNormalizedType({ name: qualifiedName("Gtk", "Button") }),
@@ -107,8 +107,8 @@ export function createNormalizedConstructor(overrides: Partial<NormalizedConstru
     });
 }
 
-export function createNormalizedFunction(overrides: Partial<NormalizedFunctionData> = {}): NormalizedFunction {
-    return new NormalizedFunction({
+export function createNormalizedFunction(overrides: Partial<NormalizedFunctionData> = {}): GirFunction {
+    return new GirFunction({
         name: "init",
         cIdentifier: "gtk_init",
         returnType: createNormalizedType({ name: "none" }),
@@ -118,11 +118,11 @@ export function createNormalizedFunction(overrides: Partial<NormalizedFunctionDa
     });
 }
 
-export function createNormalizedClass(overrides: Partial<NormalizedClassData> = {}): NormalizedClass {
+export function createNormalizedClass(overrides: Partial<NormalizedClassData> = {}): GirClass {
     const name = overrides.name ?? "Button";
     const namespace = overrides.qualifiedName?.split(".")[0] ?? "Gtk";
 
-    return new NormalizedClass({
+    return new GirClass({
         name,
         qualifiedName: qualifiedName(namespace, name),
         cType: `${namespace}${name}`,
@@ -140,11 +140,11 @@ export function createNormalizedClass(overrides: Partial<NormalizedClassData> = 
     });
 }
 
-export function createNormalizedInterface(overrides: Partial<NormalizedInterfaceData> = {}): NormalizedInterface {
+export function createNormalizedInterface(overrides: Partial<NormalizedInterfaceData> = {}): GirInterface {
     const name = overrides.name ?? "Orientable";
     const namespace = overrides.qualifiedName?.split(".")[0] ?? "Gtk";
 
-    return new NormalizedInterface({
+    return new GirInterface({
         name,
         qualifiedName: qualifiedName(namespace, name),
         cType: `${namespace}${name}`,
@@ -156,8 +156,8 @@ export function createNormalizedInterface(overrides: Partial<NormalizedInterface
     });
 }
 
-export function createNormalizedField(overrides: Partial<NormalizedFieldData> = {}): NormalizedField {
-    return new NormalizedField({
+export function createNormalizedField(overrides: Partial<NormalizedFieldData> = {}): GirField {
+    return new GirField({
         name: "data",
         type: createNormalizedType(),
         writable: true,
@@ -167,11 +167,11 @@ export function createNormalizedField(overrides: Partial<NormalizedFieldData> = 
     });
 }
 
-export function createNormalizedRecord(overrides: Partial<NormalizedRecordData> = {}): NormalizedRecord {
+export function createNormalizedRecord(overrides: Partial<NormalizedRecordData> = {}): GirRecord {
     const name = overrides.name ?? "Rectangle";
     const namespace = overrides.qualifiedName?.split(".")[0] ?? "Gdk";
 
-    return new NormalizedRecord({
+    return new GirRecord({
         name,
         qualifiedName: qualifiedName(namespace, name),
         cType: `${namespace}${name}`,
@@ -187,8 +187,8 @@ export function createNormalizedRecord(overrides: Partial<NormalizedRecordData> 
 
 export function createNormalizedEnumerationMember(
     overrides: Partial<NormalizedEnumerationMemberData> = {},
-): NormalizedEnumerationMember {
-    return new NormalizedEnumerationMember({
+): GirEnumerationMember {
+    return new GirEnumerationMember({
         name: "HORIZONTAL",
         value: "0",
         cIdentifier: "GTK_ORIENTATION_HORIZONTAL",
@@ -196,11 +196,11 @@ export function createNormalizedEnumerationMember(
     });
 }
 
-export function createNormalizedEnumeration(overrides: Partial<NormalizedEnumerationData> = {}): NormalizedEnumeration {
+export function createNormalizedEnumeration(overrides: Partial<NormalizedEnumerationData> = {}): GirEnumeration {
     const name = overrides.name ?? "Orientation";
     const namespace = overrides.qualifiedName?.split(".")[0] ?? "Gtk";
 
-    return new NormalizedEnumeration({
+    return new GirEnumeration({
         name,
         qualifiedName: qualifiedName(namespace, name),
         cType: `${namespace}${name}`,
@@ -212,11 +212,11 @@ export function createNormalizedEnumeration(overrides: Partial<NormalizedEnumera
     });
 }
 
-export function createNormalizedCallback(overrides: Partial<NormalizedCallbackData> = {}): NormalizedCallback {
+export function createNormalizedCallback(overrides: Partial<NormalizedCallbackData> = {}): GirCallback {
     const name = overrides.name ?? "AsyncReadyCallback";
     const namespace = overrides.qualifiedName?.split(".")[0] ?? "Gio";
 
-    return new NormalizedCallback({
+    return new GirCallback({
         name,
         qualifiedName: qualifiedName(namespace, name),
         cType: `${namespace}${name}`,
@@ -226,11 +226,11 @@ export function createNormalizedCallback(overrides: Partial<NormalizedCallbackDa
     });
 }
 
-export function createNormalizedConstant(overrides: Partial<NormalizedConstantData> = {}): NormalizedConstant {
+export function createNormalizedConstant(overrides: Partial<NormalizedConstantData> = {}): GirConstant {
     const name = overrides.name ?? "MAJOR_VERSION";
     const namespace = overrides.qualifiedName?.split(".")[0] ?? "Gtk";
 
-    return new NormalizedConstant({
+    return new GirConstant({
         name,
         qualifiedName: qualifiedName(namespace, name),
         cType: "gint",
@@ -240,10 +240,10 @@ export function createNormalizedConstant(overrides: Partial<NormalizedConstantDa
     });
 }
 
-export function createNormalizedNamespace(overrides: Partial<NormalizedNamespaceData> = {}): NormalizedNamespace {
+export function createNormalizedNamespace(overrides: Partial<NormalizedNamespaceData> = {}): GirNamespace {
     const name = overrides.name ?? "Gtk";
 
-    return new NormalizedNamespace({
+    return new GirNamespace({
         name,
         version: "4.0",
         sharedLibrary: `lib${name.toLowerCase()}-4.so.1`,
@@ -260,7 +260,7 @@ export function createNormalizedNamespace(overrides: Partial<NormalizedNamespace
     });
 }
 
-export function createWidgetClass(overrides: Partial<NormalizedClassData> = {}): NormalizedClass {
+export function createWidgetClass(overrides: Partial<NormalizedClassData> = {}): GirClass {
     return createNormalizedClass({
         name: "Widget",
         qualifiedName: qualifiedName("Gtk", "Widget"),
@@ -278,7 +278,7 @@ export function createWidgetClass(overrides: Partial<NormalizedClassData> = {}):
     });
 }
 
-export function createButtonClass(overrides: Partial<NormalizedClassData> = {}): NormalizedClass {
+export function createButtonClass(overrides: Partial<NormalizedClassData> = {}): GirClass {
     return createNormalizedClass({
         name: "Button",
         qualifiedName: qualifiedName("Gtk", "Button"),

@@ -1,4 +1,4 @@
-import type { GirRepository, NormalizedClass, NormalizedProperty } from "@gtkx/gir";
+import type { GirRepository, GirClass, GirProperty } from "@gtkx/gir";
 import { parseQualifiedName } from "@gtkx/gir";
 import { APPLICATION_PARAM_NAME } from "../constants/index.js";
 import type { PropertyAnalysis } from "../generator-types.js";
@@ -10,7 +10,7 @@ import { qualifyType } from "../utils/type-qualification.js";
 
 /**
  * Analyzes properties for JSX component generation.
- * Works directly with NormalizedClass and FfiMapper.
+ * Works directly with GirClass and FfiMapper.
  */
 export class PropertyAnalyzer {
     constructor(
@@ -22,7 +22,7 @@ export class PropertyAnalyzer {
      * Analyzes properties for a widget class.
      * Returns only the properties directly defined on this class (not inherited from any parent).
      */
-    analyzeWidgetProperties(cls: NormalizedClass, hiddenProps: Set<string> = new Set()): PropertyAnalysis[] {
+    analyzeWidgetProperties(cls: GirClass, hiddenProps: Set<string> = new Set()): PropertyAnalysis[] {
         const requiredParams = this.getRequiredConstructorParams(cls);
 
         const directProps = collectDirectMembers({
@@ -39,8 +39,8 @@ export class PropertyAnalyzer {
     }
 
     private analyzeProperty(
-        prop: NormalizedProperty,
-        cls: NormalizedClass,
+        prop: GirProperty,
+        cls: GirClass,
         requiredParams: Set<string>,
     ): PropertyAnalysis {
         const { namespace } = parseQualifiedName(cls.qualifiedName);
@@ -59,7 +59,7 @@ export class PropertyAnalyzer {
         };
     }
 
-    private getRequiredConstructorParams(cls: NormalizedClass): Set<string> {
+    private getRequiredConstructorParams(cls: GirClass): Set<string> {
         const required = new Set<string>();
         const mainCtor = cls.getConstructor("new");
         if (!mainCtor) return required;

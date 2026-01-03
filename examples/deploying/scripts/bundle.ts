@@ -1,9 +1,7 @@
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, resolve } from "node:path";
 import * as esbuild from "esbuild";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = resolve(__dirname, "..");
+const projectRoot = resolve(import.meta.dirname, "..");
 
 async function bundle() {
     console.log("Bundling application...");

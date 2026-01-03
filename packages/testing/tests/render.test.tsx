@@ -28,7 +28,7 @@ describe("render", () => {
     it("returns container as the GTK Application", async () => {
         const { container } = await render("Test");
         expect(container).toBeDefined();
-        expect(container.getApplicationId()).toMatch(/com\.gtkx\.test/);
+        expect(container.getApplicationId()).toMatch(/org\.gtkx\.testing/);
     });
 
     it("wraps element in ApplicationWindow by default", async () => {

@@ -4,13 +4,13 @@
  * Shared utilities for traversing class hierarchies.
  */
 
-import type { GirRepository, NormalizedClass, NormalizedInterface, QualifiedName } from "@gtkx/gir";
+import type { GirRepository, GirClass, GirInterface, QualifiedName } from "@gtkx/gir";
 import { toCamelCase } from "./naming.js";
 
 /**
  * Collects interfaces implemented by all parent classes.
  */
-function collectParentInterfaces(cls: NormalizedClass): Set<QualifiedName> {
+function collectParentInterfaces(cls: GirClass): Set<QualifiedName> {
     const interfaces = new Set<QualifiedName>();
 
     let current = cls.getParent();
@@ -35,10 +35,10 @@ function collectParentInterfaces(cls: NormalizedClass): Set<QualifiedName> {
  * @param transformName - Optional function to transform member names (e.g., toCamelCase)
  */
 function collectParentMemberNames<T extends { name: string }>(
-    cls: NormalizedClass,
+    cls: GirClass,
     repo: GirRepository,
-    getClassMembers: (c: NormalizedClass) => readonly T[],
-    getInterfaceMembers: (i: NormalizedInterface) => readonly T[],
+    getClassMembers: (c: GirClass) => readonly T[],
+    getInterfaceMembers: (i: GirInterface) => readonly T[],
     transformName: (name: string) => string = (n) => n,
 ): Set<string> {
     const names = new Set<string>();
@@ -67,7 +67,7 @@ function collectParentMemberNames<T extends { name: string }>(
 /**
  * Collects property names from all parent classes and their interfaces.
  */
-export function collectParentPropertyNames(cls: NormalizedClass, repo: GirRepository): Set<string> {
+export function collectParentPropertyNames(cls: GirClass, repo: GirRepository): Set<string> {
     return collectParentMemberNames(
         cls,
         repo,
@@ -80,7 +80,7 @@ export function collectParentPropertyNames(cls: NormalizedClass, repo: GirReposi
 /**
  * Collects signal names from all parent classes and their interfaces.
  */
-export function collectParentSignalNames(cls: NormalizedClass, repo: GirRepository): Set<string> {
+export function collectParentSignalNames(cls: GirClass, repo: GirRepository): Set<string> {
     return collectParentMemberNames(
         cls,
         repo,
@@ -93,7 +93,7 @@ export function collectParentSignalNames(cls: NormalizedClass, repo: GirReposito
 /**
  * Collects method names from all parent classes and their interfaces.
  */
-export function collectParentMethodNames(cls: NormalizedClass, repo: GirRepository): Set<string> {
+export function collectParentMethodNames(cls: GirClass, repo: GirRepository): Set<string> {
     return collectParentMemberNames(
         cls,
         repo,
@@ -107,7 +107,7 @@ export function collectParentMethodNames(cls: NormalizedClass, repo: GirReposito
  * These names are the camelCase versions of constructor names (e.g., new_from_template → newFromTemplate).
  * Used to detect when a subclass's factory method would conflict with a parent's.
  */
-export function collectParentFactoryMethodNames(cls: NormalizedClass): Set<string> {
+export function collectParentFactoryMethodNames(cls: GirClass): Set<string> {
     const names = new Set<string>();
 
     let current = cls.getParent();
@@ -126,15 +126,15 @@ export function collectParentFactoryMethodNames(cls: NormalizedClass): Set<strin
  */
 export type CollectDirectMembersOptions<T extends { name: string }> = {
     /** The class to analyze */
-    cls: NormalizedClass;
+    cls: GirClass;
     /** GIR repository for interface resolution */
     repo: GirRepository;
     /** Function to extract members from a class */
-    getClassMembers: (c: NormalizedClass) => readonly T[];
+    getClassMembers: (c: GirClass) => readonly T[];
     /** Function to extract members from an interface */
-    getInterfaceMembers: (i: NormalizedInterface) => readonly T[];
+    getInterfaceMembers: (i: GirInterface) => readonly T[];
     /** Function to get parent member names (already collected) */
-    getParentNames: (cls: NormalizedClass, repo: GirRepository) => Set<string>;
+    getParentNames: (cls: GirClass, repo: GirRepository) => Set<string>;
     /** Optional function to transform member names (e.g., toCamelCase) */
     transformName?: (name: string) => string;
     /** Optional predicate to filter hidden members */

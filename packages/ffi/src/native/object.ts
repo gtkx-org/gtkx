@@ -1,3 +1,4 @@
+import type { ObjectId } from "@gtkx/native";
 import { typeCheckInstanceIsA, typeFromName, typeNameFromInstance } from "../generated/gobject/functions.js";
 import { TypeInstance } from "../generated/gobject/type-instance.js";
 import { findNativeClass } from "../registry.js";
@@ -24,7 +25,7 @@ import type { NativeClass, NativeObject } from "./base.js";
  * ```
  */
 export function getNativeObject<T extends NativeObject = NativeObject>(
-    id: unknown,
+    id: ObjectId | null | undefined,
     targetType?: NativeClass<T>,
 ): T | null {
     if (id === null || id === undefined) {

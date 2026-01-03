@@ -1,4 +1,4 @@
-import type { GirRepository, NormalizedClass, NormalizedSignal } from "@gtkx/gir";
+import type { GirRepository, GirClass, GirSignal } from "@gtkx/gir";
 import { parseQualifiedName } from "@gtkx/gir";
 import type { SignalAnalysis, SignalParam } from "../generator-types.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
@@ -9,7 +9,7 @@ import { qualifyType } from "../utils/type-qualification.js";
 
 /**
  * Analyzes signals for JSX component generation.
- * Works directly with NormalizedClass and FfiMapper.
+ * Works directly with GirClass and FfiMapper.
  */
 export class SignalAnalyzer {
     constructor(
@@ -21,7 +21,7 @@ export class SignalAnalyzer {
      * Analyzes signals for a widget class.
      * Returns only the signals directly defined on this class (not inherited from any parent).
      */
-    analyzeWidgetSignals(cls: NormalizedClass): SignalAnalysis[] {
+    analyzeWidgetSignals(cls: GirClass): SignalAnalysis[] {
         const { namespace } = parseQualifiedName(cls.qualifiedName);
 
         const directSignals = collectDirectMembers({
@@ -36,7 +36,7 @@ export class SignalAnalyzer {
         return directSignals.map((signal) => this.analyzeSignal(signal, namespace));
     }
 
-    private analyzeSignal(signal: NormalizedSignal, namespace: string): SignalAnalysis {
+    private analyzeSignal(signal: GirSignal, namespace: string): SignalAnalysis {
         const camelName = toCamelCase(signal.name);
         const handlerName = `on${camelName.charAt(0).toUpperCase()}${camelName.slice(1)}`;
 

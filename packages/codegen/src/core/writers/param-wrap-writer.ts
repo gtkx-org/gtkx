@@ -112,7 +112,7 @@ export class ParamWrapWriter {
                         writer.newLine();
                         writer.indent(() => this.writeWrapExpressionsList(wrapInfos, writer));
                         writer.writeLine(");");
-                        writer.writeLine("return (_result as { id: unknown } | null)?.id ?? null;");
+                        writer.writeLine("return _result?.id ?? null;");
                     });
                     writer.write("}");
                 } else {

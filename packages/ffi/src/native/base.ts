@@ -1,4 +1,4 @@
-import { getObjectId } from "@gtkx/native";
+import { getObjectId, type ObjectId } from "@gtkx/native";
 
 /**
  * Base class for all GTK/GLib object wrappers.
@@ -16,7 +16,7 @@ export abstract class NativeObject {
     static readonly objectType: "gobject" | "interface" | "boxed" | "gvariant" | "struct" | "gparam";
 
     /** Creates a wrapper instance from a native pointer/ID */
-    static fromPtr(ptr: unknown): NativeObject {
+    static fromPtr(ptr: ObjectId): NativeObject {
         // biome-ignore lint/complexity/noThisInStatic: Intentional - allows subclasses to create instances of themselves
         const instance = Object.create(this.prototype) as NativeObject;
         instance.id = ptr;
@@ -24,7 +24,7 @@ export abstract class NativeObject {
     }
 
     /** Native object pointer/ID */
-    id: unknown;
+    id!: ObjectId;
 
     // biome-ignore lint/complexity/noUselessConstructor: Required for NativeClass type compatibility
     // biome-ignore lint/suspicious/noExplicitAny: Required for NativeClass type compatibility
@@ -68,3 +68,5 @@ export let isInstantiating = false;
 export const setInstantiating = (value: boolean): void => {
     isInstantiating = value;
 };
+
+export type { ObjectId };

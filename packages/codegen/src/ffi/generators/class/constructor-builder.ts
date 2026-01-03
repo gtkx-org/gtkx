@@ -4,7 +4,7 @@
  * Builds constructor and factory method code for classes.
  */
 
-import type { NormalizedClass, NormalizedConstructor } from "@gtkx/gir";
+import type { GirClass, GirConstructor } from "@gtkx/gir";
 import type { ClassDeclaration, MethodDeclarationStructure, WriterFunction } from "ts-morph";
 import { Scope, StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
@@ -23,7 +23,7 @@ export class ConstructorBuilder {
     private parentFactoryMethodNames: Set<string> = new Set();
 
     constructor(
-        private readonly cls: NormalizedClass,
+        private readonly cls: GirClass,
         ffiMapper: FfiMapper,
         private readonly ctx: GenerationContext,
         writers: Writers,
@@ -98,7 +98,7 @@ export class ConstructorBuilder {
         return methodStructures;
     }
 
-    private addConstructorWithFlag(classDecl: ClassDeclaration, ctor: NormalizedConstructor): void {
+    private addConstructorWithFlag(classDecl: ClassDeclaration, ctor: GirConstructor): void {
         this.ctx.usesInstantiating = true;
         const params = this.methodBody.buildParameterList(ctor.parameters);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "none";
@@ -110,7 +110,7 @@ export class ConstructorBuilder {
         });
     }
 
-    private writeConstructorWithFlagBody(ctor: NormalizedConstructor, ownership: string): WriterFunction {
+    private writeConstructorWithFlagBody(ctor: GirConstructor, ownership: string): WriterFunction {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
 
         return (writer) => {
@@ -138,7 +138,7 @@ export class ConstructorBuilder {
                     writer.writeLine("],");
                     writer.writeLine(`{ type: "gobject", ownership: "${ownership}" }`);
                 });
-                writer.writeLine(");");
+                writer.writeLine(") as ObjectId;");
             });
             writer.writeLine("} else {");
             writer.indent(() => {
@@ -191,7 +191,7 @@ export class ConstructorBuilder {
                     writer.writeLine("],");
                     writer.writeLine('{ type: "gobject", ownership: "full" }');
                 });
-                writer.writeLine(");");
+                writer.writeLine(") as ObjectId;");
             });
             writer.writeLine("} else {");
             writer.indent(() => {
@@ -202,12 +202,12 @@ export class ConstructorBuilder {
         };
     }
 
-    private conflictsWithParentFactoryMethod(ctor: NormalizedConstructor): boolean {
+    private conflictsWithParentFactoryMethod(ctor: GirConstructor): boolean {
         const methodName = toCamelCase(ctor.name);
         return this.parentFactoryMethodNames.has(methodName);
     }
 
-    private buildStaticFactoryMethodStructure(ctor: NormalizedConstructor): MethodDeclarationStructure {
+    private buildStaticFactoryMethodStructure(ctor: GirConstructor): MethodDeclarationStructure {
         const methodName = toCamelCase(ctor.name);
         const params = this.methodBody.buildParameterList(ctor.parameters);
         this.ctx.usesGetNativeObject = true;
@@ -223,7 +223,7 @@ export class ConstructorBuilder {
         };
     }
 
-    private writeStaticFactoryMethodBody(ctor: NormalizedConstructor): WriterFunction {
+    private writeStaticFactoryMethodBody(ctor: GirConstructor): WriterFunction {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "none";
 

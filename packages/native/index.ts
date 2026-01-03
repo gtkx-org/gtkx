@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import type { Arg, Ref, Type } from "./types.js";
+import type { Arg, ObjectId, Ref, Type } from "./types.js";
 
 const require = createRequire(import.meta.url);
 const native = require("./index.node");
@@ -147,4 +147,4 @@ export function poll(): void {
     native.poll();
 }
 
-export type { Ref, Arg, Type };
+export type { ObjectId, Ref, Arg, Type };

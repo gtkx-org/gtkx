@@ -212,6 +212,9 @@ export class ImportsBuilder {
         if (this.ctx.usesInstantiating) {
             imports.push("isInstantiating", "setInstantiating");
         }
+        if (this.ctx.usesInstantiating || this.ctx.usesNativeObject) {
+            imports.push("ObjectId");
+        }
         if (this.ctx.usesNativeObject) {
             imports.push("NativeObject");
         }

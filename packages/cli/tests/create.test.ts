@@ -46,13 +46,10 @@ vi.mock("@clack/prompts", () => ({
 
 vi.mock("../src/templates.js", async () => {
     const { readFileSync } = await vi.importActual<typeof import("node:fs")>("node:fs");
-    const { dirname, join } = await vi.importActual<typeof import("node:path")>("node:path");
-    const { fileURLToPath } = await vi.importActual<typeof import("node:url")>("node:url");
+    const { join } = await vi.importActual<typeof import("node:path")>("node:path");
     const ejs = await vi.importActual<typeof import("ejs")>("ejs");
 
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = dirname(__filename);
-    const templatesDir = join(__dirname, "..", "templates");
+    const templatesDir = join(import.meta.dirname, "..", "templates");
 
     return {
         renderFile: (templateName: string, context: Record<string, unknown>) => {

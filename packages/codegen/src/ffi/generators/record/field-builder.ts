@@ -5,7 +5,7 @@
  * Handles struct memory layout calculations.
  */
 
-import type { NormalizedField } from "@gtkx/gir";
+import type { GirField } from "@gtkx/gir";
 import type { WriterFunction } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -17,7 +17,7 @@ import type { Writers } from "../../../core/writers/index.js";
  * Field layout information.
  */
 export type FieldLayout = {
-    field: NormalizedField;
+    field: GirField;
     offset: number;
     size: number;
     alignment: number;
@@ -38,7 +38,7 @@ export class FieldBuilder {
      * By default excludes private fields (for accessors).
      * Use includePrivate=true for allocation size calculation.
      */
-    calculateLayout(fields: readonly NormalizedField[], includePrivate = false): FieldLayout[] {
+    calculateLayout(fields: readonly GirField[], includePrivate = false): FieldLayout[] {
         const layout: FieldLayout[] = [];
         let currentOffset = 0;
 
@@ -68,7 +68,7 @@ export class FieldBuilder {
      * Includes private fields since they're needed for memory allocation
      * (e.g., GtkTextIter has only private/dummy fields for internal use).
      */
-    calculateStructSize(fields: readonly NormalizedField[]): number {
+    calculateStructSize(fields: readonly GirField[]): number {
         const layout = this.calculateLayout(fields, true);
         if (layout.length === 0) return 0;
 
@@ -82,7 +82,7 @@ export class FieldBuilder {
     /**
      * Writes field initialization statements using ts-morph WriterFunction.
      */
-    writeFieldWrites(fields: readonly NormalizedField[]): WriterFunction {
+    writeFieldWrites(fields: readonly GirField[]): WriterFunction {
         const layout = this.calculateLayout(fields);
         const writeableFields = layout.filter(
             ({ field }) => this.isWritableType(field.type) && field.writable !== false,
@@ -106,7 +106,7 @@ export class FieldBuilder {
     /**
      * Gets writable fields for init interface.
      */
-    getWritableFields(fields: readonly NormalizedField[]): NormalizedField[] {
+    getWritableFields(fields: readonly GirField[]): GirField[] {
         return fields.filter((f) => !f.private && f.writable !== false && this.isWritableType(f.type));
     }
 

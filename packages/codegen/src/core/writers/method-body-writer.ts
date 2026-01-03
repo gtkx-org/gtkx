@@ -621,15 +621,15 @@ export class MethodBodyWriter {
                 this.writeRefRewrap(writer, gtkAllocatesRefs);
 
                 if (hasOwnClassReturn) {
-                    writer.writeLine(`return getNativeObject(ptr, ${options.ownClassName})!;`);
+                    writer.writeLine(`return getNativeObject(ptr as ObjectId, ${options.ownClassName})!;`);
                 } else {
                     if (isNullable) {
                         writer.writeLine("if (ptr === null) return null;");
                     }
                     if (wrapInfo.needsBoxedWrap || wrapInfo.needsGVariantWrap || wrapInfo.needsInterfaceWrap) {
-                        writer.writeLine(`return getNativeObject(ptr, ${baseReturnType})!;`);
+                        writer.writeLine(`return getNativeObject(ptr as ObjectId, ${baseReturnType})!;`);
                     } else {
-                        writer.writeLine(`return getNativeObject(ptr) as ${baseReturnType};`);
+                        writer.writeLine(`return getNativeObject(ptr as ObjectId) as ${baseReturnType};`);
                     }
                 }
             } else if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
@@ -842,9 +842,9 @@ export class MethodBodyWriter {
 
             this.ctx.usesGetNativeObject = true;
             if (useClassInWrap) {
-                writer.writeLine(`return getNativeObject(ptr, ${wrapClassName})!;`);
+                writer.writeLine(`return getNativeObject(ptr as ObjectId, ${wrapClassName})!;`);
             } else {
-                writer.writeLine(`return getNativeObject(ptr) as ${wrapClassName};`);
+                writer.writeLine(`return getNativeObject(ptr as ObjectId) as ${wrapClassName};`);
             }
         };
     }

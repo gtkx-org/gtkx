@@ -2,12 +2,9 @@ import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import type { Plugin } from "vitest/config";
 import type { Reporter, TestSpecification, Vitest } from "vitest/node";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const getStateDir = (): string => join(tmpdir(), `gtkx-vitest-${process.pid}`);
 
@@ -58,7 +55,7 @@ const startXvfb = async (display: number): Promise<ChildProcess | null> => {
 };
 
 const gtkx = (): Plugin => {
-    const workerSetupPath = join(__dirname, "setup.js");
+    const workerSetupPath = join(import.meta.dirname, "setup.js");
     const stateDir = getStateDir();
 
     const xvfbProcesses: ChildProcess[] = [];

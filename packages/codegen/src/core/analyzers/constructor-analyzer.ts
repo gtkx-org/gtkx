@@ -4,7 +4,7 @@
  * Analyzes GIR constructors to determine which properties are constructor parameters.
  */
 
-import type { GirRepository, NormalizedClass } from "@gtkx/gir";
+import type { GirRepository, GirClass } from "@gtkx/gir";
 import { APPLICATION_PARAM_NAME } from "../constants/index.js";
 import { snakeToKebab, toCamelCase } from "../utils/naming.js";
 
@@ -28,7 +28,7 @@ export class ConstructorAnalyzer {
      * 1. Are not the "application" parameter (handled specially)
      * 2. Have a corresponding property on the class or its interfaces
      */
-    private getConstructorParams(cls: NormalizedClass): Array<{ name: string; camelName: string; optional: boolean }> {
+    private getConstructorParams(cls: GirClass): Array<{ name: string; camelName: string; optional: boolean }> {
         const mainCtor = cls.getConstructor("new");
         if (!mainCtor) return [];
 
@@ -73,7 +73,7 @@ export class ConstructorAnalyzer {
      * @param cls - The normalized class to analyze
      * @returns Array of camelCase parameter names
      */
-    getConstructorParamNames(cls: NormalizedClass): string[] {
+    getConstructorParamNames(cls: GirClass): string[] {
         return this.getConstructorParams(cls).map((p) => p.camelName);
     }
 }

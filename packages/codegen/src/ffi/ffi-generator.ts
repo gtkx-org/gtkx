@@ -1,4 +1,4 @@
-import type { GirRepository, NormalizedClass, NormalizedNamespace, NormalizedRecord } from "@gtkx/gir";
+import type { GirRepository, GirClass, GirNamespace, GirRecord } from "@gtkx/gir";
 import { parseQualifiedName } from "@gtkx/gir";
 import type { SourceFile } from "ts-morph";
 import { GenerationContext } from "../core/generation-context.js";
@@ -266,7 +266,7 @@ export class FfiGenerator {
         return this.project.emit();
     }
 
-    private registerRecords(namespace: NormalizedNamespace): void {
+    private registerRecords(namespace: GirNamespace): void {
         for (const [, record] of namespace.records) {
             if (this.shouldGenerateRecord(record)) {
                 const normalizedName = normalizeClassName(record.name, this.options.namespace);
@@ -275,7 +275,7 @@ export class FfiGenerator {
         }
     }
 
-    private shouldGenerateRecord(record: NormalizedRecord): boolean {
+    private shouldGenerateRecord(record: GirRecord): boolean {
         if (record.disguised) return false;
 
         if (record.isGtypeStruct()) return false;
@@ -292,7 +292,7 @@ export class FfiGenerator {
         return publicFields.every((field) => isPrimitiveFieldType(field.type.name as string));
     }
 
-    private isUsableStubRecord(record: NormalizedRecord): boolean {
+    private isUsableStubRecord(record: GirRecord): boolean {
         if (record.glibTypeName) return true;
 
         if (record.name.endsWith("Private")) return false;
@@ -305,23 +305,23 @@ export class FfiGenerator {
         return true;
     }
 
-    private registerInterfaces(namespace: NormalizedNamespace): void {
+    private registerInterfaces(namespace: GirNamespace): void {
         for (const [, iface] of namespace.interfaces) {
             const normalizedName = toPascalCase(iface.name);
             this.ctx.interfaceNameToFile.set(normalizedName, iface.name);
         }
     }
 
-    private topologicalSortClasses(classes: NormalizedClass[]): NormalizedClass[] {
-        const classMap = new Map<string, NormalizedClass>();
+    private topologicalSortClasses(classes: GirClass[]): GirClass[] {
+        const classMap = new Map<string, GirClass>();
         for (const cls of classes) {
             classMap.set(cls.name, cls);
         }
 
-        const sorted: NormalizedClass[] = [];
+        const sorted: GirClass[] = [];
         const visited = new Set<string>();
 
-        const visit = (cls: NormalizedClass) => {
+        const visit = (cls: GirClass) => {
             if (visited.has(cls.name)) return;
             visited.add(cls.name);
             if (cls.parent) {

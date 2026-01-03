@@ -5,7 +5,7 @@
  * This metadata is consumed by React generators - nothing is written to output files.
  */
 
-import type { GirRepository, NormalizedClass, QualifiedName } from "@gtkx/gir";
+import type { GirRepository, GirClass, QualifiedName } from "@gtkx/gir";
 import { parseQualifiedName, qualifiedName } from "@gtkx/gir";
 import type { ConstructorAnalyzer, PropertyAnalyzer, SignalAnalyzer } from "../../../core/analyzers/index.js";
 import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
@@ -22,7 +22,7 @@ export class WidgetMetaBuilder {
     private readonly widgetQualifiedName: QualifiedName;
 
     constructor(
-        private readonly cls: NormalizedClass,
+        private readonly cls: GirClass,
         private readonly repository: GirRepository,
         private readonly namespace: string,
         private readonly analyzers: WidgetMetaAnalyzers,

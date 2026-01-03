@@ -4,7 +4,7 @@
  * Generates constant definitions using ts-morph AST.
  */
 
-import type { NormalizedConstant } from "@gtkx/gir";
+import type { GirConstant } from "@gtkx/gir";
 import type { SourceFile, VariableStatementStructure } from "ts-morph";
 import type { SimpleGeneratorOptions } from "../../core/generator-types.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
@@ -30,7 +30,7 @@ export class ConstantGenerator {
     /**
      * Adds multiple constants to the source file using batched insertion for performance.
      */
-    addConstants(constants: readonly NormalizedConstant[]): void {
+    addConstants(constants: readonly GirConstant[]): void {
         const structures: VariableStatementStructure[] = [];
 
         for (const constant of constants) {
@@ -45,7 +45,7 @@ export class ConstantGenerator {
         }
     }
 
-    private buildConstantStructure(constant: NormalizedConstant): VariableStatementStructure | null {
+    private buildConstantStructure(constant: GirConstant): VariableStatementStructure | null {
         const constName = constant.name;
 
         if (this.seen.has(constName)) {

@@ -8,9 +8,9 @@
 
 import {
     type GirRepository,
-    type NormalizedClass,
-    type NormalizedParameter,
-    type NormalizedSignal,
+    type GirClass,
+    type GirParameter,
+    type GirSignal,
     parseQualifiedName,
     type QualifiedName,
 } from "@gtkx/gir";
@@ -40,7 +40,7 @@ export class SignalBuilder {
     private readonly paramWrapWriter = new ParamWrapWriter();
 
     constructor(
-        private readonly cls: NormalizedClass,
+        private readonly cls: GirClass,
         private readonly ffiMapper: FfiMapper,
         private readonly ctx: GenerationContext,
         private readonly repository: GirRepository,
@@ -84,7 +84,7 @@ export class SignalBuilder {
         ];
     }
 
-    collectOwnSignals(): NormalizedSignal[] {
+    collectOwnSignals(): GirSignal[] {
         return collectDirectMembers({
             cls: this.cls,
             repo: this.repository,
@@ -95,8 +95,8 @@ export class SignalBuilder {
         });
     }
 
-    collectAllSignals(): { allSignals: NormalizedSignal[]; hasCrossNamespaceParent: boolean } {
-        const allSignals: NormalizedSignal[] = [];
+    collectAllSignals(): { allSignals: GirSignal[]; hasCrossNamespaceParent: boolean } {
+        const allSignals: GirSignal[] = [];
         const seenSignals = new Set<string>();
         let hasCrossNamespaceParent = false;
 
@@ -140,7 +140,7 @@ export class SignalBuilder {
     }
 
     private buildOverloads(
-        allSignals: NormalizedSignal[],
+        allSignals: GirSignal[],
     ): Array<{ parameters: Array<{ name: string; type?: string; hasQuestionToken?: boolean }>; returnType: string }> {
         const overloads: Array<{
             parameters: Array<{ name: string; type?: string; hasQuestionToken?: boolean }>;
@@ -178,7 +178,7 @@ export class SignalBuilder {
         return overloads;
     }
 
-    private writeConnectMethodBody(ownSignals: NormalizedSignal[]): WriterFunction {
+    private writeConnectMethodBody(ownSignals: GirSignal[]): WriterFunction {
         const isRootGObject = this.options.namespace === "GObject" && this.cls.name === "Object";
 
         return (writer) => {
@@ -198,7 +198,7 @@ export class SignalBuilder {
         };
     }
 
-    private writeSignalCase(writer: CodeBlockWriter, signal: NormalizedSignal): void {
+    private writeSignalCase(writer: CodeBlockWriter, signal: GirSignal): void {
         const filteredParams = filterVarargs(signal.parameters);
         const paramData = this.buildParamData(filteredParams);
 
@@ -210,7 +210,7 @@ export class SignalBuilder {
         writer.writeLine("}");
     }
 
-    private buildParamData(params: NormalizedParameter[]): SignalParamData[] {
+    private buildParamData(params: GirParameter[]): SignalParamData[] {
         return params.map((p) => {
             const mapped = this.ffiMapper.mapParameter(p);
             this.ctx.addTypeImports(mapped.imports);
@@ -247,7 +247,7 @@ export class SignalBuilder {
         writer.writeLine("};");
     }
 
-    private writeCallExpression(writer: CodeBlockWriter, signal: NormalizedSignal, paramData: SignalParamData[]): void {
+    private writeCallExpression(writer: CodeBlockWriter, signal: GirSignal, paramData: SignalParamData[]): void {
         this.writeSignalConnectCall(writer, (w) => {
             w.write('type: "callback", ');
             this.writeArgTypes(w, paramData);
@@ -267,7 +267,7 @@ export class SignalBuilder {
         writer.write("]");
     }
 
-    private writeReturnType(writer: CodeBlockWriter, signal: NormalizedSignal): void {
+    private writeReturnType(writer: CodeBlockWriter, signal: GirSignal): void {
         writer.write("returnType: ");
         if (signal.returnType) {
             const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
@@ -324,7 +324,7 @@ export class SignalBuilder {
         writer.writeLine(") as number;");
     }
 
-    private buildHandlerParams(signal: NormalizedSignal): string {
+    private buildHandlerParams(signal: GirSignal): string {
         const params: string[] = [`self: ${this.className}`];
 
         for (const param of filterVarargs(signal.parameters)) {

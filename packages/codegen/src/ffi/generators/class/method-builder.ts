@@ -4,7 +4,7 @@
  * Builds instance method code for classes using ts-morph AST.
  */
 
-import type { NormalizedConstructor, NormalizedMethod, NormalizedParameter } from "@gtkx/gir";
+import type { GirConstructor, GirMethod, GirParameter } from "@gtkx/gir";
 import type { MethodDeclarationStructure, WriterFunction } from "ts-morph";
 import { StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
@@ -56,7 +56,7 @@ export class MethodBuilder {
      * ```
      */
     buildStructures(
-        methods: readonly NormalizedMethod[],
+        methods: readonly GirMethod[],
         isParamSpec: boolean,
         asyncAnalysis?: AsyncMethodAnalysis,
     ): MethodDeclarationStructure[] {
@@ -91,7 +91,7 @@ export class MethodBuilder {
         return methodStructures;
     }
 
-    private buildMethodStructure(method: NormalizedMethod, isParamSpec: boolean): MethodDeclarationStructure {
+    private buildMethodStructure(method: GirMethod, isParamSpec: boolean): MethodDeclarationStructure {
         const dynamicRename = this.ctx.methodRenames.get(method.cIdentifier);
         const camelName = toCamelCase(method.name);
         const methodName = dynamicRename ?? camelName;
@@ -110,7 +110,7 @@ export class MethodBuilder {
      * Checks if a parameter list has ref parameters.
      * Delegates to MethodBodyWriter.
      */
-    hasRefParameter(parameters: readonly NormalizedParameter[]): boolean {
+    hasRefParameter(parameters: readonly GirParameter[]): boolean {
         return this.methodBody.hasRefParameter(parameters);
     }
 
@@ -118,7 +118,7 @@ export class MethodBuilder {
      * Checks if a parameter list has unsupported callbacks.
      * Delegates to MethodBodyWriter.
      */
-    hasUnsupportedCallbacks(parameters: readonly NormalizedParameter[]): boolean {
+    hasUnsupportedCallbacks(parameters: readonly GirParameter[]): boolean {
         return this.methodBody.hasUnsupportedCallbacks(parameters);
     }
 
@@ -126,7 +126,7 @@ export class MethodBuilder {
      * Selects supported constructors and identifies the main constructor.
      * Delegates to MethodBodyWriter.
      */
-    selectConstructors(constructors: readonly NormalizedConstructor[]): ConstructorSelection {
+    selectConstructors(constructors: readonly GirConstructor[]): ConstructorSelection {
         return this.methodBody.selectConstructors(constructors);
     }
 
@@ -135,8 +135,8 @@ export class MethodBuilder {
      * Combines an async method and its _finish counterpart into a single Promise method.
      */
     private buildAsyncWrapperStructure(
-        asyncMethod: NormalizedMethod,
-        finishMethod: NormalizedMethod,
+        asyncMethod: GirMethod,
+        finishMethod: GirMethod,
         isParamSpec: boolean,
     ): MethodDeclarationStructure {
         const baseName = asyncMethod.name.replace(/_async$/, "");
@@ -181,7 +181,7 @@ export class MethodBuilder {
      * - All closure targets (user_data for any callback)
      * - All destroy notifies (for any callback)
      */
-    private filterAsyncParameters(parameters: readonly NormalizedParameter[]): NormalizedParameter[] {
+    private filterAsyncParameters(parameters: readonly GirParameter[]): GirParameter[] {
         return parameters.filter((p, index) => {
             if (p.name === "..." || p.name === "") return false;
 
@@ -207,9 +207,9 @@ export class MethodBuilder {
      * Writes the async wrapper method body using ts-morph WriterFunction.
      */
     private writeAsyncWrapperBody(
-        asyncMethod: NormalizedMethod,
-        finishMethod: NormalizedMethod,
-        asyncParams: readonly NormalizedParameter[],
+        asyncMethod: GirMethod,
+        finishMethod: GirMethod,
+        asyncParams: readonly GirParameter[],
         returnTypeMapping: MappedType,
         selfTypeDescriptor: SelfTypeDescriptor,
     ): WriterFunction {
@@ -315,9 +315,9 @@ export class MethodBuilder {
                                             wrapInfo.needsGVariantWrap ||
                                             wrapInfo.needsInterfaceWrap
                                         ) {
-                                            writer.writeLine(`resolve(getNativeObject(ptr, ${baseReturnType})!);`);
+                                            writer.writeLine(`resolve(getNativeObject(ptr as ObjectId, ${baseReturnType})!);`);
                                         } else {
-                                            writer.writeLine(`resolve(getNativeObject(ptr) as ${baseReturnType});`);
+                                            writer.writeLine(`resolve(getNativeObject(ptr as ObjectId) as ${baseReturnType});`);
                                         }
                                     } else {
                                         writer.writeLine("resolve(value);");

@@ -241,6 +241,66 @@ describe("render - TreeListView", () => {
             expect(ref.current).not.toBeNull();
         });
 
+        it("shows children in model when autoexpand is true", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            await render(
+                <TreeListView ref={ref} renderItem={() => "Item"} autoexpand>
+                    <TreeListItem id="parent" value={{ name: "Parent" }}>
+                        <TreeListItem id="child1" value={{ name: "Child 1" }} />
+                        <TreeListItem id="child2" value={{ name: "Child 2" }} />
+                    </TreeListItem>
+                </TreeListView>,
+                { wrapper: false },
+            );
+
+            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
+            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["parent", "child1", "child2"]);
+        });
+
+        it("parent row is expandable when it has children", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            await render(
+                <TreeListView ref={ref} renderItem={() => "Item"}>
+                    <TreeListItem id="parent" value={{ name: "Parent" }}>
+                        <TreeListItem id="child1" value={{ name: "Child 1" }} />
+                    </TreeListItem>
+                </TreeListView>,
+                { wrapper: false },
+            );
+
+            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
+            expect(selectionModel.getNItems()).toBeGreaterThan(0);
+            const row = selectionModel.getObject(0) as Gtk.TreeListRow;
+            expect(row).not.toBeNull();
+
+            expect(row.isExpandable()).toBe(true);
+        });
+
+        it("expands parent row to show children when expanded", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            await render(
+                <TreeListView ref={ref} renderItem={() => "Item"}>
+                    <TreeListItem id="parent" value={{ name: "Parent" }}>
+                        <TreeListItem id="child1" value={{ name: "Child 1" }} />
+                        <TreeListItem id="child2" value={{ name: "Child 2" }} />
+                    </TreeListItem>
+                </TreeListView>,
+                { wrapper: false },
+            );
+
+            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(1);
+
+            const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
+            const row = selectionModel.getObject(0) as Gtk.TreeListRow;
+            row.setExpanded(true);
+
+            expect(getModelItemCount(ref.current as Gtk.ListView)).toBe(3);
+            expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["parent", "child1", "child2"]);
+        });
+
         it("updates autoexpand property", async () => {
             const ref = createRef<Gtk.ListView>();
 
