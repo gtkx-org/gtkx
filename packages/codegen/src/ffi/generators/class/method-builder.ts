@@ -145,7 +145,11 @@ export class MethodBuilder {
         const asyncParams = this.filterAsyncParameters(asyncMethod.parameters);
         const params = this.methodBody.buildParameterList(asyncParams);
 
-        const returnTypeMapping = this.ffiMapper.mapType(finishMethod.returnType, true);
+        const returnTypeMapping = this.ffiMapper.mapType(
+            finishMethod.returnType,
+            true,
+            finishMethod.returnType.transferOwnership,
+        );
         this.ctx.addTypeImports(returnTypeMapping.imports);
 
         const innerReturnType = formatNullableReturn(returnTypeMapping.ts, finishMethod.returnType.nullable === true);

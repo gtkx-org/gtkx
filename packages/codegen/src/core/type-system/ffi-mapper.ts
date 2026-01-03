@@ -79,6 +79,7 @@ export class FfiMapper {
         if (type.isHashTable()) {
             const keyType = type.getKeyType();
             const valueType = type.getValueType();
+            const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
 
             if (keyType && valueType) {
                 const keyResult = this.mapType(keyType, isReturn, parentTransferOwnership);
@@ -87,14 +88,14 @@ export class FfiMapper {
 
                 return {
                     ts: `Map<${keyResult.ts}, ${valueResult.ts}>`,
-                    ffi: hashTableType(keyResult.ffi, valueResult.ffi, !isReturn),
+                    ffi: hashTableType(keyResult.ffi, valueResult.ffi, transferFull),
                     imports,
                 };
             }
 
             return {
                 ts: "Map<unknown, unknown>",
-                ffi: hashTableType(FFI_POINTER, FFI_POINTER, !isReturn),
+                ffi: hashTableType(FFI_POINTER, FFI_POINTER, transferFull),
                 imports,
             };
         }
@@ -111,6 +112,7 @@ export class FfiMapper {
                   : type.cType?.includes("GList")
                     ? "glist"
                     : undefined;
+            const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
 
             if (type.elementType) {
                 const elementTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
@@ -119,14 +121,14 @@ export class FfiMapper {
 
                 return {
                     ts: `${elementResult.ts}[]`,
-                    ffi: arrayType(elementResult.ffi, listType, !isReturn),
+                    ffi: arrayType(elementResult.ffi, listType, transferFull),
                     imports,
                 };
             }
 
             return {
                 ts: "unknown[]",
-                ffi: arrayType(FFI_VOID, listType, !isReturn),
+                ffi: arrayType(FFI_VOID, listType, transferFull),
                 imports,
             };
         }
@@ -149,7 +151,8 @@ export class FfiMapper {
         const typeName = type.name;
         const resolved = this.resolveType(typeName);
         if (resolved) {
-            return this.mapResolvedType(resolved, isReturn, imports);
+            const effectiveTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
+            return this.mapResolvedType(resolved, isReturn, imports, effectiveTransferOwnership);
         }
 
         return {
@@ -169,7 +172,7 @@ export class FfiMapper {
         const imports: TypeImport[] = [];
 
         if (param.direction === "out" || param.direction === "inout") {
-            const innerType = this.mapType(param.type);
+            const innerType = this.mapType(param.type, false, param.transferOwnership);
             imports.push(...innerType.imports);
 
             const isBoxedOrGObjectOrStruct =
@@ -280,7 +283,7 @@ export class FfiMapper {
             .filter((p) => p.name !== "user_data" && p.name !== "data")
             .map((p) => ({
                 name: p.name,
-                mapped: this.mapType(p.type),
+                mapped: this.mapType(p.type, false, p.transferOwnership),
             }));
     }
 
@@ -431,7 +434,18 @@ export class FfiMapper {
         return this.resolveFromNamespace(ns, name, namespace, isExternal);
     }
 
-    private mapResolvedType(resolved: ResolvedType, isReturn: boolean, imports: TypeImport[]): MappedType {
+    private computeTransferFull(isReturn: boolean, transferOwnership?: string): boolean {
+        if (transferOwnership === "full") return true;
+        if (transferOwnership === "none" || transferOwnership === "container") return false;
+        return !isReturn;
+    }
+
+    private mapResolvedType(
+        resolved: ResolvedType,
+        isReturn: boolean,
+        imports: TypeImport[],
+        transferOwnership?: string,
+    ): MappedType {
         const qualifiedName = resolved.isExternal
             ? `${resolved.namespace}.${resolved.transformedName}`
             : resolved.transformedName;
@@ -439,7 +453,7 @@ export class FfiMapper {
         if ((resolved.kind === "class" || resolved.kind === "interface") && this.skippedClasses.has(resolved.name)) {
             return {
                 ts: "unknown",
-                ffi: gobjectType(!isReturn),
+                ffi: gobjectType(this.computeTransferFull(isReturn, transferOwnership)),
                 imports,
             };
         }
@@ -470,10 +484,12 @@ export class FfiMapper {
                 };
 
             case "record": {
+                const transferFull = this.computeTransferFull(isReturn, transferOwnership);
+
                 if (resolved.name === "Variant" && resolved.namespace === "GLib") {
                     return {
                         ts: qualifiedName,
-                        ffi: { type: "gvariant", ownership: isReturn ? "none" : "full" },
+                        ffi: { type: "gvariant", ownership: transferFull ? "full" : "none" },
                         imports,
                         kind: "record",
                     };
@@ -483,7 +499,7 @@ export class FfiMapper {
                 if (!glibTypeName || !glibGetType) {
                     return {
                         ts: qualifiedName,
-                        ffi: structType(resolved.transformedName, !isReturn),
+                        ffi: structType(resolved.transformedName, transferFull),
                         imports,
                         kind: "record",
                     };
@@ -492,7 +508,7 @@ export class FfiMapper {
                 const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
                 return {
                     ts: qualifiedName,
-                    ffi: boxedType(glibTypeName, !isReturn, sharedLib, glibGetType),
+                    ffi: boxedType(glibTypeName, transferFull, sharedLib, glibGetType),
                     imports,
                     kind: "record",
                 };
@@ -508,10 +524,12 @@ export class FfiMapper {
 
             case "class":
             case "interface": {
+                const transferFull = this.computeTransferFull(isReturn, transferOwnership);
+
                 if (resolved.glibTypeName === "GParam") {
                     return {
                         ts: qualifiedName,
-                        ffi: { type: "gparam", ownership: isReturn ? "none" : "full" },
+                        ffi: { type: "gparam", ownership: transferFull ? "full" : "none" },
                         imports,
                         kind: resolved.kind,
                     };
@@ -519,7 +537,7 @@ export class FfiMapper {
 
                 return {
                     ts: qualifiedName,
-                    ffi: gobjectType(!isReturn),
+                    ffi: gobjectType(transferFull),
                     imports,
                     kind: resolved.kind,
                 };
@@ -552,7 +570,7 @@ export class FfiMapper {
         for (const param of callback.parameters) {
             if (param.name === "user_data" || param.name === "data") continue;
 
-            const mapped = this.mapType(param.type);
+            const mapped = this.mapType(param.type, false, param.transferOwnership);
             imports.push(...mapped.imports);
 
             const nullable = param.nullable ? " | null" : "";
@@ -566,7 +584,7 @@ export class FfiMapper {
         if (returnType.name === "none" || returnType.name === "void") {
             return "void";
         }
-        const mapped = this.mapType(returnType, true);
+        const mapped = this.mapType(returnType, true, returnType.transferOwnership);
         const nullable = returnType.nullable ? " | null" : "";
         return `${mapped.ts}${nullable}`;
     }
@@ -582,10 +600,12 @@ export class FfiMapper {
     } {
         const argTypes = callback.parameters
             .filter((p) => p.name !== "user_data" && p.name !== "data")
-            .map((p) => this.mapType(p.type).ffi);
+            .map((p) => this.mapType(p.type, false, p.transferOwnership).ffi);
 
         const hasReturn = callback.returnType.name !== "none" && callback.returnType.name !== "void";
-        const returnType = hasReturn ? this.mapType(callback.returnType, true).ffi : undefined;
+        const returnType = hasReturn
+            ? this.mapType(callback.returnType, true, callback.returnType.transferOwnership).ffi
+            : undefined;
 
         return {
             type: "callback",
@@ -602,6 +622,7 @@ export class FfiMapper {
         imports: TypeImport[],
     ): MappedType {
         const isGArray = type.isGArray();
+        const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
 
         if (type.elementType) {
             const elementTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
@@ -609,13 +630,13 @@ export class FfiMapper {
             imports.push(...elementResult.imports);
 
             const ffi = isGArray
-                ? gArrayType(elementResult.ffi, this.getElementSize(type.elementType), !isReturn)
-                : ptrArrayType(elementResult.ffi, !isReturn);
+                ? gArrayType(elementResult.ffi, this.getElementSize(type.elementType), transferFull)
+                : ptrArrayType(elementResult.ffi, transferFull);
 
             return { ts: `${elementResult.ts}[]`, ffi, imports };
         }
 
-        const fallbackFfi = isGArray ? gArrayType(FFI_POINTER, 8, !isReturn) : ptrArrayType(FFI_POINTER, !isReturn);
+        const fallbackFfi = isGArray ? gArrayType(FFI_POINTER, 8, transferFull) : ptrArrayType(FFI_POINTER, transferFull);
 
         return { ts: "unknown[]", ffi: fallbackFfi, imports };
     }

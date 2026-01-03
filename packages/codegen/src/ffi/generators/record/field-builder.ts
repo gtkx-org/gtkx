@@ -93,7 +93,7 @@ export class FieldBuilder {
                 let fieldName = toValidIdentifier(toCamelCase(field.name));
                 if (fieldName === "id") fieldName = "id_";
 
-                const typeMapping = this.ffiMapper.mapType(field.type, false);
+                const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
                 this.ctx.addTypeImports(typeMapping.imports);
 
                 writer.write(`if (init.${fieldName} !== undefined) write(ptr, `);

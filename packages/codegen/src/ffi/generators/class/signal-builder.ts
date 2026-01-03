@@ -151,7 +151,7 @@ export class SignalBuilder {
             const params = this.buildHandlerParams(signal);
             let returnType = "void";
             if (signal.returnType) {
-                const mapped = this.ffiMapper.mapType(signal.returnType, true);
+                const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
                 this.ctx.addTypeImports(mapped.imports);
                 returnType = mapped.ts;
             }
@@ -270,7 +270,7 @@ export class SignalBuilder {
     private writeReturnType(writer: CodeBlockWriter, signal: NormalizedSignal): void {
         writer.write("returnType: ");
         if (signal.returnType) {
-            const mapped = this.ffiMapper.mapType(signal.returnType, true);
+            const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
             this.writers.ffiTypeWriter.toWriter(mapped.ffi)(writer);
         } else {
             writer.write('{ type: "undefined" }');

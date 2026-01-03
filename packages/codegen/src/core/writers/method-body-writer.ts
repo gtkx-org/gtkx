@@ -371,7 +371,7 @@ export class MethodBodyWriter {
      */
     buildMethodStructure(method: NormalizedMethod, options: MethodStructureOptions): MethodDeclarationStructure {
         const params = this.buildParameterList(method.parameters);
-        const returnTypeMapping = this.ffiMapper.mapType(method.returnType, true);
+        const returnTypeMapping = this.ffiMapper.mapType(method.returnType, true, method.returnType.transferOwnership);
         this.ctx.addTypeImports(returnTypeMapping.imports);
 
         const tsReturnType = formatNullableReturn(returnTypeMapping.ts, method.returnType.nullable === true);
@@ -396,7 +396,7 @@ export class MethodBodyWriter {
     ): MethodDeclarationStructure {
         const funcName = toValidIdentifier(toCamelCase(func.name));
         const params = this.buildParameterList(func.parameters);
-        const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true);
+        const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true, func.returnType.transferOwnership);
         this.ctx.addTypeImports(returnTypeMapping.imports);
 
         const returnTypeName = func.returnType.name as string | undefined;

@@ -44,7 +44,7 @@ export class PropertyAnalyzer {
         requiredParams: Set<string>,
     ): PropertyAnalysis {
         const { namespace } = parseQualifiedName(cls.qualifiedName);
-        const typeMapping = this.ffiMapper.mapType(prop.type);
+        const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
 
         return {
             name: prop.name,

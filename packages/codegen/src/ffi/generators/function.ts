@@ -77,7 +77,7 @@ export class FunctionGenerator {
     private buildFunctionStructure(func: NormalizedFunction): VariableStatementStructure {
         const funcName = toValidIdentifier(toCamelCase(func.name));
         const params = this.methodBody.buildParameterList(func.parameters);
-        const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true);
+        const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true, func.returnType.transferOwnership);
         this.ctx.addTypeImports(returnTypeMapping.imports);
 
         const fullReturnType = formatNullableReturn(returnTypeMapping.ts, func.returnType.nullable === true);
