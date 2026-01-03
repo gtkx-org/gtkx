@@ -1,18 +1,14 @@
 # Deploying
 
-This guide covers packaging and distributing your GTKX application.
-
-## Overview
-
-GTKX apps are Node.js applications with native GTK4 bindings. To distribute them:
+GTKX apps are Node.js applications with native GTK4 bindings. Distribution requires:
 
 1. **Bundle** the JavaScript code with esbuild
 2. **Create a SEA** (Single Executable Application) using Node.js
-3. **Package** with Flatpak or Snap for distribution
+3. **Package** with Flatpak or Snap
 
 ## Single Executable Application (SEA)
 
-The native module (`@gtkx/native`) must be handled specially since it cannot be bundled into JavaScript.
+The native module (`@gtkx/native`) cannot be bundled into JavaScript and must be distributed alongside the executable.
 
 ### Bundle with esbuild
 
@@ -47,7 +43,7 @@ Create `sea-config.json`:
 }
 ```
 
-### Build the SEA
+### Build Script
 
 ```bash
 #!/bin/bash
@@ -65,36 +61,18 @@ npx postject dist/app NODE_SEA_BLOB dist/sea-prep.blob \
 
 # Copy native module alongside the binary
 cp node_modules/@gtkx/native/index.node dist/
-
-echo "SEA built successfully"
 ```
 
-The final distribution includes two files:
-
-- `dist/app` — The executable with your bundled JavaScript (~100MB)
+The final distribution includes:
+- `dist/app` — The executable (~100MB)
 - `dist/index.node` — The native GTK4 bindings
 
 ## Flatpak Packaging
 
-Flatpak is the recommended distribution format for Linux desktop applications.
-
-### Prerequisites
-
-```bash
-# Install flatpak-builder
-sudo dnf install flatpak-builder  # Fedora
-sudo apt install flatpak-builder  # Ubuntu/Debian
-
-# Install required SDKs
-flatpak install flathub org.gnome.Sdk//48
-flatpak install flathub org.freedesktop.Sdk.Extension.node22//24.08
-```
-
-### Flatpak Manifest
-
-Create `flatpak/com.example.myapp.yaml`:
+Flatpak is the recommended format for Linux desktop applications. The key GTKX-specific requirement is including the native module:
 
 ```yaml
+# flatpak/com.example.myapp.yaml
 app-id: com.example.myapp
 runtime: org.gnome.Platform
 runtime-version: "48"
@@ -109,15 +87,12 @@ finish-args:
     - --socket=wayland
     - --device=dri
 
-build-options:
-    append-path: /usr/lib/sdk/node22/bin
-
 modules:
     - name: myapp
       buildsystem: simple
       build-commands:
           - install -Dm755 app /app/bin/myapp
-          - install -Dm755 index.node /app/bin/index.node
+          - install -Dm755 index.node /app/bin/index.node  # GTKX native module
       sources:
           - type: file
             path: ../dist/app
@@ -125,71 +100,23 @@ modules:
             path: ../dist/index.node
 ```
 
-### Desktop Entry
-
-Create `flatpak/com.example.myapp.desktop`:
-
-```ini
-[Desktop Entry]
-Name=My App
-Comment=A GTKX application
-Exec=myapp
-Icon=com.example.myapp
-Terminal=false
-Type=Application
-Categories=Utility;
-```
-
-### Build and Install
-
-```bash
-# Build the Flatpak
-flatpak-builder --force-clean build-dir flatpak/com.example.myapp.yaml
-
-# Create distributable bundle
-flatpak build-bundle ~/.local/share/flatpak/repo \
-    dist/com.example.myapp.flatpak com.example.myapp
-
-# Install locally
-flatpak install --user dist/com.example.myapp.flatpak
-
-# Run
-flatpak run com.example.myapp
-```
+For complete Flatpak setup (prerequisites, desktop entry, build commands), see the [Flatpak Documentation](https://docs.flatpak.org/) and the [deploying example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/deploying).
 
 ## Snap Packaging
 
-Snap is an alternative packaging format, popular on Ubuntu.
-
-### Prerequisites
-
-```bash
-sudo snap install snapcraft --classic
-sudo snap install lxd && sudo lxd init --auto
-```
-
-### Snap Configuration
-
-Create `snap/snapcraft.yaml`:
+Snap is an alternative format, popular on Ubuntu. The key GTKX-specific requirement:
 
 ```yaml
+# snap/snapcraft.yaml
 name: myapp
 version: "1.0.0"
-summary: A GTKX application
-description: |
-    My application built with GTKX.
-
 base: core24
-grade: stable
 confinement: strict
 
 apps:
     myapp:
         command: bin/myapp
-        extensions: [gnome]
-        plugs:
-            - home
-            - network
+        extensions: [gnome]  # Required for GTK4
 
 parts:
     myapp:
@@ -197,71 +124,22 @@ parts:
         source: dist/
         organize:
             app: bin/myapp
-            index.node: bin/index.node
+            index.node: bin/index.node  # GTKX native module
 ```
 
-### Build and Install
-
-```bash
-# Build the Snap
-snapcraft --use-lxd
-
-# Install (development mode)
-sudo snap install --devmode myapp_*.snap
-
-# Run
-myapp
-```
+For complete Snap setup, see the [Snapcraft Documentation](https://snapcraft.io/docs).
 
 ## Troubleshooting
 
 ### App crashes on startup
 
-Ensure the native module (`index.node`) is in the same directory as the executable.
+Ensure `index.node` is in the same directory as the executable.
 
 ### Missing GTK4 libraries
 
-- **Flatpak:** Ensure you're using the GNOME runtime (`org.gnome.Platform`)
-- **Snap:** Ensure you're using the `gnome` extension
-
-### Flatpak build fails with permission errors
-
-Make sure you have the required SDKs installed:
-
-```bash
-flatpak install flathub org.gnome.Sdk//48
-flatpak install flathub org.freedesktop.Sdk.Extension.node22//24.08
-```
-
-### Snap build fails
-
-Try building in a clean LXD container:
-
-```bash
-snapcraft --use-lxd
-```
-
-## Distribution
-
-### Flathub
-
-To publish on Flathub, submit your manifest to https://github.com/flathub/flathub
-
-### Snap Store
-
-To publish on the Snap Store:
-
-```bash
-snapcraft login
-snapcraft upload --release=edge myapp_*.snap
-```
+- **Flatpak:** Use `org.gnome.Platform` runtime
+- **Snap:** Use the `gnome` extension
 
 ## Complete Example
 
-For a fully working example with all configuration files, build scripts, and CI setup, see the [deploying example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/deploying) in the repository.
-
-## Resources
-
-- [Flatpak Documentation](https://docs.flatpak.org/)
-- [Snapcraft Documentation](https://snapcraft.io/docs)
-- [Node.js SEA Documentation](https://nodejs.org/api/single-executable-applications.html)
+For a fully working example with all configuration files, build scripts, and CI setup, see the [deploying example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/deploying).

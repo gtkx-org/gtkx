@@ -36,30 +36,41 @@ Tab-like navigation between views:
 ```tsx
 import {
   AdwViewStack,
-  AdwViewStackPage,
   AdwViewSwitcher,
   GtkBox,
+  StackPage,
 } from "@gtkx/react";
-import { useState } from "react";
+import * as Adw from "@gtkx/ffi/adw";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useRef, useState } from "react";
 
 const TabbedView = () => {
+  const stackRef = useRef<Adw.ViewStack | null>(null);
   const [currentPage, setCurrentPage] = useState("home");
 
   return (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-      <AdwViewSwitcher stack={currentPage} onStackChanged={setCurrentPage} />
+      <AdwViewSwitcher stack={stackRef.current ?? undefined} />
 
-      <AdwViewStack visibleChild={currentPage}>
-        <AdwViewStackPage name="home" title="Home" iconName="go-home-symbolic">
+      <AdwViewStack
+        ref={stackRef}
+        visibleChildName={currentPage}
+        onNotify={(_, prop) => {
+          if (prop === "visible-child-name" && stackRef.current) {
+            setCurrentPage(stackRef.current.getVisibleChildName() ?? "home");
+          }
+        }}
+      >
+        <StackPage name="home" title="Home" iconName="go-home-symbolic">
           Home content
-        </AdwViewStackPage>
-        <AdwViewStackPage
+        </StackPage>
+        <StackPage
           name="settings"
           title="Settings"
           iconName="preferences-system-symbolic"
         >
           Settings content
-        </AdwViewStackPage>
+        </StackPage>
       </AdwViewStack>
     </GtkBox>
   );

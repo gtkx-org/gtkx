@@ -102,34 +102,9 @@ injectGlobal`
 
 Use sparingly—prefer scoped styles with `css()` when possible.
 
-## GTK CSS Syntax
+## GTK CSS Differences
 
-GTK CSS is similar to web CSS but has some differences.
-
-### Selectors
-
-GTK uses widget type names as selectors:
-
-```css
-/* Widget type selectors */
-button { }
-label { }
-entry { }
-window { }
-
-/* Class selectors (same as web) */
-.suggested-action { }
-.destructive-action { }
-
-/* Pseudo-classes */
-button:hover { }
-button:active { }
-button:disabled { }
-button:focus { }
-button:checked { }    /* For toggle buttons */
-```
-
-### Nesting with `&`
+GTK CSS is similar to web CSS with a few differences. The `css` function supports nesting with `&`:
 
 ```typescript
 const buttonStyle = css`
@@ -139,19 +114,13 @@ const buttonStyle = css`
         background: #1c71d8;
     }
 
-    &:active {
-        background: #1a5fb4;
-    }
-
     &:disabled {
         opacity: 0.5;
     }
 `;
 ```
 
-### Theme Variables
-
-GTK provides CSS variables for theme colors:
+GTK uses `@` for theme variables instead of CSS custom properties:
 
 ```typescript
 const themedStyle = css`
@@ -161,83 +130,23 @@ const themedStyle = css`
 `;
 ```
 
-Common theme variables:
-
-| Variable | Description |
-|----------|-------------|
-| `@theme_bg_color` | Background color |
-| `@theme_fg_color` | Foreground/text color |
-| `@theme_selected_bg_color` | Selected item background |
-| `@theme_selected_fg_color` | Selected item text |
-| `@borders` | Border color |
-| `@warning_color` | Warning accent |
-| `@error_color` | Error accent |
-| `@success_color` | Success accent |
-
-### GTK-Specific Properties
-
-Some properties differ from web CSS:
-
-```css
-/* Margins use margin-start/margin-end for RTL support */
-margin-start: 12px;
-margin-end: 12px;
-margin-top: 8px;
-margin-bottom: 8px;
-
-/* Or shorthand (same as web) */
-margin: 8px 12px;
-
-/* Font styling */
-font-family: "Cantarell";
-font-size: 14px;
-font-weight: bold;
-
-/* Borders */
-border: 1px solid @borders;
-border-radius: 6px;
-
-/* Colors with alpha */
-background: alpha(@theme_bg_color, 0.5);
-color: mix(@theme_fg_color, @theme_bg_color, 0.5);
-```
+For the full GTK CSS reference (selectors, properties, theme variables), see the [GTK4 CSS Overview](https://docs.gtk.org/gtk4/css-overview.html).
 
 ## Adwaita CSS Classes
 
-Libadwaita provides built-in CSS classes for common patterns:
+Libadwaita provides built-in CSS classes. Common ones:
 
-### Typography
-
-```tsx
-<GtkLabel cssClasses={["title-1"]} label="Heading 1" />
-<GtkLabel cssClasses={["title-2"]} label="Heading 2" />
-<GtkLabel cssClasses={["title-3"]} label="Heading 3" />
-<GtkLabel cssClasses={["title-4"]} label="Heading 4" />
-<GtkLabel cssClasses={["heading"]} label="Section Heading" />
-<GtkLabel cssClasses={["body"]} label="Body text" />
-<GtkLabel cssClasses={["caption"]} label="Small caption" />
-<GtkLabel cssClasses={["dim-label"]} label="Dimmed text" />
-```
-
-### Buttons
+- **Typography:** `title-1` through `title-4`, `heading`, `body`, `caption`, `dim-label`
+- **Buttons:** `suggested-action`, `destructive-action`, `flat`, `pill`, `circular`
+- **Containers:** `card`, `boxed-list`, `toolbar`, `osd`
 
 ```tsx
+<GtkLabel cssClasses={["title-1"]} label="Heading" />
 <GtkButton cssClasses={["suggested-action"]} label="Primary" />
-<GtkButton cssClasses={["destructive-action"]} label="Danger" />
-<GtkButton cssClasses={["flat"]} label="Flat" />
-<GtkButton cssClasses={["pill"]} label="Pill Shape" />
-<GtkButton cssClasses={["circular"]} label="+" />
-<GtkButton cssClasses={["raised"]} label="Raised" />
-```
-
-### Containers
-
-```tsx
 <GtkBox cssClasses={["card"]} />
-<GtkListBox cssClasses={["boxed-list"]} />
-<GtkBox cssClasses={["toolbar"]} />
-<GtkBox cssClasses={["osd"]} />  {/* On-screen display style */}
 ```
+
+For the complete list, see the [Libadwaita Style Classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html).
 
 ## Practical Examples
 

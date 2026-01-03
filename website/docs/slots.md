@@ -83,24 +83,30 @@ import * as Gtk from "@gtkx/ffi/gtk";
 Layer widgets on top of each other:
 
 ```tsx
-import { GtkOverlay, GtkLabel, GtkButton, Slot } from "@gtkx/react";
+import { GtkOverlay, GtkImage, GtkLabel, OverlayChild, Slot } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
 
 <GtkOverlay>
-    {/* Base content */}
+    {/* Base content using Slot */}
     <Slot for={GtkOverlay} id="child">
         <GtkImage file="background.png" />
     </Slot>
 
-    {/* Overlay content (added with addOverlay) */}
-    <GtkButton
-        label="Floating Button"
-        halign={Gtk.Align.END}
-        valign={Gtk.Align.END}
-        marginEnd={12}
-        marginBottom={12}
-    />
+    {/* Overlay content using OverlayChild element */}
+    <OverlayChild>
+        <GtkLabel
+            label="Overlaid text"
+            cssClasses={["title-1"]}
+            halign={Gtk.Align.END}
+            valign={Gtk.Align.END}
+            marginEnd={12}
+            marginBottom={12}
+        />
+    </OverlayChild>
 </GtkOverlay>
 ```
+
+The `OverlayChild` element supports `measure` and `clipOverlay` props to control overlay behavior.
 
 ### GtkExpander
 
