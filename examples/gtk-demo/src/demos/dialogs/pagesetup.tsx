@@ -198,7 +198,7 @@ const PageSetupDemo = () => {
             pageSetup.setRightMargin(rightMargin, Gtk.Unit.MM);
             printDialog.setPageSetup(pageSetup);
 
-            const setup = await printDialog.setup(app.getActiveWindow() ?? undefined);
+            const setup = await printDialog.setupAsync(app.getActiveWindow() ?? undefined);
             const newPageSetup = setup.getPageSetup();
 
             if (newPageSetup) {
@@ -363,7 +363,10 @@ const PageSetupDemo = () => {
                         cssClasses={["dim-label"]}
                     />
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
-                        <GtkButton label="Show Page Setup Dialog..." onClicked={handleShowPageSetupDialog} />
+                        <GtkButton
+                            label="Show Page Setup Dialog..."
+                            onClicked={() => void handleShowPageSetupDialog()}
+                        />
                         {lastDialogResult && <GtkLabel label={lastDialogResult} cssClasses={["dim-label"]} />}
                     </GtkBox>
                 </GtkBox>

@@ -1,7 +1,7 @@
 import { beginBatch, endBatch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textscroll.tsx?raw";
 
@@ -18,6 +18,8 @@ Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit la
 At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi.`;
 
 const TextScrollDemo = () => {
+    const verticalViewRef = useRef<Gtk.TextView | null>(null);
+
     const [verticalBuffer] = useState(() => {
         const buffer = new Gtk.TextBuffer();
         buffer.setText(loremIpsum, -1);
@@ -41,20 +43,26 @@ const TextScrollDemo = () => {
         return buffer;
     });
 
-    const scrollToStart = (buffer: Gtk.TextBuffer) => {
+    const scrollToStart = (buffer: Gtk.TextBuffer, textView: Gtk.TextView | null) => {
+        if (!textView) return;
         beginBatch();
         const startIter = new Gtk.TextIter();
         buffer.getStartIter(startIter);
         endBatch();
         buffer.placeCursor(startIter);
+        const insertMark = buffer.getInsert();
+        textView.scrollToMark(insertMark, 0.0, false, 0.0, 0.0);
     };
 
-    const scrollToEnd = (buffer: Gtk.TextBuffer) => {
+    const scrollToEnd = (buffer: Gtk.TextBuffer, textView: Gtk.TextView | null) => {
+        if (!textView) return;
         beginBatch();
         const endIter = new Gtk.TextIter();
         buffer.getEndIter(endIter);
         endBatch();
         buffer.placeCursor(endIter);
+        const insertMark = buffer.getInsert();
+        textView.scrollToMark(insertMark, 0.0, false, 0.0, 0.0);
     };
 
     return (
@@ -77,6 +85,7 @@ const TextScrollDemo = () => {
                         vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     >
                         <GtkTextView
+                            ref={verticalViewRef}
                             buffer={verticalBuffer}
                             leftMargin={12}
                             rightMargin={12}
@@ -90,8 +99,14 @@ const TextScrollDemo = () => {
                 </GtkFrame>
 
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                    <GtkButton label="Scroll to Start" onClicked={() => scrollToStart(verticalBuffer)} />
-                    <GtkButton label="Scroll to End" onClicked={() => scrollToEnd(verticalBuffer)} />
+                    <GtkButton
+                        label="Scroll to Start"
+                        onClicked={() => scrollToStart(verticalBuffer, verticalViewRef.current)}
+                    />
+                    <GtkButton
+                        label="Scroll to End"
+                        onClicked={() => scrollToEnd(verticalBuffer, verticalViewRef.current)}
+                    />
                 </GtkBox>
             </GtkBox>
 
