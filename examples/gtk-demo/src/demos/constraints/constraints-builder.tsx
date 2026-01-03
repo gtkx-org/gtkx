@@ -18,14 +18,14 @@ const createConstraint = (options: {
     strength?: number;
 }): Gtk.Constraint => {
     return new Gtk.Constraint(
-        options.target,
         options.targetAttr,
         options.relation ?? Gtk.ConstraintRelation.EQ,
-        options.source,
         options.sourceAttr ?? Gtk.ConstraintAttribute.NONE,
         options.multiplier ?? 1.0,
         options.constant ?? 0,
         options.strength ?? Gtk.ConstraintStrength.REQUIRED,
+        options.target,
+        options.source,
     );
 };
 
@@ -57,6 +57,7 @@ const MultiplierDemo = () => {
             const button = ref.current;
             if (!button) continue;
 
+            // Left align
             layout.addConstraint(
                 createConstraint({
                     target: button,
@@ -66,6 +67,7 @@ const MultiplierDemo = () => {
                 }),
             );
 
+            // Vertical position
             layout.addConstraint(
                 createConstraint({
                     target: button,
@@ -75,13 +77,15 @@ const MultiplierDemo = () => {
                 }),
             );
 
+            // Width as fraction of parent width
+            // button.width = parent.width * multiplier - margin
             layout.addConstraint(
                 createConstraint({
                     target: button,
                     targetAttr: Gtk.ConstraintAttribute.WIDTH,
                     sourceAttr: Gtk.ConstraintAttribute.WIDTH,
                     multiplier: multiplier,
-                    constant: -16,
+                    constant: -16, // Account for margins
                 }),
             );
 
@@ -136,16 +140,18 @@ const GuideDemo = () => {
     const rightRef = useRef<Gtk.Button | null>(null);
     const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
     const guideRef = useRef<Gtk.ConstraintGuide | null>(null);
-    const [guidePosition, setGuidePosition] = useState(50);
+    const [guidePosition, setGuidePosition] = useState(50); // percentage
 
     useEffect(() => {
         if (!containerRef.current || !leftRef.current || !rightRef.current) return;
 
+        // Create layout and guide only once
         if (!layoutRef.current) {
             const layout = new Gtk.ConstraintLayout();
             layoutRef.current = layout;
             containerRef.current.setLayoutManager(layout);
 
+            // Create a guide that acts as a flexible divider
             const guide = new Gtk.ConstraintGuide();
             guideRef.current = guide;
             guide.setName("divider");
@@ -159,8 +165,11 @@ const GuideDemo = () => {
         const guide = guideRef.current;
         if (!guide) return;
 
+        // Remove old constraints before adding new ones
+        // (no-op on first render since layout was just created)
         layout.removeAllConstraints();
 
+        // Position guide as percentage of container width
         layout.addConstraint(
             createConstraint({
                 target: guide,
@@ -170,6 +179,8 @@ const GuideDemo = () => {
             }),
         );
 
+        // Re-add all button constraints
+        // Left button: from start to guide
         layout.addConstraint(
             createConstraint({
                 target: leftRef.current,
@@ -195,6 +206,7 @@ const GuideDemo = () => {
             }),
         );
 
+        // Right button: from guide to end
         layout.addConstraint(
             createConstraint({
                 target: rightRef.current,
@@ -290,6 +302,7 @@ const RelationDemo = () => {
 
         let yOffset = 8;
 
+        // EQ button: width exactly 150
         layout.addConstraint(
             createConstraint({
                 target: eqRef.current,
@@ -308,16 +321,17 @@ const RelationDemo = () => {
         );
         layout.addConstraint(
             Gtk.Constraint.newConstant(
-                eqRef.current,
                 Gtk.ConstraintAttribute.WIDTH,
-                Gtk.ConstraintRelation.EQ,
+                Gtk.ConstraintRelation.EQ, // width == 150
                 150,
                 Gtk.ConstraintStrength.REQUIRED,
+                eqRef.current,
             ),
         );
 
         yOffset += 45;
 
+        // GE button: width >= 100 (will try to be larger)
         layout.addConstraint(
             createConstraint({
                 target: geRef.current,
@@ -336,16 +350,17 @@ const RelationDemo = () => {
         );
         layout.addConstraint(
             Gtk.Constraint.newConstant(
-                geRef.current,
                 Gtk.ConstraintAttribute.WIDTH,
-                Gtk.ConstraintRelation.GE,
+                Gtk.ConstraintRelation.GE, // width >= 100
                 100,
                 Gtk.ConstraintStrength.REQUIRED,
+                geRef.current,
             ),
         );
 
         yOffset += 45;
 
+        // LE button: width <= 200 (capped at maximum)
         layout.addConstraint(
             createConstraint({
                 target: leRef.current,
@@ -364,20 +379,21 @@ const RelationDemo = () => {
         );
         layout.addConstraint(
             Gtk.Constraint.newConstant(
-                leRef.current,
                 Gtk.ConstraintAttribute.WIDTH,
-                Gtk.ConstraintRelation.LE,
+                Gtk.ConstraintRelation.LE, // width <= 200
                 200,
                 Gtk.ConstraintStrength.REQUIRED,
+                leRef.current,
             ),
         );
+        // Also set minimum to show it respects bounds
         layout.addConstraint(
             Gtk.Constraint.newConstant(
-                leRef.current,
                 Gtk.ConstraintAttribute.WIDTH,
                 Gtk.ConstraintRelation.GE,
                 80,
                 Gtk.ConstraintStrength.REQUIRED,
+                leRef.current,
             ),
         );
     }, []);
@@ -449,23 +465,23 @@ widget.setLayoutManager(layout);
 
 // Create constraint with all parameters
 const constraint = new Gtk.Constraint(
-    target,              // target widget
     targetAttribute,     // e.g., CENTER_X
     relation,            // EQ, GE, or LE
-    source,              // source widget (undefined for parent)
     sourceAttribute,     // e.g., CENTER_X
     multiplier,          // default 1.0
     constant,            // offset in pixels
-    strength             // REQUIRED, STRONG, MEDIUM, WEAK
+    strength,            // REQUIRED, STRONG, MEDIUM, WEAK
+    target,              // target widget
+    source               // source widget (undefined for parent)
 );
 
 // Or use newConstant for simple size constraints
 const sizeConstraint = Gtk.Constraint.newConstant(
-    targetWidget,
     Gtk.ConstraintAttribute.WIDTH,
     Gtk.ConstraintRelation.GE,
     100,  // constant value
-    Gtk.ConstraintStrength.REQUIRED
+    Gtk.ConstraintStrength.REQUIRED,
+    targetWidget
 );
 
 // Add constraints to layout

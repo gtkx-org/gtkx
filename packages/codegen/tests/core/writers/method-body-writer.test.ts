@@ -385,7 +385,7 @@ describe("MethodBodyWriter", () => {
             expect(result[0].type).toBe("string | null");
         });
 
-        it("propagates optional flag to subsequent parameters", () => {
+        it("reorders optional parameters to the end", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const params = [
@@ -402,7 +402,9 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildParameterList(params);
 
-            expect(result[0].hasQuestionToken).toBe(true);
+            expect(result[0].name).toBe("requiredParam");
+            expect(result[0].hasQuestionToken).toBe(false);
+            expect(result[1].name).toBe("optionalParam");
             expect(result[1].hasQuestionToken).toBe(true);
         });
 

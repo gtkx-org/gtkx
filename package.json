@@ -8,9 +8,9 @@
     "type": "module",
     "scripts": {
         "build": "turbo build --filter=!website --filter=!gtkx",
-        "codegen": "turbo codegen:all",
+        "codegen": "turbo codegen:run",
         "codegen:sync": "gtkx-codegen sync",
-        "codegen:all": "gtkx-codegen run",
+        "codegen:run": "gtkx-codegen run",
         "docs": "turbo build --filter=website",
         "knip": "turbo knip:all",
         "knip:all": "knip --no-gitignore --no-config-hints",

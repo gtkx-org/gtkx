@@ -346,27 +346,27 @@ const LiveConstraintDemo = () => {
         // Add centering constraints with current offset
         layout.addConstraint(
             new Gtk.Constraint(
-                buttonRef.current,
                 Gtk.ConstraintAttribute.CENTER_X,
                 Gtk.ConstraintRelation.EQ,
-                undefined,
                 Gtk.ConstraintAttribute.CENTER_X,
                 1.0,
                 offsetX,
                 Gtk.ConstraintStrength.REQUIRED,
+                buttonRef.current,
+                undefined,
             ),
         );
 
         layout.addConstraint(
             new Gtk.Constraint(
-                buttonRef.current,
                 Gtk.ConstraintAttribute.CENTER_Y,
                 Gtk.ConstraintRelation.EQ,
-                undefined,
                 Gtk.ConstraintAttribute.CENTER_Y,
                 1.0,
                 offsetY,
                 Gtk.ConstraintStrength.REQUIRED,
+                buttonRef.current,
+                undefined,
             ),
         );
     }, [offsetX, offsetY]);

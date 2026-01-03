@@ -11,12 +11,12 @@
             "outputLogs": "new-only"
         },
         "//#knip:all": {
-            "dependsOn": ["//#codegen:all", "@gtkx/vitest#build"],
+            "dependsOn": ["//#codegen:run", "@gtkx/vitest#build"],
             "inputs": ["**/*.ts", "**/*.tsx", "knip.json", "package.json"],
             "outputs": [],
             "outputLogs": "new-only"
         },
-        "//#codegen:all": {
+        "//#codegen:run": {
             "dependsOn": ["@gtkx/codegen#build"],
             "inputs": [
                 "$TURBO_ROOT$/girs/**",
@@ -73,12 +73,12 @@
             "outputLogs": "new-only"
         },
         "@gtkx/ffi#build": {
-            "dependsOn": ["^build", "//#codegen:all"],
+            "dependsOn": ["^build", "//#codegen:run"],
             "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
             "outputLogs": "new-only"
         },
         "@gtkx/react#build": {
-            "dependsOn": ["^build", "//#codegen:all"],
+            "dependsOn": ["^build", "//#codegen:run"],
             "outputs": ["dist/**", "*.tsbuildinfo", "README.md"],
             "outputLogs": "new-only"
         },

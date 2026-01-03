@@ -326,9 +326,11 @@ export class MethodBodyWriter {
     ): Array<{ name: string; type: string; hasQuestionToken?: boolean }> {
         const filteredParams = this.filterParameters(parameters);
 
-        let sawOptional = false;
+        const required = filteredParams.filter((p) => !this.ffiMapper.isNullable(p));
+        const optional = filteredParams.filter((p) => this.ffiMapper.isNullable(p));
+        const reordered = [...required, ...optional];
 
-        return filteredParams.map((param) => {
+        return reordered.map((param) => {
             const mapped = this.ffiMapper.mapParameter(param);
             this.ctx.addTypeImports(mapped.imports);
             if (mapped.ffi.type === "ref") {
@@ -336,11 +338,7 @@ export class MethodBodyWriter {
             }
 
             const paramName = this.toJsParamName(param);
-            const isOptional = this.ffiMapper.isNullable(param) || sawOptional;
-
-            if (isOptional) {
-                sawOptional = true;
-            }
+            const isOptional = this.ffiMapper.isNullable(param);
 
             return {
                 name: paramName,

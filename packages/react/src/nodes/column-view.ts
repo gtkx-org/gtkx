@@ -122,9 +122,9 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             const sortOrder = newProps.sortOrder ?? Gtk.SortType.ASCENDING;
 
             if (!sortColumn) {
-                this.container.sortByColumn(undefined, sortOrder);
+                this.container.sortByColumn(sortOrder, undefined);
             } else {
-                this.container.sortByColumn(this.getColumn(sortColumn), sortOrder);
+                this.container.sortByColumn(sortOrder, this.getColumn(sortColumn));
             }
         }
 

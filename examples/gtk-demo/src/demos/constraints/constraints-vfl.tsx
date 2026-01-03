@@ -27,58 +27,65 @@ const HorizontalLayoutDemo = () => {
         const MARGIN = 8;
         const SPACING = 8;
 
+        // VFL: H:|-[button1]-[button2]-|
+        // This means: margin-left, button1, spacing, button2, margin-right
+
+        // button1.start = parent.start + margin
         layout.addConstraint(
             new Gtk.Constraint(
-                button1Ref.current,
                 Gtk.ConstraintAttribute.START,
                 Gtk.ConstraintRelation.EQ,
-                undefined,
                 Gtk.ConstraintAttribute.START,
                 1.0,
                 MARGIN,
                 Gtk.ConstraintStrength.REQUIRED,
+                button1Ref.current,
+                undefined,
             ),
         );
 
+        // button2.start = button1.end + spacing
         layout.addConstraint(
             new Gtk.Constraint(
-                button2Ref.current,
                 Gtk.ConstraintAttribute.START,
                 Gtk.ConstraintRelation.EQ,
-                button1Ref.current,
                 Gtk.ConstraintAttribute.END,
                 1.0,
                 SPACING,
                 Gtk.ConstraintStrength.REQUIRED,
+                button2Ref.current,
+                button1Ref.current,
             ),
         );
 
+        // button2.end = parent.end - margin
         layout.addConstraint(
             new Gtk.Constraint(
-                button2Ref.current,
                 Gtk.ConstraintAttribute.END,
                 Gtk.ConstraintRelation.EQ,
-                undefined,
                 Gtk.ConstraintAttribute.END,
                 1.0,
                 -MARGIN,
                 Gtk.ConstraintStrength.REQUIRED,
+                button2Ref.current,
+                undefined,
             ),
         );
 
+        // Vertical centering for both buttons
         for (const buttonRef of [button1Ref, button2Ref]) {
             const button = buttonRef.current;
             if (!button) continue;
             layout.addConstraint(
                 new Gtk.Constraint(
-                    button,
                     Gtk.ConstraintAttribute.CENTER_Y,
                     Gtk.ConstraintRelation.EQ,
-                    undefined,
                     Gtk.ConstraintAttribute.CENTER_Y,
                     1.0,
                     0,
                     Gtk.ConstraintStrength.REQUIRED,
+                    button,
+                    undefined,
                 ),
             );
         }
@@ -139,42 +146,45 @@ const ExplicitSpacingDemo = () => {
         layoutRef.current = layout;
         containerRef.current.setLayoutManager(layout);
 
+        // VFL: H:|-20-[widget]-50-|
+        // Explicit left margin of 20, explicit right margin of 50
+
         layout.addConstraint(
             new Gtk.Constraint(
-                widgetRef.current,
                 Gtk.ConstraintAttribute.START,
                 Gtk.ConstraintRelation.EQ,
-                undefined,
                 Gtk.ConstraintAttribute.START,
                 1.0,
                 20,
                 Gtk.ConstraintStrength.REQUIRED,
+                widgetRef.current,
+                undefined,
             ),
         );
 
         layout.addConstraint(
             new Gtk.Constraint(
-                widgetRef.current,
                 Gtk.ConstraintAttribute.END,
                 Gtk.ConstraintRelation.EQ,
-                undefined,
                 Gtk.ConstraintAttribute.END,
                 1.0,
                 -50,
                 Gtk.ConstraintStrength.REQUIRED,
+                widgetRef.current,
+                undefined,
             ),
         );
 
         layout.addConstraint(
             new Gtk.Constraint(
-                widgetRef.current,
                 Gtk.ConstraintAttribute.CENTER_Y,
                 Gtk.ConstraintRelation.EQ,
-                undefined,
                 Gtk.ConstraintAttribute.CENTER_Y,
                 1.0,
                 0,
                 Gtk.ConstraintStrength.REQUIRED,
+                widgetRef.current,
+                undefined,
             ),
         );
     }, []);
@@ -235,65 +245,73 @@ const SizePredicatesDemo = () => {
         const MARGIN = 8;
         const SPACING = 12;
 
+        // VFL: H:|-[minWidth(>=120)]-[fixedWidth(==80)]-|
+        // minWidth has minimum width of 120, fixedWidth has exact width of 80
+
+        // Position constraints
         layout.addConstraint(
             new Gtk.Constraint(
-                minWidthRef.current,
                 Gtk.ConstraintAttribute.START,
                 Gtk.ConstraintRelation.EQ,
-                undefined,
                 Gtk.ConstraintAttribute.START,
                 1.0,
                 MARGIN,
                 Gtk.ConstraintStrength.REQUIRED,
+                minWidthRef.current,
+                undefined,
             ),
         );
 
         layout.addConstraint(
             new Gtk.Constraint(
-                fixedWidthRef.current,
                 Gtk.ConstraintAttribute.START,
                 Gtk.ConstraintRelation.EQ,
-                minWidthRef.current,
                 Gtk.ConstraintAttribute.END,
                 1.0,
                 SPACING,
                 Gtk.ConstraintStrength.REQUIRED,
+                fixedWidthRef.current,
+                minWidthRef.current,
             ),
         );
 
+        // Size constraints
+        // minWidth(>=120)
         layout.addConstraint(
             Gtk.Constraint.newConstant(
-                minWidthRef.current,
                 Gtk.ConstraintAttribute.WIDTH,
                 Gtk.ConstraintRelation.GE,
                 120,
                 Gtk.ConstraintStrength.REQUIRED,
+                minWidthRef.current,
             ),
         );
 
+        // fixedWidth(==80)
         layout.addConstraint(
             Gtk.Constraint.newConstant(
-                fixedWidthRef.current,
                 Gtk.ConstraintAttribute.WIDTH,
                 Gtk.ConstraintRelation.EQ,
                 80,
                 Gtk.ConstraintStrength.REQUIRED,
+                fixedWidthRef.current,
             ),
         );
 
+        // Vertical centering
         for (const buttonRef of [minWidthRef, fixedWidthRef]) {
             const button = buttonRef.current;
             if (!button) continue;
             layout.addConstraint(
                 new Gtk.Constraint(
-                    button,
                     Gtk.ConstraintAttribute.CENTER_Y,
                     Gtk.ConstraintRelation.EQ,
-                    undefined,
                     Gtk.ConstraintAttribute.CENTER_Y,
                     1.0,
                     0,
                     Gtk.ConstraintStrength.REQUIRED,
+                    button,
+                    undefined,
                 ),
             );
         }
@@ -356,58 +374,62 @@ const VerticalLayoutDemo = () => {
         const MARGIN = 8;
         const SPACING = 8;
 
+        // VFL: V:|-[top]-[bottom]-|
+        // Vertical layout from top to bottom
+
         layout.addConstraint(
             new Gtk.Constraint(
-                topRef.current,
                 Gtk.ConstraintAttribute.TOP,
                 Gtk.ConstraintRelation.EQ,
-                undefined,
                 Gtk.ConstraintAttribute.TOP,
                 1.0,
                 MARGIN,
                 Gtk.ConstraintStrength.REQUIRED,
+                topRef.current,
+                undefined,
             ),
         );
 
         layout.addConstraint(
             new Gtk.Constraint(
-                bottomRef.current,
                 Gtk.ConstraintAttribute.TOP,
                 Gtk.ConstraintRelation.EQ,
-                topRef.current,
                 Gtk.ConstraintAttribute.BOTTOM,
                 1.0,
                 SPACING,
                 Gtk.ConstraintStrength.REQUIRED,
+                bottomRef.current,
+                topRef.current,
             ),
         );
 
         layout.addConstraint(
             new Gtk.Constraint(
-                bottomRef.current,
                 Gtk.ConstraintAttribute.BOTTOM,
                 Gtk.ConstraintRelation.EQ,
-                undefined,
                 Gtk.ConstraintAttribute.BOTTOM,
                 1.0,
                 -MARGIN,
                 Gtk.ConstraintStrength.REQUIRED,
+                bottomRef.current,
+                undefined,
             ),
         );
 
+        // Horizontal centering for both buttons
         for (const buttonRef of [topRef, bottomRef]) {
             const button = buttonRef.current;
             if (!button) continue;
             layout.addConstraint(
                 new Gtk.Constraint(
-                    button,
                     Gtk.ConstraintAttribute.CENTER_X,
                     Gtk.ConstraintRelation.EQ,
-                    undefined,
                     Gtk.ConstraintAttribute.CENTER_X,
                     1.0,
                     0,
                     Gtk.ConstraintStrength.REQUIRED,
+                    button,
+                    undefined,
                 ),
             );
         }

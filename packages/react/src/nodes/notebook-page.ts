@@ -105,8 +105,8 @@ export class NotebookPageNode extends SlotNode<Props> {
             tabLabel = label;
         }
 
-        if (this.position !== undefined) {
-            notebook.insertPage(child, tabLabel, this.position);
+        if (this.position != null) {
+            notebook.insertPage(child, this.position, tabLabel);
             return;
         }
 

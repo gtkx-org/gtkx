@@ -55,9 +55,9 @@ class StackPageNode extends SlotNode<Props> {
 
         if (parent instanceof Adw.ViewStack) {
             if (this.props.title && this.props.iconName) {
-                page = parent.addTitledWithIcon(child, this.props.name, this.props.title, this.props.iconName);
+                page = parent.addTitledWithIcon(child, this.props.title, this.props.iconName, this.props.name);
             } else if (this.props.title) {
-                page = parent.addTitled(child, this.props.name, this.props.title);
+                page = parent.addTitled(child, this.props.title, this.props.name);
             } else if (this.props.name) {
                 page = parent.addNamed(child, this.props.name);
             } else {
@@ -65,7 +65,7 @@ class StackPageNode extends SlotNode<Props> {
             }
         } else {
             if (this.props.title) {
-                page = parent.addTitled(child, this.props.name, this.props.title);
+                page = parent.addTitled(child, this.props.title, this.props.name);
             } else if (this.props.name) {
                 page = parent.addNamed(child, this.props.name);
             } else {
