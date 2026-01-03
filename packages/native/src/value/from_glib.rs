@@ -3,7 +3,6 @@ use std::ffi::c_void;
 use anyhow::bail;
 use gtk4::glib::{self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _};
 
-use super::helpers::gobject_from_gvalue;
 use super::Value;
 use crate::{
     boxed::Boxed,
@@ -175,7 +174,7 @@ impl Value {
                     "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
                 )
             }
-            Type::Array(_) | Type::Ref(_) | Type::Callback(_) => {
+            Type::Array(_) | Type::HashTable(_) | Type::Ref(_) | Type::Callback(_) => {
                 bail!(
                     "Type {:?} should not appear in glib value conversion - this indicates a bug in the type mapping",
                     type_
@@ -251,4 +250,22 @@ impl TryFrom<&glib::Value> for Value {
             bail!("Unsupported glib::Value type: {:?}", value.type_())
         }
     }
+}
+
+fn gobject_from_gvalue(gvalue: &glib::Value) -> anyhow::Result<Value> {
+    let obj_ptr = unsafe {
+        glib::gobject_ffi::g_value_get_object(gvalue.to_glib_none().0 as *const _)
+    };
+
+    if obj_ptr.is_null() {
+        return Ok(Value::Null);
+    }
+
+    let type_class = unsafe { (*obj_ptr).g_type_instance.g_class };
+    if type_class.is_null() {
+        bail!("GObject has invalid type class (object may have been freed)");
+    }
+
+    let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
+    Ok(Value::Object(Object::GObject(obj).into()))
 }

@@ -39,6 +39,7 @@ mod float;
 mod gobject;
 mod gparam;
 mod gvariant;
+mod hashtable;
 mod integer;
 mod r#ref;
 mod string;
@@ -51,6 +52,7 @@ pub use float::*;
 pub use gobject::*;
 pub use gparam::*;
 pub use gvariant::*;
+pub use hashtable::*;
 pub use integer::*;
 pub use r#ref::*;
 pub use string::*;
@@ -89,6 +91,7 @@ pub enum Type {
     Struct(StructType),
     GVariant(GVariantType),
     Array(ArrayType),
+    HashTable(HashTableType),
     Callback(CallbackType),
     Ref(RefType),
 }
@@ -108,6 +111,7 @@ impl std::fmt::Display for Type {
             Type::Struct(t) => write!(f, "Struct({})", t.type_),
             Type::GVariant(_) => write!(f, "GVariant"),
             Type::Array(_) => write!(f, "Array"),
+            Type::HashTable(_) => write!(f, "HashTable"),
             Type::Callback(t) => write!(f, "Callback({:?})", t.trampoline),
             Type::Ref(t) => write!(f, "Ref({})", t.inner_type),
         }
@@ -137,6 +141,7 @@ impl Type {
             "struct" => Ok(Type::Struct(StructType::from_js_value(cx, value)?)),
             "gvariant" => Ok(Type::GVariant(GVariantType::from_js_value(cx, value)?)),
             "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
+            "hashtable" => Ok(Type::HashTable(HashTableType::from_js_value(cx, value)?)),
             "callback" => {
                 let trampoline_prop: Handle<'_, JsValue> = obj.prop(cx, "trampoline").get()?;
                 let trampoline_str = trampoline_prop
@@ -215,6 +220,7 @@ impl From<&Type> for ffi::Type {
             Type::Struct(type_) => type_.into(),
             Type::GVariant(type_) => type_.into(),
             Type::Array(type_) => type_.into(),
+            Type::HashTable(type_) => type_.into(),
             Type::Callback(_) => ffi::Type::pointer(),
             Type::Ref(type_) => type_.into(),
             Type::Undefined => ffi::Type::void(),

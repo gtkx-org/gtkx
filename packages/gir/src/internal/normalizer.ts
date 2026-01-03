@@ -171,10 +171,51 @@ const typeExistsInNamespace = (typeName: string, ns: RawNamespace): boolean => {
     );
 };
 
+const buildContainerTypeBase = (raw: RawType) => ({
+    cType: raw.cType,
+    containerType: raw.containerType,
+    transferOwnership: raw.transferOwnership,
+    nullable: raw.nullable ?? false,
+});
+
 /**
  * Normalizes a raw type to a normalized type.
  */
 const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerContext): NormalizedType => {
+    if (raw.containerType === "ghashtable") {
+        const typeParams = (raw.typeParameters ?? []).map((tp) => normalizeType(tp, currentNamespace, ctx));
+        return new NormalizedType({
+            ...buildContainerTypeBase(raw),
+            name: qualifiedName("GLib", "HashTable"),
+            isArray: false,
+            elementType: typeParams[1] ?? null,
+            typeParameters: typeParams,
+        });
+    }
+
+    if (raw.containerType === "gptrarray" || raw.containerType === "garray") {
+        const typeParams = (raw.typeParameters ?? []).map((tp) => normalizeType(tp, currentNamespace, ctx));
+        const typeName = raw.containerType === "gptrarray" ? "PtrArray" : "Array";
+        return new NormalizedType({
+            ...buildContainerTypeBase(raw),
+            name: qualifiedName("GLib", typeName),
+            isArray: true,
+            elementType: typeParams[0] ?? null,
+            typeParameters: typeParams,
+        });
+    }
+
+    if (raw.containerType === "glist" || raw.containerType === "gslist") {
+        const elementType = raw.elementType ? normalizeType(raw.elementType, currentNamespace, ctx) : null;
+        return new NormalizedType({
+            ...buildContainerTypeBase(raw),
+            name: "array",
+            isArray: true,
+            elementType,
+            typeParameters: elementType ? [elementType] : [],
+        });
+    }
+
     const isArray = raw.isArray === true || raw.name === "array";
 
     if (isArray && raw.elementType) {

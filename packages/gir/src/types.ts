@@ -37,6 +37,11 @@ export const parseQualifiedName = (qn: QualifiedName): { namespace: string; name
  */
 export type TypeKind = "class" | "interface" | "record" | "enum" | "flags" | "callback";
 
+/**
+ * Container type discriminator for generic GLib containers.
+ */
+export type ContainerType = "ghashtable" | "gptrarray" | "garray" | "glist" | "gslist";
+
 type RepositoryLike = {
     resolveClass(name: QualifiedName): NormalizedClass | null;
     resolveInterface(name: QualifiedName): NormalizedInterface | null;
@@ -926,6 +931,8 @@ export class NormalizedType {
     readonly cType?: string;
     readonly isArray: boolean;
     readonly elementType: NormalizedType | null;
+    readonly typeParameters: readonly NormalizedType[];
+    readonly containerType?: ContainerType;
     readonly transferOwnership?: "none" | "full" | "container";
     readonly nullable: boolean;
 
@@ -934,6 +941,8 @@ export class NormalizedType {
         cType?: string;
         isArray: boolean;
         elementType: NormalizedType | null;
+        typeParameters?: readonly NormalizedType[];
+        containerType?: ContainerType;
         transferOwnership?: "none" | "full" | "container";
         nullable: boolean;
     }) {
@@ -941,6 +950,8 @@ export class NormalizedType {
         this.cType = data.cType;
         this.isArray = data.isArray;
         this.elementType = data.elementType;
+        this.typeParameters = data.typeParameters ?? [];
+        this.containerType = data.containerType;
         this.transferOwnership = data.transferOwnership;
         this.nullable = data.nullable;
     }
@@ -978,6 +989,43 @@ export class NormalizedType {
     /** True if this is GParamSpec. */
     isParamSpec(): boolean {
         return this.name === "GParamSpec";
+    }
+
+    /** True if this is a GHashTable container. */
+    isHashTable(): boolean {
+        return this.containerType === "ghashtable";
+    }
+
+    /** True if this is a GPtrArray container. */
+    isPtrArray(): boolean {
+        return this.containerType === "gptrarray";
+    }
+
+    /** True if this is a GArray container. */
+    isGArray(): boolean {
+        return this.containerType === "garray";
+    }
+
+    /** True if this is a GList or GSList container. */
+    isList(): boolean {
+        return this.containerType === "glist" || this.containerType === "gslist";
+    }
+
+    /** True if this is any generic container type. */
+    isGenericContainer(): boolean {
+        return this.containerType !== undefined;
+    }
+
+    /** Gets the key type for GHashTable, or null for other types. */
+    getKeyType(): NormalizedType | null {
+        if (!this.isHashTable() || this.typeParameters.length < 1) return null;
+        return this.typeParameters[0] ?? null;
+    }
+
+    /** Gets the value type for GHashTable, or null for other types. */
+    getValueType(): NormalizedType | null {
+        if (!this.isHashTable() || this.typeParameters.length < 2) return null;
+        return this.typeParameters[1] ?? null;
     }
 
     /** Gets the namespace part of a qualified name, or null for intrinsics. */

@@ -22,14 +22,16 @@ pub enum ListType {
     Array,
     GList,
     GSList,
+    GPtrArray,
+    GArray,
 }
 
 #[derive(Debug, Clone)]
 pub struct ArrayType {
     pub item_type: Box<Type>,
     pub list_type: ListType,
-    /// Whether ownership is transferred (transfer full).
     pub is_transfer_full: bool,
+    pub element_size: Option<usize>,
 }
 
 impl ArrayType {
@@ -38,6 +40,7 @@ impl ArrayType {
             item_type: Box::new(item_type),
             list_type,
             is_transfer_full,
+            element_size: None,
         }
     }
 
@@ -56,7 +59,20 @@ impl ArrayType {
             "array" => ListType::Array,
             "glist" => ListType::GList,
             "gslist" => ListType::GSList,
-            _ => return cx.throw_type_error("'listType' must be 'array', 'glist', or 'gslist'"),
+            "gptrarray" => ListType::GPtrArray,
+            "garray" => ListType::GArray,
+            _ => {
+                return cx.throw_type_error(
+                    "'listType' must be 'array', 'glist', 'gslist', 'gptrarray', or 'garray'",
+                )
+            }
+        };
+
+        let element_size: Option<usize> = if list_type == ListType::GArray {
+            let size_prop: Option<Handle<JsNumber>> = obj.get_opt(cx, "elementSize")?;
+            size_prop.map(|n| n.value(cx) as usize)
+        } else {
+            None
         };
 
         let is_transfer_full = parse_is_transfer_full(cx, obj, "array")?;
@@ -65,6 +81,7 @@ impl ArrayType {
             item_type: Box::new(item_type),
             list_type,
             is_transfer_full,
+            element_size,
         })
     }
 }

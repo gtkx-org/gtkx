@@ -9,6 +9,7 @@
 
 import { XMLParser } from "fast-xml-parser";
 import type {
+    ContainerType,
     RawCallback,
     RawClass,
     RawConstant,
@@ -324,22 +325,15 @@ export class RawGirParser {
         }
 
         const typeName = typeNode["@_name"] ? String(typeNode["@_name"]) : undefined;
+        const cType = typeNode["@_c:type"] ? String(typeNode["@_c:type"]) : undefined;
 
-        if (typeName === "GLib.List" || typeName === "GLib.SList") {
-            const innerType = (typeNode.type ?? typeNode.array) as Record<string, unknown> | undefined;
-            return {
-                name: "array",
-                cType: typeNode["@_c:type"] ? String(typeNode["@_c:type"]) : undefined,
-                isArray: true,
-                elementType: innerType ? this.parseType(innerType) : undefined,
-            };
+        const containerResult = this.parseGLibContainerType(typeName, typeNode, cType);
+        if (containerResult) {
+            return containerResult;
         }
 
         if (typeName) {
-            return {
-                name: typeName,
-                cType: typeNode["@_c:type"] ? String(typeNode["@_c:type"]) : undefined,
-            };
+            return { name: typeName, cType };
         }
 
         const isArrayNode =
@@ -357,6 +351,66 @@ export class RawGirParser {
         }
 
         return { name: "void" };
+    }
+
+    private extractTypeParameters(typeNode: Record<string, unknown>): RawType[] {
+        const types: RawType[] = [];
+        const typeChildren = typeNode.type;
+
+        if (Array.isArray(typeChildren)) {
+            for (const child of typeChildren) {
+                types.push(this.parseType(child as Record<string, unknown>));
+            }
+        } else if (typeChildren) {
+            types.push(this.parseType(typeChildren as Record<string, unknown>));
+        }
+
+        return types;
+    }
+
+    private parseGLibContainerType(
+        typeName: string | undefined,
+        typeNode: Record<string, unknown>,
+        cType: string | undefined,
+    ): RawType | null {
+        if (typeName === "GLib.HashTable") {
+            const typeParams = this.extractTypeParameters(typeNode);
+            return {
+                name: "GLib.HashTable",
+                cType,
+                isArray: false,
+                containerType: "ghashtable" as ContainerType,
+                typeParameters: typeParams.length >= 2 ? typeParams : undefined,
+                elementType: typeParams[1],
+            };
+        }
+
+        if (typeName === "GLib.PtrArray" || typeName === "GLib.Array") {
+            const typeParams = this.extractTypeParameters(typeNode);
+            return {
+                name: typeName,
+                cType,
+                isArray: true,
+                containerType: (typeName === "GLib.PtrArray" ? "gptrarray" : "garray") as ContainerType,
+                typeParameters: typeParams.length > 0 ? typeParams : undefined,
+                elementType: typeParams[0],
+            };
+        }
+
+        if (typeName === "GLib.List" || typeName === "GLib.SList") {
+            const innerType = (typeNode.type ?? typeNode.array) as Record<string, unknown> | undefined;
+            const elementType = innerType ? this.parseType(innerType) : undefined;
+            return {
+                name: "array",
+                cType,
+                isArray: true,
+                containerType: (typeName === "GLib.List" ? "glist" : "gslist") as ContainerType,
+                typeParameters: elementType ? [elementType] : undefined,
+                elementType,
+            };
+        }
+
+        return null;
     }
 
     private parseProperties(properties: Record<string, unknown>[]): RawProperty[] {

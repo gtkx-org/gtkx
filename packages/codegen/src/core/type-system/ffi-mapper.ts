@@ -25,9 +25,12 @@ import {
     FFI_UINT32,
     FFI_VOID,
     type FfiTypeDescriptor,
+    gArrayType,
     gobjectType,
+    hashTableType,
     type MappedType,
     PRIMITIVE_TYPE_MAP,
+    ptrArrayType,
     refType,
     stringType,
     structType,
@@ -73,12 +76,41 @@ export class FfiMapper {
     mapType(type: NormalizedType, isReturn = false, parentTransferOwnership?: string): MappedType {
         const imports: TypeImport[] = [];
 
+        if (type.isHashTable()) {
+            const keyType = type.getKeyType();
+            const valueType = type.getValueType();
+
+            if (keyType && valueType) {
+                const keyResult = this.mapType(keyType, isReturn, parentTransferOwnership);
+                const valueResult = this.mapType(valueType, isReturn, parentTransferOwnership);
+                imports.push(...keyResult.imports, ...valueResult.imports);
+
+                return {
+                    ts: `Map<${keyResult.ts}, ${valueResult.ts}>`,
+                    ffi: hashTableType(keyResult.ffi, valueResult.ffi, !isReturn),
+                    imports,
+                };
+            }
+
+            return {
+                ts: "Map<unknown, unknown>",
+                ffi: hashTableType(FFI_POINTER, FFI_POINTER, !isReturn),
+                imports,
+            };
+        }
+
+        if (type.isPtrArray() || type.isGArray()) {
+            return this.mapGLibArrayContainer(type, isReturn, parentTransferOwnership, imports);
+        }
+
         if (type.isArray) {
-            const listType = type.cType?.includes("GSList")
-                ? "gslist"
-                : type.cType?.includes("GList")
-                  ? "glist"
-                  : undefined;
+            const listType: "glist" | "gslist" | undefined = type.isList()
+                ? (type.containerType as "glist" | "gslist")
+                : type.cType?.includes("GSList")
+                  ? "gslist"
+                  : type.cType?.includes("GList")
+                    ? "glist"
+                    : undefined;
 
             if (type.elementType) {
                 const elementTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
@@ -542,6 +574,43 @@ export class FfiMapper {
             argTypes: argTypes.length > 0 ? argTypes : undefined,
             returnType,
         };
+    }
+
+    private mapGLibArrayContainer(
+        type: NormalizedType,
+        isReturn: boolean,
+        parentTransferOwnership: string | undefined,
+        imports: TypeImport[],
+    ): MappedType {
+        const isGArray = type.isGArray();
+
+        if (type.elementType) {
+            const elementTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
+            const elementResult = this.mapType(type.elementType, isReturn, elementTransferOwnership);
+            imports.push(...elementResult.imports);
+
+            const ffi = isGArray
+                ? gArrayType(elementResult.ffi, this.getElementSize(type.elementType), !isReturn)
+                : ptrArrayType(elementResult.ffi, !isReturn);
+
+            return { ts: `${elementResult.ts}[]`, ffi, imports };
+        }
+
+        const fallbackFfi = isGArray
+            ? gArrayType(FFI_POINTER, 8, !isReturn)
+            : ptrArrayType(FFI_POINTER, !isReturn);
+
+        return { ts: "unknown[]", ffi: fallbackFfi, imports };
+    }
+
+    private getElementSize(type: NormalizedType): number {
+        if (type.isNumeric()) {
+            const primitive = PRIMITIVE_TYPE_MAP.get(type.name as string);
+            if (primitive?.ffi.size) {
+                return primitive.ffi.size / 8;
+            }
+        }
+        return 8;
     }
 }
 

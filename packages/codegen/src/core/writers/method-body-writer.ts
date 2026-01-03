@@ -257,6 +257,7 @@ export class MethodBodyWriter {
         needsInterfaceWrap: boolean;
         needsArrayItemWrap: boolean;
         arrayItemType: string | undefined;
+        needsHashTableWrap: boolean;
     } {
         const baseReturnType = returnTypeMapping.ts === "void" ? "void" : returnTypeMapping.ts;
 
@@ -285,6 +286,8 @@ export class MethodBodyWriter {
 
         const arrayItemType = needsArrayItemWrap ? baseReturnType.replace(/\[\]$/, "") : undefined;
 
+        const needsHashTableWrap = returnTypeMapping.ffi.type === "hashtable";
+
         return {
             needsWrap: needsGObjectWrap || needsBoxedWrap || needsGVariantWrap || needsInterfaceWrap,
             needsGObjectWrap,
@@ -293,6 +296,7 @@ export class MethodBodyWriter {
             needsInterfaceWrap,
             needsArrayItemWrap,
             arrayItemType,
+            needsHashTableWrap,
         };
     }
 
@@ -584,6 +588,27 @@ export class MethodBodyWriter {
                 this.writeRefRewrap(writer, gtkAllocatesRefs);
 
                 writer.writeLine(`return arr.map((item) => getNativeObject(item) as ${wrapInfo.arrayItemType});`);
+            } else if (wrapInfo.needsHashTableWrap) {
+                writer.write("const tuples = ");
+                this.callExpression.toWriter({
+                    sharedLibrary: options.sharedLibrary,
+                    cIdentifier: options.cIdentifier,
+                    args,
+                    returnType: options.returnTypeMapping.ffi,
+                    selfArg: options.self,
+                })(writer);
+                writer.write(" as [unknown, unknown][];");
+                writer.newLine();
+
+                if (options.throws) {
+                    this.writeErrorCheck(writer);
+                }
+                this.writeRefRewrap(writer, gtkAllocatesRefs);
+
+                if (isNullable) {
+                    writer.writeLine("if (tuples === null) return null;");
+                }
+                writer.writeLine(`return new Map(tuples) as ${tsReturnType};`);
             } else {
                 const hasRefRewrap = gtkAllocatesRefs.length > 0;
                 const needsResultVar = options.throws || hasRefRewrap;

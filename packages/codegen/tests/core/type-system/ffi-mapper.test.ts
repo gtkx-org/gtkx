@@ -222,6 +222,103 @@ describe("FfiMapper", () => {
                     expect(result.ffi.listType).toBe("gslist");
                 }
             });
+
+            it("maps GHashTable to Map<K, V>", () => {
+                const { mapper } = createTestSetup();
+                const type = createNormalizedType({
+                    name: qualifiedName("GLib", "HashTable"),
+                    isArray: false,
+                    containerType: "ghashtable",
+                    typeParameters: [
+                        createNormalizedType({ name: "utf8" }),
+                        createNormalizedType({ name: "gint" }),
+                    ],
+                });
+                const result = mapper.mapType(type);
+
+                expect(result.ts).toBe("Map<string, number>");
+                expect(result.ffi.type).toBe("hashtable");
+            });
+
+            it("maps GHashTable without type params to Map<unknown, unknown>", () => {
+                const { mapper } = createTestSetup();
+                const type = createNormalizedType({
+                    name: qualifiedName("GLib", "HashTable"),
+                    isArray: false,
+                    containerType: "ghashtable",
+                    typeParameters: [],
+                });
+                const result = mapper.mapType(type);
+
+                expect(result.ts).toBe("Map<unknown, unknown>");
+            });
+
+            it("maps GPtrArray to T[]", () => {
+                const { mapper } = createTestSetup();
+                const type = createNormalizedType({
+                    name: qualifiedName("GLib", "PtrArray"),
+                    isArray: true,
+                    containerType: "gptrarray",
+                    elementType: createNormalizedType({ name: "utf8" }),
+                });
+                const result = mapper.mapType(type);
+
+                expect(result.ts).toBe("string[]");
+                expect(result.ffi.type).toBe("array");
+                if (result.ffi.type === "array") {
+                    expect(result.ffi.listType).toBe("gptrarray");
+                }
+            });
+
+            it("maps GArray to T[] with element size", () => {
+                const { mapper } = createTestSetup();
+                const type = createNormalizedType({
+                    name: qualifiedName("GLib", "Array"),
+                    isArray: true,
+                    containerType: "garray",
+                    elementType: createNormalizedType({ name: "gint" }),
+                });
+                const result = mapper.mapType(type);
+
+                expect(result.ts).toBe("number[]");
+                expect(result.ffi.type).toBe("array");
+                if (result.ffi.type === "array") {
+                    expect(result.ffi.listType).toBe("garray");
+                    expect(result.ffi.elementSize).toBeDefined();
+                }
+            });
+
+            it("maps GList with containerType", () => {
+                const { mapper } = createTestSetup();
+                const type = createNormalizedType({
+                    name: "array",
+                    isArray: true,
+                    containerType: "glist",
+                    elementType: createNormalizedType({ name: "utf8" }),
+                });
+                const result = mapper.mapType(type);
+
+                expect(result.ffi.type).toBe("array");
+                if (result.ffi.type === "array") {
+                    expect(result.ffi.listType).toBe("glist");
+                }
+            });
+
+            it("maps GSList with containerType", () => {
+                const { mapper } = createTestSetup();
+                const type = createNormalizedType({
+                    name: "array",
+                    isArray: true,
+                    containerType: "gslist",
+                    elementType: createNormalizedType({ name: "utf8" }),
+                });
+                const result = mapper.mapType(type);
+
+                expect(result.ffi.type).toBe("array");
+                if (result.ffi.type === "array") {
+                    expect(result.ffi.listType).toBe("gslist");
+                }
+            });
         });
 
         describe("classes", () => {

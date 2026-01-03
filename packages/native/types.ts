@@ -18,7 +18,21 @@ type StructType = { type: "struct"; ownership: Ownership; innerType: string; siz
 
 type GVariantType = { type: "gvariant"; ownership: Ownership };
 
-type ArrayType = { type: "array"; itemType: Type; listType: "array" | "glist" | "gslist"; ownership: Ownership };
+type ArrayType = {
+    type: "array";
+    itemType: Type;
+    listType: "array" | "glist" | "gslist" | "gptrarray" | "garray";
+    ownership: Ownership;
+    elementSize?: number;
+};
+
+type HashTableType = {
+    type: "hashtable";
+    keyType: Type;
+    valueType: Type;
+    listType: "ghashtable";
+    ownership: Ownership;
+};
 
 type RefType = { type: "ref"; innerType: Type };
 
@@ -46,6 +60,7 @@ export type Type =
     | StructType
     | GVariantType
     | ArrayType
+    | HashTableType
     | RefType
     | CallbackType
     | NullType

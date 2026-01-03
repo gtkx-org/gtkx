@@ -44,8 +44,17 @@ export type FfiTypeDescriptor = {
      * - "array": C-style null-terminated array
      * - "glist": GLib doubly-linked list
      * - "gslist": GLib singly-linked list
+     * - "gptrarray": GLib pointer array
+     * - "garray": GLib array with sized elements
+     * - "ghashtable": GLib hash table (for HashTableType)
      */
-    listType?: "array" | "glist" | "gslist";
+    listType?: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "ghashtable";
+
+    keyType?: FfiTypeDescriptor;
+
+    valueType?: FfiTypeDescriptor;
+
+    elementSize?: number;
 
     trampoline?:
         | "closure"
@@ -280,12 +289,55 @@ export const structType = (innerType: string, transferFull: boolean, size?: numb
  */
 export const arrayType = (
     itemType: FfiTypeDescriptor,
-    listType: "array" | "glist" | "gslist" = "array",
+    listType: "array" | "glist" | "gslist" | "gptrarray" | "garray" = "array",
     transferFull: boolean = true,
 ): FfiTypeDescriptor => ({
     type: "array",
     itemType,
     listType,
+    ownership: toOwnership(transferFull),
+});
+
+/**
+ * Creates a GPtrArray FFI type descriptor.
+ * @param transferFull - true for transfer full, false for transfer none
+ */
+export const ptrArrayType = (itemType: FfiTypeDescriptor, transferFull: boolean): FfiTypeDescriptor => ({
+    type: "array",
+    itemType,
+    listType: "gptrarray",
+    ownership: toOwnership(transferFull),
+});
+
+/**
+ * Creates a GArray FFI type descriptor with element size.
+ * @param transferFull - true for transfer full, false for transfer none
+ */
+export const gArrayType = (
+    itemType: FfiTypeDescriptor,
+    elementSize: number,
+    transferFull: boolean,
+): FfiTypeDescriptor => ({
+    type: "array",
+    itemType,
+    listType: "garray",
+    elementSize,
+    ownership: toOwnership(transferFull),
+});
+
+/**
+ * Creates a GHashTable FFI type descriptor.
+ * @param transferFull - true for transfer full, false for transfer none
+ */
+export const hashTableType = (
+    keyType: FfiTypeDescriptor,
+    valueType: FfiTypeDescriptor,
+    transferFull: boolean,
+): FfiTypeDescriptor => ({
+    type: "hashtable",
+    keyType,
+    valueType,
+    listType: "ghashtable",
     ownership: toOwnership(transferFull),
 });
 

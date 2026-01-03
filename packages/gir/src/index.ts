@@ -33,6 +33,7 @@ export {
 } from "./intrinsics.js";
 export { GirRepository } from "./repository.js";
 export type {
+    ContainerType,
     QualifiedName,
     TypeKind,
 } from "./types.js";

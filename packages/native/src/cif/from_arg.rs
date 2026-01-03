@@ -5,6 +5,7 @@ use gtk4::glib::{self, translate::IntoGlib as _};
 
 use super::array::try_from_array;
 use super::callback::try_from_callback;
+use super::hashtable::try_from_hashtable;
 use super::helpers::extract_object_ptr;
 use super::owned_ptr::OwnedPtr;
 use super::r#ref::try_from_ref;
@@ -107,6 +108,7 @@ impl TryFrom<Arg> for Value {
                 }
                 _ => try_from_array(&arg, type_),
             },
+            Type::HashTable(hash_table_type) => try_from_hashtable(&arg, hash_table_type),
             Type::Callback(type_) => try_from_callback(&arg, type_),
             Type::Ref(type_) => try_from_ref(&arg, type_),
         }

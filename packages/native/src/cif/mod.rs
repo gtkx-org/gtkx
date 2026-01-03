@@ -1,6 +1,7 @@
 mod array;
 mod callback;
 mod from_arg;
+mod hashtable;
 mod helpers;
 mod owned_ptr;
 mod r#ref;

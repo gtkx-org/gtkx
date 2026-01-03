@@ -3,7 +3,6 @@ use std::ffi::{CStr, CString, c_void};
 use anyhow::bail;
 use gtk4::glib::{self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNone as _};
 
-use super::helpers::{GListGuard, cif_to_number, extract_ptr_from_cif, glist_item_to_value};
 use super::Value;
 use crate::{
     boxed::Boxed,
@@ -13,6 +12,94 @@ use crate::{
     types::*,
     variant::GVariant as GVariantWrapper,
 };
+
+struct GListGuard {
+    ptr: *mut glib::ffi::GList,
+    should_free: bool,
+}
+
+impl GListGuard {
+    fn new(ptr: *mut c_void, should_free: bool) -> Self {
+        Self {
+            ptr: ptr as *mut glib::ffi::GList,
+            should_free,
+        }
+    }
+}
+
+impl Drop for GListGuard {
+    fn drop(&mut self) {
+        if self.should_free && !self.ptr.is_null() {
+            unsafe { glib::ffi::g_list_free(self.ptr) };
+        }
+    }
+}
+
+fn extract_ptr_from_cif(cif_value: &cif::Value, type_name: &str) -> anyhow::Result<*mut c_void> {
+    match cif_value {
+        cif::Value::Ptr(ptr) => Ok(*ptr),
+        _ => bail!(
+            "Expected a pointer cif::Value for {}, got {:?}",
+            type_name,
+            cif_value
+        ),
+    }
+}
+
+fn cif_to_number(cif_value: &cif::Value) -> anyhow::Result<f64> {
+    match cif_value {
+        cif::Value::I8(v) => Ok(*v as f64),
+        cif::Value::U8(v) => Ok(*v as f64),
+        cif::Value::I16(v) => Ok(*v as f64),
+        cif::Value::U16(v) => Ok(*v as f64),
+        cif::Value::I32(v) => Ok(*v as f64),
+        cif::Value::U32(v) => Ok(*v as f64),
+        cif::Value::I64(v) => Ok(*v as f64),
+        cif::Value::U64(v) => Ok(*v as f64),
+        cif::Value::F32(v) => Ok(*v as f64),
+        cif::Value::F64(v) => Ok(*v),
+        _ => bail!("Expected a number cif::Value, got {:?}", cif_value),
+    }
+}
+
+fn ptr_element_to_value(ptr: *mut c_void, type_: &Type, context: &str) -> anyhow::Result<Value> {
+    match type_ {
+        Type::String(_) => {
+            if ptr.is_null() {
+                return Ok(Value::Null);
+            }
+            let c_str = unsafe { CStr::from_ptr(ptr as *const i8) };
+            Ok(Value::String(c_str.to_string_lossy().into_owned()))
+        }
+        Type::Integer(int_type) => {
+            let number = match (int_type.size, int_type.sign) {
+                (IntegerSize::_32, IntegerSign::Signed) => ptr as i32 as f64,
+                (IntegerSize::_32, IntegerSign::Unsigned) => ptr as u32 as f64,
+                (IntegerSize::_64, IntegerSign::Signed) => ptr as i64 as f64,
+                (IntegerSize::_64, IntegerSign::Unsigned) => ptr as u64 as f64,
+                _ => ptr as isize as f64,
+            };
+            Ok(Value::Number(number))
+        }
+        Type::GObject(_) => {
+            if ptr.is_null() {
+                return Ok(Value::Null);
+            }
+            let object =
+                unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
+            Ok(Value::Object(Object::GObject(object).into()))
+        }
+        Type::Boxed(boxed_type) => {
+            if ptr.is_null() {
+                return Ok(Value::Null);
+            }
+            let gtype = boxed_type.get_gtype();
+            let boxed = Boxed::from_glib_none(gtype, ptr);
+            Ok(Value::Object(Object::Boxed(boxed).into()))
+        }
+        _ => bail!("Unsupported {} type: {:?}", context, type_),
+    }
+}
 
 fn from_cif_glist(
     cif_value: &cif::Value,
@@ -30,7 +117,7 @@ fn from_cif_glist(
 
     while !current.is_null() {
         let data = unsafe { (*current).data };
-        let item_value = glist_item_to_value(data, &array_type.item_type)?;
+        let item_value = ptr_element_to_value(data, &array_type.item_type, "GList item")?;
         values.push(item_value);
         current = unsafe { (*current).next };
     }
@@ -186,6 +273,43 @@ fn from_cif_ref(
         Type::String(string_type) => from_cif_ref_string(ref_ptr, string_type),
         _ => bail!("Unsupported ref inner type for reading: {:?}", ref_type.inner_type),
     }
+}
+
+fn from_cif_hashtable(
+    cif_value: &cif::Value,
+    hash_table_type: &HashTableType,
+) -> anyhow::Result<Value> {
+    let hash_ptr = extract_ptr_from_cif(cif_value, "GHashTable")?;
+    if hash_ptr.is_null() {
+        return Ok(Value::Array(vec![]));
+    }
+
+    let mut pairs: Vec<Value> = Vec::new();
+
+    unsafe {
+        let mut iter = std::mem::MaybeUninit::<glib::ffi::GHashTableIter>::uninit();
+        glib::ffi::g_hash_table_iter_init(iter.as_mut_ptr(), hash_ptr as *mut glib::ffi::GHashTable);
+
+        let mut key_ptr: *mut c_void = std::ptr::null_mut();
+        let mut value_ptr: *mut c_void = std::ptr::null_mut();
+
+        while glib::ffi::g_hash_table_iter_next(
+            iter.as_mut_ptr(),
+            &mut key_ptr as *mut _ as *mut *mut _,
+            &mut value_ptr as *mut _ as *mut *mut _,
+        ) != 0
+        {
+            let key_value = ptr_element_to_value(key_ptr, &hash_table_type.key_type, "hash table key")?;
+            let val_value = ptr_element_to_value(value_ptr, &hash_table_type.value_type, "hash table value")?;
+            pairs.push(Value::Array(vec![key_value, val_value]));
+        }
+    }
+
+    if hash_table_type.is_transfer_full {
+        unsafe { glib::ffi::g_hash_table_unref(hash_ptr as *mut glib::ffi::GHashTable) };
+    }
+
+    Ok(Value::Array(pairs))
 }
 
 fn from_cif_ref_string(
@@ -352,6 +476,7 @@ impl Value {
                 from_cif_owned_array(array_ptr, array_type)
             }
             Type::Ref(type_) => from_cif_ref(cif_value, type_),
+            Type::HashTable(hash_table_type) => from_cif_hashtable(cif_value, hash_table_type),
             _ => bail!("Unsupported type for cif value conversion: {:?}", type_),
         }
     }

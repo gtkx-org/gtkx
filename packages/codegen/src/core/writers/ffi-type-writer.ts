@@ -150,6 +150,8 @@ export class FfiTypeWriter {
                 return this.buildRefProperties(type);
             case "array":
                 return this.buildArrayProperties(type);
+            case "hashtable":
+                return this.buildHashTableProperties(type);
             case "callback":
                 return this.buildCallbackProperties(type);
             case "boolean":
@@ -235,6 +237,28 @@ export class FfiTypeWriter {
         }
 
         props.push({ name: "listType", value: `"${type.listType ?? "array"}"` });
+
+        props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
+
+        if (type.elementSize !== undefined) {
+            props.push({ name: "elementSize", value: type.elementSize });
+        }
+
+        return props;
+    }
+
+    private buildHashTableProperties(type: FfiTypeDescriptor): ObjectProperty[] {
+        const props: ObjectProperty[] = [{ name: "type", value: '"hashtable"' }];
+
+        if (type.keyType) {
+            props.push({ name: "keyType", value: this.toWriter(type.keyType) });
+        }
+
+        if (type.valueType) {
+            props.push({ name: "valueType", value: this.toWriter(type.valueType) });
+        }
+
+        props.push({ name: "listType", value: '"ghashtable"' });
 
         props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
 

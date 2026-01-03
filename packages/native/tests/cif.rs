@@ -416,6 +416,7 @@ fn try_from_array_u8() {
             })),
             list_type: ListType::Array,
             is_transfer_full: true,
+            element_size: None,
         }),
         value::Value::Array(vec![
             value::Value::Number(1.0),
@@ -446,6 +447,7 @@ fn try_from_array_i32() {
             })),
             list_type: ListType::Array,
             is_transfer_full: true,
+            element_size: None,
         }),
         value::Value::Array(vec![
             value::Value::Number(-10.0),
@@ -475,6 +477,7 @@ fn try_from_array_f64() {
             })),
             list_type: ListType::Array,
             is_transfer_full: true,
+            element_size: None,
         }),
         value::Value::Array(vec![value::Value::Number(1.1), value::Value::Number(2.2)]),
     );
@@ -502,6 +505,7 @@ fn try_from_array_string() {
             })),
             list_type: ListType::Array,
             is_transfer_full: true,
+            element_size: None,
         }),
         value::Value::Array(vec![
             value::Value::String("foo".to_string()),
@@ -532,6 +536,7 @@ fn try_from_array_boolean() {
             item_type: Box::new(Type::Boolean),
             list_type: ListType::Array,
             is_transfer_full: true,
+            element_size: None,
         }),
         value::Value::Array(vec![
             value::Value::Boolean(true),

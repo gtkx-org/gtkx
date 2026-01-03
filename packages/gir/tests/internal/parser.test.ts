@@ -653,6 +653,99 @@ describe("GirParser", () => {
             expect(result.functions[0].returnType.elementType?.name).toBe("utf8");
         });
 
+        it("parses GLib.HashTable with key and value types", () => {
+            const gir = createMinimalGir(`
+                <function name="get_settings" c:identifier="test_get_settings">
+                    <return-value>
+                        <type name="GLib.HashTable" c:type="GHashTable*">
+                            <type name="utf8"/>
+                            <type name="Widget"/>
+                        </type>
+                    </return-value>
+                </function>
+            `);
+            const parser = new GirParser();
+            const result = parser.parse(gir);
+
+            expect(result.functions[0].returnType.name).toBe("GLib.HashTable");
+            expect(result.functions[0].returnType.containerType).toBe("ghashtable");
+            expect(result.functions[0].returnType.typeParameters).toHaveLength(2);
+            expect(result.functions[0].returnType.typeParameters?.[0].name).toBe("utf8");
+            expect(result.functions[0].returnType.typeParameters?.[1].name).toBe("Widget");
+        });
+
+        it("parses GLib.PtrArray with element type", () => {
+            const gir = createMinimalGir(`
+                <function name="get_objects" c:identifier="test_get_objects">
+                    <return-value>
+                        <type name="GLib.PtrArray" c:type="GPtrArray*">
+                            <type name="Widget"/>
+                        </type>
+                    </return-value>
+                </function>
+            `);
+            const parser = new GirParser();
+            const result = parser.parse(gir);
+
+            expect(result.functions[0].returnType.name).toBe("GLib.PtrArray");
+            expect(result.functions[0].returnType.isArray).toBe(true);
+            expect(result.functions[0].returnType.containerType).toBe("gptrarray");
+            expect(result.functions[0].returnType.elementType?.name).toBe("Widget");
+        });
+
+        it("parses GLib.Array with element type", () => {
+            const gir = createMinimalGir(`
+                <function name="get_indices" c:identifier="test_get_indices">
+                    <return-value>
+                        <type name="GLib.Array" c:type="GArray*">
+                            <type name="gint"/>
+                        </type>
+                    </return-value>
+                </function>
+            `);
+            const parser = new GirParser();
+            const result = parser.parse(gir);
+
+            expect(result.functions[0].returnType.name).toBe("GLib.Array");
+            expect(result.functions[0].returnType.isArray).toBe(true);
+            expect(result.functions[0].returnType.containerType).toBe("garray");
+            expect(result.functions[0].returnType.elementType?.name).toBe("gint");
+        });
+
+        it("parses GLib.List with containerType", () => {
+            const gir = createMinimalGir(`
+                <function name="get_children" c:identifier="test_get_children">
+                    <return-value>
+                        <type name="GLib.List" c:type="GList*">
+                            <type name="Widget"/>
+                        </type>
+                    </return-value>
+                </function>
+            `);
+            const parser = new GirParser();
+            const result = parser.parse(gir);
+
+            expect(result.functions[0].returnType.containerType).toBe("glist");
+            expect(result.functions[0].returnType.typeParameters).toHaveLength(1);
+        });
+
+        it("parses GLib.SList with containerType", () => {
+            const gir = createMinimalGir(`
+                <function name="get_items" c:identifier="test_get_items">
+                    <return-value>
+                        <type name="GLib.SList" c:type="GSList*">
+                            <type name="utf8"/>
+                        </type>
+                    </return-value>
+                </function>
+            `);
+            const parser = new GirParser();
+            const result = parser.parse(gir);
+
+            expect(result.functions[0].returnType.containerType).toBe("gslist");
+            expect(result.functions[0].returnType.typeParameters).toHaveLength(1);
+        });
+
         it("parses return type transfer ownership", () => {
             const gir = createMinimalGir(`
                 <function name="get_string" c:identifier="test_get_string">

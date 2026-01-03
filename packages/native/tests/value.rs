@@ -269,6 +269,7 @@ fn glist_transfer_none_does_not_free_list() {
         item_type: Box::new(Type::GObject(gobject_type)),
         list_type: ListType::GList,
         is_transfer_full: false,
+        element_size: None,
     };
     let type_ = Type::Array(array_type);
 
@@ -320,6 +321,7 @@ fn glist_full_transfer_frees_list() {
         item_type: Box::new(Type::GObject(gobject_type)),
         list_type: ListType::GList,
         is_transfer_full: true,
+        element_size: None,
     };
     let type_ = Type::Array(array_type);
 
@@ -345,6 +347,7 @@ fn glist_null_returns_empty_array() {
         item_type: Box::new(Type::GObject(gobject_type)),
         list_type: ListType::GList,
         is_transfer_full: true,
+        element_size: None,
     };
     let type_ = Type::Array(array_type);
 
@@ -380,6 +383,7 @@ fn strv_transfer_none_does_not_free() {
         item_type: Box::new(Type::String(string_type)),
         list_type: ListType::Array,
         is_transfer_full: false,
+        element_size: None,
     };
     let type_ = Type::Array(array_type);
 
@@ -430,6 +434,7 @@ fn strv_full_transfer_frees_strings() {
         item_type: Box::new(Type::String(string_type)),
         list_type: ListType::Array,
         is_transfer_full: true,
+        element_size: None,
     };
     let type_ = Type::Array(array_type);
 
@@ -931,6 +936,7 @@ fn glist_with_string_items() {
         item_type: Box::new(Type::String(string_type)),
         list_type: ListType::GList,
         is_transfer_full: false,
+        element_size: None,
     };
     let type_ = Type::Array(array_type);
 

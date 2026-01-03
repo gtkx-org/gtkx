@@ -1,6 +1,5 @@
 mod from_cif;
 mod from_glib;
-mod helpers;
 mod into_glib;
 mod js;
 mod r#ref;

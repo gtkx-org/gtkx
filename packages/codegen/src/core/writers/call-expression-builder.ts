@@ -105,6 +105,7 @@ export class CallExpressionBuilder {
      * Builds a value expression that handles object ID extraction.
      *
      * For gobject/boxed/struct types, generates: `(value as any)?.id ?? value`
+     * For hashtable types, generates: `Array.from(value)` to convert Map to array of tuples
      * For primitives, just returns the value name.
      */
     buildValueExpression(valueName: string, mappedType: MappedType): string {
@@ -113,6 +114,10 @@ export class CallExpressionBuilder {
 
         if (needsPtr) {
             return `(${valueName} as any)?.id ?? ${valueName}`;
+        }
+
+        if (mappedType.ffi.type === "hashtable") {
+            return `${valueName} ? Array.from(${valueName}) : null`;
         }
 
         return valueName;

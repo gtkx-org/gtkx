@@ -211,7 +211,7 @@ fn handle_call(
                 let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
                 cif::Value::Ptr(ptr)
             }
-            Type::Array(_) => {
+            Type::Array(_) | Type::HashTable(_) => {
                 let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
                 cif::Value::Ptr(ptr)
             }

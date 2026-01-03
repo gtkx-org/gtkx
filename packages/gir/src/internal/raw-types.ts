@@ -7,6 +7,10 @@
  * @internal
  */
 
+import type { ContainerType } from "../types.js";
+
+export type { ContainerType };
+
 /**
  * Represents a parsed GIR namespace (library).
  *
@@ -184,6 +188,8 @@ export type RawType = {
     cType?: string;
     isArray?: boolean;
     elementType?: RawType;
+    typeParameters?: RawType[];
+    containerType?: ContainerType;
     transferOwnership?: "none" | "full" | "container";
     nullable?: boolean;
 };
