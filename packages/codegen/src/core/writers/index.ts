@@ -4,7 +4,7 @@ export type Writers = {
     ffiTypeWriter: FfiTypeWriter;
 };
 
-export type CreateWritersOptions = {
+type CreateWritersOptions = {
     sharedLibrary?: string;
     glibLibrary?: string;
 };
