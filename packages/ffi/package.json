@@ -47,7 +47,6 @@
     ],
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",
-        "codegen": "echo 'Use pnpm codegen from repo root'",
         "test": "vitest run"
     },
     "dependencies": {

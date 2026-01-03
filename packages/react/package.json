@@ -35,8 +35,7 @@
         "dist"
     ],
     "scripts": {
-        "build": "tsc -b && cp ../../README.md .",
-        "codegen": "echo 'Use pnpm codegen from repo root'"
+        "build": "tsc -b && cp ../../README.md ."
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",

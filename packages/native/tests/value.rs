@@ -366,7 +366,7 @@ fn glist_null_returns_empty_array() {
 fn strv_transfer_none_does_not_free() {
     common::ensure_gtk_init();
 
-    let strings = vec![
+    let strings = [
         std::ffi::CString::new("hello").unwrap(),
         std::ffi::CString::new("world").unwrap(),
     ];
@@ -415,8 +415,8 @@ fn strv_transfer_none_does_not_free() {
 fn strv_full_transfer_frees_strings() {
     common::ensure_gtk_init();
 
-    let s1 = unsafe { glib::ffi::g_strdup("hello\0".as_ptr() as *const i8) };
-    let s2 = unsafe { glib::ffi::g_strdup("world\0".as_ptr() as *const i8) };
+    let s1 = unsafe { glib::ffi::g_strdup(c"hello".as_ptr()) };
+    let s2 = unsafe { glib::ffi::g_strdup(c"world".as_ptr()) };
 
     let strv = unsafe {
         let ptr = glib::ffi::g_malloc(3 * std::mem::size_of::<*mut i8>()) as *mut *mut i8;
@@ -540,7 +540,7 @@ fn from_glib_value_integers() {
 fn from_glib_value_floats() {
     common::ensure_gtk_init();
 
-    let gvalue_f64: glib::Value = 3.14159f64.into();
+    let gvalue_f64: glib::Value = 3.15625f64.into();
 
     let float_type = native::types::FloatType {
         size: native::types::FloatSize::_64,
@@ -551,7 +551,7 @@ fn from_glib_value_floats() {
 
     assert!(result.is_ok());
     if let Value::Number(n) = result.unwrap() {
-        assert!((n - 3.14159).abs() < 0.0001);
+        assert!((n - 3.15625).abs() < 0.0001);
     } else {
         panic!("Expected Value::Number");
     }
@@ -756,7 +756,7 @@ fn from_cif_value_ref_integer() {
 fn from_cif_value_ref_float() {
     common::ensure_gtk_init();
 
-    let float_value: f64 = 3.14159;
+    let float_value: f64 = 3.15625;
     let ptr = &float_value as *const f64 as *mut c_void;
 
     let float_type = native::types::FloatType {
@@ -771,7 +771,7 @@ fn from_cif_value_ref_float() {
 
     assert!(result.is_ok());
     if let Value::Number(n) = result.unwrap() {
-        assert!((n - 3.14159).abs() < 0.0001);
+        assert!((n - 3.15625).abs() < 0.0001);
     } else {
         panic!("Expected Value::Number");
     }

@@ -2,7 +2,6 @@ mod array;
 mod callback;
 mod from_arg;
 mod hashtable;
-mod helpers;
 mod owned_ptr;
 mod r#ref;
 mod trampoline;
@@ -11,7 +10,7 @@ use std::ffi::c_void;
 
 use libffi::middle as libffi;
 
-pub use helpers::{closure_ptr_for_transfer, closure_to_glib_full};
+pub use callback::closure_to_glib_full;
 pub use owned_ptr::OwnedPtr;
 pub use trampoline::TrampolineCallbackValue;
 

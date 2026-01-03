@@ -68,7 +68,7 @@ impl Boxed {
             None => {
                 if let Some(s) = size {
                     let cloned_ptr = unsafe {
-                        let dest = glib::ffi::g_malloc(s) as *mut c_void;
+                        let dest = glib::ffi::g_malloc(s);
                         std::ptr::copy_nonoverlapping(ptr as *const u8, dest as *mut u8, s);
                         dest
                     };

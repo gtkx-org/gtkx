@@ -7,14 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 pnpm install                  # Install dependencies
 pnpm turbo build              # Build all packages (native + TypeScript)
-pnpm turbo test               # Run all tests (requires Xvfb for display isolation)
+pnpm test                     # Run all tests (requires Xvfb for display isolation)
 pnpm turbo lint:all           # Run Biome (TS/JS) and Clippy (Rust)
 pnpm turbo knip:all           # Check for dead/unused code
 pnpm turbo codegen:all        # Regenerate FFI bindings from GIR files
 
 # Package-specific
 pnpm turbo build --filter=@gtkx/react
-pnpm turbo test --filter=@gtkx/react
+pnpm turbo test --filter=@gtkx/react  # Use turbo directly for single packages
 
 # Linting
 pnpm biome check --write .    # Fix auto-fixable issues

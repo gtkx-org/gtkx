@@ -13,6 +13,7 @@ pub fn ensure_gtk_init() {
 }
 
 #[allow(dead_code)]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn get_closure_refcount(closure_ptr: *mut glib::gobject_ffi::GClosure) -> u32 {
     if closure_ptr.is_null() {
         return 0;
@@ -21,6 +22,7 @@ pub fn get_closure_refcount(closure_ptr: *mut glib::gobject_ffi::GClosure) -> u3
 }
 
 #[allow(dead_code)]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
     if obj_ptr.is_null() {
         return 0;

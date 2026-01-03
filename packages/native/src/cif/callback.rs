@@ -1,13 +1,76 @@
-use anyhow::bail;
-use gtk4::glib::{self, translate::FromGlibPtrNone as _, value::ToValue as _};
+use std::{ffi::c_void, sync::Arc};
 
-use super::helpers::{
-    closure_ptr_for_transfer, closure_to_glib_full, convert_glib_args, invoke_and_wait_for_js_result,
-};
+use anyhow::bail;
+use gtk4::glib::{self, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _, value::ToValue as _};
+use neon::prelude::*;
+
 use super::owned_ptr::OwnedPtr;
 use super::trampoline::{TrampolineCallbackValue, build_trampoline_callback};
 use super::Value;
-use crate::{arg, callback, types::*, value};
+use crate::{arg, callback, gtk_dispatch, js_dispatch, types::*, value};
+
+pub fn closure_to_glib_full(closure: glib::Closure) -> *mut c_void {
+    let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
+    ptr as *mut c_void
+}
+
+fn wait_for_js_result<T, F>(
+    rx: std::sync::mpsc::Receiver<Result<value::Value, ()>>,
+    on_result: F,
+) -> T
+where
+    F: FnOnce(Result<value::Value, ()>) -> T,
+{
+    use std::time::Duration;
+    const POLL_INTERVAL: Duration = Duration::from_micros(100);
+
+    loop {
+        gtk_dispatch::dispatch_pending();
+
+        match rx.recv_timeout(POLL_INTERVAL) {
+            Ok(result) => return on_result(result),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                continue;
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                return on_result(Err(()));
+            }
+        }
+    }
+}
+
+fn invoke_and_wait_for_js_result<T, F>(
+    channel: &Channel,
+    callback: &Arc<Root<JsFunction>>,
+    args_values: Vec<value::Value>,
+    capture_result: bool,
+    on_result: F,
+) -> T
+where
+    F: FnOnce(Result<value::Value, ()>) -> T,
+{
+    let rx = if gtk_dispatch::is_js_waiting() {
+        js_dispatch::queue(callback.clone(), args_values, capture_result)
+    } else {
+        js_dispatch::queue_with_wakeup(channel, callback.clone(), args_values, capture_result)
+    };
+
+    wait_for_js_result(rx, on_result)
+}
+
+fn convert_glib_args(
+    args: &[glib::Value],
+    arg_types: &Option<Vec<Type>>,
+) -> anyhow::Result<Vec<value::Value>> {
+    match arg_types {
+        Some(types) => args
+            .iter()
+            .zip(types.iter())
+            .map(|(gval, type_)| value::Value::from_glib_value(gval, type_))
+            .collect(),
+        None => args.iter().map(value::Value::try_from).collect(),
+    }
+}
 
 pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow::Result<Value> {
     let cb = match &arg.value {
@@ -49,8 +112,8 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
                 )
             });
 
-            let closure_ptr = closure_to_glib_full(&closure);
-            Ok(Value::OwnedPtr(OwnedPtr::new(closure, closure_ptr)))
+            let closure_ptr = closure_to_glib_full(closure);
+            Ok(Value::OwnedPtr(OwnedPtr::new((), closure_ptr)))
         }
 
         CallbackTrampoline::AsyncReady => {
@@ -81,7 +144,7 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
                 })
             });
 
-            let closure_ptr = closure_ptr_for_transfer(closure);
+            let closure_ptr = closure_to_glib_full(closure);
             let trampoline_ptr = callback::get_async_ready_trampoline_ptr();
 
             Ok(Value::TrampolineCallback(TrampolineCallbackValue {
@@ -99,7 +162,7 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
                 })
             });
 
-            let closure_ptr = closure_ptr_for_transfer(closure);
+            let closure_ptr = closure_to_glib_full(closure);
             let trampoline_ptr = callback::get_destroy_trampoline_ptr();
 
             Ok(Value::TrampolineCallback(TrampolineCallbackValue {

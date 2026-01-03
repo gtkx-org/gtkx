@@ -295,8 +295,8 @@ fn from_cif_hashtable(
 
         while glib::ffi::g_hash_table_iter_next(
             iter.as_mut_ptr(),
-            &mut key_ptr as *mut _ as *mut *mut _,
-            &mut value_ptr as *mut _ as *mut *mut _,
+            &mut key_ptr as *mut _,
+            &mut value_ptr as *mut _,
         ) != 0
         {
             let key_value = ptr_element_to_value(key_ptr, &hash_table_type.key_type, "hash table key")?;

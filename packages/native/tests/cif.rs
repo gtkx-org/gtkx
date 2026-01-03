@@ -9,7 +9,7 @@ use std::sync::{
 use gtk4::glib;
 
 use native::arg::Arg;
-use native::cif::{OwnedPtr, Value, closure_ptr_for_transfer, closure_to_glib_full};
+use native::cif::{OwnedPtr, Value, closure_to_glib_full};
 use native::types::{
     ArrayType, FloatSize, FloatType, IntegerSign, IntegerSize, IntegerType, ListType, StringType,
     Type,
@@ -93,30 +93,7 @@ fn owned_ptr_drops_value_when_dropped() {
 }
 
 #[test]
-fn closure_to_glib_full_increments_refcount() {
-    common::ensure_gtk_init();
-
-    let closure = glib::Closure::new(|_| None::<glib::Value>);
-
-    let initial_ref = {
-        use glib::translate::ToGlibPtr as _;
-        let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_none().0;
-        unsafe { (*ptr).ref_count }
-    };
-
-    let ptr = closure_to_glib_full(&closure);
-
-    let after_ref = unsafe { (*(ptr as *mut glib::gobject_ffi::GClosure)).ref_count };
-
-    assert!(after_ref > initial_ref);
-
-    unsafe {
-        glib::gobject_ffi::g_closure_unref(ptr as *mut _);
-    }
-}
-
-#[test]
-fn closure_ptr_for_transfer_returns_valid_ptr() {
+fn closure_to_glib_full_returns_valid_ptr() {
     common::ensure_gtk_init();
 
     let invoked = Arc::new(AtomicBool::new(false));
@@ -127,7 +104,7 @@ fn closure_ptr_for_transfer_returns_valid_ptr() {
         None::<glib::Value>
     });
 
-    let ptr = closure_ptr_for_transfer(closure);
+    let ptr = closure_to_glib_full(closure);
 
     assert!(!ptr.is_null());
 
@@ -149,7 +126,7 @@ fn closure_ptr_for_transfer_returns_valid_ptr() {
 }
 
 #[test]
-fn closure_captured_values_survive_transfer() {
+fn closure_to_glib_full_captured_values_survive() {
     common::ensure_gtk_init();
 
     let data = Arc::new(AtomicUsize::new(0));
@@ -160,7 +137,7 @@ fn closure_captured_values_survive_transfer() {
         None::<glib::Value>
     });
 
-    let ptr = closure_ptr_for_transfer(closure);
+    let ptr = closure_to_glib_full(closure);
 
     for _ in 0..5 {
         unsafe {
@@ -283,13 +260,13 @@ fn try_from_float_f32() {
         Type::Float(FloatType {
             size: FloatSize::_32,
         }),
-        value::Value::Number(3.14),
+        value::Value::Number(3.125),
     );
 
     let result = Value::try_from(arg);
     assert!(result.is_ok());
     if let Value::F32(v) = result.unwrap() {
-        assert!((v - 3.14).abs() < 0.001);
+        assert!((v - 3.125).abs() < 0.001);
     } else {
         panic!("Expected Value::F32");
     }
@@ -301,13 +278,13 @@ fn try_from_float_f64() {
         Type::Float(FloatType {
             size: FloatSize::_64,
         }),
-        value::Value::Number(2.718281828),
+        value::Value::Number(2.625),
     );
 
     let result = Value::try_from(arg);
     assert!(result.is_ok());
     if let Value::F64(v) = result.unwrap() {
-        assert!((v - 2.718281828).abs() < 0.0000001);
+        assert!((v - 2.625).abs() < 0.0000001);
     } else {
         panic!("Expected Value::F64");
     }
@@ -570,8 +547,8 @@ fn value_as_ptr_integer_types() {
 
 #[test]
 fn value_as_ptr_float_types() {
-    let v_f32 = Value::F32(3.14);
-    let v_f64 = Value::F64(2.718);
+    let v_f32 = Value::F32(3.125);
+    let v_f64 = Value::F64(2.625);
 
     assert!(!v_f32.as_ptr().is_null());
     assert!(!v_f64.as_ptr().is_null());
@@ -597,7 +574,7 @@ fn value_to_libffi_arg_integers() {
 
 #[test]
 fn value_to_libffi_arg_floats() {
-    let v = Value::F64(3.14);
+    let v = Value::F64(3.125);
     let _arg: libffi::middle::Arg = (&v).into();
 }
 

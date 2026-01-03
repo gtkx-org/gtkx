@@ -119,11 +119,5 @@ fn object_not_found_error_copy() {
     let err = ObjectNotFoundError(42);
     let copied = err;
     assert_eq!(copied.0, 42);
-}
-
-#[test]
-fn object_not_found_error_clone() {
-    let err = ObjectNotFoundError(42);
-    let cloned = err.clone();
-    assert_eq!(cloned.0, 42);
+    assert_eq!(err.0, 42);
 }

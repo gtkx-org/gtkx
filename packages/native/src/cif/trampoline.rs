@@ -2,6 +2,7 @@ use std::ffi::c_void;
 
 use gtk4::glib;
 
+use super::callback::closure_to_glib_full;
 use super::owned_ptr::OwnedPtr;
 use super::Value;
 use crate::callback;
@@ -15,7 +16,7 @@ pub struct TrampolineCallbackValue {
 }
 
 pub(super) fn build_trampoline_callback(closure: glib::Closure, spec: &callback::TrampolineSpec) -> Value {
-    let closure_ptr = super::helpers::closure_ptr_for_transfer(closure);
+    let closure_ptr = closure_to_glib_full(closure);
 
     let closure_nonnull = std::ptr::NonNull::new(closure_ptr as *mut glib::gobject_ffi::GClosure)
         .expect("closure pointer should not be null");

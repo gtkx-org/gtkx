@@ -6,11 +6,20 @@ use gtk4::glib::{self, translate::IntoGlib as _};
 use super::array::try_from_array;
 use super::callback::try_from_callback;
 use super::hashtable::try_from_hashtable;
-use super::helpers::extract_object_ptr;
 use super::owned_ptr::OwnedPtr;
 use super::r#ref::try_from_ref;
 use super::Value;
 use crate::{arg::Arg, types::*, value};
+
+fn extract_object_ptr(val: &value::Value, type_name: &str) -> anyhow::Result<*mut c_void> {
+    match val {
+        value::Value::Object(id) => id
+            .as_ptr()
+            .ok_or_else(|| anyhow::anyhow!("{} has been garbage collected", type_name)),
+        value::Value::Null | value::Value::Undefined => Ok(std::ptr::null_mut()),
+        _ => bail!("Expected an Object for {} type, got {:?}", type_name, val),
+    }
+}
 
 impl TryFrom<Arg> for Value {
     type Error = anyhow::Error;

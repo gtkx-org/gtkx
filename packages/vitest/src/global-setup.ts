@@ -111,26 +111,12 @@ export const setup = async (project: TestProject): Promise<void> => {
     }
 };
 
-const waitForProcessExit = (proc: ChildProcess, timeout = 1000): Promise<void> => {
-    return new Promise((resolve) => {
-        if (proc.exitCode !== null) {
-            resolve();
-            return;
-        }
-
-        const timer = setTimeout(resolve, timeout);
-
-        proc.once("exit", () => {
-            clearTimeout(timer);
-            resolve();
-        });
-
-        proc.kill("SIGTERM");
-    });
-};
-
 export const teardown = async (): Promise<void> => {
-    await Promise.all(xvfbProcesses.map((xvfb) => waitForProcessExit(xvfb)));
+    for (const xvfb of xvfbProcesses) {
+        try {
+            xvfb.kill("SIGTERM");
+        } catch {}
+    }
 
     if (currentStateDir && existsSync(currentStateDir)) {
         rmSync(currentStateDir, { recursive: true, force: true });
