@@ -14,17 +14,13 @@ pub struct TrampolineCallbackValue {
     pub data_first: bool,
 }
 
-pub(super) fn build_trampoline_callback(
-    closure: glib::Closure,
-    arg_gtypes: Vec<glib::Type>,
-    spec: &callback::TrampolineSpec,
-) -> Value {
+pub(super) fn build_trampoline_callback(closure: glib::Closure, spec: &callback::TrampolineSpec) -> Value {
     let closure_ptr = super::helpers::closure_ptr_for_transfer(closure);
 
     let closure_nonnull = std::ptr::NonNull::new(closure_ptr as *mut glib::gobject_ffi::GClosure)
         .expect("closure pointer should not be null");
 
-    let callback_data = Box::new(callback::CallbackData::new(closure_nonnull, arg_gtypes, spec.kind));
+    let callback_data = Box::new(callback::CallbackData::new(closure_nonnull, spec.kind));
     let data_ptr = Box::into_raw(callback_data) as *mut c_void;
 
     Value::TrampolineCallback(TrampolineCallbackValue {

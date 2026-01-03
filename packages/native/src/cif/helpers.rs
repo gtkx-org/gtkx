@@ -83,37 +83,3 @@ pub(super) fn convert_glib_args(
         None => args.iter().map(value::Value::try_from).collect(),
     }
 }
-
-pub(super) fn type_to_glib_type(type_: &Type) -> glib::Type {
-    use crate::types::{FloatSize, IntegerSign, IntegerSize};
-
-    match type_ {
-        Type::GObject(_) => glib::types::Type::OBJECT,
-        Type::Boxed(boxed) => boxed.get_gtype().unwrap_or(glib::types::Type::POINTER),
-        Type::GVariant(_) => glib::types::Type::VARIANT,
-        Type::Integer(int_type) => match (&int_type.size, &int_type.sign) {
-            (IntegerSize::_8, IntegerSign::Signed) => glib::types::Type::I8,
-            (IntegerSize::_8, IntegerSign::Unsigned) => glib::types::Type::U8,
-            (IntegerSize::_16, IntegerSign::Signed) => glib::types::Type::I32,
-            (IntegerSize::_16, IntegerSign::Unsigned) => glib::types::Type::U32,
-            (IntegerSize::_32, IntegerSign::Signed) => glib::types::Type::I32,
-            (IntegerSize::_32, IntegerSign::Unsigned) => glib::types::Type::U32,
-            (IntegerSize::_64, IntegerSign::Signed) => glib::types::Type::I64,
-            (IntegerSize::_64, IntegerSign::Unsigned) => glib::types::Type::U64,
-        },
-        Type::Float(float_type) => match &float_type.size {
-            FloatSize::_32 => glib::types::Type::F32,
-            FloatSize::_64 => glib::types::Type::F64,
-        },
-        Type::Boolean => glib::types::Type::BOOL,
-        Type::String(_) => glib::types::Type::STRING,
-        _ => glib::types::Type::POINTER,
-    }
-}
-
-pub(super) fn arg_types_to_glib_types(arg_types: &Option<Vec<Type>>) -> Vec<glib::Type> {
-    arg_types
-        .as_ref()
-        .map(|types| types.iter().map(type_to_glib_type).collect())
-        .unwrap_or_default()
-}

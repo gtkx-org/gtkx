@@ -2,8 +2,7 @@ use anyhow::bail;
 use gtk4::glib::{self, translate::FromGlibPtrNone as _, value::ToValue as _};
 
 use super::helpers::{
-    arg_types_to_glib_types, closure_ptr_for_transfer, closure_to_glib_full, convert_glib_args,
-    invoke_and_wait_for_js_result,
+    closure_ptr_for_transfer, closure_to_glib_full, convert_glib_args, invoke_and_wait_for_js_result,
 };
 use super::owned_ptr::OwnedPtr;
 use super::trampoline::{TrampolineCallbackValue, build_trampoline_callback};
@@ -113,7 +112,6 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
 
         CallbackTrampoline::DrawFunc => {
             let arg_types = type_.arg_types.clone();
-            let arg_gtypes = arg_types_to_glib_types(&arg_types);
 
             let closure = glib::Closure::new(move |args: &[glib::Value]| {
                 let args_values = convert_glib_args(args, &arg_types)
@@ -124,16 +122,11 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
                 })
             });
 
-            Ok(build_trampoline_callback(
-                closure,
-                arg_gtypes,
-                &callback::TrampolineSpec::draw_func(),
-            ))
+            Ok(build_trampoline_callback(closure, &callback::TrampolineSpec::draw_func()))
         }
 
         CallbackTrampoline::ShortcutFunc => {
             let arg_types = type_.arg_types.clone();
-            let arg_gtypes = arg_types_to_glib_types(&arg_types);
 
             let closure = glib::Closure::new(move |args: &[glib::Value]| {
                 let args_values = convert_glib_args(args, &arg_types)
@@ -151,16 +144,11 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
                 )
             });
 
-            Ok(build_trampoline_callback(
-                closure,
-                arg_gtypes,
-                &callback::TrampolineSpec::shortcut_func(),
-            ))
+            Ok(build_trampoline_callback(closure, &callback::TrampolineSpec::shortcut_func()))
         }
 
         CallbackTrampoline::TreeListModelCreateFunc => {
             let arg_types = type_.arg_types.clone();
-            let arg_gtypes = arg_types_to_glib_types(&arg_types);
 
             let closure = glib::Closure::new(move |args: &[glib::Value]| {
                 let args_values = convert_glib_args(args, &arg_types)
@@ -191,7 +179,6 @@ pub(super) fn try_from_callback(arg: &arg::Arg, type_: &CallbackType) -> anyhow:
 
             Ok(build_trampoline_callback(
                 closure,
-                arg_gtypes,
                 &callback::TrampolineSpec::tree_list_model_create_func(),
             ))
         }

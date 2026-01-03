@@ -78,7 +78,7 @@ export const setup = async (project: TestProject): Promise<void> => {
     currentStateDir = stateDir;
 
     if (existsSync(stateDir)) {
-        rmSync(stateDir, { recursive: true });
+        rmSync(stateDir, { recursive: true, force: true });
     }
 
     mkdirSync(stateDir, { recursive: true });
@@ -111,14 +111,28 @@ export const setup = async (project: TestProject): Promise<void> => {
     }
 };
 
+const waitForProcessExit = (proc: ChildProcess, timeout = 1000): Promise<void> => {
+    return new Promise((resolve) => {
+        if (proc.exitCode !== null) {
+            resolve();
+            return;
+        }
+
+        const timer = setTimeout(resolve, timeout);
+
+        proc.once("exit", () => {
+            clearTimeout(timer);
+            resolve();
+        });
+
+        proc.kill("SIGTERM");
+    });
+};
+
 export const teardown = async (): Promise<void> => {
-    for (const xvfb of xvfbProcesses) {
-        try {
-            xvfb.kill("SIGTERM");
-        } catch {}
-    }
+    await Promise.all(xvfbProcesses.map((xvfb) => waitForProcessExit(xvfb)));
 
     if (currentStateDir && existsSync(currentStateDir)) {
-        rmSync(currentStateDir, { recursive: true });
+        rmSync(currentStateDir, { recursive: true, force: true });
     }
 };

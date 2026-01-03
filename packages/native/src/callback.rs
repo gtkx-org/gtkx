@@ -22,21 +22,12 @@ pub enum CallbackKind {
 #[derive(Debug)]
 pub struct CallbackData {
     pub closure: NonNull<gobject_ffi::GClosure>,
-    pub arg_gtypes: Vec<glib::Type>,
     pub kind: CallbackKind,
 }
 
 impl CallbackData {
-    pub fn new(
-        closure: NonNull<gobject_ffi::GClosure>,
-        arg_gtypes: Vec<glib::Type>,
-        kind: CallbackKind,
-    ) -> Self {
-        Self {
-            closure,
-            arg_gtypes,
-            kind,
-        }
+    pub fn new(closure: NonNull<gobject_ffi::GClosure>, kind: CallbackKind) -> Self {
+        Self { closure, kind }
     }
 }
 
@@ -85,12 +76,6 @@ impl TrampolineSpec {
     }
 }
 
-fn marshal_gvalue_at_index(data: &CallbackData, index: usize, fallback: glib::Type) -> glib::Value {
-    unsafe {
-        glib::Value::from_type_unchecked(data.arg_gtypes.get(index).copied().unwrap_or(fallback))
-    }
-}
-
 unsafe extern "C" fn draw_func_trampoline(
     drawing_area: *mut c_void,
     cr: *mut c_void,
@@ -107,10 +92,10 @@ unsafe extern "C" fn draw_func_trampoline(
 
     unsafe {
         let mut args: [glib::Value; 4] = [
-            marshal_gvalue_at_index(data, 0, glib::types::Type::OBJECT),
-            marshal_gvalue_at_index(data, 1, cairo::Context::static_type()),
-            marshal_gvalue_at_index(data, 2, glib::types::Type::I32),
-            marshal_gvalue_at_index(data, 3, glib::types::Type::I32),
+            glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
+            glib::Value::from_type_unchecked(cairo::Context::static_type()),
+            glib::Value::from_type_unchecked(glib::types::Type::I32),
+            glib::Value::from_type_unchecked(glib::types::Type::I32),
         ];
 
         gobject_ffi::g_value_set_object(
@@ -210,12 +195,11 @@ unsafe extern "C" fn shortcut_func_trampoline(
 
     unsafe {
         let mut param_values: [glib::Value; 2] = [
-            marshal_gvalue_at_index(data, 0, glib::types::Type::OBJECT),
-            marshal_gvalue_at_index(data, 1, glib::types::Type::VARIANT),
+            glib::Value::from_type_unchecked(glib::types::Type::OBJECT),
+            glib::Value::from_type_unchecked(glib::types::Type::VARIANT),
         ];
 
         gobject_ffi::g_value_set_object(param_values[0].to_glib_none_mut().0, widget);
-
         gobject_ffi::g_value_set_variant(param_values[1].to_glib_none_mut().0, args as *mut _);
 
         let mut return_value = glib::Value::from_type_unchecked(glib::types::Type::BOOL);
@@ -250,8 +234,7 @@ unsafe extern "C" fn tree_list_model_create_func_trampoline(
     let data = unsafe { data_ptr.as_ref() };
 
     unsafe {
-        let mut param_value = marshal_gvalue_at_index(data, 0, glib::types::Type::OBJECT);
-
+        let mut param_value = glib::Value::from_type_unchecked(glib::types::Type::OBJECT);
         gobject_ffi::g_value_set_object(param_value.to_glib_none_mut().0, item);
 
         let mut return_value = glib::Value::from_type_unchecked(glib::types::Type::OBJECT);

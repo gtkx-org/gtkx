@@ -85,16 +85,7 @@ fn draw_func_trampoline_invokes_closure() {
     let invoked = Arc::new(AtomicBool::new(false));
     let closure_ptr = create_test_closure_with_flag(invoked.clone());
 
-    let data = Box::new(CallbackData::new(
-        closure_ptr,
-        vec![
-            glib::types::Type::OBJECT,
-            glib::types::Type::POINTER,
-            glib::types::Type::I32,
-            glib::types::Type::I32,
-        ],
-        CallbackKind::DrawFunc,
-    ));
+    let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::DrawFunc));
     let data_ptr = Box::into_raw(data);
 
     let trampoline: DrawFuncTrampoline =
@@ -205,11 +196,7 @@ fn create_bool_returning_closure(return_val: bool) -> NonNull<glib::gobject_ffi:
 fn shortcut_func_trampoline_invokes_closure_returns_true() {
     let closure_ptr = create_bool_returning_closure(true);
 
-    let data = Box::new(CallbackData::new(
-        closure_ptr,
-        vec![glib::types::Type::OBJECT, glib::types::Type::VARIANT],
-        CallbackKind::ShortcutFunc,
-    ));
+    let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::ShortcutFunc));
     let data_ptr = Box::into_raw(data);
 
     let trampoline: ShortcutFuncTrampoline =
@@ -233,11 +220,7 @@ fn shortcut_func_trampoline_invokes_closure_returns_true() {
 fn shortcut_func_trampoline_invokes_closure_returns_false() {
     let closure_ptr = create_bool_returning_closure(false);
 
-    let data = Box::new(CallbackData::new(
-        closure_ptr,
-        vec![glib::types::Type::OBJECT, glib::types::Type::VARIANT],
-        CallbackKind::ShortcutFunc,
-    ));
+    let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::ShortcutFunc));
     let data_ptr = Box::into_raw(data);
 
     let trampoline: ShortcutFuncTrampoline =
@@ -274,7 +257,7 @@ fn callback_data_destroy_unrefs_closure() {
     let invoked = Arc::new(AtomicBool::new(false));
     let closure_ptr = create_test_closure_with_flag(invoked.clone());
 
-    let data = Box::new(CallbackData::new(closure_ptr, vec![], CallbackKind::ShortcutFunc));
+    let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::ShortcutFunc));
     let data_ptr = Box::into_raw(data);
 
     let destroy: CallbackDataDestroy =
@@ -326,11 +309,7 @@ fn create_object_returning_closure(
 fn tree_list_model_create_func_trampoline_invokes_closure_returns_null() {
     let closure_ptr = create_object_returning_closure(false);
 
-    let data = Box::new(CallbackData::new(
-        closure_ptr,
-        vec![glib::types::Type::OBJECT],
-        CallbackKind::TreeListModelCreateFunc,
-    ));
+    let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::TreeListModelCreateFunc));
     let data_ptr = Box::into_raw(data);
 
     let trampoline: TreeListModelCreateFuncTrampoline =
@@ -353,11 +332,7 @@ fn tree_list_model_create_func_trampoline_invokes_closure_returns_null() {
 fn tree_list_model_create_func_trampoline_invokes_closure_returns_object() {
     let closure_ptr = create_object_returning_closure(true);
 
-    let data = Box::new(CallbackData::new(
-        closure_ptr,
-        vec![glib::types::Type::OBJECT],
-        CallbackKind::TreeListModelCreateFunc,
-    ));
+    let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::TreeListModelCreateFunc));
     let data_ptr = Box::into_raw(data);
 
     let trampoline: TreeListModelCreateFuncTrampoline =
@@ -383,11 +358,7 @@ fn tree_list_model_create_func_data_destroy_unrefs_closure() {
     let invoked = Arc::new(AtomicBool::new(false));
     let closure_ptr = create_test_closure_with_flag(invoked.clone());
 
-    let data = Box::new(CallbackData::new(
-        closure_ptr,
-        vec![],
-        CallbackKind::TreeListModelCreateFunc,
-    ));
+    let data = Box::new(CallbackData::new(closure_ptr, CallbackKind::TreeListModelCreateFunc));
     let data_ptr = Box::into_raw(data);
 
     let destroy: CallbackDataDestroy =
