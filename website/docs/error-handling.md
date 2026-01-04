@@ -4,6 +4,8 @@ When GTK or GLib operations fail, GTKX throws a `NativeError` that wraps the und
 
 ## NativeError
 
+When GTK operations fail, GTKX throws `NativeError` with the error `message` and `code` from the underlying GLib error:
+
 ```tsx
 import { NativeError } from "@gtkx/ffi";
 
@@ -17,15 +19,7 @@ try {
 }
 ```
 
-### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `message` | `string` | Human-readable error message |
-| `domain` | `number` | GLib error domain (quark) |
-| `code` | `number` | Error code within the domain |
-
-### Common Error Codes
+## Common Error Codes
 
 Check `error.code` against these enums:
 

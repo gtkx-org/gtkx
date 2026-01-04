@@ -12,7 +12,6 @@
 //!
 //! - `handle_map`: Maps handle IDs to managed [`NativeValue`] instances
 //! - `next_handle_id`: Counter for generating unique handle IDs
-//! - `free_object_ids`: Recycled handle IDs available for reuse
 //! - `libraries`: Cache of dynamically loaded native libraries
 //! - `app_hold_guard`: Keeps the GTK application alive while running
 

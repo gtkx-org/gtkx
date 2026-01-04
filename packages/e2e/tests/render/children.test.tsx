@@ -33,7 +33,7 @@ describe("render - children", () => {
                 { wrapper: false },
             );
 
-            expect(labelRef.current?.getParent()?.id).toEqual(boxRef.current?.id);
+            expect(labelRef.current?.getParent()?.handle).toEqual(boxRef.current?.handle);
         });
 
         it("sets child on single-child widget", async () => {
@@ -47,7 +47,7 @@ describe("render - children", () => {
                 { wrapper: false },
             );
 
-            expect(frameRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
+            expect(frameRef.current?.getChild()?.handle).toEqual(labelRef.current?.handle);
         });
     });
 

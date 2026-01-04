@@ -26,10 +26,6 @@ use crate::types::Type;
 use crate::value::Callback;
 use crate::{ffi, value};
 
-/// The trampoline type determines how the callback is invoked.
-///
-/// Each variant corresponds to a specific native callback signature pattern
-/// used in GTK and GLib.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CallbackTrampoline {
     Closure,

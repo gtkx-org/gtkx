@@ -2,10 +2,11 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { prettyWidget } from "./index.js";
-import * as queries from "./queries.js";
+import { bindQueries } from "./bind-queries.js";
+import { prettyWidget } from "./pretty-widget.js";
+import { logRoles } from "./role-helpers.js";
 import { type ScreenshotOptions, screenshot as screenshotWidget } from "./screenshot.js";
-import type { ByRoleOptions, ScreenshotResult, TextMatch, TextMatchOptions } from "./types.js";
+import type { ScreenshotResult } from "./types.js";
 
 const getScreenshotDir = (): string => {
     const dir = join(tmpdir(), "gtkx-screenshots");
@@ -39,6 +40,8 @@ const getRoot = (): Gtk.Application => {
     return currentRoot;
 };
 
+const boundQueries = bindQueries(getRoot);
+
 /**
  * Global query object for accessing rendered components.
  *
@@ -60,28 +63,14 @@ const getRoot = (): Gtk.Application => {
  * @see {@link within} for scoped queries
  */
 export const screen = {
-    /** Find single element by accessible role */
-    findByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => queries.findByRole(getRoot(), role, options),
-    /** Find single element by label/text content */
-    findByLabelText: (text: TextMatch, options?: TextMatchOptions) => queries.findByLabelText(getRoot(), text, options),
-    /** Find single element by visible text */
-    findByText: (text: TextMatch, options?: TextMatchOptions) => queries.findByText(getRoot(), text, options),
-    /** Find single element by test ID (widget name) */
-    findByTestId: (testId: TextMatch, options?: TextMatchOptions) => queries.findByTestId(getRoot(), testId, options),
-    /** Find all elements by accessible role */
-    findAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
-        queries.findAllByRole(getRoot(), role, options),
-    /** Find all elements by label/text content */
-    findAllByLabelText: (text: TextMatch, options?: TextMatchOptions) =>
-        queries.findAllByLabelText(getRoot(), text, options),
-    /** Find all elements by visible text */
-    findAllByText: (text: TextMatch, options?: TextMatchOptions) => queries.findAllByText(getRoot(), text, options),
-    /** Find all elements by test ID (widget name) */
-    findAllByTestId: (testId: TextMatch, options?: TextMatchOptions) =>
-        queries.findAllByTestId(getRoot(), testId, options),
+    ...boundQueries,
     /** Print the widget tree to console for debugging */
     debug: () => {
         console.log(prettyWidget(getRoot()));
+    },
+    /** Log all accessible roles to console for debugging */
+    logRoles: () => {
+        logRoles(getRoot());
     },
     /**
      * Capture a screenshot of the application window, saving it to a temporary file and logging the file path.

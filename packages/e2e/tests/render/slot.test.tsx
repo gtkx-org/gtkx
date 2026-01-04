@@ -18,7 +18,7 @@ describe("render - Slot", () => {
             { wrapper: false },
         );
 
-        expect(headerBarRef.current?.getTitleWidget()?.id).toEqual(titleRef.current?.id);
+        expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(titleRef.current?.handle);
     });
 
     it("calls setSlotName(widget) on parent", async () => {
@@ -34,7 +34,7 @@ describe("render - Slot", () => {
             { wrapper: false },
         );
 
-        expect(panedRef.current?.getStartChild()?.id).toEqual(labelRef.current?.id);
+        expect(panedRef.current?.getStartChild()?.handle).toEqual(labelRef.current?.handle);
     });
 
     it("clears slot when child removed", async () => {
@@ -82,11 +82,11 @@ describe("render - Slot", () => {
 
         await render(<App first={true} />, { wrapper: false });
 
-        expect(headerBarRef.current?.getTitleWidget()?.id).toEqual(label1Ref.current?.id);
+        expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(label1Ref.current?.handle);
 
         await render(<App first={false} />, { wrapper: false });
 
-        expect(headerBarRef.current?.getTitleWidget()?.id).toEqual(label2Ref.current?.id);
+        expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(label2Ref.current?.handle);
     });
 
     it("handles Paned.StartChild slot", async () => {
@@ -102,7 +102,7 @@ describe("render - Slot", () => {
             { wrapper: false },
         );
 
-        expect(panedRef.current?.getStartChild()?.id).toEqual(labelRef.current?.id);
+        expect(panedRef.current?.getStartChild()?.handle).toEqual(labelRef.current?.handle);
     });
 
     it("handles MenuButton.Popover slot", async () => {
@@ -118,7 +118,7 @@ describe("render - Slot", () => {
             { wrapper: false },
         );
 
-        expect(menuButtonRef.current?.getPopover()?.id).toEqual(popoverRef.current?.id);
+        expect(menuButtonRef.current?.getPopover()?.handle).toEqual(popoverRef.current?.handle);
     });
 
     it("handles multiple slots on same parent", async () => {
@@ -138,7 +138,7 @@ describe("render - Slot", () => {
             { wrapper: false },
         );
 
-        expect(panedRef.current?.getStartChild()?.id).toEqual(startRef.current?.id);
-        expect(panedRef.current?.getEndChild()?.id).toEqual(endRef.current?.id);
+        expect(panedRef.current?.getStartChild()?.handle).toEqual(startRef.current?.handle);
+        expect(panedRef.current?.getEndChild()?.handle).toEqual(endRef.current?.handle);
     });
 });

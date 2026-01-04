@@ -95,7 +95,7 @@ describe("render - widget creation", () => {
 
             await render(<GtkLabel ref={ref} label="Widget Instance" />, { wrapper: false });
 
-            expect(ref.current?.id).toBeDefined();
+            expect(ref.current?.handle).toBeDefined();
             expect(ref.current?.getLabel()).toBe("Widget Instance");
         });
     });

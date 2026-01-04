@@ -83,7 +83,7 @@ const FontRenderPreview = ({
                 cr.stroke();
             }
 
-            const fontOptions = new FontOptions();
+            const fontOptions = FontOptions.create();
             fontOptions
                 .setHintStyle(options.hintStyle)
                 .setAntialias(options.antialias)

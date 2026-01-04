@@ -4,7 +4,7 @@
 //! on the GTK main thread. GTK requires all widget operations to happen on
 //! its main thread, so this dispatcher bridges the gap from the Neon JS thread.
 //!
-//! Access the singleton dispatcher via [`dispatcher()`] and call methods on it:
+//! Access the singleton dispatcher via [`GtkDispatcher::global()`] and call methods on it:
 //!
 //! ```ignore
 //! use crate::gtk_dispatch;

@@ -1,4 +1,5 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import { getNativeId } from "@gtkx/ffi";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { formatRole } from "./role-helpers.js";
 import { type Container, isApplication } from "./traversal.js";
 import { getWidgetText } from "./widget-text.js";
@@ -14,6 +15,8 @@ export type PrettyWidgetOptions = {
     maxLength?: number;
     /** Enable ANSI color highlighting (default: auto-detect) */
     highlight?: boolean;
+    /** Include widget IDs for MCP/agentic interactions (default: false) */
+    includeIds?: boolean;
 };
 
 type HighlightColors = {
@@ -60,8 +63,12 @@ const escapeAttrValue = (value: string): string => {
     return value.replace(/"/g, "&quot;");
 };
 
-const formatAttributes = (widget: Gtk.Widget, colors: HighlightColors): string => {
+const formatAttributes = (widget: Gtk.Widget, colors: HighlightColors, includeIds: boolean): string => {
     const attrs: [string, string][] = [];
+
+    if (includeIds) {
+        attrs.push(["id", String(getNativeId(widget.handle))]);
+    }
 
     const name = widget.getName();
     if (name) {
@@ -84,7 +91,11 @@ const formatAttributes = (widget: Gtk.Widget, colors: HighlightColors): string =
     if (attrs.length === 0) return "";
 
     return attrs
-        .sort(([a], [b]) => a.localeCompare(b))
+        .sort(([a], [b]) => {
+            if (a === "id") return -1;
+            if (b === "id") return 1;
+            return a.localeCompare(b);
+        })
         .map(([key, value]) => ` ${colors.attr(key)}=${colors.value(`"${escapeAttrValue(value)}"`)}`)
         .join("");
 };
@@ -93,16 +104,16 @@ const hasChildren = (widget: Gtk.Widget): boolean => {
     return widget.getFirstChild() !== null;
 };
 
-const printWidget = (widget: Gtk.Widget, colors: HighlightColors, depth: number): string => {
+const printWidget = (widget: Gtk.Widget, colors: HighlightColors, depth: number, includeIds: boolean): string => {
     const indent = INDENT.repeat(depth);
     const tagName = formatTagName(widget);
-    const attributes = formatAttributes(widget, colors);
+    const attributes = formatAttributes(widget, colors, includeIds);
     const text = getWidgetText(widget);
     const children: string[] = [];
 
     let child = widget.getFirstChild();
     while (child) {
-        children.push(printWidget(child, colors, depth + 1));
+        children.push(printWidget(child, colors, depth + 1, includeIds));
         child = child.getNextSibling();
     }
 
@@ -131,12 +142,12 @@ const printWidget = (widget: Gtk.Widget, colors: HighlightColors, depth: number)
     return result;
 };
 
-const printContainer = (container: Container, colors: HighlightColors): string => {
+const printContainer = (container: Container, colors: HighlightColors, includeIds: boolean): string => {
     if (isApplication(container)) {
         const windows = container.getWindows();
-        return windows.map((window) => printWidget(window, colors, 0)).join("");
+        return windows.map((window) => printWidget(window, colors, 0, includeIds)).join("");
     }
-    return printWidget(container, colors, 0);
+    return printWidget(container, colors, 0, includeIds);
 };
 
 /**
@@ -166,13 +177,14 @@ export const prettyWidget = (container: Container, options: PrettyWidgetOptions 
     const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
     const maxLength = options.maxLength ?? envLimit;
     const highlight = options.highlight ?? shouldHighlight();
+    const includeIds = options.includeIds ?? false;
 
     if (maxLength === 0) {
         return "";
     }
 
     const colors = createColors(highlight);
-    const output = printContainer(container, colors);
+    const output = printContainer(container, colors, includeIds);
 
     if (output.length > maxLength) {
         return `${output.slice(0, maxLength)}...`;

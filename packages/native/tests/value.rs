@@ -725,8 +725,8 @@ fn from_cif_value_ref_integer() {
     let ref_type = native::types::RefType::new(Type::Integer(int_type));
     let type_ = Type::Ref(ref_type);
 
-    let owned_ptr = ffi::Stash::new(ptr, ffi::StashStorage::Boxed(boxed_value));
-    let cif_value = ffi::FfiValue::Stash(owned_ptr);
+    let storage = ffi::FfiStorage::new(ptr, ffi::FfiStorageKind::BoxedValue(boxed_value));
+    let cif_value = ffi::FfiValue::Storage(storage);
     let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());
@@ -749,8 +749,8 @@ fn from_cif_value_ref_float() {
     let ref_type = native::types::RefType::new(Type::Float(float_type));
     let type_ = Type::Ref(ref_type);
 
-    let owned_ptr = ffi::Stash::new(ptr, ffi::StashStorage::Boxed(boxed_value));
-    let cif_value = ffi::FfiValue::Stash(owned_ptr);
+    let storage = ffi::FfiStorage::new(ptr, ffi::FfiStorageKind::BoxedValue(boxed_value));
+    let cif_value = ffi::FfiValue::Storage(storage);
     let result = Value::from_ffi_value(&cif_value, &type_);
 
     assert!(result.is_ok());

@@ -15,10 +15,6 @@ use crate::managed::{Boxed, NativeValue};
 use crate::state::GtkThreadState;
 use crate::{ffi, value};
 
-/// Descriptor for GLib boxed types (reference-counted heap structures).
-///
-/// Boxed types are registered with GLib's type system and have automatic
-/// memory management via `g_boxed_copy` and `g_boxed_free`.
 #[derive(Debug, Clone)]
 pub struct BoxedType {
     pub ownership: Ownership,
@@ -139,10 +135,6 @@ impl ffi::FfiDecode for BoxedType {
     }
 }
 
-/// Descriptor for plain C struct types.
-///
-/// Unlike boxed types, struct types may not be registered with GLib's
-/// type system and use size-based copying for ownership transfer.
 #[derive(Debug, Clone)]
 pub struct StructType {
     pub ownership: Ownership,

@@ -4,11 +4,11 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
+import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
-import * as queries from "./queries.js";
 import { setScreenRoot } from "./screen.js";
 import { tick } from "./timing.js";
-import type { ByRoleOptions, RenderOptions, RenderResult, TextMatch, TextMatchOptions } from "./types.js";
+import type { RenderOptions, RenderResult } from "./types.js";
 
 let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
@@ -107,17 +107,7 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
 
     return {
         container: application,
-        findByRole: (role: Gtk.AccessibleRole, opts?: ByRoleOptions) => queries.findByRole(application, role, opts),
-        findByLabelText: (text: TextMatch, opts?: TextMatchOptions) => queries.findByLabelText(application, text, opts),
-        findByText: (text: TextMatch, opts?: TextMatchOptions) => queries.findByText(application, text, opts),
-        findByTestId: (testId: TextMatch, opts?: TextMatchOptions) => queries.findByTestId(application, testId, opts),
-        findAllByRole: (role: Gtk.AccessibleRole, opts?: ByRoleOptions) =>
-            queries.findAllByRole(application, role, opts),
-        findAllByLabelText: (text: TextMatch, opts?: TextMatchOptions) =>
-            queries.findAllByLabelText(application, text, opts),
-        findAllByText: (text: TextMatch, opts?: TextMatchOptions) => queries.findAllByText(application, text, opts),
-        findAllByTestId: (testId: TextMatch, opts?: TextMatchOptions) =>
-            queries.findAllByTestId(application, testId, opts),
+        ...bindQueries(application),
         unmount: () => update(instance, null, fiberRoot),
         rerender: (newElement: ReactNode) => {
             const wrapped = wrapElement(newElement, options?.wrapper);

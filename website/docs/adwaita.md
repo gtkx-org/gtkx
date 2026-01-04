@@ -287,38 +287,6 @@ const NavigationExample = () => {
 };
 ```
 
-#### AdwNavigationPage Props
-
-| Prop        | Type         | Description                                       |
-| ----------- | ------------ | ------------------------------------------------- |
-| `title`     | `string`     | Page title shown in header bar                    |
-| `tag`       | `string`     | Unique tag for navigation (used with `pushByTag`) |
-| `canPop`    | `boolean`    | Whether the page can be popped (default: true)    |
-| `onShowing` | `() => void` | Called when page starts showing                   |
-| `onShown`   | `() => void` | Called when page is fully shown                   |
-| `onHiding`  | `() => void` | Called when page starts hiding                    |
-| `onHidden`  | `() => void` | Called when page is fully hidden                  |
-
-#### Navigation Methods
-
-Access navigation methods via ref:
-
-```tsx
-const navViewRef = useRef<Adw.NavigationView | null>(null);
-
-// Push a page by its tag
-navViewRef.current?.pushByTag("detail");
-
-// Pop the current page
-navViewRef.current?.pop();
-
-// Pop to a specific page
-navViewRef.current?.popToTag("main");
-
-// Replace the navigation stack
-navViewRef.current?.replaceWithTags(["main", "settings"], 2);
-```
-
 ## Settings Page Example
 
 ```tsx

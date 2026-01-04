@@ -19,7 +19,7 @@ use gtk4::{gio::ApplicationFlags, prelude::*};
 use neon::prelude::*;
 
 use crate::{
-    managed::{NativeValue, NativeHandle},
+    managed::{NativeHandle, NativeValue},
     state::{GtkThread, GtkThreadState},
 };
 

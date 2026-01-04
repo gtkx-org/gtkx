@@ -25,7 +25,7 @@ describe("render - Window", () => {
             });
 
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getApplication()?.id).toEqual(container.id);
+            expect(ref.current?.getApplication()?.handle).toEqual(container.handle);
         });
 
         it("creates Adw.Window", async () => {
@@ -42,7 +42,7 @@ describe("render - Window", () => {
             const { container } = await render(<AdwApplicationWindow ref={ref} />, { wrapper: false });
 
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getApplication()?.id).toEqual(container.id);
+            expect(ref.current?.getApplication()?.handle).toEqual(container.handle);
         });
     });
 
@@ -120,7 +120,7 @@ describe("render - Window", () => {
 
             await render(<App show={true} />, { wrapper: false });
 
-            const windowId = ref.current?.id;
+            const windowId = ref.current?.handle;
             expect(windowId).toBeDefined();
 
             await render(<App show={false} />, { wrapper: false });
@@ -139,7 +139,7 @@ describe("render - Window", () => {
                 { wrapper: false },
             );
 
-            expect(windowRef.current?.getChild()?.id).toEqual(labelRef.current?.id);
+            expect(windowRef.current?.getChild()?.handle).toEqual(labelRef.current?.handle);
         });
 
         it("replaces child widget", async () => {
@@ -161,11 +161,11 @@ describe("render - Window", () => {
 
             await render(<App first={true} />, { wrapper: false });
 
-            expect(windowRef.current?.getChild()?.id).toEqual(label1Ref.current?.id);
+            expect(windowRef.current?.getChild()?.handle).toEqual(label1Ref.current?.handle);
 
             await render(<App first={false} />, { wrapper: false });
 
-            expect(windowRef.current?.getChild()?.id).toEqual(label2Ref.current?.id);
+            expect(windowRef.current?.getChild()?.handle).toEqual(label2Ref.current?.handle);
         });
     });
 });

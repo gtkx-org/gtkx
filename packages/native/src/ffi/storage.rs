@@ -10,11 +10,6 @@ use gtk4::glib;
 
 use crate::types::IntegerKind;
 
-/// Temporary storage that keeps data alive during an FFI call.
-///
-/// When passing arrays, strings, or other heap-allocated data to native functions,
-/// the data must remain valid for the duration of the call. `FfiStorage` owns
-/// the underlying data and provides a stable pointer for the FFI call.
 #[derive(Debug)]
 #[repr(C)]
 pub struct FfiStorage {

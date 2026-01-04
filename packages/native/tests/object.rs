@@ -7,7 +7,7 @@ use gtk4::glib;
 use gtk4::prelude::{ObjectType as _, StaticType as _};
 
 use native::Boxed;
-use native::managed::{NativeValue, NativeHandle};
+use native::managed::{NativeHandle, NativeValue};
 use native::state::GtkThreadState;
 
 fn create_test_gobject() -> glib::Object {

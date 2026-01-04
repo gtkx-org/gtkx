@@ -1,3 +1,16 @@
+//! JavaScript value representation for the native module.
+//!
+//! This module defines [`Value`], the intermediate representation for values
+//! crossing between JavaScript and native code. Values are converted to/from
+//! JavaScript objects via Neon and to/from FFI-compatible representations
+//! via the [`ffi`] module.
+//!
+//! The [`Value`] enum supports all types that can be passed through the FFI:
+//! - Primitives: numbers, strings, booleans
+//! - Objects: GObjects, boxed types, structs
+//! - Callbacks: JavaScript functions invocable from native code
+//! - Arrays and references
+
 use std::ffi::c_void;
 use std::sync::Arc;
 
@@ -6,7 +19,7 @@ use gtk4::glib::{self, translate::FromGlibPtrNone as _, translate::ToGlibPtr as 
 use neon::{handle::Root, object::Object as _, prelude::*};
 
 use crate::ffi::FfiDecode;
-use crate::managed::{Boxed, Fundamental, NativeValue, NativeHandle};
+use crate::managed::{Boxed, Fundamental, NativeHandle, NativeValue};
 use crate::types::*;
 use crate::{arg::Arg, ffi};
 

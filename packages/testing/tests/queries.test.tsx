@@ -107,11 +107,11 @@ describe("findByRole", () => {
     });
 
     describe("error handling", () => {
-        it("throws when element not found", async () => {
+        it("throws when element not found with role suggestions", async () => {
             const { container } = await render(<GtkLabel label="Test" />);
             await expect(
                 findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "NonexistentButton", timeout: 100 }),
-            ).rejects.toThrow("Unable to find any elements");
+            ).rejects.toThrow(/Unable to find an element with role 'BUTTON'/);
         });
 
         it("throws when multiple elements found", async () => {
@@ -122,7 +122,7 @@ describe("findByRole", () => {
                 </GtkBox>,
             );
             await expect(findByText(container, "Same", { timeout: 100 })).rejects.toThrow(
-                "Expected 1 element with text 'Same', found 2",
+                /Found 2 elements with text 'Same'/,
             );
         });
     });
@@ -146,7 +146,7 @@ describe("findAllByRole", () => {
         it("throws when no elements found", async () => {
             const { container } = await render(<GtkLabel label="Test" />);
             await expect(findAllByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow(
-                "Unable to find any elements",
+                /Unable to find an element with role 'BUTTON'/,
             );
         });
     });
@@ -183,7 +183,7 @@ describe("findByText", () => {
         it("throws when text not found", async () => {
             const { container } = await render(<GtkLabel label="Test" />);
             await expect(findByText(container, "Nonexistent", { timeout: 100 })).rejects.toThrow(
-                "Unable to find any elements",
+                /Unable to find an element with text 'Nonexistent'/,
             );
         });
     });

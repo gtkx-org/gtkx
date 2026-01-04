@@ -26,16 +26,6 @@ const MyComponent = () => {
 };
 ```
 
-**Signature:**
-
-```tsx
-createPortal(
-    children: ReactNode,
-    container: Gtk.Widget,
-    key?: string | null
-): ReactPortal
-```
-
 ## Dialog Approaches
 
 GTKX supports two dialog patterns:
@@ -100,7 +90,7 @@ const FilePickerButton = () => {
 };
 ```
 
-See [Async Operations](./async-operations.md) for the full list of Promise-wrapped dialog APIs and error handling patterns.
+See [Async Operations](./async-operations.md) for Promise-wrapped dialog APIs and error handling patterns.
 
 ## Popovers
 

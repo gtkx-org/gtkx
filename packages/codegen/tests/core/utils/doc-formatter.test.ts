@@ -184,4 +184,9 @@ describe("buildJsDocStructure", () => {
         const result = buildJsDocStructure("[class@Gtk.Button] example", "Gtk");
         expect(result).toEqual([{ description: "{@link Gtk.Button} example" }]);
     });
+
+    it("escapes XML-style tags in doc", () => {
+        const result = buildJsDocStructure("Use <child> and <property> elements", "Gtk");
+        expect(result).toEqual([{ description: "Use `<child>` and `<property>` elements" }]);
+    });
 });

@@ -9,7 +9,7 @@
 //! - [`FfiValue`]: Raw FFI-compatible value representation
 //! - [`FfiEncode`]: Trait for encoding JavaScript values to FFI
 //! - [`FfiDecode`]: Trait for decoding FFI values to JavaScript
-//! - [`FfiStorage`]: Temporary storage for callback result values
+//! - [`FfiStorage`]: Temporary storage for FFI call arguments
 
 mod encode;
 mod storage;

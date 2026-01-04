@@ -22,7 +22,7 @@ const FileMenu = () => (
 
 ### Menu.Item
 
-Individual menu action with optional keyboard shortcut.
+Individual menu action with optional keyboard shortcut:
 
 ```tsx
 <Menu.Item
@@ -32,15 +32,6 @@ Individual menu action with optional keyboard shortcut.
     accels="<Control>s"          // Keyboard shortcut
 />
 ```
-
-**Props:**
-
-| Prop | Type | Description |
-|------|------|-------------|
-| `id` | `string` | Unique identifier |
-| `label` | `string` | Display text |
-| `onActivate` | `() => void` | Activation callback |
-| `accels` | `string \| string[]` | Keyboard shortcuts |
 
 ### Menu.Section
 

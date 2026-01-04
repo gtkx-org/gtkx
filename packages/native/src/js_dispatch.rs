@@ -4,7 +4,7 @@
 //! thread. When GTK signals fire, they trigger closures that queue callbacks
 //! here for execution in the JavaScript context.
 //!
-//! Access the singleton dispatcher via [`dispatcher()`] and call methods on it:
+//! Access the singleton dispatcher via [`JsDispatcher::global()`] and call methods on it:
 //!
 //! ```ignore
 //! use crate::js_dispatch;

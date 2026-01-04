@@ -31,7 +31,7 @@
 //! ## Core Types
 //!
 //! - `Value`: Central data interchange type (JS ↔ CIF ↔ GLib)
-//! - `Object`: Managed wrapper for GObject, Boxed, and GVariant
+//! - `NativeValue`: Managed wrapper for GObject, Boxed, and Fundamental instances
 //! - `Type`: Type system describing all FFI-compatible types
 //! - `ffi::FfiValue`: Low-level libffi argument representation
 
@@ -46,7 +46,7 @@ pub mod trampoline;
 pub mod types;
 pub mod value;
 
-pub use managed::{Boxed, Fundamental, NativeValue, NativeHandle};
+pub use managed::{Boxed, Fundamental, NativeHandle, NativeValue};
 
 use neon::prelude::*;
 

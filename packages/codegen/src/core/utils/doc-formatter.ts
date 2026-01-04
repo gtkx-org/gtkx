@@ -298,7 +298,7 @@ export interface SanitizeDocOptions {
 
 /**
  * Builds a JSDoc structure array for ts-morph from documentation text.
- * Eliminates repeated pattern: `doc ? [{ description: sanitizeDoc(doc, { namespace }) }] : undefined`
+ * Automatically escapes XML-style tags to prevent MDX compilation errors.
  *
  * @param doc - The documentation text
  * @param namespace - The namespace for link resolution
@@ -309,7 +309,7 @@ export function buildJsDocStructure(
     namespace: string,
 ): Array<{ description: string }> | undefined {
     if (!doc) return undefined;
-    return [{ description: sanitizeDoc(doc, { namespace }) }];
+    return [{ description: sanitizeDoc(doc, { namespace, escapeXmlTags: true }) }];
 }
 
 export function sanitizeDoc(doc: string, options: SanitizeDocOptions = {}): string {

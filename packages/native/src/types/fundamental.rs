@@ -13,10 +13,6 @@ use crate::managed::{Fundamental, NativeValue, RefFn, UnrefFn};
 use crate::state::GtkThreadState;
 use crate::{ffi, value};
 
-/// Descriptor for GLib fundamental types with custom reference counting.
-///
-/// Fundamental types use library-specific ref/unref functions that must
-/// be looked up dynamically from the shared library.
 #[derive(Debug, Clone)]
 pub struct FundamentalType {
     pub ownership: Ownership,

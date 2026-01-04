@@ -178,21 +178,21 @@ fn to_ffi_value_i64() {
 }
 
 #[test]
-fn to_stash_u8() {
+fn to_ffi_storage_u8() {
     let values = [1.0, 2.0, 3.0];
-    let stash = IntegerKind::U8.to_stash(&values);
-    match stash.storage() {
-        ffi::StashStorage::U8Vec(result) => assert_eq!(result, &vec![1u8, 2u8, 3u8]),
+    let storage = IntegerKind::U8.to_ffi_storage(&values);
+    match storage.kind() {
+        ffi::FfiStorageKind::U8Vec(result) => assert_eq!(result, &vec![1u8, 2u8, 3u8]),
         _ => panic!("Expected U8Vec"),
     }
 }
 
 #[test]
-fn to_stash_i32() {
+fn to_ffi_storage_i32() {
     let values = [-100.0, 0.0, 100.0];
-    let stash = IntegerKind::I32.to_stash(&values);
-    match stash.storage() {
-        ffi::StashStorage::I32Vec(result) => assert_eq!(result, &vec![-100i32, 0i32, 100i32]),
+    let storage = IntegerKind::I32.to_ffi_storage(&values);
+    match storage.kind() {
+        ffi::FfiStorageKind::I32Vec(result) => assert_eq!(result, &vec![-100i32, 0i32, 100i32]),
         _ => panic!("Expected I32Vec"),
     }
 }
@@ -200,23 +200,23 @@ fn to_stash_i32() {
 #[test]
 fn vec_to_f64_u8() {
     let values: Vec<u8> = vec![10, 20, 30];
-    let stash = ffi::Stash::from(values);
-    let result = IntegerKind::U8.vec_to_f64(&stash).unwrap();
+    let storage: ffi::FfiStorage = values.into();
+    let result = IntegerKind::U8.vec_to_f64(&storage).unwrap();
     assert_eq!(result, vec![10.0, 20.0, 30.0]);
 }
 
 #[test]
 fn vec_to_f64_i32() {
     let values: Vec<i32> = vec![-100, 0, 100];
-    let stash = ffi::Stash::from(values);
-    let result = IntegerKind::I32.vec_to_f64(&stash).unwrap();
+    let storage: ffi::FfiStorage = values.into();
+    let result = IntegerKind::I32.vec_to_f64(&storage).unwrap();
     assert_eq!(result, vec![-100.0, 0.0, 100.0]);
 }
 
 #[test]
 fn vec_to_f64_wrong_type_fails() {
     let values: Vec<i32> = vec![1, 2, 3];
-    let stash = ffi::Stash::from(values);
-    let result = IntegerKind::U8.vec_to_f64(&stash);
+    let storage: ffi::FfiStorage = values.into();
+    let result = IntegerKind::U8.vec_to_f64(&storage);
     assert!(result.is_err());
 }

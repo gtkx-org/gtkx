@@ -12,10 +12,6 @@ use libffi::middle as libffi;
 
 use super::storage::{FfiStorage, FfiStorageKind};
 
-/// Holds callback data for trampoline-based function invocation.
-///
-/// Used when passing JavaScript callbacks to native functions that expect
-/// GLib-style callback signatures with user_data and destroy_notify.
 #[derive(Debug)]
 pub struct TrampolineCallbackValue {
     pub trampoline_ptr: *mut c_void,
@@ -45,11 +41,6 @@ impl TrampolineCallbackValue {
     }
 }
 
-/// A value suitable for passing through libffi.
-///
-/// Each variant stores a value in the correct representation for FFI calls.
-/// Primitive types are stored directly, while complex types use [`FfiStorage`]
-/// to manage memory lifetime during the call.
 #[derive(Debug)]
 pub enum FfiValue {
     U8(u8),

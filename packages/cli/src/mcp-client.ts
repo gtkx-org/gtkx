@@ -1,5 +1,5 @@
 import * as net from "node:net";
-import { getNativeObject, getNativeId } from "@gtkx/ffi";
+import { getNativeId, getNativeObject } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     DEFAULT_SOCKET_PATH,
@@ -350,8 +350,8 @@ class McpClient {
 
         switch (method) {
             case "widget.getTree": {
-                const windows = app.getWindows();
-                return { windows: windows.map((w) => serializeWidget(w)) };
+                const testing = await loadTestingModule();
+                return { tree: testing.prettyWidget(app, { includeIds: true, highlight: false }) };
             }
 
             case "widget.query": {
@@ -465,14 +465,7 @@ export const startMcpClient = async (appId: string): Promise<McpClient> => {
 
     globalClient = new McpClient({ appId });
 
-    try {
-        await globalClient.connect();
-    } catch (error) {
-        console.error(
-            "[gtkx] Failed to connect to MCP server:",
-            error instanceof Error ? error.message : String(error),
-        );
-    }
+    await globalClient.connect().catch(() => {});
 
     return globalClient;
 };

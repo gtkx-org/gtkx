@@ -16,22 +16,6 @@ GTK4 uses callbacks for async operations. GTKX wraps these into Promises:
 const file = await dialog.openAsync(window);
 ```
 
-## Promise-Wrapped APIs
-
-GTKX provides Promise wrappers for these GTK async operations:
-
-| Class | Methods |
-|-------|---------|
-| `Gtk.FileDialog` | `openAsync`, `openMultipleAsync`, `saveAsync`, `selectFolderAsync`, `selectMultipleFoldersAsync` |
-| `Gtk.ColorDialog` | `chooseRgbaAsync` |
-| `Gtk.FontDialog` | `chooseFontAsync`, `chooseFaceAsync`, `chooseFontAndFeaturesAsync` |
-| `Gtk.AlertDialog` | `chooseAsync` |
-| `Gtk.PrintDialog` | `printAsync`, `printFileAsync`, `setupAsync` |
-| `Gtk.UriLauncher` | `launchAsync` |
-| `Gtk.FileLauncher` | `launchAsync`, `openContainingFolderAsync` |
-| `Adw.AlertDialog` | `chooseAsync` |
-| `Adw.MessageDialog` | `chooseAsync` |
-
 ## Usage Pattern
 
 All async operations follow the same pattern—`await` the method and handle `NativeError` for cancellation:

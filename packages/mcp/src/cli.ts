@@ -20,7 +20,9 @@ const ListAppsInputSchema = z.object({
     waitForApps: z
         .boolean()
         .optional()
-        .describe("If true, wait for at least one app to register before returning. Useful when app is still starting."),
+        .describe(
+            "If true, wait for at least one app to register before returning. Useful when app is still starting.",
+        ),
     timeout: z.number().optional().describe("Timeout in milliseconds when waitForApps is true (default: 10000)"),
 });
 
@@ -308,9 +310,13 @@ async function main() {
 
                 case "gtkx_get_widget_tree": {
                     const input = GetWidgetTreeInputSchema.parse(args);
-                    const result = await connectionManager.sendToApp(input.appId, "widget.getTree", {});
+                    const result = await connectionManager.sendToApp<{ tree: string }>(
+                        input.appId,
+                        "widget.getTree",
+                        {},
+                    );
                     return {
-                        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                        content: [{ type: "text", text: result.tree }],
                     };
                 }
 

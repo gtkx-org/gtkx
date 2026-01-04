@@ -157,11 +157,3 @@ Use `Slot` when:
 Don't use `Slot` when:
 - Adding regular children to a container (just use JSX children)
 - The widget uses standard child packing (`GtkBox`, `GtkListBox`)
-
-## Slot Props Reference
-
-| Prop | Type | Description |
-|------|------|-------------|
-| `for` | `ComponentType` | The widget type that owns the slot |
-| `id` | `string` | The slot name (camelCase property name) |
-| `children` | `ReactNode` | Single child widget |

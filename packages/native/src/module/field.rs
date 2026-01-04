@@ -28,7 +28,7 @@ use neon::prelude::*;
 
 use crate::{
     gtk_dispatch,
-    managed::{Boxed, NativeValue, NativeHandle},
+    managed::{Boxed, NativeHandle, NativeValue},
     types::Type,
     value::Value,
 };

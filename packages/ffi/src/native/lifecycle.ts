@@ -1,4 +1,4 @@
-import { poll as nativePoll, start as nativeStart, stop as nativeStop, type NativeHandle } from "@gtkx/native";
+import { type NativeHandle, poll as nativePoll, start as nativeStart, stop as nativeStop } from "@gtkx/native";
 import { init as initAdwaita } from "../generated/adw/functions.js";
 import type { ApplicationFlags } from "../generated/gio/enums.js";
 import type { Application } from "../generated/gtk/application.js";

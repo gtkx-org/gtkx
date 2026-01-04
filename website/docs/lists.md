@@ -52,15 +52,6 @@ const ContactList = () => (
 );
 ```
 
-### ListView Props
-
-| Prop | Type | Description |
-|------|------|-------------|
-| `renderItem` | `(item: T \| null) => ReactElement` | Custom rendering for each item |
-| `selectionMode` | `Gtk.SelectionMode` | `NONE`, `SINGLE`, `MULTIPLE`, `BROWSE` |
-| `selected` | `string[]` | Array of selected item IDs |
-| `onSelectionChanged` | `(ids: string[]) => void` | Selection change callback |
-
 ### Selection
 
 ```tsx
@@ -116,14 +107,6 @@ const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
     </GtkScrolledWindow>
 );
 ```
-
-### GridView Props
-
-| Prop | Type | Description |
-|------|------|-------------|
-| `minColumns` | `number` | Minimum columns |
-| `maxColumns` | `number` | Maximum columns |
-| `renderItem` | `(item: T \| null) => ReactElement` | Custom rendering |
 
 ## ColumnView
 
@@ -197,18 +180,6 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
     );
 };
 ```
-
-### ColumnViewColumn Props
-
-| Prop | Type | Description |
-|------|------|-------------|
-| `id` | `string` | Unique column ID |
-| `title` | `string` | Column header text |
-| `expand` | `boolean` | Expand to fill space |
-| `resizable` | `boolean` | Allow manual resize |
-| `sortable` | `boolean` | Enable sorting |
-| `fixedWidth` | `number` | Fixed width (-1 for auto) |
-| `renderCell` | `(item: T \| null) => ReactElement` | Cell renderer |
 
 ## DropDown
 
@@ -380,28 +351,7 @@ const SettingsTree = () => (
 );
 ```
 
-### TreeListView Props
-
-| Prop | Type | Description |
-|------|------|-------------|
-| `renderItem` | `(item: T \| null, row: Gtk.TreeListRow \| null) => ReactElement` | Render function for each item |
-| `autoexpand` | `boolean` | Auto-expand new rows (default: false) |
-| `selectionMode` | `Gtk.SelectionMode` | `NONE`, `SINGLE`, `MULTIPLE`, `BROWSE` |
-| `selected` | `string[]` | Array of selected item IDs |
-| `onSelectionChanged` | `(ids: string[]) => void` | Selection change callback |
-
-### TreeListItem Props
-
-| Prop | Type | Description |
-|------|------|-------------|
-| `id` | `string` | Unique identifier for this item |
-| `value` | `T` | The data value for this item |
-| `hideExpander` | `boolean` | Hide the expand/collapse arrow |
-| `indentForDepth` | `boolean` | Indent based on tree depth (default: true) |
-| `indentForIcon` | `boolean` | Indent for expander icon width |
-| `children` | `ReactNode` | Nested tree items |
-
-### Selection in TreeListView
+### Selection
 
 ```tsx
 const [selected, setSelected] = useState<string[]>([]);

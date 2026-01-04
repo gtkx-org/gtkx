@@ -290,7 +290,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("this.child", mappedType);
 
-            expect(result).toBe("this.child.id");
+            expect(result).toBe("this.child.handle");
         });
 
         it("handles array value names", () => {
@@ -302,7 +302,7 @@ describe("CallExpressionBuilder", () => {
 
             const result = builder.buildValueExpression("widgets[0]", mappedType);
 
-            expect(result).toBe("widgets[0].id");
+            expect(result).toBe("widgets[0].handle");
         });
     });
 
@@ -347,7 +347,9 @@ describe("CallExpressionBuilder", () => {
             const output = sourceFile.getFullText();
 
             expect(output).toContain("if (error.value !== null)");
-            expect(output).toContain("throw new NativeError(getNativeObject(error.value as NativeHandle, GLib.GError))");
+            expect(output).toContain(
+                "throw new NativeError(getNativeObject(error.value as NativeHandle, GLib.GError))",
+            );
         });
 
         it("builds error check code with custom GError reference", () => {

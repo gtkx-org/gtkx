@@ -34,13 +34,13 @@ const formatQueryDescription = (
 ): string => {
     switch (queryType) {
         case "role":
-            return formatByRoleDescription(args.role!, args.options);
+            return formatByRoleDescription(args.role as Gtk.AccessibleRole, args.options);
         case "text":
-            return `text ${formatTextMatcher(args.text!)}`;
+            return `text ${formatTextMatcher(args.text as TextMatch)}`;
         case "labelText":
-            return `label text ${formatTextMatcher(args.text!)}`;
+            return `label text ${formatTextMatcher(args.text as TextMatch)}`;
         case "testId":
-            return `test id ${formatTextMatcher(args.testId!)}`;
+            return `test id ${formatTextMatcher(args.testId as TextMatch)}`;
     }
 };
 

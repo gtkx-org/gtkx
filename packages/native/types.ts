@@ -1,6 +1,7 @@
 /**
- * Opaque handle for a native GObject.
+ * Opaque handle for a native value.
  *
+ * Wraps GObject, Boxed, and Fundamental type instances.
  * This branded type ensures type safety for native object references.
  */
 export type NativeHandle = { readonly __brand: "NativeHandle" };

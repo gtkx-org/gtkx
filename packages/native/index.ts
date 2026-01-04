@@ -92,25 +92,25 @@ export function stop(): void {
 /**
  * Reads a value from native memory.
  *
- * @param objectId - Native object pointer
+ * @param handle - Native handle pointing to the memory
  * @param type - Type of value to read
- * @param offset - Byte offset from the object pointer
+ * @param offset - Byte offset from the handle pointer
  * @returns The read value
  */
-export function read(objectId: unknown, type: Type, offset: number): unknown {
-    return native.read(objectId, type, offset);
+export function read(handle: unknown, type: Type, offset: number): unknown {
+    return native.read(handle, type, offset);
 }
 
 /**
  * Writes a value to native memory.
  *
- * @param objectId - Native object pointer
+ * @param handle - Native handle pointing to the memory
  * @param type - Type of value to write
- * @param offset - Byte offset from the object pointer
+ * @param offset - Byte offset from the handle pointer
  * @param value - Value to write
  */
-export function write(objectId: unknown, type: Type, offset: number, value: unknown): void {
-    native.write(objectId, type, offset, value);
+export function write(handle: unknown, type: Type, offset: number, value: unknown): void {
+    native.write(handle, type, offset, value);
 }
 
 /**

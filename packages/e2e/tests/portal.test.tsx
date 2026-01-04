@@ -43,7 +43,7 @@ describe("createPortal", () => {
         await render(<App />, { wrapper: false });
 
         expect(labelRef.current).not.toBeNull();
-        expect(labelRef.current?.getParent()?.id).toEqual(boxRef.current?.id);
+        expect(labelRef.current?.getParent()?.handle).toEqual(boxRef.current?.handle);
     });
 
     it("preserves key when provided", async () => {
@@ -70,7 +70,7 @@ describe("createPortal", () => {
 
         await render(<App showPortal={true} />, { wrapper: false });
 
-        const windowId = windowRef.current?.id;
+        const windowId = windowRef.current?.handle;
         expect(windowId).not.toBeUndefined();
 
         await render(<App showPortal={false} />, { wrapper: false });
@@ -112,8 +112,8 @@ describe("createPortal", () => {
 
         expect(label1Ref.current).not.toBeNull();
         expect(label2Ref.current).not.toBeNull();
-        expect(label1Ref.current?.getParent()?.id).toEqual(boxRef.current?.id);
-        expect(label2Ref.current?.getParent()?.id).toEqual(boxRef.current?.id);
+        expect(label1Ref.current?.getParent()?.handle).toEqual(boxRef.current?.handle);
+        expect(label2Ref.current?.getParent()?.handle).toEqual(boxRef.current?.handle);
     });
 
     it("handles portal to nested container", async () => {
@@ -136,6 +136,6 @@ describe("createPortal", () => {
         await render(<App />, { wrapper: false });
 
         expect(buttonRef.current).not.toBeNull();
-        expect(buttonRef.current?.getParent()?.id).toEqual(innerBoxRef.current?.id);
+        expect(buttonRef.current?.getParent()?.handle).toEqual(innerBoxRef.current?.handle);
     });
 });

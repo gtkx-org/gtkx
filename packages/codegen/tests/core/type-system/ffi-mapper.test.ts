@@ -663,7 +663,7 @@ describe("FfiMapper", () => {
                 }
             });
 
-            it("sets ownership to none for transfer-none", () => {
+            it("sets ownership to borrowed for transfer-none", () => {
                 const buttonClass = createNormalizedClass({ name: "Button" });
                 const ns = createNormalizedNamespace({
                     name: "Gtk",

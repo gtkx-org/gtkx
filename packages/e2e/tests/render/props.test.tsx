@@ -49,11 +49,11 @@ describe("render - props", () => {
 
             await render(<App />, { wrapper: false });
 
-            const initialId = ref.current?.id;
+            const initialId = ref.current?.handle;
 
             await render(<App />, { wrapper: false });
 
-            expect(ref.current?.id).toEqual(initialId);
+            expect(ref.current?.handle).toEqual(initialId);
             expect(ref.current?.getLabel()).toBe("Same");
         });
 

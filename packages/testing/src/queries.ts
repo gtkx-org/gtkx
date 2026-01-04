@@ -1,10 +1,8 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { buildMultipleFoundError, buildNotFoundError, buildTimeoutError } from "./error-builder.js";
 import { type Container, findAll } from "./traversal.js";
 import type { ByRoleOptions, TextMatch, TextMatchOptions, WaitForOptions } from "./types.js";
 import { getWidgetCheckedState, getWidgetExpandedState, getWidgetTestId, getWidgetText } from "./widget-text.js";
-
-export { getWidgetText };
 
 const DEFAULT_TIMEOUT = 1000;
 const DEFAULT_INTERVAL = 50;
@@ -228,11 +226,7 @@ export const queryByText = (container: Container, text: TextMatch, options?: Tex
  * @param options - Query options including normalization
  * @returns Array of matching widgets (empty if none found)
  */
-export const queryAllByTestId = (
-    container: Container,
-    testId: TextMatch,
-    options?: TextMatchOptions,
-): Gtk.Widget[] => {
+export const queryAllByTestId = (container: Container, testId: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
     return findAll(container, (node) => {
         const widgetTestId = getWidgetTestId(node);
         return matchText(widgetTestId, testId, node, options);
@@ -279,7 +273,7 @@ const getByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByR
         throw buildMultipleFoundError(container, "role", { role, options }, matches.length);
     }
 
-    return matches[0]!;
+    return matches[0] as Gtk.Widget;
 };
 
 const getAllByLabelText = (container: Container, text: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
@@ -299,7 +293,7 @@ const getByLabelText = (container: Container, text: TextMatch, options?: TextMat
         throw buildMultipleFoundError(container, "labelText", { text, options }, matches.length);
     }
 
-    return matches[0]!;
+    return matches[0] as Gtk.Widget;
 };
 
 const getAllByText = (container: Container, text: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
@@ -319,7 +313,7 @@ const getByText = (container: Container, text: TextMatch, options?: TextMatchOpt
         throw buildMultipleFoundError(container, "text", { text, options }, matches.length);
     }
 
-    return matches[0]!;
+    return matches[0] as Gtk.Widget;
 };
 
 const getAllByTestId = (container: Container, testId: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
@@ -339,7 +333,7 @@ const getByTestId = (container: Container, testId: TextMatch, options?: TextMatc
         throw buildMultipleFoundError(container, "testId", { testId, options }, matches.length);
     }
 
-    return matches[0]!;
+    return matches[0] as Gtk.Widget;
 };
 
 /**

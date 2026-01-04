@@ -3,7 +3,7 @@ mod common;
 use std::ffi::{CString, c_void};
 
 use native::arg::Arg;
-use native::ffi::{FfiValue, Stash, StashStorage};
+use native::ffi::{FfiStorage, FfiStorageKind, FfiValue};
 use native::types::{ArrayType, FloatKind, IntegerKind, ListType, Ownership, StringType, Type};
 use native::value;
 
@@ -11,7 +11,7 @@ use native::value;
 fn owned_ptr_new_stores_value_and_ptr() {
     let data = vec![1u32, 2, 3, 4, 5];
     let ptr = data.as_ptr() as *mut c_void;
-    let owned = Stash::new(ptr, StashStorage::U32Vec(data));
+    let owned = FfiStorage::new(ptr, FfiStorageKind::U32Vec(data));
 
     assert_eq!(owned.ptr(), ptr);
 }
@@ -19,7 +19,7 @@ fn owned_ptr_new_stores_value_and_ptr() {
 #[test]
 fn owned_ptr_from_vec_captures_correct_pointer() {
     let data = vec![10u64, 20, 30];
-    let owned: Stash = data.into();
+    let owned: FfiStorage = data.into();
 
     unsafe {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u64, 3);
@@ -31,7 +31,7 @@ fn owned_ptr_from_vec_captures_correct_pointer() {
 fn owned_ptr_keeps_cstring_alive() {
     let cstring = CString::new("test string").unwrap();
     let ptr = cstring.as_ptr() as *mut c_void;
-    let owned = Stash::new(ptr, StashStorage::CString(cstring));
+    let owned = FfiStorage::new(ptr, FfiStorageKind::CString(cstring));
 
     unsafe {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
@@ -48,7 +48,7 @@ fn owned_ptr_tuple_keeps_both_alive() {
     let ptrs: Vec<*mut c_void> = strings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
     let tuple_ptr = ptrs.as_ptr() as *mut c_void;
 
-    let owned = Stash::new(tuple_ptr, StashStorage::StringArray(strings, ptrs));
+    let owned = FfiStorage::new(tuple_ptr, FfiStorageKind::StringArray(strings, ptrs));
 
     unsafe {
         let ptr_slice = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 2);
@@ -63,7 +63,7 @@ fn owned_ptr_tuple_keeps_both_alive() {
 fn owned_ptr_drops_value_when_dropped() {
     let data = vec![1u8, 2, 3, 4, 5];
     let ptr = data.as_ptr() as *mut c_void;
-    let owned = Stash::new(ptr, StashStorage::U8Vec(data));
+    let owned = FfiStorage::new(ptr, FfiStorageKind::U8Vec(data));
 
     drop(owned);
 }
@@ -181,13 +181,13 @@ fn try_from_string() {
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
-    if let FfiValue::Stash(owned) = result.unwrap() {
+    if let FfiValue::Storage(owned) = result.unwrap() {
         unsafe {
             let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
             assert_eq!(s.to_str().unwrap(), "hello world");
         }
     } else {
-        panic!("Expected FfiValue::Stash");
+        panic!("Expected FfiValue::Storage");
     }
 }
 
@@ -280,13 +280,13 @@ fn try_from_array_u8() {
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
-    if let FfiValue::Stash(owned) = result.unwrap() {
+    if let FfiValue::Storage(owned) = result.unwrap() {
         unsafe {
             let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
             assert_eq!(slice, &[1, 2, 3]);
         }
     } else {
-        panic!("Expected FfiValue::Stash");
+        panic!("Expected FfiValue::Storage");
     }
 }
 
@@ -308,13 +308,13 @@ fn try_from_array_i32() {
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
-    if let FfiValue::Stash(owned) = result.unwrap() {
+    if let FfiValue::Storage(owned) = result.unwrap() {
         unsafe {
             let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
             assert_eq!(slice, &[-10, 0, 10]);
         }
     } else {
-        panic!("Expected FfiValue::Stash");
+        panic!("Expected FfiValue::Storage");
     }
 }
 
@@ -332,14 +332,14 @@ fn try_from_array_f64() {
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
-    if let FfiValue::Stash(owned) = result.unwrap() {
+    if let FfiValue::Storage(owned) = result.unwrap() {
         unsafe {
             let slice = std::slice::from_raw_parts(owned.ptr() as *const f64, 2);
             assert!((slice[0] - 1.1).abs() < 0.001);
             assert!((slice[1] - 2.2).abs() < 0.001);
         }
     } else {
-        panic!("Expected FfiValue::Stash");
+        panic!("Expected FfiValue::Storage");
     }
 }
 
@@ -363,7 +363,7 @@ fn try_from_array_string() {
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
-    if let FfiValue::Stash(owned) = result.unwrap() {
+    if let FfiValue::Storage(owned) = result.unwrap() {
         unsafe {
             let ptrs = std::slice::from_raw_parts(owned.ptr() as *const *const i8, 3);
             let s0 = std::ffi::CStr::from_ptr(ptrs[0]);
@@ -373,7 +373,7 @@ fn try_from_array_string() {
             assert!(ptrs[2].is_null());
         }
     } else {
-        panic!("Expected FfiValue::Stash");
+        panic!("Expected FfiValue::Storage");
     }
 }
 
@@ -395,13 +395,13 @@ fn try_from_array_boolean() {
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
-    if let FfiValue::Stash(owned) = result.unwrap() {
+    if let FfiValue::Storage(owned) = result.unwrap() {
         unsafe {
             let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
             assert_eq!(slice, &[1, 0, 1]);
         }
     } else {
-        panic!("Expected FfiValue::Stash");
+        panic!("Expected FfiValue::Storage");
     }
 }
 
@@ -457,8 +457,8 @@ fn value_to_libffi_arg_ptr() {
 
 #[test]
 fn value_to_libffi_arg_owned_ptr() {
-    let owned: Stash = vec![1u8, 2, 3].into();
-    let v = FfiValue::Stash(owned);
+    let storage: FfiStorage = vec![1u8, 2, 3].into();
+    let v = FfiValue::Storage(storage);
     let _arg: libffi::middle::Arg = (&v).into();
 }
 
