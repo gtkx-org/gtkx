@@ -50,6 +50,8 @@ export type CallExpressionOptions = {
         type: FfiTypeDescriptor;
         value: string;
     };
+    /** Whether this function has varargs (spreads ...args at the end) */
+    hasVarargs?: boolean;
 };
 
 /**
@@ -93,16 +95,20 @@ export class CallExpressionBuilder {
                 writer.writeLine(`"${options.cIdentifier}",`);
                 writer.write("[");
                 const allArgs = this.collectArguments(options);
-                if (allArgs.length > 0) {
+                const hasContent = allArgs.length > 0 || options.hasVarargs;
+                if (hasContent) {
                     writer.newLine();
                     writer.indent(() => {
                         allArgs.forEach((arg, index) => {
                             this.writeArgument(writer, arg);
-                            if (index < allArgs.length - 1) {
+                            if (index < allArgs.length - 1 || options.hasVarargs) {
                                 writer.write(",");
                             }
                             writer.newLine();
                         });
+                        if (options.hasVarargs) {
+                            writer.writeLine("...args,");
+                        }
                     });
                 }
                 writer.writeLine("],");
@@ -122,7 +128,10 @@ export class CallExpressionBuilder {
      */
     buildValueExpression(valueName: string, mappedType: MappedType, nullable = false): string {
         const needsPtr =
-            mappedType.ffi.type === "gobject" || mappedType.ffi.type === "boxed" || mappedType.ffi.type === "struct";
+            mappedType.ffi.type === "gobject" ||
+            mappedType.ffi.type === "boxed" ||
+            mappedType.ffi.type === "struct" ||
+            mappedType.ffi.type === "fundamental";
 
         if (needsPtr) {
             const isUnknownType = mappedType.ts === "unknown";

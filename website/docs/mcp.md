@@ -116,6 +116,7 @@ Emit a GTK signal on a widget for custom interactions.
 | `appId`    | string | No       | App ID to query                                   |
 | `widgetId` | string | Yes      | Widget ID to emit event on                        |
 | `signal`   | string | Yes      | GTK signal name (e.g., `"activate"`, `"clicked"`) |
+| `args`     | array  | No       | Arguments to pass to the signal                   |
 
 ### `gtkx_take_screenshot`
 
@@ -125,9 +126,8 @@ Capture a screenshot of a window.
 | ---------- | ------ | -------- | --------------------------------------------------------- |
 | `appId`    | string | No       | App ID to query                                           |
 | `windowId` | string | No       | Window ID to capture. Uses first window if not specified. |
-| `format`   | string | No       | Image format: `"png"` (default) or `"jpeg"`               |
 
-**Returns:** Base64-encoded image data.
+**Returns:** Base64-encoded PNG image data.
 
 ## Widget Serialization
 
@@ -145,6 +145,12 @@ interface SerializedWidget {
   visible: boolean;
   cssClasses: string[];
   children: SerializedWidget[];
+  bounds?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 ```
 

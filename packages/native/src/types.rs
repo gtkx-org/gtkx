@@ -15,7 +15,7 @@
 //! ├── Null / Undefined        - Null pointer / void return
 //! ├── GObject(GObjectType)    - GObject instances
 //! ├── Boxed(BoxedType)        - GObject boxed types (e.g., GdkRGBA)
-//! ├── GVariant(GVariantType)  - GVariant values
+//! ├── Fundamental(FundamentalType) - Fundamental types (GVariant, GParamSpec, etc.)
 //! ├── Array(ArrayType)        - Arrays, GLists, GSLists
 //! ├── Callback(CallbackType)  - JavaScript callback functions
 //! └── Ref(RefType)            - Pointers to values (out parameters)
@@ -36,9 +36,8 @@ mod array;
 mod boxed;
 mod callback;
 mod float;
+mod fundamental;
 mod gobject;
-mod gparam;
-mod gvariant;
 mod hashtable;
 mod integer;
 mod r#ref;
@@ -49,9 +48,8 @@ pub use array::*;
 pub use boxed::*;
 pub use callback::*;
 pub use float::*;
+pub use fundamental::*;
 pub use gobject::*;
-pub use gparam::*;
-pub use gvariant::*;
 pub use hashtable::*;
 pub use integer::*;
 pub use r#ref::*;
@@ -86,10 +84,9 @@ pub enum Type {
     Undefined,
     Boolean,
     GObject(GObjectType),
-    GParam(GParamType),
     Boxed(BoxedType),
     Struct(StructType),
-    GVariant(GVariantType),
+    Fundamental(FundamentalType),
     Array(ArrayType),
     HashTable(HashTableType),
     Callback(CallbackType),
@@ -106,10 +103,9 @@ impl std::fmt::Display for Type {
             Type::Undefined => write!(f, "Undefined"),
             Type::Boolean => write!(f, "Boolean"),
             Type::GObject(_) => write!(f, "GObject"),
-            Type::GParam(_) => write!(f, "GParam"),
             Type::Boxed(t) => write!(f, "Boxed({})", t.type_),
             Type::Struct(t) => write!(f, "Struct({})", t.type_),
-            Type::GVariant(_) => write!(f, "GVariant"),
+            Type::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
             Type::Array(_) => write!(f, "Array"),
             Type::HashTable(_) => write!(f, "HashTable"),
             Type::Callback(t) => write!(f, "Callback({:?})", t.trampoline),
@@ -136,10 +132,8 @@ impl Type {
             "null" => Ok(Type::Null),
             "undefined" => Ok(Type::Undefined),
             "gobject" => Ok(Type::GObject(GObjectType::from_js_value(cx, value)?)),
-            "gparam" => Ok(Type::GParam(GParamType::from_js_value(cx, value)?)),
             "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
             "struct" => Ok(Type::Struct(StructType::from_js_value(cx, value)?)),
-            "gvariant" => Ok(Type::GVariant(GVariantType::from_js_value(cx, value)?)),
             "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
             "hashtable" => Ok(Type::HashTable(HashTableType::from_js_value(cx, value)?)),
             "callback" => {
@@ -201,6 +195,9 @@ impl Type {
                 }))
             }
             "ref" => Ok(Type::Ref(RefType::from_js_value(cx, obj.upcast())?)),
+            "fundamental" => Ok(Type::Fundamental(FundamentalType::from_js_value(
+                cx, value,
+            )?)),
             _ => cx.throw_type_error(format!("Unknown type: {}", type_)),
         }
     }
@@ -215,10 +212,9 @@ impl From<&Type> for ffi::Type {
             Type::Boolean => ffi::Type::u8(),
             Type::Null => ffi::Type::pointer(),
             Type::GObject(type_) => type_.into(),
-            Type::GParam(type_) => type_.into(),
             Type::Boxed(type_) => type_.into(),
             Type::Struct(type_) => type_.into(),
-            Type::GVariant(type_) => type_.into(),
+            Type::Fundamental(type_) => type_.into(),
             Type::Array(type_) => type_.into(),
             Type::HashTable(type_) => type_.into(),
             Type::Callback(_) => ffi::Type::pointer(),

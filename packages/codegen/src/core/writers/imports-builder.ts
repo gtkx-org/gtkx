@@ -200,6 +200,7 @@ export class ImportsBuilder {
     private collectNativeImports(): string[] {
         const imports: string[] = [];
         if (this.ctx.usesAlloc) imports.push("alloc");
+        if (this.ctx.usesArg) imports.push("Arg");
         if (this.ctx.usesRead) imports.push("read");
         if (this.ctx.usesWrite) imports.push("write");
         if (this.ctx.usesRef) imports.push("Ref");

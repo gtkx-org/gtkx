@@ -24,6 +24,8 @@ pub enum ListType {
     GSList,
     GPtrArray,
     GArray,
+    Sized { length_param_index: usize },
+    Fixed { size: usize },
 }
 
 #[derive(Debug, Clone)]
@@ -61,9 +63,31 @@ impl ArrayType {
             "gslist" => ListType::GSList,
             "gptrarray" => ListType::GPtrArray,
             "garray" => ListType::GArray,
+            "sized" => {
+                let length_param_index: Handle<JsNumber> =
+                    obj.get_opt(cx, "lengthParamIndex")?.ok_or_else(|| {
+                        cx.throw_type_error::<_, ()>(
+                            "'lengthParamIndex' is required for sized arrays",
+                        )
+                        .unwrap_err()
+                    })?;
+                ListType::Sized {
+                    length_param_index: length_param_index.value(cx) as usize,
+                }
+            }
+            "fixed" => {
+                let fixed_size: Handle<JsNumber> =
+                    obj.get_opt(cx, "fixedSize")?.ok_or_else(|| {
+                        cx.throw_type_error::<_, ()>("'fixedSize' is required for fixed arrays")
+                            .unwrap_err()
+                    })?;
+                ListType::Fixed {
+                    size: fixed_size.value(cx) as usize,
+                }
+            }
             _ => {
                 return cx.throw_type_error(
-                    "'listType' must be 'array', 'glist', 'gslist', 'gptrarray', or 'garray'",
+                    "'listType' must be 'array', 'glist', 'gslist', 'gptrarray', 'garray', 'sized', or 'fixed'",
                 );
             }
         };

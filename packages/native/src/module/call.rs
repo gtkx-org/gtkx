@@ -214,7 +214,7 @@ fn handle_call(
                 cif::Value::Ptr(ptr as *mut c_void)
             }
             Type::Boolean => cif::Value::U8(cif.call::<u8>(symbol_ptr, &ffi_args)),
-            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::GVariant(_) => {
+            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                 let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
                 cif::Value::Ptr(ptr)
             }
@@ -231,24 +231,13 @@ fn handle_call(
 
     for (i, arg) in args.iter().enumerate() {
         if let Value::Ref(r#ref) = &arg.value {
-            if let Type::Ref(ref_type) = &arg.type_ {
-                let is_object_passthrough = matches!(
-                    (&*ref_type.inner_type, &*r#ref.value),
-                    (
-                        Type::Boxed(_) | Type::Struct(_) | Type::GObject(_),
-                        Value::Object(_)
-                    )
-                );
-                if is_object_passthrough {
-                    continue;
-                }
-            }
             let new_value = Value::from_cif_value(&cif_args[i], &arg.type_)?;
             ref_updates.push((r#ref.js_obj.clone(), new_value));
         }
     }
 
-    Ok((Value::from_cif_value(&result, &result_type)?, ref_updates))
+    let return_value = Value::from_cif_value_with_args(&result, &result_type, &cif_args, &args)?;
+    Ok((return_value, ref_updates))
 }
 
 pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {

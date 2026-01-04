@@ -38,8 +38,7 @@ export class ParamWrapWriter {
             (ffiType === "gobject" && mappedType.kind === "interface") ||
             ffiType === "boxed" ||
             ffiType === "struct" ||
-            ffiType === "gvariant" ||
-            ffiType === "gparam";
+            ffiType === "fundamental";
 
         if (needsTargetClass) {
             return {

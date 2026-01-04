@@ -87,6 +87,9 @@ export class GenerationContext {
     /** Whether the module needs GObject namespace import (for ParamSpec in signals) */
     usesGObjectNamespace = false;
 
+    /** Whether the module uses the Arg type for varargs */
+    usesArg = false;
+
     /** Enums used from the same namespace */
     usedEnums = new Set<string>();
 
@@ -133,6 +136,7 @@ export class GenerationContext {
         this.usesRegisterNativeClass = false;
         this.usesGetClassByTypeName = false;
         this.usesGObjectNamespace = false;
+        this.usesArg = false;
 
         this.usedEnums.clear();
         this.usedRecords.clear();

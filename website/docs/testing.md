@@ -245,6 +245,104 @@ afterEach(async () => {
 });
 ```
 
+## Debugging
+
+### `screen.debug`
+
+Print the widget tree to the console for debugging:
+
+```tsx
+await render(<MyComponent />);
+screen.debug();
+```
+
+This outputs an HTML-like representation of the widget hierarchy with accessible roles and properties:
+
+```
+<GtkApplicationWindow role="window">
+  <GtkBox role="group">
+    <GtkButton data-testid="submit" role="button">
+      Submit
+    </GtkButton>
+  </GtkBox>
+</GtkApplicationWindow>
+```
+
+### `prettyWidget`
+
+Generate a formatted string representation of a widget tree:
+
+```tsx
+import { prettyWidget } from "@gtkx/testing";
+
+const output = prettyWidget(container, {
+    maxLength: 5000,  // Truncate output (default: 7000)
+    highlight: true,  // Enable ANSI colors (auto-detected by default)
+});
+```
+
+### `logWidget`
+
+Log a widget tree directly to the console:
+
+```tsx
+import { logWidget } from "@gtkx/testing";
+
+logWidget(window);
+```
+
+## Screenshots
+
+### `screen.screenshot`
+
+Capture a screenshot of an application window:
+
+```tsx
+await render(<MyApp />);
+
+// Capture first window
+const result = await screen.screenshot();
+
+// Capture window by index
+await screen.screenshot(0);
+
+// Capture window by title substring
+await screen.screenshot("Settings");
+
+// Capture window by title regex
+await screen.screenshot(/^My App/);
+
+// With custom timeout options
+await screen.screenshot("Settings", { timeout: 200, interval: 20 });
+```
+
+The screenshot is automatically saved to a temporary file and the path is logged.
+
+**Returns:**
+
+```typescript
+{
+    data: string;     // Base64-encoded PNG
+    mimeType: string; // "image/png"
+    width: number;    // Image width in pixels
+    height: number;   // Image height in pixels
+}
+```
+
+### `screenshot`
+
+Capture a screenshot of any widget directly:
+
+```tsx
+import { screenshot } from "@gtkx/testing";
+
+const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+const result = await screenshot(button, {
+    timeout: 200,   // Max wait time (default: 100ms)
+    interval: 20,   // Retry interval (default: 10ms)
+});
+```
+
 ## Complete Example
 
 ```tsx

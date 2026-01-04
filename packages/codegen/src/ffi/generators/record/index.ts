@@ -138,7 +138,7 @@ export class RecordGenerator {
                 initializer: `"${record.glibTypeName}"`,
             });
 
-            const objectType = record.glibTypeName === "GVariant" ? "gvariant" : "boxed";
+            const objectType = record.isFundamental() ? "fundamental" : "boxed";
             classDecl.addProperty({
                 name: "objectType",
                 isStatic: true,

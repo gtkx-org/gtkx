@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { logWidget } from "./pretty-widget.js";
 import * as queries from "./queries.js";
-import { screenshot as screenshotWidget } from "./screenshot.js";
+import { type ScreenshotOptions, screenshot as screenshotWidget } from "./screenshot.js";
 import type { ByRoleOptions, ScreenshotResult, TextMatch, TextMatchOptions } from "./types.js";
 
 const getScreenshotDir = (): string => {
@@ -84,22 +84,23 @@ export const screen = {
         logWidget(getRoot());
     },
     /**
-     * Capture a screenshot of the application window.
+     * Capture a screenshot of the application window, saving it to a temporary file and logging the file path.
      *
      * @param selector - Window selector: index (number), title substring (string), or title pattern (RegExp).
      *                   If omitted, captures the first window.
+     * @param options - Optional timeout and interval configuration for waiting on widget rendering.
      * @returns Screenshot result containing base64-encoded PNG data
      * @throws Error if no windows are available or no matching window is found
      *
      * @example
      * ```tsx
-     * screen.screenshot();              // First window
-     * screen.screenshot(0);             // Window at index 0
-     * screen.screenshot("Settings");    // Window with title containing "Settings"
-     * screen.screenshot(/^My App/);     // Window with title matching regex
+     * await screen.screenshot();              // First window
+     * await screen.screenshot(0);             // Window at index 0
+     * await screen.screenshot("Settings");    // Window with title containing "Settings"
+     * await screen.screenshot(/^My App/);     // Window with title matching regex
      * ```
      */
-    screenshot: (selector?: number | string | RegExp): ScreenshotResult => {
+    screenshot: async (selector?: number | string | RegExp, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
         const root = getRoot();
         const windows = root.getWindows();
 
@@ -129,7 +130,7 @@ export const screen = {
             }
         }
 
-        const result = screenshotWidget(targetWindow);
+        const result = await screenshotWidget(targetWindow, options);
         saveAndLogScreenshot(result);
         return result;
     },

@@ -12,20 +12,26 @@ type StringType = { type: "string"; ownership: Ownership; length?: number };
 
 type GObjectType = { type: "gobject"; ownership: Ownership };
 
-type GParamType = { type: "gparam"; ownership: Ownership };
-
 type BoxedType = { type: "boxed"; ownership: Ownership; innerType: string; lib?: string; getTypeFn?: string };
 
 type StructType = { type: "struct"; ownership: Ownership; innerType: string; size?: number };
 
-type GVariantType = { type: "gvariant"; ownership: Ownership };
+type FundamentalType = {
+    type: "fundamental";
+    ownership: Ownership;
+    library: string;
+    refFunc: string;
+    unrefFunc: string;
+};
 
 type ArrayType = {
     type: "array";
     itemType: Type;
-    listType: "array" | "glist" | "gslist" | "gptrarray" | "garray";
+    listType: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed";
     ownership: Ownership;
     elementSize?: number;
+    lengthParamIndex?: number;
+    fixedSize?: number;
 };
 
 type HashTableType = {
@@ -57,10 +63,9 @@ export type Type =
     | BooleanType
     | StringType
     | GObjectType
-    | GParamType
     | BoxedType
     | StructType
-    | GVariantType
+    | FundamentalType
     | ArrayType
     | HashTableType
     | RefType

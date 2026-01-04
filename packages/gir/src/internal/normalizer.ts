@@ -226,6 +226,9 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
             elementType: normalizeType(raw.elementType, currentNamespace, ctx),
             transferOwnership: raw.transferOwnership,
             nullable: raw.nullable ?? false,
+            lengthParamIndex: raw.lengthParamIndex,
+            zeroTerminated: raw.zeroTerminated,
+            fixedSize: raw.fixedSize,
         });
     }
 
@@ -237,6 +240,9 @@ const normalizeType = (raw: RawType, currentNamespace: string, ctx: NormalizerCo
             elementType: null,
             transferOwnership: raw.transferOwnership,
             nullable: raw.nullable ?? false,
+            lengthParamIndex: raw.lengthParamIndex,
+            zeroTerminated: raw.zeroTerminated,
+            fixedSize: raw.fixedSize,
         });
     }
 
@@ -278,6 +284,9 @@ const normalizeClass = (raw: RawClass, currentNamespace: string, ctx: Normalizer
         glibTypeName: raw.glibTypeName,
         glibGetType: raw.glibGetType,
         cSymbolPrefix: raw.cSymbolPrefix,
+        fundamental: raw.fundamental ?? false,
+        refFunc: raw.refFunc,
+        unrefFunc: raw.unrefFunc,
         implements: implementsRefs,
         methods: raw.methods.map((m) => normalizeMethod(m, currentNamespace, ctx)),
         constructors: raw.constructors.map((c) => normalizeConstructor(c, currentNamespace, ctx)),
@@ -327,6 +336,8 @@ const normalizeRecord = (raw: RawRecord, currentNamespace: string, ctx: Normaliz
         glibTypeName: raw.glibTypeName,
         glibGetType: raw.glibGetType,
         isGtypeStructFor: raw.isGtypeStructFor,
+        copyFunction: raw.copyFunction,
+        freeFunction: raw.freeFunction,
         fields: raw.fields.map((f) => normalizeField(f, currentNamespace, ctx)),
         methods: raw.methods.map((m) => normalizeMethod(m, currentNamespace, ctx)),
         constructors: raw.constructors.map((c) => normalizeConstructor(c, currentNamespace, ctx)),
@@ -403,6 +414,8 @@ const normalizeMethod = (raw: RawMethod, currentNamespace: string, ctx: Normaliz
         doc: raw.doc,
         returnDoc: raw.returnDoc,
         finishFunc: raw.finishFunc,
+        shadows: raw.shadows,
+        shadowedBy: raw.shadowedBy,
     });
 };
 
@@ -422,6 +435,8 @@ const normalizeConstructor = (
         throws: raw.throws ?? false,
         doc: raw.doc,
         returnDoc: raw.returnDoc,
+        shadows: raw.shadows,
+        shadowedBy: raw.shadowedBy,
     });
 };
 
@@ -437,6 +452,8 @@ const normalizeFunction = (raw: RawFunction, currentNamespace: string, ctx: Norm
         throws: raw.throws ?? false,
         doc: raw.doc,
         returnDoc: raw.returnDoc,
+        shadows: raw.shadows,
+        shadowedBy: raw.shadowedBy,
     });
 };
 

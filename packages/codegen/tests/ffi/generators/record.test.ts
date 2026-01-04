@@ -117,7 +117,7 @@ describe("RecordGenerator", () => {
             expect(code).toContain('"struct"');
         });
 
-        it("adds objectType as gvariant for GVariant", () => {
+        it("adds objectType as fundamental for records with copy/free functions", () => {
             const glibNs = createNormalizedNamespace({ name: "GLib" });
             const namespaces = new Map([["GLib", glibNs]]);
             const repo = createMockRepository(namespaces);
@@ -140,13 +140,15 @@ describe("RecordGenerator", () => {
             const record = createNormalizedRecord({
                 name: "Variant",
                 glibTypeName: "GVariant",
+                copyFunction: "g_variant_ref_sink",
+                freeFunction: "g_variant_unref",
                 fields: [],
             });
 
             generator.generateToSourceFile(record, sourceFile);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain('"gvariant"');
+            expect(code).toContain('"fundamental"');
         });
 
         it("adds registerNativeClass call when glibTypeName present", () => {

@@ -86,8 +86,9 @@ export class FunctionGenerator {
             writer.write("(");
             params.forEach((p, i) => {
                 if (i > 0) writer.write(", ");
+                const restPrefix = p.isRestParameter ? "..." : "";
                 const questionMark = p.hasQuestionToken ? "?" : "";
-                writer.write(`${p.name}${questionMark}: ${p.type}`);
+                writer.write(`${restPrefix}${p.name}${questionMark}: ${p.type}`);
             });
             writer.write(")");
 

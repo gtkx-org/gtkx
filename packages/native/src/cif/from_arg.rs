@@ -76,15 +76,6 @@ impl TryFrom<Arg> for Value {
 
                 Ok(Value::Ptr(ptr))
             }
-            Type::GParam(type_) => {
-                let ptr = extract_object_ptr(&arg.value, "GParamSpec")?;
-
-                if type_.is_transfer_full && !ptr.is_null() {
-                    unsafe { glib::gobject_ffi::g_param_spec_ref(ptr as *mut _) };
-                }
-
-                Ok(Value::Ptr(ptr))
-            }
             Type::Boxed(type_) => {
                 let ptr = extract_object_ptr(&arg.value, "Boxed object")?;
 
@@ -102,11 +93,16 @@ impl TryFrom<Arg> for Value {
                 let ptr = extract_object_ptr(&arg.value, "Struct object")?;
                 Ok(Value::Ptr(ptr))
             }
-            Type::GVariant(type_) => {
-                let ptr = extract_object_ptr(&arg.value, "GVariant")?;
+            Type::Fundamental(type_) => {
+                use crate::fundamental::Fundamental;
+
+                let ptr = extract_object_ptr(&arg.value, "Fundamental")?;
 
                 if type_.is_transfer_full && !ptr.is_null() {
-                    unsafe { glib::ffi::g_variant_ref(ptr as *mut glib::ffi::GVariant) };
+                    let (ref_fn, _) = Fundamental::lookup_fns(type_)?;
+                    if let Some(ref_fn) = ref_fn {
+                        unsafe { ref_fn(ptr) };
+                    }
                 }
 
                 Ok(Value::Ptr(ptr))

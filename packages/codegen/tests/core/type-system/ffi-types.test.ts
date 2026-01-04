@@ -9,6 +9,7 @@ import {
     FFI_UINT32,
     FFI_VOID,
     type FfiTypeDescriptor,
+    fundamentalSelfType,
     getPrimitiveTypeSize,
     gobjectType,
     isMemoryWritableType,
@@ -16,7 +17,6 @@ import {
     PRIMITIVE_TYPE_MAP,
     refType,
     SELF_TYPE_GOBJECT,
-    SELF_TYPE_GPARAM,
     stringType,
     structType,
     type TypeImport,
@@ -233,8 +233,14 @@ describe("Self type descriptors", () => {
         expect(SELF_TYPE_GOBJECT).toEqual({ type: "gobject", ownership: "none" });
     });
 
-    it("SELF_TYPE_GPARAM is gparam with none ownership", () => {
-        expect(SELF_TYPE_GPARAM).toEqual({ type: "gparam", ownership: "none" });
+    it("fundamentalSelfType creates fundamental self type", () => {
+        expect(fundamentalSelfType("libgobject-2.0.so.0", "g_param_spec_ref_sink", "g_param_spec_unref")).toEqual({
+            type: "fundamental",
+            ownership: "none",
+            lib: "libgobject-2.0.so.0",
+            refFunc: "g_param_spec_ref_sink",
+            unrefFunc: "g_param_spec_unref",
+        });
     });
 
     it("boxedSelfType creates boxed self type", () => {

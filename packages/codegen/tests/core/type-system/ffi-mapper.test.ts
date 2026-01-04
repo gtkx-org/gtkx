@@ -466,15 +466,18 @@ describe("FfiMapper", () => {
                 expect(result.ffi.type).toBe("struct");
             });
 
-            it("maps GLib.Variant specially", () => {
+            it("maps records with copy/free functions as fundamental", () => {
                 const variant = createNormalizedRecord({
                     name: "Variant",
                     qualifiedName: qualifiedName("GLib", "Variant"),
                     glibTypeName: "GVariant",
                     glibGetType: "g_variant_get_type",
+                    copyFunction: "g_variant_ref_sink",
+                    freeFunction: "g_variant_unref",
                 });
                 const glibNs = createNormalizedNamespace({
                     name: "GLib",
+                    sharedLibrary: "libglib-2.0.so.0",
                     records: new Map([["Variant", variant]]),
                 });
                 const repo = createMockRepository(new Map([["GLib", glibNs]]));
@@ -484,7 +487,7 @@ describe("FfiMapper", () => {
                 const result = mapper.mapType(type);
 
                 expect(result.ts).toBe("Variant");
-                expect(result.ffi.type).toBe("gvariant");
+                expect(result.ffi.type).toBe("fundamental");
             });
         });
 
@@ -540,14 +543,18 @@ describe("FfiMapper", () => {
         });
 
         describe("GObject.ParamSpec", () => {
-            it("maps ParamSpec specially", () => {
+            it("maps ParamSpec as fundamental type", () => {
                 const paramSpec = createNormalizedClass({
                     name: "ParamSpec",
                     qualifiedName: qualifiedName("GObject", "ParamSpec"),
                     glibTypeName: "GParam",
+                    fundamental: true,
+                    refFunc: "g_param_spec_ref_sink",
+                    unrefFunc: "g_param_spec_unref",
                 });
                 const gobjectNs = createNormalizedNamespace({
                     name: "GObject",
+                    sharedLibrary: "libgobject-2.0.so.0",
                     classes: new Map([["ParamSpec", paramSpec]]),
                 });
                 const gtkNs = createNormalizedNamespace({ name: "Gtk" });
@@ -561,7 +568,7 @@ describe("FfiMapper", () => {
                 const type = createNormalizedType({ name: "GObject.ParamSpec" });
                 const result = mapper.mapType(type);
 
-                expect(result.ffi.type).toBe("gparam");
+                expect(result.ffi.type).toBe("fundamental");
             });
         });
 

@@ -13,6 +13,7 @@ export {
 } from "./queries.js";
 export { cleanup, render } from "./render.js";
 export { screen } from "./screen.js";
+export type { ScreenshotOptions } from "./screenshot.js";
 export { screenshot } from "./screenshot.js";
 export { tick } from "./timing.js";
 export type {

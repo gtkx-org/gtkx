@@ -7,6 +7,7 @@ import {
     type IpcRequest,
     IpcRequestSchema,
     type IpcResponse,
+    IpcResponseSchema,
     McpError,
     McpErrorCode,
     methodNotFoundError,
@@ -41,7 +42,14 @@ type McpClientOptions = {
     appId: string;
 };
 
+interface PendingRequest {
+    resolve: (result: unknown) => void;
+    reject: (error: Error) => void;
+    timeout: NodeJS.Timeout;
+}
+
 const RECONNECT_DELAY_MS = 2000;
+const REQUEST_TIMEOUT_MS = 5000;
 
 const formatRole = (role: Gtk.AccessibleRole | undefined): string => {
     if (role === undefined) return "UNKNOWN";
@@ -138,6 +146,7 @@ class McpClient {
     private reconnectTimer: NodeJS.Timeout | null = null;
     private hasConnected = false;
     private isStopping = false;
+    private pendingRequests = new Map<string, PendingRequest>();
 
     constructor(options: McpClientOptions) {
         this.socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
@@ -154,8 +163,15 @@ class McpClient {
         this.socket = net.createConnection(this.socketPath, () => {
             console.log(`[gtkx] Connected to MCP server at ${this.socketPath}`);
             this.hasConnected = true;
-            this.register();
-            onFirstConnect?.();
+            this.register()
+                .then(() => {
+                    console.log("[gtkx] Registered with MCP server");
+                    onFirstConnect?.();
+                })
+                .catch((error) => {
+                    console.error("[gtkx] Failed to register with MCP server:", error.message);
+                    onFirstConnect?.();
+                });
         });
 
         this.socket.on("data", (data: Buffer) => this.handleData(data));
@@ -166,6 +182,7 @@ class McpClient {
                 this.hasConnected = false;
             }
             this.socket = null;
+            this.rejectPendingRequests(new Error("Connection closed"));
             this.scheduleReconnect();
         });
 
@@ -196,6 +213,7 @@ class McpClient {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
         }
+        this.rejectPendingRequests(new Error("Client disconnected"));
         if (this.socket) {
             this.send({ id: crypto.randomUUID(), method: "app.unregister" });
             this.socket.destroy();
@@ -204,20 +222,42 @@ class McpClient {
         this.hasConnected = false;
     }
 
-    private register(): void {
-        this.send({
-            id: crypto.randomUUID(),
-            method: "app.register",
-            params: {
-                appId: this.appId,
-                pid: process.pid,
-            },
+    private rejectPendingRequests(error: Error): void {
+        for (const pending of this.pendingRequests.values()) {
+            clearTimeout(pending.timeout);
+            pending.reject(error);
+        }
+        this.pendingRequests.clear();
+    }
+
+    private async register(): Promise<void> {
+        await this.sendRequest("app.register", {
+            appId: this.appId,
+            pid: process.pid,
         });
     }
 
     private send(message: IpcRequest | IpcResponse): void {
         if (!this.socket || !this.socket.writable) return;
         this.socket.write(`${JSON.stringify(message)}\n`);
+    }
+
+    private sendRequest(method: IpcMethod, params?: unknown): Promise<unknown> {
+        return new Promise((resolve, reject) => {
+            if (!this.socket || !this.socket.writable) {
+                reject(new Error("Socket not connected"));
+                return;
+            }
+
+            const id = crypto.randomUUID();
+            const timeout = setTimeout(() => {
+                this.pendingRequests.delete(id);
+                reject(new Error(`Request timed out: ${method}`));
+            }, REQUEST_TIMEOUT_MS);
+
+            this.pendingRequests.set(id, { resolve, reject, timeout });
+            this.send({ id, method, params });
+        });
     }
 
     private handleData(data: Buffer): void {
@@ -244,12 +284,28 @@ class McpClient {
             return;
         }
 
-        const result = IpcRequestSchema.safeParse(parsed);
-        if (!result.success) {
+        const responseResult = IpcResponseSchema.safeParse(parsed);
+        if (responseResult.success) {
+            const response = responseResult.data;
+            const pending = this.pendingRequests.get(response.id);
+            if (pending) {
+                clearTimeout(pending.timeout);
+                this.pendingRequests.delete(response.id);
+                if (response.error) {
+                    pending.reject(new Error(response.error.message));
+                } else {
+                    pending.resolve(response.result);
+                }
+                return;
+            }
+        }
+
+        const requestResult = IpcRequestSchema.safeParse(parsed);
+        if (!requestResult.success) {
             return;
         }
 
-        this.handleRequest(result.data).catch((error) => {
+        this.handleRequest(requestResult.data).catch((error) => {
             console.error("[gtkx] Error handling request:", error);
         });
     }
@@ -382,7 +438,7 @@ class McpClient {
                     targetWindow = windows[0] as Gtk.Window;
                 }
 
-                const result = testing.screenshot(targetWindow);
+                const result = await testing.screenshot(targetWindow);
                 return { data: result.data, mimeType: result.mimeType };
             }
 

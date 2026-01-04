@@ -12,7 +12,7 @@ import type { GenerationContext } from "../generation-context.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType, SelfTypeDescriptor } from "../type-system/ffi-types.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
-import { isVararg } from "../utils/filtering.js";
+import { hasVarargs, isVararg } from "../utils/filtering.js";
 import { toCamelCase, toValidIdentifier } from "../utils/naming.js";
 import { formatNullableReturn } from "../utils/type-qualification.js";
 import { type CallArgument, type CallbackWrapperInfo, CallExpressionBuilder } from "./call-expression-builder.js";
@@ -75,6 +75,8 @@ type CallableBodyOptions = {
     self?: { type: SelfTypeDescriptor; value: string };
     /** Class name for own-class returns (static functions on records) */
     ownClassName?: string;
+    /** Whether this callable has varargs */
+    hasVarargs?: boolean;
 };
 
 /**
@@ -198,7 +200,7 @@ export class MethodBodyWriter {
      * ```
      */
     selectConstructors(constructors: readonly GirConstructor[]): ConstructorSelection {
-        const supported = constructors.filter((c) => !this.hasUnsupportedCallbacks(c.parameters));
+        const supported = constructors.filter((c) => !c.shadowedBy && !this.hasUnsupportedCallbacks(c.parameters));
         const main = supported.find((c) => !c.parameters.some(isVararg));
         return { supported, main };
     }
@@ -223,7 +225,9 @@ export class MethodBodyWriter {
                 if (
                     mapped.ffi.type === "ref" &&
                     typeof mapped.ffi.innerType === "object" &&
-                    (mapped.ffi.innerType.type === "boxed" || mapped.ffi.innerType.type === "gobject") &&
+                    (mapped.ffi.innerType.type === "boxed" ||
+                        mapped.ffi.innerType.type === "gobject" ||
+                        mapped.ffi.innerType.type === "fundamental") &&
                     mapped.innerTsType
                 ) {
                     const isBoxed = mapped.ffi.innerType.type === "boxed";
@@ -250,7 +254,7 @@ export class MethodBodyWriter {
         needsWrap: boolean;
         needsGObjectWrap: boolean;
         needsBoxedWrap: boolean;
-        needsGVariantWrap: boolean;
+        needsFundamentalWrap: boolean;
         needsInterfaceWrap: boolean;
         needsArrayItemWrap: boolean;
         arrayItemType: string | undefined;
@@ -268,10 +272,13 @@ export class MethodBodyWriter {
             baseReturnType !== "unknown" &&
             returnTypeMapping.kind !== "interface";
 
-        const needsGVariantWrap = returnTypeMapping.ffi.type === "gvariant" && baseReturnType !== "unknown";
+        const needsFundamentalWrap =
+            returnTypeMapping.ffi.type === "fundamental" &&
+            baseReturnType !== "unknown" &&
+            returnTypeMapping.kind !== "interface";
 
         const needsInterfaceWrap =
-            returnTypeMapping.ffi.type === "gobject" &&
+            (returnTypeMapping.ffi.type === "gobject" || returnTypeMapping.ffi.type === "fundamental") &&
             baseReturnType !== "unknown" &&
             returnTypeMapping.kind === "interface";
 
@@ -279,17 +286,17 @@ export class MethodBodyWriter {
         const needsArrayItemWrap =
             returnTypeMapping.ffi.type === "array" &&
             itemType !== undefined &&
-            (itemType.type === "gobject" || itemType.type === "boxed" || itemType.type === "gvariant");
+            (itemType.type === "gobject" || itemType.type === "boxed" || itemType.type === "fundamental");
 
         const arrayItemType = needsArrayItemWrap ? baseReturnType.replace(/\[\]$/, "") : undefined;
 
         const needsHashTableWrap = returnTypeMapping.ffi.type === "hashtable";
 
         return {
-            needsWrap: needsGObjectWrap || needsBoxedWrap || needsGVariantWrap || needsInterfaceWrap,
+            needsWrap: needsGObjectWrap || needsBoxedWrap || needsFundamentalWrap || needsInterfaceWrap,
             needsGObjectWrap,
             needsBoxedWrap,
-            needsGVariantWrap,
+            needsFundamentalWrap,
             needsInterfaceWrap,
             needsArrayItemWrap,
             arrayItemType,
@@ -323,29 +330,41 @@ export class MethodBodyWriter {
      */
     buildParameterList(
         parameters: readonly GirParameter[],
-    ): Array<{ name: string; type: string; hasQuestionToken?: boolean }> {
+    ): Array<{ name: string; type: string; hasQuestionToken?: boolean; isRestParameter?: boolean }> {
         const filteredParams = this.filterParameters(parameters);
 
         const required = filteredParams.filter((p) => !this.ffiMapper.isNullable(p));
         const optional = filteredParams.filter((p) => this.ffiMapper.isNullable(p));
         const reordered = [...required, ...optional];
 
-        return reordered.map((param) => {
-            const mapped = this.ffiMapper.mapParameter(param);
-            this.ctx.addTypeImports(mapped.imports);
-            if (mapped.ffi.type === "ref") {
-                this.ctx.usesRef = true;
-            }
+        const result: Array<{ name: string; type: string; hasQuestionToken?: boolean; isRestParameter?: boolean }> =
+            reordered.map((param) => {
+                const mapped = this.ffiMapper.mapParameter(param);
+                this.ctx.addTypeImports(mapped.imports);
+                if (mapped.ffi.type === "ref") {
+                    this.ctx.usesRef = true;
+                }
 
-            const paramName = this.toJsParamName(param);
-            const isOptional = this.ffiMapper.isNullable(param);
+                const paramName = this.toJsParamName(param);
+                const isOptional = this.ffiMapper.isNullable(param);
 
-            return {
-                name: paramName,
-                type: isOptional ? `${mapped.ts} | null` : mapped.ts,
-                hasQuestionToken: isOptional,
-            };
-        });
+                return {
+                    name: paramName,
+                    type: isOptional ? `${mapped.ts} | null` : mapped.ts,
+                    hasQuestionToken: isOptional,
+                };
+            });
+
+        if (hasVarargs(parameters)) {
+            this.ctx.usesArg = true;
+            result.push({
+                name: "args",
+                type: "Arg[]",
+                isRestParameter: true,
+            });
+        }
+
+        return result;
     }
 
     /**
@@ -371,7 +390,12 @@ export class MethodBodyWriter {
      */
     buildMethodStructure(method: GirMethod, options: MethodStructureOptions): MethodDeclarationStructure {
         const params = this.buildParameterList(method.parameters);
-        const returnTypeMapping = this.ffiMapper.mapType(method.returnType, true, method.returnType.transferOwnership);
+        const returnTypeMapping = this.ffiMapper.mapType(
+            method.returnType,
+            true,
+            method.returnType.transferOwnership,
+            1,
+        );
         this.ctx.addTypeImports(returnTypeMapping.imports);
 
         const tsReturnType = formatNullableReturn(returnTypeMapping.ts, method.returnType.nullable === true);
@@ -537,6 +561,7 @@ export class MethodBodyWriter {
             returnTypeMapping,
             throws: method.throws,
             self: { type: options.selfTypeDescriptor, value: "this.id" },
+            hasVarargs: hasVarargs(method.parameters),
         });
     }
 
@@ -569,6 +594,7 @@ export class MethodBodyWriter {
             returnTypeMapping,
             throws: func.throws,
             ownClassName: options.returnsOwnClass ? options.className : undefined,
+            hasVarargs: hasVarargs(func.parameters),
         });
     }
 
@@ -611,6 +637,7 @@ export class MethodBodyWriter {
                     args,
                     returnType: options.returnTypeMapping.ffi,
                     selfArg: options.self,
+                    hasVarargs: options.hasVarargs,
                 })(writer);
                 writer.write(";");
                 writer.newLine();
@@ -626,7 +653,7 @@ export class MethodBodyWriter {
                     if (isNullable) {
                         writer.writeLine("if (ptr === null) return null;");
                     }
-                    if (wrapInfo.needsBoxedWrap || wrapInfo.needsGVariantWrap || wrapInfo.needsInterfaceWrap) {
+                    if (wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsInterfaceWrap) {
                         writer.writeLine(`return getNativeObject(ptr as ObjectId, ${baseReturnType});`);
                     } else {
                         writer.writeLine(`return getNativeObject(ptr as ObjectId) as ${baseReturnType};`);
@@ -642,6 +669,7 @@ export class MethodBodyWriter {
                     args,
                     returnType: options.returnTypeMapping.ffi,
                     selfArg: options.self,
+                    hasVarargs: options.hasVarargs,
                 })(writer);
                 writer.write(" as unknown[];");
                 writer.newLine();
@@ -662,6 +690,7 @@ export class MethodBodyWriter {
                     args,
                     returnType: options.returnTypeMapping.ffi,
                     selfArg: options.self,
+                    hasVarargs: options.hasVarargs,
                 })(writer);
                 writer.write(" as [unknown, unknown][];");
                 writer.newLine();
@@ -692,6 +721,7 @@ export class MethodBodyWriter {
                     args,
                     returnType: options.returnTypeMapping.ffi,
                     selfArg: options.self,
+                    hasVarargs: options.hasVarargs,
                 })(writer);
 
                 if (needsCast) {

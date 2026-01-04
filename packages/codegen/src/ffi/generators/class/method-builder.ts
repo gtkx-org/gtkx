@@ -10,12 +10,7 @@ import { StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import {
-    type MappedType,
-    SELF_TYPE_GOBJECT,
-    SELF_TYPE_GPARAM,
-    type SelfTypeDescriptor,
-} from "../../../core/type-system/ffi-types.js";
+import type { MappedType, SelfTypeDescriptor } from "../../../core/type-system/ffi-types.js";
 import { type AsyncMethodAnalysis, analyzeAsyncMethods } from "../../../core/utils/async-analysis.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { isMethodDuplicate } from "../../../core/utils/filtering.js";
@@ -44,20 +39,20 @@ export class MethodBuilder {
      * Returns structures for batch adding by ClassGenerator.
      *
      * @param methods - The methods to build structures for
-     * @param isParamSpec - Whether this is a GParamSpec class
+     * @param selfTypeDescriptor - The self type descriptor for instance methods
      * @param asyncAnalysis - Pre-computed async analysis (optional, computed if not provided)
      * @returns Array of method declaration structures
      *
      * @example
      * ```typescript
      * const builder = new MethodBuilder(ffiMapper, ctx, builders, options);
-     * const structures = builder.buildStructures(cls.methods, false);
+     * const structures = builder.buildStructures(cls.methods, SELF_TYPE_GOBJECT);
      * classDecl.addMethods(structures);
      * ```
      */
     buildStructures(
         methods: readonly GirMethod[],
-        isParamSpec: boolean,
+        selfTypeDescriptor: SelfTypeDescriptor,
         asyncAnalysis?: AsyncMethodAnalysis,
     ): MethodDeclarationStructure[] {
         const seen = new Set<string>();
@@ -70,7 +65,7 @@ export class MethodBuilder {
             if (asyncMethods.has(method.name)) continue;
             if (finishMethods.has(method.name)) continue;
 
-            const structure = this.buildMethodStructure(method, isParamSpec);
+            const structure = this.buildMethodStructure(method, selfTypeDescriptor);
             if (structure) {
                 methodStructures.push(structure);
             }
@@ -81,7 +76,7 @@ export class MethodBuilder {
             const finishMethod = methods.find((m) => m.name === finishMethodName);
 
             if (asyncMethod && finishMethod) {
-                const structure = this.buildAsyncWrapperStructure(asyncMethod, finishMethod, isParamSpec);
+                const structure = this.buildAsyncWrapperStructure(asyncMethod, finishMethod, selfTypeDescriptor);
                 if (structure) {
                     methodStructures.push(structure);
                 }
@@ -91,12 +86,13 @@ export class MethodBuilder {
         return methodStructures;
     }
 
-    private buildMethodStructure(method: GirMethod, isParamSpec: boolean): MethodDeclarationStructure {
+    private buildMethodStructure(
+        method: GirMethod,
+        selfTypeDescriptor: SelfTypeDescriptor,
+    ): MethodDeclarationStructure {
         const dynamicRename = this.ctx.methodRenames.get(method.cIdentifier);
         const camelName = toCamelCase(method.name);
         const methodName = dynamicRename ?? camelName;
-
-        const selfTypeDescriptor = isParamSpec ? SELF_TYPE_GPARAM : SELF_TYPE_GOBJECT;
 
         return this.methodBody.buildMethodStructure(method, {
             methodName,
@@ -137,7 +133,7 @@ export class MethodBuilder {
     private buildAsyncWrapperStructure(
         asyncMethod: GirMethod,
         finishMethod: GirMethod,
-        isParamSpec: boolean,
+        selfTypeDescriptor: SelfTypeDescriptor,
     ): MethodDeclarationStructure {
         const baseName = asyncMethod.name.replace(/_async$/, "");
         const methodName = `${toCamelCase(baseName)}Async`;
@@ -154,8 +150,6 @@ export class MethodBuilder {
 
         const innerReturnType = formatNullableReturn(returnTypeMapping.ts, finishMethod.returnType.nullable === true);
         const promiseReturnType = `Promise<${innerReturnType}>`;
-
-        const selfTypeDescriptor = isParamSpec ? SELF_TYPE_GPARAM : SELF_TYPE_GOBJECT;
 
         return {
             kind: StructureKind.Method,
@@ -312,7 +306,7 @@ export class MethodBuilder {
                                         this.ctx.usesGetNativeObject = true;
                                         if (
                                             wrapInfo.needsBoxedWrap ||
-                                            wrapInfo.needsGVariantWrap ||
+                                            wrapInfo.needsFundamentalWrap ||
                                             wrapInfo.needsInterfaceWrap
                                         ) {
                                             writer.writeLine(

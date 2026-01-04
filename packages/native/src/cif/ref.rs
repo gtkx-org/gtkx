@@ -16,14 +16,8 @@ pub(super) fn try_from_ref(arg: &Arg, type_: &RefType) -> anyhow::Result<Value> 
     };
 
     match &*type_.inner_type {
-        Type::Boxed(_) | Type::Struct(_) | Type::GObject(_) | Type::GVariant(_) => {
+        Type::Boxed(_) | Type::Struct(_) | Type::GObject(_) | Type::Fundamental(_) => {
             match &*r#ref.value {
-                value::Value::Object(id) => {
-                    let ptr = id
-                        .as_ptr()
-                        .ok_or_else(|| anyhow::anyhow!("Ref object has been garbage collected"))?;
-                    Ok(Value::Ptr(ptr))
-                }
                 value::Value::Null | value::Value::Undefined => {
                     let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
                     let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
@@ -33,7 +27,7 @@ pub(super) fn try_from_ref(arg: &Arg, type_: &RefType) -> anyhow::Result<Value> 
                     }))
                 }
                 _ => bail!(
-                    "Expected an Object or Null for Ref<Boxed/GObject>, got {:?}",
+                    "Expected Null for Ref<Boxed/Struct/GObject/Fundamental>, got {:?}. Use callerAllocates pattern instead.",
                     r#ref.value
                 ),
             }

@@ -154,6 +154,9 @@ export class RawGirParser {
             glibTypeName: cls["@_glib:type-name"] ? String(cls["@_glib:type-name"]) : undefined,
             glibGetType: cls["@_glib:get-type"] ? String(cls["@_glib:get-type"]) : undefined,
             cSymbolPrefix: cls["@_c:symbol-prefix"] ? String(cls["@_c:symbol-prefix"]) : undefined,
+            fundamental: cls["@_glib:fundamental"] === "1",
+            refFunc: cls["@_glib:ref-func"] ? String(cls["@_glib:ref-func"]) : undefined,
+            unrefFunc: cls["@_glib:unref-func"] ? String(cls["@_glib:unref-func"]) : undefined,
             implements: this.parseImplements(
                 cls.implements as Record<string, unknown>[] | Record<string, unknown> | undefined,
             ),
@@ -207,6 +210,8 @@ export class RawGirParser {
             .map((method) => {
                 const returnValue = method["return-value"] as Record<string, unknown> | undefined;
                 const finishFunc = method["@_glib:finish-func"] as string | undefined;
+                const shadows = method["@_shadows"] as string | undefined;
+                const shadowedBy = method["@_shadowed-by"] as string | undefined;
                 return {
                     name: String(method["@_name"] ?? ""),
                     cIdentifier: String(method["@_c:identifier"] ?? ""),
@@ -220,6 +225,8 @@ export class RawGirParser {
                     doc: extractDoc(method),
                     returnDoc: returnValue ? extractDoc(returnValue) : undefined,
                     finishFunc: finishFunc || undefined,
+                    shadows: shadows || undefined,
+                    shadowedBy: shadowedBy || undefined,
                 };
             });
     }
@@ -232,6 +239,8 @@ export class RawGirParser {
             .filter((ctor) => ctor["@_introspectable"] !== "0")
             .map((ctor) => {
                 const returnValue = ctor["return-value"] as Record<string, unknown> | undefined;
+                const shadows = ctor["@_shadows"] as string | undefined;
+                const shadowedBy = ctor["@_shadowed-by"] as string | undefined;
                 return {
                     name: String(ctor["@_name"] ?? ""),
                     cIdentifier: String(ctor["@_c:identifier"] ?? ""),
@@ -244,6 +253,8 @@ export class RawGirParser {
                     throws: ctor["@_throws"] === "1",
                     doc: extractDoc(ctor),
                     returnDoc: returnValue ? extractDoc(returnValue) : undefined,
+                    shadows: shadows || undefined,
+                    shadowedBy: shadowedBy || undefined,
                 };
             });
     }
@@ -256,6 +267,8 @@ export class RawGirParser {
             .filter((func) => func["@_introspectable"] !== "0")
             .map((func) => {
                 const returnValue = func["return-value"] as Record<string, unknown> | undefined;
+                const shadows = func["@_shadows"] as string | undefined;
+                const shadowedBy = func["@_shadowed-by"] as string | undefined;
                 return {
                     name: String(func["@_name"] ?? ""),
                     cIdentifier: String(func["@_c:identifier"] ?? ""),
@@ -268,6 +281,8 @@ export class RawGirParser {
                     throws: func["@_throws"] === "1",
                     doc: extractDoc(func),
                     returnDoc: returnValue ? extractDoc(returnValue) : undefined,
+                    shadows: shadows || undefined,
+                    shadowedBy: shadowedBy || undefined,
                 };
             });
     }
@@ -343,10 +358,17 @@ export class RawGirParser {
             typeNode["@_length"] !== undefined;
 
         if (isArrayNode) {
+            const lengthAttr = typeNode["@_length"];
+            const zeroTerminatedAttr = typeNode["@_zero-terminated"];
+            const fixedSizeAttr = typeNode["@_fixed-size"];
+
             return {
                 name: "array",
                 isArray: true,
                 elementType: typeNode.type ? this.parseType(typeNode.type as Record<string, unknown>) : undefined,
+                lengthParamIndex: lengthAttr !== undefined ? Number(lengthAttr) : undefined,
+                zeroTerminated: zeroTerminatedAttr !== undefined ? zeroTerminatedAttr !== "0" : undefined,
+                fixedSize: fixedSizeAttr !== undefined ? Number(fixedSizeAttr) : undefined,
             };
         }
 
@@ -466,6 +488,8 @@ export class RawGirParser {
             isGtypeStructFor: record["@_glib:is-gtype-struct-for"]
                 ? String(record["@_glib:is-gtype-struct-for"])
                 : undefined,
+            copyFunction: record["@_copy-function"] ? String(record["@_copy-function"]) : undefined,
+            freeFunction: record["@_free-function"] ? String(record["@_free-function"]) : undefined,
             fields: this.parseFields(ensureArray(record.field)),
             methods: this.parseMethods(ensureArray(record.method)),
             constructors: this.parseConstructors(ensureArray(record.constructor)),

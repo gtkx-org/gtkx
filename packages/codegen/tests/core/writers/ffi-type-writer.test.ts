@@ -191,26 +191,6 @@ describe("FfiTypeWriter", () => {
             });
         });
 
-        describe("gparam type", () => {
-            it("writes gparam with ownership", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "gparam", ownership: "none" });
-
-                expect(output).toContain('"gparam"');
-                expect(output).toContain('"none"');
-            });
-        });
-
-        describe("gvariant type", () => {
-            it("writes gvariant with ownership", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, { type: "gvariant", ownership: "full" });
-
-                expect(output).toContain('"gvariant"');
-                expect(output).toContain('"full"');
-            });
-        });
-
         describe("boxed type", () => {
             it("writes boxed type with all properties", () => {
                 const writer = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1" });
@@ -249,18 +229,6 @@ describe("FfiTypeWriter", () => {
                 });
 
                 expect(output).toContain('"gdk_rgba_get_type"');
-            });
-
-            it("converts GVariant boxed to gvariant type", () => {
-                const writer = new FfiTypeWriter();
-                const output = getWriterOutput(writer, {
-                    type: "boxed",
-                    ownership: "full",
-                    innerType: "GVariant",
-                });
-
-                expect(output).toContain('"gvariant"');
-                expect(output).not.toContain('"boxed"');
             });
 
             it("uses empty lib when none available", () => {
@@ -517,17 +485,30 @@ describe("FfiTypeWriter", () => {
             expect(output).toContain('"none"');
         });
 
-        it("writes gparam self argument when isParamSpec is true", () => {
+        it("writes fundamental self argument when isFundamental is true", () => {
             const writer = new FfiTypeWriter();
             const project = createTestProject();
             const sourceFile = createTestSourceFile(project, "test.ts");
             sourceFile.addVariableStatement({
-                declarations: [{ name: "SELF", initializer: writer.selfArgumentWriter({ isParamSpec: true }) }],
+                declarations: [
+                    {
+                        name: "SELF",
+                        initializer: writer.selfArgumentWriter({
+                            isFundamental: true,
+                            fundamentalLib: "libgobject-2.0.so.0",
+                            fundamentalRefFunc: "g_param_spec_ref_sink",
+                            fundamentalUnrefFunc: "g_param_spec_unref",
+                        }),
+                    },
+                ],
             });
             const output = sourceFile.getFullText();
 
-            expect(output).toContain('"gparam"');
+            expect(output).toContain('"fundamental"');
             expect(output).toContain('"none"');
+            expect(output).toContain('"libgobject-2.0.so.0"');
+            expect(output).toContain('"g_param_spec_ref_sink"');
+            expect(output).toContain('"g_param_spec_unref"');
         });
 
         it("writes boxed self argument for records", () => {

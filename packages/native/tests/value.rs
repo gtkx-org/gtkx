@@ -682,7 +682,7 @@ fn from_glib_value_null_undefined() {
 }
 
 #[test]
-fn from_cif_value_gvariant_transfer_none() {
+fn from_cif_value_fundamental_gvariant_transfer_none() {
     common::ensure_gtk_init();
 
     let variant = unsafe {
@@ -691,10 +691,13 @@ fn from_cif_value_gvariant_transfer_none() {
         ptr
     };
 
-    let gvariant_type = native::types::GVariantType {
-        is_transfer_full: false,
-    };
-    let type_ = Type::GVariant(gvariant_type);
+    let fundamental_type = native::types::FundamentalType::new(
+        false,
+        "libglib-2.0.so.0".to_string(),
+        "g_variant_ref_sink".to_string(),
+        "g_variant_unref".to_string(),
+    );
+    let type_ = Type::Fundamental(fundamental_type);
 
     let cif_value = cif::Value::Ptr(variant as *mut c_void);
     let result = Value::from_cif_value(&cif_value, &type_);
@@ -711,13 +714,16 @@ fn from_cif_value_gvariant_transfer_none() {
 }
 
 #[test]
-fn from_cif_value_gvariant_null() {
+fn from_cif_value_fundamental_null() {
     common::ensure_gtk_init();
 
-    let gvariant_type = native::types::GVariantType {
-        is_transfer_full: true,
-    };
-    let type_ = Type::GVariant(gvariant_type);
+    let fundamental_type = native::types::FundamentalType::new(
+        true,
+        "libglib-2.0.so.0".to_string(),
+        "g_variant_ref_sink".to_string(),
+        "g_variant_unref".to_string(),
+    );
+    let type_ = Type::Fundamental(fundamental_type);
 
     let cif_value = cif::Value::Ptr(std::ptr::null_mut());
     let result = Value::from_cif_value(&cif_value, &type_);

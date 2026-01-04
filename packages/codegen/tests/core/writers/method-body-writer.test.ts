@@ -223,18 +223,18 @@ describe("MethodBodyWriter", () => {
             expect(result.needsBoxedWrap).toBe(true);
         });
 
-        it("returns needsGVariantWrap for gvariant return type", () => {
+        it("returns needsFundamentalWrap for fundamental return type", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
-                ts: "Variant",
-                ffi: { type: "gvariant", ownership: "full" },
+                ts: "RenderNode",
+                ffi: { type: "fundamental", ownership: "full" },
             };
 
             const result = writer.needsObjectWrap(mappedType);
 
             expect(result.needsWrap).toBe(true);
-            expect(result.needsGVariantWrap).toBe(true);
+            expect(result.needsFundamentalWrap).toBe(true);
         });
 
         it("returns needsInterfaceWrap for interface return type", () => {
@@ -408,7 +408,7 @@ describe("MethodBodyWriter", () => {
             expect(result[1].hasQuestionToken).toBe(true);
         });
 
-        it("filters out varargs from parameter list", () => {
+        it("converts varargs to rest parameter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const params = [
@@ -418,7 +418,10 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildParameterList(params);
 
-            expect(result).toHaveLength(1);
+            expect(result).toHaveLength(2);
+            expect(result[0].name).toBe("label");
+            expect(result[1].name).toBe("args");
+            expect(result[1].isRestParameter).toBe(true);
         });
 
         it("sets usesRef flag for Ref parameters", () => {

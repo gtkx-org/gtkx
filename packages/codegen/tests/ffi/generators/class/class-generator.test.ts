@@ -381,13 +381,19 @@ describe("ClassGenerator", () => {
     });
 
     describe("ParamSpec handling", () => {
-        it("uses gparam objectType for ParamSpec classes", () => {
-            const gobjectNs = createNormalizedNamespace({ name: "GObject" });
+        it("uses fundamental objectType for ParamSpec classes", () => {
+            const gobjectNs = createNormalizedNamespace({
+                name: "GObject",
+                sharedLibrary: "libgobject-2.0.so.0",
+            });
             const paramSpecClass = createNormalizedClass({
                 name: "ParamSpec",
                 qualifiedName: qualifiedName("GObject", "ParamSpec"),
                 parent: null,
                 glibTypeName: "GParam",
+                fundamental: true,
+                refFunc: "g_param_spec_ref_sink",
+                unrefFunc: "g_param_spec_unref",
             });
             gobjectNs.classes.set("ParamSpec", paramSpecClass);
             const namespaces = new Map([["GObject", gobjectNs]]);
@@ -421,7 +427,7 @@ describe("ClassGenerator", () => {
             generator.generateToSourceFile(sourceFile);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain('"gparam"');
+            expect(code).toContain('"fundamental"');
         });
     });
 

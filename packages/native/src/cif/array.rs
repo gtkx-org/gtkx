@@ -69,7 +69,7 @@ pub(super) fn try_from_array(arg: &arg::Arg, type_: &ArrayType) -> anyhow::Resul
 
             Ok(Value::OwnedPtr(OwnedPtr::new((cstrings, ptrs), ptr)))
         }
-        Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::GVariant(_) => {
+        Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
             let mut ids = Vec::new();
 
             for value in array {

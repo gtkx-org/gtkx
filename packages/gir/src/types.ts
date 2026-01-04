@@ -114,6 +114,9 @@ export class GirClass {
     readonly glibTypeName?: string;
     readonly glibGetType?: string;
     readonly cSymbolPrefix?: string;
+    readonly fundamental: boolean;
+    readonly refFunc?: string;
+    readonly unrefFunc?: string;
     readonly implements: QualifiedName[];
     readonly methods: GirMethod[];
     readonly constructors: GirConstructor[];
@@ -134,6 +137,9 @@ export class GirClass {
         glibTypeName?: string;
         glibGetType?: string;
         cSymbolPrefix?: string;
+        fundamental?: boolean;
+        refFunc?: string;
+        unrefFunc?: string;
         implements: QualifiedName[];
         methods: GirMethod[];
         constructors: GirConstructor[];
@@ -150,6 +156,9 @@ export class GirClass {
         this.glibTypeName = data.glibTypeName;
         this.glibGetType = data.glibGetType;
         this.cSymbolPrefix = data.cSymbolPrefix;
+        this.fundamental = data.fundamental ?? false;
+        this.refFunc = data.refFunc;
+        this.unrefFunc = data.unrefFunc;
         this.implements = data.implements;
         this.methods = data.methods;
         this.constructors = data.constructors;
@@ -293,6 +302,11 @@ export class GirClass {
         return this.glibTypeName !== undefined;
     }
 
+    /** True if this is a fundamental type with custom ref/unref functions. */
+    isFundamental(): boolean {
+        return this.fundamental && this.refFunc !== undefined && this.unrefFunc !== undefined;
+    }
+
     /** Gets direct subclasses of this class. */
     getDirectSubclasses(): GirClass[] {
         if (!this._repo) return [];
@@ -399,6 +413,8 @@ export class GirRecord {
     readonly glibTypeName?: string;
     readonly glibGetType?: string;
     readonly isGtypeStructFor?: string;
+    readonly copyFunction?: string;
+    readonly freeFunction?: string;
     readonly fields: GirField[];
     readonly methods: GirMethod[];
     readonly constructors: GirConstructor[];
@@ -414,6 +430,8 @@ export class GirRecord {
         glibTypeName?: string;
         glibGetType?: string;
         isGtypeStructFor?: string;
+        copyFunction?: string;
+        freeFunction?: string;
         fields: GirField[];
         methods: GirMethod[];
         constructors: GirConstructor[];
@@ -428,11 +446,18 @@ export class GirRecord {
         this.glibTypeName = data.glibTypeName;
         this.glibGetType = data.glibGetType;
         this.isGtypeStructFor = data.isGtypeStructFor;
+        this.copyFunction = data.copyFunction;
+        this.freeFunction = data.freeFunction;
         this.fields = data.fields;
         this.methods = data.methods;
         this.constructors = data.constructors;
         this.staticFunctions = data.staticFunctions;
         this.doc = data.doc;
+    }
+
+    /** True if this is a fundamental type with custom copy/free functions. */
+    isFundamental(): boolean {
+        return this.copyFunction !== undefined && this.freeFunction !== undefined;
     }
 
     /** True if this is a GLib boxed type (has glibTypeName). */
@@ -597,6 +622,8 @@ export class GirMethod {
     readonly returnDoc?: string;
     /** For async methods, the name of the corresponding finish function */
     readonly finishFunc?: string;
+    readonly shadows?: string;
+    readonly shadowedBy?: string;
 
     constructor(data: {
         name: string;
@@ -607,6 +634,8 @@ export class GirMethod {
         doc?: string;
         returnDoc?: string;
         finishFunc?: string;
+        shadows?: string;
+        shadowedBy?: string;
     }) {
         this.name = data.name;
         this.cIdentifier = data.cIdentifier;
@@ -616,6 +645,8 @@ export class GirMethod {
         this.doc = data.doc;
         this.returnDoc = data.returnDoc;
         this.finishFunc = data.finishFunc;
+        this.shadows = data.shadows;
+        this.shadowedBy = data.shadowedBy;
     }
 
     /** True if this follows the async/finish pattern. */
@@ -668,6 +699,8 @@ export class GirConstructor {
     readonly throws: boolean;
     readonly doc?: string;
     readonly returnDoc?: string;
+    readonly shadows?: string;
+    readonly shadowedBy?: string;
 
     constructor(data: {
         name: string;
@@ -677,6 +710,8 @@ export class GirConstructor {
         throws: boolean;
         doc?: string;
         returnDoc?: string;
+        shadows?: string;
+        shadowedBy?: string;
     }) {
         this.name = data.name;
         this.cIdentifier = data.cIdentifier;
@@ -685,6 +720,8 @@ export class GirConstructor {
         this.throws = data.throws;
         this.doc = data.doc;
         this.returnDoc = data.returnDoc;
+        this.shadows = data.shadows;
+        this.shadowedBy = data.shadowedBy;
     }
 
     /** Gets required (non-optional, non-nullable) parameters. */
@@ -704,6 +741,8 @@ export class GirFunction {
     readonly throws: boolean;
     readonly doc?: string;
     readonly returnDoc?: string;
+    readonly shadows?: string;
+    readonly shadowedBy?: string;
 
     constructor(data: {
         name: string;
@@ -713,6 +752,8 @@ export class GirFunction {
         throws: boolean;
         doc?: string;
         returnDoc?: string;
+        shadows?: string;
+        shadowedBy?: string;
     }) {
         this.name = data.name;
         this.cIdentifier = data.cIdentifier;
@@ -721,6 +762,8 @@ export class GirFunction {
         this.throws = data.throws;
         this.doc = data.doc;
         this.returnDoc = data.returnDoc;
+        this.shadows = data.shadows;
+        this.shadowedBy = data.shadowedBy;
     }
 
     /** True if this follows the async/finish pattern. */
@@ -935,6 +978,9 @@ export class GirType {
     readonly containerType?: ContainerType;
     readonly transferOwnership?: "none" | "full" | "container";
     readonly nullable: boolean;
+    readonly lengthParamIndex?: number;
+    readonly zeroTerminated?: boolean;
+    readonly fixedSize?: number;
 
     constructor(data: {
         name: QualifiedName | string;
@@ -945,6 +991,9 @@ export class GirType {
         containerType?: ContainerType;
         transferOwnership?: "none" | "full" | "container";
         nullable: boolean;
+        lengthParamIndex?: number;
+        zeroTerminated?: boolean;
+        fixedSize?: number;
     }) {
         this.name = data.name;
         this.cType = data.cType;
@@ -954,6 +1003,9 @@ export class GirType {
         this.containerType = data.containerType;
         this.transferOwnership = data.transferOwnership;
         this.nullable = data.nullable;
+        this.lengthParamIndex = data.lengthParamIndex;
+        this.zeroTerminated = data.zeroTerminated;
+        this.fixedSize = data.fixedSize;
     }
 
     /** True if this is an intrinsic/primitive type. */

@@ -80,6 +80,9 @@ export type RawClass = {
     glibTypeName?: string;
     glibGetType?: string;
     cSymbolPrefix?: string;
+    fundamental?: boolean;
+    refFunc?: string;
+    unrefFunc?: string;
     implements: string[];
     methods: RawMethod[];
     constructors: RawConstructor[];
@@ -100,6 +103,8 @@ export type RawRecord = {
     glibTypeName?: string;
     glibGetType?: string;
     isGtypeStructFor?: string;
+    copyFunction?: string;
+    freeFunction?: string;
     fields: RawField[];
     methods: RawMethod[];
     constructors: RawConstructor[];
@@ -132,6 +137,8 @@ export type RawMethod = {
     returnDoc?: string;
     /** For async methods, the name of the corresponding finish function */
     finishFunc?: string;
+    shadows?: string;
+    shadowedBy?: string;
 };
 
 /**
@@ -145,6 +152,8 @@ export type RawConstructor = {
     throws?: boolean;
     doc?: string;
     returnDoc?: string;
+    shadows?: string;
+    shadowedBy?: string;
 };
 
 /**
@@ -158,6 +167,8 @@ export type RawFunction = {
     throws?: boolean;
     doc?: string;
     returnDoc?: string;
+    shadows?: string;
+    shadowedBy?: string;
 };
 
 /**
@@ -192,6 +203,9 @@ export type RawType = {
     containerType?: ContainerType;
     transferOwnership?: "none" | "full" | "container";
     nullable?: boolean;
+    lengthParamIndex?: number;
+    zeroTerminated?: boolean;
+    fixedSize?: number;
 };
 
 /**

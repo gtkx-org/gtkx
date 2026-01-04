@@ -1,13 +1,13 @@
 //! Managed object wrappers and reference tracking.
 //!
 //! This module provides [`Object`] and [`ObjectId`] for tracking GObject, Boxed,
-//! and GVariant instances across the FFI boundary. Objects are stored in a
+//! and Fundamental instances across the FFI boundary. Objects are stored in a
 //! thread-local map and automatically cleaned up when their JavaScript handles
 //! are garbage collected.
 //!
 //! ## Key Types
 //!
-//! - [`Object`]: Enum wrapping GObject, Boxed, or GVariant instances
+//! - [`Object`]: Enum wrapping GObject, Boxed, or Fundamental instances
 //! - [`ObjectId`]: Newtype handle returned to JavaScript, implements [`Finalize`]
 //!
 //! ## Lifecycle
@@ -24,15 +24,14 @@ use std::ffi::c_void;
 use gtk4::glib::{self, object::ObjectType as _};
 use neon::prelude::*;
 
-use crate::{boxed::Boxed, gtk_dispatch, state::GtkThreadState, variant::GVariant};
+use crate::{boxed::Boxed, fundamental::Fundamental, gtk_dispatch, state::GtkThreadState};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
 pub enum Object {
     GObject(glib::Object),
     Boxed(Boxed),
-    GVariant(GVariant),
-    ParamSpec(glib::ParamSpec),
+    Fundamental(Fundamental),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -66,8 +65,7 @@ impl ObjectId {
             state.object_map.get(&self.0).map(|object| match object {
                 Object::GObject(obj) => obj.as_ptr() as *mut c_void,
                 Object::Boxed(boxed) => boxed.as_ptr(),
-                Object::GVariant(variant) => variant.as_ptr(),
-                Object::ParamSpec(pspec) => pspec.as_ptr() as *mut c_void,
+                Object::Fundamental(fundamental) => fundamental.as_ptr(),
             })
         })
     }

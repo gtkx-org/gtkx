@@ -289,7 +289,7 @@ describe("FunctionGenerator", () => {
     });
 
     describe("filtering", () => {
-        it("generates functions with varargs but omits vararg parameter", () => {
+        it("generates functions with varargs converting to rest parameter", () => {
             const { generator, sourceFile } = createTestSetup();
             const functions = [
                 createNormalizedFunction({
@@ -316,7 +316,7 @@ describe("FunctionGenerator", () => {
             const code = getGeneratedCode(sourceFile);
             expect(code).toContain("withVarargs");
             expect(code).toContain("format: string");
-            expect(code).not.toContain("...");
+            expect(code).toContain("...args: Arg[]");
             expect(code).toContain("normal");
         });
     });

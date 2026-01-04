@@ -111,7 +111,10 @@ export class FfiTypeWriter {
         isRecord?: boolean;
         recordName?: string;
         sharedLibrary?: string;
-        isParamSpec?: boolean;
+        isFundamental?: boolean;
+        fundamentalLib?: string;
+        fundamentalRefFunc?: string;
+        fundamentalUnrefFunc?: string;
     }): WriterFunction {
         if (options.isRecord && options.recordName) {
             const lib = options.sharedLibrary ?? this.options.currentSharedLibrary ?? "";
@@ -122,8 +125,19 @@ export class FfiTypeWriter {
                 lib: `"${lib}"`,
             });
         }
-        if (options.isParamSpec) {
-            return Writers.object({ type: '"gparam"', ownership: '"none"' });
+        if (
+            options.isFundamental &&
+            options.fundamentalLib &&
+            options.fundamentalRefFunc &&
+            options.fundamentalUnrefFunc
+        ) {
+            return Writers.object({
+                type: '"fundamental"',
+                ownership: '"none"',
+                library: `"${options.fundamentalLib}"`,
+                refFunc: `"${options.fundamentalRefFunc}"`,
+                unrefFunc: `"${options.fundamentalUnrefFunc}"`,
+            });
         }
         return Writers.object({ type: '"gobject"', ownership: '"none"' });
     }
@@ -138,10 +152,8 @@ export class FfiTypeWriter {
                 return this.buildOwnershipProperties("string", type.ownership);
             case "gobject":
                 return this.buildOwnershipProperties("gobject", type.ownership);
-            case "gparam":
-                return this.buildOwnershipProperties("gparam", type.ownership);
-            case "gvariant":
-                return this.buildOwnershipProperties("gvariant", type.ownership);
+            case "fundamental":
+                return this.buildFundamentalProperties(type);
             case "boxed":
                 return this.buildBoxedProperties(type);
             case "struct":
@@ -186,12 +198,17 @@ export class FfiTypeWriter {
         return props;
     }
 
+    private buildFundamentalProperties(type: FfiTypeDescriptor): ObjectProperty[] {
+        const props: ObjectProperty[] = [{ name: "type", value: '"fundamental"' }];
+        props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
+        props.push({ name: "library", value: `"${type.lib ?? ""}"` });
+        props.push({ name: "refFunc", value: `"${type.refFunc ?? ""}"` });
+        props.push({ name: "unrefFunc", value: `"${type.unrefFunc ?? ""}"` });
+        return props;
+    }
+
     private buildBoxedProperties(type: FfiTypeDescriptor): ObjectProperty[] {
         const innerType = typeof type.innerType === "string" ? type.innerType : "";
-
-        if (innerType === "GVariant") {
-            return this.buildOwnershipProperties("gvariant", type.ownership);
-        }
 
         const lib = type.lib ?? this.options.currentSharedLibrary ?? "";
         const props: ObjectProperty[] = [{ name: "type", value: '"boxed"' }];
@@ -237,6 +254,14 @@ export class FfiTypeWriter {
         }
 
         props.push({ name: "listType", value: `"${type.listType ?? "array"}"` });
+
+        if (type.lengthParamIndex !== undefined) {
+            props.push({ name: "lengthParamIndex", value: type.lengthParamIndex });
+        }
+
+        if (type.fixedSize !== undefined) {
+            props.push({ name: "fixedSize", value: type.fixedSize });
+        }
 
         props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
 

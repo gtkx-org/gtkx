@@ -6,10 +6,11 @@ use gtk4::glib::{self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNo
 use super::Value;
 use crate::{
     boxed::Boxed,
-    cif, integer,
+    cif,
+    fundamental::Fundamental,
+    integer,
     object::{Object, ObjectId},
     types::*,
-    variant::GVariant as GVariantWrapper,
 };
 
 struct GListGuard {
@@ -122,6 +123,53 @@ fn from_cif_glist(cif_value: &cif::Value, array_type: &ArrayType) -> anyhow::Res
     Ok(Value::Array(values))
 }
 
+fn from_cif_sized_byte_array(
+    ptr: *mut c_void,
+    length: usize,
+    int_type: &IntegerType,
+) -> anyhow::Result<Value> {
+    if ptr.is_null() {
+        return Ok(Value::Array(vec![]));
+    }
+
+    let values = match (int_type.size, int_type.sign) {
+        (IntegerSize::_8, IntegerSign::Unsigned) => {
+            let slice = unsafe { std::slice::from_raw_parts(ptr as *const u8, length) };
+            slice.iter().map(|&v| Value::Number(v as f64)).collect()
+        }
+        (IntegerSize::_8, IntegerSign::Signed) => {
+            let slice = unsafe { std::slice::from_raw_parts(ptr as *const i8, length) };
+            slice.iter().map(|&v| Value::Number(v as f64)).collect()
+        }
+        (IntegerSize::_16, IntegerSign::Unsigned) => {
+            let slice = unsafe { std::slice::from_raw_parts(ptr as *const u16, length) };
+            slice.iter().map(|&v| Value::Number(v as f64)).collect()
+        }
+        (IntegerSize::_16, IntegerSign::Signed) => {
+            let slice = unsafe { std::slice::from_raw_parts(ptr as *const i16, length) };
+            slice.iter().map(|&v| Value::Number(v as f64)).collect()
+        }
+        (IntegerSize::_32, IntegerSign::Unsigned) => {
+            let slice = unsafe { std::slice::from_raw_parts(ptr as *const u32, length) };
+            slice.iter().map(|&v| Value::Number(v as f64)).collect()
+        }
+        (IntegerSize::_32, IntegerSign::Signed) => {
+            let slice = unsafe { std::slice::from_raw_parts(ptr as *const i32, length) };
+            slice.iter().map(|&v| Value::Number(v as f64)).collect()
+        }
+        (IntegerSize::_64, IntegerSign::Unsigned) => {
+            let slice = unsafe { std::slice::from_raw_parts(ptr as *const u64, length) };
+            slice.iter().map(|&v| Value::Number(v as f64)).collect()
+        }
+        (IntegerSize::_64, IntegerSign::Signed) => {
+            let slice = unsafe { std::slice::from_raw_parts(ptr as *const i64, length) };
+            slice.iter().map(|&v| Value::Number(v as f64)).collect()
+        }
+    };
+
+    Ok(Value::Array(values))
+}
+
 fn from_cif_null_terminated_string_array(
     ptr: *mut c_void,
     is_transfer_full: bool,
@@ -194,7 +242,7 @@ fn from_cif_owned_array(
                 .ok_or(anyhow::anyhow!("Failed to downcast array items to Vec<u8>"))?;
             bool_vec.iter().map(|v| Value::Boolean(*v != 0)).collect()
         }
-        Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::GVariant(_) => {
+        Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
             let (ids, _) = array_ptr
                 .value
                 .downcast_ref::<(Vec<ObjectId>, Vec<*mut c_void>)>()
@@ -251,17 +299,19 @@ fn from_cif_ref(cif_value: &cif::Value, ref_type: &RefType) -> anyhow::Result<Va
             };
             Ok(Value::Object(Object::Boxed(boxed).into()))
         }
-        Type::GVariant(variant_type) => {
+        Type::Fundamental(fundamental_type) => {
             let actual_ptr = unsafe { *(ref_ptr.ptr as *const *mut c_void) };
             if actual_ptr.is_null() {
                 return Ok(Value::Null);
             }
-            let variant = if !variant_type.is_transfer_full {
-                GVariantWrapper::from_glib_none(actual_ptr)
+
+            let (ref_fn, unref_fn) = Fundamental::lookup_fns(fundamental_type)?;
+            let fundamental = if fundamental_type.is_transfer_full {
+                Fundamental::from_glib_full(actual_ptr, ref_fn, unref_fn)
             } else {
-                GVariantWrapper::from_glib_full(actual_ptr)
+                Fundamental::from_glib_none(actual_ptr, ref_fn, unref_fn)
             };
-            Ok(Value::Object(Object::GVariant(variant).into()))
+            Ok(Value::Object(Object::Fundamental(fundamental).into()))
         }
         Type::Integer(int_type) => {
             let number = integer::read(int_type, ref_ptr.ptr as *const u8);
@@ -440,19 +490,20 @@ impl Value {
 
                 Ok(Value::Object(Object::Boxed(boxed).into()))
             }
-            Type::GVariant(type_) => {
-                let variant_ptr = extract_ptr_from_cif(cif_value, "GVariant")?;
-                if variant_ptr.is_null() {
+            Type::Fundamental(type_) => {
+                let ptr = extract_ptr_from_cif(cif_value, "Fundamental")?;
+                if ptr.is_null() {
                     return Ok(Value::Null);
                 }
 
-                let variant = if !type_.is_transfer_full {
-                    GVariantWrapper::from_glib_none(variant_ptr)
+                let (ref_fn, unref_fn) = Fundamental::lookup_fns(type_)?;
+                let fundamental = if type_.is_transfer_full {
+                    Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
                 } else {
-                    GVariantWrapper::from_glib_full(variant_ptr)
+                    Fundamental::from_glib_none(ptr, ref_fn, unref_fn)
                 };
 
-                Ok(Value::Object(Object::GVariant(variant).into()))
+                Ok(Value::Object(Object::Fundamental(fundamental).into()))
             }
             Type::Array(array_type) => {
                 if array_type.list_type == ListType::GList
@@ -493,5 +544,103 @@ impl Value {
             Type::HashTable(hash_table_type) => from_cif_hashtable(cif_value, hash_table_type),
             _ => bail!("Unsupported type for cif value conversion: {:?}", type_),
         }
+    }
+
+    pub fn from_cif_value_with_args(
+        cif_value: &cif::Value,
+        type_: &Type,
+        cif_args: &[cif::Value],
+        arg_types: &[crate::arg::Arg],
+    ) -> anyhow::Result<Self> {
+        if let Type::Array(array_type) = type_ {
+            match &array_type.list_type {
+                ListType::Sized { length_param_index } => {
+                    let length =
+                        Self::extract_length_from_args(cif_args, arg_types, *length_param_index)?;
+
+                    if let cif::Value::Ptr(ptr) = cif_value {
+                        if ptr.is_null() {
+                            return Ok(Value::Array(vec![]));
+                        }
+
+                        if let Type::Integer(int_type) = &*array_type.item_type {
+                            return from_cif_sized_byte_array(*ptr, length, int_type);
+                        }
+
+                        bail!(
+                            "Sized arrays are only supported for integer types, got: {:?}",
+                            array_type.item_type
+                        );
+                    }
+                }
+                ListType::Fixed { size } => {
+                    if let cif::Value::Ptr(ptr) = cif_value {
+                        if ptr.is_null() {
+                            return Ok(Value::Array(vec![]));
+                        }
+
+                        if let Type::Integer(int_type) = &*array_type.item_type {
+                            return from_cif_sized_byte_array(*ptr, *size, int_type);
+                        }
+
+                        bail!(
+                            "Fixed-size arrays are only supported for integer types, got: {:?}",
+                            array_type.item_type
+                        );
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        Self::from_cif_value(cif_value, type_)
+    }
+
+    fn extract_length_from_args(
+        cif_args: &[cif::Value],
+        arg_types: &[crate::arg::Arg],
+        length_param_index: usize,
+    ) -> anyhow::Result<usize> {
+        if length_param_index >= cif_args.len() {
+            bail!(
+                "Length parameter index {} is out of bounds (args count: {})",
+                length_param_index,
+                cif_args.len()
+            );
+        }
+
+        let cif_arg = &cif_args[length_param_index];
+        let arg_type = &arg_types[length_param_index];
+
+        if let Type::Ref(ref_type) = &arg_type.type_
+            && let Type::Integer(int_type) = &*ref_type.inner_type
+        {
+            match cif_arg {
+                cif::Value::OwnedPtr(owned_ptr) => {
+                    let length = integer::read(int_type, owned_ptr.ptr as *const u8);
+                    return Ok(length as usize);
+                }
+                cif::Value::Ptr(ptr) => {
+                    if !ptr.is_null() {
+                        let length = integer::read(int_type, *ptr as *const u8);
+                        return Ok(length as usize);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if let Type::Integer(_) = &arg_type.type_
+            && let Ok(num) = cif_to_number(cif_arg)
+        {
+            return Ok(num as usize);
+        }
+
+        bail!(
+            "Could not extract length from parameter at index {}: expected Ref<Integer> or Integer, got type {:?} with cif value {:?}",
+            length_param_index,
+            arg_type.type_,
+            cif_arg
+        );
     }
 }

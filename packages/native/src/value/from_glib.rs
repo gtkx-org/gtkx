@@ -1,13 +1,10 @@
 use std::ffi::c_void;
 
 use anyhow::bail;
-use gtk4::glib::{
-    self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNone as _,
-    translate::ToGlibPtr as _,
-};
+use gtk4::glib::{self, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _};
 
 use super::Value;
-use crate::{boxed::Boxed, object::Object, types::*, variant::GVariant as GVariantWrapper};
+use crate::{boxed::Boxed, fundamental::Fundamental, object::Object, types::*};
 
 impl Value {
     pub fn from_glib_value(gvalue: &glib::Value, type_: &Type) -> anyhow::Result<Self> {
@@ -99,26 +96,6 @@ impl Value {
                 Ok(Value::Boolean(boolean))
             }
             Type::GObject(_) => gobject_from_gvalue(gvalue),
-            Type::GParam(gparam_type) => {
-                let param_ptr = unsafe {
-                    glib::gobject_ffi::g_value_get_param(gvalue.to_glib_none().0 as *const _)
-                };
-
-                if param_ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-
-                let param_spec = if !gparam_type.is_transfer_full {
-                    unsafe { glib::ParamSpec::from_glib_none(param_ptr) }
-                } else {
-                    let owned_ptr = unsafe {
-                        glib::gobject_ffi::g_value_dup_param(gvalue.to_glib_none().0 as *const _)
-                    };
-                    unsafe { glib::ParamSpec::from_glib_full(owned_ptr) }
-                };
-
-                Ok(Value::Object(Object::ParamSpec(param_spec).into()))
-            }
             Type::Boxed(boxed_type) => {
                 let gvalue_type = gvalue.type_();
 
@@ -144,33 +121,40 @@ impl Value {
                 let object_id = Object::Boxed(boxed).into();
                 Ok(Value::Object(object_id))
             }
-            Type::GVariant(variant_type) => {
-                let variant_ptr = unsafe {
-                    glib::gobject_ffi::g_value_get_variant(gvalue.to_glib_none().0 as *const _)
-                        .cast::<c_void>()
-                };
-
-                if variant_ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-
-                let variant = if !variant_type.is_transfer_full {
-                    GVariantWrapper::from_glib_none(variant_ptr)
-                } else {
-                    let owned_ptr = unsafe {
-                        glib::gobject_ffi::g_value_dup_variant(gvalue.to_glib_none().0 as *const _)
-                            .cast::<c_void>()
-                    };
-                    GVariantWrapper::from_glib_full(owned_ptr)
-                };
-
-                Ok(Value::Object(Object::GVariant(variant).into()))
-            }
             Type::Null | Type::Undefined => Ok(Value::Null),
             Type::Struct(_) => {
                 bail!(
                     "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
                 )
+            }
+            Type::Fundamental(fundamental_type) => {
+                let gvalue_type = gvalue.type_();
+
+                let ptr = if gvalue_type.is_a(glib::types::Type::VARIANT) {
+                    unsafe {
+                        glib::gobject_ffi::g_value_get_variant(gvalue.to_glib_none().0 as *const _)
+                            .cast::<c_void>()
+                    }
+                } else if gvalue_type.is_a(glib::types::Type::PARAM_SPEC) {
+                    unsafe {
+                        glib::gobject_ffi::g_value_get_param(gvalue.to_glib_none().0 as *const _)
+                            .cast::<c_void>()
+                    }
+                } else {
+                    bail!("Unsupported fundamental type in GValue: {:?}", gvalue_type)
+                };
+
+                if ptr.is_null() {
+                    return Ok(Value::Null);
+                }
+
+                let (ref_fn, unref_fn) = Fundamental::lookup_fns(fundamental_type)?;
+                let fundamental = if fundamental_type.is_transfer_full {
+                    Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
+                } else {
+                    Fundamental::from_glib_none(ptr, ref_fn, unref_fn)
+                };
+                Ok(Value::Object(Object::Fundamental(fundamental).into()))
             }
             Type::Array(_) | Type::HashTable(_) | Type::Ref(_) | Type::Callback(_) => {
                 bail!(
@@ -239,8 +223,16 @@ impl TryFrom<&glib::Value> for Value {
             if variant_ptr.is_null() {
                 Ok(Value::Null)
             } else {
-                let variant = GVariantWrapper::from_glib_none(variant_ptr);
-                Ok(Value::Object(Object::GVariant(variant).into()))
+                use crate::fundamental::{RefFn, UnrefFn};
+
+                let ref_fn: RefFn =
+                    unsafe { std::mem::transmute(glib::ffi::g_variant_ref_sink as *const ()) };
+                let unref_fn: UnrefFn =
+                    unsafe { std::mem::transmute(glib::ffi::g_variant_unref as *const ()) };
+
+                let fundamental =
+                    Fundamental::from_glib_none(variant_ptr, Some(ref_fn), Some(unref_fn));
+                Ok(Value::Object(Object::Fundamental(fundamental).into()))
             }
         } else {
             bail!("Unsupported glib::Value type: {:?}", value.type_())

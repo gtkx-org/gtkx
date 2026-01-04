@@ -12,6 +12,11 @@ import type { CodegenWidgetMeta } from "../../../core/codegen-metadata.js";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
+import {
+    fundamentalSelfType,
+    SELF_TYPE_GOBJECT,
+    type SelfTypeDescriptor,
+} from "../../../core/type-system/ffi-types.js";
 import { analyzeAsyncMethods } from "../../../core/utils/async-analysis.js";
 import { collectParentFactoryMethodNames, collectParentMethodNames } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
@@ -129,9 +134,10 @@ export class ClassGenerator {
         this.updateContextFlags(syncMethods, syncInterfaceMethods, interfaceMethods);
 
         const parentInfo = this.parseParentReferenceInfo();
-        const isParamSpec = this.isParamSpecClass();
+        const isFundamental = this.isFundamentalType();
+        const selfTypeDescriptor = this.getSelfTypeDescriptor();
 
-        const classDecl = this.addClassDeclaration(sourceFile, parentInfo, isParamSpec);
+        const classDecl = this.addClassDeclaration(sourceFile, parentInfo, isFundamental);
 
         const parentFactoryMethodNames = collectParentFactoryMethodNames(this.cls);
         this.constructorBuilder.setParentFactoryMethodNames(parentFactoryMethodNames);
@@ -139,9 +145,9 @@ export class ClassGenerator {
         const allMethodStructures = [
             ...this.constructorBuilder.addConstructorAndBuildFactoryStructures(classDecl, parentInfo.hasParent),
             ...this.staticBuilder.buildStructures(),
-            ...this.methodBuilder.buildStructures(filteredClassMethods, isParamSpec, asyncAnalysis),
+            ...this.methodBuilder.buildStructures(filteredClassMethods, selfTypeDescriptor, asyncAnalysis),
             ...Array.from(interfaceMethodsByNamespace.values()).flatMap((methods) =>
-                this.methodBuilder.buildStructures(methods, isParamSpec, asyncAnalysis),
+                this.methodBuilder.buildStructures(methods, selfTypeDescriptor, asyncAnalysis),
             ),
             ...this.signalBuilder.buildConnectMethodStructures(),
         ];
@@ -163,7 +169,7 @@ export class ClassGenerator {
     private addClassDeclaration(
         sourceFile: SourceFile,
         parentInfo: ParentInfo,
-        isParamSpec: boolean,
+        isFundamental: boolean,
     ): ClassDeclaration {
         let extendsExpr: string | undefined;
         if (parentInfo.hasParent) {
@@ -177,6 +183,7 @@ export class ClassGenerator {
             this.ctx.usesNativeObject = true;
         }
 
+        const objectType = isFundamental ? "fundamental" : "gobject";
         const staticProperties = this.cls.glibTypeName
             ? [
                   {
@@ -191,7 +198,7 @@ export class ClassGenerator {
                       name: "objectType",
                       isStatic: true,
                       isReadonly: true,
-                      initializer: `"${isParamSpec ? "gparam" : "gobject"}" as const`,
+                      initializer: `"${objectType}" as const`,
                       hasOverrideKeyword: parentInfo.hasParent,
                   },
               ]
@@ -214,6 +221,22 @@ export class ClassGenerator {
         );
 
         return hasAnySupportedConstructor;
+    }
+
+    private isFundamentalType(): boolean {
+        if (this.cls.isFundamental()) {
+            return true;
+        }
+        let currentClass = this.cls;
+        while (currentClass.parent) {
+            const parent = this.repository.resolveClass(currentClass.parent as QualifiedName);
+            if (!parent) break;
+            if (parent.isFundamental()) {
+                return true;
+            }
+            currentClass = parent;
+        }
+        return false;
     }
 
     private analyzeAsyncMethods() {
@@ -312,15 +335,30 @@ export class ClassGenerator {
         return parseParentReference(this.cls.parent, this.options.namespace);
     }
 
-    private isParamSpecClass(): boolean {
-        return this.isOrExtendsParamSpec(this.cls);
+    private getSelfTypeDescriptor(): SelfTypeDescriptor {
+        const fundamentalInfo = this.getFundamentalTypeInfo();
+        if (fundamentalInfo) {
+            return fundamentalSelfType(fundamentalInfo.lib, fundamentalInfo.refFunc, fundamentalInfo.unrefFunc);
+        }
+        return SELF_TYPE_GOBJECT;
     }
 
-    private isOrExtendsParamSpec(cls: GirClass): boolean {
-        if (cls.name === "ParamSpec" || cls.glibTypeName === "GParam") {
-            return true;
+    private getFundamentalTypeInfo(): { lib: string; refFunc: string; unrefFunc: string } | null {
+        let currentClass: GirClass | null = this.cls;
+        while (currentClass) {
+            if (currentClass.isFundamental() && currentClass.refFunc && currentClass.unrefFunc) {
+                const namespace = currentClass.qualifiedName.split(".")[0];
+                const ns = this.repository.getNamespace(namespace ?? "");
+                if (ns?.sharedLibrary) {
+                    return {
+                        lib: ns.sharedLibrary,
+                        refFunc: currentClass.refFunc,
+                        unrefFunc: currentClass.unrefFunc,
+                    };
+                }
+            }
+            currentClass = currentClass.getParent();
         }
-        const parent = cls.getParent();
-        return parent !== null && this.isOrExtendsParamSpec(parent);
+        return null;
     }
 }

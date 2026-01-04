@@ -37,6 +37,10 @@ export type FfiTypeDescriptor = {
 
     getTypeFn?: string;
 
+    refFunc?: string;
+
+    unrefFunc?: string;
+
     itemType?: FfiTypeDescriptor;
 
     /**
@@ -47,8 +51,21 @@ export type FfiTypeDescriptor = {
      * - "gptrarray": GLib pointer array
      * - "garray": GLib array with sized elements
      * - "ghashtable": GLib hash table (for HashTableType)
+     * - "sized": Array with length from a parameter
+     * - "fixed": Array with compile-time known fixed size
      */
-    listType?: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "ghashtable";
+    listType?: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "ghashtable" | "sized" | "fixed";
+
+    /**
+     * For sized arrays, the index of the parameter that contains the length.
+     * This is the parameter index in the FFI call arguments array.
+     */
+    lengthParamIndex?: number;
+
+    /**
+     * For fixed-size arrays, the compile-time known size.
+     */
+    fixedSize?: number;
 
     keyType?: FfiTypeDescriptor;
 
@@ -256,6 +273,26 @@ export const gobjectType = (transferFull: boolean): FfiTypeDescriptor => ({
 });
 
 /**
+ * Creates a fundamental type FFI descriptor for types with custom ref/unref functions.
+ * @param lib - library containing the ref/unref functions
+ * @param refFunc - name of the ref function
+ * @param unrefFunc - name of the unref function
+ * @param transferFull - true for transfer full, false for transfer none
+ */
+export const fundamentalType = (
+    lib: string,
+    refFunc: string,
+    unrefFunc: string,
+    transferFull: boolean,
+): FfiTypeDescriptor => ({
+    type: "fundamental",
+    lib,
+    refFunc,
+    unrefFunc,
+    ownership: toOwnership(transferFull),
+});
+
+/**
  * Creates a boxed FFI type descriptor.
  * @param transferFull - true for transfer full, false for transfer none
  */
@@ -286,17 +323,30 @@ export const structType = (innerType: string, transferFull: boolean, size?: numb
 /**
  * Creates an array FFI type descriptor.
  * @param transferFull - true for transfer full, false for transfer none
+ * @param lengthParamIndex - for sized arrays, the index of the parameter containing the length
+ * @param fixedSize - for fixed-size arrays, the compile-time known size
  */
 export const arrayType = (
     itemType: FfiTypeDescriptor,
-    listType: "array" | "glist" | "gslist" | "gptrarray" | "garray" = "array",
+    listType: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "sized" | "fixed" = "array",
     transferFull: boolean = true,
-): FfiTypeDescriptor => ({
-    type: "array",
-    itemType,
-    listType,
-    ownership: toOwnership(transferFull),
-});
+    lengthParamIndex?: number,
+    fixedSize?: number,
+): FfiTypeDescriptor => {
+    const result: FfiTypeDescriptor = {
+        type: "array",
+        itemType,
+        listType,
+        ownership: toOwnership(transferFull),
+    };
+    if (lengthParamIndex !== undefined) {
+        result.lengthParamIndex = lengthParamIndex;
+    }
+    if (fixedSize !== undefined) {
+        result.fixedSize = fixedSize;
+    }
+    return result;
+};
 
 /**
  * Creates a GPtrArray FFI type descriptor.
@@ -422,14 +472,22 @@ export const isMemoryWritableType = (typeName: string): boolean => MEMORY_WRITAB
  */
 export type SelfTypeDescriptor =
     | { type: "gobject"; ownership: "none" }
-    | { type: "gparam"; ownership: "none" }
+    | { type: "fundamental"; ownership: "none"; lib: string; refFunc: string; unrefFunc: string }
     | { type: "boxed"; ownership: "none"; innerType: string; lib: string };
 
 /** Self type descriptor for GObject instance methods. */
 export const SELF_TYPE_GOBJECT: SelfTypeDescriptor = { type: "gobject", ownership: "none" };
 
-/** Self type descriptor for GParamSpec instance methods. */
-export const SELF_TYPE_GPARAM: SelfTypeDescriptor = { type: "gparam", ownership: "none" };
+/**
+ * Creates a fundamental self type descriptor for types with custom ref/unref.
+ */
+export const fundamentalSelfType = (lib: string, refFunc: string, unrefFunc: string): SelfTypeDescriptor => ({
+    type: "fundamental",
+    ownership: "none",
+    lib,
+    refFunc,
+    unrefFunc,
+});
 
 /**
  * Creates a boxed self type descriptor.

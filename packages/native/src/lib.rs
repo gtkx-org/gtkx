@@ -39,6 +39,7 @@ pub mod arg;
 pub mod boxed;
 pub mod callback;
 pub mod cif;
+pub mod fundamental;
 pub mod gtk_dispatch;
 pub mod integer;
 mod js_dispatch;
@@ -49,7 +50,6 @@ pub mod queue;
 pub mod state;
 pub mod types;
 pub mod value;
-pub mod variant;
 
 use neon::prelude::*;
 

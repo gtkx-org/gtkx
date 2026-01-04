@@ -18,6 +18,7 @@ import {
     FFI_UINT32,
     FFI_VOID,
     type FfiTypeDescriptor,
+    fundamentalType,
     gArrayType,
     gobjectType,
     hashTableType,
@@ -64,9 +65,10 @@ export class FfiMapper {
      * @param type - The normalized type to map
      * @param isReturn - Whether this is a return type (affects ownership)
      * @param parentTransferOwnership - Transfer ownership from parent context
+     * @param lengthParamOffset - Offset to add to lengthParamIndex for sized arrays (e.g., 1 for instance methods)
      * @returns Mapped type with TypeScript string, FFI descriptor, and required imports
      */
-    mapType(type: GirType, isReturn = false, parentTransferOwnership?: string): MappedType {
+    mapType(type: GirType, isReturn = false, parentTransferOwnership?: string, lengthParamOffset = 0): MappedType {
         const imports: TypeImport[] = [];
 
         if (type.isHashTable()) {
@@ -98,30 +100,51 @@ export class FfiMapper {
         }
 
         if (type.isArray) {
-            const listType: "glist" | "gslist" | undefined = type.isList()
+            const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
+
+            const isSizedArray =
+                type.lengthParamIndex !== undefined &&
+                (type.zeroTerminated === false || type.zeroTerminated === undefined);
+
+            const isFixedSizeArray = type.fixedSize !== undefined;
+
+            let listType: "glist" | "gslist" | "sized" | "fixed" | undefined = type.isList()
                 ? (type.containerType as "glist" | "gslist")
                 : type.cType?.includes("GSList")
                   ? "gslist"
                   : type.cType?.includes("GList")
                     ? "glist"
                     : undefined;
-            const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
+
+            if (isFixedSizeArray) {
+                listType = "fixed";
+            } else if (isSizedArray) {
+                listType = "sized";
+            }
+
+            const adjustedLengthParamIndex =
+                type.lengthParamIndex !== undefined ? type.lengthParamIndex + lengthParamOffset : undefined;
 
             if (type.elementType) {
                 const elementTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
-                const elementResult = this.mapType(type.elementType, isReturn, elementTransferOwnership);
+                const elementResult = this.mapType(
+                    type.elementType,
+                    isReturn,
+                    elementTransferOwnership,
+                    lengthParamOffset,
+                );
                 imports.push(...elementResult.imports);
 
                 return {
                     ts: `${elementResult.ts}[]`,
-                    ffi: arrayType(elementResult.ffi, listType, transferFull),
+                    ffi: arrayType(elementResult.ffi, listType, transferFull, adjustedLengthParamIndex, type.fixedSize),
                     imports,
                 };
             }
 
             return {
                 ts: "unknown[]",
-                ffi: arrayType(FFI_VOID, listType, transferFull),
+                ffi: arrayType(FFI_VOID, listType, transferFull, adjustedLengthParamIndex, type.fixedSize),
                 imports,
             };
         }
@@ -345,6 +368,9 @@ export class FfiMapper {
                 isExternal,
                 glibTypeName: cls.glibTypeName,
                 glibGetType: cls.glibGetType,
+                isFundamental: cls.isFundamental(),
+                refFunc: cls.refFunc,
+                unrefFunc: cls.unrefFunc,
             };
         }
 
@@ -371,6 +397,9 @@ export class FfiMapper {
                 glibTypeName: record.glibTypeName,
                 glibGetType: record.glibGetType,
                 isPlainStruct: record.isPlainStruct(),
+                isFundamental: record.isFundamental(),
+                copyFunction: record.copyFunction,
+                freeFunction: record.freeFunction,
             };
         }
 
@@ -442,8 +471,8 @@ export class FfiMapper {
     }
 
     private computeTransferFull(isReturn: boolean, transferOwnership?: string): boolean {
-        if (transferOwnership === "full") return true;
-        if (transferOwnership === "none" || transferOwnership === "container") return false;
+        if (transferOwnership === "full" || transferOwnership === "container") return true;
+        if (transferOwnership === "none") return false;
         return !isReturn;
     }
 
@@ -493,13 +522,16 @@ export class FfiMapper {
             case "record": {
                 const transferFull = this.computeTransferFull(isReturn, transferOwnership);
 
-                if (resolved.name === "Variant" && resolved.namespace === "GLib") {
-                    return {
-                        ts: qualifiedName,
-                        ffi: { type: "gvariant", ownership: transferFull ? "full" : "none" },
-                        imports,
-                        kind: "record",
-                    };
+                if (resolved.isFundamental && resolved.copyFunction && resolved.freeFunction) {
+                    const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
+                    if (sharedLib) {
+                        return {
+                            ts: qualifiedName,
+                            ffi: fundamentalType(sharedLib, resolved.copyFunction, resolved.freeFunction, transferFull),
+                            imports,
+                            kind: "record",
+                        };
+                    }
                 }
 
                 const { glibTypeName, glibGetType } = resolved;
@@ -533,13 +565,16 @@ export class FfiMapper {
             case "interface": {
                 const transferFull = this.computeTransferFull(isReturn, transferOwnership);
 
-                if (resolved.glibTypeName === "GParam") {
-                    return {
-                        ts: qualifiedName,
-                        ffi: { type: "gparam", ownership: transferFull ? "full" : "none" },
-                        imports,
-                        kind: resolved.kind,
-                    };
+                if (resolved.isFundamental && resolved.refFunc && resolved.unrefFunc) {
+                    const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
+                    if (sharedLib) {
+                        return {
+                            ts: qualifiedName,
+                            ffi: fundamentalType(sharedLib, resolved.refFunc, resolved.unrefFunc, transferFull),
+                            imports,
+                            kind: resolved.kind,
+                        };
+                    }
                 }
 
                 return {
@@ -673,4 +708,9 @@ type ResolvedType = {
     glibTypeName?: string;
     glibGetType?: string;
     isPlainStruct?: boolean;
+    isFundamental?: boolean;
+    refFunc?: string;
+    unrefFunc?: string;
+    copyFunction?: string;
+    freeFunction?: string;
 };
