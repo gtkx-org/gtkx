@@ -1,11 +1,3 @@
-/**
- * React Generator
- *
- * Unified React/JSX generator that reads from:
- * - CodegenWidgetMeta: all widget metadata (from FFI generation)
- * - Shared constants: widget classification (LIST_WIDGET_NAMES, etc.)
- */
-
 import type { CodegenWidgetMeta } from "../core/codegen-metadata.js";
 import type { CodegenProject } from "../core/project.js";
 import { InternalGenerator } from "./generators/internal.js";
@@ -13,6 +5,12 @@ import { JsxTypesGenerator } from "./generators/jsx-types/index.js";
 import { RegistryGenerator } from "./generators/registry.js";
 import { MetadataReader } from "./metadata-reader.js";
 
+/**
+ * Generates React/JSX bindings from widget metadata.
+ *
+ * Creates JSX intrinsic elements, internal implementations, and
+ * component registry for `@gtkx/react`.
+ */
 export class ReactGenerator {
     private readonly reader: MetadataReader;
 

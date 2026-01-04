@@ -1,3 +1,8 @@
+/**
+ * Opaque identifier for a native GObject.
+ *
+ * This branded type ensures type safety for native object references.
+ */
 export type ObjectId = { readonly __brand: "ObjectId" };
 
 type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned: boolean };
@@ -57,6 +62,11 @@ type CallbackType = {
     returnType?: Type;
 };
 
+/**
+ * Discriminated union of all FFI type descriptors.
+ *
+ * Describes how to marshal values between JavaScript and native code.
+ */
 export type Type =
     | IntegerType
     | FloatType
@@ -73,6 +83,26 @@ export type Type =
     | NullType
     | UndefinedType;
 
-export type Arg = { type: Type; value: unknown; optional?: boolean };
+/**
+ * An argument for an FFI call.
+ *
+ * Combines a value with its type information for marshaling.
+ */
+export type Arg = {
+    /** Type descriptor for marshaling */
+    type: Type;
+    /** The argument value */
+    value: unknown;
+    /** Whether the argument can be null/undefined */
+    optional?: boolean;
+};
 
-export type Ref<T> = { value: T };
+/**
+ * A mutable reference wrapper for out-parameters.
+ *
+ * @typeParam T - The type of the referenced value
+ */
+export type Ref<T> = {
+    /** The current value */
+    value: T;
+};

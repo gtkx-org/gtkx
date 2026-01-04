@@ -13,6 +13,11 @@ let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 let application: Application | null = null;
 
+/**
+ * Checks if the GTK application runtime is currently running.
+ *
+ * @returns `true` if {@link start} has been called and {@link stop} has not
+ */
 export const isStarted = (): boolean => application !== null;
 let exitHandlersRegistered = false;
 

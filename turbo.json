@@ -27,7 +27,7 @@
             "outputLogs": "new-only"
         },
         "lint": {
-            "inputs": ["*.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "scripts/**/*.ts"],
+            "inputs": ["*.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "scripts/**/*.ts", "src/**/*.rs", "tests/**/*.rs"],
             "outputs": [],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]

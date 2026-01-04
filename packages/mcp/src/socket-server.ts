@@ -19,12 +19,23 @@ type SocketServerEventMap = {
     error: [Error];
 };
 
+/**
+ * Represents a connected application.
+ */
 export interface AppConnection {
+    /** Unique connection identifier */
     id: string;
+    /** The underlying socket */
     socket: net.Socket;
+    /** Buffer for incomplete messages */
     buffer: string;
 }
 
+/**
+ * Unix domain socket server for MCP communication.
+ *
+ * Manages connections from GTKX applications and handles IPC messaging.
+ */
 export class SocketServer extends EventEmitter<SocketServerEventMap> {
     private server: net.Server | null = null;
     private connections: Map<string, AppConnection> = new Map();

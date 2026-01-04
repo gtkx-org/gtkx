@@ -44,6 +44,8 @@ export type CodegenWidgetMeta = {
     readonly signals: readonly SignalAnalysis[];
     /** Constructor parameter names (camelCase) - for internal.ts CONSTRUCTOR_PROPS */
     readonly constructorParams: readonly string[];
+    /** Class documentation from GIR */
+    readonly doc: string | undefined;
 };
 
 /**

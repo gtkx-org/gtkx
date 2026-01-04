@@ -112,10 +112,15 @@ export class RecordGenerator {
             };
         });
 
-        sourceFile.addInterface({
+        const propStrings = properties.map((p) => {
+            const questionMark = p.hasQuestionToken ? "?" : "";
+            return `${p.name}${questionMark}: ${p.type}`;
+        });
+
+        sourceFile.addTypeAlias({
             name: `${recordName}Init`,
             isExported: true,
-            properties,
+            type: `{ ${propStrings.join("; ")} }`,
         });
     }
 
@@ -404,6 +409,7 @@ export class RecordGenerator {
                 classDecl.addSetAccessor({
                     name: fieldName,
                     parameters: [{ name: "value", type: typeMapping.ts }],
+                    docs: buildJsDocStructure(field.doc, this.options.namespace),
                     statements: (writer) => {
                         writer.write("write(this.id, ");
                         this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);

@@ -4,6 +4,11 @@ import { defineCommand } from "citty";
 import { intro, log, outro } from "../core/utils/progress.js";
 import { GIRS_DIR, SYSTEM_GIRS_DIR } from "./constants.js";
 
+/**
+ * Set of GIR filenames to sync from the system.
+ *
+ * Contains the GTK4, GLib, and other library GIR files needed for code generation.
+ */
 const GIRS_TO_SYNC = new Set([
     "Adw-1.gir",
     "AppStream-1.0.gir",
@@ -39,6 +44,11 @@ const GIRS_TO_SYNC = new Set([
 
 export { GIRS_TO_SYNC };
 
+/**
+ * CLI command that syncs GIR files from the system to the workspace.
+ *
+ * Copies required GIR files from `/usr/share/gir-1.0` to the local `girs` directory.
+ */
 export const sync = defineCommand({
     meta: {
         name: "sync",

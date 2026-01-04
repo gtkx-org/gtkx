@@ -4,11 +4,11 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
-import { logWidget } from "./pretty-widget.js";
 import * as queries from "./queries.js";
 import { setScreenRoot } from "./screen.js";
 import { tick } from "./timing.js";
 import type { ByRoleOptions, RenderOptions, RenderResult, TextMatch, TextMatchOptions } from "./types.js";
+import { prettyWidget } from "./pretty-widget.js";
 
 let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
@@ -125,7 +125,7 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
             return update(instance, withCtx, fiberRoot);
         },
         debug: () => {
-            logWidget(application);
+            console.log(prettyWidget(application));
         },
     };
 };

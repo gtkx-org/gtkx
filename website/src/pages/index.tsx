@@ -168,8 +168,8 @@ export default function Home(): ReactNode {
         <Layout title={siteConfig.title} description={siteConfig.tagline}>
             <HeroSection />
             <main>
-                <DemoSection />
                 <FeaturesSection />
+                <DemoSection />
                 <CodeExample />
                 <CTASection />
             </main>

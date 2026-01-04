@@ -57,6 +57,25 @@ const startXvfb = async (display: number): Promise<ChildProcess | null> => {
     return xvfb;
 };
 
+/**
+ * Creates the GTKX Vitest plugin for running GTK tests.
+ *
+ * Manages Xvfb virtual display instances for headless GTK testing.
+ * Each worker thread gets its own display to avoid interference.
+ *
+ * @returns Vitest plugin configuration
+ *
+ * @example
+ * ```ts
+ * // vitest.config.ts
+ * import { defineConfig } from "vitest/config";
+ * import gtkx from "@gtkx/vitest";
+ *
+ * export default defineConfig({
+ *   plugins: [gtkx()],
+ * });
+ * ```
+ */
 const gtkx = (): Plugin => {
     const workerSetupPath = join(import.meta.dirname, "setup.js");
     const stateDir = getStateDir();

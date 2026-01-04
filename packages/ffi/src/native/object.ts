@@ -12,6 +12,28 @@ type GetNativeObjectResult<T extends ObjectId | null | undefined, TClass extends
       ? U
       : NativeObject;
 
+/**
+ * Creates a JavaScript wrapper for a native GObject.
+ *
+ * Resolves the runtime type of the object and creates an instance of the
+ * appropriate wrapper class. If a target type is provided, uses that
+ * class directly without runtime type resolution.
+ *
+ * @typeParam T - The object ID type (null, undefined, or ObjectId)
+ * @typeParam TClass - Optional target wrapper class type
+ * @param id - The native object ID (or null/undefined)
+ * @param targetType - Optional wrapper class to use directly
+ * @returns A wrapper instance, or null if id is null/undefined
+ *
+ * @example
+ * ```tsx
+ * // Automatic type resolution
+ * const widget = getNativeObject(widgetId);
+ *
+ * // Explicit type
+ * const button = getNativeObject(buttonId, Gtk.Button);
+ * ```
+ */
 export function getNativeObject<
     T extends ObjectId | null | undefined,
     TClass extends NativeClass | undefined = undefined,

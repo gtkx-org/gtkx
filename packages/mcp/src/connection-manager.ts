@@ -26,6 +26,11 @@ interface RegisteredApp {
     connection: AppConnection;
 }
 
+/**
+ * Manages connections between the MCP server and GTKX applications.
+ *
+ * Handles app registration, request routing, and connection lifecycle.
+ */
 export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     private apps: Map<string, RegisteredApp> = new Map();
     private connectionToApp: Map<string, string> = new Map();

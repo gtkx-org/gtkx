@@ -281,16 +281,6 @@ const output = prettyWidget(container, {
 });
 ```
 
-### `logWidget`
-
-Log a widget tree directly to the console:
-
-```tsx
-import { logWidget } from "@gtkx/testing";
-
-logWidget(window);
-```
-
 ## Screenshots
 
 ### `screen.screenshot`

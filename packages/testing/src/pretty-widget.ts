@@ -5,8 +5,13 @@ import { type Container, isApplication } from "./traversal.js";
 const DEFAULT_MAX_LENGTH = 7000;
 const INDENT = "  ";
 
+/**
+ * Options for {@link prettyWidget}.
+ */
 export type PrettyWidgetOptions = {
+    /** Maximum output length before truncation (default: 7000) */
     maxLength?: number;
+    /** Enable ANSI color highlighting (default: auto-detect) */
     highlight?: boolean;
 };
 
@@ -140,6 +145,29 @@ const printContainer = (container: Container, colors: HighlightColors): string =
     return printWidget(container, colors, 0);
 };
 
+/**
+ * Formats a widget tree as a readable string for debugging.
+ *
+ * Renders the widget hierarchy in an HTML-like format with accessibility
+ * attributes like role, data-testid, and text content.
+ *
+ * @param container - The container widget or application to format
+ * @param options - Formatting options for length and highlighting
+ * @returns Formatted string representation of the widget tree
+ *
+ * @example
+ * ```tsx
+ * import { prettyWidget } from "@gtkx/testing";
+ *
+ * console.log(prettyWidget(application));
+ * // Output:
+ * // <GtkApplicationWindow role="window">
+ * //   <GtkButton role="button">
+ * //     Click me
+ * //   </GtkButton>
+ * // </GtkApplicationWindow>
+ * ```
+ */
 export const prettyWidget = (container: Container, options: PrettyWidgetOptions = {}): string => {
     const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
     const maxLength = options.maxLength ?? envLimit;
@@ -157,8 +185,4 @@ export const prettyWidget = (container: Container, options: PrettyWidgetOptions 
     }
 
     return output.trimEnd();
-};
-
-export const logWidget = (container: Container, options: PrettyWidgetOptions = {}): void => {
-    console.log(prettyWidget(container, options));
 };

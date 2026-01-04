@@ -2,10 +2,10 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { logWidget } from "./pretty-widget.js";
 import * as queries from "./queries.js";
 import { type ScreenshotOptions, screenshot as screenshotWidget } from "./screenshot.js";
 import type { ByRoleOptions, ScreenshotResult, TextMatch, TextMatchOptions } from "./types.js";
+import { prettyWidget } from "./index.js";
 
 const getScreenshotDir = (): string => {
     const dir = join(tmpdir(), "gtkx-screenshots");
@@ -81,7 +81,7 @@ export const screen = {
         queries.findAllByTestId(getRoot(), testId, options),
     /** Print the widget tree to console for debugging */
     debug: () => {
-        logWidget(getRoot());
+        console.log(prettyWidget(getRoot()));
     },
     /**
      * Capture a screenshot of the application window, saving it to a temporary file and logging the file path.

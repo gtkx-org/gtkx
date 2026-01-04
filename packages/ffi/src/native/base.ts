@@ -15,6 +15,7 @@ export abstract class NativeObject {
     /** The type category: gobject, interface, boxed, struct, or fundamental */
     static readonly objectType: "gobject" | "interface" | "boxed" | "struct" | "fundamental";
 
+    /** The underlying native object identifier */
     id: ObjectId;
 
     // biome-ignore lint/suspicious/noExplicitAny: Required for NativeClass type compatibility

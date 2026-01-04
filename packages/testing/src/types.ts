@@ -130,6 +130,9 @@ export type RenderResult = BoundQueries & {
     debug: () => void;
 };
 
+/**
+ * Result returned by {@link screenshot} and screen.screenshot.
+ */
 export type ScreenshotResult = {
     /** Base64-encoded PNG image data */
     data: string;

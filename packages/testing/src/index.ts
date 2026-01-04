@@ -1,6 +1,6 @@
 export { fireEvent } from "./fire-event.js";
 export type { PrettyWidgetOptions } from "./pretty-widget.js";
-export { logWidget, prettyWidget } from "./pretty-widget.js";
+export {  prettyWidget } from "./pretty-widget.js";
 export {
     findAllByLabelText,
     findAllByRole,

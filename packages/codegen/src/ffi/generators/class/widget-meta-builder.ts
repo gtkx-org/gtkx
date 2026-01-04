@@ -60,6 +60,7 @@ export class WidgetMetaBuilder {
             properties,
             signals,
             constructorParams,
+            doc: this.cls.doc,
         };
     }
 

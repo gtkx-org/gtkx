@@ -1,10 +1,3 @@
-/**
- * Metadata Reader
- *
- * Reads widget data from CodegenWidgetMeta.
- * Provides access to all widget metadata computed during FFI generation.
- */
-
 import type { CodegenWidgetMeta } from "../core/codegen-metadata.js";
 
 const WIDGET_PRIORITY: Record<string, number> = {
@@ -26,13 +19,22 @@ function compareWidgetsByClassName(a: { className: string }, b: { className: str
     return a.className.localeCompare(b.className);
 }
 
+/**
+ * Sorts widgets by class name with priority for core widgets.
+ *
+ * Widget and Window are sorted first, others alphabetically.
+ *
+ * @param widgets - Array of objects with className property
+ * @returns New sorted array
+ */
 export function sortWidgetsByClassName<T extends { className: string }>(widgets: readonly T[]): T[] {
     return [...widgets].sort(compareWidgetsByClassName);
 }
 
 /**
- * Widget info from metadata.
- * Uses Pick<> to derive from CodegenWidgetMeta for DRY compliance.
+ * Essential widget information for code generation.
+ *
+ * Derived from CodegenWidgetMeta with only the fields needed for React generation.
  */
 export type WidgetInfo = Pick<
     CodegenWidgetMeta,
@@ -48,6 +50,12 @@ export type WidgetInfo = Pick<
     | "constructorParams"
 >;
 
+/**
+ * Reads and provides access to widget metadata.
+ *
+ * Indexes widgets by JSX name and namespace.class for efficient lookup
+ * during React code generation.
+ */
 export class MetadataReader {
     private readonly widgetsByJsxName = new Map<string, WidgetInfo>();
     private readonly widgetsByNamespaceClass = new Map<string, WidgetInfo>();

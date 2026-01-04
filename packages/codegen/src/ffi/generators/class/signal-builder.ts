@@ -79,6 +79,11 @@ export class SignalBuilder {
                     { name: "after", initializer: "false" },
                 ],
                 returnType: "number",
+                docs: [
+                    {
+                        description: `Connects a handler to a signal on this ${this.className}.\n\n@param signal - The signal name to connect to\n@param handler - Callback function invoked when signal is emitted\n@param after - If true, handler is called after default handler\n@returns Connection ID for disconnecting`,
+                    },
+                ],
                 statements: this.writeConnectMethodBody(ownSignals),
             },
         ];

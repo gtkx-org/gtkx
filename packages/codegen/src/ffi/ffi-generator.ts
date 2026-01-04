@@ -32,6 +32,12 @@ type FfiNamespaceConfig = {
     skipEmit?: boolean;
 };
 
+/**
+ * Generates TypeScript FFI bindings for a GIR namespace.
+ *
+ * Processes classes, records, interfaces, enums, functions, and constants
+ * from GIR data and outputs TypeScript wrappers for `@gtkx/ffi`.
+ */
 export class FfiGenerator {
     private ctx: GenerationContext;
     private options: FfiNamespaceConfig;

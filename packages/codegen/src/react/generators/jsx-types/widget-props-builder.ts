@@ -1,23 +1,30 @@
 /**
  * Widget Props Builder
  *
- * Builds widget props interfaces using pre-computed metadata.
+ * Builds widget props type aliases using pre-computed metadata.
  * Works with JsxWidget from JsxTypesGenerator.
  *
  * Optimized to use ts-morph structures API for batched operations.
  */
 
-import type { OptionalKind, PropertySignatureStructure, SourceFile } from "ts-morph";
+import type { CodeBlockWriter, OptionalKind, PropertySignatureStructure, SourceFile, WriterFunction } from "ts-morph";
 import type { PropertyAnalysis, SignalAnalysis, SignalParam } from "../../../core/generator-types.js";
 import { sanitizeDoc } from "../../../core/utils/doc-formatter.js";
 import { toPascalCase } from "../../../core/utils/naming.js";
 import { qualifyType } from "../../../core/utils/type-qualification.js";
 import type { JsxWidget } from "./generator.js";
 
+type PropInfo = {
+    name: string;
+    type: string;
+    optional: boolean;
+    doc?: string;
+};
+
 type PropStructure = OptionalKind<PropertySignatureStructure>;
 
 /**
- * Builds widget props interfaces using pre-computed metadata.
+ * Builds widget props type aliases using pre-computed metadata.
  * Works with JsxWidget.
  */
 export class WidgetPropsBuilder {
@@ -54,7 +61,7 @@ export class WidgetPropsBuilder {
 
     /**
      * Builds the base WidgetProps interface.
-     * Uses ts-morph structures API for batched operations.
+     * Uses interface (not type alias) because it needs declaration merging in jsx.ts.
      */
     buildWidgetPropsInterface(
         sourceFile: SourceFile,
@@ -92,7 +99,7 @@ export class WidgetPropsBuilder {
     }
 
     /**
-     * Builds a widget-specific props interface.
+     * Builds a widget-specific props type alias.
      * Uses ts-morph structures API for batched operations.
      */
     buildWidgetSpecificPropsInterface(
@@ -106,90 +113,84 @@ export class WidgetPropsBuilder {
         const widgetName = toPascalCase(className);
         const parentPropsName = this.getParentPropsName(widget);
 
-        const allPropertyStructures: PropStructure[] = [];
+        const allProps: PropInfo[] = [];
 
         for (const prop of properties) {
             this.trackNamespacesFromAnalysis(prop.referencedNamespaces);
             const qualifiedType = qualifyType(prop.type, namespace);
             const isOptional = !prop.isRequired;
-            allPropertyStructures.push({
+            allProps.push({
                 name: prop.camelName,
                 type: isOptional ? `${qualifiedType} | null` : qualifiedType,
-                hasQuestionToken: isOptional,
-                docs: prop.doc ? [{ description: this.formatDocDescription(prop.doc, namespace) }] : undefined,
+                optional: isOptional,
+                doc: prop.doc ? this.formatDocDescription(prop.doc, namespace) : undefined,
             });
         }
 
         for (const signal of signals) {
             this.trackNamespacesFromAnalysis(signal.referencedNamespaces);
-            allPropertyStructures.push({
+            allProps.push({
                 name: signal.handlerName,
                 type: `${this.buildHandlerType(signal, className, namespace)} | null`,
-                hasQuestionToken: true,
-                docs: signal.doc ? [{ description: this.formatDocDescription(signal.doc, namespace) }] : undefined,
+                optional: true,
+                doc: signal.doc ? this.formatDocDescription(signal.doc, namespace) : undefined,
             });
         }
 
-        allPropertyStructures.push(...this.getSpecialWidgetProperties(widget));
+        allProps.push(...this.getSpecialWidgetProperties(widget));
 
         if (widget.isContainer || widget.isListWidget || widget.isColumnViewWidget || widget.isDropDownWidget) {
-            allPropertyStructures.push({
+            allProps.push({
                 name: "children",
                 type: "ReactNode",
-                hasQuestionToken: true,
+                optional: true,
             });
         }
 
         const propsUnion = allPropNamesKebab.length > 0 ? allPropNamesKebab.map((n) => `"${n}"`).join(" | ") : "string";
-        allPropertyStructures.push({
+        allProps.push({
             name: "onNotify",
             type: `((self: ${namespace}.${widgetName}, propName: ${propsUnion}) => void) | null`,
-            hasQuestionToken: true,
-            docs: [
-                {
-                    description:
-                        "Called when any property on this widget changes.\n@param self - The widget that emitted the notification\n@param propName - The name of the property that changed (in kebab-case)",
-                },
-            ],
+            optional: true,
+            doc: "Called when any property on this widget changes.\n@param self - The widget that emitted the notification\n@param propName - The name of the property that changed (in kebab-case)",
         });
 
-        allPropertyStructures.push({
+        allProps.push({
             name: "ref",
             type: `Ref<${namespace}.${widgetName}>`,
-            hasQuestionToken: true,
+            optional: true,
         });
 
-        sourceFile.addInterface({
+        sourceFile.addTypeAlias({
             name: `${jsxName}Props`,
-            extends: [parentPropsName],
             isExported: true,
             docs: [{ description: `Props for the {@link ${jsxName}} widget.` }],
-            properties: allPropertyStructures,
+            type: this.buildIntersectionTypeWriter(parentPropsName, allProps),
         });
     }
 
-    private getSpecialWidgetProperties(widget: JsxWidget): PropStructure[] {
-        const props: PropStructure[] = [];
+    private getSpecialWidgetProperties(widget: JsxWidget): PropInfo[] {
+        const props: PropInfo[] = [];
 
         if (widget.isListWidget || widget.isColumnViewWidget) {
             props.push(
                 {
                     name: "selected",
                     type: "string[] | null",
-                    hasQuestionToken: true,
-                    docs: [{ description: "Array of selected item IDs" }],
+                    optional: true,
+                    doc: "Array of selected item IDs",
                 },
                 {
                     name: "onSelectionChanged",
                     type: "((ids: string[]) => void) | null",
-                    hasQuestionToken: true,
-                    docs: [{ description: "Called when selection changes with array of selected item IDs" }],
+                    optional: true,
+                    doc: "Called when selection changes with array of selected item IDs",
                 },
                 {
                     name: "selectionMode",
                     type: 'import("@gtkx/ffi/gtk").SelectionMode | null',
-                    hasQuestionToken: true,
-                    docs: [{ description: "Selection mode: SINGLE (default) or MULTIPLE" }],
+                    optional: true,
+                    doc: "Selection mode: SINGLE (default) or MULTIPLE",
                 },
             );
         }
@@ -199,20 +200,20 @@ export class WidgetPropsBuilder {
                 {
                     name: "sortColumn",
                     type: "string | null",
-                    hasQuestionToken: true,
-                    docs: [{ description: "ID of the currently sorted column, or null if unsorted" }],
+                    optional: true,
+                    doc: "ID of the currently sorted column, or null if unsorted",
                 },
                 {
                     name: "sortOrder",
                     type: 'import("@gtkx/ffi/gtk").SortType | null',
-                    hasQuestionToken: true,
-                    docs: [{ description: "The current sort direction" }],
+                    optional: true,
+                    doc: "The current sort direction",
                 },
                 {
                     name: "onSortChange",
                     type: '((column: string | null, order: import("@gtkx/ffi/gtk").SortType) => void) | null',
-                    hasQuestionToken: true,
-                    docs: [{ description: "Called when a column header is clicked to change sort" }],
+                    optional: true,
+                    doc: "Called when a column header is clicked to change sort",
                 },
             );
         }
@@ -221,13 +222,8 @@ export class WidgetPropsBuilder {
             props.push({
                 name: "renderItem",
                 type: '(item: any) => import("react").ReactNode',
-                hasQuestionToken: false,
-                docs: [
-                    {
-                        description:
-                            "Render function for list items.\nCalled with null during setup (for loading state) and with the actual item during bind.",
-                    },
-                ],
+                optional: false,
+                doc: "Render function for list items.\nCalled with null during setup (for loading state) and with the actual item during bind.",
             });
         }
 
@@ -236,14 +232,14 @@ export class WidgetPropsBuilder {
                 {
                     name: "selectedId",
                     type: "string | null",
-                    hasQuestionToken: true,
-                    docs: [{ description: "ID of the initially selected item" }],
+                    optional: true,
+                    doc: "ID of the initially selected item",
                 },
                 {
                     name: "onSelectionChanged",
                     type: "((id: string) => void) | null",
-                    hasQuestionToken: true,
-                    docs: [{ description: "Called when selection changes with the selected item's ID" }],
+                    optional: true,
+                    doc: "Called when selection changes with the selected item's ID",
                 },
             );
         }
@@ -277,5 +273,52 @@ export class WidgetPropsBuilder {
             escapeXmlTags: true,
             linkStyle: "prefixed",
         });
+    }
+
+    private buildPropsObjectWriter(props: PropInfo[]): WriterFunction {
+        return (writer: CodeBlockWriter) => {
+            writer.write("{");
+            writer.newLine();
+            writer.indent(() => {
+                for (const prop of props) {
+                    if (prop.doc) {
+                        this.writeJsDoc(writer, prop.doc);
+                    }
+                    const questionMark = prop.optional ? "?" : "";
+                    writer.writeLine(`${prop.name}${questionMark}: ${prop.type};`);
+                }
+            });
+            writer.write("}");
+        };
+    }
+
+    private buildIntersectionTypeWriter(parentType: string, props: PropInfo[]): WriterFunction {
+        return (writer: CodeBlockWriter) => {
+            writer.write(`${parentType} & {`);
+            writer.newLine();
+            writer.indent(() => {
+                for (const prop of props) {
+                    if (prop.doc) {
+                        this.writeJsDoc(writer, prop.doc);
+                    }
+                    const questionMark = prop.optional ? "?" : "";
+                    writer.writeLine(`${prop.name}${questionMark}: ${prop.type};`);
+                }
+            });
+            writer.write("}");
+        };
+    }
+
+    private writeJsDoc(writer: CodeBlockWriter, doc: string): void {
+        const lines = doc.split("\n");
+        if (lines.length === 1) {
+            writer.writeLine(`/** ${doc} */`);
+        } else {
+            writer.writeLine("/**");
+            for (const line of lines) {
+                writer.writeLine(` * ${line}`);
+            }
+            writer.writeLine(" */");
+        }
     }
 }

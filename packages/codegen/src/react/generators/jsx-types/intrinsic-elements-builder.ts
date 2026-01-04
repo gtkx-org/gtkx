@@ -7,8 +7,9 @@
  * Optimized to use ts-morph structures API for batched operations.
  */
 
-import type { OptionalKind, PropertySignatureStructure, SourceFile } from "ts-morph";
+import type { SourceFile } from "ts-morph";
 import { ModuleDeclarationKind, StructureKind } from "ts-morph";
+import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
 import { createConstExport } from "../../../core/utils/structure-helpers.js";
 import type { JsxWidget } from "./generator.js";
@@ -23,7 +24,11 @@ export class IntrinsicElementsBuilder {
      * Uses ts-morph structures API for batched operations.
      */
     buildWidgetExports(sourceFile: SourceFile, widgets: JsxWidget[]): void {
-        const statements = widgets.map((widget) => createConstExport(widget.jsxName, `"${widget.jsxName}" as const`));
+        const statements = widgets.map((widget) =>
+            createConstExport(widget.jsxName, `"${widget.jsxName}" as const`, {
+                docs: buildJsDocStructure(widget.meta.doc, widget.namespace),
+            }),
+        );
 
         sourceFile.addVariableStatements(statements);
     }
@@ -73,17 +78,14 @@ export class IntrinsicElementsBuilder {
      * Uses pre-filtered slots from JsxWidget (already filtered for hidden props).
      */
     buildWidgetSlotNamesType(sourceFile: SourceFile, widgets: JsxWidget[]): void {
-        const properties: OptionalKind<PropertySignatureStructure>[] = [];
+        const properties: string[] = [];
 
         for (const widget of widgets) {
             const slotNames = widget.slots.map((slot) => toCamelCase(slot));
 
             if (slotNames.length > 0) {
                 const unionType = slotNames.map((name) => `"${name}"`).join(" | ");
-                properties.push({
-                    name: widget.jsxName,
-                    type: unionType,
-                });
+                properties.push(`${widget.jsxName}: ${unionType}`);
             }
         }
 
@@ -96,8 +98,8 @@ export class IntrinsicElementsBuilder {
                 docs: [{ description: "Type mapping widgets to their valid slot names." }],
             });
         } else {
-            sourceFile.addInterface({
-                kind: StructureKind.Interface,
+            sourceFile.addTypeAlias({
+                kind: StructureKind.TypeAlias,
                 name: "WidgetSlotNames",
                 isExported: true,
                 docs: [
@@ -106,7 +108,7 @@ export class IntrinsicElementsBuilder {
                             "Type mapping widgets to their valid slot names. Used for type-safe Slot components.\nDerived from CodegenWidgetMeta (single source of truth).",
                     },
                 ],
-                properties,
+                type: `{ ${properties.join("; ")} }`,
             });
         }
     }

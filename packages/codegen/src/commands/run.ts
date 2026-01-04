@@ -1,10 +1,3 @@
-/**
- * Run Command
- *
- * Code generation command that runs both FFI and React generation
- * in a single pass using the CodegenOrchestrator.
- */
-
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { defineCommand } from "citty";
@@ -12,6 +5,12 @@ import { CodegenOrchestrator } from "../core/codegen-orchestrator.js";
 import { intro, log, outro, spinner } from "../core/utils/progress.js";
 import { FFI_OUTPUT_DIR, GIRS_DIR, REACT_OUTPUT_DIR } from "./constants.js";
 
+/**
+ * CLI command that generates FFI and React bindings from GIR files.
+ *
+ * Uses CodegenOrchestrator to process GIR files and output TypeScript
+ * bindings for both `@gtkx/ffi` and `@gtkx/react` packages.
+ */
 export const run = defineCommand({
     meta: {
         name: "run",
