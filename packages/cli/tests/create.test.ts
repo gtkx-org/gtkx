@@ -315,7 +315,7 @@ describe("createApp", () => {
         const content = vol.readFileSync(`${testDir}/my-cool-app/src/app.tsx`, "utf-8") as string;
 
         expect(content).toContain('title="My Cool App"');
-        expect(content).toContain("export default function App");
+        expect(content).toContain("export const App");
         expect(content).not.toContain("appId");
     });
 
@@ -336,7 +336,7 @@ describe("createApp", () => {
         expect(content).toContain("export const appId = pkg.gtkx.appId");
     });
 
-    it("creates index.tsx entry point with hardcoded appId", async () => {
+    it("creates index.tsx entry point that reads appId from package.json", async () => {
         const { createApp } = await import("../src/create.js");
         await createApp({
             name: "test-app",
@@ -349,8 +349,8 @@ describe("createApp", () => {
         const content = vol.readFileSync(`${testDir}/test-app/src/index.tsx`, "utf-8") as string;
 
         expect(content).toContain("import { render }");
-        expect(content).toContain("import App from");
-        expect(content).toContain('render(<App />, "org.test.app")');
+        expect(content).toContain("import { App }");
+        expect(content).toContain("render(<App />, pkg.gtkx.appId)");
     });
 
     it("creates .gitignore", async () => {

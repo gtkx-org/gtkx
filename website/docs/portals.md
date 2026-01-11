@@ -91,10 +91,10 @@ See [Async Operations](./async-operations.md) for Promise-wrapped dialog APIs an
 
 ## Popovers
 
-For bubble popups attached to widgets, use the GTKX `Slot` pattern:
+For bubble popups attached to widgets, use the `x.Slot` pattern:
 
 ```tsx
-import { GtkMenuButton, GtkPopover, GtkBox, GtkLabel, GtkButton, Slot } from "@gtkx/react";
+import { x, GtkMenuButton, GtkPopover, GtkBox, GtkLabel, GtkButton } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -103,7 +103,7 @@ const PopoverExample = () => {
 
     return (
         <GtkMenuButton label="Open Popover">
-            <Slot for={GtkMenuButton} id="popover">
+            <x.Slot for={GtkMenuButton} id="popover">
                 <GtkPopover>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -121,7 +121,7 @@ const PopoverExample = () => {
                         />
                     </GtkBox>
                 </GtkPopover>
-            </Slot>
+            </x.Slot>
         </GtkMenuButton>
     );
 };

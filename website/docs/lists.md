@@ -6,10 +6,10 @@ GTKX provides several list components for different use cases, from simple stati
 
 | Component | Use Case | Virtual Scrolling |
 |-----------|----------|-------------------|
-| `ListView` | Large lists (1000+ items) | Yes |
-| `GridView` | Photo galleries, icon grids | Yes |
-| `ColumnView` | Data tables with sorting | Yes |
-| `TreeListView` | Hierarchical data, file trees | Yes |
+| `x.ListView` | Large lists (1000+ items) | Yes |
+| `x.GridView` | Photo galleries, icon grids | Yes |
+| `GtkColumnView` | Data tables with sorting | Yes |
+| `x.TreeListView` | Hierarchical data, file trees | Yes |
 | `GtkDropDown` | Small selection lists | No |
 | `GtkListBox` | Medium lists, complex rows | No |
 | `GtkFlowBox` | Tag clouds, reflowing grids | No |
@@ -19,7 +19,7 @@ GTKX provides several list components for different use cases, from simple stati
 High-performance virtualized list for large datasets. Only visible items are rendered.
 
 ```tsx
-import { ListView, ListItem, GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { x, GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 interface Contact {
@@ -36,7 +36,7 @@ const contacts: Contact[] = [
 
 const ContactList = () => (
     <GtkScrolledWindow vexpand>
-        <ListView
+        <x.ListView
             estimatedItemHeight={48}
             renderItem={(contact: Contact | null) => (
                 <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
@@ -46,9 +46,9 @@ const ContactList = () => (
             )}
         >
             {contacts.map((contact) => (
-                <ListItem key={contact.id} id={contact.id} value={contact} />
+                <x.ListItem key={contact.id} id={contact.id} value={contact} />
             ))}
-        </ListView>
+        </x.ListView>
     </GtkScrolledWindow>
 );
 ```
@@ -58,7 +58,7 @@ const ContactList = () => (
 ```tsx
 const [selected, setSelected] = useState<string[]>([]);
 
-<ListView
+<x.ListView
     estimatedItemHeight={48}
     selectionMode={Gtk.SelectionMode.MULTIPLE}
     selected={selected}
@@ -66,9 +66,9 @@ const [selected, setSelected] = useState<string[]>([]);
     renderItem={(item) => item?.name ?? ""}
 >
     {items.map((item) => (
-        <ListItem key={item.id} id={item.id} value={item} />
+        <x.ListItem key={item.id} id={item.id} value={item} />
     ))}
-</ListView>
+</x.ListView>
 ```
 
 ## GridView
@@ -76,7 +76,7 @@ const [selected, setSelected] = useState<string[]>([]);
 Grid layout with virtual scrolling. Ideal for photo galleries and icon views.
 
 ```tsx
-import { GridView, ListItem, GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { x, GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { css } from "@gtkx/css";
 
 interface Photo {
@@ -92,7 +92,7 @@ const photoTile = (color: string) => css`
 
 const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
     <GtkScrolledWindow vexpand hexpand>
-        <GridView
+        <x.GridView
             estimatedItemHeight={130}
             minColumns={2}
             maxColumns={6}
@@ -104,9 +104,9 @@ const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
             )}
         >
             {photos.map((photo) => (
-                <ListItem key={photo.id} id={photo.id} value={photo} />
+                <x.ListItem key={photo.id} id={photo.id} value={photo} />
             ))}
-        </GridView>
+        </x.GridView>
     </GtkScrolledWindow>
 );
 ```
@@ -116,7 +116,7 @@ const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
 Data table with sortable, resizable columns.
 
 ```tsx
-import { GtkColumnView, ColumnViewColumn, ListItem, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
+import { x, GtkColumnView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -147,7 +147,7 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
     return (
         <GtkScrolledWindow vexpand hexpand>
             <GtkColumnView estimatedRowHeight={48} sortColumn={sortColumn} sortOrder={sortOrder} onSortChange={handleSortChange}>
-                <ColumnViewColumn
+                <x.ColumnViewColumn
                     id="name"
                     title="Name"
                     expand
@@ -157,7 +157,7 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
                         <GtkLabel label={emp?.name ?? ""} halign={Gtk.Align.START} />
                     )}
                 />
-                <ColumnViewColumn
+                <x.ColumnViewColumn
                     id="department"
                     title="Department"
                     resizable
@@ -166,7 +166,7 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
                         <GtkLabel label={emp?.department ?? ""} halign={Gtk.Align.START} />
                     )}
                 />
-                <ColumnViewColumn
+                <x.ColumnViewColumn
                     id="salary"
                     title="Salary"
                     resizable
@@ -176,7 +176,7 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
                     )}
                 />
                 {sortedEmployees.map((emp) => (
-                    <ListItem key={emp.id} id={emp.id} value={emp} />
+                    <x.ListItem key={emp.id} id={emp.id} value={emp} />
                 ))}
             </GtkColumnView>
         </GtkScrolledWindow>
@@ -189,7 +189,7 @@ const EmployeeTable = ({ employees }: { employees: Employee[] }) => {
 Simple selection from a small list.
 
 ```tsx
-import { GtkDropDown, SimpleListItem, GtkBox, GtkLabel } from "@gtkx/react";
+import { x, GtkDropDown, GtkBox, GtkLabel } from "@gtkx/react";
 import { useState } from "react";
 
 const frameworks = [
@@ -207,7 +207,7 @@ const FrameworkSelector = () => {
             Framework:
             <GtkDropDown selectedId={selectedId} onSelectionChanged={setSelectedId}>
                 {frameworks.map((fw) => (
-                    <SimpleListItem key={fw.id} id={fw.id} value={fw.name} />
+                    <x.SimpleListItem key={fw.id} id={fw.id} value={fw.name} />
                 ))}
             </GtkDropDown>
         </GtkBox>
@@ -274,7 +274,7 @@ const TagCloud = ({ tags }: { tags: string[] }) => (
 Hierarchical tree display with expand/collapse functionality and virtual scrolling. Use for file browsers, settings panels, or any nested data structure.
 
 ```tsx
-import { TreeListView, TreeListItem, GtkBox, GtkLabel, GtkImage, GtkScrolledWindow } from "@gtkx/react";
+import { x, GtkBox, GtkLabel, GtkImage, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 interface Category {
@@ -321,7 +321,7 @@ const categories: CategoryWithChildren[] = [
 
 const SettingsTree = () => (
     <GtkScrolledWindow vexpand>
-        <TreeListView
+        <x.TreeListView
             estimatedItemHeight={48}
             renderItem={(item: TreeItem | null) => {
                 if (!item) return <GtkLabel label="Loading..." />;
@@ -339,18 +339,18 @@ const SettingsTree = () => (
             }}
         >
             {categories.map((category) => (
-                <TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
+                <x.TreeListItem key={category.id} id={category.id} value={category as TreeItem}>
                     {category.children.map((setting) => (
-                        <TreeListItem
+                        <x.TreeListItem
                             key={setting.id}
                             id={setting.id}
                             value={setting as TreeItem}
                             hideExpander
                         />
                     ))}
-                </TreeListItem>
+                </x.TreeListItem>
             ))}
-        </TreeListView>
+        </x.TreeListView>
     </GtkScrolledWindow>
 );
 ```
@@ -360,7 +360,7 @@ const SettingsTree = () => (
 ```tsx
 const [selected, setSelected] = useState<string[]>([]);
 
-<TreeListView
+<x.TreeListView
     estimatedItemHeight={48}
     selectionMode={Gtk.SelectionMode.SINGLE}
     selected={selected}
@@ -370,18 +370,18 @@ const [selected, setSelected] = useState<string[]>([]);
     )}
 >
     {items.map((item) => (
-        <TreeListItem key={item.id} id={item.id} value={item}>
+        <x.TreeListItem key={item.id} id={item.id} value={item}>
             {item.children?.map((child) => (
-                <TreeListItem key={child.id} id={child.id} value={child} />
+                <x.TreeListItem key={child.id} id={child.id} value={child} />
             ))}
-        </TreeListItem>
+        </x.TreeListItem>
     ))}
-</TreeListView>
+</x.TreeListView>
 ```
 
 ## Performance Tips
 
-1. **Use virtualized lists** (`ListView`, `GridView`, `ColumnView`, `TreeListView`) for large datasets
+1. **Use virtualized lists** (`x.ListView`, `x.GridView`, `GtkColumnView`, `x.TreeListView`) for large datasets
 2. **Wrap in ScrolledWindow** for scrolling support
 3. **Memoize renderItem** with `useCallback` if it has dependencies
 4. **Use stable keys** — the `id` prop should be unique and stable

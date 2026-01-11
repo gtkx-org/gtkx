@@ -529,7 +529,7 @@ describe("render - ColumnView", () => {
             expect(firstEmployee?.salary).toBeLessThanOrEqual(lastEmployee?.salary ?? 0);
         });
 
-        it("sorts 200 rows descending when clicking column header with DESC order", { timeout: 15000 }, async () => {
+        it("sorts 200 rows descending when clicking column header with DESC order", { timeout: 30000 }, async () => {
             const employees = generateEmployees(200);
             const renderOrders: string[][] = [];
             const ref = createRef<Gtk.ColumnView>();

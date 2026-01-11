@@ -1,4 +1,5 @@
 import { render } from "@gtkx/react";
-import App from "./app.js";
+import pkg from "../package.json" with { type: "json" };
+import { App } from "./app.js";
 
-render(<App />, "<%= appId %>");
+render(<App />, pkg.gtkx.appId);
