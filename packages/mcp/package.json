@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/mcp",
-    "version": "0.13.2",
+    "version": "0.13.3",
     "description": "MCP server for AI-powered interaction with GTKX applications",
     "keywords": [
         "gtkx",

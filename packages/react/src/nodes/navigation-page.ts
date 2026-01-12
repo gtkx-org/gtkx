@@ -1,4 +1,3 @@
-import { isObjectEqual } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import type { NavigationPageProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
@@ -37,8 +36,6 @@ export class NavigationPageNode extends SlotNode<Props> {
 
     protected override onChildChange(oldChild: Adw.NavigationPage | null): void {
         const navigationView = this.getParent() as Adw.NavigationView | Adw.NavigationSplitView;
-        const page = this.child instanceof Adw.NavigationPage ? this.child : null;
-        const child = page?.getChild();
         const title = this.props.title ?? "";
 
         if (this.child) {
@@ -50,8 +47,8 @@ export class NavigationPageNode extends SlotNode<Props> {
         }
 
         if (navigationView instanceof Adw.NavigationView) {
-            if (oldChild && page && child && isObjectEqual(child, oldChild)) {
-                navigationView.remove(page);
+            if (oldChild instanceof Adw.NavigationPage) {
+                navigationView.remove(oldChild);
             }
 
             if (this.child) {

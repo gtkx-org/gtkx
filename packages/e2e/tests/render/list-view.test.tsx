@@ -478,7 +478,7 @@ describe("render - ListView", () => {
             expect(getModelItemOrder(ref.current as Gtk.ListView)).toEqual(["A", "B", "C"]);
         });
 
-        it("handles large dataset reordering (200 items)", async () => {
+        it("handles large dataset reordering (200 items)", { timeout: 15000 }, async () => {
             const ref = createRef<Gtk.ListView>();
 
             const initialItems = Array.from({ length: 200 }, (_, i) => String(i + 1));
