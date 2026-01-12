@@ -244,6 +244,93 @@ const NavigationExample = () => {
 };
 ```
 
+### AdwNavigationSplitView
+
+Sidebar/content split layout for master-detail interfaces. Use `x.NavigationPage` with `id="sidebar"` and `id="content"` to define the two panes:
+
+```tsx
+import {
+    x,
+    AdwNavigationSplitView,
+    AdwToolbarView,
+    AdwHeaderBar,
+    AdwActionRow,
+    GtkListBox,
+    GtkScrolledWindow,
+    GtkBox,
+    GtkImage,
+    GtkLabel,
+} from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useState } from "react";
+
+interface Item {
+    id: string;
+    title: string;
+    icon: string;
+}
+
+const items: Item[] = [
+    { id: "inbox", title: "Inbox", icon: "mail-unread-symbolic" },
+    { id: "starred", title: "Starred", icon: "starred-symbolic" },
+    { id: "sent", title: "Sent", icon: "mail-send-symbolic" },
+];
+
+const SplitViewExample = () => {
+    const [selected, setSelected] = useState(items[0]);
+
+    return (
+        <AdwNavigationSplitView sidebarWidthFraction={0.33} minSidebarWidth={200} maxSidebarWidth={300}>
+            <x.NavigationPage id="sidebar" title="Mail">
+                <AdwToolbarView>
+                    <x.ToolbarTop>
+                        <AdwHeaderBar />
+                    </x.ToolbarTop>
+                    <GtkScrolledWindow vexpand>
+                        <GtkListBox
+                            cssClasses={["navigation-sidebar"]}
+                            onRowSelected={(_, row) => {
+                                if (!row) return;
+                                const item = items[row.getIndex()];
+                                if (item) setSelected(item);
+                            }}
+                        >
+                            {items.map((item) => (
+                                <AdwActionRow key={item.id} title={item.title}>
+                                    <x.ActionRowPrefix>
+                                        <GtkImage iconName={item.icon} />
+                                    </x.ActionRowPrefix>
+                                </AdwActionRow>
+                            ))}
+                        </GtkListBox>
+                    </GtkScrolledWindow>
+                </AdwToolbarView>
+            </x.NavigationPage>
+
+            <x.NavigationPage id="content" title={selected?.title ?? ""}>
+                <AdwToolbarView>
+                    <x.ToolbarTop>
+                        <AdwHeaderBar />
+                    </x.ToolbarTop>
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={12}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        vexpand
+                    >
+                        <GtkImage iconName={selected?.icon ?? ""} iconSize={Gtk.IconSize.LARGE} />
+                        <GtkLabel label={selected?.title ?? ""} cssClasses={["title-2"]} />
+                    </GtkBox>
+                </AdwToolbarView>
+            </x.NavigationPage>
+        </AdwNavigationSplitView>
+    );
+};
+```
+
+The `x.NavigationPage` component works with both `AdwNavigationView` (stack-based navigation) and `AdwNavigationSplitView` (sidebar/content layout). For split views, the `id` prop determines which slot the page occupies: `"sidebar"` for the left pane and `"content"` for the right pane.
+
 ## Settings Page Example
 
 ```tsx

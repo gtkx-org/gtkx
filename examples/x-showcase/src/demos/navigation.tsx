@@ -1,6 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
+    AdwActionRow,
     AdwHeaderBar,
+    AdwNavigationSplitView,
     AdwNavigationView,
     AdwPreferencesGroup,
     AdwToolbarView,
@@ -9,17 +11,36 @@ import {
     GtkFrame,
     GtkImage,
     GtkLabel,
+    GtkListBox,
     GtkNotebook,
+    GtkScrolledWindow,
     GtkStack,
     GtkStackSwitcher,
     x,
 } from "@gtkx/react";
 import { useCallback, useState } from "react";
 
+interface SplitViewItem {
+    id: string;
+    title: string;
+    icon: string;
+    count: number;
+}
+
+const defaultSplitViewItem: SplitViewItem = { id: "inbox", title: "Inbox", icon: "mail-unread-symbolic", count: 12 };
+
+const splitViewItems: SplitViewItem[] = [
+    defaultSplitViewItem,
+    { id: "starred", title: "Starred", icon: "starred-symbolic", count: 3 },
+    { id: "sent", title: "Sent", icon: "mail-send-symbolic", count: 0 },
+    { id: "drafts", title: "Drafts", icon: "document-edit-symbolic", count: 2 },
+];
+
 export const NavigationDemo = () => {
     const [stackPage, setStackPage] = useState("page1");
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
     const [history, setHistory] = useState(["home"]);
+    const [selectedItem, setSelectedItem] = useState(defaultSplitViewItem);
 
     const handleHistoryChanged = useCallback((newHistory: string[]) => {
         setHistory(newHistory);
@@ -181,6 +202,76 @@ export const NavigationDemo = () => {
                 </GtkFrame>
                 <GtkLabel
                     label={`History: [${history.map((h) => `"${h}"`).join(", ")}] (swipe right or click header back button to pop)`}
+                    cssClasses={["dim-label", "monospace"]}
+                    marginTop={8}
+                />
+            </AdwPreferencesGroup>
+
+            <AdwPreferencesGroup
+                title="x.NavigationPage + AdwNavigationSplitView"
+                description="Sidebar/content split layout with declarative page slots"
+            >
+                <GtkFrame marginTop={12}>
+                    <AdwNavigationSplitView sidebarWidthFraction={0.35} minSidebarWidth={200} maxSidebarWidth={300}>
+                        <x.NavigationPage id="sidebar" title="Mail">
+                            <AdwToolbarView>
+                                <x.ToolbarTop>
+                                    <AdwHeaderBar showTitle={false} />
+                                </x.ToolbarTop>
+                                <GtkScrolledWindow vexpand propagateNaturalHeight>
+                                    <GtkListBox
+                                        cssClasses={["navigation-sidebar"]}
+                                        onRowSelected={(_, row) => {
+                                            if (!row) return;
+                                            const item = splitViewItems[row.getIndex()];
+                                            if (item) setSelectedItem(item);
+                                        }}
+                                    >
+                                        {splitViewItems.map((item) => (
+                                            <AdwActionRow key={item.id} title={item.title} cssClasses={["activatable"]}>
+                                                <x.ActionRowPrefix>
+                                                    <GtkImage iconName={item.icon} />
+                                                </x.ActionRowPrefix>
+                                                {item.count > 0 && (
+                                                    <x.ActionRowSuffix>
+                                                        <GtkLabel
+                                                            label={String(item.count)}
+                                                            cssClasses={["dim-label"]}
+                                                        />
+                                                    </x.ActionRowSuffix>
+                                                )}
+                                            </AdwActionRow>
+                                        ))}
+                                    </GtkListBox>
+                                </GtkScrolledWindow>
+                            </AdwToolbarView>
+                        </x.NavigationPage>
+
+                        <x.NavigationPage id="content" title={selectedItem.title}>
+                            <AdwToolbarView>
+                                <x.ToolbarTop>
+                                    <AdwHeaderBar />
+                                </x.ToolbarTop>
+                                <GtkBox
+                                    orientation={Gtk.Orientation.VERTICAL}
+                                    spacing={12}
+                                    halign={Gtk.Align.CENTER}
+                                    valign={Gtk.Align.CENTER}
+                                    heightRequest={200}
+                                >
+                                    <GtkImage iconName={selectedItem.icon} iconSize={Gtk.IconSize.LARGE} />
+                                    <GtkLabel label={selectedItem.title} cssClasses={["title-2"]} />
+                                    <GtkLabel
+                                        label={selectedItem.count > 0 ? `${selectedItem.count} items` : "No items"}
+                                        cssClasses={["dim-label"]}
+                                    />
+                                </GtkBox>
+                            </AdwToolbarView>
+                        </x.NavigationPage>
+                    </AdwNavigationSplitView>
+                </GtkFrame>
+                <GtkLabel
+                    label={`Selected: "${selectedItem.id}" → content title updates to "${selectedItem.title}"`}
                     cssClasses={["dim-label", "monospace"]}
                     marginTop={8}
                 />

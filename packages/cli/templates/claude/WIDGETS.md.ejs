@@ -512,6 +512,39 @@ const [history, setHistory] = useState(["home"]);
 
 **NavigationPage props:** `id` (required), `title`, `canPop`. Control navigation via `history` array.
 
+### AdwNavigationSplitView
+Sidebar/content split layout for master-detail interfaces.
+
+```tsx
+const [selected, setSelected] = useState(items[0]);
+
+<AdwNavigationSplitView sidebarWidthFraction={0.33} minSidebarWidth={200} maxSidebarWidth={300}>
+    <x.NavigationPage id="sidebar" title="Sidebar">
+        <AdwToolbarView>
+            <x.ToolbarTop><AdwHeaderBar /></x.ToolbarTop>
+            <GtkListBox cssClasses={["navigation-sidebar"]} onRowSelected={(_, row) => {
+                if (!row) return;
+                const item = items[row.getIndex()];
+                if (item) setSelected(item);
+            }}>
+                {items.map((item) => <AdwActionRow key={item.id} title={item.title} />)}
+            </GtkListBox>
+        </AdwToolbarView>
+    </x.NavigationPage>
+
+    <x.NavigationPage id="content" title={selected?.title ?? ""}>
+        <AdwToolbarView>
+            <x.ToolbarTop><AdwHeaderBar /></x.ToolbarTop>
+            <GtkLabel label={selected?.title ?? ""} />
+        </AdwToolbarView>
+    </x.NavigationPage>
+</AdwNavigationSplitView>
+```
+
+**Props:** `sidebarWidthFraction`, `minSidebarWidth`, `maxSidebarWidth`, `collapsed`, `showContent`.
+**NavigationPage slots:** Use `id="sidebar"` for left pane, `id="content"` for right pane.
+**Selection:** Use `GtkListBox` with `onRowSelected` (single click) not `onRowActivated` (double click).
+
 ### Other Adwaita Widgets
 
 | Widget | Description |
