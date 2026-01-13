@@ -81,7 +81,14 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
             this.itemRenderer.setEstimatedItemHeight(newProps.estimatedItemHeight);
         }
 
+        const previousModel = this.list.getSelectionModel();
         this.list.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        const currentModel = this.list.getSelectionModel();
+
+        if (previousModel !== currentModel) {
+            this.container.setModel(currentModel);
+        }
+
         super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 }

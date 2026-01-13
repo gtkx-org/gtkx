@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
+import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
 import { ListStore } from "../internal/list-store.js";
 import { signalStore } from "../internal/signal-store.js";
 import { ListItemNode } from "../list-item.js";
@@ -11,10 +12,14 @@ export type ListProps = {
     onSelectionChanged?: (ids: string[]) => void;
 };
 
+type SelectionModel = Gtk.NoSelection | Gtk.SingleSelection | Gtk.MultiSelection;
+
 export class List extends VirtualNode<ListProps> {
     private store: ListStore;
-    private selectionModel: Gtk.SingleSelection | Gtk.MultiSelection;
+    private selectionModel: SelectionModel;
     private handleSelectionChange?: () => void;
+    private pendingSelection?: string[];
+    private selectionScheduled = false;
 
     constructor(props: ListProps = {}) {
         super("", {}, undefined);
@@ -41,7 +46,7 @@ export class List extends VirtualNode<ListProps> {
         return this.store;
     }
 
-    public getSelectionModel(): Gtk.SingleSelection | Gtk.MultiSelection {
+    public getSelectionModel(): SelectionModel {
         return this.selectionModel;
     }
 
@@ -93,19 +98,21 @@ export class List extends VirtualNode<ListProps> {
         }
     }
 
-    private createSelectionModel(mode?: Gtk.SelectionMode): Gtk.SingleSelection | Gtk.MultiSelection {
+    private createSelectionModel(mode?: Gtk.SelectionMode): SelectionModel {
         const model = this.store.getModel();
         const selectionMode = mode ?? Gtk.SelectionMode.SINGLE;
 
-        const selectionModel =
-            selectionMode === Gtk.SelectionMode.MULTIPLE
-                ? new Gtk.MultiSelection(model)
-                : new Gtk.SingleSelection(model);
-
-        if (selectionModel instanceof Gtk.SingleSelection) {
-            selectionModel.setAutoselect(false);
-            selectionModel.setCanUnselect(true);
+        if (selectionMode === Gtk.SelectionMode.NONE) {
+            return new Gtk.NoSelection(model);
         }
+
+        if (selectionMode === Gtk.SelectionMode.MULTIPLE) {
+            return new Gtk.MultiSelection(model);
+        }
+
+        const selectionModel = new Gtk.SingleSelection(model);
+        selectionModel.setAutoselect(selectionMode === Gtk.SelectionMode.BROWSE);
+        selectionModel.setCanUnselect(selectionMode !== Gtk.SelectionMode.BROWSE);
 
         return selectionModel;
     }
@@ -129,6 +136,19 @@ export class List extends VirtualNode<ListProps> {
     }
 
     private setSelection(ids?: string[]): void {
+        this.pendingSelection = ids;
+
+        if (!this.selectionScheduled) {
+            this.selectionScheduled = true;
+            scheduleAfterCommit(() => this.applySelection(), CommitPriority.LOW);
+        }
+    }
+
+    private applySelection(): void {
+        this.selectionScheduled = false;
+        const ids = this.pendingSelection;
+        this.pendingSelection = undefined;
+
         const model = this.store.getModel();
         const nItems = model.getNItems();
         const selected = new Gtk.Bitset();

@@ -2,7 +2,7 @@ import type * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
-import { scheduleAfterCommit } from "../../scheduler.js";
+import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
 import { signalStore } from "../internal/signal-store.js";
 import { TreeStore } from "../internal/tree-store.js";
 import { TreeListItemNode } from "../tree-list-item.js";
@@ -15,11 +15,15 @@ export type TreeListProps = {
     onSelectionChanged?: (ids: string[]) => void;
 };
 
+type SelectionModel = Gtk.NoSelection | Gtk.SingleSelection | Gtk.MultiSelection;
+
 export class TreeList extends VirtualNode<TreeListProps> {
     private store: TreeStore;
     private treeListModel: Gtk.TreeListModel;
-    private selectionModel: Gtk.SingleSelection | Gtk.MultiSelection;
+    private selectionModel: SelectionModel;
     private handleSelectionChange?: () => void;
+    private pendingSelection?: string[];
+    private selectionScheduled = false;
 
     constructor(props: TreeListProps = {}) {
         super("", {}, undefined);
@@ -64,7 +68,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         return this.treeListModel;
     }
 
-    public getSelectionModel(): Gtk.SingleSelection | Gtk.MultiSelection {
+    public getSelectionModel(): SelectionModel {
         return this.selectionModel;
     }
 
@@ -160,18 +164,20 @@ export class TreeList extends VirtualNode<TreeListProps> {
         }
     }
 
-    private createSelectionModel(mode?: Gtk.SelectionMode): Gtk.SingleSelection | Gtk.MultiSelection {
+    private createSelectionModel(mode?: Gtk.SelectionMode): SelectionModel {
         const selectionMode = mode ?? Gtk.SelectionMode.SINGLE;
 
-        const selectionModel =
-            selectionMode === Gtk.SelectionMode.MULTIPLE
-                ? new Gtk.MultiSelection(this.treeListModel)
-                : new Gtk.SingleSelection(this.treeListModel);
-
-        if (selectionModel instanceof Gtk.SingleSelection) {
-            selectionModel.setAutoselect(false);
-            selectionModel.setCanUnselect(true);
+        if (selectionMode === Gtk.SelectionMode.NONE) {
+            return new Gtk.NoSelection(this.treeListModel);
         }
+
+        if (selectionMode === Gtk.SelectionMode.MULTIPLE) {
+            return new Gtk.MultiSelection(this.treeListModel);
+        }
+
+        const selectionModel = new Gtk.SingleSelection(this.treeListModel);
+        selectionModel.setAutoselect(selectionMode === Gtk.SelectionMode.BROWSE);
+        selectionModel.setCanUnselect(selectionMode !== Gtk.SelectionMode.BROWSE);
 
         return selectionModel;
     }
@@ -196,6 +202,19 @@ export class TreeList extends VirtualNode<TreeListProps> {
     }
 
     private setSelection(ids?: string[]): void {
+        this.pendingSelection = ids;
+
+        if (!this.selectionScheduled) {
+            this.selectionScheduled = true;
+            scheduleAfterCommit(() => this.applySelection(), CommitPriority.LOW);
+        }
+    }
+
+    private applySelection(): void {
+        this.selectionScheduled = false;
+        const ids = this.pendingSelection;
+        this.pendingSelection = undefined;
+
         const nItems = this.treeListModel.getNItems();
         const selected = new Gtk.Bitset();
         const mask = Gtk.Bitset.newRange(0, nItems);

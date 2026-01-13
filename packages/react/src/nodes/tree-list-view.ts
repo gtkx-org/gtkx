@@ -82,10 +82,17 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
             this.itemRenderer.setEstimatedItemHeight(newProps.estimatedItemHeight);
         }
 
+        const previousModel = this.treeList.getSelectionModel();
         this.treeList.updateProps(
             oldProps ? filterProps(oldProps, RENDERER_PROP_NAMES) : null,
             filterProps(newProps, RENDERER_PROP_NAMES),
         );
+        const currentModel = this.treeList.getSelectionModel();
+
+        if (previousModel !== currentModel) {
+            this.container.setModel(currentModel);
+        }
+
         super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 }
