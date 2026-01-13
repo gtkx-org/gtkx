@@ -163,7 +163,7 @@ export const RowDemo = () => {
                             orientation={Gtk.Orientation.VERTICAL}
                             halign={Gtk.Align.CENTER}
                             valign={Gtk.Align.CENTER}
-                            heightRequest={100}
+                            heightRequest={150}
                         >
                             <GtkLabel label="Content Area" cssClasses={["dim-label"]} />
                         </GtkBox>

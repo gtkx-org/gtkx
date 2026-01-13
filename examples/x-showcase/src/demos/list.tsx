@@ -114,7 +114,7 @@ export const ListDemo = () => {
 
             <AdwPreferencesGroup title="x.ListView" description="Virtualized list with custom item rendering">
                 <GtkFrame marginTop={12}>
-                    <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                    <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.ListView<FileItem>
                             estimatedItemHeight={48}
                             renderItem={(item) => (
@@ -134,7 +134,7 @@ export const ListDemo = () => {
 
             <AdwPreferencesGroup title="x.GridView" description="Virtualized grid with custom item rendering">
                 <GtkFrame marginTop={12}>
-                    <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                    <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.GridView<FileItem>
                             estimatedItemHeight={80}
                             renderItem={(item) => (
@@ -168,7 +168,7 @@ export const ListDemo = () => {
                 description="Hierarchical tree with expand/collapse"
             >
                 <GtkFrame marginTop={12}>
-                    <GtkScrolledWindow heightRequest={250} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                    <GtkScrolledWindow heightRequest={320} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <x.TreeListView<{ name: string }>
                             estimatedItemHeight={32}
                             renderItem={(item) => (
@@ -209,7 +209,7 @@ export const ListDemo = () => {
                 description="Table columns with custom cell rendering and React-controlled sorting"
             >
                 <GtkFrame marginTop={12}>
-                    <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                    <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <GtkColumnView
                             estimatedRowHeight={48}
                             sortColumn={sortColumn}

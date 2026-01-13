@@ -17,6 +17,7 @@ import {
     getHiddenProps,
     LIST_WIDGET_NAMES,
     NAVIGATION_VIEW_WIDGET_NAMES,
+    SCROLLED_WINDOW_WIDGET_NAMES,
     STACK_WIDGET_NAMES,
     VIRTUAL_CHILDREN_WIDGET_NAMES,
     WINDOW_WIDGET_NAMES,
@@ -35,6 +36,7 @@ export type JsxWidget = {
     isNavigationView: boolean;
     isStack: boolean;
     isWindow: boolean;
+    isScrolledWindow: boolean;
     isContainer: boolean;
     hasVirtualChildren: boolean;
     slots: readonly string[];
@@ -93,6 +95,7 @@ export class JsxTypesGenerator {
             isNavigationView: NAVIGATION_VIEW_WIDGET_NAMES.has(meta.className),
             isStack: STACK_WIDGET_NAMES.has(meta.className),
             isWindow: WINDOW_WIDGET_NAMES.has(meta.className),
+            isScrolledWindow: SCROLLED_WINDOW_WIDGET_NAMES.has(meta.className),
             isContainer: meta.isContainer,
             hasVirtualChildren: VIRTUAL_CHILDREN_WIDGET_NAMES.has(meta.className),
             slots: filteredSlots,

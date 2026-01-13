@@ -100,7 +100,7 @@ export const LayoutDemo = () => {
 
             <AdwPreferencesGroup title="x.FixedChild" description="Absolute positioning of children">
                 <GtkFrame marginTop={12}>
-                    <GtkFixed heightRequest={150}>
+                    <GtkFixed heightRequest={200}>
                         <x.FixedChild x={20} y={20}>
                             <GtkButton label="x=20, y=20" />
                         </x.FixedChild>
@@ -122,7 +122,7 @@ export const LayoutDemo = () => {
                             spacing={8}
                             halign={Gtk.Align.CENTER}
                             valign={Gtk.Align.CENTER}
-                            heightRequest={150}
+                            heightRequest={200}
                         >
                             <GtkImage
                                 iconName="folder-symbolic"

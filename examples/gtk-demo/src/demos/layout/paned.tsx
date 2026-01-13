@@ -26,7 +26,7 @@ const PanedDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkPaned wideHandle heightRequest={150} position={position} cssClasses={["card"]}>
+                <GtkPaned wideHandle heightRequest={200} position={position} cssClasses={["card"]}>
                     <x.Slot for={GtkPaned} id="startChild">
                         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             <GtkBox
@@ -79,8 +79,8 @@ const PanedDemo = () => {
                 <GtkPaned
                     orientation={Gtk.Orientation.VERTICAL}
                     wideHandle
-                    heightRequest={200}
-                    position={80}
+                    heightRequest={250}
+                    position={100}
                     cssClasses={["card"]}
                 >
                     <x.Slot for={GtkPaned} id="startChild">
@@ -116,7 +116,7 @@ const PanedDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkPaned wideHandle heightRequest={200} position={150} cssClasses={["card"]}>
+                <GtkPaned wideHandle heightRequest={280} position={150} cssClasses={["card"]}>
                     <x.Slot for={GtkPaned} id="startChild">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}

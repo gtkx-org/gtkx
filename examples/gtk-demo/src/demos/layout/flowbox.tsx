@@ -84,7 +84,7 @@ const FlowBoxDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkScrolledWindow heightRequest={180} hscrollbarPolicy={Gtk.PolicyType.NEVER} cssClasses={["card"]}>
+                <GtkScrolledWindow heightRequest={240} hscrollbarPolicy={Gtk.PolicyType.NEVER} cssClasses={["card"]}>
                     <GtkFlowBox
                         maxChildrenPerLine={10}
                         minChildrenPerLine={3}
@@ -129,7 +129,7 @@ const FlowBoxDemo = () => {
                     />
                     <GtkLabel label={`${itemCount} items`} cssClasses={["dim-label"]} valign={Gtk.Align.CENTER} />
                 </GtkBox>
-                <GtkScrolledWindow heightRequest={120} hscrollbarPolicy={Gtk.PolicyType.NEVER} cssClasses={["card"]}>
+                <GtkScrolledWindow heightRequest={180} hscrollbarPolicy={Gtk.PolicyType.NEVER} cssClasses={["card"]}>
                     <GtkFlowBox
                         columnSpacing={8}
                         rowSpacing={8}

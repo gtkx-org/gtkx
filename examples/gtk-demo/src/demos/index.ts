@@ -6,7 +6,6 @@ import { dialogsDemos } from "./dialogs/index.js";
 import { drawingDemos } from "./drawing/index.js";
 import { gamesDemos } from "./games/index.js";
 import { gesturesDemos } from "./gestures/index.js";
-import { gettingStartedDemos } from "./getting-started/index.js";
 import { inputDemos } from "./input/index.js";
 import { layoutDemos } from "./layout/index.js";
 import { listsDemos } from "./lists/index.js";
@@ -17,12 +16,6 @@ import { pathsDemos } from "./paths/index.js";
 import type { Category } from "./types.js";
 
 export const categories: Category[] = [
-    {
-        id: "getting-started",
-        title: "Getting Started",
-        icon: "starred-symbolic",
-        demos: gettingStartedDemos,
-    },
     {
         id: "buttons",
         title: "Buttons & Sliders",

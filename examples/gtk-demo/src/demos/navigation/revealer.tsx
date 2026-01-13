@@ -247,7 +247,7 @@ const RevealerDemo = () => {
                         active={sidebarRevealed}
                         onToggled={(self) => setSidebarRevealed(self.getActive())}
                     />
-                    <GtkBox heightRequest={120}>
+                    <GtkBox heightRequest={180}>
                         <GtkRevealer
                             revealChild={sidebarRevealed}
                             transitionType={Gtk.RevealerTransitionType.SLIDE_RIGHT}

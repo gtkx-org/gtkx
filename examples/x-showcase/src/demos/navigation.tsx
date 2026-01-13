@@ -65,7 +65,7 @@ export const NavigationDemo = () => {
                 <GtkFrame marginTop={12}>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                         <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} marginTop={12} />
-                        <GtkStack ref={handleStackRef} page={stackPage} heightRequest={150}>
+                        <GtkStack ref={handleStackRef} page={stackPage} heightRequest={200}>
                             <x.StackPage id="page1" title="Home" iconName="go-home-symbolic">
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
@@ -126,7 +126,7 @@ export const NavigationDemo = () => {
                 description="Declarative navigation with React-controlled history and onHistoryChanged for back gestures"
             >
                 <GtkFrame marginTop={12}>
-                    <AdwNavigationView history={history} onHistoryChanged={handleHistoryChanged} heightRequest={280}>
+                    <AdwNavigationView history={history} onHistoryChanged={handleHistoryChanged} heightRequest={350}>
                         <x.NavigationPage for={AdwNavigationView} id="home" title="Home">
                             <AdwToolbarView>
                                 <x.ToolbarTop>
@@ -256,7 +256,7 @@ export const NavigationDemo = () => {
                                     spacing={12}
                                     halign={Gtk.Align.CENTER}
                                     valign={Gtk.Align.CENTER}
-                                    heightRequest={200}
+                                    heightRequest={280}
                                 >
                                     <GtkImage iconName={selectedItem.icon} iconSize={Gtk.IconSize.LARGE} />
                                     <GtkLabel label={selectedItem.title} cssClasses={["title-2"]} />
@@ -285,7 +285,7 @@ export const NavigationDemo = () => {
                                 spacing={12}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
-                                heightRequest={120}
+                                heightRequest={180}
                             >
                                 <GtkLabel label="General Settings" cssClasses={["title-3"]} />
                                 <GtkLabel label="Configure basic application options" cssClasses={["dim-label"]} />
@@ -297,7 +297,7 @@ export const NavigationDemo = () => {
                                 spacing={12}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
-                                heightRequest={120}
+                                heightRequest={180}
                             >
                                 <GtkLabel label="Appearance Settings" cssClasses={["title-3"]} />
                                 <GtkLabel label="Customize the look and feel" cssClasses={["dim-label"]} />
@@ -309,7 +309,7 @@ export const NavigationDemo = () => {
                                 spacing={12}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
-                                heightRequest={120}
+                                heightRequest={180}
                             >
                                 <GtkLabel label="Advanced Settings" cssClasses={["title-3"]} />
                                 <GtkLabel label="Expert configuration options" cssClasses={["dim-label"]} />
@@ -333,7 +333,7 @@ export const NavigationDemo = () => {
                                 orientation={Gtk.Orientation.VERTICAL}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
-                                heightRequest={100}
+                                heightRequest={150}
                             >
                                 <GtkLabel label="3 unread messages" />
                             </GtkBox>
@@ -349,7 +349,7 @@ export const NavigationDemo = () => {
                                 orientation={Gtk.Orientation.VERTICAL}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
-                                heightRequest={100}
+                                heightRequest={150}
                             >
                                 <GtkLabel label="Sent messages" />
                             </GtkBox>
@@ -365,7 +365,7 @@ export const NavigationDemo = () => {
                                 orientation={Gtk.Orientation.VERTICAL}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
-                                heightRequest={100}
+                                heightRequest={150}
                             >
                                 <GtkLabel label="Deleted messages" />
                             </GtkBox>

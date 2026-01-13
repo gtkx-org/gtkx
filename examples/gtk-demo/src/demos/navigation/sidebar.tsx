@@ -79,7 +79,7 @@ const SidebarDemo = () => {
                         cssClasses={["dim-label"]}
                         halign={GtkEnum.Align.START}
                     />
-                    <GtkBox heightRequest={200}>
+                    <GtkBox heightRequest={260}>
                         <GtkFrame cssClasses={["card"]} widthRequest={150}>
                             <GtkStackSidebar stack={stack ?? undefined} />
                         </GtkFrame>
@@ -175,7 +175,7 @@ const SidebarDemo = () => {
                         cssClasses={["dim-label"]}
                         halign={GtkEnum.Align.START}
                     />
-                    <GtkBox heightRequest={250}>
+                    <GtkBox heightRequest={320}>
                         <GtkFrame cssClasses={["card"]} widthRequest={180}>
                             <GtkScrolledWindow hscrollbarPolicy={GtkEnum.PolicyType.NEVER}>
                                 <GtkListBox
@@ -253,7 +253,7 @@ const SidebarDemo = () => {
                         onClicked={() => setSidebarVisible(!sidebarVisible)}
                         halign={GtkEnum.Align.START}
                     />
-                    <GtkBox heightRequest={180}>
+                    <GtkBox heightRequest={240}>
                         <GtkRevealer
                             revealChild={sidebarVisible}
                             transitionType={GtkEnum.RevealerTransitionType.SLIDE_RIGHT}
@@ -312,7 +312,7 @@ const SidebarDemo = () => {
                         cssClasses={["dim-label"]}
                         halign={GtkEnum.Align.START}
                     />
-                    <GtkPaned position={160} wideHandle heightRequest={150} cssClasses={["card"]}>
+                    <GtkPaned position={160} wideHandle heightRequest={200} cssClasses={["card"]}>
                         <x.Slot for={GtkPaned} id="startChild">
                             <GtkScrolledWindow hscrollbarPolicy={GtkEnum.PolicyType.NEVER}>
                                 <GtkBox

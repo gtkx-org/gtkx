@@ -16,6 +16,7 @@ export const VIRTUAL_CHILDREN_WIDGET_NAMES: ReadonlySet<string> = new Set(["Scal
 export const NAVIGATION_VIEW_WIDGET_NAMES: ReadonlySet<string> = new Set(["NavigationView"]);
 export const STACK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Stack", "ViewStack"]);
 export const WINDOW_WIDGET_NAMES: ReadonlySet<string> = new Set(["Window"]);
+export const SCROLLED_WINDOW_WIDGET_NAMES: ReadonlySet<string> = new Set(["ScrolledWindow"]);
 
 const AUTOWRAP_WIDGET_NAMES: ReadonlySet<string> = new Set(["ListBox", "FlowBox"]);
 const NOTEBOOK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Notebook"]);

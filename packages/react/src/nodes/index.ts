@@ -26,6 +26,7 @@ import "./pack.js";
 import "./popover-menu.js";
 import "./scale-mark.js";
 import "./scale.js";
+import "./scrolled-window.js";
 import "./simple-list-item.js";
 import "./simple-list-view.js";
 import "./slot.js";

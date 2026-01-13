@@ -118,7 +118,7 @@ const ListBoxControlsDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                    <GtkScrolledWindow heightRequest={350} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
                             {settings.map((setting) => (
                                 <GtkListBoxRow key={setting.id} activatable={false}>

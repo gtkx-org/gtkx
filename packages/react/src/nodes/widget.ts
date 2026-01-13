@@ -23,6 +23,8 @@ import { type SignalHandler, signalStore } from "./internal/signal-store.js";
 import { filterProps, isContainerType, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 
+const PROPS = ["children", "widthRequest", "heightRequest"];
+
 export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Props> extends Node<T, P> {
     public static override priority = 3;
 
@@ -125,9 +127,11 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public updateProps(oldProps: P | null, newProps: P): void {
+        this.updateSizeRequest(oldProps, newProps);
+
         const propNames = new Set([
-            ...Object.keys(filterProps(oldProps ?? {}, ["children"])),
-            ...Object.keys(filterProps(newProps ?? {}, ["children"])),
+            ...Object.keys(filterProps(oldProps ?? {}, PROPS)),
+            ...Object.keys(filterProps(newProps ?? {}, PROPS)),
         ]);
 
         const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
@@ -177,6 +181,17 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
                 signalStore.set(this, this.container, signalName, handler);
             }
+        }
+    }
+
+    private updateSizeRequest(oldProps: P | null, newProps: P): void {
+        const oldWidth = oldProps?.widthRequest as number | undefined;
+        const oldHeight = oldProps?.heightRequest as number | undefined;
+        const newWidth = newProps.widthRequest as number | undefined;
+        const newHeight = newProps.heightRequest as number | undefined;
+
+        if (oldWidth !== newWidth || oldHeight !== newHeight) {
+            this.container.setSizeRequest(newWidth ?? -1, newHeight ?? -1);
         }
     }
 

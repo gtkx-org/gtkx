@@ -104,7 +104,7 @@ const ListBoxDemo = () => {
                     </GtkBox>
 
                     <GtkScrolledWindow
-                        heightRequest={250}
+                        heightRequest={320}
                         hscrollbarPolicy={Gtk.PolicyType.NEVER}
                         cssClasses={["card"]}
                     >

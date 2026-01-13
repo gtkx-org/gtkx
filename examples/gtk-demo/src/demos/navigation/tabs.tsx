@@ -168,7 +168,7 @@ const TabsDemo = () => {
                         tabPos={tabPosition}
                         scrollable
                         cssClasses={["card"]}
-                        heightRequest={150}
+                        heightRequest={220}
                     >
                         {tabs.map((tab) => (
                             <x.NotebookPage key={tab.id} label={tab.title}>
