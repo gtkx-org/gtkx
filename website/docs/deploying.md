@@ -19,13 +19,13 @@ Mark the native module as external:
 import * as esbuild from "esbuild";
 
 await esbuild.build({
-    entryPoints: ["dist/index.js"],
-    bundle: true,
-    platform: "node",
-    target: "node22",
-    outfile: "dist/bundle.js",
-    format: "cjs",
-    external: ["./index.node"], // Keep native module external
+ entryPoints: ["dist/index.js"],
+ bundle: true,
+ platform: "node",
+ target: "node22",
+ outfile: "dist/bundle.js",
+ format: "cjs",
+ external: ["./index.node"], // Keep native module external
 });
 ```
 
@@ -35,11 +35,11 @@ Create `sea-config.json`:
 
 ```json
 {
-    "main": "dist/bundle.js",
-    "output": "dist/sea-prep.blob",
-    "disableExperimentalSEAWarning": true,
-    "useSnapshot": false,
-    "useCodeCache": true
+ "main": "dist/bundle.js",
+ "output": "dist/sea-prep.blob",
+ "disableExperimentalSEAWarning": true,
+ "useSnapshot": false,
+ "useCodeCache": true
 }
 ```
 
@@ -57,7 +57,7 @@ cp $(which node) dist/app
 
 # Inject blob into binary
 npx postject dist/app NODE_SEA_BLOB dist/sea-prep.blob \
-    --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
+ --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2
 
 # Copy native module alongside the binary
 cp node_modules/@gtkx/native/index.node dist/
@@ -78,26 +78,26 @@ runtime: org.gnome.Platform
 runtime-version: "48"
 sdk: org.gnome.Sdk
 sdk-extensions:
-    - org.freedesktop.Sdk.Extension.node22
+ - org.freedesktop.Sdk.Extension.node22
 command: myapp
 
 finish-args:
-    - --share=ipc
-    - --socket=fallback-x11
-    - --socket=wayland
-    - --device=dri
+ - --share=ipc
+ - --socket=fallback-x11
+ - --socket=wayland
+ - --device=dri
 
 modules:
-    - name: myapp
-      buildsystem: simple
-      build-commands:
-          - install -Dm755 app /app/bin/myapp
-          - install -Dm755 index.node /app/bin/index.node  # GTKX native module
-      sources:
-          - type: file
-            path: ../dist/app
-          - type: file
-            path: ../dist/index.node
+ - name: myapp
+ buildsystem: simple
+ build-commands:
+ - install -Dm755 app /app/bin/myapp
+ - install -Dm755 index.node /app/bin/index.node # GTKX native module
+ sources:
+ - type: file
+ path: ../dist/app
+ - type: file
+ path: ../dist/index.node
 ```
 
 For complete Flatpak setup (prerequisites, desktop entry, build commands), see the [Flatpak Documentation](https://docs.flatpak.org/) and the [deploying example](https://github.com/eugeniodepalo/gtkx/tree/main/examples/deploying).
@@ -114,17 +114,17 @@ base: core24
 confinement: strict
 
 apps:
-    myapp:
-        command: bin/myapp
-        extensions: [gnome]  # Required for GTK4
+ myapp:
+ command: bin/myapp
+ extensions: [gnome] # Required for GTK4
 
 parts:
-    myapp:
-        plugin: dump
-        source: dist/
-        organize:
-            app: bin/myapp
-            index.node: bin/index.node  # GTKX native module
+ myapp:
+ plugin: dump
+ source: dist/
+ organize:
+ app: bin/myapp
+ index.node: bin/index.node # GTKX native module
 ```
 
 For complete Snap setup, see the [Snapcraft Documentation](https://snapcraft.io/docs).

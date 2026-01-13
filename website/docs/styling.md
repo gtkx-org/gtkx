@@ -10,10 +10,10 @@ GTK uses CSS for styling, but with its own syntax and properties. GTKX bridges t
 import { css } from "@gtkx/css";
 
 const buttonStyle = css`
-    background: #3584e4;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 6px;
+ background: #3584e4;
+ color: white;
+ padding: 8px 16px;
+ border-radius: 6px;
 `;
 
 <GtkButton cssClasses={[buttonStyle]} label="Styled Button" />
@@ -25,15 +25,15 @@ The `css` function supports nesting with `&`:
 
 ```typescript
 const buttonStyle = css`
-    background: #3584e4;
+ background: #3584e4;
 
-    &:hover {
-        background: #1c71d8;
-    }
+ &:hover {
+ background: #1c71d8;
+ }
 
-    &:disabled {
-        opacity: 0.5;
-    }
+ &:disabled {
+ opacity: 0.5;
+ }
 `;
 ```
 
@@ -50,19 +50,19 @@ GTK CSS is similar to web CSS but with its own selectors, properties, and theme 
 
 ```typescript
 const cardStyle = css`
-    background: @theme_bg_color;
-    border: 1px solid @borders;
-    border-radius: 12px;
-    padding: 16px;
+ background: @theme_bg_color;
+ border: 1px solid @borders;
+ border-radius: 12px;
+ padding: 16px;
 
-    &:hover {
-        background: alpha(@theme_fg_color, 0.05);
-    }
+ &:hover {
+ background: alpha(@theme_fg_color, 0.05);
+ }
 `;
 
 <GtkBox cssClasses={[cardStyle]} orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-    <GtkLabel label="Card Title" cssClasses={["title-3"]} />
-    <GtkLabel label="Card content goes here" cssClasses={["dim-label"]} />
+ <GtkLabel label="Card Title" cssClasses={["title-3"]} />
+ <GtkLabel label="Card content goes here" cssClasses={["dim-label"]} />
 </GtkBox>
 ```
 
@@ -70,17 +70,17 @@ const cardStyle = css`
 
 ```typescript
 const itemStyle = css`
-    padding: 8px 12px;
-    border-radius: 6px;
+ padding: 8px 12px;
+ border-radius: 6px;
 `;
 
 const selectedStyle = css`
-    background: @theme_selected_bg_color;
-    color: @theme_selected_fg_color;
+ background: @theme_selected_bg_color;
+ color: @theme_selected_fg_color;
 `;
 
-<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={[cx(itemStyle, isSelected && selectedStyle)]}>
-    {item.name}
+<GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={[cx(itemStyle, isSelected && selectedStyle)]}>
+ {item.name}
 </GtkBox>
 ```
 
@@ -91,18 +91,18 @@ const selectedStyle = css`
 import { injectGlobal } from "@gtkx/css";
 
 injectGlobal`
-    window {
-        background: @theme_bg_color;
-    }
+ window {
+ background: @theme_bg_color;
+ }
 
-    .sidebar {
-        background: alpha(@theme_bg_color, 0.95);
-        border-right: 1px solid @borders;
-    }
+ .sidebar {
+ background: alpha(@theme_bg_color, 0.95);
+ border-right: 1px solid @borders;
+ }
 
-    .content-area {
-        padding: 24px;
-    }
+ .content-area {
+ padding: 24px;
+ }
 `;
 ```
 

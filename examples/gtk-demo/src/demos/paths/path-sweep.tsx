@@ -305,7 +305,7 @@ const EasingVisualizer = () => {
                 cssClasses={["card"]}
                 halign={Gtk.Align.CENTER}
             />
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4} halign={Gtk.Align.CENTER} homogeneous>
+            <GtkBox spacing={4} halign={Gtk.Align.CENTER} homogeneous>
                 {easingNames.slice(0, 5).map((name) => (
                     <GtkButton
                         key={name}
@@ -315,7 +315,7 @@ const EasingVisualizer = () => {
                     />
                 ))}
             </GtkBox>
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4} halign={Gtk.Align.CENTER} homogeneous>
+            <GtkBox spacing={4} halign={Gtk.Align.CENTER} homogeneous>
                 {easingNames.slice(5).map((name) => (
                     <GtkButton
                         key={name}
@@ -343,7 +343,6 @@ const PathSweepDemo = () => {
 
             <GtkFrame label="Sweep Effects">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}
@@ -378,7 +377,6 @@ const PathSweepDemo = () => {
             <GtkFrame label="Easing Functions">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
-                    spacing={0}
                     marginTop={12}
                     marginBottom={12}
                     marginStart={12}

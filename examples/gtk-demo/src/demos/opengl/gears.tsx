@@ -21,9 +21,9 @@ out vec3 vNormal;
 out vec3 vLightDir;
 
 void main() {
-    gl_Position = uProjection * uModelView * vec4(aPos, 1.0);
-    vNormal = normalize(mat3(uNormalMatrix) * aNormal);
-    vLightDir = normalize(uLightDir);
+ gl_Position = uProjection * uModelView * vec4(aPos, 1.0);
+ vNormal = normalize(mat3(uNormalMatrix) * aNormal);
+ vLightDir = normalize(uLightDir);
 }`;
 
 const FRAGMENT_SHADER = `#version 300 es
@@ -37,10 +37,10 @@ uniform vec3 uColor;
 out vec4 FragColor;
 
 void main() {
-    float ambient = 0.3;
-    float diffuse = max(dot(vNormal, vLightDir), 0.0) * 0.7;
-    vec3 finalColor = uColor * (ambient + diffuse);
-    FragColor = vec4(finalColor, 1.0);
+ float ambient = 0.3;
+ float diffuse = max(dot(vNormal, vLightDir), 0.0) * 0.7;
+ vec3 finalColor = uColor * (ambient + diffuse);
+ FragColor = vec4(finalColor, 1.0);
 }`;
 
 function generateGear(
@@ -475,7 +475,7 @@ const GearsDemo = () => {
                         cssClasses={["card"]}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label={isAnimating ? "Pause" : "Play"}
                             onClicked={() => setIsAnimating(!isAnimating)}
@@ -494,10 +494,9 @@ const GearsDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Rotation X:" widthRequest={80} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             hexpand
@@ -505,10 +504,9 @@ const GearsDemo = () => {
                             onValueChanged={(self) => setViewRotX(self.getValue())}
                         />
                     </GtkBox>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Rotation Y:" widthRequest={80} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             hexpand

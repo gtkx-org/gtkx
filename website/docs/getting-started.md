@@ -33,11 +33,11 @@ A new GTKX project has this structure:
 ```
 my-app/
 ├── src/
-│   ├── app.tsx       # Main application component
-│   ├── dev.tsx       # Development entry point
-│   └── index.tsx     # Production entry point
+│ ├── app.tsx # Main application component
+│ ├── dev.tsx # Development entry point
+│ └── index.tsx # Production entry point
 ├── tests/
-│   └── app.test.tsx  # Example test
+│ └── app.test.tsx # Example test
 ├── package.json
 └── tsconfig.json
 ```
@@ -50,36 +50,36 @@ my-app/
 import { useState } from "react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
-  GtkApplicationWindow,
-  GtkBox,
-  GtkButton,
-  GtkLabel,
-  quit,
+ GtkApplicationWindow,
+ GtkBox,
+ GtkButton,
+ GtkLabel,
+ quit,
 } from "@gtkx/react";
 
 export default function App() {
-  const [count, setCount] = useState(0);
+ const [count, setCount] = useState(0);
 
-  return (
-    <GtkApplicationWindow
-      title="My App"
-      defaultWidth={400}
-      defaultHeight={300}
-      onClose={quit}
-    >
-      <GtkBox
-        orientation={Gtk.Orientation.VERTICAL}
-        spacing={20}
-        marginTop={40}
-        marginStart={40}
-        marginEnd={40}
-      >
-        Welcome to GTKX!
-        <GtkLabel label={`Count: ${count}`} />
-        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
-      </GtkBox>
-    </GtkApplicationWindow>
-  );
+ return (
+ <GtkApplicationWindow
+ title="My App"
+ defaultWidth={400}
+ defaultHeight={300}
+ onClose={quit}
+>
+ <GtkBox
+ orientation={Gtk.Orientation.VERTICAL}
+ spacing={20}
+ marginTop={40}
+ marginStart={40}
+ marginEnd={40}
+>
+ Welcome to GTKX!
+ <GtkLabel label={`Count: ${count}`} />
+ <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+ </GtkBox>
+ </GtkApplicationWindow>
+ );
 }
 ```
 
@@ -97,9 +97,9 @@ render(<App />, pkg.gtkx.appId);
 
 ```json
 {
-  "gtkx": {
-    "appId": "com.example.myapp"
-  }
+ "gtkx": {
+ "appId": "com.example.myapp"
+ }
 }
 ```
 
@@ -147,9 +147,9 @@ Component props map to GTK widget properties:
 
 ```tsx
 <GtkButton
-  label="Click me" // Sets the button label
-  sensitive={false} // Disables the button
-  cssClasses={["suggested-action"]} // Adds CSS classes
+ label="Click me" // Sets the button label
+ sensitive={false} // Disables the button
+ cssClasses={["suggested-action"]} // Adds CSS classes
 />
 ```
 
@@ -159,11 +159,11 @@ GTK signals become React callbacks with an `on` prefix:
 
 ```tsx
 <GtkButton
-    onClicked={() => console.log("clicked")}  // "clicked" signal
+ onClicked={() => console.log("clicked")} // "clicked" signal
 />
 
 <GtkEntry
-    onChanged={() => console.log("text changed")}  // "changed" signal
+ onChanged={() => console.log("text changed")} // "changed" signal
 />
 ```
 

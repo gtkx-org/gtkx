@@ -100,7 +100,7 @@ describe("waitForElementToBeRemoved", () => {
         const DynamicComponent = () => {
             const [showLabel, setShowLabel] = useState(true);
             return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
                     {showLabel && "Temporary"}
                 </GtkBox>
@@ -122,7 +122,7 @@ describe("waitForElementToBeRemoved", () => {
         const DynamicComponent = () => {
             const [showLabel, setShowLabel] = useState(true);
             return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
                     {showLabel && <GtkLabel label="ToRemove" name="removable" />}
                 </GtkBox>

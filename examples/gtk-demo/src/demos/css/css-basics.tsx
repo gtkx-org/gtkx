@@ -6,35 +6,35 @@ import type { Demo } from "../types.js";
 import sourceCode from "./css-basics.tsx?raw";
 
 const demoBoxStyle = css`
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-    padding: 24px;
-    border-radius: 12px;
+ background-color: @accent_bg_color;
+ color: @accent_fg_color;
+ padding: 24px;
+ border-radius: 12px;
 
-    &:hover {
-        background-color: shade(@accent_bg_color, 1.1);
-    }
+ &:hover {
+ background-color: shade(@accent_bg_color, 1.1);
+ }
 `;
 
 const demoLabelStyle = css`
-    font-size: 18px;
-    font-weight: bold;
+ font-size: 18px;
+ font-weight: bold;
 `;
 
 const demoButtonStyle = css`
-    padding: 12px 24px;
-    border-radius: 8px;
-    background-color: @success_bg_color;
-    color: @success_fg_color;
+ padding: 12px 24px;
+ border-radius: 8px;
+ background-color: @success_bg_color;
+ color: @success_fg_color;
 
-    &:hover {
-        background-color: shade(@success_bg_color, 1.15);
-    }
+ &:hover {
+ background-color: shade(@success_bg_color, 1.15);
+ }
 `;
 
 const alternateBoxStyle = css`
-    background-color: @warning_bg_color;
-    color: @warning_fg_color;
+ background-color: @warning_bg_color;
+ color: @warning_fg_color;
 `;
 
 const CODE_EXAMPLE = `// Import the css utilities
@@ -42,10 +42,10 @@ import { css, cx } from "@gtkx/css";
 
 // Define styles with css\`\`
 const boxStyle = css\`
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-    padding: 24px;
-    border-radius: 12px;
+ background-color: @accent_bg_color;
+ color: @accent_fg_color;
+ padding: 24px;
+ border-radius: 12px;
 \`;
 
 // Use cx() to combine styles
@@ -76,7 +76,7 @@ const CssBasicsDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={20} vexpand>
+            <GtkBox spacing={20} vexpand>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} hexpand>
                     <GtkLabel label="Usage Example" cssClasses={["heading"]} halign={Gtk.Align.START} />
 
@@ -130,7 +130,7 @@ const CssBasicsDemo = () => {
                                 onClicked={() => {}}
                             />
 
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                            <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                                 <GtkButton label="Normal" onClicked={() => {}} />
                                 <GtkButton label="Suggested" cssClasses={["suggested-action"]} onClicked={() => {}} />
                                 <GtkButton

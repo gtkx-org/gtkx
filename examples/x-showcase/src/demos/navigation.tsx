@@ -100,12 +100,7 @@ export const NavigationDemo = () => {
                                 </GtkBox>
                             </x.StackPage>
                         </GtkStack>
-                        <GtkBox
-                            orientation={Gtk.Orientation.HORIZONTAL}
-                            spacing={6}
-                            halign={Gtk.Align.CENTER}
-                            marginBottom={12}
-                        >
+                        <GtkBox spacing={6} halign={Gtk.Align.CENTER} marginBottom={12}>
                             <GtkButton
                                 label="Home"
                                 onClicked={() => setStackPage("page1")}
@@ -166,7 +161,7 @@ export const NavigationDemo = () => {
                                 >
                                     <GtkImage iconName="emblem-documents-symbolic" iconSize={Gtk.IconSize.LARGE} />
                                     <GtkLabel label="Details Page" cssClasses={["title-3"]} />
-                                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                                    <GtkBox spacing={6}>
                                         <GtkButton
                                             label="← Back"
                                             onClicked={() => setHistory(history.slice(0, -1))}
@@ -329,14 +324,13 @@ export const NavigationDemo = () => {
                     <GtkNotebook>
                         <x.NotebookPage>
                             <x.NotebookPageTab>
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                                <GtkBox spacing={6}>
                                     <GtkImage iconName="mail-unread-symbolic" />
                                     <GtkLabel label="Inbox (3)" />
                                 </GtkBox>
                             </x.NotebookPageTab>
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={0}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
                                 heightRequest={100}
@@ -346,14 +340,13 @@ export const NavigationDemo = () => {
                         </x.NotebookPage>
                         <x.NotebookPage>
                             <x.NotebookPageTab>
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                                <GtkBox spacing={6}>
                                     <GtkImage iconName="mail-send-symbolic" />
                                     <GtkLabel label="Sent" />
                                 </GtkBox>
                             </x.NotebookPageTab>
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={0}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
                                 heightRequest={100}
@@ -363,14 +356,13 @@ export const NavigationDemo = () => {
                         </x.NotebookPage>
                         <x.NotebookPage>
                             <x.NotebookPageTab>
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                                <GtkBox spacing={6}>
                                     <GtkImage iconName="user-trash-symbolic" />
                                     <GtkLabel label="Trash" />
                                 </GtkBox>
                             </x.NotebookPageTab>
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={0}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
                                 heightRequest={100}

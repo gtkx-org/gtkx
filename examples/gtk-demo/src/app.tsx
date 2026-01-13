@@ -10,28 +10,12 @@ const AppContent = () => {
     const { currentDemo } = useDemo();
 
     return (
-        <GtkPaned
-            orientation={Gtk.Orientation.HORIZONTAL}
-            wideHandle
-            vexpand
-            hexpand
-            shrinkStartChild={false}
-            shrinkEndChild={false}
-            position={280}
-        >
+        <GtkPaned wideHandle vexpand hexpand shrinkStartChild={false} shrinkEndChild={false} position={280}>
             <x.Slot for={GtkPaned} id="startChild">
                 <Sidebar />
             </x.Slot>
             <x.Slot for={GtkPaned} id="endChild">
-                <GtkPaned
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    wideHandle
-                    vexpand
-                    hexpand
-                    shrinkStartChild={false}
-                    shrinkEndChild={false}
-                    position={550}
-                >
+                <GtkPaned wideHandle vexpand hexpand shrinkStartChild={false} shrinkEndChild={false} position={550}>
                     <x.Slot for={GtkPaned} id="startChild">
                         <DemoPanel demo={currentDemo} />
                     </x.Slot>
@@ -47,7 +31,7 @@ const AppContent = () => {
 export const App = () => (
     <DemoProvider categories={categories}>
         <GtkApplicationWindow title="GTK4 Demo" defaultWidth={1400} defaultHeight={900} onClose={quit}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand hexpand>
                 <AppContent />
             </GtkBox>
         </GtkApplicationWindow>

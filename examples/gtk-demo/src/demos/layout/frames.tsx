@@ -84,7 +84,7 @@ const FramesDemo = () => {
                 />
                 <GtkFrame>
                     <x.Slot for={GtkFrame} id="labelWidget">
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                        <GtkBox spacing={8}>
                             <GtkLabel label="Settings" cssClasses={["heading"]} />
                             <GtkButton label="Reset" cssClasses={["flat", "small"]} />
                         </GtkBox>
@@ -153,7 +153,7 @@ const FramesDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                <GtkBox spacing={12}>
                     <GtkFrame label="Option A" hexpand>
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}

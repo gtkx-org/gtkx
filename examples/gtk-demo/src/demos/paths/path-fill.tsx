@@ -173,7 +173,6 @@ const PathFillDemo = () => {
 
             <GtkFrame label="Solid & Gradient Fills">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}
@@ -202,7 +201,7 @@ const PathFillDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={32} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={32} halign={Gtk.Align.CENTER}>
                         <DrawingCanvas width={140} height={140} drawFunc={drawEvenOddFill} label="Even-Odd Fill Rule" />
                         <DrawingCanvas
                             width={140}
@@ -216,7 +215,6 @@ const PathFillDemo = () => {
 
             <GtkFrame label="Complex Shapes">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}

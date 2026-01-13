@@ -88,9 +88,9 @@ const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"] = tru
  * import { render, screen } from "@gtkx/testing";
  *
  * test("button click", async () => {
- *   await render(<MyButton />);
- *   const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
- *   await userEvent.click(button);
+ * await render(<MyButton />);
+ * const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+ * await userEvent.click(button);
  * });
  * ```
  *
@@ -133,12 +133,12 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
  * import { render, cleanup } from "@gtkx/testing";
  *
  * afterEach(async () => {
- *   await cleanup();
+ * await cleanup();
  * });
  *
  * test("my test", async () => {
- *   await render(<MyComponent />);
- *   // ...
+ * await render(<MyComponent />);
+ * // ...
  * });
  * ```
  */

@@ -6,7 +6,7 @@ import { render, screen, within } from "../src/index.js";
 describe("within", () => {
     it("scopes queries to container element", async () => {
         await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkFrame name="section-a" label="Section A">
                     <GtkButton label="Submit" />
                 </GtkFrame>
@@ -25,7 +25,7 @@ describe("within", () => {
 
     it("does not find elements outside container", async () => {
         await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkFrame name="inner-frame" label="Inner">
                     Inside
                 </GtkFrame>
@@ -90,7 +90,7 @@ describe("within", () => {
     it("provides findAllByRole query", async () => {
         await render(
             <GtkFrame name="container">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkButton label="First" />
                     <GtkButton label="Second" />
                 </GtkBox>
@@ -106,7 +106,7 @@ describe("within", () => {
     it("provides findAllByText query", async () => {
         await render(
             <GtkFrame name="container">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkLabel label="Item" />
                     <GtkLabel label="Item" />
                 </GtkBox>
@@ -122,7 +122,7 @@ describe("within", () => {
     it("provides findAllByLabelText query", async () => {
         await render(
             <GtkFrame name="container">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkButton label="Action" />
                     <GtkButton label="Action" />
                 </GtkBox>
@@ -138,7 +138,7 @@ describe("within", () => {
     it("provides findAllByTestId query", async () => {
         await render(
             <GtkFrame name="container">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkEntry name="field" />
                     <GtkEntry name="field" />
                 </GtkBox>

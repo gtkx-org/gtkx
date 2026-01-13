@@ -233,7 +233,7 @@ const PageSetupDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24}>
+            <GtkBox spacing={24}>
                 <GtkFrame label="Preview">
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -266,7 +266,7 @@ const PageSetupDemo = () => {
                             marginStart={12}
                             marginEnd={12}
                         >
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label="Size:" widthChars={10} xalign={0} />
                                 <GtkButton
                                     label={`${paperSize.name} (${paperSize.width} x ${paperSize.height} mm)`}
@@ -274,7 +274,7 @@ const PageSetupDemo = () => {
                                     hexpand
                                 />
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label="Orientation:" widthChars={10} xalign={0} />
                                 <GtkButton
                                     label={ORIENTATION_LABELS[orientation]}
@@ -294,19 +294,19 @@ const PageSetupDemo = () => {
                             marginStart={12}
                             marginEnd={12}
                         >
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label="Top:" widthChars={8} xalign={0} />
                                 <GtkSpinButton adjustment={topMarginAdj} climbRate={1} digits={1} hexpand />
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label="Bottom:" widthChars={8} xalign={0} />
                                 <GtkSpinButton adjustment={bottomMarginAdj} climbRate={1} digits={1} hexpand />
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label="Left:" widthChars={8} xalign={0} />
                                 <GtkSpinButton adjustment={leftMarginAdj} climbRate={1} digits={1} hexpand />
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label="Right:" widthChars={8} xalign={0} />
                                 <GtkSpinButton adjustment={rightMarginAdj} climbRate={1} digits={1} hexpand />
                             </GtkBox>
@@ -331,7 +331,7 @@ const PageSetupDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkButton
                             label="Show Page Setup Dialog..."
                             onClicked={() => void handleShowPageSetupDialog()}

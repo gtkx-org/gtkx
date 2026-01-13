@@ -35,7 +35,6 @@ const ScaleDemo = () => {
                     marginEnd={12}
                 >
                     <GtkScale
-                        orientation={Gtk.Orientation.HORIZONTAL}
                         onValueChanged={(scale: Gtk.Range) => setHorizontalValue(scale.getValue())}
                         adjustment={horizontalAdjustment}
                         drawValue
@@ -51,14 +50,7 @@ const ScaleDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Vertical Scale">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={24}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
+                <GtkBox spacing={24} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                     <GtkScale
                         orientation={Gtk.Orientation.VERTICAL}
                         onValueChanged={(scale: Gtk.Range) => setVerticalValue(scale.getValue())}
@@ -85,7 +77,6 @@ const ScaleDemo = () => {
                     marginEnd={12}
                 >
                     <GtkScale
-                        orientation={Gtk.Orientation.HORIZONTAL}
                         onValueChanged={(scale: Gtk.Range) => setMarkedValue(scale.getValue())}
                         adjustment={markedAdjustment}
                         drawValue
@@ -109,14 +100,9 @@ const ScaleDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Brightness:" halign={Gtk.Align.START} />
-                        <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
-                            adjustment={brightnessAdjustment}
-                            drawValue={false}
-                            hexpand
-                        />
+                        <GtkScale adjustment={brightnessAdjustment} hexpand />
                     </GtkBox>
                 </GtkBox>
             </GtkFrame>

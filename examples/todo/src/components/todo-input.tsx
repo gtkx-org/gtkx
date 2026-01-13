@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkEntry } from "@gtkx/react";
 import { useRef, useState } from "react";
 
@@ -19,7 +19,7 @@ export const TodoInput = ({ onAdd }: TodoInputProps) => {
     };
 
     return (
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={["linked"]}>
+        <GtkBox cssClasses={["linked"]}>
             <GtkEntry
                 ref={entryRef}
                 text={text}

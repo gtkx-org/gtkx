@@ -7,20 +7,13 @@
 import type { DefaultValue, GirRepository } from "@gtkx/gir";
 import { toConstantCase, toPascalCase } from "./naming.js";
 
-export type EnumResolution = {
+type EnumResolution = {
     enumName: string;
     memberName: string;
     namespace: string;
 };
 
-/**
- * Resolves an enum C identifier to its TypeScript representation.
- *
- * @param cIdentifier - The C identifier (e.g., "GTK_ORIENTATION_HORIZONTAL")
- * @param repo - The GIR repository to search
- * @returns The enum resolution or null if not found
- */
-export function resolveEnumByCIdentifier(cIdentifier: string, repo: GirRepository): EnumResolution | null {
+function resolveEnumByCIdentifier(cIdentifier: string, repo: GirRepository): EnumResolution | null {
     for (const [, ns] of repo.getAllNamespaces()) {
         for (const [, enumeration] of ns.enumerations) {
             for (const member of enumeration.members) {

@@ -105,23 +105,19 @@ const ThemesDemo = () => {
                     marginStart={16}
                     marginEnd={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Current appearance:" halign={Gtk.Align.START} hexpand />
-                        <GtkBox
-                            cssClasses={isDark ? ["accent"] : ["success"]}
-                            orientation={Gtk.Orientation.HORIZONTAL}
-                            spacing={4}
-                        >
+                        <GtkBox cssClasses={isDark ? ["accent"] : ["success"]} spacing={4}>
                             <GtkLabel label={isDark ? "Dark Mode" : "Light Mode"} cssClasses={["heading"]} />
                         </GtkBox>
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="High contrast:" halign={Gtk.Align.START} hexpand />
                         <GtkLabel label={isHighContrast ? "Enabled" : "Disabled"} cssClasses={["dim-label"]} />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="System color scheme support:" halign={Gtk.Align.START} hexpand />
                         <GtkLabel
                             label={systemSupportsColorSchemes ? "Supported" : "Not supported"}
@@ -132,14 +128,7 @@ const ThemesDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Quick Toggle">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={16}
-                    marginTop={16}
-                    marginBottom={16}
-                    marginStart={16}
-                    marginEnd={16}
-                >
+                <GtkBox spacing={16} marginTop={16} marginBottom={16} marginStart={16} marginEnd={16}>
                     <GtkLabel label="Dark Mode" halign={Gtk.Align.START} hexpand />
                     <GtkSwitch
                         active={colorScheme === ColorScheme.FORCE_DARK || colorScheme === ColorScheme.PREFER_DARK}
@@ -156,28 +145,16 @@ const ThemesDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Color Scheme">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} marginTop={8} marginBottom={8}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} marginTop={8} marginBottom={8}>
                     <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
                         {colorSchemeOptions.map((option) => (
                             <GtkListBoxRow key={option.scheme} activatable={false}>
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={12}
-                                    marginTop={12}
-                                    marginBottom={12}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                >
+                                <GtkBox spacing={12} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                                     <GtkCheckButton
                                         active={colorScheme === option.scheme}
                                         onToggled={() => handleColorSchemeChange(option.scheme)}
                                     />
-                                    <GtkBox
-                                        orientation={Gtk.Orientation.VERTICAL}
-                                        spacing={0}
-                                        hexpand
-                                        valign={Gtk.Align.CENTER}
-                                    >
+                                    <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
                                         <GtkLabel label={option.label} halign={Gtk.Align.START} />
                                         <GtkLabel
                                             label={option.description}
@@ -208,13 +185,13 @@ const ThemesDemo = () => {
                         halign={Gtk.Align.START}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton label="Default" onClicked={() => {}} />
                         <GtkButton label="Suggested" cssClasses={["suggested-action"]} onClicked={() => {}} />
                         <GtkButton label="Destructive" cssClasses={["destructive-action"]} onClicked={() => {}} />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                             <GtkLabel label="Title" cssClasses={["title-3"]} />
                             <GtkLabel label="Regular text" />
@@ -224,7 +201,6 @@ const ThemesDemo = () => {
                         <GtkBox
                             cssClasses={["card"]}
                             orientation={Gtk.Orientation.VERTICAL}
-                            spacing={0}
                             marginTop={8}
                             marginBottom={8}
                             marginStart={16}

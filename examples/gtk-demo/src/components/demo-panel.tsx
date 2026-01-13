@@ -11,7 +11,6 @@ export const DemoPanel = ({ demo }: DemoPanelProps) => {
         return (
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
-                spacing={0}
                 valign={Gtk.Align.CENTER}
                 halign={Gtk.Align.CENTER}
                 vexpand
@@ -25,7 +24,7 @@ export const DemoPanel = ({ demo }: DemoPanelProps) => {
     const DemoComponent = demo.component;
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand hexpand>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={4}
@@ -41,7 +40,6 @@ export const DemoPanel = ({ demo }: DemoPanelProps) => {
             <GtkScrolledWindow vexpand hexpand>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
-                    spacing={0}
                     marginTop={12}
                     marginBottom={12}
                     marginStart={12}

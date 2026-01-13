@@ -64,19 +64,19 @@ const ExpanderDemo = () => {
                         onActivate={(expander: Gtk.Expander) => setDetailsExpanded(!expander.getExpanded())}
                     >
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={6}>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label="Size:" cssClasses={["dim-label"]} widthChars={12} xalign={0} />
                                 <GtkLabel label="2.4 MB" />
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label="Created:" cssClasses={["dim-label"]} widthChars={12} xalign={0} />
                                 <GtkLabel label="December 15, 2024" />
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label="Modified:" cssClasses={["dim-label"]} widthChars={12} xalign={0} />
                                 <GtkLabel label="December 27, 2024" />
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label="Type:" cssClasses={["dim-label"]} widthChars={12} xalign={0} />
                                 <GtkLabel label="PDF Document" />
                             </GtkBox>
@@ -151,7 +151,7 @@ const ExpanderDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label="Expand All"
                             onClicked={() => {

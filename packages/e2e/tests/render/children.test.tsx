@@ -24,7 +24,7 @@ describe("render - children", () => {
     describe("adding children", () => {
         it("appends child to appendable widget (Box)", async () => {
             await render(
-                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkLabel label="Child" />
                 </GtkBox>,
             );
@@ -48,11 +48,7 @@ describe("render - children", () => {
     describe("removing children", () => {
         it("removes child from parent", async () => {
             function App({ showChild }: { showChild: boolean }) {
-                return (
-                    <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                        {showChild && "Removable"}
-                    </GtkBox>
-                );
+                return <GtkBox orientation={Gtk.Orientation.VERTICAL}>{showChild && "Removable"}</GtkBox>;
             }
 
             const { rerender } = await render(<App showChild={true} />);
@@ -85,7 +81,7 @@ describe("render - children", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
                         {items.map((item) => (
                             <GtkLabel key={item} label={item} />
                         ))}
@@ -110,7 +106,7 @@ describe("render - children", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
                         {items.map((item) => (
                             <GtkLabel key={item} label={item} />
                         ))}
@@ -177,7 +173,7 @@ describe("render - children", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
                         {items.map((item) => (
                             <GtkLabel key={item} label={item} />
                         ))}
@@ -200,7 +196,7 @@ describe("render - children", () => {
 
             function App({ items }: { items: string[] }) {
                 return (
-                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
                         {items.map((item) => (
                             <GtkLabel key={item} label={item} />
                         ))}
@@ -221,8 +217,8 @@ describe("render - children", () => {
             const containerRef = createRef<Gtk.Box>();
 
             await render(
-                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkBox ref={containerRef} spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={containerRef}>
                         <GtkButton label="Inner Button" />
                         <GtkLabel label="Inner Label" />
                     </GtkBox>
@@ -248,12 +244,12 @@ describe("render - children", () => {
             const section2Ref = createRef<Gtk.Box>();
 
             await render(
-                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkBox ref={section1Ref} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={section1Ref} orientation={Gtk.Orientation.VERTICAL}>
                         <GtkLabel label="Title" />
                         <GtkLabel label="Section 1 Content" />
                     </GtkBox>
-                    <GtkBox ref={section2Ref} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkBox ref={section2Ref} orientation={Gtk.Orientation.VERTICAL}>
                         <GtkLabel label="Title" />
                         <GtkLabel label="Section 2 Content" />
                     </GtkBox>

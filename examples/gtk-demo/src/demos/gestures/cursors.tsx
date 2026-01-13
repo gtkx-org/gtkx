@@ -112,7 +112,6 @@ const CursorsDemo = () => {
 
             <GtkFrame label="Common Cursors">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     marginStart={16}
                     marginEnd={16}
@@ -133,7 +132,6 @@ const CursorsDemo = () => {
 
             <GtkFrame label="Resize Cursors">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     marginStart={16}
                     marginEnd={16}
@@ -163,7 +161,6 @@ const CursorsDemo = () => {
                     marginBottom={16}
                     heightRequest={150}
                     cssClasses={["card"]}
-                    halign={Gtk.Align.FILL}
                     valign={Gtk.Align.CENTER}
                 >
                     <GtkLabel
@@ -174,7 +171,7 @@ const CursorsDemo = () => {
                         vexpand
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         {["pointer", "crosshair", "move", "wait", "grab"].map((name) => (
                             <GtkButton
                                 key={name}
@@ -188,14 +185,7 @@ const CursorsDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Current Cursor">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={16}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                >
+                <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkLabel label="Last hovered:" cssClasses={["dim-label"]} />
                     <GtkLabel label={activeCursor} cssClasses={["heading"]} />
                     <GtkLabel

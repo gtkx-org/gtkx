@@ -10,12 +10,12 @@ When GTK operations fail, GTKX throws `NativeError` with the error `message` and
 import { NativeError } from "@gtkx/ffi";
 
 try {
-    await someGtkOperation();
+ await someGtkOperation();
 } catch (error) {
-    if (error instanceof NativeError) {
-        console.log(`Error: ${error.message}`);
-        console.log(`Code: ${error.code}`);
-    }
+ if (error instanceof NativeError) {
+ console.log(`Error: ${error.message}`);
+ console.log(`Code: ${error.code}`);
+ }
 }
 ```
 
@@ -28,12 +28,12 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import * as Gio from "@gtkx/ffi/gio";
 
 // Dialog errors
-Gtk.DialogError.DISMISSED   // User cancelled dialog
+Gtk.DialogError.DISMISSED // User cancelled dialog
 
 // I/O errors
-Gio.IOErrorEnum.NOT_FOUND        // File not found
+Gio.IOErrorEnum.NOT_FOUND // File not found
 Gio.IOErrorEnum.PERMISSION_DENIED // Permission denied
-Gio.IOErrorEnum.CANCELLED        // Operation cancelled via Cancellable
+Gio.IOErrorEnum.CANCELLED // Operation cancelled via Cancellable
 ```
 
 ## Handling Dialog Cancellation
@@ -45,14 +45,14 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { NativeError } from "@gtkx/ffi";
 
 const pickFile = async (window: Gtk.Window) => {
-    try {
-        return await new Gtk.FileDialog().openAsync(window);
-    } catch (error) {
-        if (error instanceof NativeError && error.code === Gtk.DialogError.DISMISSED) {
-            return null; // User cancelled - not an error
-        }
-        throw error; // Actual error
-    }
+ try {
+ return await new Gtk.FileDialog().openAsync(window);
+ } catch (error) {
+ if (error instanceof NativeError && error.code === Gtk.DialogError.DISMISSED) {
+ return null; // User cancelled - not an error
+ }
+ throw error; // Actual error
+ }
 };
 ```
 
@@ -66,13 +66,13 @@ Use `instanceof` to distinguish GTKX native errors from JavaScript errors:
 import { NativeError } from "@gtkx/ffi";
 
 const handleError = (error: unknown) => {
-    if (error instanceof NativeError) {
-        // Error from GTK/GLib
-        console.log(`Native: [${error.code}] ${error.message}`);
-    } else if (error instanceof Error) {
-        // Regular JavaScript error
-        console.log(`JS: ${error.message}`);
-    }
+ if (error instanceof NativeError) {
+ // Error from GTK/GLib
+ console.log(`Native: [${error.code}] ${error.message}`);
+ } else if (error instanceof Error) {
+ // Regular JavaScript error
+ console.log(`JS: ${error.message}`);
+ }
 };
 ```
 

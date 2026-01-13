@@ -151,7 +151,7 @@ const ComparisonView = ({
     scale: number;
 }) => {
     return (
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16} homogeneous>
+        <GtkBox spacing={16} homogeneous>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label={leftLabel} cssClasses={["heading"]} />
                 <FontRenderPreview
@@ -280,7 +280,7 @@ const FontRenderingDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkLabel label="Hint Style:" widthRequest={120} halign={Gtk.Align.START} />
                         <GtkDropDown
                             selectedId={String(hintStyle)}
@@ -293,7 +293,7 @@ const FontRenderingDemo = () => {
                         </GtkDropDown>
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkLabel label="Antialiasing:" widthRequest={120} halign={Gtk.Align.START} />
                         <GtkDropDown
                             selectedId={String(antialias)}
@@ -306,7 +306,7 @@ const FontRenderingDemo = () => {
                         </GtkDropDown>
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkLabel label="Hint Metrics:" widthRequest={120} halign={Gtk.Align.START} />
                         <GtkDropDown
                             selectedId={String(hintMetrics)}
@@ -319,7 +319,7 @@ const FontRenderingDemo = () => {
                         </GtkDropDown>
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkLabel label="Subpixel Order:" widthRequest={120} halign={Gtk.Align.START} />
                         <GtkDropDown
                             selectedId={String(subpixelOrder)}
@@ -343,10 +343,9 @@ const FontRenderingDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkLabel label="Font Size:" widthRequest={100} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={fontSizeAdjustment}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
@@ -355,10 +354,9 @@ const FontRenderingDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkLabel label="Magnification:" widthRequest={100} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={scaleAdjustment}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}

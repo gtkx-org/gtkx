@@ -108,7 +108,6 @@ const ListViewClocksDemo = () => {
 
             <GtkFrame label="Current Time">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={16}
                     marginBottom={16}
@@ -145,14 +144,7 @@ const ListViewClocksDemo = () => {
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={16}
-                                    marginTop={12}
-                                    marginBottom={12}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                >
+                                <GtkBox spacing={16} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                                     <GtkLabel
                                         label={isDaytime(item?.offset ?? 0) ? "sun" : "moon"}
                                         cssClasses={["dim-label"]}
@@ -170,7 +162,7 @@ const ListViewClocksDemo = () => {
                                             halign={Gtk.Align.START}
                                             cssClasses={["heading"]}
                                         />
-                                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                        <GtkBox spacing={8}>
                                             <GtkLabel
                                                 label={item?.country ?? ""}
                                                 cssClasses={["dim-label", "caption"]}
@@ -217,7 +209,7 @@ const ListViewClocksDemo = () => {
                             marginStart={12}
                             marginEnd={12}
                         >
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                            <GtkBox spacing={16}>
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={4}
@@ -246,7 +238,7 @@ const ListViewClocksDemo = () => {
                                     />
                                 </GtkBox>
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16} homogeneous>
+                            <GtkBox spacing={16} homogeneous>
                                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} halign={Gtk.Align.CENTER}>
                                     <GtkLabel
                                         label={formatDate(currentTime, selectedClock.offset)}

@@ -176,7 +176,6 @@ const ImageScalingDemo = () => {
 
             <GtkFrame label="ContentFit Modes">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}
@@ -210,7 +209,7 @@ const ImageScalingDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <AspectRatioDemo sourceWidth={160} sourceHeight={90} label="16:9 Wide" />
                         <AspectRatioDemo sourceWidth={100} sourceHeight={100} label="1:1 Square" />
                         <AspectRatioDemo sourceWidth={90} sourceHeight={160} label="9:16 Tall" />
@@ -234,7 +233,7 @@ const ImageScalingDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkPicture
                                 canShrink
@@ -328,11 +327,11 @@ const ImageScalingDemo = () => {
                 >
                     <GtkLabel label="Key Properties:" halign={Gtk.Align.START} cssClasses={["heading"]} />
                     <GtkLabel
-                        label={`file="path/to/image.png"  - Load image from file
+                        label={`file="path/to/image.png" - Load image from file
 contentFit={Gtk.ContentFit.CONTAIN} - Scaling mode
-canShrink={true}  - Allow shrinking below natural size
-keepAspectRatio={true}  - Maintain aspect ratio (deprecated, use contentFit)
-alternativeText="..."  - Accessibility description`}
+canShrink={true} - Allow shrinking below natural size
+keepAspectRatio={true} - Maintain aspect ratio (deprecated, use contentFit)
+alternativeText="..." - Accessibility description`}
                         halign={Gtk.Align.START}
                         cssClasses={["monospace"]}
                     />

@@ -360,7 +360,7 @@ const PathExplorerDemo = () => {
                         halign={Gtk.Align.CENTER}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label={showPath ? "Hide Path" : "Show Path"}
                             onClicked={() => setShowPath(!showPath)}
@@ -374,7 +374,7 @@ const PathExplorerDemo = () => {
                         <GtkButton label="Reset" onClicked={handleReset} cssClasses={["destructive-action"]} />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkLabel label="Add:" cssClasses={["dim-label"]} />
                         <GtkButton label="Line" onClicked={() => handleAddSegment("line")} cssClasses={["flat"]} />
                         <GtkButton
@@ -395,7 +395,6 @@ const PathExplorerDemo = () => {
 
             <GtkFrame label="Legend">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={8}
                     marginBottom={8}

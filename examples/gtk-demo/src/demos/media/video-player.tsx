@@ -60,7 +60,7 @@ const VideoPlayerDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkImage iconName="media-playback-start-symbolic" pixelSize={24} />
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
                             <GtkLabel label="autoplay" halign={Gtk.Align.START} cssClasses={["heading"]} />
@@ -73,7 +73,7 @@ const VideoPlayerDemo = () => {
                         </GtkBox>
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkImage iconName="media-playlist-repeat-symbolic" pixelSize={24} />
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
                             <GtkLabel label="loop" halign={Gtk.Align.START} cssClasses={["heading"]} />
@@ -86,7 +86,7 @@ const VideoPlayerDemo = () => {
                         </GtkBox>
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkImage iconName="folder-videos-symbolic" pixelSize={24} />
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
                             <GtkLabel label="file" halign={Gtk.Align.START} cssClasses={["heading"]} />
@@ -99,7 +99,7 @@ const VideoPlayerDemo = () => {
                         </GtkBox>
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkImage iconName="applications-multimedia-symbolic" pixelSize={24} />
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
                             <GtkLabel label="mediaStream" halign={Gtk.Align.START} cssClasses={["heading"]} />
@@ -130,7 +130,6 @@ const VideoPlayerDemo = () => {
                     />
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         cssClasses={["card"]}
                         marginTop={8}
                         marginStart={12}
@@ -138,7 +137,7 @@ const VideoPlayerDemo = () => {
                     >
                         <GtkLabel
                             label={
-                                '<GtkVideo\n  file="/path/to/video.mp4"\n  autoplay\n  loop\n  widthRequest={640}\n  heightRequest={360}\n/>'
+                                '<GtkVideo\n file="/path/to/video.mp4"\n autoplay\n loop\n widthRequest={640}\n heightRequest={360}\n/>'
                             }
                             halign={Gtk.Align.START}
                             cssClasses={["monospace"]}
@@ -173,12 +172,7 @@ const VideoPlayerDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
-                        spacing={24}
-                        halign={Gtk.Align.CENTER}
-                        marginTop={8}
-                    >
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER} marginTop={8}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkImage iconName="media-skip-backward-symbolic" pixelSize={32} />
                             <GtkLabel label="Previous" cssClasses={["dim-label", "caption"]} />

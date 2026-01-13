@@ -6,24 +6,24 @@ import type { Demo } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
 
 const fieldErrorStyle = css`
-    color: @error_color;
-    font-size: 0.85em;
+ color: @error_color;
+ font-size: 0.85em;
 `;
 
 injectGlobal`
 .field-success entry,
 .field-success spinbutton {
-    border-color: @success_color;
+ border-color: @success_color;
 }
 
 .error-shake {
-    animation: shake 0.3s ease-in-out;
+ animation: shake 0.3s ease-in-out;
 }
 
 @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
+ 0%, 100% { transform: translateX(0); }
+ 25% { transform: translateX(-5px); }
+ 75% { transform: translateX(5px); }
 }
 `;
 
@@ -211,18 +211,13 @@ const ErrorstatesDemo = () => {
                         )}
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.END}>
+                    <GtkBox spacing={12} halign={Gtk.Align.END}>
                         <GtkButton label="Reset" onClicked={handleReset} cssClasses={["flat"]} />
                         <GtkButton label="Validate" onClicked={handleValidate} cssClasses={["suggested-action"]} />
                     </GtkBox>
 
                     {isValid && (
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={0}
-                            cssClasses={["card"]}
-                            halign={Gtk.Align.CENTER}
-                        >
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} halign={Gtk.Align.CENTER}>
                             <GtkLabel
                                 label="All fields are valid!"
                                 cssClasses={["success"]}
@@ -245,7 +240,7 @@ const ErrorstatesDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkEntry placeholderText="Normal" />
                         <GtkEntry placeholderText="With .error class" cssClasses={["error"]} />
                         <GtkEntry placeholderText="With .warning class" cssClasses={["warning"]} />

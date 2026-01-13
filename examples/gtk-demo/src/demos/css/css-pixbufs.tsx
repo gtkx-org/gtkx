@@ -27,45 +27,45 @@ const EFFECTS = [
 
 injectGlobal`
 .icon-button {
-    min-width: 48px;
-    min-height: 48px;
+ min-width: 48px;
+ min-height: 48px;
 }
 
 .icon-button image {
-    -gtk-icon-size: 24px;
+ -gtk-icon-size: 24px;
 }
 `;
 
 const createIconBackgroundStyle = (icon: string, size: number) => css`
-    background-image: -gtk-icontheme("${icon}");
-    background-size: ${size}px ${size}px;
-    background-repeat: no-repeat;
-    background-position: center;
-    min-width: ${size + 48}px;
-    min-height: ${size + 48}px;
-    border-radius: 12px;
-    background-color: alpha(@theme_fg_color, 0.05);
+ background-image: -gtk-icontheme("${icon}");
+ background-size: ${size}px ${size}px;
+ background-repeat: no-repeat;
+ background-position: center;
+ min-width: ${size + 48}px;
+ min-height: ${size + 48}px;
+ border-radius: 12px;
+ background-color: alpha(@theme_fg_color, 0.05);
 `;
 
 const createIconWithEffectStyle = (icon: string, size: number, filter: string) => css`
-    background-image: -gtk-icontheme("${icon}");
-    background-size: ${size}px ${size}px;
-    background-repeat: no-repeat;
-    background-position: center;
-    min-width: ${size + 48}px;
-    min-height: ${size + 48}px;
-    border-radius: 12px;
-    background-color: alpha(@theme_fg_color, 0.05);
-    filter: ${filter};
+ background-image: -gtk-icontheme("${icon}");
+ background-size: ${size}px ${size}px;
+ background-repeat: no-repeat;
+ background-position: center;
+ min-width: ${size + 48}px;
+ min-height: ${size + 48}px;
+ border-radius: 12px;
+ background-color: alpha(@theme_fg_color, 0.05);
+ filter: ${filter};
 `;
 
 const createIconTiledStyle = (icon: string) => css`
-    background-image: -gtk-icontheme("${icon}");
-    background-size: 32px 32px;
-    background-repeat: repeat;
-    min-height: 150px;
-    border-radius: 12px;
-    opacity: 0.3;
+ background-image: -gtk-icontheme("${icon}");
+ background-size: 32px 32px;
+ background-repeat: repeat;
+ min-height: 150px;
+ border-radius: 12px;
+ opacity: 0.3;
 `;
 
 const CssPixbufsDemo = () => {
@@ -102,7 +102,6 @@ const CssPixbufsDemo = () => {
 
             <GtkFrame label="Select Icon">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     marginStart={16}
                     marginEnd={16}
@@ -121,7 +120,7 @@ const CssPixbufsDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={20}>
+            <GtkBox spacing={20}>
                 <GtkFrame label="Icon as Background" hexpand>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -134,7 +133,6 @@ const CssPixbufsDemo = () => {
                     >
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
-                            spacing={0}
                             cssClasses={[iconBackgroundStyle]}
                             halign={Gtk.Align.CENTER}
                         />
@@ -154,7 +152,6 @@ const CssPixbufsDemo = () => {
                     >
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
-                            spacing={0}
                             cssClasses={[iconWithEffectStyle]}
                             halign={Gtk.Align.CENTER}
                         />
@@ -168,7 +165,6 @@ const CssPixbufsDemo = () => {
 
             <GtkFrame label="CSS Filters">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     marginStart={16}
                     marginEnd={16}
@@ -188,17 +184,9 @@ const CssPixbufsDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Icon Size">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={16}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                >
+                <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkLabel label="Size:" />
                     <GtkScale
-                        orientation={Gtk.Orientation.HORIZONTAL}
                         adjustment={sizeAdjustment}
                         drawValue
                         valuePos={Gtk.PositionType.RIGHT}
@@ -209,7 +197,7 @@ const CssPixbufsDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Tiled Pattern">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={[iconTiledStyle]} hexpand />
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={[iconTiledStyle]} hexpand />
             </GtkFrame>
 
             <GtkLabel

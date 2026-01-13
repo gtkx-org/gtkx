@@ -35,7 +35,7 @@ type AppModule = {
  * import { render } from "@gtkx/react";
  *
  * const server = await createDevServer({
- *   entry: "./src/dev.tsx",
+ * entry: "./src/dev.tsx",
  * });
  *
  * const mod = await server.ssrLoadModule("./src/dev.tsx");

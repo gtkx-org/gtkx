@@ -128,7 +128,7 @@ const StackDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                     {pages.map((page) => (
                         <GtkButton
                             key={page.name}
@@ -149,7 +149,7 @@ const StackDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4} halign={Gtk.Align.CENTER}>
+                <GtkBox spacing={4} halign={Gtk.Align.CENTER}>
                     {transitionTypes.slice(0, 4).map((t) => (
                         <GtkButton
                             key={t.type}
@@ -159,7 +159,7 @@ const StackDemo = () => {
                         />
                     ))}
                 </GtkBox>
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4} halign={Gtk.Align.CENTER}>
+                <GtkBox spacing={4} halign={Gtk.Align.CENTER}>
                     {transitionTypes.slice(4).map((t) => (
                         <GtkButton
                             key={t.type}

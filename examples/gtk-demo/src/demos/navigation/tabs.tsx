@@ -127,7 +127,7 @@ const TabsDemo = () => {
                                 marginBottom={16}
                             >
                                 <GtkLabel label="Actions" cssClasses={["title-3"]} halign={Gtk.Align.START} />
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                <GtkBox spacing={8}>
                                     <GtkButton label="Save" cssClasses={["suggested-action"]} />
                                     <GtkButton label="Export" />
                                     <GtkButton label="Delete" cssClasses={["destructive-action"]} />
@@ -154,7 +154,7 @@ const TabsDemo = () => {
                         cssClasses={["dim-label"]}
                         halign={Gtk.Align.START}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkButton label="Add Tab" onClicked={addTab} cssClasses={["suggested-action"]} />
                         <GtkLabel
                             label={`${tabs.length} tabs open`}
@@ -180,7 +180,7 @@ const TabsDemo = () => {
                                     marginTop={16}
                                     marginBottom={16}
                                 >
-                                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                    <GtkBox spacing={8}>
                                         <GtkImage iconName={tab.icon} pixelSize={24} />
                                         <GtkLabel label={tab.title} cssClasses={["title-3"]} />
                                     </GtkBox>
@@ -212,7 +212,7 @@ const TabsDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                     {positions.map((pos) => (
                         <GtkButton
                             key={pos.type}
@@ -232,7 +232,7 @@ const TabsDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                     <GtkButton
                         label="Previous"
                         onClicked={() => setCurrentPage(Math.max(0, currentPage - 1))}
@@ -250,7 +250,7 @@ const TabsDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="page: Current page index (0-based). tabPos: Position of tabs (TOP, BOTTOM, LEFT, RIGHT). scrollable: Allow tab scrolling when many tabs. showTabs: Show or hide tab strip. onSwitchPage: Callback when tab changes."
+                    label="page: Current page index (0-based). tabPos: Position of tabs (TOP, BOTTOM, LEFT, RIGHT). scrollable: Allow tab scrolling when many tabs. : Show or hide tab strip. onSwitchPage: Callback when tab changes."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}

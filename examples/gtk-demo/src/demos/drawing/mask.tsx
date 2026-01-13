@@ -222,7 +222,6 @@ const MaskDemo = () => {
 
             <GtkFrame label="Mask Types">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginStart={16}
                     marginEnd={16}
@@ -271,7 +270,7 @@ const MaskDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkDrawingArea
                             ref={gradientMaskRef}
                             contentWidth={200}
@@ -288,10 +287,9 @@ const MaskDemo = () => {
                         </GtkBox>
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Feather:" widthRequest={60} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={featherAdjustment}
                             drawValue
                             digits={2}
@@ -304,14 +302,7 @@ const MaskDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Linear Gradient Mask">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={24}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                >
+                <GtkBox spacing={24} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkDrawingArea
                         ref={horizontalMaskRef}
                         contentWidth={250}

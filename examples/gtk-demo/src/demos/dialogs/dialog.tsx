@@ -116,7 +116,7 @@ const DialogDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkButton label="Show Confirm Dialog" onClicked={() => void showConfirmDialog()} />
                         {confirmResult && <GtkLabel label={`Result: ${confirmResult}`} cssClasses={["dim-label"]} />}
                     </GtkBox>

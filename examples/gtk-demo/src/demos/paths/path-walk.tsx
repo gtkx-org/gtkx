@@ -304,11 +304,10 @@ const PathWalkDemo = () => {
                         halign={Gtk.Align.CENTER}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16} halign={Gtk.Align.CENTER}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={16} halign={Gtk.Align.CENTER}>
+                        <GtkBox spacing={8}>
                             <GtkLabel label="Speed:" cssClasses={["dim-label"]} />
                             <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
                                 drawValue
                                 valuePos={Gtk.PositionType.RIGHT}
                                 digits={1}
@@ -329,7 +328,7 @@ const PathWalkDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkLabel label="Object:" cssClasses={["dim-label"]} />
                         <GtkButton
                             label="Arrow"

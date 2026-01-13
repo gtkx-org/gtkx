@@ -258,7 +258,7 @@ const ScribbleArea = () => {
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
             <GtkDrawingArea ref={ref} contentWidth={300} contentHeight={200} cssClasses={["card"]} />
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+            <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                 <GtkLabel label="Draw with mouse or touch" cssClasses={["dim-label", "caption"]} />
                 <GtkButton label="Clear" onClicked={handleClear} cssClasses={["flat"]} />
             </GtkBox>
@@ -294,7 +294,6 @@ const DrawingAreaDemo = () => {
 
             <GtkFrame label="Basic Shapes">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}
@@ -310,7 +309,6 @@ const DrawingAreaDemo = () => {
 
             <GtkFrame label="Compositing & Alpha Blending">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}

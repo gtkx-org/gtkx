@@ -92,7 +92,7 @@ const ListBoxDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkButton label="Add Contact" onClicked={addContact} cssClasses={["suggested-action"]} />
                         <GtkLabel
                             label={`${contacts.length} contacts`}
@@ -108,21 +108,10 @@ const ListBoxDemo = () => {
                         hscrollbarPolicy={Gtk.PolicyType.NEVER}
                         cssClasses={["card"]}
                     >
-                        <GtkListBox
-                            selectionMode={Gtk.SelectionMode.SINGLE}
-                            onRowSelected={handleRowSelected}
-                            cssClasses={["boxed-list"]}
-                        >
+                        <GtkListBox onRowSelected={handleRowSelected} cssClasses={["boxed-list"]}>
                             {contacts.map((contact) => (
                                 <GtkListBoxRow key={contact.id}>
-                                    <GtkBox
-                                        orientation={Gtk.Orientation.HORIZONTAL}
-                                        spacing={12}
-                                        marginTop={8}
-                                        marginBottom={8}
-                                        marginStart={12}
-                                        marginEnd={12}
-                                    >
+                                    <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={12} marginEnd={12}>
                                         <GtkImage iconName={contact.avatar} pixelSize={40} />
                                         <GtkBox
                                             orientation={Gtk.Orientation.VERTICAL}
@@ -151,7 +140,6 @@ const ListBoxDemo = () => {
 
                     {selectedContact && (
                         <GtkBox
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             spacing={8}
                             cssClasses={["card"]}
                             marginTop={8}
@@ -183,10 +171,10 @@ const ListBoxDemo = () => {
                         halign={Gtk.Align.START}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
                             <GtkLabel label="SINGLE" cssClasses={["dim-label"]} />
-                            <GtkListBox selectionMode={Gtk.SelectionMode.SINGLE} cssClasses={["boxed-list"]}>
+                            <GtkListBox cssClasses={["boxed-list"]}>
                                 <GtkListBoxRow>
                                     <GtkLabel
                                         label="Item 1"
@@ -256,7 +244,7 @@ const ListBoxDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <GtkLabel label="Key Properties" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkLabel
-                    label="selectionMode: NONE, SINGLE, BROWSE, or MULTIPLE. showSeparators: Display dividers between rows. activateOnSingleClick: Activate rows with single click. onRowSelected: Callback when selection changes. onRowActivated: Callback when row is activated."
+                    label="selectionMode: NONE, SINGLE, BROWSE, or MULTIPLE. showSeparators: Display dividers between rows. : Activate rows with single click. onRowSelected: Callback when selection changes. onRowActivated: Callback when row is activated."
                     wrap
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}

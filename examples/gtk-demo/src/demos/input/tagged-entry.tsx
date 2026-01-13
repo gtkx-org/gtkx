@@ -40,7 +40,7 @@ const TaggedEntryDemo = () => {
                     cssClasses={["dim-label"]}
                 />
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkEntry
                         text={inputText}
                         placeholderText="Type a tag and press Enter..."
@@ -145,7 +145,7 @@ const EmailTagInput = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+            <GtkBox spacing={8}>
                 <GtkEntry
                     text={inputText}
                     placeholderText="Add email recipient..."

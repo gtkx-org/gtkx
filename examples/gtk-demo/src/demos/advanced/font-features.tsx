@@ -128,13 +128,13 @@ const FontFeaturesDemo = () => {
                         marginEnd={12}
                     >
                         {fontFeatures.map((feature) => (
-                            <GtkBox key={feature.tag} orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox key={feature.tag} spacing={12}>
                                 <GtkCheckButton
                                     active={enabledFeatures.has(feature.tag)}
                                     onToggled={() => toggleFeature(feature.tag)}
                                 />
                                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
-                                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                    <GtkBox spacing={8}>
                                         <GtkLabel
                                             label={feature.tag}
                                             cssClasses={["monospace", "dim-label"]}

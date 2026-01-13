@@ -52,7 +52,7 @@ const BrowserDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} hexpand vexpand>
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+            <GtkBox spacing={6}>
                 <GtkButton iconName="go-previous-symbolic" onClicked={handleBack} tooltipText="Back" />
                 <GtkButton iconName="go-next-symbolic" onClicked={handleForward} tooltipText="Forward" />
                 <GtkButton iconName="view-refresh-symbolic" onClicked={handleReload} tooltipText="Reload" />

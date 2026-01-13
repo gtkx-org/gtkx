@@ -9,66 +9,66 @@ const PRESETS = [
     {
         name: "Gradient Stack",
         background: `
-    linear-gradient(135deg, rgba(255,0,0,0.3) 0%, transparent 50%),
-    linear-gradient(225deg, rgba(0,255,0,0.3) 0%, transparent 50%),
-    linear-gradient(315deg, rgba(0,0,255,0.3) 0%, transparent 50%),
-    linear-gradient(45deg, rgba(255,255,0,0.3) 0%, transparent 50%),
-    @theme_bg_color`,
+ linear-gradient(135deg, rgba(255,0,0,0.3) 0%, transparent 50%),
+ linear-gradient(225deg, rgba(0,255,0,0.3) 0%, transparent 50%),
+ linear-gradient(315deg, rgba(0,0,255,0.3) 0%, transparent 50%),
+ linear-gradient(45deg, rgba(255,255,0,0.3) 0%, transparent 50%),
+ @theme_bg_color`,
     },
     {
         name: "Radial Layers",
         background: `
-    radial-gradient(circle at 20% 30%, rgba(255,0,128,0.4) 0%, transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(0,200,255,0.4) 0%, transparent 40%),
-    radial-gradient(circle at 50% 50%, rgba(255,200,0,0.3) 0%, transparent 60%),
-    @theme_bg_color`,
+ radial-gradient(circle at 20% 30%, rgba(255,0,128,0.4) 0%, transparent 40%),
+ radial-gradient(circle at 80% 70%, rgba(0,200,255,0.4) 0%, transparent 40%),
+ radial-gradient(circle at 50% 50%, rgba(255,200,0,0.3) 0%, transparent 60%),
+ @theme_bg_color`,
     },
     {
         name: "Striped Pattern",
         background: `
-    repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 10px,
-        rgba(0,0,0,0.05) 10px,
-        rgba(0,0,0,0.05) 20px
-    ),
-    repeating-linear-gradient(
-        -45deg,
-        transparent,
-        transparent 10px,
-        rgba(0,0,0,0.05) 10px,
-        rgba(0,0,0,0.05) 20px
-    ),
-    linear-gradient(180deg, @accent_bg_color, shade(@accent_bg_color, 0.8))`,
+ repeating-linear-gradient(
+ 45deg,
+ transparent,
+ transparent 10px,
+ rgba(0,0,0,0.05) 10px,
+ rgba(0,0,0,0.05) 20px
+ ),
+ repeating-linear-gradient(
+ -45deg,
+ transparent,
+ transparent 10px,
+ rgba(0,0,0,0.05) 10px,
+ rgba(0,0,0,0.05) 20px
+ ),
+ linear-gradient(180deg, @accent_bg_color, shade(@accent_bg_color, 0.8))`,
     },
     {
         name: "Spotlight Effect",
         background: `
-    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.3) 0%, transparent 50%),
-    linear-gradient(180deg, shade(@accent_bg_color, 1.2), shade(@accent_bg_color, 0.7))`,
+ radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.3) 0%, transparent 50%),
+ linear-gradient(180deg, shade(@accent_bg_color, 1.2), shade(@accent_bg_color, 0.7))`,
     },
     {
         name: "Mesh Gradient",
         background: `
-    radial-gradient(at 0% 0%, #ff6b6b 0%, transparent 50%),
-    radial-gradient(at 100% 0%, #4ecdc4 0%, transparent 50%),
-    radial-gradient(at 100% 100%, #45b7d1 0%, transparent 50%),
-    radial-gradient(at 0% 100%, #96ceb4 0%, transparent 50%),
-    #2c3e50`,
+ radial-gradient(at 0% 0%, #ff6b6b 0%, transparent 50%),
+ radial-gradient(at 100% 0%, #4ecdc4 0%, transparent 50%),
+ radial-gradient(at 100% 100%, #45b7d1 0%, transparent 50%),
+ radial-gradient(at 0% 100%, #96ceb4 0%, transparent 50%),
+ #2c3e50`,
     },
 ];
 
 const createMultiBgDemoStyle = (background: string, opacity: number) => css`
-    background: ${background};
-    opacity: ${opacity / 100};
-    border-radius: 16px;
-    min-height: 250px;
-    transition: all 300ms ease;
+ background: ${background};
+ opacity: ${opacity / 100};
+ border-radius: 16px;
+ min-height: 250px;
+ transition: all 300ms ease;
 
-    &:hover {
-        transform: scale(1.02);
-    }
+ &:hover {
+ transform: scale(1.02);
+ }
 `;
 
 const CssMultiplebgsDemo = () => {
@@ -100,7 +100,6 @@ const CssMultiplebgsDemo = () => {
 
             <GtkFrame label="Presets">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     marginStart={16}
                     marginEnd={16}
@@ -128,15 +127,7 @@ const CssMultiplebgsDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
-                        cssClasses={[multiBgDemoStyle]}
-                        hexpand
-                        vexpand
-                        halign={Gtk.Align.FILL}
-                        valign={Gtk.Align.FILL}
-                    >
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={[multiBgDemoStyle]} hexpand vexpand>
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={8}
@@ -153,17 +144,9 @@ const CssMultiplebgsDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Opacity">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={16}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                >
+                <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkLabel label="Opacity:" />
                     <GtkScale
-                        orientation={Gtk.Orientation.HORIZONTAL}
                         adjustment={opacityAdjustment}
                         drawValue
                         valuePos={Gtk.PositionType.RIGHT}

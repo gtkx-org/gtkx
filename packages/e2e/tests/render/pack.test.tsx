@@ -1,5 +1,5 @@
 import { isObjectEqual } from "@gtkx/ffi";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -10,7 +10,7 @@ describe("render - Pack", () => {
         it("creates Box widget", async () => {
             const ref = createRef<Gtk.Box>();
 
-            await render(<GtkBox ref={ref} spacing={0} orientation={Gtk.Orientation.HORIZONTAL} />);
+            await render(<GtkBox ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -18,11 +18,7 @@ describe("render - Pack", () => {
         it("appends children", async () => {
             const boxRef = createRef<Gtk.Box>();
 
-            await render(
-                <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
-                    First Second
-                </GtkBox>,
-            );
+            await render(<GtkBox ref={boxRef}>First Second</GtkBox>);
 
             expect(boxRef.current?.getFirstChild()).not.toBeNull();
             expect(boxRef.current?.getLastChild()).not.toBeNull();
@@ -33,7 +29,7 @@ describe("render - Pack", () => {
 
             function App({ count }: { count: number }) {
                 return (
-                    <GtkBox ref={boxRef} spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
+                    <GtkBox ref={boxRef}>
                         {Array.from({ length: count }, (_, i) => (
                             // biome-ignore lint/suspicious/noArrayIndexKey: Test intentionally uses index keys
                             <GtkLabel key={`label-${i}`} label={`Label ${i}`} />

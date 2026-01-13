@@ -24,8 +24,8 @@ layout (location = 0) in vec2 aPos;
 out vec2 fragCoord;
 uniform vec2 iResolution;
 void main() {
-    gl_Position = vec4(aPos, 0.0, 1.0);
-    fragCoord = (aPos * 0.5 + 0.5) * iResolution;
+ gl_Position = vec4(aPos, 0.0, 1.0);
+ fragCoord = (aPos * 0.5 + 0.5) * iResolution;
 }`;
 
 const DEFAULT_SHADER = `// Shadertoy-compatible uniforms:
@@ -34,29 +34,29 @@ const DEFAULT_SHADER = `// Shadertoy-compatible uniforms:
 // iMouse - mouse position (x,y = current, z,w = click)
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    vec2 uv = fragCoord / iResolution.xy;
+ vec2 uv = fragCoord / iResolution.xy;
 
-    // Create a simple plasma effect
-    float t = iTime * 0.5;
+ // Create a simple plasma effect
+ float t = iTime * 0.5;
 
-    float v = 0.0;
-    v += sin((uv.x * 10.0) + t);
-    v += sin((uv.y * 10.0) + t);
-    v += sin((uv.x * 10.0 + uv.y * 10.0) + t);
+ float v = 0.0;
+ v += sin((uv.x * 10.0) + t);
+ v += sin((uv.y * 10.0) + t);
+ v += sin((uv.x * 10.0 + uv.y * 10.0) + t);
 
-    float cx = uv.x + 0.5 * sin(t / 5.0);
-    float cy = uv.y + 0.5 * cos(t / 3.0);
-    v += sin(sqrt(100.0 * (cx * cx + cy * cy) + 1.0) + t);
+ float cx = uv.x + 0.5 * sin(t / 5.0);
+ float cy = uv.y + 0.5 * cos(t / 3.0);
+ v += sin(sqrt(100.0 * (cx * cx + cy * cy) + 1.0) + t);
 
-    v = v / 2.0;
+ v = v / 2.0;
 
-    vec3 col = vec3(
-        sin(v * 3.14159) * 0.5 + 0.5,
-        sin(v * 3.14159 + 2.094) * 0.5 + 0.5,
-        sin(v * 3.14159 + 4.188) * 0.5 + 0.5
-    );
+ vec3 col = vec3(
+ sin(v * 3.14159) * 0.5 + 0.5,
+ sin(v * 3.14159 + 2.094) * 0.5 + 0.5,
+ sin(v * 3.14159 + 4.188) * 0.5 + 0.5
+ );
 
-    fragColor = vec4(col, 1.0);
+ fragColor = vec4(col, 1.0);
 }`;
 
 const SHADER_PRESETS: { name: string; code: string }[] = [
@@ -64,77 +64,77 @@ const SHADER_PRESETS: { name: string; code: string }[] = [
     {
         name: "Tunnel",
         code: `void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    vec2 uv = fragCoord / iResolution.xy - 0.5;
-    uv.x *= iResolution.x / iResolution.y;
+ vec2 uv = fragCoord / iResolution.xy - 0.5;
+ uv.x *= iResolution.x / iResolution.y;
 
-    float a = atan(uv.y, uv.x);
-    float r = length(uv);
+ float a = atan(uv.y, uv.x);
+ float r = length(uv);
 
-    float t = iTime;
+ float t = iTime;
 
-    vec2 tc = vec2(a / 3.14159, 1.0 / r + t * 0.5);
+ vec2 tc = vec2(a / 3.14159, 1.0 / r + t * 0.5);
 
-    float c = mod(floor(tc.x * 8.0) + floor(tc.y * 8.0), 2.0);
-    c = mix(0.2, 0.8, c);
+ float c = mod(floor(tc.x * 8.0) + floor(tc.y * 8.0), 2.0);
+ c = mix(0.2, 0.8, c);
 
-    c *= r * 2.0; // Fade towards center
+ c *= r * 2.0; // Fade towards center
 
-    fragColor = vec4(vec3(c), 1.0);
+ fragColor = vec4(vec3(c), 1.0);
 }`,
     },
     {
         name: "Waves",
         code: `void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    vec2 uv = fragCoord / iResolution.xy;
+ vec2 uv = fragCoord / iResolution.xy;
 
-    float wave = 0.0;
-    for (int i = 0; i < 5; i++) {
-        float fi = float(i);
-        wave += sin(uv.x * 10.0 * (fi + 1.0) + iTime * (fi + 1.0) * 0.5) * 0.1;
-        wave += sin(uv.y * 8.0 * (fi + 1.0) + iTime * (fi + 1.5) * 0.3) * 0.1;
-    }
+ float wave = 0.0;
+ for (int i = 0; i < 5; i++) {
+ float fi = float(i);
+ wave += sin(uv.x * 10.0 * (fi + 1.0) + iTime * (fi + 1.0) * 0.5) * 0.1;
+ wave += sin(uv.y * 8.0 * (fi + 1.0) + iTime * (fi + 1.5) * 0.3) * 0.1;
+ }
 
-    float d = abs(uv.y - 0.5 - wave);
-    float intensity = smoothstep(0.1, 0.0, d);
+ float d = abs(uv.y - 0.5 - wave);
+ float intensity = smoothstep(0.1, 0.0, d);
 
-    vec3 col = mix(
-        vec3(0.1, 0.1, 0.2),
-        vec3(0.2, 0.5, 0.9),
-        intensity
-    );
+ vec3 col = mix(
+ vec3(0.1, 0.1, 0.2),
+ vec3(0.2, 0.5, 0.9),
+ intensity
+ );
 
-    fragColor = vec4(col, 1.0);
+ fragColor = vec4(col, 1.0);
 }`,
     },
     {
         name: "Mandelbrot",
         code: `void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
+ vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
 
-    // Zoom and pan with time
-    float zoom = 2.0 + sin(iTime * 0.1) * 1.5;
-    vec2 c = uv * zoom + vec2(-0.5, 0.0);
+ // Zoom and pan with time
+ float zoom = 2.0 + sin(iTime * 0.1) * 1.5;
+ vec2 c = uv * zoom + vec2(-0.5, 0.0);
 
-    vec2 z = vec2(0.0);
-    float iter = 0.0;
-    const float maxIter = 100.0;
+ vec2 z = vec2(0.0);
+ float iter = 0.0;
+ const float maxIter = 100.0;
 
-    for (float i = 0.0; i < maxIter; i++) {
-        z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
-        if (dot(z, z) > 4.0) break;
-        iter++;
-    }
+ for (float i = 0.0; i < maxIter; i++) {
+ z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+ if (dot(z, z)> 4.0) break;
+ iter++;
+ }
 
-    float t = iter / maxIter;
-    vec3 col = vec3(
-        0.5 + 0.5 * cos(3.0 + t * 15.0),
-        0.5 + 0.5 * cos(3.0 + t * 15.0 + 0.6),
-        0.5 + 0.5 * cos(3.0 + t * 15.0 + 1.0)
-    );
+ float t = iter / maxIter;
+ vec3 col = vec3(
+ 0.5 + 0.5 * cos(3.0 + t * 15.0),
+ 0.5 + 0.5 * cos(3.0 + t * 15.0 + 0.6),
+ 0.5 + 0.5 * cos(3.0 + t * 15.0 + 1.0)
+ );
 
-    if (iter >= maxIter - 1.0) col = vec3(0.0);
+ if (iter>= maxIter - 1.0) col = vec3(0.0);
 
-    fragColor = vec4(col, 1.0);
+ fragColor = vec4(col, 1.0);
 }`,
     },
 ];
@@ -153,7 +153,7 @@ uniform vec4 iMouse;
 ${userCode}
 
 void main() {
-    mainImage(FragColor, fragCoord);
+ mainImage(FragColor, fragCoord);
 }`;
 }
 
@@ -429,7 +429,7 @@ const ShadertoyDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkLabel label="Presets:" cssClasses={["dim-label"]} />
                         {SHADER_PRESETS.map((preset) => (
                             <GtkButton
@@ -441,7 +441,7 @@ const ShadertoyDemo = () => {
                         ))}
                     </GtkBox>
 
-                    <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} shrinkStartChild={false} shrinkEndChild={false}>
+                    <GtkPaned shrinkStartChild={false} shrinkEndChild={false}>
                         <x.Slot for={GtkPaned} id="startChild">
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} widthRequest={400}>
                                 <GtkScrolledWindow vexpand hexpand heightRequest={300}>
@@ -467,7 +467,7 @@ const ShadertoyDemo = () => {
                                     />
                                 )}
 
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                <GtkBox spacing={8}>
                                     <GtkButton
                                         label="Compile"
                                         onClicked={handleCompile}
@@ -518,9 +518,9 @@ const ShadertoyDemo = () => {
                     marginEnd={12}
                 >
                     <GtkLabel
-                        label={`float iTime        - Elapsed time in seconds
-vec2 iResolution   - Viewport resolution in pixels
-vec4 iMouse        - Mouse position (x,y = current, z,w = click)
+                        label={`float iTime - Elapsed time in seconds
+vec2 iResolution - Viewport resolution in pixels
+vec4 iMouse - Mouse position (x,y = current, z,w = click)
 
 Define your shader in a mainImage function:
 void mainImage(out vec4 fragColor, in vec2 fragCoord)`}

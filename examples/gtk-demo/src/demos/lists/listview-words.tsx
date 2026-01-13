@@ -204,7 +204,7 @@ const ListViewWordsDemo = () => {
                         onSearchChanged={(entry) => setSearchText(entry.getText())}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkButton
                             label={`All (${dictionary.length})`}
                             onClicked={() => setFilterType("all")}
@@ -244,21 +244,14 @@ const ListViewWordsDemo = () => {
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={12}
-                                    marginTop={10}
-                                    marginBottom={10}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                >
+                                <GtkBox spacing={12} marginTop={10} marginBottom={10} marginStart={12} marginEnd={12}>
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={2}
                                         hexpand
                                         valign={Gtk.Align.CENTER}
                                     >
-                                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                        <GtkBox spacing={8}>
                                             <GtkLabel
                                                 label={item?.word ?? ""}
                                                 halign={Gtk.Align.START}
@@ -309,7 +302,7 @@ const ListViewWordsDemo = () => {
                             marginStart={12}
                             marginEnd={12}
                         >
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkLabel label={selectedWord.word} cssClasses={["title-2"]} halign={Gtk.Align.START} />
                                 <GtkLabel
                                     label={selectedWord.partOfSpeech}

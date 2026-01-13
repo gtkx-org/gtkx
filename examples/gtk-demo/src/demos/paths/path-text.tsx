@@ -254,7 +254,6 @@ const PathTextDemo = () => {
 
             <GtkFrame label="Bezier Curve">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}
@@ -273,7 +272,6 @@ const PathTextDemo = () => {
 
             <GtkFrame label="Trigonometric Paths">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}
@@ -288,7 +286,6 @@ const PathTextDemo = () => {
 
             <GtkFrame label="Spiral Path">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}

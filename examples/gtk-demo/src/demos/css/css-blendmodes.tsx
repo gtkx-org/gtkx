@@ -35,14 +35,14 @@ const COLORS = [
 ];
 
 const createBlendDemoContainerStyle = (color: string) => css`
-    background: linear-gradient(135deg, ${color} 0%, shade(${color}, 0.6) 100%);
-    border-radius: 12px;
-    padding: 24px;
+ background: linear-gradient(135deg, ${color} 0%, shade(${color}, 0.6) 100%);
+ border-radius: 12px;
+ padding: 24px;
 `;
 
 const createBlendDemoImageStyle = (blendMode: string) => css`
-    background-blend-mode: ${blendMode};
-    border-radius: 8px;
+ background-blend-mode: ${blendMode};
+ border-radius: 8px;
 `;
 
 const CssBlendmodesDemo = () => {
@@ -84,7 +84,7 @@ const CssBlendmodesDemo = () => {
                 >
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                         <GtkLabel label="Blend Mode" halign={Gtk.Align.START} cssClasses={["dim-label"]} />
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                        <GtkBox spacing={4}>
                             {BLEND_MODES.slice(0, 8).map((mode, index) => (
                                 <GtkButton
                                     key={mode.value}
@@ -94,7 +94,7 @@ const CssBlendmodesDemo = () => {
                                 />
                             ))}
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                        <GtkBox spacing={4}>
                             {BLEND_MODES.slice(8).map((mode, index) => (
                                 <GtkButton
                                     key={mode.value}
@@ -108,7 +108,7 @@ const CssBlendmodesDemo = () => {
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                         <GtkLabel label="Overlay Color" halign={Gtk.Align.START} cssClasses={["dim-label"]} />
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                        <GtkBox spacing={4}>
                             {COLORS.map((c, index) => (
                                 <GtkButton
                                     key={c.value}
@@ -133,7 +133,6 @@ const CssBlendmodesDemo = () => {
                 >
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         cssClasses={[blendDemoContainerStyle]}
                         halign={Gtk.Align.CENTER}
                     >
@@ -144,7 +143,7 @@ const CssBlendmodesDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkLabel label="Current mode:" cssClasses={["dim-label"]} />
                         <GtkLabel
                             label={`${BLEND_MODES[blendModeIndex]?.name} (${blendMode})`}
@@ -156,7 +155,6 @@ const CssBlendmodesDemo = () => {
 
             <GtkFrame label="All Blend Modes">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     marginStart={16}
                     marginEnd={16}
@@ -168,7 +166,6 @@ const CssBlendmodesDemo = () => {
                         <GtkBox key={mode.value} orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                             <GtkBox
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={0}
                                 widthRequest={60}
                                 heightRequest={60}
                                 cssClasses={["card"]}

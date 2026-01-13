@@ -74,7 +74,7 @@ const FixedDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton
                         label="Randomize Positions"
                         onClicked={randomizePositions}

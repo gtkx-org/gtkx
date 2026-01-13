@@ -96,10 +96,9 @@ const FishbowlDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Fish Count:" halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             hexpand
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
@@ -109,7 +108,7 @@ const FishbowlDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkButton
                             label={isAnimating ? "Stop Animation" : "Start Animation"}
                             onClicked={() => setIsAnimating(!isAnimating)}

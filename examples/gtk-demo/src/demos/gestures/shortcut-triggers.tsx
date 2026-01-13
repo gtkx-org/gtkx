@@ -109,7 +109,7 @@ const ShortcutTriggersDemo = () => {
                     marginEnd={12}
                 >
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="ShortcutTrigger" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Ctrl+1" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -122,7 +122,7 @@ const ShortcutTriggersDemo = () => {
                     </GtkBox>
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="AlternativeTrigger" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Ctrl+2 or Ctrl+Shift+2" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -135,7 +135,7 @@ const ShortcutTriggersDemo = () => {
                     </GtkBox>
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="MnemonicTrigger" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Alt+M" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -148,7 +148,7 @@ const ShortcutTriggersDemo = () => {
                     </GtkBox>
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="NeverTrigger" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="(disabled)" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -180,15 +180,15 @@ const ShortcutTriggersDemo = () => {
 
                     <GtkLabel label="Controller Scopes:" halign={Gtk.Align.START} cssClasses={["heading"]} />
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="LOCAL" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Shortcuts only active when widget has focus" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="MANAGED" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Shortcuts managed by a parent controller" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GLOBAL" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Shortcuts active anywhere in the window" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -254,12 +254,12 @@ const ShortcutTriggersDemo = () => {
                         cssClasses={["heading"]}
                     />
                     <GtkLabel
-                        label={`"<Control>s"           - Ctrl+S
-"<Control><Shift>s"    - Ctrl+Shift+S
-"<Alt>F4"              - Alt+F4
-"<Primary>q"           - Platform primary key (Ctrl/Cmd)
-"_s"                   - Mnemonic trigger for 's'
-"never"                - NeverTrigger
+                        label={`"<Control>s" - Ctrl+S
+"<Control><Shift>s" - Ctrl+Shift+S
+"<Alt>F4" - Alt+F4
+"<Primary>q" - Platform primary key (Ctrl/Cmd)
+"_s" - Mnemonic trigger for 's'
+"never" - NeverTrigger
 "<Control>a|<Control>b" - Alternative trigger (ShortcutTrigger only)
 
 Note: For menu accels, use an array: accels={["F5", "<Control>r"]}`}

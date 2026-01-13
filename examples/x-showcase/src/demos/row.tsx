@@ -152,7 +152,7 @@ export const RowDemo = () => {
                 <GtkFrame marginTop={12}>
                     <AdwToolbarView>
                         <x.ToolbarTop>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} cssClasses={["toolbar"]} spacing={6}>
+                            <GtkBox cssClasses={["toolbar"]} spacing={6}>
                                 <GtkButton iconName="document-new-symbolic" tooltipText="New" />
                                 <GtkButton iconName="document-open-symbolic" tooltipText="Open" />
                                 <GtkButton iconName="document-save-symbolic" tooltipText="Save" />
@@ -161,7 +161,6 @@ export const RowDemo = () => {
 
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
-                            spacing={0}
                             halign={Gtk.Align.CENTER}
                             valign={Gtk.Align.CENTER}
                             heightRequest={100}
@@ -170,7 +169,7 @@ export const RowDemo = () => {
                         </GtkBox>
 
                         <x.ToolbarBottom>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} cssClasses={["toolbar"]} spacing={6}>
+                            <GtkBox cssClasses={["toolbar"]} spacing={6}>
                                 <GtkLabel label="Status: Ready" hexpand halign={Gtk.Align.START} marginStart={6} />
                                 <GtkButton iconName="zoom-out-symbolic" tooltipText="Zoom Out" />
                                 <GtkButton iconName="zoom-in-symbolic" tooltipText="Zoom In" />

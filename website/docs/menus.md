@@ -10,11 +10,11 @@ Attach a menu to a button with `GtkMenuButton`:
 import { x, GtkMenuButton } from "@gtkx/react";
 
 const FileMenu = () => (
-    <GtkMenuButton label="File">
-        <x.MenuItem id="new" label="New" onActivate={() => console.log("New")} accels="<Control>n" />
-        <x.MenuItem id="open" label="Open" onActivate={() => console.log("Open")} accels="<Control>o" />
-        <x.MenuItem id="save" label="Save" onActivate={() => console.log("Save")} accels="<Control>s" />
-    </GtkMenuButton>
+ <GtkMenuButton label="File">
+ <x.MenuItem id="new" label="New" onActivate={() => console.log("New")} accels="<Control>n" />
+ <x.MenuItem id="open" label="Open" onActivate={() => console.log("Open")} accels="<Control>o" />
+ <x.MenuItem id="save" label="Save" onActivate={() => console.log("Save")} accels="<Control>s" />
+ </GtkMenuButton>
 );
 ```
 
@@ -26,10 +26,10 @@ Individual menu action with optional keyboard shortcut:
 
 ```tsx
 <x.MenuItem
-    id="save"                    // Unique identifier
-    label="Save"                 // Display text
-    onActivate={() => save()}    // Callback when activated
-    accels="<Control>s"          // Keyboard shortcut
+ id="save" // Unique identifier
+ label="Save" // Display text
+ onActivate={() => save()} // Callback when activated
+ accels="<Control>s" // Keyboard shortcut
 />
 ```
 
@@ -39,14 +39,14 @@ Groups items with an optional header.
 
 ```tsx
 <GtkMenuButton label="Edit">
-    <x.MenuItem id="undo" label="Undo" onActivate={undo} accels="<Control>z" />
-    <x.MenuItem id="redo" label="Redo" onActivate={redo} accels="<Control><Shift>z" />
+ <x.MenuItem id="undo" label="Undo" onActivate={undo} accels="<Control>z" />
+ <x.MenuItem id="redo" label="Redo" onActivate={redo} accels="<Control><Shift>z" />
 
-    <x.MenuSection label="Clipboard">
-        <x.MenuItem id="cut" label="Cut" onActivate={cut} accels="<Control>x" />
-        <x.MenuItem id="copy" label="Copy" onActivate={copy} accels="<Control>c" />
-        <x.MenuItem id="paste" label="Paste" onActivate={paste} accels="<Control>v" />
-    </x.MenuSection>
+ <x.MenuSection label="Clipboard">
+ <x.MenuItem id="cut" label="Cut" onActivate={cut} accels="<Control>x" />
+ <x.MenuItem id="copy" label="Copy" onActivate={copy} accels="<Control>c" />
+ <x.MenuItem id="paste" label="Paste" onActivate={paste} accels="<Control>v" />
+ </x.MenuSection>
 </GtkMenuButton>
 ```
 
@@ -56,17 +56,17 @@ Nested menu with its own items.
 
 ```tsx
 <GtkMenuButton label="File">
-    <x.MenuItem id="new" label="New" onActivate={handleNew} />
+ <x.MenuItem id="new" label="New" onActivate={handleNew} />
 
-    <x.MenuSubmenu label="Recent Files">
-        <x.MenuItem id="file1" label="document.txt" onActivate={() => openRecent("document.txt")} />
-        <x.MenuItem id="file2" label="report.pdf" onActivate={() => openRecent("report.pdf")} />
-        <x.MenuItem id="file3" label="notes.md" onActivate={() => openRecent("notes.md")} />
-    </x.MenuSubmenu>
+ <x.MenuSubmenu label="Recent Files">
+ <x.MenuItem id="file1" label="document.txt" onActivate={() => openRecent("document.txt")} />
+ <x.MenuItem id="file2" label="report.pdf" onActivate={() => openRecent("report.pdf")} />
+ <x.MenuItem id="file3" label="notes.md" onActivate={() => openRecent("notes.md")} />
+ </x.MenuSubmenu>
 
-    <x.MenuSection>
-        <x.MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
-    </x.MenuSection>
+ <x.MenuSection>
+ <x.MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
+ </x.MenuSection>
 </GtkMenuButton>
 ```
 
@@ -96,28 +96,28 @@ For a traditional menu bar, use `showMenubar` on the window and place menus as c
 import { x, GtkApplicationWindow, quit } from "@gtkx/react";
 
 const App = () => (
-    <>
-        <x.MenuSubmenu label="File">
-            <x.MenuItem id="new" label="New" onActivate={handleNew} accels="<Control>n" />
-            <x.MenuItem id="open" label="Open" onActivate={handleOpen} accels="<Control>o" />
-            <x.MenuSection>
-                <x.MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
-            </x.MenuSection>
-        </x.MenuSubmenu>
+ <>
+ <x.MenuSubmenu label="File">
+ <x.MenuItem id="new" label="New" onActivate={handleNew} accels="<Control>n" />
+ <x.MenuItem id="open" label="Open" onActivate={handleOpen} accels="<Control>o" />
+ <x.MenuSection>
+ <x.MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
+ </x.MenuSection>
+ </x.MenuSubmenu>
 
-        <x.MenuSubmenu label="Edit">
-            <x.MenuItem id="undo" label="Undo" onActivate={handleUndo} accels="<Control>z" />
-            <x.MenuItem id="redo" label="Redo" onActivate={handleRedo} accels="<Control><Shift>z" />
-        </x.MenuSubmenu>
+ <x.MenuSubmenu label="Edit">
+ <x.MenuItem id="undo" label="Undo" onActivate={handleUndo} accels="<Control>z" />
+ <x.MenuItem id="redo" label="Redo" onActivate={handleRedo} accels="<Control><Shift>z" />
+ </x.MenuSubmenu>
 
-        <x.MenuSubmenu label="Help">
-            <x.MenuItem id="about" label="About" onActivate={showAbout} />
-        </x.MenuSubmenu>
+ <x.MenuSubmenu label="Help">
+ <x.MenuItem id="about" label="About" onActivate={showAbout} />
+ </x.MenuSubmenu>
 
-        <GtkApplicationWindow title="My App" showMenubar onClose={quit}>
-            {/* App content */}
-        </GtkApplicationWindow>
-    </>
+ <GtkApplicationWindow title="My App" showMenubar onClose={quit}>
+ {/* App content */}
+ </GtkApplicationWindow>
+ </>
 );
 ```
 
@@ -129,18 +129,18 @@ For more control, use `GtkPopoverMenu` with a `x.Slot`:
 import { x, GtkMenuButton, GtkPopoverMenu } from "@gtkx/react";
 
 const CustomMenu = () => (
-    <GtkMenuButton label="Actions">
-        <x.Slot for={GtkMenuButton} id="popover">
-            <GtkPopoverMenu>
-                <x.MenuItem id="action1" label="Action 1" onActivate={action1} />
-                <x.MenuItem id="action2" label="Action 2" onActivate={action2} />
+ <GtkMenuButton label="Actions">
+ <x.Slot for={GtkMenuButton} id="popover">
+ <GtkPopoverMenu>
+ <x.MenuItem id="action1" label="Action 1" onActivate={action1} />
+ <x.MenuItem id="action2" label="Action 2" onActivate={action2} />
 
-                <x.MenuSection label="More Actions">
-                    <x.MenuItem id="action3" label="Action 3" onActivate={action3} />
-                </x.MenuSection>
-            </GtkPopoverMenu>
-        </x.Slot>
-    </GtkMenuButton>
+ <x.MenuSection label="More Actions">
+ <x.MenuItem id="action3" label="Action 3" onActivate={action3} />
+ </x.MenuSection>
+ </GtkPopoverMenu>
+ </x.Slot>
+ </GtkMenuButton>
 );
 ```
 
@@ -150,11 +150,11 @@ Common pattern for icon-based menu buttons:
 
 ```tsx
 <GtkMenuButton iconName="open-menu-symbolic" cssClasses={["flat"]}>
-    <x.MenuItem id="preferences" label="Preferences" onActivate={showPrefs} accels="<Control>comma" />
-    <x.MenuItem id="help" label="Help" onActivate={showHelp} accels="F1" />
-    <x.MenuSection>
-        <x.MenuItem id="about" label="About" onActivate={showAbout} />
-    </x.MenuSection>
+ <x.MenuItem id="preferences" label="Preferences" onActivate={showPrefs} accels="<Control>comma" />
+ <x.MenuItem id="help" label="Help" onActivate={showHelp} accels="F1" />
+ <x.MenuSection>
+ <x.MenuItem id="about" label="About" onActivate={showAbout} />
+ </x.MenuSection>
 </GtkMenuButton>
 ```
 
@@ -166,9 +166,9 @@ Track menu actions with React state:
 const [lastAction, setLastAction] = useState<string | null>(null);
 
 <GtkMenuButton label="Actions">
-    <x.MenuItem id="cut" label="Cut" onActivate={() => setLastAction("cut")} />
-    <x.MenuItem id="copy" label="Copy" onActivate={() => setLastAction("copy")} />
-    <x.MenuItem id="paste" label="Paste" onActivate={() => setLastAction("paste")} />
+ <x.MenuItem id="cut" label="Cut" onActivate={() => setLastAction("cut")} />
+ <x.MenuItem id="copy" label="Copy" onActivate={() => setLastAction("copy")} />
+ <x.MenuItem id="paste" label="Paste" onActivate={() => setLastAction("paste")} />
 </GtkMenuButton>
 
 {lastAction && <GtkLabel label={`Last action: ${lastAction}`} />}
@@ -182,29 +182,29 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const App = () => {
-    const [document, setDocument] = useState("Untitled");
+ const [document, setDocument] = useState("Untitled");
 
-    return (
-        <GtkApplicationWindow title={document} defaultWidth={600} defaultHeight={400} onClose={quit}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} cssClasses={["toolbar"]}>
-                    <GtkMenuButton label="File">
-                        <x.MenuItem id="new" label="New" onActivate={() => setDocument("Untitled")} accels="<Control>n" />
-                        <x.MenuItem id="open" label="Open..." onActivate={() => setDocument("Opened File")} accels="<Control>o" />
-                        <x.MenuSection>
-                            <x.MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
-                        </x.MenuSection>
-                    </GtkMenuButton>
+ return (
+ <GtkApplicationWindow title={document} defaultWidth={600} defaultHeight={400} onClose={quit}>
+ <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+ <GtkBox cssClasses={["toolbar"]}>
+ <GtkMenuButton label="File">
+ <x.MenuItem id="new" label="New" onActivate={() => setDocument("Untitled")} accels="<Control>n" />
+ <x.MenuItem id="open" label="Open..." onActivate={() => setDocument("Opened File")} accels="<Control>o" />
+ <x.MenuSection>
+ <x.MenuItem id="quit" label="Quit" onActivate={quit} accels="<Control>q" />
+ </x.MenuSection>
+ </GtkMenuButton>
 
-                    <GtkMenuButton label="Edit">
-                        <x.MenuItem id="undo" label="Undo" accels="<Control>z" onActivate={() => {}} />
-                        <x.MenuItem id="redo" label="Redo" accels="<Control><Shift>z" onActivate={() => {}} />
-                    </GtkMenuButton>
-                </GtkBox>
+ <GtkMenuButton label="Edit">
+ <x.MenuItem id="undo" label="Undo" accels="<Control>z" onActivate={() => {}} />
+ <x.MenuItem id="redo" label="Redo" accels="<Control><Shift>z" onActivate={() => {}} />
+ </GtkMenuButton>
+ </GtkBox>
 
-                <GtkLabel label={`Editing: ${document}`} vexpand valign={Gtk.Align.CENTER} />
-            </GtkBox>
-        </GtkApplicationWindow>
-    );
+ <GtkLabel label={`Editing: ${document}`} vexpand valign={Gtk.Align.CENTER} />
+ </GtkBox>
+ </GtkApplicationWindow>
+ );
 };
 ```

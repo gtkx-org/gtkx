@@ -87,7 +87,7 @@ const PaintableMediastreamDemo = () => {
                         halign={Gtk.Align.START}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={16} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkPicture
                                 paintable={mediaFile}
@@ -100,7 +100,7 @@ const PaintableMediastreamDemo = () => {
                         </GtkBox>
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label={isPlaying ? "Pause" : "Play"}
                             onClicked={handlePlayPause}
@@ -122,18 +122,18 @@ const PaintableMediastreamDemo = () => {
                 >
                     <GtkLabel label="GtkMediaStream Properties:" cssClasses={["heading"]} halign={Gtk.Align.START} />
                     <GtkLabel
-                        label={`playing     - Whether media is currently playing
-ended       - Whether playback has finished
-duration    - Total length in microseconds
-timestamp   - Current position in microseconds
-volume      - Audio volume (0.0 to 1.0)
-muted       - Whether audio is muted
-loop        - Whether to loop playback
-seekable    - Whether seeking is supported
-seeking     - Whether currently seeking
-hasAudio    - Whether stream has audio
-hasVideo    - Whether stream has video
-prepared    - Whether stream is ready to play`}
+                        label={`playing - Whether media is currently playing
+ended - Whether playback has finished
+duration - Total length in microseconds
+timestamp - Current position in microseconds
+volume - Audio volume (0.0 to 1.0)
+muted - Whether audio is muted
+loop - Whether to loop playback
+seekable - Whether seeking is supported
+seeking - Whether currently seeking
+hasAudio - Whether stream has audio
+hasVideo - Whether stream has video
+prepared - Whether stream is ready to play`}
                         halign={Gtk.Align.START}
                         cssClasses={["monospace"]}
                     />
@@ -150,8 +150,8 @@ prepared    - Whether stream is ready to play`}
                     marginEnd={12}
                 >
                     <GtkLabel
-                        label={`play()      - Start or resume playback
-pause()     - Pause playback
+                        label={`play() - Start or resume playback
+pause() - Pause playback
 seek(timestamp) - Seek to position
 realize(surface) - Prepare for playback
 unrealize(surface) - Release resources
@@ -191,10 +191,10 @@ setResource(path) - Load from GResource`}
 - AVI, MOV, and more
 
 Install gstreamer plugins for codec support:
-  gst-plugins-base - Basic formats
-  gst-plugins-good - Common formats
-  gst-plugins-bad  - Newer formats
-  gst-plugins-ugly - Patented codecs`}
+ gst-plugins-base - Basic formats
+ gst-plugins-good - Common formats
+ gst-plugins-bad - Newer formats
+ gst-plugins-ugly - Patented codecs`}
                         halign={Gtk.Align.START}
                         cssClasses={["monospace"]}
                     />

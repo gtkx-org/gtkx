@@ -109,7 +109,7 @@ const PaintableDemo = () => {
                         halign={Gtk.Align.START}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label="Checkerboard"
                             onClicked={() => setSelectedTexture("checkerboard")}
@@ -127,7 +127,7 @@ const PaintableDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkPicture
                                 paintable={currentTexture}
@@ -173,11 +173,11 @@ const PaintableDemo = () => {
                         halign={Gtk.Align.START}
                     />
                     <GtkLabel
-                        label={`GdkTexture      - Immutable pixel data (PNG, JPEG, etc.)
+                        label={`GdkTexture - Immutable pixel data (PNG, JPEG, etc.)
 GdkMemoryTexture - Create textures from raw bytes
 GtkIconPaintable - Icons from icon theme
-GtkMediaStream   - Video/audio with paintable frames
-GskRenderNode    - Custom rendering via GSK`}
+GtkMediaStream - Video/audio with paintable frames
+GskRenderNode - Custom rendering via GSK`}
                         halign={Gtk.Align.START}
                         cssClasses={["monospace"]}
                     />
@@ -195,10 +195,10 @@ GskRenderNode    - Custom rendering via GSK`}
                 >
                     <GtkLabel
                         label={`contentFit options:
-  FILL    - Stretch to fill, ignoring aspect ratio
-  CONTAIN - Scale to fit, preserving aspect ratio (with letterboxing)
-  COVER   - Scale to fill, cropping if necessary
-  SCALE_DOWN - Like CONTAIN, but never scale up`}
+ FILL - Stretch to fill, ignoring aspect ratio
+ CONTAIN - Scale to fit, preserving aspect ratio (with letterboxing)
+ COVER - Scale to fill, cropping if necessary
+ SCALE_DOWN - Like CONTAIN, but never scale up`}
                         halign={Gtk.Align.START}
                         cssClasses={["monospace"]}
                     />

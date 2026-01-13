@@ -13,9 +13,9 @@ import { reconciler } from "./reconciler.js";
  * @example
  * ```tsx
  * const App = () => {
- *   const app = useApplication();
- *   console.log(app.applicationId);
- *   return <GtkLabel label="Hello" />;
+ * const app = useApplication();
+ * console.log(app.applicationId);
+ * return <GtkLabel label="Hello" />;
  * };
  * ```
  */
@@ -32,8 +32,8 @@ export const ApplicationContext = createContext<Gtk.Application | null>(null);
  * @example
  * ```tsx
  * const MyComponent = () => {
- *   const app = useApplication();
- *   return <GtkLabel label={app.applicationId} />;
+ * const app = useApplication();
+ * return <GtkLabel label={app.applicationId} />;
  * };
  * ```
  *
@@ -93,9 +93,9 @@ export const setHotReloading = (value: boolean): void => {
  * import { render, quit } from "@gtkx/react";
  *
  * const App = () => (
- *   <GtkApplicationWindow title="My App" onClose={quit}>
- *     <GtkLabel label="Hello, GTKX!" />
- *   </GtkApplicationWindow>
+ * <GtkApplicationWindow title="My App" onClose={quit}>
+ * <GtkLabel label="Hello, GTKX!" />
+ * </GtkApplicationWindow>
  * );
  *
  * render(<App />, "com.example.myapp");
@@ -150,9 +150,9 @@ export const render = (element: ReactNode, appId: string, flags?: Gio.Applicatio
  * ```tsx
  * // In HMR handler
  * if (import.meta.hot) {
- *   import.meta.hot.accept(() => {
- *     update(<App />);
- *   });
+ * import.meta.hot.accept(() => {
+ * update(<App />);
+ * });
  * }
  * ```
  *
@@ -182,9 +182,9 @@ export const update = (element: ReactNode): Promise<void> => {
  * import { quit } from "@gtkx/react";
  *
  * const App = () => (
- *   <GtkApplicationWindow title="My App" onClose={quit}>
- *     <GtkButton label="Quit" onClicked={quit} />
- *   </GtkApplicationWindow>
+ * <GtkApplicationWindow title="My App" onClose={quit}>
+ * <GtkButton label="Quit" onClicked={quit} />
+ * </GtkApplicationWindow>
  * );
  * ```
  *

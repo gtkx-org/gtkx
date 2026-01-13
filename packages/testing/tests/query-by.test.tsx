@@ -26,7 +26,7 @@ describe("queryByRole", () => {
 
     it("throws when multiple elements found", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
             </GtkBox>,
@@ -38,7 +38,7 @@ describe("queryByRole", () => {
 describe("queryAllByRole", () => {
     it("returns all matching elements", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
             </GtkBox>,
@@ -71,7 +71,7 @@ describe("queryByText", () => {
 describe("queryAllByText", () => {
     it("returns all matching elements", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkLabel label="Same" />
                 <GtkLabel label="Same" />
             </GtkBox>,
@@ -104,7 +104,7 @@ describe("queryByTestId", () => {
 describe("queryAllByTestId", () => {
     it("returns all matching elements", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkEntry name="field" />
                 <GtkEntry name="field" />
             </GtkBox>,

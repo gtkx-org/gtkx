@@ -30,7 +30,7 @@ describe("screen", () => {
 
     it("finds all elements by role", async () => {
         await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
                 <GtkButton label="Third" />
@@ -43,7 +43,7 @@ describe("screen", () => {
 
     it("finds all elements by text", async () => {
         await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkLabel label="Item" />
                 <GtkLabel label="Item" />
             </GtkBox>,
@@ -55,7 +55,7 @@ describe("screen", () => {
 
     it("finds all elements by label text", async () => {
         await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="Action" />
                 <GtkButton label="Action" />
             </GtkBox>,
@@ -67,7 +67,7 @@ describe("screen", () => {
 
     it("finds all elements by test id", async () => {
         await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkEntry name="field" />
                 <GtkEntry name="field" />
             </GtkBox>,

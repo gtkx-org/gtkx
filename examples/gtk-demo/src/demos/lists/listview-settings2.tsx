@@ -273,7 +273,7 @@ const ListViewSettings2Demo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+            <GtkBox spacing={8}>
                 <GtkLabel
                     label={`${getEnabledCount()} of ${getTotalSettings()} settings enabled`}
                     cssClasses={["dim-label"]}
@@ -290,13 +290,7 @@ const ListViewSettings2Demo = () => {
 
                         if (item.type === "category") {
                             return (
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={12}
-                                    marginTop={8}
-                                    marginBottom={8}
-                                    marginEnd={12}
-                                >
+                                <GtkBox spacing={12} marginTop={8} marginBottom={8} marginEnd={12}>
                                     <GtkImage iconName={item.icon} pixelSize={20} />
                                     <GtkLabel
                                         label={item.name}
@@ -316,13 +310,7 @@ const ListViewSettings2Demo = () => {
                         const isEnabled = settings[setting.id] ?? false;
 
                         return (
-                            <GtkBox
-                                orientation={Gtk.Orientation.HORIZONTAL}
-                                spacing={12}
-                                marginTop={8}
-                                marginBottom={8}
-                                marginEnd={12}
-                            >
+                            <GtkBox spacing={12} marginTop={8} marginBottom={8} marginEnd={12}>
                                 <GtkImage
                                     iconName={setting.icon}
                                     pixelSize={20}

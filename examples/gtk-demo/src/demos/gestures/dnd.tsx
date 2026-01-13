@@ -42,15 +42,15 @@ const DndDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GtkDragSource" widthChars={16} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Makes a widget draggable" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GtkDropTarget" widthChars={16} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Makes a widget accept drops" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="ContentProvider" widthChars={16} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Carries the dragged data" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -75,7 +75,7 @@ const DndDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="prepare" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel
                                 label="Called to prepare the ContentProvider before drag starts"
@@ -83,11 +83,11 @@ const DndDemo = () => {
                                 cssClasses={["dim-label"]}
                             />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="drag-begin" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Emitted when the drag operation starts" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="drag-end" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel
                                 label="Emitted when the drag is finished or cancelled"
@@ -95,7 +95,7 @@ const DndDemo = () => {
                                 cssClasses={["dim-label"]}
                             />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="drag-cancel" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Emitted when the drag is cancelled" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -120,23 +120,23 @@ const DndDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="accept" widthChars={10} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Return true to accept the incoming drop" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="enter" widthChars={10} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Cursor entered the drop target" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="motion" widthChars={10} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Cursor moved within the drop target" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="leave" widthChars={10} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Cursor left the drop target" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="drop" widthChars={10} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Data was dropped, return true to accept" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -161,19 +161,19 @@ const DndDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GDK_ACTION_COPY" widthChars={18} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Copy the data (default)" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GDK_ACTION_MOVE" widthChars={18} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Move the data (delete from source)" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GDK_ACTION_LINK" widthChars={18} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Create a link/reference to the data" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GDK_ACTION_ASK" widthChars={18} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Ask the user what to do" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -202,17 +202,17 @@ const DndDemo = () => {
 const widgetRef = useRef<Gtk.Widget | null>(null);
 
 useEffect(() => {
-  if (!widgetRef.current) return;
+ if (!widgetRef.current) return;
 
-  // Create drag source
-  const dragSource = new Gtk.DragSource();
-  dragSource.setActions(Gdk.DragAction.COPY);
+ // Create drag source
+ const dragSource = new Gtk.DragSource();
+ dragSource.setActions(Gdk.DragAction.COPY);
 
-  dragSource.connect("prepare", () => {
-    return Gdk.ContentProvider.newForValue("data");
-  });
+ dragSource.connect("prepare", () => {
+ return Gdk.ContentProvider.newForValue("data");
+ });
 
-  widgetRef.current.addController(dragSource);
+ widgetRef.current.addController(dragSource);
 }, []);`}
                         cssClasses={["monospace"]}
                         halign={Gtk.Align.START}

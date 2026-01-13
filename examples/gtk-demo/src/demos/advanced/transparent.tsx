@@ -7,9 +7,9 @@ import type { Demo } from "../types.js";
 import sourceCode from "./transparent.tsx?raw";
 
 const transparencyInfoStyle = css`
-    background-color: alpha(@accent_bg_color, 0.1);
-    border-radius: 8px;
-    padding: 12px;
+ background-color: alpha(@accent_bg_color, 0.1);
+ border-radius: 8px;
+ padding: 12px;
 `;
 
 const drawTransparencyDemo = (alpha: number, gradientType: "solid" | "linear" | "radial") => {
@@ -167,10 +167,9 @@ const TransparentDemo = () => {
                         cssClasses={["card"]}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Alpha:" widthRequest={60} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={alphaAdjustment}
                             drawValue
                             digits={2}
@@ -180,7 +179,7 @@ const TransparentDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkLabel label="Gradient:" />
                         {(["solid", "linear", "radial"] as const).map((type) => (
                             <GtkButton
@@ -195,14 +194,7 @@ const TransparentDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Overlapping Transparent Shapes">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={16}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                >
+                <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkDrawingArea ref={overlappingRef} contentWidth={200} contentHeight={180} cssClasses={["card"]} />
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
                         <GtkLabel
@@ -219,14 +211,7 @@ const TransparentDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Layered Transparency">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={16}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                >
+                <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkDrawingArea ref={layeredRef} contentWidth={200} contentHeight={150} cssClasses={["card"]} />
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
                         <GtkLabel

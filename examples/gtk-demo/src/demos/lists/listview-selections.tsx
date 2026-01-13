@@ -110,7 +110,7 @@ const ListViewSelectionsDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         {selectionModes.map((mode) => (
                             <GtkButton
                                 key={mode.mode}
@@ -147,7 +147,7 @@ const ListViewSelectionsDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkButton
                             label="Select All"
                             onClicked={selectAll}
@@ -175,7 +175,6 @@ const ListViewSelectionsDemo = () => {
                             onActivate={handleActivate}
                             renderItem={(item) => (
                                 <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
                                     spacing={12}
                                     marginTop={8}
                                     marginBottom={8}
@@ -228,13 +227,12 @@ const ListViewSelectionsDemo = () => {
                     {selectedIds.size === 0 ? (
                         <GtkLabel label="No items selected" cssClasses={["dim-label"]} halign={Gtk.Align.START} />
                     ) : (
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                        <GtkBox spacing={8}>
                             {Array.from(selectedIds).map((id) => {
                                 const fruit = fruits.find((f) => f.id === id);
                                 return (
                                     <GtkBox
                                         key={id}
-                                        orientation={Gtk.Orientation.HORIZONTAL}
                                         spacing={4}
                                         cssClasses={["card"]}
                                         marginTop={4}

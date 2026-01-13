@@ -8,12 +8,12 @@ import type { Demo } from "../types.js";
 import sourceCode from "./hypertext.tsx?raw";
 
 const hypertextViewStyle = css`
-    font-size: 14px;
-    padding: 16px;
+ font-size: 14px;
+ padding: 16px;
 
-    &:focus {
-        outline: none;
-    }
+ &:focus {
+ outline: none;
+ }
 `;
 
 interface Link {
@@ -156,7 +156,7 @@ const HypertextDemo = () => {
                         />
                     </GtkScrolledWindow>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Hovered:" cssClasses={["dim-label"]} />
                         <GtkLabel label={hoveredLink ?? "None"} cssClasses={hoveredLink ? ["heading"] : []} hexpand />
                     </GtkBox>
@@ -165,14 +165,7 @@ const HypertextDemo = () => {
 
             {clickedLink && (
                 <GtkFrame label="Link Clicked">
-                    <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
-                        spacing={12}
-                        marginStart={16}
-                        marginEnd={16}
-                        marginTop={16}
-                        marginBottom={16}
-                    >
+                    <GtkBox spacing={12} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                         <GtkLabel label={clickedLink} hexpand cssClasses={["heading"]} />
                         <GtkButton label="Dismiss" onClicked={clearClicked} cssClasses={["flat"]} />
                     </GtkBox>
@@ -189,7 +182,7 @@ const HypertextDemo = () => {
                     marginBottom={16}
                 >
                     {SAMPLE_LINKS.map((link) => (
-                        <GtkBox key={link.url} orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox key={link.url} spacing={12}>
                             <GtkLabel
                                 label={link.text}
                                 cssClasses={["heading"]}

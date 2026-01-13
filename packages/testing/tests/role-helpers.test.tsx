@@ -6,7 +6,7 @@ import { getRoles, prettyRoles, render, screen } from "../src/index.js";
 describe("getRoles", () => {
     it("returns map of roles to widgets", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="Submit" />
                 <GtkButton label="Cancel" />
                 <GtkLabel label="Hello" />
@@ -30,7 +30,7 @@ describe("getRoles", () => {
     });
 
     it("returns empty map for empty container", async () => {
-        const { container } = await render(<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} />);
+        const { container } = await render(<GtkBox orientation={Gtk.Orientation.VERTICAL} />);
 
         const roles = getRoles(container);
 
@@ -41,7 +41,7 @@ describe("getRoles", () => {
 describe("prettyRoles", () => {
     it("formats roles with names", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="Submit" />
                 <GtkCheckButton label="Remember" />
             </GtkBox>,
@@ -56,7 +56,7 @@ describe("prettyRoles", () => {
     });
 
     it("formats all roles including window and generic", async () => {
-        const { container } = await render(<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} />);
+        const { container } = await render(<GtkBox orientation={Gtk.Orientation.VERTICAL} />);
 
         const output = prettyRoles(container);
 

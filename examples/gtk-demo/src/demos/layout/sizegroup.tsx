@@ -37,13 +37,7 @@ const SizeGroupDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={0}
-                    cssClasses={["card"]}
-                    marginTop={8}
-                    marginBottom={8}
-                >
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} marginTop={8} marginBottom={8}>
                     <GtkGrid
                         columnSpacing={12}
                         rowSpacing={8}
@@ -93,15 +87,8 @@ const SizeGroupDemo = () => {
                     onClicked={() => setUseHomogeneous(!useHomogeneous)}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={0}
-                    cssClasses={["card"]}
-                    marginTop={8}
-                    marginBottom={8}
-                >
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} marginTop={8} marginBottom={8}>
                     <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
                         spacing={8}
                         homogeneous={useHomogeneous}
                         marginTop={12}
@@ -134,27 +121,14 @@ const SizeGroupDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton label="80px" onClicked={() => setButtonWidth(80)} />
                     <GtkButton label="100px" onClicked={() => setButtonWidth(100)} />
                     <GtkButton label="120px" onClicked={() => setButtonWidth(120)} />
                 </GtkBox>
                 <GtkLabel label={`Current width: ${buttonWidth}px`} cssClasses={["dim-label"]} />
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={0}
-                    cssClasses={["card"]}
-                    marginTop={8}
-                    marginBottom={8}
-                >
-                    <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
-                        spacing={8}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    >
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} marginTop={8} marginBottom={8}>
+                    <GtkBox spacing={8} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                         <GtkButton label="Yes" widthRequest={buttonWidth} cssClasses={["suggested-action"]} />
                         <GtkButton label="No" widthRequest={buttonWidth} />
                         <GtkButton label="Maybe" widthRequest={buttonWidth} />
@@ -170,8 +144,8 @@ const SizeGroupDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={20}>
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} hexpand>
+                <GtkBox spacing={20}>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} hexpand>
                         <GtkLabel label="Without Alignment" cssClasses={["heading"]} marginTop={8} />
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -181,22 +155,22 @@ const SizeGroupDemo = () => {
                             marginStart={12}
                             marginEnd={12}
                         >
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                            <GtkBox spacing={8}>
                                 <GtkLabel label="Name:" />
                                 <GtkEntry hexpand />
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                            <GtkBox spacing={8}>
                                 <GtkLabel label="Email:" />
                                 <GtkEntry hexpand />
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                            <GtkBox spacing={8}>
                                 <GtkLabel label="Address:" />
                                 <GtkEntry hexpand />
                             </GtkBox>
                         </GtkBox>
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} hexpand>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} hexpand>
                         <GtkLabel label="With Grid Alignment" cssClasses={["heading"]} marginTop={8} />
                         <GtkGrid
                             columnSpacing={8}

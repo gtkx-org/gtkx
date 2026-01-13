@@ -37,7 +37,7 @@ const HeaderBarDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]}>
                     <GtkHeaderBar showTitleButtons={false}>
                         <x.Slot for={GtkHeaderBar} id="titleWidget">
                             <GtkLabel label="My Application" cssClasses={["title"]} />
@@ -57,7 +57,7 @@ const HeaderBarDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]}>
                     <GtkHeaderBar showTitleButtons={false}>
                         <x.PackStart>
                             <GtkButton iconName="go-previous-symbolic" cssClasses={["flat"]} />
@@ -81,13 +81,13 @@ const HeaderBarDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]}>
                     <GtkHeaderBar showTitleButtons={false}>
                         <x.PackStart>
                             <GtkButton iconName="list-add-symbolic" cssClasses={["flat"]} />
                         </x.PackStart>
                         <x.Slot for={GtkHeaderBar} id="titleWidget">
-                            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} valign={Gtk.Align.CENTER}>
+                            <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER}>
                                 <GtkLabel label="Document.txt" cssClasses={["title"]} />
                                 <GtkLabel label={subtitle} cssClasses={["subtitle"]} />
                             </GtkBox>
@@ -98,7 +98,7 @@ const HeaderBarDemo = () => {
                         </x.PackEnd>
                     </GtkHeaderBar>
                 </GtkBox>
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton label="Modified" onClicked={() => setSubtitle("Modified")} />
                     <GtkButton label="Saved" onClicked={() => setSubtitle("Saved")} />
                     <GtkButton label="~/Documents" onClicked={() => setSubtitle("~/Documents")} />
@@ -113,7 +113,7 @@ const HeaderBarDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]}>
                     <GtkHeaderBar showTitleButtons={false}>
                         <x.PackStart>
                             <GtkButton
@@ -143,7 +143,7 @@ const HeaderBarDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]}>
                     <GtkHeaderBar showTitleButtons={false}>
                         <x.PackStart>
                             <GtkButton label="Cancel" cssClasses={["flat"]} />

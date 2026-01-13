@@ -17,7 +17,7 @@ describe("getNativeObject", () => {
     });
 
     it("wraps with specific type when targetType is provided", () => {
-        const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
+        const box = new Gtk.Box();
         const wrapped = getNativeObject(box.handle, Gtk.Box);
         expect(wrapped).toBeInstanceOf(Gtk.Box);
     });
@@ -66,13 +66,13 @@ describe("getNativeObject", () => {
 
     describe("interfaces", () => {
         it("returns interface instance when object implements it", () => {
-            const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
+            const box = new Gtk.Box();
             const orientable = getNativeObject(box.handle, Gtk.Orientable);
             expect(orientable).not.toBeNull();
         });
 
         it("allows calling interface methods on returned instance", () => {
-            const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
+            const box = new Gtk.Box();
             const orientable = getNativeObject(box.handle, Gtk.Orientable);
             expect(orientable).not.toBeNull();
             expect(typeof orientable?.setOrientation).toBe("function");

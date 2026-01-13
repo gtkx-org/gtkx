@@ -232,7 +232,7 @@ describe("render - ColumnView", () => {
             expect(ref.current?.getColumns()).not.toBeNull();
         });
 
-        it("sets column properties (expand, resizable, fixedWidth)", async () => {
+        it("sets column properties (expand, , fixedWidth)", async () => {
             const ref = createRef<Gtk.ColumnView>();
 
             await render(
@@ -242,7 +242,6 @@ describe("render - ColumnView", () => {
                             id="props"
                             title="Props"
                             expand={true}
-                            resizable={true}
                             fixedWidth={100}
                             renderCell={() => "Cell"}
                         />

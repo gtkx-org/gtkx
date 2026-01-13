@@ -225,7 +225,7 @@ const ListViewApplauncherDemo = () => {
                         hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                         vscrollbarPolicy={Gtk.PolicyType.NEVER}
                     >
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                        <GtkBox spacing={4}>
                             {categories.map((cat) => (
                                 <GtkButton
                                     key={cat}
@@ -291,7 +291,6 @@ const ListViewApplauncherDemo = () => {
 
                     {selectedApp && (
                         <GtkBox
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             spacing={16}
                             cssClasses={["card"]}
                             marginTop={8}

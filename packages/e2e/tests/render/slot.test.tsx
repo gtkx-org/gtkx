@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPaned, GtkPopover, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -25,7 +25,7 @@ describe("render - Slot", () => {
         const labelRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkPaned ref={panedRef} orientation={Gtk.Orientation.HORIZONTAL}>
+            <GtkPaned ref={panedRef}>
                 <x.Slot for={GtkPaned} id="startChild">
                     <GtkLabel ref={labelRef} label="Start Content" />
                 </x.Slot>
@@ -50,7 +50,7 @@ describe("render - Slot", () => {
             );
         }
 
-        await render(<App showTitle={true} />);
+        await render(<App showTitle />);
 
         expect(headerBarRef.current?.getTitleWidget()).not.toBeNull();
 
@@ -92,7 +92,7 @@ describe("render - Slot", () => {
         const labelRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkPaned ref={panedRef} orientation={Gtk.Orientation.HORIZONTAL}>
+            <GtkPaned ref={panedRef}>
                 <x.Slot for={GtkPaned} id="startChild">
                     <GtkLabel ref={labelRef} label="Start Child" />
                 </x.Slot>
@@ -123,7 +123,7 @@ describe("render - Slot", () => {
         const endRef = createRef<Gtk.Label>();
 
         await render(
-            <GtkPaned ref={panedRef} orientation={Gtk.Orientation.HORIZONTAL}>
+            <GtkPaned ref={panedRef}>
                 <x.Slot for={GtkPaned} id="startChild">
                     <GtkLabel ref={startRef} label="Start" />
                 </x.Slot>

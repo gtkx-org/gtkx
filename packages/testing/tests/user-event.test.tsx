@@ -140,7 +140,7 @@ describe("userEvent.clear", () => {
 describe("userEvent.tab", () => {
     it("moves focus forward", async () => {
         await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
             </GtkBox>,
@@ -153,7 +153,7 @@ describe("userEvent.tab", () => {
 
     it("moves focus backward with shift option", async () => {
         await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
             </GtkBox>,
@@ -181,7 +181,7 @@ describe("userEvent.selectOptions", () => {
 
     it("selects row in list box by index", async () => {
         await render(
-            <GtkListBox selectionMode={Gtk.SelectionMode.SINGLE}>
+            <GtkListBox>
                 <GtkListBoxRow>Item 1</GtkListBoxRow>
                 <GtkListBoxRow>Item 2</GtkListBoxRow>
             </GtkListBox>,

@@ -23,7 +23,7 @@ describe("render - widget creation", () => {
         it("creates Box widget with orientation", async () => {
             const ref = createRef<Gtk.Box>();
 
-            await render(<GtkBox ref={ref} spacing={0} orientation={Gtk.Orientation.VERTICAL} />);
+            await render(<GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL} />);
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
@@ -50,7 +50,7 @@ describe("render - widget creation", () => {
         it("passes constructor parameters from props", async () => {
             const ref = createRef<Gtk.Box>();
 
-            await render(<GtkBox ref={ref} orientation={Gtk.Orientation.HORIZONTAL} spacing={10} />);
+            await render(<GtkBox ref={ref} spacing={10} />);
 
             expect(ref.current?.getSpacing()).toBe(10);
         });
@@ -95,7 +95,7 @@ describe("render - widget creation", () => {
     describe("screen queries", () => {
         it("finds multiple buttons by role", async () => {
             await render(
-                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkButton label="First" />
                     <GtkButton label="Second" />
                     <GtkButton label="Third" />
@@ -108,7 +108,7 @@ describe("render - widget creation", () => {
 
         it("finds button by name filter", async () => {
             await render(
-                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkButton label="Submit" />
                     <GtkButton label="Cancel" />
                 </GtkBox>,
@@ -130,7 +130,7 @@ describe("render - widget creation", () => {
 
         it("finds widgets by text content", async () => {
             await render(
-                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkLabel label="Welcome Message" />
                     <GtkLabel label="Description Text" />
                 </GtkBox>,

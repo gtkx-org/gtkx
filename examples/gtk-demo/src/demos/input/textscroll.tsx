@@ -98,7 +98,7 @@ const TextScrollDemo = () => {
                     </GtkScrolledWindow>
                 </GtkFrame>
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton
                         label="Scroll to Start"
                         onClicked={() => scrollToStart(verticalBuffer, verticalViewRef.current)}

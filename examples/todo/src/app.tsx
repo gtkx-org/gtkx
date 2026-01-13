@@ -45,7 +45,7 @@ const Footer = ({
     completedCount: number;
     onClearCompleted: () => void;
 }) => (
-    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} marginTop={8}>
+    <GtkBox spacing={12} marginTop={8}>
         <GtkLabel
             label={`${activeCount} item${activeCount !== 1 ? "s" : ""} left`}
             cssClasses={["dim-label"]}

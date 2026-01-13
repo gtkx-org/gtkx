@@ -6,10 +6,10 @@ import type { Demo } from "../types.js";
 import sourceCode from "./layoutmanager.tsx?raw";
 
 const circularContainerStyle = css`
-    min-width: 300px;
-    min-height: 300px;
-    background: linear-gradient(135deg, alpha(@accent_color, 0.1), alpha(@accent_color, 0.05));
-    border-radius: 12px;
+ min-width: 300px;
+ min-height: 300px;
+ background: linear-gradient(135deg, alpha(@accent_color, 0.1), alpha(@accent_color, 0.05));
+ border-radius: 12px;
 `;
 
 interface ChildPosition {
@@ -84,10 +84,9 @@ const CircularLayoutDemo = () => {
                         </x.FixedChild>
                     </GtkFixed>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Radius:" widthRequest={70} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={radiusAdjustment}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
@@ -96,10 +95,9 @@ const CircularLayoutDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Rotation:" widthRequest={70} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={rotationAdjustment}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
@@ -172,12 +170,7 @@ const GridLayoutDemo = () => {
                             const rowItems = items.slice(rowIndex * columns, (rowIndex + 1) * columns);
                             const rowKey = rowItems.map((item) => item.id).join("-") || `row-${rowIndex}`;
                             return (
-                                <GtkBox
-                                    key={rowKey}
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={spacing}
-                                    homogeneous
-                                >
+                                <GtkBox key={rowKey} spacing={spacing} homogeneous>
                                     {rowItems.map((item) => (
                                         <GtkButton key={item.id} label={item.label} cssClasses={["flat"]} hexpand />
                                     ))}
@@ -186,10 +179,9 @@ const GridLayoutDemo = () => {
                         })}
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Columns:" widthRequest={70} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={columnsAdjustment}
                             drawValue
                             digits={0}
@@ -199,10 +191,9 @@ const GridLayoutDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Spacing:" widthRequest={70} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={spacingAdjustment}
                             drawValue
                             digits={0}

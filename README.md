@@ -1,18 +1,18 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/logo.svg" alt="GTKX" width="60" height="60">
+ <img src="https://raw.githubusercontent.com/eugeniodepalo/gtkx/main/logo.svg" alt="GTKX" width="60" height="60">
 </p>
 
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-  <strong>Build native GTK4 desktop applications with React and TypeScript.</strong>
+ <strong>Build native GTK4 desktop applications with React and TypeScript.</strong>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@gtkx/react"><img src="https://img.shields.io/npm/v/@gtkx/react.svg" alt="npm version"></a>
-  <a href="https://github.com/eugeniodepalo/gtkx/actions"><img src="https://img.shields.io/github/actions/workflow/status/eugeniodepalo/gtkx/ci.yml" alt="CI"></a>
-  <a href="https://github.com/eugeniodepalo/gtkx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue.svg" alt="License"></a>
-  <a href="https://github.com/eugeniodepalo/gtkx/discussions"><img src="https://img.shields.io/badge/discussions-GitHub-blue" alt="GitHub Discussions"></a>
+ <a href="https://www.npmjs.com/package/@gtkx/react"><img src="https://img.shields.io/npm/v/@gtkx/react.svg" alt="npm version"></a>
+ <a href="https://github.com/eugeniodepalo/gtkx/actions"><img src="https://img.shields.io/github/actions/workflow/status/eugeniodepalo/gtkx/ci.yml" alt="CI"></a>
+ <a href="https://github.com/eugeniodepalo/gtkx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue.svg" alt="License"></a>
+ <a href="https://github.com/eugeniodepalo/gtkx/discussions"><img src="https://img.shields.io/badge/discussions-GitHub-blue" alt="GitHub Discussions"></a>
 </p>
 
 ---
@@ -31,36 +31,36 @@ npm run dev
 
 ```tsx
 import {
-  GtkApplicationWindow,
-  GtkBox,
-  GtkButton,
-  GtkLabel,
-  quit,
-  render,
+ GtkApplicationWindow,
+ GtkBox,
+ GtkButton,
+ GtkLabel,
+ quit,
+ render,
 } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
 const App = () => {
-  const [count, setCount] = useState(0);
+ const [count, setCount] = useState(0);
 
-  return (
-    <GtkApplicationWindow
-      title="Counter"
-      defaultWidth={300}
-      defaultHeight={200}
-      onClose={quit}
-    >
-      <GtkBox
-        orientation={Gtk.Orientation.VERTICAL}
-        spacing={20}
-        valign={Gtk.Align.CENTER}
-      >
-        <GtkLabel label={`Count: ${count}`} cssClasses={["title-1"]} />
-        <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
-      </GtkBox>
-    </GtkApplicationWindow>
-  );
+ return (
+ <GtkApplicationWindow
+ title="Counter"
+ defaultWidth={300}
+ defaultHeight={200}
+ onClose={quit}
+>
+ <GtkBox
+ orientation={Gtk.Orientation.VERTICAL}
+ spacing={20}
+ valign={Gtk.Align.CENTER}
+>
+ <GtkLabel label={`Count: ${count}`} cssClasses={["title-1"]} />
+ <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
+ </GtkBox>
+ </GtkApplicationWindow>
+ );
 };
 
 render(<App />, "com.example.counter");

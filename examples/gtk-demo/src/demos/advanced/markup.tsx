@@ -104,7 +104,7 @@ const MarkupDemo = () => {
                         hexpand
                         placeholderText="Enter markup like <b>bold</b> or <i>italic</i>"
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkButton
                             label={showPreview ? "Hide Preview" : "Show Preview"}
                             onClicked={() => setShowPreview(!showPreview)}
@@ -116,7 +116,7 @@ const MarkupDemo = () => {
                         />
                     </GtkBox>
                     {showPreview && (
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]} marginTop={8}>
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} marginTop={8}>
                             <GtkLabel
                                 label="Preview:"
                                 cssClasses={["dim-label"]}
@@ -158,13 +158,7 @@ const MarkupDemo = () => {
                                 marginStart={4}
                                 marginEnd={4}
                             >
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={8}
-                                    marginTop={8}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                >
+                                <GtkBox spacing={8} marginTop={8} marginStart={12} marginEnd={12}>
                                     <GtkLabel label={example.name} cssClasses={["heading"]} halign={Gtk.Align.START} />
                                 </GtkBox>
                                 <GtkLabel
@@ -217,7 +211,7 @@ const MarkupDemo = () => {
                 >
                     <GtkLabel label="Common Tags:" cssClasses={["heading"]} halign={Gtk.Align.START} />
                     <GtkLabel
-                        label="<b>bold</b>  <i>italic</i>  <u>underline</u>  <s>strikethrough</s>  <tt>monospace</tt>  <sub>subscript</sub>  <sup>superscript</sup>"
+                        label="<b>bold</b> <i>italic</i> <u>underline</u> <s>strikethrough</s> <tt>monospace</tt> <sub>subscript</sub> <sup>superscript</sup>"
                         useMarkup
                         wrap
                         halign={Gtk.Align.START}

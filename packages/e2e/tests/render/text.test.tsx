@@ -6,11 +6,7 @@ import { describe, expect, it } from "vitest";
 
 describe("render - text instances", () => {
     it("renders string child as Label", async () => {
-        await render(
-            <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                Hello World
-            </GtkBox>,
-        );
+        await render(<GtkBox orientation={Gtk.Orientation.VERTICAL}>Hello World</GtkBox>);
 
         const label = await screen.findByText("Hello World");
         expect(label).toBeDefined();
@@ -18,11 +14,7 @@ describe("render - text instances", () => {
 
     it("updates Label text when string changes", async () => {
         function App({ text }: { text: string }) {
-            return (
-                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                    {text}
-                </GtkBox>
-            );
+            return <GtkBox orientation={Gtk.Orientation.VERTICAL}>{text}</GtkBox>;
         }
 
         const { rerender } = await render(<App text="Initial" />);
@@ -38,7 +30,7 @@ describe("render - text instances", () => {
         const ref = createRef<Gtk.Box>();
 
         await render(
-            <GtkBox ref={ref} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+            <GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL}>
                 {""}
             </GtkBox>,
         );
@@ -47,11 +39,7 @@ describe("render - text instances", () => {
     });
 
     it("handles unicode text", async () => {
-        await render(
-            <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                你好世界 🌍 مرحبا
-            </GtkBox>,
-        );
+        await render(<GtkBox orientation={Gtk.Orientation.VERTICAL}>你好世界 🌍 مرحبا</GtkBox>);
 
         const unicodeLabel = await screen.findByText("你好世界 🌍 مرحبا");
         expect(unicodeLabel).toBeDefined();
@@ -59,11 +47,7 @@ describe("render - text instances", () => {
 
     it("removes text instance when child removed", async () => {
         function App({ showText }: { showText: boolean }) {
-            return (
-                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                    {showText && "Removable Text"}
-                </GtkBox>
-            );
+            return <GtkBox orientation={Gtk.Orientation.VERTICAL}>{showText && "Removable Text"}</GtkBox>;
         }
 
         const { rerender } = await render(<App showText={true} />);
@@ -77,7 +61,7 @@ describe("render - text instances", () => {
 
     it("handles multiple text children", async () => {
         await render(
-            <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 {"First"}
                 {"Second"}
                 {"Third"}
@@ -94,7 +78,7 @@ describe("render - text instances", () => {
 
     it("finds text with regex patterns", async () => {
         await render(
-            <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 {"Error: File not found"}
                 {"Warning: Low memory"}
                 {"Info: Process complete"}

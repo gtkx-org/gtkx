@@ -70,7 +70,6 @@ const PaintableSymbolicDemo = () => {
 
             <GtkFrame label="Icon Categories">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     marginTop={12}
                     marginBottom={12}
@@ -95,7 +94,6 @@ const PaintableSymbolicDemo = () => {
 
             <GtkFrame label="Icon Selection">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={16}
                     marginTop={12}
                     marginBottom={12}
@@ -126,7 +124,7 @@ const PaintableSymbolicDemo = () => {
                 >
                     <GtkLabel label={selectedIcon} cssClasses={["monospace"]} halign={Gtk.Align.CENTER} />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         {ICON_SIZES.map((size) => (
                             <GtkBox
                                 key={size}
@@ -136,7 +134,6 @@ const PaintableSymbolicDemo = () => {
                             >
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={0}
                                     widthRequest={size + 16}
                                     heightRequest={size + 16}
                                     halign={Gtk.Align.CENTER}
@@ -166,10 +163,10 @@ const PaintableSymbolicDemo = () => {
                         halign={Gtk.Align.START}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={16} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkButton cssClasses={["suggested-action"]}>
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                <GtkBox spacing={8}>
                                     <GtkImage iconName={selectedIcon} />
                                     <GtkLabel label="Suggested" />
                                 </GtkBox>
@@ -179,7 +176,7 @@ const PaintableSymbolicDemo = () => {
 
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkButton cssClasses={["destructive-action"]}>
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                <GtkBox spacing={8}>
                                     <GtkImage iconName={selectedIcon} />
                                     <GtkLabel label="Destructive" />
                                 </GtkBox>
@@ -189,7 +186,7 @@ const PaintableSymbolicDemo = () => {
 
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkButton cssClasses={["flat"]}>
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                <GtkBox spacing={8}>
                                     <GtkImage iconName={selectedIcon} />
                                     <GtkLabel label="Flat" />
                                 </GtkBox>
@@ -199,7 +196,7 @@ const PaintableSymbolicDemo = () => {
 
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkButton sensitive={false}>
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                <GtkBox spacing={8}>
                                     <GtkImage iconName={selectedIcon} />
                                     <GtkLabel label="Disabled" />
                                 </GtkBox>

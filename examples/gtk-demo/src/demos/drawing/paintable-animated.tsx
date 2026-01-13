@@ -182,7 +182,7 @@ const PaintableAnimatedDemo = () => {
                     marginEnd={12}
                 >
                     <GtkPicture
-                        paintable={texture}
+                        paintable={texture ?? undefined}
                         contentFit={Gtk.ContentFit.CONTAIN}
                         widthRequest={300}
                         heightRequest={300}
@@ -190,7 +190,7 @@ const PaintableAnimatedDemo = () => {
                         cssClasses={["card"]}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label={isPlaying ? "Pause" : "Play"}
                             onClicked={() => setIsPlaying(!isPlaying)}
@@ -209,7 +209,6 @@ const PaintableAnimatedDemo = () => {
 
             <GtkFrame label="Animation Type">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
                     marginTop={12}
                     marginBottom={12}
@@ -244,10 +243,9 @@ const PaintableAnimatedDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Speed:" widthRequest={80} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             hexpand
@@ -255,10 +253,9 @@ const PaintableAnimatedDemo = () => {
                             onValueChanged={handleSpeedChange}
                         />
                     </GtkBox>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Resolution:" widthRequest={80} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             hexpand

@@ -20,7 +20,7 @@ function createMemoryTexture(
 const SVG_TEMPLATES = {
     circle: (color: string, strokeWidth: number) => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <circle cx="50" cy="50" r="40" fill="${color}" stroke="#333" stroke-width="${strokeWidth}"/>
+ <circle cx="50" cy="50" r="40" fill="${color}" stroke="#333" stroke-width="${strokeWidth}"/>
 </svg>`,
 
     star: (color: string, points: number) => {
@@ -37,39 +37,39 @@ const SVG_TEMPLATES = {
         path += "Z";
         return `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <path d="${path}" fill="${color}" stroke="#333" stroke-width="2"/>
+ <path d="${path}" fill="${color}" stroke="#333" stroke-width="2"/>
 </svg>`;
     },
 
     gradient: (startColor: string, endColor: string) => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:${startColor}"/>
-      <stop offset="100%" style="stop-color:${endColor}"/>
-    </linearGradient>
-  </defs>
-  <rect x="5" y="5" width="90" height="90" rx="10" fill="url(#grad)"/>
+ <defs>
+ <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+ <stop offset="0%" style="stop-color:${startColor}"/>
+ <stop offset="100%" style="stop-color:${endColor}"/>
+ </linearGradient>
+ </defs>
+ <rect x="5" y="5" width="90" height="90" rx="10" fill="url(#grad)"/>
 </svg>`,
 
     pattern: (color1: string, color2: string) => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <pattern id="checkers" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-      <rect x="0" y="0" width="10" height="10" fill="${color1}"/>
-      <rect x="10" y="10" width="10" height="10" fill="${color1}"/>
-      <rect x="10" y="0" width="10" height="10" fill="${color2}"/>
-      <rect x="0" y="10" width="10" height="10" fill="${color2}"/>
-    </pattern>
-  </defs>
-  <rect x="0" y="0" width="100" height="100" fill="url(#checkers)"/>
+ <defs>
+ <pattern id="checkers" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+ <rect x="0" y="0" width="10" height="10" fill="${color1}"/>
+ <rect x="10" y="10" width="10" height="10" fill="${color1}"/>
+ <rect x="10" y="0" width="10" height="10" fill="${color2}"/>
+ <rect x="0" y="10" width="10" height="10" fill="${color2}"/>
+ </pattern>
+ </defs>
+ <rect x="0" y="0" width="100" height="100" fill="url(#checkers)"/>
 </svg>`,
 
     logo: () => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect x="10" y="10" width="80" height="80" rx="15" fill="#3584e4"/>
-  <text x="50" y="60" text-anchor="middle" font-size="24" font-family="sans-serif" fill="white">GTK</text>
-  <circle cx="75" cy="25" r="8" fill="#f5c211"/>
+ <rect x="10" y="10" width="80" height="80" rx="15" fill="#3584e4"/>
+ <text x="50" y="60" text-anchor="middle" font-size="24" font-family="sans-serif" fill="white">GTK</text>
+ <circle cx="75" cy="25" r="8" fill="#f5c211"/>
 </svg>`,
 };
 
@@ -144,7 +144,7 @@ const PaintableSvgDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkPicture
                                 paintable={texture}
@@ -171,7 +171,6 @@ const PaintableSvgDemo = () => {
 
             <GtkFrame label="Shape Selection">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     marginTop={12}
                     marginBottom={12}
@@ -199,23 +198,16 @@ const PaintableSvgDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Color:" widthRequest={100} halign={Gtk.Align.START} />
                         <GtkButton label="Cycle Color" onClicked={cycleColor} />
-                        <GtkBox
-                            orientation={Gtk.Orientation.HORIZONTAL}
-                            spacing={0}
-                            widthRequest={24}
-                            heightRequest={24}
-                            cssClasses={["card"]}
-                        />
+                        <GtkBox widthRequest={24} heightRequest={24} cssClasses={["card"]} />
                     </GtkBox>
 
                     {selectedShape === "circle" && (
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="Stroke Width:" widthRequest={100} halign={Gtk.Align.START} />
                             <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
                                 drawValue
                                 valuePos={Gtk.PositionType.RIGHT}
                                 hexpand
@@ -226,10 +218,9 @@ const PaintableSvgDemo = () => {
                     )}
 
                     {selectedShape === "star" && (
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="Star Points:" widthRequest={100} halign={Gtk.Align.START} />
                             <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
                                 drawValue
                                 valuePos={Gtk.PositionType.RIGHT}
                                 hexpand

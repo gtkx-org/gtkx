@@ -30,13 +30,13 @@ GTKX uses a custom React reconciler that translates React operations into GTK wi
 
 ```
 React Components (JSX)
-        ↓
+ ↓
 @gtkx/react (reconciler)
-        ↓
+ ↓
 @gtkx/ffi (TypeScript bindings)
-        ↓
+ ↓
 @gtkx/native (Rust/Neon)
-        ↓
+ ↓
 GTK4 Widgets
 ```
 

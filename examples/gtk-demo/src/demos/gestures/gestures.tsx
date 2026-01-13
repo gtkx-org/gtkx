@@ -32,11 +32,11 @@ const GesturesDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GtkGestureClick" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Single, double, and triple clicks" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GtkGestureDrag" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel
                                 label="Drag operations with start point and offset"
@@ -44,27 +44,27 @@ const GesturesDemo = () => {
                                 cssClasses={["dim-label"]}
                             />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GtkGestureSwipe" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Swipe gestures with velocity" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GtkGesturePan" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Panning in a specific direction" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GtkGestureZoom" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Pinch-to-zoom (two-finger)" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GtkGestureRotate" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Two-finger rotation" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GtkGestureLongPress" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Long press / touch-and-hold" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="GtkGestureStylus" widthChars={20} xalign={0} cssClasses={["heading"]} />
                             <GtkLabel label="Stylus pen with pressure/tilt" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -89,15 +89,15 @@ const GesturesDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="pressed" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="(nPress, x, y) - Button pressed" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="released" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="(nPress, x, y) - Button released" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="stopped" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Click sequence ended (timeout/distance)" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -130,15 +130,15 @@ const GesturesDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="drag-begin" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="(startX, startY) - Drag started" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="drag-update" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="(offsetX, offsetY) - Dragging in progress" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="drag-end" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="(offsetX, offsetY) - Drag finished" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -163,7 +163,7 @@ const GesturesDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="swipe" widthChars={12} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="(velocityX, velocityY) - Swipe detected" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -197,7 +197,7 @@ const GesturesDemo = () => {
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                         <GtkLabel label="GtkGestureZoom" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="scale-changed" widthChars={14} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="(scale) - Scale factor (1.0 = no change)" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -205,7 +205,7 @@ const GesturesDemo = () => {
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                         <GtkLabel label="GtkGestureRotate" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="angle-changed" widthChars={14} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="(angle, angleDelta) - Rotation in radians" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -241,28 +241,28 @@ const GesturesDemo = () => {
                         label={`const widgetRef = useRef<Gtk.Widget | null>(null);
 
 useEffect(() => {
-  if (!widgetRef.current) return;
+ if (!widgetRef.current) return;
 
-  // Click gesture
-  const click = new Gtk.GestureClick();
-  click.connect("pressed", (gesture, nPress, x, y) => {
-    console.log(\`Clicked \${nPress}x at (\${x}, \${y})\`);
-  });
-  widgetRef.current.addController(click);
+ // Click gesture
+ const click = new Gtk.GestureClick();
+ click.connect("pressed", (gesture, nPress, x, y) => {
+ console.log(\`Clicked \${nPress}x at (\${x}, \${y})\`);
+ });
+ widgetRef.current.addController(click);
 
-  // Drag gesture
-  const drag = new Gtk.GestureDrag();
-  drag.connect("drag-update", (gesture, offsetX, offsetY) => {
-    console.log(\`Dragged by (\${offsetX}, \${offsetY})\`);
-  });
-  widgetRef.current.addController(drag);
+ // Drag gesture
+ const drag = new Gtk.GestureDrag();
+ drag.connect("drag-update", (gesture, offsetX, offsetY) => {
+ console.log(\`Dragged by (\${offsetX}, \${offsetY})\`);
+ });
+ widgetRef.current.addController(drag);
 
-  // Swipe gesture
-  const swipe = new Gtk.GestureSwipe();
-  swipe.connect("swipe", (gesture, vx, vy) => {
-    console.log(\`Swiped with velocity (\${vx}, \${vy})\`);
-  });
-  widgetRef.current.addController(swipe);
+ // Swipe gesture
+ const swipe = new Gtk.GestureSwipe();
+ swipe.connect("swipe", (gesture, vx, vy) => {
+ console.log(\`Swiped with velocity (\${vx}, \${vy})\`);
+ });
+ widgetRef.current.addController(swipe);
 }, []);`}
                         cssClasses={["monospace"]}
                         halign={Gtk.Align.START}

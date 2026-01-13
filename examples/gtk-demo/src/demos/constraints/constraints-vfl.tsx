@@ -100,22 +100,15 @@ const HorizontalLayoutDemo = () => {
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={350}
-                    heightRequest={60}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={350} heightRequest={60} cssClasses={["card"]}>
                     <GtkButton ref={button1Ref} label="Button 1" />
                     <GtkButton ref={button2Ref} label="Button 2" />
                 </GtkBox>
                 <GtkLabel
                     label={`Equivalent constraints:
-  button1.start = parent.start + 8
-  button2.start = button1.end + 8
-  button2.end = parent.end - 8`}
+ button1.start = parent.start + 8
+ button2.start = button1.end + 8
+ button2.end = parent.end - 8`}
                     cssClasses={["monospace", "dim-label"]}
                     halign={Gtk.Align.START}
                 />
@@ -195,20 +188,13 @@ const ExplicitSpacingDemo = () => {
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={350}
-                    heightRequest={60}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={350} heightRequest={60} cssClasses={["card"]}>
                     <GtkButton ref={widgetRef} label="20px left, 50px right" />
                 </GtkBox>
                 <GtkLabel
                     label={`Equivalent constraints:
-  widget.start = parent.start + 20
-  widget.end = parent.end - 50`}
+ widget.start = parent.start + 20
+ widget.end = parent.end - 50`}
                     cssClasses={["monospace", "dim-label"]}
                     halign={Gtk.Align.START}
                 />
@@ -310,26 +296,19 @@ const SizePredicatesDemo = () => {
                 marginEnd={12}
             >
                 <GtkLabel
-                    label="Size predicates define width/height constraints using >=, ==, <=."
+                    label="Size predicates define width/height constraints using>=, ==, <=."
                     cssClasses={["dim-label"]}
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={350}
-                    heightRequest={60}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={350} heightRequest={60} cssClasses={["card"]}>
                     <GtkButton ref={minWidthRef} label=">=120" cssClasses={["suggested-action"]} />
                     <GtkButton ref={fixedWidthRef} label="==80" />
                 </GtkBox>
                 <GtkLabel
                     label={`Equivalent constraints:
-  minWidth.width >= 120
-  fixedWidth.width == 80`}
+ minWidth.width>= 120
+ fixedWidth.width == 80`}
                     cssClasses={["monospace", "dim-label"]}
                     halign={Gtk.Align.START}
                 />
@@ -429,22 +408,15 @@ const VerticalLayoutDemo = () => {
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={200}
-                    heightRequest={120}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={200} heightRequest={120} cssClasses={["card"]}>
                     <GtkButton ref={topRef} label="Top" />
                     <GtkButton ref={bottomRef} label="Bottom" />
                 </GtkBox>
                 <GtkLabel
                     label={`Equivalent constraints:
-  top.top = parent.top + 8
-  bottom.top = top.bottom + 8
-  bottom.bottom = parent.bottom - 8`}
+ top.top = parent.top + 8
+ bottom.top = top.bottom + 8
+ bottom.bottom = parent.bottom - 8`}
                     cssClasses={["monospace", "dim-label"]}
                     halign={Gtk.Align.START}
                 />
@@ -470,14 +442,14 @@ const VflReferenceCard = () => {
                 <GtkLabel label="Visual Format Language Syntax" cssClasses={["heading"]} halign={Gtk.Align.START} />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                     <GtkLabel
-                        label={`H:          Horizontal orientation (default)
-V:          Vertical orientation
-|           Superview (parent container)
--           Standard spacing (default: 8px)
--N-         N pixels spacing
-[view]      Widget reference
-[view(N)]   Widget with size = N
-[view(>=N)] Widget with size >= N
+                        label={`H: Horizontal orientation (default)
+V: Vertical orientation
+| Superview (parent container)
+- Standard spacing (default: 8px)
+-N- N pixels spacing
+[view] Widget reference
+[view(N)] Widget with size = N
+[view(>=N)] Widget with size>= N
 [view(<=N)] Widget with size <= N
 [view(==other)] Widget same size as other`}
                         halign={Gtk.Align.START}
@@ -487,13 +459,13 @@ V:          Vertical orientation
                 <GtkLabel label="Examples" cssClasses={["heading"]} halign={Gtk.Align.START} marginTop={8} />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                     <GtkLabel
-                        label={`H:|-[button]-|             Full width with margins
-H:[button1]-[button2]      Standard spacing between
-H:|-50-[box]-50-|          50px margins
-V:[top]-10-[bottom]        10px vertical gap
-[button(100)]              Fixed width 100px
-[button(>=70,<=100)]       Width between 70-100
-[btn1(==btn2)]             Equal widths`}
+                        label={`H:|-[button]-| Full width with margins
+H:[button1]-[button2] Standard spacing between
+H:|-50-[box]-50-| 50px margins
+V:[top]-10-[bottom] 10px vertical gap
+[button(100)] Fixed width 100px
+[button(>=70,<=100)] Width between 70-100
+[btn1(==btn2)] Equal widths`}
                         halign={Gtk.Align.START}
                         cssClasses={["monospace"]}
                     />

@@ -29,7 +29,7 @@ const ImagesDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkImage iconName="dialog-information-symbolic" />
                             <GtkLabel label="Info" cssClasses={["dim-label", "caption"]} />
@@ -52,7 +52,6 @@ const ImagesDemo = () => {
 
             <GtkFrame label="Icon Sizes">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}
@@ -88,7 +87,7 @@ const ImagesDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkImage iconName="document-new-symbolic" pixelSize={32} />
                             <GtkLabel label="New" cssClasses={["dim-label", "caption"]} />
@@ -114,7 +113,7 @@ const ImagesDemo = () => {
                             <GtkLabel label="Delete" cssClasses={["dim-label", "caption"]} />
                         </GtkBox>
                     </GtkBox>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkImage iconName="go-home-symbolic" pixelSize={32} />
                             <GtkLabel label="Home" cssClasses={["dim-label", "caption"]} />
@@ -158,7 +157,7 @@ const ImagesDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <GtkPicture
                                 canShrink

@@ -9,7 +9,7 @@ interface FilterBarProps {
 
 export const FilterBar = ({ filter, onFilterChange }: FilterBarProps) => {
     return (
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={0} halign={Gtk.Align.CENTER} cssClasses={["linked"]}>
+        <GtkBox halign={Gtk.Align.CENTER} cssClasses={["linked"]}>
             <GtkToggleButton
                 label="All"
                 active={filter === "all"}

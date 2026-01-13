@@ -47,19 +47,19 @@ const ClipboardDemo = () => {
                         marginTop={8}
                     />
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="Ctrl+C" widthChars={10} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Copy selected text" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="Ctrl+X" widthChars={10} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Cut selected text" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="Ctrl+V" widthChars={10} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Paste from clipboard" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="Ctrl+A" widthChars={10} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Select all" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -84,11 +84,11 @@ const ClipboardDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="getClipboard()" widthChars={20} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Get the clipboard from GdkDisplay" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="setContent()" widthChars={20} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel
                                 label="Set clipboard content via ContentProvider"
@@ -96,11 +96,11 @@ const ClipboardDemo = () => {
                                 cssClasses={["dim-label"]}
                             />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="readTextFinish()" widthChars={20} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Read text from clipboard (async)" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel
                                 label="readTextureFinish()"
                                 widthChars={20}
@@ -130,7 +130,7 @@ const ClipboardDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel
                                 label="providerNewForValue()"
                                 widthChars={22}
@@ -139,7 +139,7 @@ const ClipboardDemo = () => {
                             />
                             <GtkLabel label="Create provider from a GValue" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel
                                 label="new ContentProvider()"
                                 widthChars={22}
@@ -148,7 +148,7 @@ const ClipboardDemo = () => {
                             />
                             <GtkLabel label="Create provider from raw bytes" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel
                                 label="providerNewUnion()"
                                 widthChars={22}
@@ -200,7 +200,7 @@ clipboard.setContent(provider);
 
 // Listen for clipboard changes
 clipboard.connect("changed", () => {
-  console.log("Clipboard content changed");
+ console.log("Clipboard content changed");
 });`}
                         cssClasses={["monospace"]}
                         halign={Gtk.Align.START}
@@ -226,11 +226,11 @@ clipboard.connect("changed", () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="getClipboard()" widthChars={22} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Main clipboard (Ctrl+C/V)" wrap cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel
                                 label="getPrimaryClipboard()"
                                 widthChars={22}

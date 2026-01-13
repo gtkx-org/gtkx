@@ -71,7 +71,6 @@ const SearchEntryDemo = () => {
                         filteredItems.map((item) => (
                             <GtkBox
                                 key={item.id}
-                                orientation={Gtk.Orientation.HORIZONTAL}
                                 spacing={8}
                                 marginStart={12}
                                 marginEnd={12}

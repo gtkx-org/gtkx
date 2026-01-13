@@ -79,7 +79,7 @@ const SidebarDemo = () => {
                         cssClasses={["dim-label"]}
                         halign={GtkEnum.Align.START}
                     />
-                    <GtkBox orientation={GtkEnum.Orientation.HORIZONTAL} spacing={0} heightRequest={200}>
+                    <GtkBox heightRequest={200}>
                         <GtkFrame cssClasses={["card"]} widthRequest={150}>
                             <GtkStackSidebar stack={stack ?? undefined} />
                         </GtkFrame>
@@ -175,7 +175,7 @@ const SidebarDemo = () => {
                         cssClasses={["dim-label"]}
                         halign={GtkEnum.Align.START}
                     />
-                    <GtkBox orientation={GtkEnum.Orientation.HORIZONTAL} spacing={0} heightRequest={250}>
+                    <GtkBox heightRequest={250}>
                         <GtkFrame cssClasses={["card"]} widthRequest={180}>
                             <GtkScrolledWindow hscrollbarPolicy={GtkEnum.PolicyType.NEVER}>
                                 <GtkListBox
@@ -185,7 +185,6 @@ const SidebarDemo = () => {
                                     {navItems.map((item) => (
                                         <GtkListBoxRow key={item.id} onActivate={() => setSelectedItem(item.id)}>
                                             <GtkBox
-                                                orientation={GtkEnum.Orientation.HORIZONTAL}
                                                 spacing={12}
                                                 marginStart={8}
                                                 marginEnd={8}
@@ -212,7 +211,7 @@ const SidebarDemo = () => {
                                 marginTop={16}
                                 marginBottom={16}
                             >
-                                <GtkBox orientation={GtkEnum.Orientation.HORIZONTAL} spacing={12}>
+                                <GtkBox spacing={12}>
                                     <GtkImage iconName={currentItem?.icon ?? "folder-symbolic"} pixelSize={32} />
                                     <GtkLabel label={currentItem?.title ?? ""} cssClasses={["title-2"]} />
                                 </GtkBox>
@@ -254,7 +253,7 @@ const SidebarDemo = () => {
                         onClicked={() => setSidebarVisible(!sidebarVisible)}
                         halign={GtkEnum.Align.START}
                     />
-                    <GtkBox orientation={GtkEnum.Orientation.HORIZONTAL} spacing={0} heightRequest={180}>
+                    <GtkBox heightRequest={180}>
                         <GtkRevealer
                             revealChild={sidebarVisible}
                             transitionType={GtkEnum.RevealerTransitionType.SLIDE_RIGHT}
@@ -275,10 +274,10 @@ const SidebarDemo = () => {
                                         halign={GtkEnum.Align.START}
                                         marginBottom={8}
                                     />
-                                    <GtkButton label="Dashboard" cssClasses={["flat"]} halign={GtkEnum.Align.FILL} />
-                                    <GtkButton label="Projects" cssClasses={["flat"]} halign={GtkEnum.Align.FILL} />
-                                    <GtkButton label="Team" cssClasses={["flat"]} halign={GtkEnum.Align.FILL} />
-                                    <GtkButton label="Reports" cssClasses={["flat"]} halign={GtkEnum.Align.FILL} />
+                                    <GtkButton label="Dashboard" cssClasses={["flat"]} />
+                                    <GtkButton label="Projects" cssClasses={["flat"]} />
+                                    <GtkButton label="Team" cssClasses={["flat"]} />
+                                    <GtkButton label="Reports" cssClasses={["flat"]} />
                                 </GtkBox>
                             </GtkFrame>
                         </GtkRevealer>
@@ -313,13 +312,7 @@ const SidebarDemo = () => {
                         cssClasses={["dim-label"]}
                         halign={GtkEnum.Align.START}
                     />
-                    <GtkPaned
-                        orientation={GtkEnum.Orientation.HORIZONTAL}
-                        position={160}
-                        wideHandle
-                        heightRequest={150}
-                        cssClasses={["card"]}
-                    >
+                    <GtkPaned position={160} wideHandle heightRequest={150} cssClasses={["card"]}>
                         <x.Slot for={GtkPaned} id="startChild">
                             <GtkScrolledWindow hscrollbarPolicy={GtkEnum.PolicyType.NEVER}>
                                 <GtkBox
@@ -330,17 +323,16 @@ const SidebarDemo = () => {
                                     marginTop={8}
                                     marginBottom={8}
                                 >
-                                    <GtkButton label="Overview" cssClasses={["flat"]} halign={GtkEnum.Align.FILL} />
-                                    <GtkButton label="Analytics" cssClasses={["flat"]} halign={GtkEnum.Align.FILL} />
-                                    <GtkButton label="Users" cssClasses={["flat"]} halign={GtkEnum.Align.FILL} />
-                                    <GtkButton label="Logs" cssClasses={["flat"]} halign={GtkEnum.Align.FILL} />
+                                    <GtkButton label="Overview" cssClasses={["flat"]} />
+                                    <GtkButton label="Analytics" cssClasses={["flat"]} />
+                                    <GtkButton label="Users" cssClasses={["flat"]} />
+                                    <GtkButton label="Logs" cssClasses={["flat"]} />
                                 </GtkBox>
                             </GtkScrolledWindow>
                         </x.Slot>
                         <x.Slot for={GtkPaned} id="endChild">
                             <GtkBox
                                 orientation={GtkEnum.Orientation.VERTICAL}
-                                spacing={0}
                                 valign={GtkEnum.Align.CENTER}
                                 halign={GtkEnum.Align.CENTER}
                             >

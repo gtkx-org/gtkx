@@ -89,7 +89,6 @@ const PaintableEmblemDemo = () => {
 
             <GtkFrame label="Emblem Selection">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={16}
                     marginTop={12}
                     marginBottom={12}
@@ -125,7 +124,7 @@ const PaintableEmblemDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkCheckButton
                             label="Show Emblem"
                             active={showEmblem}
@@ -133,7 +132,7 @@ const PaintableEmblemDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={32} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={32} halign={Gtk.Align.CENTER}>
                         {BASE_ICONS.map((baseIcon) => (
                             <GtkBox
                                 key={baseIcon}
@@ -160,7 +159,6 @@ const PaintableEmblemDemo = () => {
 
             <GtkFrame label="Emblem Position">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
                     marginTop={12}
                     marginBottom={12}
@@ -181,7 +179,6 @@ const PaintableEmblemDemo = () => {
 
             <GtkFrame label="Icon Size">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
                     marginTop={12}
                     marginBottom={12}
@@ -209,7 +206,7 @@ const PaintableEmblemDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
                             <EmblemedIcon
                                 baseIcon="folder-symbolic"
@@ -287,11 +284,11 @@ const PaintableEmblemDemo = () => {
 5. Use symbolic icons for consistent theming
 
 Common emblem icons:
-  emblem-ok-symbolic       - Success/completed
-  emblem-important-symbolic - Warning/attention
-  emblem-favorite-symbolic  - Starred/bookmarked
-  emblem-shared-symbolic    - Shared with others
-  emblem-synchronizing-symbolic - Sync in progress`}
+ emblem-ok-symbolic - Success/completed
+ emblem-important-symbolic - Warning/attention
+ emblem-favorite-symbolic - Starred/bookmarked
+ emblem-shared-symbolic - Shared with others
+ emblem-synchronizing-symbolic - Sync in progress`}
                         halign={Gtk.Align.START}
                         cssClasses={["monospace"]}
                     />

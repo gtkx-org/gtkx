@@ -9,7 +9,7 @@ describe("render - Scale", () => {
         it("creates Scale widget without marks", async () => {
             const ref = createRef<Gtk.Scale>();
 
-            await render(<GtkScale ref={ref} orientation={Gtk.Orientation.HORIZONTAL} />);
+            await render(<GtkScale ref={ref} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -18,7 +18,7 @@ describe("render - Scale", () => {
             const ref = createRef<Gtk.Scale>();
 
             await render(
-                <GtkScale ref={ref} orientation={Gtk.Orientation.HORIZONTAL}>
+                <GtkScale ref={ref}>
                     <x.ScaleMark value={0} label="Min" />
                     <x.ScaleMark value={50} label="Mid" />
                     <x.ScaleMark value={100} label="Max" />
@@ -32,7 +32,7 @@ describe("render - Scale", () => {
             const ref = createRef<Gtk.Scale>();
 
             await render(
-                <GtkScale ref={ref} orientation={Gtk.Orientation.HORIZONTAL}>
+                <GtkScale ref={ref}>
                     <x.ScaleMark value={0} position={Gtk.PositionType.TOP} label="Top" />
                     <x.ScaleMark value={100} position={Gtk.PositionType.BOTTOM} label="Bottom" />
                 </GtkScale>,
@@ -45,7 +45,7 @@ describe("render - Scale", () => {
             const ref = createRef<Gtk.Scale>();
 
             await render(
-                <GtkScale ref={ref} orientation={Gtk.Orientation.HORIZONTAL}>
+                <GtkScale ref={ref}>
                     <x.ScaleMark value={0} />
                     <x.ScaleMark value={25} />
                     <x.ScaleMark value={50} />
@@ -62,7 +62,7 @@ describe("render - Scale", () => {
 
             function App({ label }: { label: string }) {
                 return (
-                    <GtkScale ref={ref} orientation={Gtk.Orientation.HORIZONTAL}>
+                    <GtkScale ref={ref}>
                         <x.ScaleMark value={0} label={label} />
                         <x.ScaleMark value={100} label="End" />
                     </GtkScale>
@@ -81,7 +81,7 @@ describe("render - Scale", () => {
 
             function App({ showExtra }: { showExtra: boolean }) {
                 return (
-                    <GtkScale ref={ref} orientation={Gtk.Orientation.HORIZONTAL}>
+                    <GtkScale ref={ref}>
                         <x.ScaleMark value={0} label="Min" />
                         {showExtra && <x.ScaleMark value={50} label="Mid" />}
                         <x.ScaleMark value={100} label="Max" />
@@ -101,7 +101,7 @@ describe("render - Scale", () => {
 
             function App({ showMid }: { showMid: boolean }) {
                 return (
-                    <GtkScale ref={ref} orientation={Gtk.Orientation.HORIZONTAL}>
+                    <GtkScale ref={ref}>
                         <x.ScaleMark value={0} label="Min" />
                         {showMid && <x.ScaleMark value={50} label="Mid" />}
                         <x.ScaleMark value={100} label="Max" />

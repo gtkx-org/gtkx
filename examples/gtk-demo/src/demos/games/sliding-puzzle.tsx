@@ -108,7 +108,6 @@ const SlidingPuzzleDemo = () => {
 
             <GtkFrame label="Game Status">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}
@@ -133,7 +132,6 @@ const SlidingPuzzleDemo = () => {
             <GtkFrame label="Puzzle Board">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
-                    spacing={0}
                     marginTop={16}
                     marginBottom={16}
                     marginStart={16}
@@ -155,7 +153,6 @@ const SlidingPuzzleDemo = () => {
                                 ) : (
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
-                                        spacing={0}
                                         widthRequest={60}
                                         heightRequest={60}
                                     />
@@ -166,7 +163,7 @@ const SlidingPuzzleDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+            <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                 <GtkButton label="New Game" onClicked={handleNewGame} cssClasses={["suggested-action"]} />
             </GtkBox>
 

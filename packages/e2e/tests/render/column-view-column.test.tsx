@@ -59,19 +59,13 @@ describe("render - ColumnViewColumn", () => {
             expect(column?.getExpand()).toBe(true);
         });
 
-        it("sets column resizable property", async () => {
+        it("sets column property", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
             await render(
                 <ScrollWrapper>
                     <GtkColumnView ref={columnViewRef}>
-                        <x.ColumnViewColumn
-                            id="resize"
-                            title="Resizable"
-                            expand
-                            resizable={true}
-                            renderCell={() => "Cell"}
-                        />
+                        <x.ColumnViewColumn id="resize" title="Resizable" expand resizable renderCell={() => "Cell"} />
                     </GtkColumnView>
                 </ScrollWrapper>,
             );

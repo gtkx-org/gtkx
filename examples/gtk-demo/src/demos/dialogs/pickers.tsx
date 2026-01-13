@@ -134,7 +134,7 @@ const PickersDemo = () => {
                         cssClasses={["dim-label"]}
                         wrap
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkButton label="Choose Color..." onClicked={() => void handleColorPick()} />
                         <GtkColorDialogButton dialog={new Gtk.ColorDialog()} onNotify={handleColorButtonNotify} />
                     </GtkBox>
@@ -163,7 +163,7 @@ const PickersDemo = () => {
                         cssClasses={["dim-label"]}
                         wrap
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkButton label="Choose Font..." onClicked={() => void handleFontPick()} />
                         <GtkFontDialogButton dialog={new Gtk.FontDialog()} onNotify={handleFontButtonNotify} />
                     </GtkBox>
@@ -192,7 +192,7 @@ const PickersDemo = () => {
                         cssClasses={["dim-label"]}
                         wrap
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkButton label="Open File" onClicked={() => void handleFileOpen()} />
                         <GtkButton label="Select Multiple" onClicked={() => void handleMultipleFiles()} />
                         <GtkButton label="Select Folder" onClicked={() => void handleFolderSelect()} />

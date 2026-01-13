@@ -43,8 +43,6 @@ export const WidgetDemo = () => {
                     >
                         <GtkLabel label={`Value: ${scaleValue}`} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
-                            drawValue={false}
                             hexpand
                             adjustment={new Gtk.Adjustment(scaleValue, 0, 100, 1, 10, 0)}
                             onValueChanged={(scale) => setScaleValue(Math.round(scale.getValue()))}
@@ -57,12 +55,7 @@ export const WidgetDemo = () => {
                         </GtkScale>
 
                         <GtkLabel label="With labels on specific marks" cssClasses={["dim-label"]} marginTop={12} />
-                        <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
-                            drawValue={false}
-                            hexpand
-                            adjustment={new Gtk.Adjustment(50, 0, 100, 1, 10, 0)}
-                        >
+                        <GtkScale hexpand adjustment={new Gtk.Adjustment(50, 0, 100, 1, 10, 0)}>
                             <x.ScaleMark value={0} label="Min" position={Gtk.PositionType.TOP} />
                             <x.ScaleMark value={50} label="Mid" position={Gtk.PositionType.TOP} />
                             <x.ScaleMark value={100} label="Max" position={Gtk.PositionType.TOP} />
@@ -86,13 +79,7 @@ export const WidgetDemo = () => {
                             halign={Gtk.Align.START}
                             cssClasses={["dim-label"]}
                         />
-                        <GtkCalendar
-                            year={today.getFullYear()}
-                            month={today.getMonth()}
-                            day={today.getDate()}
-                            showDayNames
-                            showHeading
-                        >
+                        <GtkCalendar year={today.getFullYear()} month={today.getMonth()} day={today.getDate()}>
                             {markedDays.map((day) => (
                                 <x.CalendarMark key={day} day={day} />
                             ))}
@@ -118,11 +105,9 @@ export const WidgetDemo = () => {
                             <x.LevelBarOffset id="full" value={1.0} />
                         </GtkLevelBar>
 
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} halign={Gtk.Align.CENTER} spacing={6}>
+                        <GtkBox halign={Gtk.Align.CENTER} spacing={6}>
                             <GtkLabel label="0%" cssClasses={["dim-label"]} />
                             <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
-                                drawValue={false}
                                 widthRequest={200}
                                 adjustment={new Gtk.Adjustment(levelValue, 0, 1, 0.01, 0.1, 0)}
                                 onValueChanged={(scale) => setLevelValue(scale.getValue())}

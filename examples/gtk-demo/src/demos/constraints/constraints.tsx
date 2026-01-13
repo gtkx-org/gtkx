@@ -62,14 +62,7 @@ const CenteringDemo = () => {
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={300}
-                    heightRequest={100}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={300} heightRequest={100} cssClasses={["card"]}>
                     <GtkButton ref={buttonRef} label="Centered" />
                 </GtkBox>
             </GtkBox>
@@ -221,14 +214,7 @@ const AlignmentDemo = () => {
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={350}
-                    heightRequest={120}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={350} heightRequest={120} cssClasses={["card"]}>
                     <GtkButton ref={topLeftRef} label="Top Left" />
                     <GtkButton ref={topRightRef} label="Top Right" />
                     <GtkButton ref={bottomLeftRef} label="Bottom Left" />
@@ -330,14 +316,7 @@ const SpacingDemo = () => {
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={400}
-                    heightRequest={80}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={400} heightRequest={80} cssClasses={["card"]}>
                     <GtkButton ref={button1Ref} label="First" />
                     <GtkButton ref={button2Ref} label="Second" />
                     <GtkButton ref={button3Ref} label="Third" />
@@ -428,19 +407,12 @@ const SizeConstraintsDemo = () => {
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton label="Smaller Min Width" onClicked={() => setMinWidth(Math.max(100, minWidth - 25))} />
                     <GtkButton label="Larger Min Width" onClicked={() => setMinWidth(Math.min(300, minWidth + 25))} />
                     <GtkLabel label={`Min Width: ${minWidth}px`} cssClasses={["dim-label"]} />
                 </GtkBox>
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={400}
-                    heightRequest={100}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={400} heightRequest={100} cssClasses={["card"]}>
                     <GtkButton ref={buttonRef} label="Constrained Size" cssClasses={["suggested-action"]} />
                 </GtkBox>
             </GtkBox>

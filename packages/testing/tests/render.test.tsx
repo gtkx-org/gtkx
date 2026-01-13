@@ -12,7 +12,7 @@ describe("render", () => {
 
     it("renders nested elements", async () => {
         const { findByRole, findByText } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
                 Second
             </GtkBox>,

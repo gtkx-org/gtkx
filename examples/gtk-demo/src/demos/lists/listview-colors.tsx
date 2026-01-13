@@ -44,16 +44,15 @@ const categories = ["All", "Red", "Orange", "Yellow", "Green", "Blue", "Purple",
 
 const ColorSwatch = ({ color, size = 48 }: { color: string; size?: number }) => {
     const swatchStyle = css`
-        background-color: ${color};
-        border-radius: 8px;
-        min-width: ${size}px;
-        min-height: ${size}px;
-    `;
+ background-color: ${color};
+ border-radius: 8px;
+ min-width: ${size}px;
+ min-height: ${size}px;
+ `;
 
     return (
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
-            spacing={0}
             cssClasses={[swatchStyle, "card"]}
             widthRequest={size}
             heightRequest={size}
@@ -125,7 +124,7 @@ const ListViewColorsDemo = () => {
                         hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                         vscrollbarPolicy={Gtk.PolicyType.NEVER}
                     >
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                        <GtkBox spacing={4}>
                             {categories.map((cat) => (
                                 <GtkButton
                                     key={cat}
@@ -149,14 +148,7 @@ const ListViewColorsDemo = () => {
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={16}
-                                    marginTop={8}
-                                    marginBottom={8}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                >
+                                <GtkBox spacing={16} marginTop={8} marginBottom={8} marginStart={12} marginEnd={12}>
                                     <ColorSwatch color={item?.hex ?? "#fff"} />
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
@@ -165,7 +157,7 @@ const ListViewColorsDemo = () => {
                                         valign={Gtk.Align.CENTER}
                                     >
                                         <GtkLabel label={item?.name ?? ""} halign={Gtk.Align.START} />
-                                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                                        <GtkBox spacing={16}>
                                             <GtkLabel
                                                 label={item?.hex ?? ""}
                                                 cssClasses={["dim-label", "caption", "monospace"]}
@@ -194,7 +186,6 @@ const ListViewColorsDemo = () => {
 
                     {selectedColor && (
                         <GtkBox
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             spacing={16}
                             cssClasses={["card"]}
                             marginTop={8}
@@ -219,7 +210,7 @@ const ListViewColorsDemo = () => {
                                     cssClasses={["dim-label"]}
                                     halign={Gtk.Align.START}
                                 />
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                                <GtkBox spacing={16}>
                                     <GtkLabel
                                         label={`HEX: ${selectedColor.hex}`}
                                         cssClasses={["monospace", "caption"]}

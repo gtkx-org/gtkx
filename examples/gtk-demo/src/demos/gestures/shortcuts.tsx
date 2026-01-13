@@ -39,7 +39,7 @@ const ShortcutsDemo = () => {
                         cssClasses={["dim-label"]}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkMenuButton label="File Menu" iconName="open-menu-symbolic">
                             <x.MenuSection>
                                 <x.MenuItem
@@ -150,23 +150,23 @@ const ShortcutsDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="<Control>s" widthChars={20} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Ctrl+S" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="<Control><Shift>s" widthChars={20} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Ctrl+Shift+S" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="<Alt>F4" widthChars={20} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Alt+F4" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="<Primary>q" widthChars={20} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Primary+Q (Ctrl on Linux, Cmd on macOS)" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="F5" widthChars={20} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="F5 (no modifier)" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -191,27 +191,27 @@ const ShortcutsDemo = () => {
                     />
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="<Control>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Control key" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="<Shift>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Shift key" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="<Alt>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Alt key" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="<Super>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Super/Windows key" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="<Primary>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Platform-specific (Ctrl/Cmd)" cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="<Meta>" widthChars={15} xalign={0} cssClasses={["monospace"]} />
                             <GtkLabel label="Meta key" cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -235,7 +235,7 @@ const ShortcutsDemo = () => {
                         cssClasses={["dim-label"]}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkButton label="_Save" useUnderline onClicked={() => handleMenuAction("Save (Alt+S)")} />
                         <GtkButton label="_Open" useUnderline onClicked={() => handleMenuAction("Open (Alt+O)")} />
                         <GtkButton label="_Quit" useUnderline onClicked={() => handleMenuAction("Quit (Alt+Q)")} />

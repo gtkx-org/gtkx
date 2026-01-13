@@ -6,47 +6,47 @@ import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
 
 const transformWidgetStyle = css`
-    min-width: 50px;
-    min-height: 50px;
-    border-radius: 8px;
-    font-size: 24px;
-    font-weight: bold;
+ min-width: 50px;
+ min-height: 50px;
+ border-radius: 8px;
+ font-size: 24px;
+ font-weight: bold;
 `;
 
 const transformAccentStyle = css`
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
+ background-color: @accent_bg_color;
+ color: @accent_fg_color;
 `;
 
 const transformSuccessStyle = css`
-    background-color: @success_bg_color;
-    color: @success_fg_color;
+ background-color: @success_bg_color;
+ color: @success_fg_color;
 `;
 
 const transformWarningStyle = css`
-    background-color: @warning_bg_color;
-    color: @warning_fg_color;
+ background-color: @warning_bg_color;
+ color: @warning_fg_color;
 `;
 
 const transformErrorStyle = css`
-    background-color: @error_bg_color;
-    color: @error_fg_color;
+ background-color: @error_bg_color;
+ color: @error_fg_color;
 `;
 
 const transformSelectedStyle = css`
-    outline: 3px solid @accent_color;
-    outline-offset: 2px;
+ outline: 3px solid @accent_color;
+ outline-offset: 2px;
 `;
 
 const fixedContainerStyle = css`
-    background: linear-gradient(135deg, alpha(@accent_color, 0.05), alpha(@accent_color, 0.02));
-    border-radius: 12px;
+ background: linear-gradient(135deg, alpha(@accent_color, 0.05), alpha(@accent_color, 0.02));
+ border-radius: 12px;
 `;
 
 const zLayerStyle = css`
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 11px;
+ padding: 4px 12px;
+ border-radius: 4px;
+ font-size: 11px;
 `;
 
 const zBackStyle = css`background-color: alpha(@accent_color, 0.2);`;
@@ -191,7 +191,7 @@ const Fixed2Demo = () => {
                         ))}
                     </GtkFixed>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkButton label="Randomize All" onClicked={randomizeAll} cssClasses={["suggested-action"]} />
                         <GtkButton label="Reset All" onClicked={resetAll} />
                         <GtkButton
@@ -213,10 +213,9 @@ const Fixed2Demo = () => {
                         marginTop={16}
                         marginBottom={16}
                     >
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="X Position:" widthRequest={80} halign={Gtk.Align.START} />
                             <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
                                 adjustment={xAdjustment}
                                 drawValue
                                 digits={0}
@@ -228,10 +227,9 @@ const Fixed2Demo = () => {
                             />
                         </GtkBox>
 
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="Y Position:" widthRequest={80} halign={Gtk.Align.START} />
                             <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
                                 adjustment={yAdjustment}
                                 drawValue
                                 digits={0}
@@ -243,10 +241,9 @@ const Fixed2Demo = () => {
                             />
                         </GtkBox>
 
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="Rotation:" widthRequest={80} halign={Gtk.Align.START} />
                             <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
                                 adjustment={rotationAdjustment}
                                 drawValue
                                 digits={0}
@@ -258,10 +255,9 @@ const Fixed2Demo = () => {
                             />
                         </GtkBox>
 
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                        <GtkBox spacing={12}>
                             <GtkLabel label="Scale:" widthRequest={80} halign={Gtk.Align.START} />
                             <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
                                 adjustment={scaleAdjustment}
                                 drawValue
                                 digits={2}
@@ -299,7 +295,7 @@ const Fixed2Demo = () => {
                         cssClasses={["dim-label"]}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         {widgets.map((w, i) => (
                             <GtkLabel
                                 key={w.id}

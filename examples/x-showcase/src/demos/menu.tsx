@@ -22,15 +22,7 @@ export const MenuDemo = () => {
 
             <AdwPreferencesGroup title="x.MenuItem" description="Clickable menu items with actions">
                 <GtkFrame marginTop={12}>
-                    <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
-                        spacing={0}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                        halign={Gtk.Align.START}
-                    >
+                    <GtkBox marginTop={12} marginBottom={12} marginStart={12} marginEnd={12} halign={Gtk.Align.START}>
                         <GtkMenuButton label="Simple Menu" direction={Gtk.ArrowType.DOWN}>
                             <x.MenuItem id="new" label="New" onActivate={() => setLastAction("New")} />
                             <x.MenuItem id="open" label="Open" onActivate={() => setLastAction("Open")} />
@@ -43,15 +35,7 @@ export const MenuDemo = () => {
 
             <AdwPreferencesGroup title="x.MenuSection" description="Group related menu items with optional labels">
                 <GtkFrame marginTop={12}>
-                    <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
-                        spacing={0}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                        halign={Gtk.Align.START}
-                    >
+                    <GtkBox marginTop={12} marginBottom={12} marginStart={12} marginEnd={12} halign={Gtk.Align.START}>
                         <GtkMenuButton label="Sectioned Menu" direction={Gtk.ArrowType.DOWN}>
                             <x.MenuSection label="File">
                                 <x.MenuItem
@@ -76,15 +60,7 @@ export const MenuDemo = () => {
 
             <AdwPreferencesGroup title="x.MenuSubmenu" description="Nested submenus for hierarchical organization">
                 <GtkFrame marginTop={12}>
-                    <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
-                        spacing={0}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                        halign={Gtk.Align.START}
-                    >
+                    <GtkBox marginTop={12} marginBottom={12} marginStart={12} marginEnd={12} halign={Gtk.Align.START}>
                         <GtkMenuButton label="Menu with Submenus" direction={Gtk.ArrowType.DOWN}>
                             <x.MenuItem id="home" label="Home" onActivate={() => setLastAction("Home")} />
                             <x.MenuSubmenu label="Export">
@@ -132,15 +108,7 @@ export const MenuDemo = () => {
 
             <AdwPreferencesGroup title="Keyboard Accelerators" description="Menu items with keyboard shortcuts">
                 <GtkFrame marginTop={12}>
-                    <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
-                        spacing={0}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                        halign={Gtk.Align.START}
-                    >
+                    <GtkBox marginTop={12} marginBottom={12} marginStart={12} marginEnd={12} halign={Gtk.Align.START}>
                         <GtkMenuButton label="Menu with Shortcuts" direction={Gtk.ArrowType.DOWN}>
                             <x.MenuItem
                                 id="new3"

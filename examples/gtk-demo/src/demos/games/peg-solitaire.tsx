@@ -163,7 +163,6 @@ const PegSolitaireDemo = () => {
 
             <GtkFrame label="Game Status">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}
@@ -192,7 +191,6 @@ const PegSolitaireDemo = () => {
             <GtkFrame label="Game Board">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
-                    spacing={0}
                     marginTop={16}
                     marginBottom={16}
                     marginStart={16}
@@ -207,7 +205,6 @@ const PegSolitaireDemo = () => {
                                     {cell === -1 ? (
                                         <GtkBox
                                             orientation={Gtk.Orientation.VERTICAL}
-                                            spacing={0}
                                             widthRequest={40}
                                             heightRequest={40}
                                         />
@@ -242,7 +239,7 @@ const PegSolitaireDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+            <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                 <GtkButton label="New Game" onClicked={handleNewGame} cssClasses={["suggested-action"]} />
                 {selected && <GtkButton label="Deselect" onClicked={() => setSelected(null)} />}
             </GtkBox>

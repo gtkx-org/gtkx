@@ -123,7 +123,6 @@ const ListBoxControlsDemo = () => {
                             {settings.map((setting) => (
                                 <GtkListBoxRow key={setting.id} activatable={false}>
                                     <GtkBox
-                                        orientation={Gtk.Orientation.HORIZONTAL}
                                         spacing={12}
                                         marginTop={12}
                                         marginBottom={12}
@@ -165,7 +164,6 @@ const ListBoxControlsDemo = () => {
 
                                         {setting.type === "slider" && (
                                             <GtkScale
-                                                orientation={Gtk.Orientation.HORIZONTAL}
                                                 widthRequest={150}
                                                 onValueChanged={(range: Gtk.Range) =>
                                                     updateSetting(setting.id, range.getValue())
@@ -200,14 +198,7 @@ const ListBoxControlsDemo = () => {
                     <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
                         {tasks.map((task) => (
                             <GtkListBoxRow key={task.id} activatable={false}>
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={12}
-                                    marginTop={8}
-                                    marginBottom={8}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                >
+                                <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={12} marginEnd={12}>
                                     <GtkCheckButton
                                         active={task.completed}
                                         onToggled={() => toggleTask(task.id)}

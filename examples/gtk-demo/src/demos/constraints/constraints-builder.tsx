@@ -105,14 +105,7 @@ const MultiplierDemo = () => {
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={400}
-                    heightRequest={160}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={400} heightRequest={160} cssClasses={["card"]}>
                     <GtkButton ref={halfRef} label="50% (mult=0.5)" />
                     <GtkButton ref={thirdRef} label="33% (mult=0.33)" />
                     <GtkButton ref={quarterRef} label="25% (mult=0.25)" />
@@ -237,18 +230,11 @@ const GuideDemo = () => {
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={400}
-                    heightRequest={80}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={400} heightRequest={80} cssClasses={["card"]}>
                     <GtkButton ref={leftRef} label="Left Panel" />
                     <GtkButton ref={rightRef} label="Right Panel" cssClasses={["suggested-action"]} />
                 </GtkBox>
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkLabel label="Guide position:" />
                     <GtkButton
                         label="25%"
@@ -337,7 +323,7 @@ const RelationDemo = () => {
         layout.addConstraint(
             Gtk.Constraint.newConstant(
                 Gtk.ConstraintAttribute.WIDTH,
-                Gtk.ConstraintRelation.GE, // width >= 100
+                Gtk.ConstraintRelation.GE, // width>= 100
                 100,
                 Gtk.ConstraintStrength.REQUIRED,
                 geRef.current,
@@ -398,22 +384,15 @@ const RelationDemo = () => {
                     wrap
                     halign={Gtk.Align.START}
                 />
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={350}
-                    heightRequest={160}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={350} heightRequest={160} cssClasses={["card"]}>
                     <GtkButton ref={eqRef} label="EQ: width == 150" />
-                    <GtkButton ref={geRef} label="GE: width >= 100" cssClasses={["suggested-action"]} />
+                    <GtkButton ref={geRef} label="GE: width>= 100" cssClasses={["suggested-action"]} />
                     <GtkButton ref={leRef} label="LE: width <= 200" cssClasses={["destructive-action"]} />
                 </GtkBox>
                 <GtkLabel
                     label={`Relations:
-EQ (0):  target.attr == source.attr * mult + const
-GE (1):  target.attr >= source.attr * mult + const
+EQ (0): target.attr == source.attr * mult + const
+GE (1): target.attr>= source.attr * mult + const
 LE (-1): target.attr <= source.attr * mult + const`}
                     cssClasses={["monospace", "dim-label"]}
                     halign={Gtk.Align.START}
@@ -449,23 +428,23 @@ widget.setLayoutManager(layout);
 
 // Create constraint with all parameters
 const constraint = new Gtk.Constraint(
-    targetAttribute,     // e.g., CENTER_X
-    relation,            // EQ, GE, or LE
-    sourceAttribute,     // e.g., CENTER_X
-    multiplier,          // default 1.0
-    constant,            // offset in pixels
-    strength,            // REQUIRED, STRONG, MEDIUM, WEAK
-    target,              // target widget
-    source               // source widget (undefined for parent)
+ targetAttribute, // e.g., CENTER_X
+ relation, // EQ, GE, or LE
+ sourceAttribute, // e.g., CENTER_X
+ multiplier, // default 1.0
+ constant, // offset in pixels
+ strength, // REQUIRED, STRONG, MEDIUM, WEAK
+ target, // target widget
+ source // source widget (undefined for parent)
 );
 
 // Or use newConstant for simple size constraints
 const sizeConstraint = Gtk.Constraint.newConstant(
-    Gtk.ConstraintAttribute.WIDTH,
-    Gtk.ConstraintRelation.GE,
-    100,  // constant value
-    Gtk.ConstraintStrength.REQUIRED,
-    targetWidget
+ Gtk.ConstraintAttribute.WIDTH,
+ Gtk.ConstraintRelation.GE,
+ 100, // constant value
+ Gtk.ConstraintStrength.REQUIRED,
+ targetWidget
 );
 
 // Add constraints to layout

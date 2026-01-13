@@ -50,7 +50,7 @@ export class ListItemRenderer {
         signalStore.set(this, this.factory, "setup", (_self, listItem: Gtk.ListItem) => {
             const ptr = getNativeId(listItem.handle);
 
-            const box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+            const box = new Gtk.Box(Gtk.Orientation.VERTICAL);
 
             if (this.estimatedItemHeight !== undefined) {
                 box.setSizeRequest(-1, this.estimatedItemHeight);

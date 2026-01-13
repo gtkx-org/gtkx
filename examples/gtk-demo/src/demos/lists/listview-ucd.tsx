@@ -105,7 +105,7 @@ const ListViewUcdDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+            <GtkBox spacing={16}>
                 <GtkFrame label="Unicode Blocks">
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -155,7 +155,7 @@ const ListViewUcdDemo = () => {
                         marginStart={12}
                         marginEnd={12}
                     >
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                        <GtkBox spacing={8}>
                             <GtkSearchEntry
                                 text={searchText}
                                 placeholderText="Search characters..."
@@ -223,7 +223,6 @@ const ListViewUcdDemo = () => {
                                     onActivate={handleActivate}
                                     renderItem={(item) => (
                                         <GtkBox
-                                            orientation={Gtk.Orientation.HORIZONTAL}
                                             spacing={16}
                                             marginTop={8}
                                             marginBottom={8}
@@ -257,12 +256,7 @@ const ListViewUcdDemo = () => {
                         </GtkScrolledWindow>
 
                         {selectedChar && (
-                            <GtkBox
-                                orientation={Gtk.Orientation.HORIZONTAL}
-                                spacing={24}
-                                cssClasses={["card"]}
-                                marginTop={8}
-                            >
+                            <GtkBox spacing={24} cssClasses={["card"]} marginTop={8}>
                                 <GtkLabel
                                     label={selectedChar.char}
                                     cssClasses={["title-1"]}

@@ -13,8 +13,8 @@ in vec3 aPos;
 uniform vec4 uColor;
 out vec4 vertexColor;
 void main() {
-    gl_Position = vec4(aPos, 1.0);
-    vertexColor = uColor;
+ gl_Position = vec4(aPos, 1.0);
+ vertexColor = uColor;
 }`;
 
 const FRAGMENT_SHADER = `#version 300 es
@@ -23,7 +23,7 @@ precision mediump float;
 in vec4 vertexColor;
 out vec4 FragColor;
 void main() {
-    FragColor = vertexColor;
+ FragColor = vertexColor;
 }`;
 
 const TRIANGLE_VERTICES = [0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 0.0];
@@ -233,7 +233,7 @@ const GLAreaDemo = () => {
                         heightRequest={300}
                         cssClasses={["card"]}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton label="Change Triangle Color" onClicked={cycleTriangleColor} />
                         <GtkButton label="Change Background" onClicked={cycleClearColor} />
                     </GtkBox>

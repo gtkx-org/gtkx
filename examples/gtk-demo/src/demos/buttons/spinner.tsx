@@ -50,7 +50,7 @@ const SpinnerDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                         <GtkSpinner spinning={isSpinning} />
                         <GtkLabel label={isSpinning ? "Spinning..." : "Stopped"} />
                     </GtkBox>
@@ -64,7 +64,6 @@ const SpinnerDemo = () => {
 
             <GtkFrame label="Spinner Sizes">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={12}
                     marginBottom={12}
@@ -100,7 +99,7 @@ const SpinnerDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         {isLoading ? (
                             <>
                                 <GtkSpinner spinning />
@@ -132,15 +131,15 @@ const SpinnerDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                    <GtkBox spacing={6}>
                         <GtkSpinner spinning widthRequest={16} heightRequest={16} />
                         <GtkLabel label="Processing your request..." />
                     </GtkBox>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                    <GtkBox spacing={6}>
                         <GtkSpinner spinning widthRequest={16} heightRequest={16} />
                         <GtkLabel label="Fetching data from server..." />
                     </GtkBox>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                    <GtkBox spacing={6}>
                         <GtkSpinner spinning widthRequest={16} heightRequest={16} />
                         <GtkLabel label="Saving changes..." />
                     </GtkBox>

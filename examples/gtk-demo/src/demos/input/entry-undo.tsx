@@ -56,7 +56,7 @@ const EntryUndoDemo = () => {
                     onChanged={(entry) => handleTextChange(entry.getText())}
                 />
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton
                         label="Undo"
                         onClicked={handleUndo}

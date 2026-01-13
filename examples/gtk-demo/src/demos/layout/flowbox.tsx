@@ -86,7 +86,6 @@ const FlowBoxDemo = () => {
                 />
                 <GtkScrolledWindow heightRequest={180} hscrollbarPolicy={Gtk.PolicyType.NEVER} cssClasses={["card"]}>
                     <GtkFlowBox
-                        selectionMode={Gtk.SelectionMode.SINGLE}
                         maxChildrenPerLine={10}
                         minChildrenPerLine={3}
                         columnSpacing={8}
@@ -100,8 +99,6 @@ const FlowBoxDemo = () => {
                         {colors.map((color, index) => (
                             <GtkBox
                                 key={color}
-                                orientation={Gtk.Orientation.HORIZONTAL}
-                                spacing={0}
                                 widthRequest={80}
                                 heightRequest={60}
                                 cssClasses={["card", colorClasses[index] || "accent"]}
@@ -119,7 +116,7 @@ const FlowBoxDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton
                         label="Add Item"
                         onClicked={() => setItemCount(Math.min(itemCount + 1, 20))}
@@ -156,7 +153,7 @@ const FlowBoxDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["card"]}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]}>
                     <GtkFlowBox
                         selectionMode={Gtk.SelectionMode.MULTIPLE}
                         columnSpacing={8}

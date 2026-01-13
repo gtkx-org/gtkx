@@ -76,7 +76,6 @@ const StyleClassesDemo = () => {
                     <GtkBox
                         cssClasses={[styleClass.name]}
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         marginTop={8}
                         marginBottom={8}
                         marginStart={8}
@@ -91,7 +90,6 @@ const StyleClassesDemo = () => {
                     <GtkBox
                         cssClasses={[styleClass.name]}
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         marginTop={4}
                         marginBottom={4}
                         marginStart={8}
@@ -110,7 +108,7 @@ const StyleClassesDemo = () => {
             case "Special":
                 if (styleClass.name === "linked") {
                     return (
-                        <GtkBox cssClasses={["linked"]} orientation={Gtk.Orientation.HORIZONTAL} spacing={0}>
+                        <GtkBox cssClasses={["linked"]}>
                             <GtkButton label="First" onClicked={() => {}} />
                             <GtkButton label="Second" onClicked={() => {}} />
                             <GtkButton label="Third" onClicked={() => {}} />
@@ -121,7 +119,6 @@ const StyleClassesDemo = () => {
                     <GtkBox
                         cssClasses={[styleClass.name]}
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         marginTop={4}
                         marginBottom={4}
                         marginStart={8}
@@ -154,7 +151,7 @@ const StyleClassesDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+            <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                 {categories.map((category) => (
                     <GtkButton
                         key={category}
@@ -170,20 +167,8 @@ const StyleClassesDemo = () => {
                     <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
                         {filteredClasses.map((styleClass) => (
                             <GtkListBoxRow key={styleClass.name} activatable={false}>
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={16}
-                                    marginTop={12}
-                                    marginBottom={12}
-                                    marginStart={16}
-                                    marginEnd={16}
-                                >
-                                    <GtkBox
-                                        orientation={Gtk.Orientation.VERTICAL}
-                                        spacing={0}
-                                        hexpand
-                                        valign={Gtk.Align.CENTER}
-                                    >
+                                <GtkBox spacing={16} marginTop={12} marginBottom={12} marginStart={16} marginEnd={16}>
+                                    <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
                                         <GtkLabel
                                             label={styleClass.name}
                                             cssClasses={["monospace", "heading"]}
@@ -197,7 +182,6 @@ const StyleClassesDemo = () => {
                                     </GtkBox>
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
-                                        spacing={0}
                                         valign={Gtk.Align.CENTER}
                                         halign={Gtk.Align.END}
                                         widthRequest={200}
@@ -246,7 +230,6 @@ const StyleClassesDemo = () => {
 
             <GtkFrame label="Button Styles">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={12}
                     marginTop={16}
                     marginBottom={16}
@@ -266,7 +249,6 @@ const StyleClassesDemo = () => {
 
             <GtkFrame label="Linked Buttons">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={16}
                     marginBottom={16}
@@ -274,13 +256,13 @@ const StyleClassesDemo = () => {
                     marginEnd={16}
                     halign={Gtk.Align.CENTER}
                 >
-                    <GtkBox cssClasses={["linked"]} orientation={Gtk.Orientation.HORIZONTAL} spacing={0}>
+                    <GtkBox cssClasses={["linked"]}>
                         <GtkButton label="Left" onClicked={() => {}} />
                         <GtkButton label="Center" onClicked={() => {}} />
                         <GtkButton label="Right" onClicked={() => {}} />
                     </GtkBox>
 
-                    <GtkBox cssClasses={["linked"]} orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                    <GtkBox cssClasses={["linked"]} orientation={Gtk.Orientation.VERTICAL}>
                         <GtkButton label="Top" onClicked={() => {}} />
                         <GtkButton label="Middle" onClicked={() => {}} />
                         <GtkButton label="Bottom" onClicked={() => {}} />

@@ -42,7 +42,7 @@ const OverlayDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                <GtkBox spacing={16}>
                     <GtkOverlay>
                         <GtkButton iconName="mail-unread-symbolic" widthRequest={48} heightRequest={48} />
                         {notificationCount > 0 && (
@@ -57,7 +57,7 @@ const OverlayDemo = () => {
                         )}
                     </GtkOverlay>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} valign={Gtk.Align.CENTER}>
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                        <GtkBox spacing={4}>
                             <GtkButton label="+1" onClicked={() => setNotificationCount(notificationCount + 1)} />
                             <GtkButton
                                 label="-1"
@@ -115,8 +115,6 @@ const OverlayDemo = () => {
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={8}
                                 cssClasses={["background", "osd"]}
-                                halign={Gtk.Align.FILL}
-                                valign={Gtk.Align.FILL}
                                 hexpand
                                 vexpand
                             >
@@ -151,7 +149,6 @@ const OverlayDemo = () => {
                 <GtkOverlay>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         cssClasses={["card"]}
                         widthRequest={280}
                         heightRequest={140}
@@ -215,7 +212,7 @@ const OverlayDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton label="0%" onClicked={() => setProgress(0)} />
                     <GtkButton label="25%" onClicked={() => setProgress(0.25)} />
                     <GtkButton label="50%" onClicked={() => setProgress(0.5)} />
@@ -225,7 +222,6 @@ const OverlayDemo = () => {
                 <GtkOverlay>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         cssClasses={["card"]}
                         widthRequest={300}
                         heightRequest={80}
@@ -239,7 +235,7 @@ const OverlayDemo = () => {
                         />
                     </GtkBox>
                     <x.OverlayChild>
-                        <GtkProgressBar fraction={progress} halign={Gtk.Align.FILL} valign={Gtk.Align.END} hexpand />
+                        <GtkProgressBar fraction={progress} valign={Gtk.Align.END} hexpand />
                     </x.OverlayChild>
                 </GtkOverlay>
             </GtkBox>

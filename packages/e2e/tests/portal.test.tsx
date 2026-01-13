@@ -32,7 +32,7 @@ describe("createPortal", () => {
             const box = boxRef.current;
             return (
                 <>
-                    <GtkBox ref={boxRef} spacing={0} orientation={GtkEnums.Orientation.VERTICAL} />
+                    <GtkBox ref={boxRef} orientation={GtkEnums.Orientation.VERTICAL} />
                     {box && createPortal(<GtkLabel ref={labelRef} label="In Portal" />, box)}
                 </>
             );
@@ -99,7 +99,7 @@ describe("createPortal", () => {
             const box = boxRef.current;
             return (
                 <>
-                    <GtkBox ref={boxRef} spacing={0} orientation={GtkEnums.Orientation.VERTICAL} />
+                    <GtkBox ref={boxRef} orientation={GtkEnums.Orientation.VERTICAL} />
                     {box && createPortal(<GtkLabel ref={label1Ref} label="First" />, box)}
                     {box && createPortal(<GtkLabel ref={label2Ref} label="Second" />, box)}
                 </>
@@ -123,8 +123,8 @@ describe("createPortal", () => {
             const innerBox = innerBoxRef.current;
             return (
                 <>
-                    <GtkBox spacing={0} orientation={GtkEnums.Orientation.VERTICAL}>
-                        <GtkBox ref={innerBoxRef} spacing={0} orientation={GtkEnums.Orientation.VERTICAL} />
+                    <GtkBox orientation={GtkEnums.Orientation.VERTICAL}>
+                        <GtkBox ref={innerBoxRef} orientation={GtkEnums.Orientation.VERTICAL} />
                     </GtkBox>
                     {innerBox && createPortal(<GtkButton ref={buttonRef} label="Nested" />, innerBox)}
                 </>

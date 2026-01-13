@@ -65,7 +65,7 @@ const TextUndoDemo = () => {
                     cssClasses={["dim-label"]}
                 />
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton label="Undo (Ctrl+Z)" onClicked={handleUndo} sensitive={canUndo} />
                     <GtkButton label="Redo (Ctrl+Shift+Z)" onClicked={handleRedo} sensitive={canRedo} />
                     <GtkButton label="Insert Sample" onClicked={handleInsertSample} />
@@ -84,7 +84,7 @@ const TextUndoDemo = () => {
                     </GtkScrolledWindow>
                 </GtkFrame>
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                <GtkBox spacing={16}>
                     <GtkLabel label={`Can Undo: ${canUndo ? "Yes" : "No"}`} cssClasses={["dim-label"]} />
                     <GtkLabel label={`Can Redo: ${canRedo ? "Yes" : "No"}`} cssClasses={["dim-label"]} />
                     <GtkLabel label={`Actions: ${actionCount}`} cssClasses={["dim-label"]} />
@@ -99,7 +99,7 @@ const TextUndoDemo = () => {
                     cssClasses={["dim-label"]}
                 />
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton label="Begin User Action" onClicked={handleBeginUserAction} />
                     <GtkButton label="End User Action" onClicked={handleEndUserAction} />
                 </GtkBox>

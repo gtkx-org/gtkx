@@ -52,7 +52,7 @@ GTK signals map to `on<SignalName>` props: `clicked` → `onClicked`, `toggled` 
 Some widgets require children in specific slots:
 
 ```tsx
-<GtkPaned orientation={Gtk.Orientation.HORIZONTAL}>
+<GtkPaned>
     <x.Slot for={GtkPaned} id="startChild"><Sidebar /></x.Slot>
     <x.Slot for={GtkPaned} id="endChild"><Content /></x.Slot>
 </GtkPaned>

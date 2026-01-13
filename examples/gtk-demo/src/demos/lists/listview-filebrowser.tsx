@@ -294,7 +294,7 @@ const ListViewFilebrowserDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkButton
                             iconName="go-up-symbolic"
                             onClicked={navigateUp}
@@ -330,14 +330,7 @@ const ListViewFilebrowserDemo = () => {
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={12}
-                                    marginTop={8}
-                                    marginBottom={8}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                >
+                                <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={12} marginEnd={12}>
                                     <GtkImage iconName={item?.icon ?? "text-x-generic-symbolic"} pixelSize={24} />
                                     <GtkLabel
                                         label={item?.name ?? ""}
@@ -368,7 +361,6 @@ const ListViewFilebrowserDemo = () => {
 
                     {selectedFile && (
                         <GtkBox
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             spacing={16}
                             cssClasses={["card"]}
                             marginTop={8}
@@ -384,7 +376,7 @@ const ListViewFilebrowserDemo = () => {
                                 hexpand
                             >
                                 <GtkLabel label={selectedFile.name} halign={Gtk.Align.START} cssClasses={["heading"]} />
-                                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                                <GtkBox spacing={16}>
                                     <GtkLabel
                                         label={`Size: ${formatFileSize(selectedFile.size)}`}
                                         cssClasses={["dim-label", "caption"]}

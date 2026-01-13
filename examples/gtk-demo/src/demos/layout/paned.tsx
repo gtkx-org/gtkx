@@ -26,13 +26,7 @@ const PanedDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkPaned
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    wideHandle
-                    heightRequest={150}
-                    position={position}
-                    cssClasses={["card"]}
-                >
+                <GtkPaned wideHandle heightRequest={150} position={position} cssClasses={["card"]}>
                     <x.Slot for={GtkPaned} id="startChild">
                         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                             <GtkBox
@@ -122,13 +116,7 @@ const PanedDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkPaned
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    wideHandle
-                    heightRequest={200}
-                    position={150}
-                    cssClasses={["card"]}
-                >
+                <GtkPaned wideHandle heightRequest={200} position={150} cssClasses={["card"]}>
                     <x.Slot for={GtkPaned} id="startChild">
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
@@ -182,7 +170,7 @@ const PanedDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton label="25%" onClicked={() => setPosition(100)} />
                     <GtkButton label="50%" onClicked={() => setPosition(200)} />
                     <GtkButton label="75%" onClicked={() => setPosition(300)} />

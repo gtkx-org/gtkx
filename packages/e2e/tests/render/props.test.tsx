@@ -32,7 +32,7 @@ describe("render - props", () => {
         it("sets enum properties", async () => {
             const ref = createRef<Gtk.Box>();
 
-            await render(<GtkBox ref={ref} spacing={0} orientation={Gtk.Orientation.VERTICAL} />);
+            await render(<GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL} />);
 
             expect(ref.current?.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
         });
@@ -100,7 +100,7 @@ describe("render - props", () => {
             const ref = createRef<Gtk.Box>();
 
             await render(
-                <GtkBox ref={ref} spacing={0} orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL}>
                     Child
                 </GtkBox>,
             );
@@ -119,8 +119,8 @@ describe("render - props", () => {
     describe("accessible state queries", () => {
         it("finds checkbox by checked state", async () => {
             await render(
-                <GtkBox spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkCheckButton label="Unchecked" active={false} />
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkCheckButton label="Unchecked" />
                     <GtkCheckButton label="Checked" active={true} />
                 </GtkBox>,
             );
@@ -133,7 +133,7 @@ describe("render - props", () => {
         });
 
         it("updates checkbox state after user interaction", async () => {
-            await render(<GtkCheckButton label="Toggle Me" active={false} />);
+            await render(<GtkCheckButton label="Toggle Me" />);
 
             const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
             await userEvent.click(checkbox);
@@ -145,7 +145,7 @@ describe("render - props", () => {
         });
 
         it("finds switch by accessible role", async () => {
-            await render(<GtkSwitch active={false} />);
+            await render(<GtkSwitch />);
 
             const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
             await userEvent.click(switchWidget);

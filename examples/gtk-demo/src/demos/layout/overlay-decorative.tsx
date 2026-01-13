@@ -6,59 +6,59 @@ import type { Demo } from "../types.js";
 import sourceCode from "./overlay-decorative.tsx?raw";
 
 const badgeStyle = css`
-    background-color: @error_bg_color;
-    color: @error_fg_color;
-    border-radius: 999px;
-    min-width: 24px;
-    min-height: 24px;
-    padding: 2px 8px;
-    font-size: 12px;
-    font-weight: bold;
+ background-color: @error_bg_color;
+ color: @error_fg_color;
+ border-radius: 999px;
+ min-width: 24px;
+ min-height: 24px;
+ padding: 2px 8px;
+ font-size: 12px;
+ font-weight: bold;
 `;
 
 const ribbonStyle = css`
-    background: linear-gradient(135deg, @accent_bg_color, shade(@accent_bg_color, 0.8));
-    color: @accent_fg_color;
-    padding: 4px 24px;
-    font-size: 11px;
-    font-weight: bold;
-    text-transform: uppercase;
+ background: linear-gradient(135deg, @accent_bg_color, shade(@accent_bg_color, 0.8));
+ color: @accent_fg_color;
+ padding: 4px 24px;
+ font-size: 11px;
+ font-weight: bold;
+ text-transform: uppercase;
 `;
 
 const watermarkStyle = css`
-    opacity: 0.15;
-    font-size: 48px;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 4px;
+ opacity: 0.15;
+ font-size: 48px;
+ font-weight: bold;
+ text-transform: uppercase;
+ letter-spacing: 4px;
 `;
 
 const overlayCardStyle = css`
-    background-color: @card_bg_color;
-    border-radius: 12px;
-    min-height: 150px;
-    min-width: 200px;
+ background-color: @card_bg_color;
+ border-radius: 12px;
+ min-height: 150px;
+ min-width: 200px;
 `;
 
 const statusDotStyle = css`
-    background-color: @success_color;
-    border-radius: 999px;
-    min-width: 12px;
-    min-height: 12px;
-    border: 2px solid @card_bg_color;
+ background-color: @success_color;
+ border-radius: 999px;
+ min-width: 12px;
+ min-height: 12px;
+ border: 2px solid @card_bg_color;
 `;
 
 const statusDotOfflineStyle = css`
-    background-color: @warning_color;
+ background-color: @warning_color;
 `;
 
 const cornerTagStyle = css`
-    background-color: @warning_bg_color;
-    color: @warning_fg_color;
-    padding: 4px 12px;
-    border-radius: 0 0 0 8px;
-    font-size: 11px;
-    font-weight: bold;
+ background-color: @warning_bg_color;
+ color: @warning_fg_color;
+ padding: 4px 12px;
+ border-radius: 0 0 0 8px;
+ font-size: 11px;
+ font-weight: bold;
 `;
 
 const OverlayDecorativeDemo = () => {
@@ -86,7 +86,7 @@ const OverlayDecorativeDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={20}>
+            <GtkBox spacing={20}>
                 <GtkFrame label="Notification Badge" hexpand>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -114,7 +114,7 @@ const OverlayDecorativeDemo = () => {
                             )}
                         </GtkOverlay>
 
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                        <GtkBox spacing={8}>
                             <GtkLabel label="Count:" />
                             <GtkSpinButton
                                 climbRate={1}
@@ -128,7 +128,6 @@ const OverlayDecorativeDemo = () => {
 
                 <GtkFrame label="Status Indicator" hexpand>
                     <GtkBox
-                        orientation={Gtk.Orientation.HORIZONTAL}
                         spacing={24}
                         marginStart={16}
                         marginEnd={16}
@@ -139,8 +138,6 @@ const OverlayDecorativeDemo = () => {
                         <GtkOverlay>
                             <GtkImage iconName="avatar-default-symbolic" pixelSize={48} />
                             <GtkBox
-                                orientation={Gtk.Orientation.HORIZONTAL}
-                                spacing={0}
                                 cssClasses={[statusDotStyle]}
                                 halign={Gtk.Align.END}
                                 valign={Gtk.Align.END}
@@ -152,8 +149,6 @@ const OverlayDecorativeDemo = () => {
                         <GtkOverlay>
                             <GtkImage iconName="avatar-default-symbolic" pixelSize={48} />
                             <GtkBox
-                                orientation={Gtk.Orientation.HORIZONTAL}
-                                spacing={0}
                                 cssClasses={[cx(statusDotStyle, statusDotOfflineStyle)]}
                                 halign={Gtk.Align.END}
                                 valign={Gtk.Align.END}
@@ -174,7 +169,7 @@ const OverlayDecorativeDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={16} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label={showRibbon ? "Hide Ribbon" : "Show Ribbon"}
                             cssClasses={showRibbon ? ["suggested-action"] : []}
@@ -231,7 +226,6 @@ const OverlayDecorativeDemo = () => {
 
             <GtkFrame label="Icon Grid with Badges">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={16}
                     marginStart={16}
                     marginEnd={16}

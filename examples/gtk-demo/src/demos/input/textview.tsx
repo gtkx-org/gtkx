@@ -62,7 +62,7 @@ const TextViewDemo = () => {
                     cssClasses={["dim-label"]}
                 />
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton label="Insert Sample Text" onClicked={handleInsertSample} />
                     <GtkButton label="Clear" onClicked={handleClear} />
                 </GtkBox>
@@ -80,7 +80,7 @@ const TextViewDemo = () => {
                     </GtkScrolledWindow>
                 </GtkFrame>
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                <GtkBox spacing={16}>
                     <GtkLabel label={`Characters: ${charCount}`} cssClasses={["dim-label"]} />
                     <GtkLabel label={`Words: ${wordCount}`} cssClasses={["dim-label"]} />
                     <GtkLabel label={`Lines: ${lineCount}`} cssClasses={["dim-label"]} />

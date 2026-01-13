@@ -89,7 +89,7 @@ const RevealerDemo = () => {
                     cssClasses={["dim-label"]}
                     halign={Gtk.Align.START}
                 />
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4} halign={Gtk.Align.START}>
+                <GtkBox spacing={4} halign={Gtk.Align.START}>
                     {transitionTypes.map((t) => (
                         <GtkButton
                             key={t.type}
@@ -120,15 +120,14 @@ const RevealerDemo = () => {
                     <GtkFrame cssClasses={["card"]}>
                         <GtkBox
                             orientation={Gtk.Orientation.VERTICAL}
-                            spacing={0}
                             marginStart={12}
                             marginEnd={12}
                             marginTop={12}
                             marginBottom={12}
                         >
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                            <GtkBox spacing={12}>
                                 <GtkImage iconName="folder-documents-symbolic" pixelSize={32} />
-                                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} hexpand>
+                                <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand>
                                     <GtkLabel label="Project Files" cssClasses={["heading"]} halign={Gtk.Align.START} />
                                     <GtkLabel
                                         label="24 items, 156 MB"
@@ -148,7 +147,7 @@ const RevealerDemo = () => {
                                 transitionDuration={200}
                             >
                                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} marginTop={12}>
-                                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                    <GtkBox spacing={8}>
                                         <GtkLabel
                                             label="Created:"
                                             cssClasses={["dim-label"]}
@@ -157,7 +156,7 @@ const RevealerDemo = () => {
                                         />
                                         <GtkLabel label="December 15, 2024" />
                                     </GtkBox>
-                                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                    <GtkBox spacing={8}>
                                         <GtkLabel
                                             label="Modified:"
                                             cssClasses={["dim-label"]}
@@ -166,7 +165,7 @@ const RevealerDemo = () => {
                                         />
                                         <GtkLabel label="December 27, 2024" />
                                     </GtkBox>
-                                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                                    <GtkBox spacing={8}>
                                         <GtkLabel
                                             label="Location:"
                                             cssClasses={["dim-label"]}
@@ -175,7 +174,7 @@ const RevealerDemo = () => {
                                         />
                                         <GtkLabel label="/home/user/Projects" />
                                     </GtkBox>
-                                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} marginTop={8}>
+                                    <GtkBox spacing={8} marginTop={8}>
                                         <GtkButton label="Open" cssClasses={["suggested-action"]} />
                                         <GtkButton label="Properties" />
                                     </GtkBox>
@@ -208,16 +207,9 @@ const RevealerDemo = () => {
                         transitionDuration={250}
                     >
                         <GtkFrame cssClasses={["card"]}>
-                            <GtkBox
-                                orientation={Gtk.Orientation.HORIZONTAL}
-                                spacing={12}
-                                marginStart={12}
-                                marginEnd={12}
-                                marginTop={12}
-                                marginBottom={12}
-                            >
+                            <GtkBox spacing={12} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
                                 <GtkImage iconName="emblem-ok-symbolic" pixelSize={24} cssClasses={["success"]} />
-                                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} hexpand>
+                                <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand>
                                     <GtkLabel
                                         label="Changes saved successfully"
                                         cssClasses={["heading"]}
@@ -255,7 +247,7 @@ const RevealerDemo = () => {
                         active={sidebarRevealed}
                         onToggled={(self) => setSidebarRevealed(self.getActive())}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={0} heightRequest={120}>
+                    <GtkBox heightRequest={120}>
                         <GtkRevealer
                             revealChild={sidebarRevealed}
                             transitionType={Gtk.RevealerTransitionType.SLIDE_RIGHT}
@@ -270,9 +262,9 @@ const RevealerDemo = () => {
                                     marginTop={8}
                                     marginBottom={8}
                                 >
-                                    <GtkButton label="Home" cssClasses={["flat"]} halign={Gtk.Align.FILL} />
-                                    <GtkButton label="Library" cssClasses={["flat"]} halign={Gtk.Align.FILL} />
-                                    <GtkButton label="Settings" cssClasses={["flat"]} halign={Gtk.Align.FILL} />
+                                    <GtkButton label="Home" cssClasses={["flat"]} />
+                                    <GtkButton label="Library" cssClasses={["flat"]} />
+                                    <GtkButton label="Settings" cssClasses={["flat"]} />
                                 </GtkBox>
                             </GtkFrame>
                         </GtkRevealer>

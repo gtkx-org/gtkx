@@ -9,20 +9,20 @@ GTKX is a framework for building native Linux desktop applications using React 1
 ## Commands
 
 ```bash
-pnpm build                      # Build all packages
-pnpm test                       # Run all tests (requires Xvfb, handled automatically)
-pnpm lint                       # Run Biome + Rust Clippy
-pnpm knip                       # Check for dead code
-pnpm codegen                    # Regenerate FFI bindings from GIR files
-pnpm biome check --write .      # Auto-fix linting issues
+pnpm build # Build all packages
+pnpm test # Run all tests (requires Xvfb, handled automatically)
+pnpm lint # Run Biome + Rust Clippy
+pnpm knip # Check for dead code
+pnpm codegen # Regenerate FFI bindings from GIR files
+pnpm biome check --write . # Auto-fix linting issues
 
 # Package-specific commands
 pnpm --filter @gtkx/react build
 pnpm --filter @gtkx/react test
 
 # Documentation
-pnpm docs                       # Build documentation site
-cd website && pnpm start        # Local docs preview
+pnpm docs # Build documentation site
+cd website && pnpm start # Local docs preview
 ```
 
 ## Architecture
@@ -31,13 +31,13 @@ cd website && pnpm start        # Local docs preview
 
 ```
 React Components (@gtkx/react)
-        ↓
+ ↓
 React Reconciler (host-config.ts)
-        ↓
+ ↓
 FFI Bindings (@gtkx/ffi) — auto-generated from GIR
-        ↓
+ ↓
 Rust Native Module (@gtkx/native)
-        ↓
+ ↓
 GTK4 Widgets
 ```
 

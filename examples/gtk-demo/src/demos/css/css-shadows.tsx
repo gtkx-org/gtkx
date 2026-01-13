@@ -6,93 +6,93 @@ import type { Demo } from "../types.js";
 import sourceCode from "./css-shadows.tsx?raw";
 
 injectGlobal`
-  .shadow-card {
-    padding: 24px;
-    border-radius: 12px;
-    background-color: @theme_bg_color;
-    min-height: 80px;
-    min-width: 120px;
-  }
+ .shadow-card {
+ padding: 24px;
+ border-radius: 12px;
+ background-color: @theme_bg_color;
+ min-height: 80px;
+ min-width: 120px;
+ }
 
-  .colored-card {
-    padding: 24px;
-    border-radius: 12px;
-    min-height: 60px;
-    min-width: 100px;
-  }
+ .colored-card {
+ padding: 24px;
+ border-radius: 12px;
+ min-height: 60px;
+ min-width: 100px;
+ }
 
-  .shadow-subtle {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
-  }
+ .shadow-subtle {
+ box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+ }
 
-  .shadow-medium {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
+ .shadow-medium {
+ box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+ }
 
-  .shadow-large {
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2), 0 3px 6px rgba(0, 0, 0, 0.12);
-  }
+ .shadow-large {
+ box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2), 0 3px 6px rgba(0, 0, 0, 0.12);
+ }
 
-  .shadow-xl {
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25), 0 5px 15px rgba(0, 0, 0, 0.15);
-  }
+ .shadow-xl {
+ box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25), 0 5px 15px rgba(0, 0, 0, 0.15);
+ }
 
-  .shadow-inner {
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
-  }
+ .shadow-inner {
+ box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+ }
 
-  .shadow-colored-blue {
-    box-shadow: 0 8px 20px rgba(53, 132, 228, 0.4);
-  }
+ .shadow-colored-blue {
+ box-shadow: 0 8px 20px rgba(53, 132, 228, 0.4);
+ }
 
-  .shadow-colored-green {
-    box-shadow: 0 8px 20px rgba(46, 194, 126, 0.4);
-  }
+ .shadow-colored-green {
+ box-shadow: 0 8px 20px rgba(46, 194, 126, 0.4);
+ }
 
-  .shadow-colored-red {
-    box-shadow: 0 8px 20px rgba(224, 27, 36, 0.4);
-  }
+ .shadow-colored-red {
+ box-shadow: 0 8px 20px rgba(224, 27, 36, 0.4);
+ }
 
-  .shadow-colored-purple {
-    box-shadow: 0 8px 20px rgba(145, 65, 172, 0.4);
-  }
+ .shadow-colored-purple {
+ box-shadow: 0 8px 20px rgba(145, 65, 172, 0.4);
+ }
 
-  .shadow-glow {
-    box-shadow: 0 0 20px rgba(53, 132, 228, 0.6), 0 0 40px rgba(53, 132, 228, 0.3);
-  }
+ .shadow-glow {
+ box-shadow: 0 0 20px rgba(53, 132, 228, 0.6), 0 0 40px rgba(53, 132, 228, 0.3);
+ }
 
-  .shadow-layered {
-    box-shadow:
-      0 1px 1px rgba(0, 0, 0, 0.08),
-      0 2px 2px rgba(0, 0, 0, 0.08),
-      0 4px 4px rgba(0, 0, 0, 0.08),
-      0 8px 8px rgba(0, 0, 0, 0.08),
-      0 16px 16px rgba(0, 0, 0, 0.08);
-  }
+ .shadow-layered {
+ box-shadow:
+ 0 1px 1px rgba(0, 0, 0, 0.08),
+ 0 2px 2px rgba(0, 0, 0, 0.08),
+ 0 4px 4px rgba(0, 0, 0, 0.08),
+ 0 8px 8px rgba(0, 0, 0, 0.08),
+ 0 16px 16px rgba(0, 0, 0, 0.08);
+ }
 
-  .shadow-offset {
-    box-shadow: 8px 8px 0 @accent_bg_color;
-  }
+ .shadow-offset {
+ box-shadow: 8px 8px 0 @accent_bg_color;
+ }
 
-  .colored-card-blue {
-    background-color: #3584e4;
-    color: white;
-  }
+ .colored-card-blue {
+ background-color: #3584e4;
+ color: white;
+ }
 
-  .colored-card-green {
-    background-color: #2ec27e;
-    color: white;
-  }
+ .colored-card-green {
+ background-color: #2ec27e;
+ color: white;
+ }
 
-  .colored-card-red {
-    background-color: #e01b24;
-    color: white;
-  }
+ .colored-card-red {
+ background-color: #e01b24;
+ color: white;
+ }
 
-  .colored-card-purple {
-    background-color: #9141ac;
-    color: white;
-  }
+ .colored-card-purple {
+ background-color: #9141ac;
+ color: white;
+ }
 `;
 
 interface ShadowCardProps {
@@ -106,7 +106,6 @@ const ShadowCard = ({ label, shadowClass, description }: ShadowCardProps) => (
         <GtkBox
             cssClasses={["shadow-card", shadowClass]}
             orientation={Gtk.Orientation.VERTICAL}
-            spacing={0}
             halign={Gtk.Align.CENTER}
             valign={Gtk.Align.CENTER}
         >
@@ -138,15 +137,7 @@ const CssShadowsDemo = () => {
             />
 
             <GtkFrame label="Elevation Levels">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={32}
-                    marginTop={24}
-                    marginBottom={24}
-                    marginStart={24}
-                    marginEnd={24}
-                    homogeneous
-                >
+                <GtkBox spacing={32} marginTop={24} marginBottom={24} marginStart={24} marginEnd={24} homogeneous>
                     <ShadowCard label="Subtle" shadowClass="shadow-subtle" description="Minimal elevation" />
                     <ShadowCard label="Medium" shadowClass="shadow-medium" description="Cards, panels" />
                     <ShadowCard label="Large" shadowClass="shadow-large" description="Modals, dialogs" />
@@ -155,15 +146,7 @@ const CssShadowsDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Special Effects">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={32}
-                    marginTop={24}
-                    marginBottom={24}
-                    marginStart={24}
-                    marginEnd={24}
-                    homogeneous
-                >
+                <GtkBox spacing={32} marginTop={24} marginBottom={24} marginStart={24} marginEnd={24} homogeneous>
                     <ShadowCard label="Inner" shadowClass="shadow-inner" description="Inset shadow" />
                     <ShadowCard label="Layered" shadowClass="shadow-layered" description="Smooth depth" />
                     <ShadowCard label="Glow" shadowClass="shadow-glow" description="Glowing effect" />
@@ -172,19 +155,10 @@ const CssShadowsDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Colored Shadows">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={32}
-                    marginTop={24}
-                    marginBottom={24}
-                    marginStart={24}
-                    marginEnd={24}
-                    homogeneous
-                >
+                <GtkBox spacing={32} marginTop={24} marginBottom={24} marginStart={24} marginEnd={24} homogeneous>
                     <GtkBox
                         cssClasses={["colored-card", "shadow-colored-blue", "colored-card-blue"]}
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         halign={Gtk.Align.CENTER}
                         valign={Gtk.Align.CENTER}
                     >
@@ -194,7 +168,6 @@ const CssShadowsDemo = () => {
                     <GtkBox
                         cssClasses={["colored-card", "shadow-colored-green", "colored-card-green"]}
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         halign={Gtk.Align.CENTER}
                         valign={Gtk.Align.CENTER}
                     >
@@ -204,7 +177,6 @@ const CssShadowsDemo = () => {
                     <GtkBox
                         cssClasses={["colored-card", "shadow-colored-red", "colored-card-red"]}
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         halign={Gtk.Align.CENTER}
                         valign={Gtk.Align.CENTER}
                     >
@@ -214,7 +186,6 @@ const CssShadowsDemo = () => {
                     <GtkBox
                         cssClasses={["colored-card", "shadow-colored-purple", "colored-card-purple"]}
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         halign={Gtk.Align.CENTER}
                         valign={Gtk.Align.CENTER}
                     >
@@ -232,7 +203,7 @@ const CssShadowsDemo = () => {
                     marginStart={20}
                     marginEnd={20}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label="Subtle"
                             cssClasses={selectedShadow === "shadow-subtle" ? ["suggested-action"] : []}

@@ -109,10 +109,9 @@ const RotatedTextDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkLabel label="Rotation:" widthRequest={80} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={rotationAdjustment}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
@@ -121,10 +120,9 @@ const RotatedTextDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkLabel label="Font Size:" widthRequest={80} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={fontSizeAdjustment}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
@@ -133,10 +131,9 @@ const RotatedTextDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkLabel label="Spacing:" widthRequest={80} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={spacingAdjustment}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}

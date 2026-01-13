@@ -71,7 +71,7 @@ const ReadMoreDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.START}>
+                    <GtkBox spacing={12} halign={Gtk.Align.START}>
                         <GtkLabel label="Line limit:" cssClasses={["dim-label"]} />
                         {[2, 3, 4, 5].map((lines) => (
                             <GtkButton

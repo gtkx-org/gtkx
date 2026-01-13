@@ -20,7 +20,7 @@
 Linear layout (horizontal or vertical).
 
 ```tsx
-<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} homogeneous={false}>
+<GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
     {children}
 </GtkBox>
 ```
@@ -68,7 +68,7 @@ Custom tab widget:
 ```tsx
 <x.NotebookPage>
     <x.NotebookPageTab>
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+        <GtkBox spacing={4}>
             <GtkImage iconName="folder-symbolic" />
             <GtkLabel label="Files" />
         </GtkBox>
@@ -81,7 +81,7 @@ Custom tab widget:
 Resizable split with draggable divider. **Requires Slot components.**
 
 ```tsx
-<GtkPaned orientation={Gtk.Orientation.HORIZONTAL} position={280} shrinkStartChild={false}>
+<GtkPaned position={280} shrinkStartChild={false}>
     <x.Slot for={GtkPaned} id="startChild"><Sidebar /></x.Slot>
     <x.Slot for={GtkPaned} id="endChild"><MainContent /></x.Slot>
 </GtkPaned>
@@ -193,7 +193,7 @@ Hierarchical tree with expand/collapse.
     selected={selectedId ? [selectedId] : []}
     onSelectionChanged={(ids) => setSelectedId(ids[0])}
     renderItem={(item, row) => (
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+        <GtkBox spacing={8}>
             <GtkImage iconName={item?.isDirectory ? "folder-symbolic" : "text-x-generic-symbolic"} />
             <GtkLabel label={item?.name ?? ""} />
         </GtkBox>
@@ -256,7 +256,6 @@ Slider with optional marks.
 
 ```tsx
 <GtkScale
-    orientation={Gtk.Orientation.HORIZONTAL}
     drawValue
     valuePos={Gtk.PositionType.TOP}
 >
@@ -466,7 +465,7 @@ Expandable settings row with optional action widget.
     </x.ExpanderRowAction>
     <x.ExpanderRowRow>
         <AdwSwitchRow title="Option 1" active />
-        <AdwSwitchRow title="Option 2" active={false} />
+        <AdwSwitchRow title="Option 2" />
     </x.ExpanderRowRow>
 </AdwExpanderRow>
 ```

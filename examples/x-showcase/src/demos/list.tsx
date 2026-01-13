@@ -118,18 +118,8 @@ export const ListDemo = () => {
                         <x.ListView<FileItem>
                             estimatedItemHeight={48}
                             renderItem={(item) => (
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={12}
-                                    marginTop={8}
-                                    marginBottom={8}
-                                    marginStart={8}
-                                    marginEnd={8}
-                                >
-                                    <GtkLabel
-                                        label={item?.isFolder ? "folder-symbolic" : "text-x-generic-symbolic"}
-                                        useMarkup={false}
-                                    />
+                                <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8}>
+                                    <GtkLabel label={item?.isFolder ? "folder-symbolic" : "text-x-generic-symbolic"} />
                                     <GtkLabel label={item?.name ?? ""} hexpand halign={Gtk.Align.START} />
                                 </GtkBox>
                             )}

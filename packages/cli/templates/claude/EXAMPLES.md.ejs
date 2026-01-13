@@ -127,14 +127,14 @@ const TodoList = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+            <GtkBox spacing={8}>
                 <GtkEntry text={input} onChanged={(e) => setInput(e.getText())} hexpand placeholderText="New todo..." />
                 <GtkButton label="Add" onClicked={addTodo} cssClasses={["suggested-action"]} />
             </GtkBox>
             <GtkScrolledWindow vexpand cssClasses={["card"]}>
                 <x.ListView<Todo>
                     renderItem={(todo) => (
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} marginStart={12} marginEnd={12} marginTop={8} marginBottom={8}>
+                        <GtkBox spacing={8} marginStart={12} marginEnd={12} marginTop={8} marginBottom={8}>
                             <GtkLabel label={todo?.text ?? ""} hexpand halign={Gtk.Align.START} />
                             <GtkButton iconName="edit-delete-symbolic" cssClasses={["flat"]} onClicked={() => todo && deleteTodo(todo.id)} />
                         </GtkBox>
@@ -176,7 +176,7 @@ const SidebarNav = () => {
     const [currentPage, setCurrentPage] = useState("home");
 
     return (
-        <GtkPaned orientation={Gtk.Orientation.HORIZONTAL} position={200}>
+        <GtkPaned position={200}>
             <x.Slot for={GtkPaned} id="startChild">
                 <GtkScrolledWindow cssClasses={["sidebar"]}>
                     <x.ListView<Page>
@@ -287,7 +287,7 @@ const SettingsPage = () => {
                     <AdwExpanderRow title="Notification Settings" subtitle="Configure alerts">
                         <AdwSwitchRow title="Sound" active />
                         <AdwSwitchRow title="Badges" active />
-                        <AdwSwitchRow title="Lock Screen" active={false} />
+                        <AdwSwitchRow title="Lock Screen" />
                     </AdwExpanderRow>
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
@@ -668,7 +668,7 @@ const FileBrowser = () => {
                 selected={selected ? [selected] : []}
                 onSelectionChanged={(ids) => setSelected(ids[0] ?? null)}
                 renderItem={(item) => (
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkImage iconName={item?.isDirectory ? "folder-symbolic" : "text-x-generic-symbolic"} />
                         <GtkLabel label={item?.name ?? ""} halign={Gtk.Align.START} />
                     </GtkBox>

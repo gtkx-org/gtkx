@@ -100,18 +100,11 @@ const ListViewWeatherDemo = () => {
             />
 
             <GtkFrame label="Current Weather">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={24}
-                    marginTop={16}
-                    marginBottom={16}
-                    marginStart={16}
-                    marginEnd={16}
-                >
+                <GtkBox spacing={24} marginTop={16} marginBottom={16} marginStart={16} marginEnd={16}>
                     <GtkImage iconName={currentWeather.icon} pixelSize={64} />
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} valign={Gtk.Align.CENTER} hexpand>
                         <GtkLabel label={currentWeather.condition} halign={Gtk.Align.START} cssClasses={["title-3"]} />
-                        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                        <GtkBox spacing={16}>
                             <GtkLabel label={`High: ${formatTemp(currentWeather.high)}`} cssClasses={["heading"]} />
                             <GtkLabel label={`Low: ${formatTemp(currentWeather.low)}`} cssClasses={["dim-label"]} />
                         </GtkBox>
@@ -152,14 +145,7 @@ const ListViewWeatherDemo = () => {
                             showSeparators
                             onActivate={handleActivate}
                             renderItem={(item) => (
-                                <GtkBox
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={12}
-                                    marginTop={12}
-                                    marginBottom={12}
-                                    marginStart={12}
-                                    marginEnd={12}
-                                >
+                                <GtkBox spacing={12} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                                     <GtkBox
                                         orientation={Gtk.Orientation.VERTICAL}
                                         spacing={4}
@@ -178,7 +164,7 @@ const ListViewWeatherDemo = () => {
                                         />
                                     </GtkBox>
 
-                                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} hexpand>
+                                    <GtkBox spacing={8} hexpand>
                                         <GtkImage iconName={item?.icon ?? ""} pixelSize={32} />
                                         <GtkLabel
                                             label={item?.condition ?? ""}
@@ -198,11 +184,7 @@ const ListViewWeatherDemo = () => {
                                         <GtkLabel label="Precip" cssClasses={["dim-label", "caption"]} />
                                     </GtkBox>
 
-                                    <GtkBox
-                                        orientation={Gtk.Orientation.HORIZONTAL}
-                                        spacing={8}
-                                        valign={Gtk.Align.CENTER}
-                                    >
+                                    <GtkBox spacing={8} valign={Gtk.Align.CENTER}>
                                         <GtkLabel
                                             label={formatTemp(item?.high ?? 0)}
                                             cssClasses={["heading"]}
@@ -233,7 +215,7 @@ const ListViewWeatherDemo = () => {
                             marginStart={12}
                             marginEnd={12}
                         >
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                            <GtkBox spacing={16}>
                                 <GtkImage iconName={selectedDay.icon} pixelSize={48} />
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
@@ -253,7 +235,7 @@ const ListViewWeatherDemo = () => {
                                     />
                                 </GtkBox>
                             </GtkBox>
-                            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} homogeneous>
+                            <GtkBox spacing={24} homogeneous>
                                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} halign={Gtk.Align.CENTER}>
                                     <GtkLabel label={formatTemp(selectedDay.high)} cssClasses={["title-3"]} />
                                     <GtkLabel label="High" cssClasses={["dim-label", "caption"]} />

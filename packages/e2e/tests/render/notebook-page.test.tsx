@@ -1,5 +1,5 @@
 import { isObjectEqual } from "@gtkx/ffi";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkLabel, GtkNotebook, x } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -145,7 +145,7 @@ describe("render - NotebookPage", () => {
                 <GtkNotebook ref={notebookRef}>
                     <x.NotebookPage>
                         <x.NotebookPageTab>
-                            <GtkBox ref={tabRef} spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
+                            <GtkBox ref={tabRef}>
                                 <GtkLabel label="Custom Tab" />
                             </GtkBox>
                         </x.NotebookPageTab>
@@ -251,7 +251,7 @@ describe("render - NotebookPage", () => {
                     </x.NotebookPage>
                     <x.NotebookPage>
                         <x.NotebookPageTab>
-                            <GtkBox ref={customTabRef} spacing={0} orientation={Gtk.Orientation.HORIZONTAL}>
+                            <GtkBox ref={customTabRef}>
                                 <GtkLabel label="Custom" />
                             </GtkBox>
                         </x.NotebookPageTab>

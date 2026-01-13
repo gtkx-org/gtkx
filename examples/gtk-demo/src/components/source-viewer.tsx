@@ -40,7 +40,6 @@ export const SourceViewer = () => {
         return (
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
-                spacing={0}
                 valign={Gtk.Align.CENTER}
                 halign={Gtk.Align.CENTER}
                 vexpand
@@ -52,15 +51,8 @@ export const SourceViewer = () => {
     }
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-            <GtkBox
-                orientation={Gtk.Orientation.HORIZONTAL}
-                spacing={0}
-                marginTop={12}
-                marginBottom={8}
-                marginStart={12}
-                marginEnd={12}
-            >
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand hexpand>
+            <GtkBox marginTop={12} marginBottom={8} marginStart={12} marginEnd={12}>
                 <GtkLabel label="Source Code" halign={Gtk.Align.START} cssClasses={["heading"]} />
             </GtkBox>
 
@@ -69,7 +61,6 @@ export const SourceViewer = () => {
                     buffer={buffer}
                     editable={false}
                     showLineNumbers
-                    highlightCurrentLine={false}
                     tabWidth={4}
                     leftMargin={12}
                     rightMargin={12}

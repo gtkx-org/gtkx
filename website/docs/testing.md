@@ -17,10 +17,10 @@ import gtkx from "@gtkx/vitest";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-    plugins: [gtkx()],
-    test: {
-        include: ["tests/**/*.test.{ts,tsx}"],
-    },
+ plugins: [gtkx()],
+ test: {
+ include: ["tests/**/*.test.{ts,tsx}"],
+ },
 });
 ```
 
@@ -28,9 +28,9 @@ Configure your test script in `package.json`:
 
 ```json
 {
-  "scripts": {
-    "test": "vitest run"
-  }
+ "scripts": {
+ "test": "vitest run"
+ }
 }
 ```
 
@@ -50,16 +50,16 @@ import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 
 describe("App", () => {
-    afterEach(async () => {
-        await cleanup();
-    });
+ afterEach(async () => {
+ await cleanup();
+ });
 
-    it("renders the window", async () => {
-        await render(<App />, { wrapper: false });
+ it("renders the window", async () => {
+ await render(<App />, { wrapper: false });
 
-        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "My App" });
-        expect(window).toBeDefined();
-    });
+ const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "My App" });
+ expect(window).toBeDefined();
+ });
 });
 ```
 
@@ -135,11 +135,11 @@ This outputs an HTML-like representation of the widget hierarchy:
 
 ```
 <GtkApplicationWindow role="window">
-  <GtkBox role="group">
-    <GtkButton data-testid="submit" role="button">
-      Submit
-    </GtkButton>
-  </GtkBox>
+ <GtkBox role="group">
+ <GtkButton data-testid="submit" role="button">
+ Submit
+ </GtkButton>
+ </GtkBox>
 </GtkApplicationWindow>
 ```
 
@@ -164,71 +164,71 @@ import { afterEach, describe, expect, it } from "vitest";
 import { TodoApp } from "../src/app.js";
 
 describe("TodoApp", () => {
-    afterEach(async () => {
-        await cleanup();
-    });
+ afterEach(async () => {
+ await cleanup();
+ });
 
-    it("adds a new todo", async () => {
-        await render(<TodoApp />, { wrapper: false });
+ it("adds a new todo", async () => {
+ await render(<TodoApp />, { wrapper: false });
 
-        const input = await screen.findByTestId("todo-input");
-        const addButton = await screen.findByTestId("add-button");
+ const input = await screen.findByTestId("todo-input");
+ const addButton = await screen.findByTestId("add-button");
 
-        await userEvent.type(input, "Buy groceries");
-        await userEvent.click(addButton);
+ await userEvent.type(input, "Buy groceries");
+ await userEvent.click(addButton);
 
-        const todoText = await screen.findByText("Buy groceries");
-        expect(todoText).toBeDefined();
-    });
+ const todoText = await screen.findByText("Buy groceries");
+ expect(todoText).toBeDefined();
+ });
 
-    it("toggles todo completion", async () => {
-        await render(<TodoApp />, { wrapper: false });
+ it("toggles todo completion", async () => {
+ await render(<TodoApp />, { wrapper: false });
 
-        const input = await screen.findByTestId("todo-input");
-        await userEvent.type(input, "Test todo");
-        await userEvent.click(await screen.findByTestId("add-button"));
+ const input = await screen.findByTestId("todo-input");
+ await userEvent.type(input, "Test todo");
+ await userEvent.click(await screen.findByTestId("add-button"));
 
-        const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
-        await userEvent.click(checkbox);
+ const checkbox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: false });
+ await userEvent.click(checkbox);
 
-        const checkedBox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
-        expect(checkedBox).toBeDefined();
-    });
+ const checkedBox = await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true });
+ expect(checkedBox).toBeDefined();
+ });
 
-    it("deletes a todo", async () => {
-        await render(<TodoApp />, { wrapper: false });
+ it("deletes a todo", async () => {
+ await render(<TodoApp />, { wrapper: false });
 
-        const input = await screen.findByTestId("todo-input");
-        await userEvent.type(input, "Todo to delete");
-        await userEvent.click(await screen.findByTestId("add-button"));
+ const input = await screen.findByTestId("todo-input");
+ await userEvent.type(input, "Todo to delete");
+ await userEvent.click(await screen.findByTestId("add-button"));
 
-        const deleteButton = await screen.findByTestId(/^delete-/);
-        await userEvent.click(deleteButton);
+ const deleteButton = await screen.findByTestId(/^delete-/);
+ await userEvent.click(deleteButton);
 
-        const emptyMessage = await screen.findByText("No tasks yet");
-        expect(emptyMessage).toBeDefined();
-    });
+ const emptyMessage = await screen.findByText("No tasks yet");
+ expect(emptyMessage).toBeDefined();
+ });
 
-    it("updates the remaining count", async () => {
-        await render(<TodoApp />, { wrapper: false });
+ it("updates the remaining count", async () => {
+ await render(<TodoApp />, { wrapper: false });
 
-        const input = await screen.findByTestId("todo-input");
-        const addButton = await screen.findByTestId("add-button");
+ const input = await screen.findByTestId("todo-input");
+ const addButton = await screen.findByTestId("add-button");
 
-        await userEvent.type(input, "Todo 1");
-        await userEvent.click(addButton);
-        await userEvent.type(input, "Todo 2");
-        await userEvent.click(addButton);
+ await userEvent.type(input, "Todo 1");
+ await userEvent.click(addButton);
+ await userEvent.type(input, "Todo 2");
+ await userEvent.click(addButton);
 
-        let counter = await screen.findByTestId("items-left");
-        expect((counter as Gtk.Label).getLabel()).toContain("2");
+ let counter = await screen.findByTestId("items-left");
+ expect((counter as Gtk.Label).getLabel()).toContain("2");
 
-        const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
-        await userEvent.click(checkboxes[0] as Gtk.Widget);
+ const checkboxes = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
+ await userEvent.click(checkboxes[0] as Gtk.Widget);
 
-        counter = await screen.findByTestId("items-left");
-        expect((counter as Gtk.Label).getLabel()).toContain("1");
-    });
+ counter = await screen.findByTestId("items-left");
+ expect((counter as Gtk.Label).getLabel()).toContain("1");
+ });
 });
 ```
 

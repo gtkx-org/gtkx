@@ -32,7 +32,7 @@ describe("findByRole", () => {
 
     it("filters by name option", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="Save" />
                 <GtkButton label="Cancel" />
             </GtkBox>,
@@ -44,7 +44,7 @@ describe("findByRole", () => {
 
     it("filters by checked state for checkboxes", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkCheckButton label="Unchecked" />
                 <GtkCheckButton label="Checked" active />
             </GtkBox>,
@@ -56,7 +56,7 @@ describe("findByRole", () => {
 
     it("filters by checked state for toggle buttons", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkToggleButton label="Inactive" />
                 <GtkToggleButton label="Active" active />
             </GtkBox>,
@@ -68,7 +68,7 @@ describe("findByRole", () => {
 
     it("filters by checked state for switches", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkSwitch />
                 <GtkSwitch active />
             </GtkBox>,
@@ -80,7 +80,7 @@ describe("findByRole", () => {
 
     it("finds expander by label", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkExpander label="Collapsed">Content</GtkExpander>
                 <GtkExpander label="Expanded" expanded>
                     Content
@@ -116,7 +116,7 @@ describe("findByRole", () => {
 
         it("throws when multiple elements found", async () => {
             const { container } = await render(
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkLabel label="Same" />
                     <GtkLabel label="Same" />
                 </GtkBox>,
@@ -131,7 +131,7 @@ describe("findByRole", () => {
 describe("findAllByRole", () => {
     it("finds all elements with matching role", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
                 <GtkLabel label="Text" />
@@ -166,7 +166,7 @@ describe("findByText", () => {
     });
 
     it("normalizes whitespace by default", async () => {
-        const { container } = await render(<GtkLabel label="  Hello   World  " />);
+        const { container } = await render(<GtkLabel label=" Hello World " />);
         const label = await findByText(container, "Hello World");
         expect(label).toBeDefined();
     });
@@ -192,7 +192,7 @@ describe("findByText", () => {
 describe("findAllByText", () => {
     it("finds all elements with matching text", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkLabel label="Same" />
                 <GtkLabel label="Same" />
                 <GtkLabel label="Different" />
@@ -222,7 +222,7 @@ describe("findByLabelText", () => {
 describe("findAllByLabelText", () => {
     it("finds all elements with matching label", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="Action" />
                 <GtkButton label="Action" />
             </GtkBox>,
@@ -250,7 +250,7 @@ describe("findByTestId", () => {
 describe("findAllByTestId", () => {
     it("finds all elements with matching test id", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkEntry name="field" />
                 <GtkEntry name="field" />
             </GtkBox>,

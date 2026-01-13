@@ -303,7 +303,7 @@ const PrintingDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkButton label="Print..." onClicked={handlePrint} />
                         <GtkButton label="Print Preview" onClicked={handlePrintPreview} />
                         <GtkButton label="Export to PDF..." onClicked={() => void handleExportPdf()} />
@@ -332,7 +332,7 @@ const PrintingDemo = () => {
                     halign={Gtk.Align.CENTER}
                 >
                     <GtkDrawingArea ref={previewRef} contentWidth={200} contentHeight={260} cssClasses={["card"]} />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             iconName="go-previous-symbolic"
                             onClicked={() => setPreviewPage((p) => Math.max(0, p - 1))}

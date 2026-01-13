@@ -120,14 +120,7 @@ const TextmaskDemo = () => {
             </GtkFrame>
 
             <GtkFrame label="Text">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={16}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                >
+                <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkLabel label="Text:" />
                     <GtkEntry text={text} hexpand onChanged={(entry) => setText(entry.getText())} />
                 </GtkBox>
@@ -135,7 +128,6 @@ const TextmaskDemo = () => {
 
             <GtkFrame label="Gradient">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={8}
                     marginStart={16}
                     marginEnd={16}
@@ -163,10 +155,9 @@ const TextmaskDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16}>
+                    <GtkBox spacing={16}>
                         <GtkLabel label="Font Size:" widthRequest={80} halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={fontSizeAdjustment}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
@@ -175,7 +166,7 @@ const TextmaskDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={16} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={16} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label={isAnimating ? "Stop Animation" : "Start Animation"}
                             cssClasses={isAnimating ? ["destructive-action"] : ["suggested-action"]}

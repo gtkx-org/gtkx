@@ -14,15 +14,8 @@ export const Sidebar = () => {
     const { filteredCategories, currentDemo, setCurrentDemo, searchQuery, setSearchQuery } = useDemo();
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={["sidebar"]}>
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={0}
-                marginStart={8}
-                marginEnd={8}
-                marginTop={8}
-                marginBottom={8}
-            >
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["sidebar"]}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} marginStart={8} marginEnd={8} marginTop={8} marginBottom={8}>
                 <GtkSearchEntry
                     placeholderText="Search demos..."
                     text={searchQuery}
@@ -34,10 +27,9 @@ export const Sidebar = () => {
             <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["navigation-sidebar"]}>
                     {filteredCategories.map((category) => (
-                        <GtkListBoxRow key={category.id} selectable={false} activatable={false}>
+                        <GtkListBoxRow key={category.id} activatable={false}>
                             <GtkExpander label={category.title} expanded>
                                 <GtkListBox
-                                    selectionMode={Gtk.SelectionMode.SINGLE}
                                     onRowActivated={(_, row) => {
                                         const index = row.getIndex();
                                         const demo = category.demos[index];

@@ -37,7 +37,7 @@ const SpinButtonDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Value (0-100):" halign={Gtk.Align.START} hexpand />
                         <GtkSpinButton
                             value={basicValue}
@@ -64,7 +64,7 @@ const SpinButtonDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Value (0.0-10.0):" halign={Gtk.Align.START} hexpand />
                         <GtkSpinButton
                             value={floatValue}
@@ -91,7 +91,7 @@ const SpinButtonDemo = () => {
                     marginStart={12}
                     marginEnd={12}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
                         <GtkSpinButton
                             value={hours}
                             onValueChanged={(spinButton: Gtk.SpinButton) => setHours(spinButton.getValue())}

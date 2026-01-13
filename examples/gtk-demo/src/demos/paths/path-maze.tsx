@@ -393,10 +393,9 @@ const MazeDemo = () => {
                         halign={Gtk.Align.CENTER}
                     />
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkLabel label="Size:" cssClasses={["dim-label"]} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             adjustment={sizeAdjustment}
@@ -408,7 +407,7 @@ const MazeDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkLabel label="Algorithm:" cssClasses={["dim-label"]} />
                         <GtkButton
                             label="BFS"
@@ -422,7 +421,7 @@ const MazeDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         <GtkButton label="Generate" onClicked={handleGenerate} cssClasses={["flat"]} />
                         <GtkButton
                             label="Solve"
@@ -445,7 +444,6 @@ const MazeDemo = () => {
 
             <GtkFrame label="Legend">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={8}
                     marginBottom={8}
@@ -453,16 +451,16 @@ const MazeDemo = () => {
                     marginEnd={12}
                     halign={Gtk.Align.CENTER}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                    <GtkBox spacing={4}>
                         <GtkLabel label="Start" cssClasses={["dim-label", "caption"]} />
                     </GtkBox>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                    <GtkBox spacing={4}>
                         <GtkLabel label="End" cssClasses={["dim-label", "caption"]} />
                     </GtkBox>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                    <GtkBox spacing={4}>
                         <GtkLabel label="Explored" cssClasses={["dim-label", "caption"]} />
                     </GtkBox>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                    <GtkBox spacing={4}>
                         <GtkLabel label="Solution" cssClasses={["dim-label", "caption"]} />
                     </GtkBox>
                 </GtkBox>

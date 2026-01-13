@@ -222,10 +222,9 @@ const InteractiveConstraintEditor = () => {
             />
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                <GtkBox spacing={12}>
                     <GtkLabel label="X Offset:" halign={Gtk.Align.START} widthRequest={100} />
                     <GtkScale
-                        orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
                         valuePos={Gtk.PositionType.RIGHT}
@@ -234,10 +233,9 @@ const InteractiveConstraintEditor = () => {
                     />
                 </GtkBox>
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                <GtkBox spacing={12}>
                     <GtkLabel label="Y Offset:" halign={Gtk.Align.START} widthRequest={100} />
                     <GtkScale
-                        orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
                         valuePos={Gtk.PositionType.RIGHT}
@@ -246,10 +244,9 @@ const InteractiveConstraintEditor = () => {
                     />
                 </GtkBox>
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                <GtkBox spacing={12}>
                     <GtkLabel label="Width:" halign={Gtk.Align.START} widthRequest={100} />
                     <GtkScale
-                        orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
                         valuePos={Gtk.PositionType.RIGHT}
@@ -258,10 +255,9 @@ const InteractiveConstraintEditor = () => {
                     />
                 </GtkBox>
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                <GtkBox spacing={12}>
                     <GtkLabel label="Height:" halign={Gtk.Align.START} widthRequest={100} />
                     <GtkScale
-                        orientation={Gtk.Orientation.HORIZONTAL}
                         hexpand
                         drawValue
                         valuePos={Gtk.PositionType.RIGHT}
@@ -372,18 +368,11 @@ const LiveConstraintDemo = () => {
                     halign={Gtk.Align.START}
                 />
 
-                <GtkBox
-                    ref={containerRef}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={0}
-                    widthRequest={350}
-                    heightRequest={150}
-                    cssClasses={["card"]}
-                >
+                <GtkBox ref={containerRef} widthRequest={350} heightRequest={150} cssClasses={["card"]}>
                     <GtkButton ref={buttonRef} label="Drag Me!" cssClasses={["suggested-action"]} />
                 </GtkBox>
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <GtkBox spacing={8}>
                     <GtkButton label="Left" onClicked={() => setOffsetX(offsetX - 20)} />
                     <GtkButton label="Right" onClicked={() => setOffsetX(offsetX + 20)} />
                     <GtkButton label="Up" onClicked={() => setOffsetY(offsetY - 20)} />

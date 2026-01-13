@@ -85,7 +85,7 @@ const PasswordEntryDemo = () => {
                     )}
                 </GtkBox>
 
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} marginTop={8}>
+                <GtkBox spacing={8} marginTop={8}>
                     <GtkButton
                         label="Submit"
                         cssClasses={["suggested-action"]}

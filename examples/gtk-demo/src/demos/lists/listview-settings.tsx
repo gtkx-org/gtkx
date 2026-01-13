@@ -220,7 +220,7 @@ const ListViewSettingsDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+            <GtkBox spacing={8}>
                 <GtkLabel
                     label={`${getEnabledCount()} of ${settingsData.length} settings enabled`}
                     cssClasses={["dim-label"]}
@@ -231,13 +231,12 @@ const ListViewSettingsDemo = () => {
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
                     {categories.map((category) => (
                         <GtkFrame key={category} label={category}>
-                            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} marginTop={8} marginBottom={8}>
+                            <GtkBox orientation={Gtk.Orientation.VERTICAL} marginTop={8} marginBottom={8}>
                                 <x.ListView<SettingItem>
                                     estimatedItemHeight={60}
                                     showSeparators
                                     renderItem={(item) => (
                                         <GtkBox
-                                            orientation={Gtk.Orientation.HORIZONTAL}
                                             spacing={12}
                                             marginTop={12}
                                             marginBottom={12}
@@ -290,14 +289,7 @@ const ListViewSettingsDemo = () => {
             </GtkScrolledWindow>
 
             <GtkFrame label="Active Settings">
-                <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={8}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
+                <GtkBox spacing={8} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                     {Object.entries(settings)
                         .filter(([_, enabled]) => enabled)
                         .slice(0, 5)
@@ -306,7 +298,6 @@ const ListViewSettingsDemo = () => {
                             return (
                                 <GtkBox
                                     key={id}
-                                    orientation={Gtk.Orientation.HORIZONTAL}
                                     spacing={4}
                                     cssClasses={["card"]}
                                     marginTop={2}

@@ -193,13 +193,12 @@ const ConfigurableSpinner = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24} halign={Gtk.Align.CENTER}>
+            <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
                 <GtkDrawingArea ref={ref} contentWidth={120} contentHeight={120} cssClasses={["card"]} />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkLabel label="Stroke:" cssClasses={["dim-label"]} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             adjustment={strokeAdjustment}
@@ -207,10 +206,9 @@ const ConfigurableSpinner = () => {
                             widthRequest={120}
                         />
                     </GtkBox>
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                    <GtkBox spacing={8}>
                         <GtkLabel label="Speed:" cssClasses={["dim-label"]} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
                             digits={1}
@@ -244,7 +242,6 @@ const PathSpinnerDemo = () => {
 
             <GtkFrame label="Spinner Styles">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={32}
                     marginTop={12}
                     marginBottom={12}
@@ -278,7 +275,6 @@ const PathSpinnerDemo = () => {
 
             <GtkFrame label="Advanced Effects">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={32}
                     marginTop={12}
                     marginBottom={12}
@@ -307,7 +303,6 @@ const PathSpinnerDemo = () => {
             <GtkFrame label="Configurable Spinner">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
-                    spacing={0}
                     marginTop={12}
                     marginBottom={12}
                     marginStart={12}

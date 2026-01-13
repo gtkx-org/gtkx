@@ -6,51 +6,51 @@ import type { Demo } from "../types.js";
 import sourceCode from "./layoutmanager2.tsx?raw";
 
 const animatedItemStyle = css`
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-    border-radius: 8px;
-    padding: 12px;
-    transition: all 300ms ease-in-out;
+ background-color: @accent_bg_color;
+ color: @accent_fg_color;
+ border-radius: 8px;
+ padding: 12px;
+ transition: all 300ms ease-in-out;
 `;
 
 const animatedItemExpandedStyle = css`
-    background-color: @success_bg_color;
-    color: @success_fg_color;
+ background-color: @success_bg_color;
+ color: @success_fg_color;
 `;
 
 const priorityHighStyle = css`
-    background-color: @error_bg_color;
-    color: @error_fg_color;
+ background-color: @error_bg_color;
+ color: @error_fg_color;
 `;
 
 const priorityMediumStyle = css`
-    background-color: @warning_bg_color;
-    color: @warning_fg_color;
+ background-color: @warning_bg_color;
+ color: @warning_fg_color;
 `;
 
 const priorityLowStyle = css`
-    background-color: alpha(@accent_bg_color, 0.5);
+ background-color: alpha(@accent_bg_color, 0.5);
 `;
 
 const breakpointIndicatorStyle = css`
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-weight: bold;
+ padding: 8px 16px;
+ border-radius: 4px;
+ font-weight: bold;
 `;
 
 const breakpointCompactStyle = css`
-    background-color: @warning_bg_color;
-    color: @warning_fg_color;
+ background-color: @warning_bg_color;
+ color: @warning_fg_color;
 `;
 
 const breakpointMediumStyle = css`
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
+ background-color: @accent_bg_color;
+ color: @accent_fg_color;
 `;
 
 const breakpointExpandedStyle = css`
-    background-color: @success_bg_color;
-    color: @success_fg_color;
+ background-color: @success_bg_color;
+ color: @success_fg_color;
 `;
 
 const AnimatedLayoutDemo = () => {
@@ -104,7 +104,7 @@ const AnimatedLayoutDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkToggleButton
                             label={expanded ? "Collapse Layout" : "Expand Layout"}
                             active={expanded}
@@ -201,10 +201,9 @@ const ResponsiveBreakpointsDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Container Width:" halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={widthAdjustment}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
@@ -213,7 +212,7 @@ const ResponsiveBreakpointsDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Current Breakpoint:" />
                         <GtkLabel
                             label={breakpoint.toUpperCase()}
@@ -230,7 +229,6 @@ const ResponsiveBreakpointsDemo = () => {
 
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={0}
                         widthRequest={containerWidth}
                         cssClasses={["card"]}
                         halign={Gtk.Align.CENTER}
@@ -335,10 +333,9 @@ const PriorityAllocationDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+                    <GtkBox spacing={12}>
                         <GtkLabel label="Available Space:" halign={Gtk.Align.START} />
                         <GtkScale
-                            orientation={Gtk.Orientation.HORIZONTAL}
                             adjustment={spaceAdjustment}
                             drawValue
                             valuePos={Gtk.PositionType.RIGHT}
@@ -347,7 +344,7 @@ const PriorityAllocationDemo = () => {
                         />
                     </GtkBox>
 
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                    <GtkBox spacing={4}>
                         {items.map((item) => {
                             const priorityStyle =
                                 item.priority === "high"

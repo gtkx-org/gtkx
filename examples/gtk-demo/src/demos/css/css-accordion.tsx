@@ -6,75 +6,75 @@ import type { Demo } from "../types.js";
 import sourceCode from "./css-accordion.tsx?raw";
 
 injectGlobal`
-  /* Transition timing functions */
-  .transition-ease {
-    transition: all 300ms ease;
-  }
+ /* Transition timing functions */
+ .transition-ease {
+ transition: all 300ms ease;
+ }
 
-  .transition-ease-in {
-    transition: all 300ms ease-in;
-  }
+ .transition-ease-in {
+ transition: all 300ms ease-in;
+ }
 
-  .transition-ease-out {
-    transition: all 300ms ease-out;
-  }
+ .transition-ease-out {
+ transition: all 300ms ease-out;
+ }
 
-  .transition-ease-in-out {
-    transition: all 300ms ease-in-out;
-  }
+ .transition-ease-in-out {
+ transition: all 300ms ease-in-out;
+ }
 
-  .transition-linear {
-    transition: all 300ms linear;
-  }
+ .transition-linear {
+ transition: all 300ms linear;
+ }
 
-  /* Animated button states */
-  .animated-button {
-    transition: all 200ms ease-out;
-    padding: 12px 24px;
-    border-radius: 8px;
-  }
+ /* Animated button states */
+ .animated-button {
+ transition: all 200ms ease-out;
+ padding: 12px 24px;
+ border-radius: 8px;
+ }
 
-  .animated-button:hover {
-    background-color: shade(@accent_bg_color, 1.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
+ .animated-button:hover {
+ background-color: shade(@accent_bg_color, 1.1);
+ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+ }
 
-  .animated-button:active {
-    background-color: shade(@accent_bg_color, 0.9);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
+ .animated-button:active {
+ background-color: shade(@accent_bg_color, 0.9);
+ box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+ }
 
-  /* Scale on hover */
-  .scale-hover {
-    transition: all 200ms ease;
-  }
+ /* Scale on hover */
+ .scale-hover {
+ transition: all 200ms ease;
+ }
 
-  .scale-hover:hover {
-    -gtk-icon-transform: scale(1.1);
-  }
+ .scale-hover:hover {
+ -gtk-icon-transform: scale(1.1);
+ }
 `;
 
 const accordionPanelStyle = css`
-  background-color: @theme_bg_color;
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin: 4px 0;
-  transition: background-color 200ms ease, box-shadow 200ms ease;
+ background-color: @theme_bg_color;
+ border-radius: 8px;
+ padding: 12px 16px;
+ margin: 4px 0;
+ transition: background-color 200ms ease, box-shadow 200ms ease;
 
-  &:hover {
-    background-color: alpha(@accent_bg_color, 0.1);
-  }
+ &:hover {
+ background-color: alpha(@accent_bg_color, 0.1);
+ }
 `;
 
 const accordionPanelActiveStyle = css`
-  background-color: alpha(@accent_bg_color, 0.15);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+ background-color: alpha(@accent_bg_color, 0.15);
+ box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 `;
 
 const colorTransitionStyle = css`
-  transition: background-color 500ms ease, color 500ms ease;
-  padding: 16px 24px;
-  border-radius: 8px;
+ transition: background-color 500ms ease, color 500ms ease;
+ padding: 16px 24px;
+ border-radius: 8px;
 `;
 
 const colorBlueStyle = css`background-color: #3584e4; color: white;`;
@@ -103,13 +103,13 @@ const AccordionItem = ({ title, content, isOpen, onToggle }: AccordionItemProps)
         spacing={8}
     >
         <GtkButton cssClasses={["flat"]} onClicked={onToggle}>
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12} hexpand>
+            <GtkBox spacing={12} hexpand>
                 <GtkLabel label={isOpen ? "-" : "+"} cssClasses={["heading"]} widthChars={2} />
                 <GtkLabel label={title} cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
             </GtkBox>
         </GtkButton>
         {isOpen && (
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} marginStart={24} marginTop={8} marginBottom={8}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} marginStart={24} marginTop={8} marginBottom={8}>
                 <GtkLabel label={content} wrap cssClasses={["dim-label"]} halign={Gtk.Align.START} />
             </GtkBox>
         )}
@@ -202,7 +202,7 @@ const CssAccordionDemo = () => {
                     marginStart={20}
                     marginEnd={20}
                 >
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
+                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
                         {colors.map((color) => (
                             <GtkButton
                                 key={color.id}
@@ -227,7 +227,6 @@ const CssAccordionDemo = () => {
 
             <GtkFrame label="Interactive Button States">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={24}
                     marginTop={24}
                     marginBottom={24}
@@ -300,7 +299,7 @@ const CssAccordionDemo = () => {
                     </GtkExpander>
 
                     <GtkExpander label="Another expandable section">
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} marginTop={8}>
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} marginTop={8}>
                             <GtkLabel label="More animated content here." />
                         </GtkBox>
                     </GtkExpander>

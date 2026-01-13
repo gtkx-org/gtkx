@@ -303,7 +303,7 @@ const ImageFilteringDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24}>
+            <GtkBox spacing={24}>
                 <GtkFrame label="Preview">
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -332,13 +332,7 @@ const ImageFilteringDemo = () => {
                             marginStart={12}
                             marginEnd={12}
                         >
-                            <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
-                                adjustment={intensityAdj}
-                                drawValue
-                                digits={1}
-                                hexpand
-                            />
+                            <GtkScale adjustment={intensityAdj} drawValue digits={1} hexpand />
                             <GtkButton
                                 label="Reset"
                                 onClicked={() => intensityAdj.setValue(1)}
@@ -382,7 +376,7 @@ const ImageFilteringDemo = () => {
                             )}
                             {activeFilter === "contrast" && (
                                 <GtkLabel
-                                    label="Contrast: Stretches values away from middle gray. Intensity > 1 increases contrast, < 1 decreases."
+                                    label="Contrast: Stretches values away from middle gray. Intensity> 1 increases contrast, < 1 decreases."
                                     wrap
                                     halign={Gtk.Align.START}
                                     cssClasses={["dim-label"]}
@@ -419,7 +413,6 @@ const ImageFilteringDemo = () => {
 
             <GtkFrame label="Available Filters">
                 <GtkBox
-                    orientation={Gtk.Orientation.HORIZONTAL}
                     spacing={16}
                     marginTop={12}
                     marginBottom={12}
@@ -454,7 +447,7 @@ const ImageFilteringDemo = () => {
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={24}>
+                    <GtkBox spacing={24}>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                             <GtkLabel label="Box Blur (3x3)" cssClasses={["heading"]} halign={Gtk.Align.START} />
                             <GtkLabel
