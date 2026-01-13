@@ -185,11 +185,20 @@ export class FfiTypeWriter {
     }
 
     private buildIntProperties(type: FfiTypeDescriptor): ObjectProperty[] {
-        return [
+        const props: ObjectProperty[] = [
             { name: "type", value: '"int"' },
             { name: "size", value: type.size ?? 32 },
             { name: "unsigned", value: type.unsigned ?? false },
         ];
+
+        if (type.lib) {
+            props.push({ name: "lib", value: `"${type.lib}"` });
+        }
+        if (type.getTypeFn) {
+            props.push({ name: "getTypeFn", value: `"${type.getTypeFn}"` });
+        }
+
+        return props;
     }
 
     private buildFloatProperties(type: FfiTypeDescriptor): ObjectProperty[] {

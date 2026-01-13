@@ -556,6 +556,7 @@ export class GirEnumeration {
     readonly qualifiedName: QualifiedName;
     readonly cType: string;
     readonly members: GirEnumerationMember[];
+    readonly glibGetType?: string;
     readonly doc?: string;
 
     constructor(data: {
@@ -563,12 +564,14 @@ export class GirEnumeration {
         qualifiedName: QualifiedName;
         cType: string;
         members: GirEnumerationMember[];
+        glibGetType?: string;
         doc?: string;
     }) {
         this.name = data.name;
         this.qualifiedName = data.qualifiedName;
         this.cType = data.cType;
         this.members = data.members;
+        this.glibGetType = data.glibGetType;
         this.doc = data.doc;
     }
 

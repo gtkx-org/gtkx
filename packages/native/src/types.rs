@@ -56,7 +56,7 @@ pub use callback::{CallbackTrampoline, CallbackType};
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
 pub use hashtable::HashTableType;
-pub use numeric::{FloatKind, IntegerKind, IntegerPrimitive, NumericPrimitive};
+pub use numeric::{FloatKind, IntegerKind, IntegerPrimitive, IntegerType, NumericPrimitive};
 pub use ref_type::RefType;
 pub use string::StringType;
 
@@ -129,7 +129,7 @@ impl std::str::FromStr for Ownership {
 
 #[derive(Debug, Clone)]
 pub enum Type {
-    Integer(IntegerKind),
+    Integer(IntegerType),
     Float(FloatKind),
     String(StringType),
     Null,
@@ -148,7 +148,7 @@ pub enum Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Integer(kind) => write!(f, "Integer({:?})", kind),
+            Type::Integer(t) => write!(f, "Integer({:?})", t.kind),
             Type::Float(kind) => write!(f, "Float({:?})", kind),
             Type::String(_) => write!(f, "String"),
             Type::Null => write!(f, "Null"),
@@ -177,7 +177,7 @@ impl Type {
             .value(cx);
 
         match ty.as_str() {
-            "int" => Ok(Type::Integer(IntegerKind::from_js_value(cx, value)?)),
+            "int" => Ok(Type::Integer(IntegerType::from_js_value(cx, value)?)),
             "float" => Ok(Type::Float(FloatKind::from_js_value(cx, value)?)),
             "string" => Ok(Type::String(StringType::from_js_value(cx, value)?)),
             "boolean" => Ok(Type::Boolean),
@@ -207,8 +207,8 @@ impl Type {
                 let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
                 Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
             }
-            Type::Integer(int_kind) => {
-                let number = match int_kind {
+            Type::Integer(int_type) => {
+                let number = match int_type.kind {
                     IntegerKind::I32 => ptr as i32 as f64,
                     IntegerKind::U32 => ptr as u32 as f64,
                     IntegerKind::I64 => ptr as i64 as f64,
@@ -266,7 +266,7 @@ impl Type {
 impl From<&Type> for libffi::Type {
     fn from(value: &Type) -> Self {
         match value {
-            Type::Integer(ty) => (*ty).into(),
+            Type::Integer(ty) => ty.into(),
             Type::Float(ty) => (*ty).into(),
             Type::String(ty) => ty.into(),
             Type::Boolean => libffi::Type::u8(),

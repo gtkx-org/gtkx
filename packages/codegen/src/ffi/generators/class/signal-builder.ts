@@ -207,9 +207,14 @@ export class SignalBuilder {
         const filteredParams = filterVarargs(signal.parameters);
         const paramData = this.buildParamData(filteredParams);
 
+        const returnMapped = signal.returnType
+            ? this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership)
+            : null;
+        const returnUnwrapInfo = this.paramWrapWriter.needsReturnUnwrap(returnMapped);
+
         writer.writeLine(`case "${signal.name}": {`);
         writer.indent(() => {
-            this.writeWrappedHandler(writer, paramData);
+            this.writeWrappedHandler(writer, paramData, returnUnwrapInfo.needsUnwrap);
             this.writeCallExpression(writer, signal, paramData);
         });
         writer.writeLine("}");
@@ -230,10 +235,18 @@ export class SignalBuilder {
         });
     }
 
-    private writeWrappedHandler(writer: CodeBlockWriter, paramData: SignalParamData[]): void {
+    private writeWrappedHandler(
+        writer: CodeBlockWriter,
+        paramData: SignalParamData[],
+        needsReturnUnwrap: boolean,
+    ): void {
         writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
         writer.indent(() => {
-            writer.write("return handler(");
+            if (needsReturnUnwrap) {
+                writer.write("const _result = handler(");
+            } else {
+                writer.write("return handler(");
+            }
             writer.newLine();
             writer.indent(() => {
                 writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
@@ -248,6 +261,9 @@ export class SignalBuilder {
                 });
             });
             writer.writeLine(");");
+            if (needsReturnUnwrap) {
+                writer.writeLine("return _result?.handle;");
+            }
         });
         writer.writeLine("};");
     }

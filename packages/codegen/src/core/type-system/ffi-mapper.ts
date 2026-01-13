@@ -403,23 +403,27 @@ export class FfiMapper {
             };
         }
 
-        if (ns.enumerations.has(name)) {
+        const enumeration = ns.enumerations.get(name);
+        if (enumeration) {
             return {
                 kind: "enum",
                 name,
                 namespace,
                 transformedName: toPascalCase(name),
                 isExternal,
+                glibGetType: enumeration.glibGetType,
             };
         }
 
-        if (ns.bitfields.has(name)) {
+        const bitfield = ns.bitfields.get(name);
+        if (bitfield) {
             return {
                 kind: "flags",
                 name,
                 namespace,
                 transformedName: toPascalCase(name),
                 isExternal,
+                glibGetType: bitfield.glibGetType,
             };
         }
 
@@ -506,7 +510,15 @@ export class FfiMapper {
             case "enum":
                 return {
                     ts: qualifiedName,
-                    ffi: FFI_INT32,
+                    ffi: resolved.glibGetType
+                        ? {
+                              type: "int",
+                              size: 32,
+                              unsigned: false,
+                              lib: this.repo.getNamespace(resolved.namespace)?.sharedLibrary,
+                              getTypeFn: resolved.glibGetType,
+                          }
+                        : FFI_INT32,
                     imports,
                     kind: "enum",
                 };
@@ -514,7 +526,15 @@ export class FfiMapper {
             case "flags":
                 return {
                     ts: qualifiedName,
-                    ffi: FFI_UINT32,
+                    ffi: resolved.glibGetType
+                        ? {
+                              type: "int",
+                              size: 32,
+                              unsigned: true,
+                              lib: this.repo.getNamespace(resolved.namespace)?.sharedLibrary,
+                              getTypeFn: resolved.glibGetType,
+                          }
+                        : FFI_UINT32,
                     imports,
                     kind: "flags",
                 };

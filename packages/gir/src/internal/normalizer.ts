@@ -366,6 +366,7 @@ const normalizeEnumeration = (raw: RawEnumeration, currentNamespace: string): Gi
                     doc: m.doc,
                 }),
         ),
+        glibGetType: raw.glibGetType,
         doc: raw.doc,
     });
 };

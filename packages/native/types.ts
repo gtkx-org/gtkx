@@ -6,7 +6,7 @@
  */
 export type NativeHandle = { readonly __brand: "NativeHandle" };
 
-type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned: boolean };
+type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned: boolean; lib?: string; getTypeFn?: string };
 
 type FloatType = { type: "float"; size: 32 | 64 };
 

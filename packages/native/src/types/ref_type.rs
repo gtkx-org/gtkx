@@ -170,8 +170,8 @@ impl ffi::FfiDecode for RefType {
                     NativeValue::Fundamental(fundamental).into(),
                 ))
             }
-            Type::Integer(int_kind) => {
-                let number = int_kind.read_ptr(storage.ptr() as *const u8);
+            Type::Integer(int_type) => {
+                let number = int_type.kind.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
             }
             Type::Float(float_kind) => {

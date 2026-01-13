@@ -109,7 +109,7 @@ impl CallRequest {
                     cif.call::<()>(symbol_ptr, &ffi_args);
                     ffi::FfiValue::Void
                 }
-                Type::Integer(ref int_kind) => int_kind.call_cif(&cif, symbol_ptr, &ffi_args),
+                Type::Integer(ref int_type) => int_type.kind.call_cif(&cif, symbol_ptr, &ffi_args),
                 Type::Float(ref float_kind) => float_kind.call_cif(&cif, symbol_ptr, &ffi_args),
                 Type::String(_) => {
                     let ptr = cif.call::<*const c_char>(symbol_ptr, &ffi_args);

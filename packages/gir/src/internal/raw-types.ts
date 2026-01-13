@@ -241,6 +241,7 @@ export type RawEnumeration = {
     name: string;
     cType: string;
     members: RawEnumerationMember[];
+    glibGetType?: string;
     doc?: string;
 };
 

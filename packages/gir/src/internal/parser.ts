@@ -540,12 +540,16 @@ export class RawGirParser {
         if (!enumerations || !Array.isArray(enumerations)) {
             return [];
         }
-        return enumerations.map((enumeration) => ({
-            name: String(enumeration["@_name"] ?? ""),
-            cType: String(enumeration["@_c:type"] ?? ""),
-            members: this.parseEnumerationMembers(ensureArray(enumeration.member)),
-            doc: extractDoc(enumeration),
-        }));
+        return enumerations.map((enumeration) => {
+            const glibGetType = enumeration["@_glib:get-type"];
+            return {
+                name: String(enumeration["@_name"] ?? ""),
+                cType: String(enumeration["@_c:type"] ?? ""),
+                members: this.parseEnumerationMembers(ensureArray(enumeration.member)),
+                glibGetType: typeof glibGetType === "string" ? glibGetType : undefined,
+                doc: extractDoc(enumeration),
+            };
+        });
     }
 
     private parseEnumerationMembers(members: Record<string, unknown>[]): RawEnumerationMember[] {

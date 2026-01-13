@@ -58,8 +58,8 @@ impl ReadRequest {
         let field_ptr = self.object_id.field_ptr_const(self.offset)?;
 
         match self.field_type {
-            Type::Integer(int_kind) => {
-                let number = int_kind.read_ptr(field_ptr);
+            Type::Integer(int_type) => {
+                let number = int_type.kind.read_ptr(field_ptr);
                 Ok(Value::Number(number))
             }
             Type::Float(float_kind) => {
@@ -159,8 +159,8 @@ impl WriteRequest {
         let field_ptr = self.object_id.field_ptr(self.offset)?;
 
         match (&self.field_type, &self.value) {
-            (Type::Integer(int_kind), Value::Number(n)) => {
-                int_kind.write_ptr(field_ptr, *n);
+            (Type::Integer(int_type), Value::Number(n)) => {
+                int_type.kind.write_ptr(field_ptr, *n);
             }
             (Type::Float(float_kind), Value::Number(n)) => {
                 float_kind.write_ptr(field_ptr, *n);

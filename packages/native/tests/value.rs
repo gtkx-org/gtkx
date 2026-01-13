@@ -520,8 +520,8 @@ fn from_glib_value_integers() {
 
     let gvalue_i32: glib::Value = 42i32.into();
 
-    let int_type = native::types::IntegerKind::I32;
-    let type_ = Type::Integer(int_type);
+    let int_kind = native::types::IntegerKind::I32;
+    let type_ = Type::Integer(int_kind.into());
 
     let result = Value::from_glib_value(&gvalue_i32, &type_);
 
@@ -558,8 +558,8 @@ fn from_glib_value_i8() {
 
     let gvalue: glib::Value = (-42i8).into();
 
-    let int_type = native::types::IntegerKind::I8;
-    let type_ = Type::Integer(int_type);
+    let int_kind = native::types::IntegerKind::I8;
+    let type_ = Type::Integer(int_kind.into());
 
     let result = Value::from_glib_value(&gvalue, &type_);
 
@@ -577,8 +577,8 @@ fn from_glib_value_u8() {
 
     let gvalue: glib::Value = 200u8.into();
 
-    let int_type = native::types::IntegerKind::U8;
-    let type_ = Type::Integer(int_type);
+    let int_kind = native::types::IntegerKind::U8;
+    let type_ = Type::Integer(int_kind.into());
 
     let result = Value::from_glib_value(&gvalue, &type_);
 
@@ -596,8 +596,8 @@ fn from_glib_value_i64() {
 
     let gvalue: glib::Value = (-999999i64).into();
 
-    let int_type = native::types::IntegerKind::I64;
-    let type_ = Type::Integer(int_type);
+    let int_kind = native::types::IntegerKind::I64;
+    let type_ = Type::Integer(int_kind.into());
 
     let result = Value::from_glib_value(&gvalue, &type_);
 
@@ -615,8 +615,8 @@ fn from_glib_value_u64() {
 
     let gvalue: glib::Value = 9999999999u64.into();
 
-    let int_type = native::types::IntegerKind::U64;
-    let type_ = Type::Integer(int_type);
+    let int_kind = native::types::IntegerKind::U64;
+    let type_ = Type::Integer(int_kind.into());
 
     let result = Value::from_glib_value(&gvalue, &type_);
 
@@ -721,8 +721,8 @@ fn from_cif_value_ref_integer() {
     let ptr = int_value.as_raw_ptr();
     let boxed_value = Box::new(int_value);
 
-    let int_type = native::types::IntegerKind::I32;
-    let ref_type = native::types::RefType::new(Type::Integer(int_type));
+    let int_kind = native::types::IntegerKind::I32;
+    let ref_type = native::types::RefType::new(Type::Integer(int_kind.into()));
     let type_ = Type::Ref(ref_type);
 
     let storage = ffi::FfiStorage::new(ptr, ffi::FfiStorageKind::BoxedValue(boxed_value));
@@ -821,9 +821,9 @@ fn into_glib_value_with_default_undefined_boolean() {
 fn into_glib_value_with_default_undefined_integer() {
     common::ensure_gtk_init();
 
-    let int_type = native::types::IntegerKind::I32;
+    let int_kind = native::types::IntegerKind::I32;
     let value = Value::Undefined;
-    let result = value.into_glib_value_with_default(Some(&Type::Integer(int_type)));
+    let result = value.into_glib_value_with_default(Some(&Type::Integer(int_kind.into())));
 
     assert!(result.is_some());
 }

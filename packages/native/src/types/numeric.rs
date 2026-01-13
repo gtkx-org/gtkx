@@ -273,6 +273,10 @@ impl IntegerKind {
         })
     }
 
+    pub fn is_unsigned(self) -> bool {
+        matches!(self, Self::U8 | Self::U16 | Self::U32 | Self::U64)
+    }
+
     pub fn byte_size(self) -> usize {
         match self {
             Self::U8 | Self::I8 => 1,
@@ -413,6 +417,65 @@ impl ffi::FfiEncode for IntegerKind {
 impl ffi::FfiDecode for IntegerKind {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         Ok(value::Value::Number(ffi_value.to_number()?))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IntegerType {
+    pub kind: IntegerKind,
+    pub lib: Option<String>,
+    pub get_type_fn: Option<String>,
+}
+
+impl IntegerType {
+    pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
+        let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
+        let kind = IntegerKind::from_js_value(cx, value)?;
+
+        let lib: Option<String> = obj
+            .get_opt::<JsString, _, _>(cx, "lib")?
+            .map(|h| h.value(cx));
+        let get_type_fn: Option<String> = obj
+            .get_opt::<JsString, _, _>(cx, "getTypeFn")?
+            .map(|h| h.value(cx));
+
+        Ok(IntegerType {
+            kind,
+            lib,
+            get_type_fn,
+        })
+    }
+
+    pub fn is_enum_or_flags(&self) -> bool {
+        self.lib.is_some() && self.get_type_fn.is_some()
+    }
+}
+
+impl From<IntegerKind> for IntegerType {
+    fn from(kind: IntegerKind) -> Self {
+        IntegerType {
+            kind,
+            lib: None,
+            get_type_fn: None,
+        }
+    }
+}
+
+impl From<&IntegerType> for libffi::Type {
+    fn from(value: &IntegerType) -> Self {
+        value.kind.ffi_type()
+    }
+}
+
+impl ffi::FfiEncode for IntegerType {
+    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        self.kind.encode(value, optional)
+    }
+}
+
+impl ffi::FfiDecode for IntegerType {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        self.kind.decode(ffi_value)
     }
 }
 

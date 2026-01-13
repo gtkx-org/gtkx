@@ -15,7 +15,12 @@ use std::ffi::c_void;
 use std::sync::Arc;
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::FromGlibPtrNone as _, translate::ToGlibPtr as _};
+use gtk4::glib::{
+    self,
+    prelude::{ObjectExt as _, ObjectType as _},
+    translate::{FromGlibPtrNone as _, ToGlibPtr as _, ToGlibPtrMut as _},
+    value::ToValue as _,
+};
 use neon::{handle::Root, object::Object as _, prelude::*};
 
 use crate::ffi::FfiDecode;
@@ -129,15 +134,59 @@ impl Value {
                 Some(Type::Undefined) | None => None,
                 _ => None,
             },
-            _ => self.to_glib_value().ok(),
+            _ => self.to_glib_value_typed(return_type).ok(),
         }
     }
 
     pub fn to_glib_value(self) -> anyhow::Result<glib::Value> {
+        self.to_glib_value_typed(None)
+    }
+
+    pub fn to_glib_value_typed(self, expected_type: Option<&Type>) -> anyhow::Result<glib::Value> {
         match self {
-            Value::Number(n) => Ok(n.into()),
+            Value::Number(n) => {
+                if let Some(Type::Integer(int_type)) = expected_type {
+                    if int_type.is_enum_or_flags() {
+                        return Self::number_to_enum_or_flags_value(n, int_type);
+                    }
+                    match int_type.kind {
+                        IntegerKind::I8 => Ok((n as i8).into()),
+                        IntegerKind::U8 => Ok((n as u8).into()),
+                        IntegerKind::I16 => Ok((n as i16 as i32).into()),
+                        IntegerKind::U16 => Ok((n as u16 as u32).into()),
+                        IntegerKind::I32 => Ok((n as i32).into()),
+                        IntegerKind::U32 => Ok((n as u32).into()),
+                        IntegerKind::I64 => Ok((n as i64).into()),
+                        IntegerKind::U64 => Ok((n as u64).into()),
+                    }
+                } else if let Some(Type::Float(float_kind)) = expected_type {
+                    match float_kind {
+                        FloatKind::F32 => Ok((n as f32).into()),
+                        FloatKind::F64 => Ok(n.into()),
+                    }
+                } else {
+                    Ok(n.into())
+                }
+            }
             Value::String(s) => Ok(s.into()),
             Value::Boolean(b) => Ok(b.into()),
+            Value::Object(id) => {
+                if let Some(ptr) = id.get_ptr() {
+                    let obj: glib::Object = unsafe {
+                        glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
+                    };
+                    let mut value = glib::Value::from_type(obj.type_());
+                    unsafe {
+                        glib::gobject_ffi::g_value_set_object(
+                            value.to_glib_none_mut().0,
+                            obj.as_ptr() as *mut _,
+                        );
+                    }
+                    Ok(value)
+                } else {
+                    Ok(Option::<glib::Object>::None.to_value())
+                }
+            }
             Value::Null | Value::Undefined => {
                 bail!("Cannot convert Null/Undefined to glib::Value")
             }
@@ -146,6 +195,35 @@ impl Value {
                 other
             ),
         }
+    }
+
+    fn number_to_enum_or_flags_value(
+        n: f64,
+        int_type: &IntegerType,
+    ) -> anyhow::Result<glib::Value> {
+        let lib_name = int_type
+            .lib
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Missing lib for enum/flags type"))?;
+        let get_type_fn_name = int_type
+            .get_type_fn
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Missing get_type_fn for enum/flags type"))?;
+
+        let gtype = crate::ffi::get_gtype_from_lib(lib_name, get_type_fn_name)?;
+
+        let mut value = glib::Value::from_type(gtype);
+        let is_flags = gtype.is_a(glib::types::Type::FLAGS);
+
+        unsafe {
+            if is_flags {
+                glib::gobject_ffi::g_value_set_flags(value.to_glib_none_mut().0, n as u32);
+            } else {
+                glib::gobject_ffi::g_value_set_enum(value.to_glib_none_mut().0, n as i32);
+            }
+        }
+
+        Ok(value)
     }
 
     pub fn from_js_value<'a, C: Context<'a>>(
@@ -227,12 +305,12 @@ impl Value {
 
     pub fn from_glib_value(gvalue: &glib::Value, ty: &Type) -> anyhow::Result<Self> {
         match ty {
-            Type::Integer(int_kind) => {
+            Type::Integer(int_type) => {
                 let gtype = gvalue.type_();
                 let is_enum = gtype.is_a(glib::types::Type::ENUM);
                 let is_flags = gtype.is_a(glib::types::Type::FLAGS);
 
-                let number = match int_kind {
+                let number = match int_type.kind {
                     IntegerKind::I8 => gvalue
                         .get::<i8>()
                         .map_err(|e| anyhow::anyhow!("Failed to get i8 from GValue: {}", e))?

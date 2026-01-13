@@ -159,7 +159,7 @@ impl ffi::FfiEncode for ArrayType {
         };
 
         match *self.item_type {
-            Type::Integer(ref int_kind) => {
+            Type::Integer(ref int_type) => {
                 let mut values = Vec::new();
 
                 for value in array {
@@ -169,7 +169,9 @@ impl ffi::FfiEncode for ArrayType {
                     }
                 }
 
-                Ok(ffi::FfiValue::Storage(int_kind.to_ffi_storage(&values)))
+                Ok(ffi::FfiValue::Storage(
+                    int_type.kind.to_ffi_storage(&values),
+                ))
             }
             Type::Float(ref float_kind) => {
                 let mut values = Vec::new();
@@ -305,7 +307,7 @@ impl ffi::FfiDecode for ArrayType {
                     }
 
                     if let Type::Integer(int_type) = &*self.item_type {
-                        return Self::decode_sized_byte_array(*ptr, length, int_type);
+                        return Self::decode_sized_byte_array(*ptr, length, &int_type.kind);
                     }
 
                     bail!(
@@ -321,7 +323,7 @@ impl ffi::FfiDecode for ArrayType {
                     }
 
                     if let Type::Integer(int_type) = &*self.item_type {
-                        return Self::decode_sized_byte_array(*ptr, *size, int_type);
+                        return Self::decode_sized_byte_array(*ptr, *size, &int_type.kind);
                     }
 
                     bail!(
@@ -385,8 +387,8 @@ impl ArrayType {
 
     fn decode_storage(&self, storage: &FfiStorage) -> anyhow::Result<value::Value> {
         let values = match &*self.item_type {
-            Type::Integer(int_kind) => {
-                let f64_vec = int_kind.vec_to_f64(storage)?;
+            Type::Integer(int_type) => {
+                let f64_vec = int_type.kind.vec_to_f64(storage)?;
                 f64_vec.into_iter().map(value::Value::Number).collect()
             }
             Type::Float(float_kind) => match float_kind {
@@ -462,16 +464,16 @@ impl ArrayType {
         let arg = &args[length_index];
 
         if let Type::Ref(ref_type) = &arg.ty
-            && let Type::Integer(int_kind) = &*ref_type.inner_type
+            && let Type::Integer(int_type) = &*ref_type.inner_type
         {
             match ffi_arg {
                 ffi::FfiValue::Storage(storage) => {
-                    let length = int_kind.read_ptr(storage.ptr() as *const u8);
+                    let length = int_type.kind.read_ptr(storage.ptr() as *const u8);
                     return Ok(length as usize);
                 }
                 ffi::FfiValue::Ptr(ptr) => {
                     if !ptr.is_null() {
-                        let length = int_kind.read_ptr(*ptr as *const u8);
+                        let length = int_type.kind.read_ptr(*ptr as *const u8);
                         return Ok(length as usize);
                     }
                 }
