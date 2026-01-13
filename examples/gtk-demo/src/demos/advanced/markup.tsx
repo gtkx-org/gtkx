@@ -236,7 +236,7 @@ const MarkupDemo = () => {
 
 export const markupDemo: Demo = {
     id: "markup",
-    title: "Pango Markup",
+    title: "Text View/Markup",
     description: "Rich text formatting with Pango markup",
     keywords: ["pango", "markup", "text", "formatting", "rich text", "html", "label", "styled"],
     component: MarkupDemo,

@@ -462,7 +462,7 @@ On: Round glyph positions to pixel boundaries`}
 
 export const fontRenderingDemo: Demo = {
     id: "fontrendering",
-    title: "Font Rendering",
+    title: "Pango/Font Rendering",
     description: "Explore font rendering options: hinting, antialiasing, and subpixel rendering",
     keywords: ["font", "rendering", "hinting", "antialiasing", "subpixel", "cairo", "pango", "text", "typography"],
     component: FontRenderingDemo,

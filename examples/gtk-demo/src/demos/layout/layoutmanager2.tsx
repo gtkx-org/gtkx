@@ -418,7 +418,7 @@ const LayoutManager2Demo = () => {
 
 export const layoutManager2Demo: Demo = {
     id: "layoutmanager2",
-    title: "Advanced Layout Patterns",
+    title: "Layout Manager/Transformation",
     description: "Animated transitions, responsive breakpoints, and priority allocation",
     keywords: ["layout", "animation", "transition", "responsive", "breakpoint", "priority", "allocation", "adaptive"],
     component: LayoutManager2Demo,

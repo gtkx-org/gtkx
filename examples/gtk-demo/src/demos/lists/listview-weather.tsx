@@ -277,7 +277,7 @@ const ListViewWeatherDemo = () => {
 
 export const listviewWeatherDemo: Demo = {
     id: "listview-weather",
-    title: "Weather Forecast",
+    title: "Lists/Weather",
     description: "ListView showing a weather forecast with rich row content",
     keywords: ["listview", "weather", "forecast", "GtkListView", "data", "rows"],
     component: ListViewWeatherDemo,

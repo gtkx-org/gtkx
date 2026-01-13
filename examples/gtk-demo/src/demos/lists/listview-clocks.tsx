@@ -274,7 +274,7 @@ const ListViewClocksDemo = () => {
 
 export const listviewClocksDemo: Demo = {
     id: "listview-clocks",
-    title: "World Clocks",
+    title: "Lists/Clocks",
     description: "ListView with real-time timezone clock updates",
     keywords: ["listview", "clocks", "timezone", "GtkListView", "useEffect", "interval", "realtime"],
     component: ListViewClocksDemo,

@@ -206,8 +206,9 @@ const FlowBoxDemo = () => {
 
 export const flowboxDemo: Demo = {
     id: "flowbox",
-    title: "FlowBox",
-    description: "Container that reflows children based on available space.",
+    title: "Flow Box",
+    description:
+        "GtkFlowBox allows flexible and responsive grids which reflow as needed and support sorting and filtering. The children of a GtkFlowBox are regular widgets.",
     keywords: ["flowbox", "flow", "grid", "wrap", "responsive", "GtkFlowBox"],
     component: FlowBoxDemo,
     sourceCode,

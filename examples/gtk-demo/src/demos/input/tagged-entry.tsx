@@ -178,7 +178,7 @@ const EmailTagInput = () => {
 
 export const taggedEntryDemo: Demo = {
     id: "tagged-entry",
-    title: "Tagged Entry",
+    title: "Entry/Tagged Entry",
     description: "Entry with tag/chip inputs for multiple values.",
     keywords: ["tag", "chip", "entry", "multi", "input", "tokens"],
     component: TaggedEntryDemo,

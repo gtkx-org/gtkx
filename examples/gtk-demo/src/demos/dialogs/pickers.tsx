@@ -230,7 +230,7 @@ const PickersDemo = () => {
 
 export const pickersDemo: Demo = {
     id: "pickers",
-    title: "Pickers",
+    title: "Pickers and Launchers",
     description: "Color, font, and file picker dialogs",
     keywords: [
         "color",

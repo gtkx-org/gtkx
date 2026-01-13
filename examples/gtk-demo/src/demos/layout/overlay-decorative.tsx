@@ -271,9 +271,9 @@ const OverlayDecorativeDemo = () => {
 
 export const overlayDecorativeDemo: Demo = {
     id: "overlay-decorative",
-    title: "Decorative Overlays",
-    description: "Badges, ribbons, watermarks using GtkOverlay",
-    keywords: ["overlay", "badge", "ribbon", "watermark", "notification", "decorative", "layer"],
+    title: "Overlay/Decorative Overlay",
+    description: "Another example of an overlay with some decorative and some interactive controls.",
+    keywords: ["overlay", "badge", "ribbon", "watermark", "notification", "decorative", "layer", "GtkOverlay"],
     component: OverlayDecorativeDemo,
     sourceCode,
 };

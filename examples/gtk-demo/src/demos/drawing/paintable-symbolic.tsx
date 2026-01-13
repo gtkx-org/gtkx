@@ -238,7 +238,7 @@ Icon naming convention:
 
 export const paintableSymbolicDemo: Demo = {
     id: "paintable-symbolic",
-    title: "Symbolic Icons",
+    title: "Paintable/Symbolic Paintable",
     description: "Symbolic icon paintables that adapt to theme colors",
     keywords: ["paintable", "symbolic", "icon", "GtkIconPaintable", "theme", "monochrome", "adaptive"],
     component: PaintableSymbolicDemo,

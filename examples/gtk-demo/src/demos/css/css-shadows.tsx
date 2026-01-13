@@ -253,7 +253,7 @@ const CssShadowsDemo = () => {
 
 export const cssShadowsDemo: Demo = {
     id: "css-shadows",
-    title: "CSS Shadows",
+    title: "Theming/Shadows",
     description: "Box shadow effects for depth and elevation",
     keywords: ["css", "shadow", "box-shadow", "elevation", "depth", "glow"],
     component: CssShadowsDemo,

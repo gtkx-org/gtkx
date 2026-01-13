@@ -131,9 +131,9 @@ const FixedDemo = () => {
 
 export const fixedDemo: Demo = {
     id: "fixed",
-    title: "Fixed",
-    description: "Container for absolute positioning of widgets at specific coordinates.",
-    keywords: ["fixed", "absolute", "position", "coordinates", "GtkFixed", "FixedChild"],
+    title: "Fixed Layout / Cube",
+    description: "GtkFixed is a container that allows placing and transforming widgets manually.",
+    keywords: ["fixed", "absolute", "position", "coordinates", "GtkFixed", "FixedChild", "GtkLayoutManager"],
     component: FixedDemo,
     sourceCode,
 };

@@ -245,8 +245,8 @@ const OverlayDemo = () => {
 
 export const overlayDemo: Demo = {
     id: "overlay",
-    title: "Overlay",
-    description: "Container that stacks widgets on top of a main child.",
+    title: "Overlay/Interactive Overlay",
+    description: "Shows widgets in static positions over a main widget.",
     keywords: ["overlay", "stack", "badge", "loading", "layer", "GtkOverlay"],
     component: OverlayDemo,
     sourceCode,

@@ -259,7 +259,7 @@ const PaintableSvgDemo = () => {
 
 export const paintableSvgDemo: Demo = {
     id: "paintable-svg",
-    title: "SVG Paintable",
+    title: "Paintable/SVG",
     description: "SVG rendering via GdkTexture",
     keywords: ["paintable", "svg", "vector", "scalable", "graphics", "texture", "librsvg"],
     component: PaintableSvgDemo,

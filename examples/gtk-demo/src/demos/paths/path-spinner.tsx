@@ -317,7 +317,7 @@ const PathSpinnerDemo = () => {
 
 export const pathSpinnerDemo: Demo = {
     id: "path-spinner",
-    title: "Path Spinner",
+    title: "Path/Spinner",
     description: "Path-based loading spinners with animation",
     keywords: ["path", "spinner", "loading", "animation", "arc", "rotation", "progress", "indicator"],
     component: PathSpinnerDemo,

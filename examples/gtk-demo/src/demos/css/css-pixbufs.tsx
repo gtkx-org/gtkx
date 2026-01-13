@@ -212,7 +212,7 @@ const CssPixbufsDemo = () => {
 
 export const cssPixbufsDemo: Demo = {
     id: "css-pixbufs",
-    title: "CSS with Icons",
+    title: "Theming/Animated Backgrounds",
     description: "Using icons and images in CSS backgrounds",
     keywords: ["css", "icon", "pixbuf", "image", "background", "icontheme", "filter"],
     component: CssPixbufsDemo,

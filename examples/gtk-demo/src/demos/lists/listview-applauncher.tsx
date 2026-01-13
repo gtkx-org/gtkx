@@ -337,7 +337,7 @@ const ListViewApplauncherDemo = () => {
 
 export const listviewApplauncherDemo: Demo = {
     id: "listview-applauncher",
-    title: "App Launcher",
+    title: "Lists/Application launcher",
     description: "GridView as an application launcher with icons and categories",
     keywords: ["gridview", "launcher", "apps", "icons", "GtkGridView", "grid", "categories"],
     component: ListViewApplauncherDemo,

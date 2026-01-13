@@ -240,7 +240,7 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
 
 export const paintableDemo: Demo = {
     id: "paintable",
-    title: "Paintable",
+    title: "Paintable/Simple Paintable",
     description: "Custom GdkPaintable implementation with textures",
     keywords: ["paintable", "GdkPaintable", "texture", "GdkTexture", "GdkMemoryTexture", "image", "picture"],
     component: PaintableDemo,

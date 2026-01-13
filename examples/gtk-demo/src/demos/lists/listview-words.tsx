@@ -331,7 +331,7 @@ const ListViewWordsDemo = () => {
 
 export const listviewWordsDemo: Demo = {
     id: "listview-words",
-    title: "Word List",
+    title: "Lists/Words",
     description: "ListView with search filtering and category buttons",
     keywords: ["listview", "words", "dictionary", "GtkListView", "search", "filter", "useMemo"],
     component: ListViewWordsDemo,

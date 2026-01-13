@@ -262,7 +262,7 @@ getLayoutChild() - Get layout properties for a child`}
 
 export const layoutManagerDemo: Demo = {
     id: "layoutmanager",
-    title: "Layout Manager",
+    title: "Layout Manager/Transition",
     description: "Custom layout manager patterns and positioning",
     keywords: ["layout", "manager", "custom", "circular", "grid", "positioning", "measure", "allocate"],
     component: LayoutManagerDemo,

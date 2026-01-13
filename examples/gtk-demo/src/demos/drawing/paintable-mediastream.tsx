@@ -234,7 +234,7 @@ For custom display or multiple views, use GtkPicture with MediaStream.`}
 
 export const paintableMediastreamDemo: Demo = {
     id: "paintable-mediastream",
-    title: "MediaStream Paintable",
+    title: "Paintable/Media Stream",
     description: "Video playback with GtkMediaStream as paintable",
     keywords: [
         "paintable",

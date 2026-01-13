@@ -312,8 +312,9 @@ useEffect(() => {
 
 export const gesturesDemo: Demo = {
     id: "gestures",
-    title: "Touch Gestures",
-    description: "Multi-touch gestures (click, drag, swipe, pinch, rotate)",
+    title: "Gestures",
+    description:
+        "Perform gestures on touchscreens and other input devices. This demo reacts to long presses and swipes from all devices, plus multi-touch rotate and zoom gestures.",
     keywords: [
         "gesture",
         "touch",

@@ -188,7 +188,7 @@ const TextScrollDemo = () => {
 
 export const textscrollDemo: Demo = {
     id: "textscroll",
-    title: "Scrolling Text",
+    title: "Text View/Automatic Scrolling",
     description: "Scrollable text views with GtkScrolledWindow.",
     keywords: ["scroll", "textview", "scrollbar", "GtkScrolledWindow", "overflow"],
     component: TextScrollDemo,

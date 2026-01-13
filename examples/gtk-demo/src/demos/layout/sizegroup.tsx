@@ -208,7 +208,7 @@ const SizeGroupDemo = () => {
 
 export const sizegroupDemo: Demo = {
     id: "sizegroup",
-    title: "Size Synchronization",
+    title: "Size Groups",
     description: "Techniques for making widgets share the same size.",
     keywords: ["sizegroup", "size", "width", "alignment", "homogeneous", "grid"],
     component: SizeGroupDemo,

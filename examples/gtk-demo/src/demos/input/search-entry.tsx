@@ -127,7 +127,7 @@ const SearchEntryDemo = () => {
 
 export const searchEntryDemo: Demo = {
     id: "search-entry",
-    title: "Search Entry",
+    title: "Entry/Search Entry",
     description: "GtkSearchEntry for filtering and searching content.",
     keywords: ["search", "entry", "filter", "GtkSearchEntry", "find"],
     component: SearchEntryDemo,

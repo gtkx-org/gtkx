@@ -358,7 +358,7 @@ const SidebarDemo = () => {
 
 export const sidebarDemo: Demo = {
     id: "sidebar",
-    title: "Sidebar",
+    title: "Stack Sidebar",
     description: "Navigation sidebar patterns with GtkStackSidebar and ListBox.",
     keywords: ["sidebar", "navigation", "menu", "GtkStackSidebar", "ListBox", "panel", "drawer"],
     component: SidebarDemo,

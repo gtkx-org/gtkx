@@ -522,7 +522,7 @@ const GearsDemo = () => {
 
 export const gearsDemo: Demo = {
     id: "gears",
-    title: "Gears",
+    title: "OpenGL/Gears",
     description: "Classic OpenGL gears with animation and lighting",
     keywords: ["opengl", "gl", "gears", "3d", "animation", "lighting", "shading", "classic", "demo"],
     component: GearsDemo,

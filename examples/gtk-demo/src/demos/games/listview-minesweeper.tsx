@@ -338,7 +338,7 @@ const ListViewMinesweeperDemo = () => {
 
 export const listviewMinesweeperDemo: Demo = {
     id: "listview-minesweeper",
-    title: "Minesweeper",
+    title: "Lists/Minesweeper",
     description: "Classic Minesweeper game using GridView",
     keywords: ["gridview", "minesweeper", "game", "GtkGridView", "grid", "puzzle", "mines"],
     component: ListViewMinesweeperDemo,

@@ -312,8 +312,9 @@ Note: For menu accels, use an array: accels={["F5", "<Control>r"]}`}
 
 export const shortcutTriggersDemo: Demo = {
     id: "shortcut-triggers",
-    title: "Shortcut Triggers",
-    description: "Advanced shortcut trigger patterns with GtkShortcutController",
+    title: "Shortcuts",
+    description:
+        "GtkShortcut connects a GtkShortcutTrigger with a GtkShortcutAction to drive app functionality from user events.",
     keywords: [
         "shortcut",
         "trigger",

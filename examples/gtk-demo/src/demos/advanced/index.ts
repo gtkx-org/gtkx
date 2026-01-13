@@ -1,5 +1,4 @@
 import type { Demo } from "../types.js";
-import { browserDemo } from "./browser.js";
 import { fishbowlDemo } from "./fishbowl.js";
 import { fontFeaturesDemo } from "./font-features.js";
 import { fontRenderingDemo } from "./fontrendering.js";
@@ -16,5 +15,4 @@ export const advancedDemos: Demo[] = [
     rotatedTextDemo,
     textmaskDemo,
     transparentDemo,
-    browserDemo,
 ];

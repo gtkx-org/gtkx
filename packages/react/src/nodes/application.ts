@@ -30,11 +30,11 @@ class ApplicationNode extends Node<Gtk.Application> {
             return;
         }
 
-        if (child instanceof WindowNode) {
+        if (child instanceof WindowNode && child.container instanceof Gtk.ApplicationWindow) {
             return;
         }
 
-        throw new Error(`Cannot append '${child.typeName}' to 'Application': expected Window or MenuItem`);
+        throw new Error(`Cannot append '${child.typeName}' to 'Application': expected ApplicationWindow or MenuItem`);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -43,11 +43,11 @@ class ApplicationNode extends Node<Gtk.Application> {
             return;
         }
 
-        if (child instanceof WindowNode) {
+        if (child instanceof WindowNode && child.container instanceof Gtk.ApplicationWindow) {
             return;
         }
 
-        throw new Error(`Cannot insert '${child.typeName}' into 'Application': expected Window or MenuItem`);
+        throw new Error(`Cannot insert '${child.typeName}' into 'Application': expected ApplicationWindow or MenuItem`);
     }
 
     public override removeChild(child: Node): void {
@@ -62,11 +62,11 @@ class ApplicationNode extends Node<Gtk.Application> {
             return;
         }
 
-        if (child instanceof WindowNode) {
+        if (child instanceof WindowNode && child.container instanceof Gtk.ApplicationWindow) {
             return;
         }
 
-        throw new Error(`Cannot remove '${child.typeName}' from 'Application': expected Window or MenuItem`);
+        throw new Error(`Cannot remove '${child.typeName}' from 'Application': expected ApplicationWindow or MenuItem`);
     }
 }
 

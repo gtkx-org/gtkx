@@ -391,7 +391,7 @@ const PathSweepDemo = () => {
 
 export const pathSweepDemo: Demo = {
     id: "path-sweep",
-    title: "Path Sweep",
+    title: "Path/Sweep",
     description: "Animate dash offset for sweep and reveal effects",
     keywords: ["path", "sweep", "dash", "animation", "reveal", "easing", "offset", "stroke"],
     component: PathSweepDemo,

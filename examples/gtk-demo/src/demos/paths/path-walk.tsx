@@ -386,7 +386,7 @@ const PathWalkDemo = () => {
 
 export const pathWalkDemo: Demo = {
     id: "path-walk",
-    title: "Path Walk",
+    title: "Path/Walk",
     description: "Animate objects along paths with tangent rotation",
     keywords: ["path", "walk", "animation", "bezier", "tangent", "rotation", "arc-length", "parameterization"],
     component: PathWalkDemo,

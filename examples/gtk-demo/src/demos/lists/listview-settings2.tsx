@@ -375,7 +375,7 @@ const ListViewSettings2Demo = () => {
 
 export const listviewSettings2Demo: Demo = {
     id: "listview-settings2",
-    title: "Settings Tree",
+    title: "Lists/Alternative Settings",
     description: "TreeListView with expandable categories using GtkTreeExpander",
     keywords: ["treelistview", "treelistmodel", "settings", "tree", "expander", "hierarchical"],
     component: ListViewSettings2Demo,

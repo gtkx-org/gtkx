@@ -241,7 +241,7 @@ const ListViewColorsDemo = () => {
 
 export const listviewColorsDemo: Demo = {
     id: "listview-colors",
-    title: "Color Palette",
+    title: "Lists/Colors",
     description: "ListView showing a color palette browser with search and filtering",
     keywords: ["listview", "colors", "palette", "GtkListView", "search", "filter"],
     component: ListViewColorsDemo,

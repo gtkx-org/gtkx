@@ -311,7 +311,7 @@ const ListViewUcdDemo = () => {
 
 export const listviewUcdDemo: Demo = {
     id: "listview-ucd",
-    title: "Unicode Browser",
+    title: "Lists/Characters",
     description: "Unicode character database browser with grid and list views",
     keywords: ["listview", "unicode", "characters", "GtkListView", "GtkGridView", "ucd", "codepoint"],
     component: ListViewUcdDemo,

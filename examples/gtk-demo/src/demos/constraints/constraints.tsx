@@ -474,9 +474,10 @@ Text: BASELINE`}
 
 export const constraintsDemo: Demo = {
     id: "constraints",
-    title: "Constraints",
-    description: "Introduction to constraint-based layout using GtkConstraintLayout.",
-    keywords: ["constraint", "layout", "GtkConstraintLayout", "GtkConstraint", "positioning", "alignment", "centering"],
+    title: "Constraints/Simple Constraints",
+    description:
+        "GtkConstraintLayout provides a layout manager that uses relations between widgets (also known as \"constraints\") to compute the position and size of each child.",
+    keywords: ["constraint", "layout", "GtkConstraintLayout", "GtkConstraint", "positioning", "alignment", "centering", "GtkLayoutManager"],
     component: ConstraintsDemo,
     sourceCode,
 };

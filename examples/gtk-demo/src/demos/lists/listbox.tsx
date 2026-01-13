@@ -256,7 +256,7 @@ const ListBoxDemo = () => {
 
 export const listboxDemo: Demo = {
     id: "listbox",
-    title: "ListBox",
+    title: "List Box/Complex",
     description: "Vertical list container with selectable rows and custom content",
     keywords: ["listbox", "list", "rows", "selection", "GtkListBox", "GtkListBoxRow"],
     component: ListBoxDemo,

@@ -135,7 +135,7 @@ const SpinButtonDemo = () => {
 
 export const spinbuttonDemo: Demo = {
     id: "spinbutton",
-    title: "Spin Button",
+    title: "Spin Buttons",
     description: "Numeric input with increment/decrement buttons",
     keywords: ["spin", "number", "input", "numeric", "GtkSpinButton", "integer", "float", "time"],
     component: SpinButtonDemo,

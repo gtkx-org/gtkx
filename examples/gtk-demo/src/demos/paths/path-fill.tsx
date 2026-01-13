@@ -236,7 +236,7 @@ const PathFillDemo = () => {
 
 export const pathFillDemo: Demo = {
     id: "path-fill",
-    title: "Path Fills",
+    title: "Path/Fill and Stroke",
     description: "Vector path fills with gradients and fill rules",
     keywords: ["path", "fill", "gradient", "linear", "radial", "even-odd", "winding", "vector", "cairo"],
     component: PathFillDemo,

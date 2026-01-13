@@ -110,7 +110,7 @@ Ctrl+Shift+Z or Ctrl+Y: Redo`}
 
 export const entryUndoDemo: Demo = {
     id: "entry-undo",
-    title: "Entry Undo",
+    title: "Entry/Undo and Redo",
     description: "GtkEntry with undo/redo functionality.",
     keywords: ["entry", "undo", "redo", "history", "GtkEntry", "enableUndo"],
     component: EntryUndoDemo,

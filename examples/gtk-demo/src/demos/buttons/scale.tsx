@@ -112,7 +112,7 @@ const ScaleDemo = () => {
 
 export const scaleDemo: Demo = {
     id: "scale",
-    title: "Scale",
+    title: "Scales",
     description: "Slider widget for selecting numeric values",
     keywords: ["scale", "slider", "range", "GtkScale", "horizontal", "vertical", "marks", "value"],
     component: ScaleDemo,

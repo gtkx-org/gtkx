@@ -413,7 +413,7 @@ const PathExplorerDemo = () => {
 
 export const pathExplorerDemo: Demo = {
     id: "path-explorer",
-    title: "Path Explorer",
+    title: "Path/Path Explorer",
     description: "Interactive bezier path editor with drag handles",
     keywords: ["path", "editor", "bezier", "interactive", "drag", "control", "points", "handles", "curves"],
     component: PathExplorerDemo,

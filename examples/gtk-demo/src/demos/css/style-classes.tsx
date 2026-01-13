@@ -287,7 +287,7 @@ const StyleClassesDemo = () => {
 
 export const styleClassesDemo: Demo = {
     id: "style-classes",
-    title: "Adwaita CSS Classes",
+    title: "Theming/Style Classes",
     description: "Built-in Adwaita styling classes for widgets",
     keywords: ["css", "classes", "adwaita", "typography", "buttons", "style"],
     component: StyleClassesDemo,

@@ -1,29 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkExpander,
-    GtkLabel,
-    GtkListBox,
-    GtkListBoxRow,
-    GtkScrolledWindow,
-    GtkSearchEntry,
-} from "@gtkx/react";
+import { GtkBox, GtkExpander, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react";
 import { useDemo } from "../context/demo-context.js";
 
 export const Sidebar = () => {
-    const { filteredCategories, currentDemo, setCurrentDemo, searchQuery, setSearchQuery } = useDemo();
+    const { filteredCategories, currentDemo, setCurrentDemo } = useDemo();
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["sidebar"]}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} marginStart={8} marginEnd={8} marginTop={8} marginBottom={8}>
-                <GtkSearchEntry
-                    placeholderText="Search demos..."
-                    text={searchQuery}
-                    onSearchChanged={(entry: Gtk.SearchEntry) => setSearchQuery(entry.getText())}
-                    hexpand
-                />
-            </GtkBox>
-
             <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["navigation-sidebar"]}>
                     {filteredCategories.map((category) => (

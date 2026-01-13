@@ -270,7 +270,7 @@ const ScrollingDemo = () => {
 
 export const scrollingDemo: Demo = {
     id: "scrolling",
-    title: "Benchmark: Scrolling",
+    title: "Benchmark/Scrolling",
     description: "Stress test scrolling performance with various content types",
     keywords: ["benchmark", "scrolling", "performance", "fps", "stress test", "GtkScrolledWindow"],
     component: ScrollingDemo,

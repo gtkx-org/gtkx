@@ -471,7 +471,7 @@ const MazeDemo = () => {
 
 export const pathMazeDemo: Demo = {
     id: "path-maze",
-    title: "Maze Solving",
+    title: "Path/Maze",
     description: "Maze generation and pathfinding visualization",
     keywords: ["maze", "pathfinding", "bfs", "astar", "algorithm", "generation", "animation", "recursive"],
     component: MazeDemo,

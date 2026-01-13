@@ -186,7 +186,7 @@ const ThemesDemo = () => {
 
 export const themesDemo: Demo = {
     id: "themes",
-    title: "Benchmark: Themes",
+    title: "Benchmark/Themes",
     description: "Stress test theme switching performance",
     keywords: ["benchmark", "themes", "performance", "fps", "stress test", "dark mode"],
     component: ThemesDemo,

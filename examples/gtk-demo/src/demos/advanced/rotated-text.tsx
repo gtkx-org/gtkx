@@ -181,7 +181,7 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
 
 export const rotatedTextDemo: Demo = {
     id: "rotated-text",
-    title: "Rotated Text",
+    title: "Pango/Rotated Text",
     description: "Text with rotation and transformation",
     keywords: ["text", "rotate", "transform", "cairo", "pango", "drawing", "graphics"],
     component: RotatedTextDemo,

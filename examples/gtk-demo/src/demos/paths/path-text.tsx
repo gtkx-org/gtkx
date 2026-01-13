@@ -302,7 +302,7 @@ const PathTextDemo = () => {
 
 export const pathTextDemo: Demo = {
     id: "path-text",
-    title: "Text on Path",
+    title: "Path/Text",
     description: "Position text glyphs along curved paths",
     keywords: ["path", "text", "curve", "bezier", "circle", "spiral", "wave", "glyphs", "typography"],
     component: PathTextDemo,

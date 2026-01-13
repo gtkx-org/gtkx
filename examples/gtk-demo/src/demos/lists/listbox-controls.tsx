@@ -242,7 +242,7 @@ const ListBoxControlsDemo = () => {
 
 export const listboxControlsDemo: Demo = {
     id: "listbox-controls",
-    title: "ListBox with Controls",
+    title: "List Box/Controls",
     description: "List rows with inline switches, checkboxes, and sliders",
     keywords: ["listbox", "settings", "switch", "checkbox", "controls", "GtkListBox", "GtkSwitch"],
     component: ListBoxControlsDemo,

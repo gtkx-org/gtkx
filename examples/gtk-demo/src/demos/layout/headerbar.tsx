@@ -173,9 +173,10 @@ const HeaderBarDemo = () => {
 
 export const headerbarDemo: Demo = {
     id: "headerbar",
-    title: "HeaderBar",
-    description: "Container for title bar with controls at start, center, and end.",
-    keywords: ["headerbar", "title", "titlebar", "window", "navigation", "GtkHeaderBar"],
+    title: "Header Bar",
+    description:
+        "GtkHeaderBar is a container that is suitable for implementing window titlebars. One of its features is that it can position a title centered with regard to the full width, regardless of variable-width content at the left or right.",
+    keywords: ["headerbar", "title", "titlebar", "window", "navigation", "GtkHeaderBar", "GtkWindowHandle", "GtkWindowControls"],
     component: HeaderBarDemo,
     sourceCode,
 };

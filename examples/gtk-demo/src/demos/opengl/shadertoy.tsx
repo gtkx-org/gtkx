@@ -535,7 +535,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)`}
 
 export const shadertoyDemo: Demo = {
     id: "shadertoy",
-    title: "Shadertoy",
+    title: "OpenGL/Shadertoy",
     description: "GLSL shader playground with live editing",
     keywords: ["opengl", "gl", "shader", "glsl", "shadertoy", "fragment", "live", "editor", "creative"],
     component: ShadertoyDemo,

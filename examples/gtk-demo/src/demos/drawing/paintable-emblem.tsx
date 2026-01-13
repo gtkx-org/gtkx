@@ -300,7 +300,7 @@ Common emblem icons:
 
 export const paintableEmblemDemo: Demo = {
     id: "paintable-emblem",
-    title: "Icon Emblems",
+    title: "Paintable/Emblems",
     description: "Overlay badges on icons using GtkOverlay",
     keywords: ["paintable", "emblem", "overlay", "badge", "icon", "status", "GtkOverlay", "folder"],
     component: PaintableEmblemDemo,

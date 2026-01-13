@@ -425,7 +425,7 @@ setAllowAsync(true) - Enable async printing`}
 
 export const printingDemo: Demo = {
     id: "printing",
-    title: "Printing",
+    title: "Printing/Printing",
     description: "Print dialog and document printing with GtkPrintOperation",
     keywords: ["print", "printing", "dialog", "GtkPrintOperation", "pdf", "export", "preview", "page", "document"],
     component: PrintingDemo,

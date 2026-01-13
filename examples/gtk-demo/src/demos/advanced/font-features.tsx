@@ -191,7 +191,7 @@ const FontFeaturesDemo = () => {
 
 export const fontFeaturesDemo: Demo = {
     id: "font-features",
-    title: "Font Features",
+    title: "Pango/Font Explorer",
     description: "OpenType font features demonstration",
     keywords: ["font", "opentype", "typography", "ligatures", "small caps", "figures", "pango"],
     component: FontFeaturesDemo,

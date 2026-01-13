@@ -203,7 +203,7 @@ export type MenuItemProps = {
     label: string;
     /** Callback when the item is activated */
     onActivate: () => void;
-    /** Keyboard accelerator(s) (e.g., "\<Control\>q") */
+    /** Keyboard accelerator(s) (e.g., `<Control>q`) */
     accels?: string | string[];
 };
 

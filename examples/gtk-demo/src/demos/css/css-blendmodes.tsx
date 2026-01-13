@@ -189,7 +189,7 @@ const CssBlendmodesDemo = () => {
 
 export const cssBlendmodesDemo: Demo = {
     id: "css-blendmodes",
-    title: "CSS Blend Modes",
+    title: "Theming/CSS Blend Modes",
     description: "Demonstrate CSS blend modes for compositing effects",
     keywords: ["css", "blend", "mode", "multiply", "screen", "overlay", "compositing", "mix-blend-mode"],
     component: CssBlendmodesDemo,

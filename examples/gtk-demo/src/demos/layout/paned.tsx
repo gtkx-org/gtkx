@@ -183,8 +183,9 @@ const PanedDemo = () => {
 
 export const panedDemo: Demo = {
     id: "paned",
-    title: "Paned",
-    description: "Resizable split container with draggable divider.",
+    title: "Paned Widgets",
+    description:
+        "The GtkPaned Widget divides its content area into two panes with a divider in between that the user can adjust. A separate child is placed into each pane. GtkPaned widgets can be split horizontally or vertically.",
     keywords: ["paned", "split", "resize", "divider", "sidebar", "GtkPaned"],
     component: PanedDemo,
     sourceCode,

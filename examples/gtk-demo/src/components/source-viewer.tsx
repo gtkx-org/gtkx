@@ -52,10 +52,6 @@ export const SourceViewer = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand hexpand>
-            <GtkBox marginTop={12} marginBottom={8} marginStart={12} marginEnd={12}>
-                <GtkLabel label="Source Code" halign={Gtk.Align.START} cssClasses={["heading"]} />
-            </GtkBox>
-
             <GtkScrolledWindow vexpand hexpand>
                 <GtkSourceView
                     buffer={buffer}

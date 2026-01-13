@@ -371,7 +371,7 @@ getPageHeight(unit) - Height minus margins`}
 
 export const pageSetupDemo: Demo = {
     id: "pagesetup",
-    title: "Page Setup",
+    title: "Printing/Page Setup",
     description: "Page setup dialog with paper size and margin configuration",
     keywords: [
         "page",

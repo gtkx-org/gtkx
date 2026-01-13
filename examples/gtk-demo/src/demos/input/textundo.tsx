@@ -148,7 +148,7 @@ buffer.endUserAction() - End grouping edits`}
 
 export const textundoDemo: Demo = {
     id: "textundo",
-    title: "Text Undo",
+    title: "Text View/Undo and Redo",
     description: "TextView with built-in undo/redo support.",
     keywords: ["textview", "undo", "redo", "history", "GtkTextBuffer", "edit"],
     component: TextUndoDemo,

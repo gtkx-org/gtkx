@@ -180,7 +180,7 @@ const CssMultiplebgsDemo = () => {
 
 export const cssMultiplebgsDemo: Demo = {
     id: "css-multiplebgs",
-    title: "Multiple Backgrounds",
+    title: "Theming/Multiple Backgrounds",
     description: "Stack multiple CSS background layers",
     keywords: ["css", "background", "gradient", "layers", "multiple", "radial", "linear"],
     component: CssMultiplebgsDemo,

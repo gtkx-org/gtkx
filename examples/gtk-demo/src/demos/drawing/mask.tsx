@@ -396,7 +396,7 @@ XOR - Combine non-overlapping regions`}
 
 export const maskDemo: Demo = {
     id: "mask",
-    title: "Masking Effects",
+    title: "Masking",
     description: "Alpha masks, gradient masks, and image-based masks with Cairo",
     keywords: ["mask", "alpha", "clip", "gradient", "cairo", "compositing", "transparency", "feather"],
     component: MaskDemo,

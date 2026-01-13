@@ -302,7 +302,7 @@ setOperator(cr, operator) - Control blending mode`}
 
 export const transparentDemo: Demo = {
     id: "transparent",
-    title: "Transparency",
+    title: "Overlay/Transparency",
     description: "Transparent and translucent windows with RGBA visuals",
     keywords: ["transparent", "translucent", "rgba", "alpha", "opacity", "window", "cairo", "blending"],
     component: TransparentDemo,

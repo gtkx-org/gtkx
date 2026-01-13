@@ -180,9 +180,10 @@ const DialogDemo = () => {
 
 export const dialogDemo: Demo = {
     id: "dialog",
-    title: "Dialog",
-    description: "Modal dialogs with response buttons",
-    keywords: ["dialog", "modal", "alert", "confirm", "message", "AdwAlertDialog", "response", "button"],
+    title: "Dialogs",
+    description:
+        "A dialog is a transient window that appears in response to some user action. This demo shows modal dialogs with response buttons.",
+    keywords: ["dialog", "modal", "alert", "confirm", "message", "AdwAlertDialog", "response", "button", "GtkDialog"],
     component: DialogDemo,
     sourceCode,
 };

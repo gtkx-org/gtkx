@@ -196,7 +196,7 @@ function hexToRgb(hex: string): [number, number, number] {
 
 export const textmaskDemo: Demo = {
     id: "textmask",
-    title: "Text Mask",
+    title: "Pango/Text Mask",
     description: "Text masking with gradient fills",
     keywords: ["text", "mask", "clip", "gradient", "cairo", "pango", "effects"],
     component: TextmaskDemo,

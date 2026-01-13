@@ -488,8 +488,9 @@ const ConstraintsBuilderDemo = () => {
 
 export const constraintsBuilderDemo: Demo = {
     id: "constraints-builder",
-    title: "Building Constraints",
-    description: "Programmatically create constraints with multipliers, constants, and strengths.",
+    title: "Constraints/Builder",
+    description:
+        "GtkConstraintLayouts can be created in .ui files, and constraints can be set up at that time as well, as this example demonstrates.",
     keywords: [
         "constraint",
         "builder",

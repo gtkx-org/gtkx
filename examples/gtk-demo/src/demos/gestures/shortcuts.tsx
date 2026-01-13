@@ -263,8 +263,9 @@ const ShortcutsDemo = () => {
 
 export const shortcutsDemo: Demo = {
     id: "shortcuts",
-    title: "Keyboard Shortcuts",
-    description: "Keyboard accelerators and mnemonics",
+    title: "Shortcuts Window",
+    description:
+        "GtkShortcutsWindow is a window that shows various application shortcuts in a structured way. The shortcuts that are shown are typically gathered from accelerators added to actions, widgets, etc.",
     keywords: [
         "keyboard",
         "shortcut",

@@ -257,7 +257,7 @@ const ListViewSelectionsDemo = () => {
 
 export const listviewSelectionsDemo: Demo = {
     id: "listview-selections",
-    title: "Selection Modes",
+    title: "Lists/Selections",
     description: "ListView demonstrating NONE, SINGLE, BROWSE, and MULTIPLE selection modes",
     keywords: ["listview", "selection", "GtkListView", "single", "multiple", "browse", "none"],
     component: ListViewSelectionsDemo,

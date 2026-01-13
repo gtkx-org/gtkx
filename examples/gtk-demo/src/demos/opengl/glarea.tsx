@@ -265,7 +265,7 @@ onResize: Handle viewport changes`}
 
 export const glareaDemo: Demo = {
     id: "glarea",
-    title: "GL Area",
+    title: "OpenGL/OpenGL Area",
     description: "Basic OpenGL rendering with GtkGLArea",
     keywords: ["opengl", "gl", "glarea", "GtkGLArea", "3d", "graphics", "shader", "triangle", "rendering"],
     component: GLAreaDemo,

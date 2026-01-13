@@ -167,7 +167,7 @@ const TextViewDemo = () => {
 
 export const textviewDemo: Demo = {
     id: "textview",
-    title: "TextView",
+    title: "Text View/Multiple Views",
     description: "Multi-line text editor with GtkTextBuffer.",
     keywords: ["textview", "text", "editor", "multiline", "GtkTextView", "buffer"],
     component: TextViewDemo,

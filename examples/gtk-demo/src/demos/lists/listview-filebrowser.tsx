@@ -423,7 +423,7 @@ const ListViewFilebrowserDemo = () => {
 
 export const listviewFilebrowserDemo: Demo = {
     id: "listview-filebrowser",
-    title: "File Browser",
+    title: "Lists/File browser",
     description: "ListView as a file browser with directory navigation",
     keywords: ["listview", "files", "browser", "GtkListView", "directories", "navigation", "tree"],
     component: ListViewFilebrowserDemo,

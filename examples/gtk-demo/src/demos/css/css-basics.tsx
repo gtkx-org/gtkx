@@ -159,7 +159,7 @@ const CssBasicsDemo = () => {
 
 export const cssBasicsDemo: Demo = {
     id: "css-basics",
-    title: "CSS Basics",
+    title: "Theming/CSS Basics",
     description: "Live CSS editor to explore GTK styling",
     keywords: ["css", "style", "theme", "emotion", "css-in-js"],
     component: CssBasicsDemo,

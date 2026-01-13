@@ -347,9 +347,9 @@ perspective(depth) - Apply perspective`}
 
 export const fixed2Demo: Demo = {
     id: "fixed2",
-    title: "Fixed with Transforms",
-    description: "Fixed layout with GskTransform for rotation, scaling, and positioning",
-    keywords: ["fixed", "transform", "rotation", "scale", "position", "GskTransform", "z-order", "3D"],
+    title: "Fixed Layout / Transformations",
+    description: "GtkFixed is a container that allows placing and transforming widgets manually.",
+    keywords: ["fixed", "transform", "rotation", "scale", "position", "GskTransform", "z-order", "3D", "GtkLayoutManager"],
     component: Fixed2Demo,
     sourceCode,
 };

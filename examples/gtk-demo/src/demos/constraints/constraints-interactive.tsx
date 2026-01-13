@@ -438,8 +438,8 @@ const ConstraintsInteractiveDemo = () => {
 
 export const constraintsInteractiveDemo: Demo = {
     id: "constraints-interactive",
-    title: "Interactive Constraints",
-    description: "Visual constraint editor with real-time updates and drag handles.",
+    title: "Constraints/Interactive Constraints",
+    description: "This example shows how constraints can be updated during user interaction.",
     keywords: ["constraint", "interactive", "editor", "visual", "drag", "real-time", "GtkConstraintLayout"],
     component: ConstraintsInteractiveDemo,
     sourceCode,

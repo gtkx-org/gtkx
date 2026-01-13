@@ -207,7 +207,7 @@ const HypertextDemo = () => {
 
 export const hypertextDemo: Demo = {
     id: "hypertext",
-    title: "Hypertext",
+    title: "Text View/Hypertext",
     description: "Clickable links within text using GtkTextTag",
     keywords: ["text", "link", "hypertext", "url", "clickable", "GtkTextTag", "GtkTextView"],
     component: HypertextDemo,

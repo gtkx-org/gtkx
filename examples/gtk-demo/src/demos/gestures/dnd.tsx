@@ -196,7 +196,7 @@ const DndDemo = () => {
 
 export const dndDemo: Demo = {
     id: "dnd",
-    title: "Drag and Drop",
+    title: "Drag-and-Drop",
     description: "Declarative drag and drop with onDragPrepare, onDrop, and related props",
     keywords: ["drag", "drop", "dnd", "GtkDragSource", "GtkDropTarget", "transfer", "move", "copy"],
     component: DndDemo,

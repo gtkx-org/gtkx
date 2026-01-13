@@ -297,7 +297,7 @@ const PaintableAnimatedDemo = () => {
 
 export const paintableAnimatedDemo: Demo = {
     id: "paintable-animated",
-    title: "Animated Paintable",
+    title: "Paintable/Animated Paintable",
     description: "Animated textures with frame updates",
     keywords: ["paintable", "animation", "texture", "procedural", "plasma", "wave", "spiral", "frame"],
     component: PaintableAnimatedDemo,

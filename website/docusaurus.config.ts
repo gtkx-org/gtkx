@@ -16,8 +16,16 @@ const config: Config = {
     onBrokenLinks: "throw",
 
     markdown: {
+        format: "detect",
         hooks: {
             onBrokenMarkdownLinks: "warn",
+        },
+        parseFrontMatter: async (params) => {
+            const result = await params.defaultParseFrontMatter(params);
+            if (params.filePath.includes("/api/")) {
+                result.frontMatter.format = "md";
+            }
+            return result;
         },
     },
 
@@ -41,8 +49,6 @@ const config: Config = {
                 typeDeclarationFormat: "table",
                 groupOrder: ["Functions", "Variables", "Interfaces", "*"],
                 excludeInternal: true,
-                useCodeBlocks: true,
-                sanitizeComments: true,
             },
         ],
         [
@@ -58,8 +64,6 @@ const config: Config = {
                 enumMembersFormat: "table",
                 typeDeclarationFormat: "table",
                 groupOrder: ["Functions", "Variables", "Interfaces", "*"],
-                useCodeBlocks: true,
-                sanitizeComments: true,
             },
         ],
         [
@@ -75,8 +79,6 @@ const config: Config = {
                 enumMembersFormat: "table",
                 typeDeclarationFormat: "table",
                 groupOrder: ["Functions", "Variables", "Interfaces", "*"],
-                useCodeBlocks: true,
-                sanitizeComments: true,
             },
         ],
         [
@@ -92,8 +94,6 @@ const config: Config = {
                 enumMembersFormat: "table",
                 typeDeclarationFormat: "table",
                 groupOrder: ["Functions", "Variables", "Interfaces", "*"],
-                useCodeBlocks: true,
-                sanitizeComments: true,
             },
         ],
     ],

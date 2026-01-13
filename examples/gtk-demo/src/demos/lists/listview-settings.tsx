@@ -337,7 +337,7 @@ const ListViewSettingsDemo = () => {
 
 export const listviewSettingsDemo: Demo = {
     id: "listview-settings",
-    title: "Settings Page",
+    title: "Lists/Settings",
     description: "ListView styled as a settings page with toggle switches",
     keywords: ["listview", "settings", "GtkListView", "switch", "preferences", "toggle"],
     component: ListViewSettingsDemo,

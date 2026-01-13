@@ -130,7 +130,7 @@ const PasswordEntryDemo = () => {
 
 export const passwordEntryDemo: Demo = {
     id: "password-entry",
-    title: "Password Entry",
+    title: "Entry/Password Entry",
     description: "Secure password input with peek icon and strength indicator.",
     keywords: ["password", "entry", "secure", "input", "GtkPasswordEntry", "peek"],
     component: PasswordEntryDemo,

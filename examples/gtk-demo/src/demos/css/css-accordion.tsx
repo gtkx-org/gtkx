@@ -321,7 +321,7 @@ const CssAccordionDemo = () => {
 
 export const cssAccordionDemo: Demo = {
     id: "css-accordion",
-    title: "CSS Transitions",
+    title: "Theming/CSS Accordion",
     description: "Smooth animations with CSS transitions",
     keywords: ["css", "transition", "animation", "accordion", "timing", "ease"],
     component: CssAccordionDemo,
