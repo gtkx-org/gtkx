@@ -52,19 +52,30 @@ export class PropertyAnalyzer {
             setter = `set${camelName.charAt(0).toUpperCase()}${camelName.slice(1)}`;
         }
 
+        const isNullable = prop.type.nullable || this.inferNullabilityFromGetter(prop.getter, cls);
+
         return {
             name: prop.name,
             camelName: toCamelCase(prop.name),
             type: qualifyType(typeMapping.ts, namespace),
             isRequired: requiredParams.has(prop.name) || requiredParams.has(kebabToSnake(prop.name)),
             isWritable: prop.writable,
-            isNullable: prop.type.nullable,
+            isNullable,
             getter,
             setter,
             doc: prop.doc,
             referencedNamespaces: collectExternalNamespaces(typeMapping.imports),
             hasSyntheticSetter: needsSyntheticSetter && this.canGenerateSyntheticSetter(prop),
         };
+    }
+
+    private inferNullabilityFromGetter(getterName: string | undefined, cls: GirClass): boolean {
+        if (!getterName) return false;
+
+        const method = cls.findMethod(getterName);
+        if (!method) return false;
+
+        return method.returnType.nullable;
     }
 
     private canGenerateSyntheticSetter(prop: GirProperty): boolean {
