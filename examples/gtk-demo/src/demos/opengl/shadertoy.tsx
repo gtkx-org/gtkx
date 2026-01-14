@@ -1,7 +1,7 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
-import * as GtkSource from "@gtkx/ffi/gtksource";
+import type * as GtkSource from "@gtkx/ffi/gtksource";
 import {
     GtkBox,
     GtkButton,
@@ -13,7 +13,7 @@ import {
     GtkSourceView,
     x,
 } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shadertoy.tsx?raw";
 
@@ -226,22 +226,7 @@ const ShadertoyDemo = () => {
     const startTimeRef = useRef(Date.now());
     const timeRef = useRef(0);
 
-    const buffer = useMemo(() => {
-        const buf = new GtkSource.Buffer();
-        const langManager = GtkSource.LanguageManager.getDefault();
-        const language = langManager.getLanguage("glsl");
-        if (language) {
-            buf.setLanguage(language);
-        }
-        const schemeManager = GtkSource.StyleSchemeManager.getDefault();
-        const scheme = schemeManager.getScheme("Adwaita-dark");
-        if (scheme) {
-            buf.setStyleScheme(scheme);
-        }
-        buf.setHighlightSyntax(true);
-        buf.setText(shaderCode, -1);
-        return buf;
-    }, [shaderCode]);
+    const sourceViewRef = useRef<GtkSource.View | null>(null);
 
     useEffect(() => {
         if (!isAnimating) return;
@@ -382,6 +367,12 @@ const ShadertoyDemo = () => {
     }, []);
 
     const handleCompile = useCallback(() => {
+        const sourceView = sourceViewRef.current;
+        if (!sourceView) return;
+
+        const buffer = sourceView.getBuffer();
+        if (!buffer) return;
+
         const start = new Gtk.TextIter();
         const end = new Gtk.TextIter();
         buffer.getStartIter(start);
@@ -389,19 +380,22 @@ const ShadertoyDemo = () => {
         const text = buffer.getText(start, end, false);
         setShaderCode(text);
         setCompiledCode(text);
-    }, [buffer]);
+    }, []);
 
-    const loadPreset = useCallback(
-        (preset: (typeof SHADER_PRESETS)[0]) => {
-            buffer.setText(preset.code, -1);
-            setShaderCode(preset.code);
-            setCompiledCode(preset.code);
-            startTimeRef.current = Date.now();
-            timeRef.current = 0;
-            setDisplayTime(0);
-        },
-        [buffer],
-    );
+    const loadPreset = useCallback((preset: (typeof SHADER_PRESETS)[0]) => {
+        const sourceView = sourceViewRef.current;
+        if (!sourceView) return;
+
+        const buffer = sourceView.getBuffer();
+        if (!buffer) return;
+
+        buffer.setText(preset.code, -1);
+        setShaderCode(preset.code);
+        setCompiledCode(preset.code);
+        startTimeRef.current = Date.now();
+        timeRef.current = 0;
+        setDisplayTime(0);
+    }, []);
 
     const handleReset = useCallback(() => {
         startTimeRef.current = Date.now();
@@ -446,7 +440,7 @@ const ShadertoyDemo = () => {
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} widthRequest={400}>
                                 <GtkScrolledWindow vexpand hexpand heightRequest={300}>
                                     <GtkSourceView
-                                        buffer={buffer}
+                                        ref={sourceViewRef}
                                         showLineNumbers
                                         highlightCurrentLine
                                         tabWidth={4}
@@ -455,7 +449,9 @@ const ShadertoyDemo = () => {
                                         topMargin={8}
                                         bottomMargin={8}
                                         monospace
-                                    />
+                                    >
+                                        <x.SourceBuffer text={shaderCode} language="glsl" styleScheme="Adwaita-dark" />
+                                    </GtkSourceView>
                                 </GtkScrolledWindow>
 
                                 {compileError && (
