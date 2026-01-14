@@ -23,7 +23,7 @@
         "@gtkx/codegen": "workspace:*",
         "@types/node": "^25.0.8",
         "@types/react": "^19.2.8",
-        "knip": "^5.80.2",
+        "knip": "^5.81.0",
         "react": "^19.2.3",
         "turbo": "^2.7.4",
         "typescript": "^5.9.3",
