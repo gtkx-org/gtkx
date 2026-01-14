@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkPicture, GtkScale, x } from "@gtkx/react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paintable-animated.tsx?raw";
 
@@ -110,7 +110,7 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
 
 const PaintableAnimatedDemo = () => {
     const [isPlaying, setIsPlaying] = useState(true);
-    const [time, setTime] = useState(0);
+    const [displayTime, setDisplayTime] = useState(0);
     const [speed, setSpeed] = useState(1.0);
     const [animationType, setAnimationType] = useState<"plasma" | "wave" | "spiral">("plasma");
     const [resolution, setResolution] = useState(128);
@@ -119,14 +119,31 @@ const PaintableAnimatedDemo = () => {
     const tickIdRef = useRef<number | null>(null);
     const timeRef = useRef(0);
     const speedRef = useRef(speed);
+    const animationTypeRef = useRef(animationType);
+    const resolutionRef = useRef(resolution);
+    const displayUpdateRef = useRef(0);
     speedRef.current = speed;
+    animationTypeRef.current = animationType;
+    resolutionRef.current = resolution;
 
     const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+        const picture = pictureRef.current;
+        if (!picture) return true;
+
         const frameTime = frameClock.getFrameTime();
         if (lastFrameTimeRef.current !== null) {
             const delta = (frameTime - lastFrameTimeRef.current) / 1_000_000;
             timeRef.current += delta * speedRef.current;
-            setTime(timeRef.current);
+
+            const res = resolutionRef.current;
+            const texture = createAnimatedFrame(res, res, timeRef.current, animationTypeRef.current);
+            picture.setPaintable(texture);
+
+            displayUpdateRef.current += delta;
+            if (displayUpdateRef.current >= 0.1) {
+                displayUpdateRef.current = 0;
+                setDisplayTime(timeRef.current);
+            }
         }
         lastFrameTimeRef.current = frameTime;
         return true;
@@ -147,38 +164,47 @@ const PaintableAnimatedDemo = () => {
         lastFrameTimeRef.current = null;
     }, []);
 
-    const handlePictureRef = useCallback(
-        (picture: Gtk.Picture | null) => {
-            if (pictureRef.current && tickIdRef.current !== null) {
-                pictureRef.current.removeTickCallback(tickIdRef.current);
-                tickIdRef.current = null;
-            }
-            pictureRef.current = picture;
-            if (picture && isPlaying) {
-                startAnimation();
-            }
-        },
-        [isPlaying, startAnimation],
-    );
+    const handlePictureRef = useCallback((picture: Gtk.Picture | null) => {
+        if (pictureRef.current && tickIdRef.current !== null) {
+            pictureRef.current.removeTickCallback(tickIdRef.current);
+            tickIdRef.current = null;
+        }
+        pictureRef.current = picture;
+        if (picture) {
+            const res = resolutionRef.current;
+            const texture = createAnimatedFrame(res, res, timeRef.current, animationTypeRef.current);
+            picture.setPaintable(texture);
+        }
+    }, []);
 
     const handleTogglePlay = useCallback(() => {
-        if (isPlaying) {
-            stopAnimation();
-        } else {
-            startAnimation();
-        }
-        setIsPlaying(!isPlaying);
-    }, [isPlaying, startAnimation, stopAnimation]);
+        setIsPlaying((prev) => {
+            if (prev) {
+                stopAnimation();
+            } else {
+                startAnimation();
+            }
+            return !prev;
+        });
+    }, [startAnimation, stopAnimation]);
 
     const handleReset = useCallback(() => {
         timeRef.current = 0;
-        setTime(0);
+        setDisplayTime(0);
+        const picture = pictureRef.current;
+        if (picture) {
+            const res = resolutionRef.current;
+            const texture = createAnimatedFrame(res, res, 0, animationTypeRef.current);
+            picture.setPaintable(texture);
+        }
     }, []);
 
-    const currentTexture = useMemo(
-        () => createAnimatedFrame(resolution, resolution, time, animationType),
-        [resolution, time, animationType],
-    );
+    useEffect(() => {
+        if (isPlaying) {
+            startAnimation();
+        }
+        return stopAnimation;
+    }, [isPlaying, startAnimation, stopAnimation]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
@@ -202,7 +228,6 @@ const PaintableAnimatedDemo = () => {
                 >
                     <GtkPicture
                         ref={handlePictureRef}
-                        paintable={currentTexture}
                         contentFit={Gtk.ContentFit.CONTAIN}
                         widthRequest={300}
                         heightRequest={300}
@@ -220,7 +245,7 @@ const PaintableAnimatedDemo = () => {
                     </GtkBox>
 
                     <GtkLabel
-                        label={`Time: ${time.toFixed(2)}s | Resolution: ${resolution}x${resolution}`}
+                        label={`Time: ${displayTime.toFixed(2)}s | Resolution: ${resolution}x${resolution}`}
                         cssClasses={["dim-label", "caption"]}
                         halign={Gtk.Align.CENTER}
                     />

@@ -1,4 +1,5 @@
 import { type Context, FontSlant, FontWeight, LineCap } from "@gtkx/ffi/cairo";
+import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -173,17 +174,20 @@ const PathWalkDemo = () => {
     const [showPath, setShowPath] = useState(true);
     const progressRef = useRef(0);
     const pathTableRef = useRef<ReturnType<typeof buildPathTable> | null>(null);
+    const tickIdRef = useRef<number | null>(null);
+    const lastFrameTimeRef = useRef<number | null>(null);
+    const speedRef = useRef(speed);
+    speedRef.current = speed;
 
     const canvasWidth = 500;
     const canvasHeight = 350;
 
-    useEffect(() => {
+    const initPathTable = useCallback(() => {
         const padding = 40;
         const p0 = { x: padding, y: canvasHeight - padding };
         const p1 = { x: canvasWidth * 0.25, y: padding };
         const p2 = { x: canvasWidth * 0.75, y: canvasHeight - padding };
         const p3 = { x: canvasWidth - padding, y: padding };
-
         pathTableRef.current = buildPathTable(p0, p1, p2, p3);
     }, []);
 
@@ -260,18 +264,63 @@ const PathWalkDemo = () => {
         [objectType, showPath],
     );
 
-    useEffect(() => {
-        if (!isRunning) return;
+    const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+        const frameTime = frameClock.getFrameTime();
+        if (lastFrameTimeRef.current !== null) {
+            const delta = (frameTime - lastFrameTimeRef.current) / 1_000_000;
+            progressRef.current = (progressRef.current + delta * 0.2 * speedRef.current) % 1;
+            areaRef.current?.queueDraw();
+        }
+        lastFrameTimeRef.current = frameTime;
+        return true;
+    }, []);
 
-        const interval = setInterval(() => {
-            progressRef.current = (progressRef.current + 0.003 * speed) % 1;
-            if (areaRef.current) {
-                areaRef.current.queueDraw();
+    const startAnimation = useCallback(() => {
+        const area = areaRef.current;
+        if (!area || tickIdRef.current !== null) return;
+        lastFrameTimeRef.current = null;
+        tickIdRef.current = area.addTickCallback(tickCallback);
+    }, [tickCallback]);
+
+    const stopAnimation = useCallback(() => {
+        const area = areaRef.current;
+        if (!area || tickIdRef.current === null) return;
+        area.removeTickCallback(tickIdRef.current);
+        tickIdRef.current = null;
+        lastFrameTimeRef.current = null;
+    }, []);
+
+    const handleAreaRef = useCallback(
+        (area: Gtk.DrawingArea | null) => {
+            if (areaRef.current && tickIdRef.current !== null) {
+                areaRef.current.removeTickCallback(tickIdRef.current);
+                tickIdRef.current = null;
             }
-        }, 16);
+            areaRef.current = area;
+            if (area) {
+                initPathTable();
+            }
+        },
+        [initPathTable],
+    );
 
-        return () => clearInterval(interval);
-    }, [speed, isRunning]);
+    const handleToggleRunning = useCallback(() => {
+        setIsRunning((prev) => {
+            if (prev) {
+                stopAnimation();
+            } else {
+                startAnimation();
+            }
+            return !prev;
+        });
+    }, [startAnimation, stopAnimation]);
+
+    useEffect(() => {
+        if (isRunning) {
+            startAnimation();
+        }
+        return stopAnimation;
+    }, [isRunning, startAnimation, stopAnimation]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
@@ -294,7 +343,7 @@ const PathWalkDemo = () => {
                     marginEnd={12}
                 >
                     <GtkDrawingArea
-                        ref={areaRef}
+                        ref={handleAreaRef}
                         onDraw={drawScene}
                         contentWidth={canvasWidth}
                         contentHeight={canvasHeight}
@@ -318,7 +367,7 @@ const PathWalkDemo = () => {
                         </GtkBox>
                         <GtkButton
                             label={isRunning ? "Pause" : "Play"}
-                            onClicked={() => setIsRunning(!isRunning)}
+                            onClicked={handleToggleRunning}
                             cssClasses={["flat"]}
                         />
                         <GtkButton

@@ -13,7 +13,7 @@ import {
     GtkSourceView,
     x,
 } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type RefCallback, useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shadertoy.tsx?raw";
 
@@ -223,33 +223,75 @@ const ShadertoyDemo = () => {
     const [resolution, setResolution] = useState({ x: 400, y: 300 });
     const [mouse] = useState({ x: 0, y: 0, z: 0, w: 0 });
 
-    const startTimeRef = useRef(Date.now());
     const timeRef = useRef(0);
+    const lastFrameTimeRef = useRef<number | null>(null);
+    const lastDisplayUpdateRef = useRef(0);
+    const tickIdRef = useRef<number | null>(null);
+    const isAnimatingRef = useRef(isAnimating);
+    isAnimatingRef.current = isAnimating;
 
     const sourceViewRef = useRef<GtkSource.View | null>(null);
 
-    useEffect(() => {
-        if (!isAnimating) return;
+    const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+        if (!isAnimatingRef.current) {
+            return true;
+        }
 
-        let lastDisplayUpdate = 0;
-        const animate = () => {
-            const elapsed = (Date.now() - startTimeRef.current) / 1000;
-            timeRef.current = elapsed;
-            glAreaRef.current?.queueRender();
+        const frameTime = frameClock.getFrameTime();
+        if (lastFrameTimeRef.current !== null) {
+            const delta = (frameTime - lastFrameTimeRef.current) / 1_000_000;
+            timeRef.current += delta;
 
-            if (elapsed - lastDisplayUpdate >= 0.1) {
-                lastDisplayUpdate = elapsed;
-                setDisplayTime(elapsed);
+            if (timeRef.current - lastDisplayUpdateRef.current >= 0.1) {
+                lastDisplayUpdateRef.current = timeRef.current;
+                setDisplayTime(timeRef.current);
             }
-        };
+        }
+        lastFrameTimeRef.current = frameTime;
+        glAreaRef.current?.queueRender();
+        return true;
+    }, []);
 
-        const intervalId = setInterval(animate, 16);
-        return () => clearInterval(intervalId);
-    }, [isAnimating]);
+    const startAnimation = useCallback(() => {
+        const area = glAreaRef.current;
+        if (!area || tickIdRef.current !== null) return;
+        lastFrameTimeRef.current = null;
+        tickIdRef.current = area.addTickCallback(tickCallback);
+    }, [tickCallback]);
+
+    const stopAnimation = useCallback(() => {
+        const area = glAreaRef.current;
+        if (!area || tickIdRef.current === null) return;
+        area.removeTickCallback(tickIdRef.current);
+        tickIdRef.current = null;
+        lastFrameTimeRef.current = null;
+    }, []);
+
+    const handleGLAreaRef: RefCallback<Gtk.GLArea> = useCallback((area: Gtk.GLArea | null) => {
+        if (glAreaRef.current && tickIdRef.current !== null) {
+            glAreaRef.current.removeTickCallback(tickIdRef.current);
+            tickIdRef.current = null;
+        }
+        glAreaRef.current = area;
+    }, []);
+
+    const handleTogglePlay = useCallback(() => {
+        setIsAnimating((prev) => {
+            if (prev) {
+                stopAnimation();
+            } else {
+                startAnimation();
+            }
+            return !prev;
+        });
+    }, [startAnimation, stopAnimation]);
 
     useEffect(() => {
-        glAreaRef.current?.queueRender();
-    }, []);
+        if (isAnimating) {
+            startAnimation();
+        }
+        return stopAnimation;
+    }, [isAnimating, startAnimation, stopAnimation]);
 
     useEffect(() => {
         const area = glAreaRef.current;
@@ -392,14 +434,14 @@ const ShadertoyDemo = () => {
         buffer.setText(preset.code, -1);
         setShaderCode(preset.code);
         setCompiledCode(preset.code);
-        startTimeRef.current = Date.now();
         timeRef.current = 0;
+        lastDisplayUpdateRef.current = 0;
         setDisplayTime(0);
     }, []);
 
     const handleReset = useCallback(() => {
-        startTimeRef.current = Date.now();
         timeRef.current = 0;
+        lastDisplayUpdateRef.current = 0;
         setDisplayTime(0);
     }, []);
 
@@ -469,10 +511,7 @@ const ShadertoyDemo = () => {
                                         onClicked={handleCompile}
                                         cssClasses={["suggested-action"]}
                                     />
-                                    <GtkButton
-                                        label={isAnimating ? "Pause" : "Play"}
-                                        onClicked={() => setIsAnimating(!isAnimating)}
-                                    />
+                                    <GtkButton label={isAnimating ? "Pause" : "Play"} onClicked={handleTogglePlay} />
                                     <GtkButton label="Reset Time" onClicked={handleReset} />
                                 </GtkBox>
                             </GtkBox>
@@ -481,7 +520,7 @@ const ShadertoyDemo = () => {
                         <x.Slot for={GtkPaned} id="endChild">
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} hexpand>
                                 <GtkGLArea
-                                    ref={glAreaRef}
+                                    ref={handleGLAreaRef}
                                     useEs
                                     onUnrealize={handleUnrealize}
                                     onRender={handleRender}

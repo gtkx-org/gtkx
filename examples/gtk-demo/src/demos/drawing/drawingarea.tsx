@@ -223,11 +223,12 @@ const ScribbleArea = () => {
     }, []);
 
     const handleDragEnd = useCallback(() => {
-        if (currentStrokeRef.current.length > 0) {
-            setStrokes((prev) => [...prev, [...currentStrokeRef.current]]);
-            currentStrokeRef.current = [];
-            startPointRef.current = null;
+        const points = [...currentStrokeRef.current];
+        if (points.length > 0) {
+            setStrokes((prev) => [...prev, points]);
         }
+        currentStrokeRef.current = [];
+        startPointRef.current = null;
     }, []);
 
     const handleClear = () => {

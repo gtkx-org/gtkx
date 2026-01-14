@@ -345,3 +345,67 @@ pub unsafe extern "C" fn async_ready_trampoline(
 
     unsafe { gobject_ffi::g_closure_unref(closure_ptr.as_ptr()) };
 }
+
+pub struct TickCallbackData {
+    pub channel: neon::event::Channel,
+    pub js_func: std::sync::Arc<neon::handle::Root<neon::types::JsFunction>>,
+    pub arg_types: Option<Vec<crate::types::Type>>,
+}
+
+impl TickCallbackData {
+    /// # Safety
+    ///
+    /// `user_data` must be a valid pointer to a `TickCallbackData` that was
+    /// previously allocated with `Box::into_raw`, or null.
+    pub unsafe extern "C" fn release(user_data: *mut c_void) {
+        let Some(data_ptr) = NonNull::new(user_data as *mut TickCallbackData) else {
+            return;
+        };
+        let _ = unsafe { Box::from_raw(data_ptr.as_ptr()) };
+    }
+
+    /// # Safety
+    ///
+    /// - `widget` must be a valid pointer to a GObject (the widget).
+    /// - `frame_clock` must be a valid pointer to a GdkFrameClock.
+    /// - `user_data` must be a valid pointer to a `TickCallbackData` that was
+    ///   previously allocated with `Box::into_raw`, or null.
+    pub unsafe extern "C" fn trampoline(
+        widget: *mut gobject_ffi::GObject,
+        frame_clock: *mut gobject_ffi::GObject,
+        user_data: *mut c_void,
+    ) -> glib::ffi::gboolean {
+        let Some(data_ptr) = NonNull::new(user_data as *mut TickCallbackData) else {
+            eprintln!(
+                "[gtkx] WARNING: TickCallbackData::trampoline: user_data is null, callback skipped"
+            );
+            return glib::ffi::GFALSE;
+        };
+
+        let data = unsafe { data_ptr.as_ref() };
+
+        let widget_obj = unsafe { glib::Object::from_glib_none(widget) };
+        let frame_clock_obj = unsafe { glib::Object::from_glib_none(frame_clock) };
+
+        let widget_value =
+            crate::value::Value::Object(crate::managed::NativeValue::GObject(widget_obj).into());
+        let frame_clock_value = crate::value::Value::Object(
+            crate::managed::NativeValue::GObject(frame_clock_obj).into(),
+        );
+
+        let args = vec![widget_value, frame_clock_value];
+
+        let result = crate::js_dispatch::JsDispatcher::global().invoke_and_wait(
+            &data.channel,
+            &data.js_func,
+            args,
+            true,
+            |result| match result {
+                Ok(crate::value::Value::Boolean(b)) => b,
+                _ => false,
+            },
+        );
+
+        result as glib::ffi::gboolean
+    }
+}

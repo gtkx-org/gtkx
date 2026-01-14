@@ -226,13 +226,7 @@ const AnimatedSweep = ({
                 area.queueDraw();
             });
 
-            const animation = new TimedAnimation(
-                area,
-                0,
-                1,
-                Math.round(ANIMATION_DURATION_MS / speed),
-                target,
-            );
+            const animation = new TimedAnimation(area, 0, 1, Math.round(ANIMATION_DURATION_MS / speed), target);
             animation.setEasing(easingMap[easing] ?? Easing.LINEAR);
 
             animation.connect("done", () => {

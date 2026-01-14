@@ -1,7 +1,8 @@
+import { CallbackAnimationTarget, TimedAnimation } from "@gtkx/ffi/adw";
 import { type Context, LineCap, LineJoin } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./path-maze.tsx?raw";
 
@@ -314,26 +315,31 @@ const MazeDemo = () => {
         [maze, solution, animationStep],
     );
 
-    useEffect(() => {
-        if (!isAnimating) return;
+    const animationRef = useRef<TimedAnimation | null>(null);
 
-        const totalSteps = solution.visited.length + solution.path.length;
-        if (animationStep >= totalSteps) {
+    const startAnimation = useCallback((totalSteps: number) => {
+        const area = areaRef.current;
+        if (!area || totalSteps === 0) return;
+
+        animationRef.current?.reset();
+
+        const durationMs = totalSteps * 30;
+        const target = new CallbackAnimationTarget((value: number) => {
+            const step = Math.floor(value * totalSteps);
+            setAnimationStep(step);
+            area.queueDraw();
+        });
+
+        const animation = new TimedAnimation(area, 0, 1, durationMs, target);
+        animation.connect("done", () => {
             setIsAnimating(false);
-            return;
-        }
-
-        const timer = setTimeout(() => {
-            setAnimationStep((s) => s + 1);
-            if (areaRef.current) {
-                areaRef.current.queueDraw();
-            }
-        }, 30);
-
-        return () => clearTimeout(timer);
-    }, [isAnimating, animationStep, solution]);
+        });
+        animationRef.current = animation;
+        animation.play();
+    }, []);
 
     const handleGenerate = () => {
+        animationRef.current?.reset();
         const size = mazeSize % 2 === 0 ? mazeSize + 1 : mazeSize;
         const newMaze = generateMaze(size, size);
         setMaze(newMaze);
@@ -347,9 +353,12 @@ const MazeDemo = () => {
         setSolution(result);
         setAnimationStep(0);
         setIsAnimating(true);
+        const totalSteps = result.visited.length + result.path.length;
+        startAnimation(totalSteps);
     };
 
     const handleReset = () => {
+        animationRef.current?.reset();
         setSolution({ path: [], visited: [] });
         setAnimationStep(0);
         setIsAnimating(false);

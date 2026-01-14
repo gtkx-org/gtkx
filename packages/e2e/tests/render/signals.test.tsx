@@ -4,10 +4,7 @@ import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-console.log("[signals.test] Module loaded, PID:", process.pid);
-
 describe("render - signals", () => {
-    console.log("[signals.test] describe() called");
     describe("connection", () => {
         it("connects onClicked handler to clicked signal", async () => {
             const handleClick = vi.fn();

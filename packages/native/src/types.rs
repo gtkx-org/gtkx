@@ -254,6 +254,7 @@ impl Type {
                 if callback_type.trampoline == CallbackTrampoline::DrawFunc
                     || callback_type.trampoline == CallbackTrampoline::ShortcutFunc
                     || callback_type.trampoline == CallbackTrampoline::TreeListModelCreateFunc
+                    || callback_type.trampoline == CallbackTrampoline::TickCallback
                 {
                     types.push(libffi::Type::pointer());
                 }

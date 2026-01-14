@@ -1,3 +1,4 @@
+import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
 import { signalStore } from "./internal/signal-store.js";
@@ -66,12 +67,15 @@ export class TextBufferNode extends VirtualNode<TextBufferProps> {
     }
 
     private getBufferText(): string {
-        if (!this.buffer) return "";
+        const buffer = this.buffer;
+        if (!buffer) return "";
         const startIter = new Gtk.TextIter();
         const endIter = new Gtk.TextIter();
-        this.buffer.getStartIter(startIter);
-        this.buffer.getEndIter(endIter);
-        return this.buffer.getText(startIter, endIter, true);
+        batch(() => {
+            buffer.getStartIter(startIter);
+            buffer.getEndIter(endIter);
+        });
+        return buffer.getText(startIter, endIter, true);
     }
 
     private updateSignalHandlers(): void {

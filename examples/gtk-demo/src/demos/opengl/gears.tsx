@@ -307,119 +307,159 @@ const initGL = (): GLState => {
 const GearsDemo = () => {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
-    const [angle, setAngle] = useState(0);
     const [viewRotX, setViewRotX] = useState(20);
     const [viewRotY, setViewRotY] = useState(30);
     const [isAnimating, setIsAnimating] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const aspectRef = useRef(1.0);
     const sizeRef = useRef({ width: 500, height: 400 });
+    const tickIdRef = useRef<number | null>(null);
+    const lastFrameTimeRef = useRef<number | null>(null);
+    const angleRef = useRef(0);
+    const viewRotXRef = useRef(viewRotX);
+    const viewRotYRef = useRef(viewRotY);
+    viewRotXRef.current = viewRotX;
+    viewRotYRef.current = viewRotY;
+
+    const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+        const frameTime = frameClock.getFrameTime();
+        if (lastFrameTimeRef.current !== null) {
+            const delta = (frameTime - lastFrameTimeRef.current) / 1_000_000;
+            angleRef.current = (angleRef.current + delta * 120) % 360;
+            glAreaRef.current?.queueRender();
+        }
+        lastFrameTimeRef.current = frameTime;
+        return true;
+    }, []);
+
+    const startAnimation = useCallback(() => {
+        const glArea = glAreaRef.current;
+        if (!glArea || tickIdRef.current !== null) return;
+        lastFrameTimeRef.current = null;
+        tickIdRef.current = glArea.addTickCallback(tickCallback);
+    }, [tickCallback]);
+
+    const stopAnimation = useCallback(() => {
+        const glArea = glAreaRef.current;
+        if (!glArea || tickIdRef.current === null) return;
+        glArea.removeTickCallback(tickIdRef.current);
+        tickIdRef.current = null;
+        lastFrameTimeRef.current = null;
+    }, []);
+
+    const handleGLAreaRef = useCallback((glArea: Gtk.GLArea | null) => {
+        if (glAreaRef.current && tickIdRef.current !== null) {
+            glAreaRef.current.removeTickCallback(tickIdRef.current);
+            tickIdRef.current = null;
+        }
+        glAreaRef.current = glArea;
+    }, []);
+
+    const handleToggleAnimation = useCallback(() => {
+        setIsAnimating((prev) => {
+            if (prev) {
+                stopAnimation();
+            } else {
+                startAnimation();
+            }
+            return !prev;
+        });
+    }, [startAnimation, stopAnimation]);
 
     useEffect(() => {
-        if (!isAnimating) return;
-
-        const intervalId = setInterval(() => {
-            setAngle((prev) => (prev + 2) % 360);
-        }, 16);
-
-        return () => clearInterval(intervalId);
-    }, [isAnimating]);
-
-    // biome-ignore lint/correctness/useExhaustiveDependencies: demo
-    useEffect(() => {
-        glAreaRef.current?.queueRender();
-    }, [angle, viewRotX, viewRotY]);
+        if (isAnimating) {
+            startAnimation();
+        }
+        return stopAnimation;
+    }, [isAnimating, startAnimation, stopAnimation]);
 
     const handleUnrealize = useCallback((_self: Gtk.Widget) => {
         glStateRef.current = null;
     }, []);
 
-    const handleRender = useCallback(
-        (self: Gtk.GLArea, _context: Gdk.GLContext) => {
-            if (!glStateRef.current) {
-                const glError = self.getError();
-                if (glError) {
-                    setError(`GL context error: ${glError.message}`);
-                    return true;
-                }
-
-                try {
-                    glStateRef.current = initGL();
-                } catch (error) {
-                    setError(`GL initialization error: ${error}`);
-                    return true;
-                }
+    const handleRender = useCallback((self: Gtk.GLArea, _context: Gdk.GLContext) => {
+        if (!glStateRef.current) {
+            const glError = self.getError();
+            if (glError) {
+                setError(`GL context error: ${glError.message}`);
+                return true;
             }
 
-            const state = glStateRef.current;
-
-            const scale = self.getScaleFactor();
-            const width = self.getAllocatedWidth() * scale;
-            const height = self.getAllocatedHeight() * scale;
-            const aspect = width / height;
-
-            gl.viewport(0, 0, width, height);
-
-            gl.clearColor(0.1, 0.1, 0.15, 1.0);
-            gl.clearDepth(1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
-            gl.useProgram(state.program);
-
-            const projection = mat4Perspective(Math.PI / 4, aspect, 1.0, 100.0);
-            gl.uniformMatrix4fv(state.uniforms.projection, 1, false, projection);
-
-            gl.uniform3f(state.uniforms.lightDir, 0.5, 0.5, 1.0);
-
-            let view = mat4Identity();
-            view = mat4Translate(view, 0, 0, -25);
-            view = mat4RotateX(view, (viewRotX * Math.PI) / 180);
-            view = mat4RotateY(view, (viewRotY * Math.PI) / 180);
-
-            const angleRad = (angle * Math.PI) / 180;
-
-            const gear1 = state.gears[0];
-            if (gear1) {
-                let modelView = mat4Translate(view, -3.0, -2.0, 0.0);
-                modelView = mat4RotateZ(modelView, angleRad);
-                gl.uniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
-                gl.uniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
-                gl.uniform3f(state.uniforms.color, gear1.color.r, gear1.color.g, gear1.color.b);
-                gl.bindVertexArray(gear1.vao);
-                gl.drawArrays(gl.TRIANGLES, 0, gear1.vertexCount);
+            try {
+                glStateRef.current = initGL();
+            } catch (error) {
+                setError(`GL initialization error: ${error}`);
+                return true;
             }
+        }
 
-            const gear2 = state.gears[1];
-            if (gear2) {
-                let modelView = mat4Translate(view, 3.1, -2.0, 0.0);
-                modelView = mat4RotateZ(modelView, -2 * angleRad - (9 * Math.PI) / 180);
-                gl.uniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
-                gl.uniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
-                gl.uniform3f(state.uniforms.color, gear2.color.r, gear2.color.g, gear2.color.b);
-                gl.bindVertexArray(gear2.vao);
-                gl.drawArrays(gl.TRIANGLES, 0, gear2.vertexCount);
-            }
+        const state = glStateRef.current;
 
-            const gear3 = state.gears[2];
-            if (gear3) {
-                let modelView = mat4Translate(view, -3.1, 4.2, 0.0);
-                modelView = mat4RotateZ(modelView, -2 * angleRad - (25 * Math.PI) / 180);
-                gl.uniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
-                gl.uniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
-                gl.uniform3f(state.uniforms.color, gear3.color.r, gear3.color.g, gear3.color.b);
-                gl.bindVertexArray(gear3.vao);
-                gl.drawArrays(gl.TRIANGLES, 0, gear3.vertexCount);
-            }
+        const scale = self.getScaleFactor();
+        const width = self.getAllocatedWidth() * scale;
+        const height = self.getAllocatedHeight() * scale;
+        const aspect = width / height;
 
-            gl.bindVertexArray(0);
-            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
-            gl.useProgram(0);
+        gl.viewport(0, 0, width, height);
 
-            return true;
-        },
-        [angle, viewRotX, viewRotY],
-    );
+        gl.clearColor(0.1, 0.1, 0.15, 1.0);
+        gl.clearDepth(1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
+        gl.useProgram(state.program);
+
+        const projection = mat4Perspective(Math.PI / 4, aspect, 1.0, 100.0);
+        gl.uniformMatrix4fv(state.uniforms.projection, 1, false, projection);
+
+        gl.uniform3f(state.uniforms.lightDir, 0.5, 0.5, 1.0);
+
+        let view = mat4Identity();
+        view = mat4Translate(view, 0, 0, -25);
+        view = mat4RotateX(view, (viewRotXRef.current * Math.PI) / 180);
+        view = mat4RotateY(view, (viewRotYRef.current * Math.PI) / 180);
+
+        const angleRad = (angleRef.current * Math.PI) / 180;
+
+        const gear1 = state.gears[0];
+        if (gear1) {
+            let modelView = mat4Translate(view, -3.0, -2.0, 0.0);
+            modelView = mat4RotateZ(modelView, angleRad);
+            gl.uniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
+            gl.uniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
+            gl.uniform3f(state.uniforms.color, gear1.color.r, gear1.color.g, gear1.color.b);
+            gl.bindVertexArray(gear1.vao);
+            gl.drawArrays(gl.TRIANGLES, 0, gear1.vertexCount);
+        }
+
+        const gear2 = state.gears[1];
+        if (gear2) {
+            let modelView = mat4Translate(view, 3.1, -2.0, 0.0);
+            modelView = mat4RotateZ(modelView, -2 * angleRad - (9 * Math.PI) / 180);
+            gl.uniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
+            gl.uniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
+            gl.uniform3f(state.uniforms.color, gear2.color.r, gear2.color.g, gear2.color.b);
+            gl.bindVertexArray(gear2.vao);
+            gl.drawArrays(gl.TRIANGLES, 0, gear2.vertexCount);
+        }
+
+        const gear3 = state.gears[2];
+        if (gear3) {
+            let modelView = mat4Translate(view, -3.1, 4.2, 0.0);
+            modelView = mat4RotateZ(modelView, -2 * angleRad - (25 * Math.PI) / 180);
+            gl.uniformMatrix4fv(state.uniforms.modelView, 1, false, modelView);
+            gl.uniformMatrix4fv(state.uniforms.normalMatrix, 1, false, mat4Inverse3x3(modelView));
+            gl.uniform3f(state.uniforms.color, gear3.color.r, gear3.color.g, gear3.color.b);
+            gl.bindVertexArray(gear3.vao);
+            gl.drawArrays(gl.TRIANGLES, 0, gear3.vertexCount);
+        }
+
+        gl.bindVertexArray(0);
+        // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
+        gl.useProgram(0);
+
+        return true;
+    }, []);
 
     const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {
         aspectRef.current = width / height;
@@ -460,7 +500,7 @@ const GearsDemo = () => {
                     marginEnd={12}
                 >
                     <GtkGLArea
-                        ref={glAreaRef}
+                        ref={handleGLAreaRef}
                         useEs
                         hasDepthBuffer
                         vexpand
@@ -475,7 +515,7 @@ const GearsDemo = () => {
                     <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
                         <GtkButton
                             label={isAnimating ? "Pause" : "Play"}
-                            onClicked={() => setIsAnimating(!isAnimating)}
+                            onClicked={handleToggleAnimation}
                             cssClasses={isAnimating ? [] : ["suggested-action"]}
                         />
                     </GtkBox>

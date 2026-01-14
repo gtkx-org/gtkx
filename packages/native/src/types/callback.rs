@@ -287,26 +287,19 @@ impl CallbackTrampoline {
             CallbackTrampoline::TickCallback => {
                 let arg_types = callback_type.arg_types.clone();
 
-                let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let args_values = value::Value::from_glib_values(args, &arg_types)
-                        .expect("Failed to convert tick callback arguments");
-
-                    js_dispatch::JsDispatcher::global().invoke_and_wait(
-                        &channel,
-                        &js_func,
-                        args_values,
-                        true,
-                        |result| match result {
-                            Ok(value::Value::Boolean(b)) => Some(b.to_value()),
-                            _ => Some(true.to_value()),
-                        },
-                    )
+                let tick_data = Box::new(crate::trampoline::TickCallbackData {
+                    channel: channel.clone(),
+                    js_func: js_func.clone(),
+                    arg_types,
                 });
+                let data_ptr = Box::into_raw(tick_data) as *mut c_void;
 
-                TrampolineCallbackValue::build(
-                    closure,
-                    CallbackData::tick_callback as *mut c_void,
-                )
+                ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr: crate::trampoline::TickCallbackData::trampoline as *mut c_void,
+                    closure: FfiStorage::new(data_ptr, FfiStorageKind::Callback(data_ptr)),
+                    destroy_ptr: Some(crate::trampoline::TickCallbackData::release as *mut c_void),
+                    data_first: false,
+                })
             }
         }
     }

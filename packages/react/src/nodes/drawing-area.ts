@@ -23,6 +23,7 @@ class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {
     public override updateProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
         if (newProps.onDraw && (!oldProps || oldProps.onDraw !== newProps.onDraw)) {
             this.container.setDrawFunc(newProps.onDraw);
+            this.container.queueDraw();
         }
 
         super.updateProps(filterProps(oldProps ?? {}, PROPS), filterProps(newProps, PROPS));

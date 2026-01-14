@@ -1,17 +1,11 @@
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Plugin } from "vitest/config";
 
-const getRuntimeDir = (): string => process.env.XDG_RUNTIME_DIR ?? tmpdir();
-
-const getStateDir = (): string => join(getRuntimeDir(), `gtkx-vitest-${process.pid}`);
-
 /**
  * Creates the GTKX Vitest plugin for running GTK tests.
  *
- * Manages Xvfb virtual display instances for headless GTK testing.
- * Each worker thread gets its own display to avoid interference.
+ * Each worker spawns its own Xvfb instance on a PID-based display number.
  *
  * @returns Vitest plugin configuration
  *
@@ -28,20 +22,14 @@ const getStateDir = (): string => join(getRuntimeDir(), `gtkx-vitest-${process.p
  */
 const gtkx = (): Plugin => {
     const workerSetupPath = join(import.meta.dirname, "setup.js");
-    const globalSetupPath = join(import.meta.dirname, "global-setup.js");
-    const stateDir = getStateDir();
 
     return {
         name: "gtkx",
         config(config) {
             const setupFiles = config.test?.setupFiles ?? [];
-            const globalSetup = config.test?.globalSetup ?? [];
-
-            process.env.GTKX_STATE_DIR = stateDir;
 
             return {
                 test: {
-                    globalSetup: [globalSetupPath, ...(Array.isArray(globalSetup) ? globalSetup : [globalSetup])],
                     setupFiles: [workerSetupPath, ...(Array.isArray(setupFiles) ? setupFiles : [setupFiles])],
                     pool: "forks",
                 },
