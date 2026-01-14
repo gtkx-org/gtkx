@@ -59,6 +59,7 @@ class ExpanderRowNode extends WidgetNode<Adw.ExpanderRow> {
 
     public override removeChild(child: Node): void {
         if (child instanceof ExpanderRowChild || child instanceof ActionRowChild) {
+            child.unmount();
             return;
         }
 
