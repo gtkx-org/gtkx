@@ -17,9 +17,10 @@ export const NAVIGATION_VIEW_WIDGET_NAMES: ReadonlySet<string> = new Set(["Navig
 export const STACK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Stack", "ViewStack"]);
 export const WINDOW_WIDGET_NAMES: ReadonlySet<string> = new Set(["Window"]);
 export const SCROLLED_WINDOW_WIDGET_NAMES: ReadonlySet<string> = new Set(["ScrolledWindow"]);
+export const DRAWING_AREA_WIDGET_NAMES: ReadonlySet<string> = new Set(["DrawingArea"]);
 
 const AUTOWRAP_WIDGET_NAMES: ReadonlySet<string> = new Set(["ListBox", "FlowBox"]);
-const NOTEBOOK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Notebook"]);
+export const NOTEBOOK_WIDGET_NAMES: ReadonlySet<string> = new Set(["Notebook"]);
 const POPOVER_MENU_WIDGET_NAMES: ReadonlySet<string> = new Set(["PopoverMenu", "PopoverMenuBar", "MenuButton"]);
 
 type WidgetClassification = {

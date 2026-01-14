@@ -92,12 +92,19 @@ export class WidgetPropsBuilder {
             });
         }
 
+        allProps.push({
+            name: "grabFocus",
+            type: "boolean",
+            optional: true,
+            doc: "When set to true, the widget will grab focus. Useful for focusing a widget when a condition becomes true.",
+        });
+
         sourceFile.addTypeAlias({
             name: "WidgetProps",
             isExported: true,
             docs: widgetDoc ? [{ description: this.formatDocDescription(widgetDoc, namespace) }] : undefined,
             type: this.buildIntersectionTypeWriter(
-                "EventControllerProps & DragSourceProps & DropTargetProps",
+                "EventControllerProps & DragSourceProps & DropTargetProps & GestureDragProps",
                 allProps,
             ),
         });
@@ -151,6 +158,7 @@ export class WidgetPropsBuilder {
             widget.isListWidget ||
             widget.isColumnViewWidget ||
             widget.isDropDownWidget ||
+            widget.isAdjustable ||
             widget.hasVirtualChildren
         ) {
             allProps.push({
@@ -295,6 +303,15 @@ export class WidgetPropsBuilder {
                 type: "(() => void) | null",
                 optional: true,
                 doc: "Called when the window close button is clicked. Control window visibility using React state.",
+            });
+        }
+
+        if (widget.isDrawingArea) {
+            props.push({
+                name: "onDraw",
+                type: '((self: import("@gtkx/ffi/gtk").DrawingArea, cr: import("@gtkx/ffi/cairo").Context, width: number, height: number) => void) | null',
+                optional: true,
+                doc: "Called to draw the contents of the drawing area.\n@param self - The drawing area widget\n@param cr - The Cairo context to draw with\n@param width - The actual width of the drawing area\n@param height - The actual height of the drawing area",
             });
         }
 

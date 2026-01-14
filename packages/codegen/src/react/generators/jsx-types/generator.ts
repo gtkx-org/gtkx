@@ -13,10 +13,12 @@ import { toCamelCase } from "../../../core/utils/naming.js";
 import { addNamespaceImports } from "../../../core/utils/structure-helpers.js";
 import {
     COLUMN_VIEW_WIDGET_NAMES,
+    DRAWING_AREA_WIDGET_NAMES,
     DROP_DOWN_WIDGET_NAMES,
     getHiddenProps,
     LIST_WIDGET_NAMES,
     NAVIGATION_VIEW_WIDGET_NAMES,
+    NOTEBOOK_WIDGET_NAMES,
     SCROLLED_WINDOW_WIDGET_NAMES,
     STACK_WIDGET_NAMES,
     VIRTUAL_CHILDREN_WIDGET_NAMES,
@@ -35,9 +37,12 @@ export type JsxWidget = {
     isColumnViewWidget: boolean;
     isNavigationView: boolean;
     isStack: boolean;
+    isNotebook: boolean;
     isWindow: boolean;
     isScrolledWindow: boolean;
+    isDrawingArea: boolean;
     isContainer: boolean;
+    isAdjustable: boolean;
     hasVirtualChildren: boolean;
     slots: readonly string[];
     hiddenProps: Set<string>;
@@ -94,9 +99,12 @@ export class JsxTypesGenerator {
             isColumnViewWidget: COLUMN_VIEW_WIDGET_NAMES.has(meta.className),
             isNavigationView: NAVIGATION_VIEW_WIDGET_NAMES.has(meta.className),
             isStack: STACK_WIDGET_NAMES.has(meta.className),
+            isNotebook: NOTEBOOK_WIDGET_NAMES.has(meta.className),
             isWindow: WINDOW_WIDGET_NAMES.has(meta.className),
             isScrolledWindow: SCROLLED_WINDOW_WIDGET_NAMES.has(meta.className),
+            isDrawingArea: DRAWING_AREA_WIDGET_NAMES.has(meta.className),
             isContainer: meta.isContainer,
+            isAdjustable: meta.isAdjustable,
             hasVirtualChildren: VIRTUAL_CHILDREN_WIDGET_NAMES.has(meta.className),
             slots: filteredSlots,
             hiddenProps,
@@ -113,7 +121,7 @@ export class JsxTypesGenerator {
 
         sourceFile.addImportDeclaration({
             moduleSpecifier: "../types.js",
-            namedImports: ["EventControllerProps", "DragSourceProps", "DropTargetProps"],
+            namedImports: ["EventControllerProps", "DragSourceProps", "DropTargetProps", "GestureDragProps"],
             isTypeOnly: true,
         });
 
