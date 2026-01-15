@@ -1,5 +1,5 @@
 import * as net from "node:net";
-import { getNativeId, getNativeObject } from "@gtkx/ffi";
+import { getNativeId, getNativeInterface, getNativeObject } from "@gtkx/ffi";
 import { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
@@ -76,7 +76,7 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
         case Gtk.AccessibleRole.TEXT_BOX:
         case Gtk.AccessibleRole.SEARCH_BOX:
         case Gtk.AccessibleRole.SPIN_BUTTON:
-            return getNativeObject(widget.handle, Gtk.Editable).getText() ?? null;
+            return getNativeInterface(widget, Gtk.Editable)?.getText() ?? null;
         case Gtk.AccessibleRole.GROUP:
             return (widget as Gtk.Frame).getLabel?.() ?? null;
         case Gtk.AccessibleRole.WINDOW:
@@ -130,10 +130,7 @@ const getWidgetById = (id: string): Gtk.Widget | undefined => {
 
 const refreshWidgetRegistry = (): void => {
     widgetRegistry.clear();
-    const app = getApplication();
-    if (!app) return;
-
-    const windows = app.getWindows();
+    const windows = Gtk.Window.listToplevels();
     for (const window of windows) {
         registerWidgets(window);
     }
@@ -350,6 +347,16 @@ class McpClient {
         refreshWidgetRegistry();
 
         switch (method) {
+            case "app.getWindows": {
+                const windows = Gtk.Window.listToplevels();
+                return {
+                    windows: windows.map((w) => ({
+                        id: String(getNativeId(w.handle)),
+                        title: (w as Gtk.Window).getTitle?.() ?? null,
+                    })),
+                };
+            }
+
             case "widget.getTree": {
                 const testing = await loadTestingModule();
                 return { tree: testing.prettyWidget(app, { includeIds: true, highlight: false }) };

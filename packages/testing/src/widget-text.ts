@@ -1,4 +1,4 @@
-import { getNativeObject } from "@gtkx/ffi";
+import { getNativeInterface } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 const ROLES_WITH_INTERNAL_LABELS = new Set([
@@ -84,7 +84,7 @@ export const getWidgetText = (widget: Gtk.Widget): string | null => {
         case Gtk.AccessibleRole.TEXT_BOX:
         case Gtk.AccessibleRole.SEARCH_BOX:
         case Gtk.AccessibleRole.SPIN_BUTTON:
-            return getNativeObject(widget.handle, Gtk.Editable).getText() ?? null;
+            return getNativeInterface(widget, Gtk.Editable)?.getText() ?? null;
         case Gtk.AccessibleRole.GROUP:
             return (widget as Gtk.Frame).getLabel?.() ?? null;
         case Gtk.AccessibleRole.WINDOW:

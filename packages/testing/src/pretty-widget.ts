@@ -1,5 +1,5 @@
 import { getNativeId } from "@gtkx/ffi";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { formatRole } from "./role-helpers.js";
 import { type Container, isApplication } from "./traversal.js";
 import { getWidgetText } from "./widget-text.js";
@@ -144,7 +144,7 @@ const printWidget = (widget: Gtk.Widget, colors: HighlightColors, depth: number,
 
 const printContainer = (container: Container, colors: HighlightColors, includeIds: boolean): string => {
     if (isApplication(container)) {
-        const windows = container.getWindows();
+        const windows = Gtk.Window.listToplevels();
         return windows.map((window) => printWidget(window, colors, 0, includeIds)).join("");
     }
     return printWidget(container, colors, 0, includeIds);

@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 
 export type Container = Gtk.Application | Gtk.Widget;
 
@@ -15,8 +15,8 @@ const traverseWidgetTree = function* (root: Gtk.Widget): Generator<Gtk.Widget> {
     }
 };
 
-const traverseApplication = function* (app: Gtk.Application): Generator<Gtk.Widget> {
-    const windows = app.getWindows();
+const traverseWindows = function* (): Generator<Gtk.Widget> {
+    const windows = Gtk.Window.listToplevels();
     for (const window of windows) {
         yield* traverseWidgetTree(window);
     }
@@ -24,7 +24,7 @@ const traverseApplication = function* (app: Gtk.Application): Generator<Gtk.Widg
 
 export const traverse = function* (container: Container): Generator<Gtk.Widget> {
     if (isApplication(container)) {
-        yield* traverseApplication(container);
+        yield* traverseWindows();
     } else {
         yield* traverseWidgetTree(container);
     }

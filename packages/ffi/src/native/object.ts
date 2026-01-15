@@ -1,5 +1,5 @@
 import { getNativeId, type NativeHandle } from "@gtkx/native";
-import { typeNameFromInstance } from "../generated/gobject/functions.js";
+import { typeCheckInstanceIsA, typeFromName, typeNameFromInstance } from "../generated/gobject/functions.js";
 import { TypeInstance } from "../generated/gobject/type-instance.js";
 import { findNativeClass } from "../registry.js";
 import type { NativeClass, NativeObject } from "./base.js";
@@ -71,5 +71,55 @@ export function getNativeObject<
 export const isObjectEqual = (obj: NativeObject, other: NativeObject): boolean => {
     return getNativeId(obj.handle) === getNativeId(other.handle);
 };
+
+const gtypeCache = new Map<string, number>();
+
+/**
+ * Gets a native object as a specific interface type if it implements that interface.
+ *
+ * Uses GLib's type system to check if the object implements the specified
+ * interface, and returns a wrapped instance if it does.
+ *
+ * @typeParam T - The interface type
+ * @param obj - The native object to check
+ * @param iface - The interface class (must have a glibTypeName property)
+ * @returns The wrapped interface instance, or null if not implemented
+ *
+ * @example
+ * ```tsx
+ * const editable = getNativeInterface(widget, Gtk.Editable);
+ * if (editable) {
+ *     const text = editable.getText();
+ * }
+ * ```
+ */
+export function getNativeInterface<T extends NativeObject>(
+    obj: NativeObject,
+    iface: NativeClass<T>,
+): T | null {
+    if (!obj.handle) return null;
+
+    const glibTypeName = iface.glibTypeName;
+    if (!glibTypeName) return null;
+
+    let gtype = gtypeCache.get(glibTypeName);
+    if (gtype === undefined) {
+        gtype = typeFromName(glibTypeName);
+        gtypeCache.set(glibTypeName, gtype);
+    }
+
+    if (gtype === 0) return null;
+
+    const typeInstance = Object.create(TypeInstance.prototype) as TypeInstance;
+    typeInstance.handle = obj.handle;
+
+    if (!typeCheckInstanceIsA(typeInstance, gtype)) {
+        return null;
+    }
+
+    const instance = Object.create(iface.prototype) as T;
+    instance.handle = obj.handle;
+    return instance;
+}
 
 export { isInstantiating, type NativeClass, NativeObject, setInstantiating } from "./base.js";

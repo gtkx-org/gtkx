@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
@@ -90,8 +90,7 @@ export const screen = {
      * ```
      */
     screenshot: async (selector?: number | string | RegExp, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
-        const root = getRoot();
-        const windows = root.getWindows();
+        const windows = Gtk.Window.listToplevels();
 
         if (windows.length === 0) {
             throw new Error("No windows available for screenshot");

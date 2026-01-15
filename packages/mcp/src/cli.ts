@@ -303,8 +303,20 @@ async function main() {
                     }
 
                     const apps = connectionManager.getApps();
+                    const appsWithWindows = await Promise.all(
+                        apps.map(async (app) => {
+                            try {
+                                const result = await connectionManager.sendToApp<{
+                                    windows: Array<{ id: string; title: string | null }>;
+                                }>(app.appId, "app.getWindows", {});
+                                return { ...app, windows: result.windows };
+                            } catch {
+                                return app;
+                            }
+                        }),
+                    );
                     return {
-                        content: [{ type: "text", text: JSON.stringify(apps, null, 2) }],
+                        content: [{ type: "text", text: JSON.stringify(appsWithWindows, null, 2) }],
                     };
                 }
 

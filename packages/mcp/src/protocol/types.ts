@@ -126,6 +126,7 @@ export const RegisterParamsSchema = z.object({
 export type IpcMethod =
     | "app.register"
     | "app.unregister"
+    | "app.getWindows"
     | "widget.getTree"
     | "widget.query"
     | "widget.getProps"
