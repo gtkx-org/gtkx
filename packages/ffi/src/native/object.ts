@@ -93,10 +93,7 @@ const gtypeCache = new Map<string, number>();
  * }
  * ```
  */
-export function getNativeInterface<T extends NativeObject>(
-    obj: NativeObject,
-    iface: NativeClass<T>,
-): T | null {
+export function getNativeInterface<T extends NativeObject>(obj: NativeObject, iface: NativeClass<T>): T | null {
     if (!obj.handle) return null;
 
     const glibTypeName = iface.glibTypeName;

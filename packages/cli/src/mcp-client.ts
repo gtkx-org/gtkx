@@ -1,5 +1,5 @@
 import * as net from "node:net";
-import { getNativeId, getNativeInterface, getNativeObject } from "@gtkx/ffi";
+import { getNativeId, getNativeInterface } from "@gtkx/ffi";
 import { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
