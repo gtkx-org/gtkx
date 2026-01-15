@@ -314,9 +314,11 @@ const TabbedView = () => (
 
 ### x.NotebookPage Props
 
-| Prop    | Type   | Description    |
-| ------- | ------ | -------------- |
-| `label` | string | Tab label text |
+| Prop        | Type    | Description                                   |
+| ----------- | ------- | --------------------------------------------- |
+| `label`     | string  | Tab label text                                |
+| `tabExpand` | boolean | Whether the tab should expand to fill space   |
+| `tabFill`   | boolean | Whether the tab should fill its allocated space |
 
 ### x.NotebookPageTab
 
@@ -545,57 +547,131 @@ const VolumeControl = () => {
 
 ## TextBuffer
 
-Configure a `GtkTextView` buffer declaratively using `x.TextBuffer`. This provides controlled text input with optional undo/redo support.
+Configure a `GtkTextView` buffer declaratively using `x.TextBuffer`. Text content is provided as children, with optional `x.TextTag` elements for rich text formatting.
+
+### Basic Usage
 
 ```tsx
-import {
-  x,
-  GtkTextView,
-  GtkScrolledWindow,
-  GtkBox,
-  GtkButton,
-} from "@gtkx/react";
+import { x, GtkTextView, GtkScrolledWindow } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
 
 const TextEditor = () => {
-  const [text, setText] = useState("Hello, World!");
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-
   return (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-      <GtkBox spacing={8}>
-        <GtkButton label="Undo" sensitive={canUndo} />
-        <GtkButton label="Redo" sensitive={canRedo} />
-      </GtkBox>
-      <GtkScrolledWindow minContentHeight={200}>
-        <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR}>
-          <x.TextBuffer
-            text={text}
-            enableUndo
-            onTextChanged={setText}
-            onCanUndoChanged={setCanUndo}
-            onCanRedoChanged={setCanRedo}
-          />
-        </GtkTextView>
-      </GtkScrolledWindow>
-    </GtkBox>
+    <GtkScrolledWindow minContentHeight={200}>
+      <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR}>
+        <x.TextBuffer enableUndo onTextChanged={(text) => console.log(text)}>
+          Hello, World!
+        </x.TextBuffer>
+      </GtkTextView>
+    </GtkScrolledWindow>
   );
 };
 ```
 
 When `enableUndo` is true, the built-in keyboard shortcuts `Ctrl+Z` (undo) and `Ctrl+Shift+Z` (redo) are automatically available.
 
+### Rich Text with TextTag
+
+Use `x.TextTag` to apply formatting to portions of text. Tags can be nested for combined styling:
+
+```tsx
+import { x, GtkTextView, GtkScrolledWindow } from "@gtkx/react";
+import * as Pango from "@gtkx/ffi/pango";
+import * as Gtk from "@gtkx/ffi/gtk";
+
+const RichTextEditor = () => {
+  return (
+    <GtkScrolledWindow minContentHeight={200}>
+      <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR}>
+        <x.TextBuffer>
+          Normal text,{" "}
+          <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
+            bold text
+          </x.TextTag>
+          ,{" "}
+          <x.TextTag id="italic" style={Pango.Style.ITALIC}>
+            italic text
+          </x.TextTag>
+          , and{" "}
+          <x.TextTag id="colored" foreground="red">
+            <x.TextTag id="underlined" underline={Pango.Underline.SINGLE}>
+              nested red underlined
+            </x.TextTag>
+          </x.TextTag>{" "}
+          text.
+        </x.TextBuffer>
+      </GtkTextView>
+    </GtkScrolledWindow>
+  );
+};
+```
+
+### Embedded Widgets with TextAnchor
+
+Use `x.TextAnchor` to embed widgets inline with text content:
+
+```tsx
+import { x, GtkTextView, GtkScrolledWindow, GtkButton } from "@gtkx/react";
+
+const TextWithWidgets = () => {
+  return (
+    <GtkScrolledWindow minContentHeight={200}>
+      <GtkTextView>
+        <x.TextBuffer>
+          Click here:{" "}
+          <x.TextAnchor>
+            <GtkButton label="Click me" onClicked={() => console.log("Clicked!")} />
+          </x.TextAnchor>{" "}
+          to continue.
+        </x.TextBuffer>
+      </GtkTextView>
+    </GtkScrolledWindow>
+  );
+};
+```
+
 ### x.TextBuffer Props
 
-| Prop              | Type                       | Description                             |
-| ----------------- | -------------------------- | --------------------------------------- |
-| `text`            | string                     | Text content                            |
-| `enableUndo`      | boolean                    | Enable undo/redo functionality          |
+| Prop               | Type                       | Description                             |
+| ------------------ | -------------------------- | --------------------------------------- |
+| `enableUndo`       | boolean                    | Enable undo/redo functionality          |
 | `onTextChanged`    | (text: string) => void     | Callback when text changes              |
 | `onCanUndoChanged` | (canUndo: boolean) => void | Callback when undo availability changes |
 | `onCanRedoChanged` | (canRedo: boolean) => void | Callback when redo availability changes |
+| `children`         | ReactNode                  | Text content, TextTag, and TextAnchor elements |
+
+### x.TextTag Props
+
+| Prop                  | Type                 | Description                                    |
+| --------------------- | -------------------- | ---------------------------------------------- |
+| `id`                  | string               | Unique identifier for the tag (required)       |
+| `priority`            | number               | Tag priority (higher wins for same property)   |
+| `foreground`          | string               | Text color (e.g., "red", "#ff0000")            |
+| `background`          | string               | Background color                               |
+| `weight`              | Pango.Weight         | Font weight (e.g., `Pango.Weight.BOLD`)        |
+| `style`               | Pango.Style          | Font style (e.g., `Pango.Style.ITALIC`)        |
+| `underline`           | Pango.Underline      | Underline style                                |
+| `strikethrough`       | boolean              | Whether to strike through text                 |
+| `family`              | string               | Font family (e.g., "Monospace")                |
+| `size`                | number               | Font size in Pango units                       |
+| `sizePoints`          | number               | Font size in points                            |
+| `scale`               | number               | Font scale factor                              |
+| `rise`                | number               | Baseline offset in Pango units                 |
+| `letterSpacing`       | number               | Extra character spacing in Pango units         |
+| `justification`       | Gtk.Justification    | Text justification                             |
+| `leftMargin`          | number               | Left margin in pixels                          |
+| `rightMargin`         | number               | Right margin in pixels                         |
+| `indent`              | number               | Paragraph indent in pixels                     |
+| `pixelsAboveLines`    | number               | Spacing above paragraphs                       |
+| `pixelsBelowLines`    | number               | Spacing below paragraphs                       |
+| `editable`            | boolean              | Whether text can be modified                   |
+| `invisible`           | boolean              | Whether text is hidden                         |
+
+### x.TextAnchor Props
+
+| Prop       | Type      | Description                              |
+| ---------- | --------- | ---------------------------------------- |
+| `children` | ReactNode | Widget to embed at the anchor position   |
 
 ## SourceBuffer
 

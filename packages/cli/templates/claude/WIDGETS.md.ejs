@@ -77,6 +77,8 @@ Custom tab widget:
 </x.NotebookPage>
 ```
 
+**NotebookPage props:** `label`, `tabExpand`, `tabFill`
+
 ### GtkPaned
 Resizable split with draggable divider. **Requires Slot components.**
 
@@ -685,27 +687,64 @@ Works with `GtkScale`, `GtkScrollbar`, `GtkScaleButton`, `GtkSpinButton`, `GtkLi
 
 ## TextBuffer
 
-Configure `GtkTextView` buffers declaratively with `x.TextBuffer`:
+Configure `GtkTextView` buffers declaratively with `x.TextBuffer`. Text content is provided as children, with optional `x.TextTag` elements for formatting.
 
 ```tsx
 import { x, GtkTextView, GtkScrolledWindow } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
 
-const TextEditor = () => {
-    const [text, setText] = useState("Hello, World!");
-
-    return (
-        <GtkScrolledWindow minContentHeight={200}>
-            <GtkTextView wrapMode={Gtk.WrapMode.WORD_CHAR}>
-                <x.TextBuffer text={text} enableUndo onTextChanged={setText} />
-            </GtkTextView>
-        </GtkScrolledWindow>
-    );
-};
+const TextEditor = () => (
+    <GtkScrolledWindow minContentHeight={200}>
+        <GtkTextView>
+            <x.TextBuffer enableUndo onTextChanged={(text) => console.log(text)}>
+                Hello, World!
+            </x.TextBuffer>
+        </GtkTextView>
+    </GtkScrolledWindow>
+);
 ```
 
-**Props:** `text`, `enableUndo`, `onTextChanged`, `onCanUndoChanged`, `onCanRedoChanged`
+### Rich Text with TextTag
+
+Apply formatting to portions of text using `x.TextTag`:
+
+```tsx
+import { x, GtkTextView, GtkScrolledWindow } from "@gtkx/react";
+import * as Pango from "@gtkx/ffi/pango";
+
+const RichTextEditor = () => (
+    <GtkScrolledWindow minContentHeight={200}>
+        <GtkTextView>
+            <x.TextBuffer>
+                Normal text, <x.TextTag id="bold" weight={Pango.Weight.BOLD}>bold</x.TextTag>,{" "}
+                <x.TextTag id="italic" style={Pango.Style.ITALIC}>italic</x.TextTag>, and{" "}
+                <x.TextTag id="red" foreground="red">
+                    <x.TextTag id="underline" underline={Pango.Underline.SINGLE}>nested</x.TextTag>
+                </x.TextTag> text.
+            </x.TextBuffer>
+        </GtkTextView>
+    </GtkScrolledWindow>
+);
+```
+
+### Embedded Widgets with TextAnchor
+
+Embed widgets inline with text content:
+
+```tsx
+<GtkTextView>
+    <x.TextBuffer>
+        Click here: <x.TextAnchor>
+            <GtkButton label="Click me" />
+        </x.TextAnchor> to continue.
+    </x.TextBuffer>
+</GtkTextView>
+```
+
+**TextBuffer props:** `enableUndo`, `onTextChanged`, `onCanUndoChanged`, `onCanRedoChanged`, `children`
+
+**TextTag props:** `id` (required), `priority`, `foreground`, `background`, `weight`, `style`, `underline`, `strikethrough`, `family`, `size`, `sizePoints`, `scale`, `justification`, `leftMargin`, `rightMargin`, `indent`, `editable`, `invisible`
+
+**TextAnchor props:** `children` (widget to embed)
 
 ## SourceBuffer
 

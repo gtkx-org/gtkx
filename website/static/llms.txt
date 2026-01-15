@@ -21,7 +21,7 @@ GTKX enables React developers to build Linux desktop applications using familiar
 - [Styling](https://eugeniodepalo.github.io/gtkx/docs/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
 - [Async Operations](https://eugeniodepalo.github.io/gtkx/docs/async-operations): Async event handlers, loading states, file I/O, network requests
 - [Error Handling](https://eugeniodepalo.github.io/gtkx/docs/error-handling): Try/catch patterns, error states, toast notifications, form validation
-- [Widgets](https://eugeniodepalo.github.io/gtkx/docs/widgets): Declarative widget children — x.Adjustment, x.TextBuffer, x.SourceBuffer, x.ShortcutController, x.ScaleMark, x.CalendarMark, x.GridChild, x.Toggle, custom drawing (onDraw), drag-and-drop, GValue factories
+- [Widgets](https://eugeniodepalo.github.io/gtkx/docs/widgets): Declarative widget children — x.Adjustment, x.TextBuffer (with x.TextTag for rich text, x.TextAnchor for embedded widgets), x.SourceBuffer, x.ShortcutController, x.ScaleMark, x.CalendarMark, x.GridChild, x.Toggle, custom drawing (onDraw), drag-and-drop, GValue factories
 - [Lists](https://eugeniodepalo.github.io/gtkx/docs/lists): x.ListView, x.GridView, GtkColumnView, x.TreeListView, GtkDropDown with virtual scrolling
 - [Menus](https://eugeniodepalo.github.io/gtkx/docs/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu, keyboard shortcuts, GtkPopoverMenu
 - [Slots](https://eugeniodepalo.github.io/gtkx/docs/slots): Named child positions for widgets like GtkHeaderBar, GtkPaned, GtkMenuButton
