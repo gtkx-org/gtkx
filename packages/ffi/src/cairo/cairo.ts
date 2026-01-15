@@ -336,6 +336,18 @@ declare module "../generated/cairo/context.js" {
          * After this call, the current page is cleared.
          */
         showPage(): this;
+        /**
+         * Gets the target surface for the cairo context.
+         * @returns The target surface
+         */
+        getTarget(): Surface;
+        /**
+         * Sets a surface as the source pattern for drawing operations.
+         * @param surface - The surface to use as source
+         * @param x - X coordinate of the surface origin
+         * @param y - Y coordinate of the surface origin
+         */
+        setSourceSurface(surface: Surface, x: number, y: number): this;
     }
 }
 
@@ -351,6 +363,14 @@ declare module "../generated/cairo/surface.js" {
          * After calling this, the surface should not be used.
          */
         finish(): void;
+        /**
+         * Creates a new surface similar to this one.
+         * @param content - The content type ("COLOR", "ALPHA", or "COLOR_ALPHA")
+         * @param width - Width of the new surface in device-space units
+         * @param height - Height of the new surface in device-space units
+         * @returns A new similar surface
+         */
+        createSimilar(content: "COLOR" | "ALPHA" | "COLOR_ALPHA", width: number, height: number): Surface;
     }
 }
 
@@ -1153,6 +1173,56 @@ Surface.prototype.createContext = function (): Context {
 
 Surface.prototype.finish = function (): void {
     call(LIB, "cairo_surface_finish", [{ type: SURFACE_T_NONE, value: this.handle }], { type: "undefined" });
+};
+
+const CONTENT_MAP = {
+    COLOR: 0x1000,
+    ALPHA: 0x2000,
+    COLOR_ALPHA: 0x3000,
+} as const;
+
+Surface.prototype.createSimilar = function (
+    content: "COLOR" | "ALPHA" | "COLOR_ALPHA",
+    width: number,
+    height: number,
+): Surface {
+    const ptr = call(
+        LIB,
+        "cairo_surface_create_similar",
+        [
+            { type: SURFACE_T_NONE, value: this.handle },
+            { type: { type: "int", size: 32, unsigned: false }, value: CONTENT_MAP[content] },
+            { type: { type: "int", size: 32, unsigned: false }, value: width },
+            { type: { type: "int", size: 32, unsigned: false }, value: height },
+        ],
+        SURFACE_T,
+    ) as NativeHandle;
+    return getNativeObject(ptr, Surface) as Surface;
+};
+
+Context.prototype.getTarget = function (): Surface {
+    const ptr = call(
+        LIB,
+        "cairo_get_target",
+        [{ type: CAIRO_T, value: this.handle }],
+        SURFACE_T_NONE,
+    ) as NativeHandle;
+    return getNativeObject(ptr, Surface) as Surface;
+};
+
+Context.prototype.setSourceSurface = function (surface: Surface, x: number, y: number): Context {
+    call(
+        LIB,
+        "cairo_set_source_surface",
+        [
+            { type: CAIRO_T, value: this.handle },
+            { type: SURFACE_T_NONE, value: surface.handle },
+            { type: DOUBLE_TYPE, value: x },
+            { type: DOUBLE_TYPE, value: y },
+        ],
+        { type: "undefined" },
+    );
+    return this;
 };
 
 export class PdfSurface extends Surface {
