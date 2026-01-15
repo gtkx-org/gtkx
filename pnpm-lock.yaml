@@ -202,8 +202,8 @@ importers:
         specifier: ^0.14.7
         version: 0.14.7
       memfs:
-        specifier: ^4.51.1
-        version: 4.51.1
+        specifier: ^4.52.0
+        version: 4.52.0
 
   packages/codegen:
     devDependencies:
@@ -4566,8 +4566,8 @@ packages:
     resolution: {integrity: sha512-aisnrDP4GNe06UcKFnV5bfMNPBUw4jsLGaWwWfnH3v02GnBuXX2MCVn5RbrWo0j3pczUilYblq7fQ7Nw2t5XKw==}
     engines: {node: '>= 0.8'}
 
-  memfs@4.51.1:
-    resolution: {integrity: sha512-Eyt3XrufitN2ZL9c/uIRMyDwXanLI88h/L3MoWqNY747ha3dMR9dWqp8cRT5ntjZ0U1TNuq4U91ZXK0sMBjYOQ==}
+  memfs@4.52.0:
+    resolution: {integrity: sha512-dG5ZY1wUCPWhtl4M2mlc7Wx4OrMGtiI79axnScxwDoPR/25biQYrYm21OpKyZcnKv8pvWaX95SRtZgecZ84gFg==}
 
   merge-descriptors@1.0.3:
     resolution: {integrity: sha512-gaNvAS7TZ897/rVaZ0nMtAyxNyi/pdbjbAwUpFQpN70GqnVfOiXpeUUMKRBmzXaSQ8DdTX4/0ms62r2K+hE6mQ==}
@@ -11810,7 +11810,7 @@ snapshots:
 
   media-typer@1.1.0: {}
 
-  memfs@4.51.1:
+  memfs@4.52.0:
     dependencies:
       '@jsonjoy.com/json-pack': 1.21.0(tslib@2.8.1)
       '@jsonjoy.com/util': 1.9.0(tslib@2.8.1)
@@ -14008,7 +14008,7 @@ snapshots:
   webpack-dev-middleware@7.4.5(webpack@5.104.1):
     dependencies:
       colorette: 2.0.20
-      memfs: 4.51.1
+      memfs: 4.52.0
       mime-types: 3.0.2
       on-finished: 2.4.1
       range-parser: 1.2.1
