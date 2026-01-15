@@ -54,8 +54,9 @@ class FixedChildNode extends SlotNode<Props> {
                 }
 
                 fixed.put(child, x, y);
-                this.applyTransform();
             });
+
+            this.applyTransform();
         }
     }
 

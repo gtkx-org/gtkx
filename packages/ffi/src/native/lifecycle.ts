@@ -15,11 +15,10 @@ let application: Application | null = null;
 let isStopping = false;
 
 /**
- * Checks if the GTK application runtime is currently running.
- *
- * @returns `true` if {@link start} has been called and {@link stop} has not
+ * Whether the GTK application runtime is currently running.
+ * `true` if {@link start} has been called and {@link stop} has not.
  */
-export const isStarted = (): boolean => application !== null;
+export let isStarted = false;
 
 /**
  * Returns why FFI calls are not allowed, or null if they are allowed.
@@ -27,7 +26,7 @@ export const isStarted = (): boolean => application !== null;
  * @returns Error reason string, or null if runtime is available
  */
 export const getStartError = (): string | null => {
-    if (application === null) {
+    if (!isStarted) {
         return "GTK runtime not started. Call start() before making FFI calls.";
     }
     return null;
@@ -74,6 +73,7 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
     }
 
     const app = nativeStart(appId, flags);
+    isStarted = true;
     application = getNativeObject(app as NativeHandle) as Application;
 
     try {
@@ -120,6 +120,7 @@ export const stop = (): void => {
     } catch {}
 
     application = null;
+    isStarted = false;
     nativeStop();
     isStopping = false;
 };

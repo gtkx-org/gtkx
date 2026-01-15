@@ -132,6 +132,7 @@ export type RawMethod = {
     cIdentifier: string;
     returnType: RawType;
     parameters: RawParameter[];
+    instanceParameter?: RawParameter;
     throws?: boolean;
     doc?: string;
     returnDoc?: string;

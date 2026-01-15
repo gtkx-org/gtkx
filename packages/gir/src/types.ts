@@ -672,6 +672,7 @@ export class GirMethod {
     readonly cIdentifier: string;
     readonly returnType: GirType;
     readonly parameters: GirParameter[];
+    readonly instanceParameter?: GirParameter;
     readonly throws: boolean;
     readonly doc?: string;
     readonly returnDoc?: string;
@@ -685,6 +686,7 @@ export class GirMethod {
         cIdentifier: string;
         returnType: GirType;
         parameters: GirParameter[];
+        instanceParameter?: GirParameter;
         throws: boolean;
         doc?: string;
         returnDoc?: string;
@@ -696,6 +698,7 @@ export class GirMethod {
         this.cIdentifier = data.cIdentifier;
         this.returnType = data.returnType;
         this.parameters = data.parameters;
+        this.instanceParameter = data.instanceParameter;
         this.throws = data.throws;
         this.doc = data.doc;
         this.returnDoc = data.returnDoc;

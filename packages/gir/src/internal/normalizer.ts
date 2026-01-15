@@ -412,6 +412,9 @@ const normalizeMethod = (raw: RawMethod, currentNamespace: string, ctx: Normaliz
         cIdentifier: raw.cIdentifier,
         returnType: normalizeType(raw.returnType, currentNamespace, ctx),
         parameters: raw.parameters.map((p) => normalizeParameter(p, currentNamespace, ctx)),
+        instanceParameter: raw.instanceParameter
+            ? normalizeParameter(raw.instanceParameter, currentNamespace, ctx)
+            : undefined,
         throws: raw.throws ?? false,
         doc: raw.doc,
         returnDoc: raw.returnDoc,

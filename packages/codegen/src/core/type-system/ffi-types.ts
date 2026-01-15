@@ -480,11 +480,12 @@ export const isMemoryWritableType = (typeName: string): boolean => MEMORY_WRITAB
  * Type-safe self type descriptor for instance method calls.
  *
  * Discriminated union providing compile-time safety for method call FFI.
+ * "borrowed" = caller keeps ownership, "full" = function consumes the instance
  */
 export type SelfTypeDescriptor =
-    | { type: "gobject"; ownership: "borrowed" }
-    | { type: "fundamental"; ownership: "borrowed"; lib: string; refFunc: string; unrefFunc: string }
-    | { type: "boxed"; ownership: "borrowed"; innerType: string; lib: string; getTypeFn?: string };
+    | { type: "gobject"; ownership: "borrowed" | "full" }
+    | { type: "fundamental"; ownership: "borrowed" | "full"; lib: string; refFunc: string; unrefFunc: string }
+    | { type: "boxed"; ownership: "borrowed" | "full"; innerType: string; lib: string; getTypeFn?: string };
 
 /** Self type descriptor for GObject instance methods. */
 export const SELF_TYPE_GOBJECT: SelfTypeDescriptor = { type: "gobject", ownership: "borrowed" };
@@ -492,9 +493,14 @@ export const SELF_TYPE_GOBJECT: SelfTypeDescriptor = { type: "gobject", ownershi
 /**
  * Creates a fundamental self type descriptor for types with custom ref/unref.
  */
-export const fundamentalSelfType = (lib: string, refFunc: string, unrefFunc: string): SelfTypeDescriptor => ({
+export const fundamentalSelfType = (
+    lib: string,
+    refFunc: string,
+    unrefFunc: string,
+    ownership: "borrowed" | "full" = "borrowed",
+): SelfTypeDescriptor => ({
     type: "fundamental",
-    ownership: "borrowed",
+    ownership,
     lib,
     refFunc,
     unrefFunc,
@@ -503,10 +509,15 @@ export const fundamentalSelfType = (lib: string, refFunc: string, unrefFunc: str
 /**
  * Creates a boxed self type descriptor.
  */
-export const boxedSelfType = (innerType: string, lib: string, getTypeFn?: string): SelfTypeDescriptor => {
+export const boxedSelfType = (
+    innerType: string,
+    lib: string,
+    getTypeFn?: string,
+    ownership: "borrowed" | "full" = "borrowed",
+): SelfTypeDescriptor => {
     const result: SelfTypeDescriptor = {
         type: "boxed",
-        ownership: "borrowed",
+        ownership,
         innerType,
         lib,
     };

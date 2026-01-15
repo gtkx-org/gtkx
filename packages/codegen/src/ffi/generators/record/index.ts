@@ -363,8 +363,9 @@ export class RecordGenerator {
         glibGetType: string | undefined,
     ): MethodDeclarationStructure {
         const methodName = toCamelCase(method.name);
+        const instanceOwnership = method.instanceParameter?.transferOwnership === "full" ? "full" : "borrowed";
         const selfTypeDescriptor = className
-            ? boxedSelfType(className, this.options.sharedLibrary, glibGetType)
+            ? boxedSelfType(className, this.options.sharedLibrary, glibGetType, instanceOwnership)
             : SELF_TYPE_GOBJECT;
 
         return this.methodBody.buildMethodStructure(method, {

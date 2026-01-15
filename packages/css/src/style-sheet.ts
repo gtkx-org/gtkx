@@ -25,7 +25,7 @@ const registerStartListener = (): void => {
     events.once("start", flushPendingStyles);
 };
 
-if (!isStarted()) {
+if (!isStarted) {
     registerStartListener();
 }
 
@@ -67,7 +67,7 @@ export class StyleSheet {
     insert(rule: string): void {
         this.rules.push(rule);
 
-        if (isStarted()) {
+        if (isStarted) {
             this.ensureProvider();
             this.updateProvider();
         } else if (!this.hasPendingRules) {
