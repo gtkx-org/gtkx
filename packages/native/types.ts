@@ -62,6 +62,7 @@ type CallbackType = {
         | "closure"
         | "destroy"
         | "drawFunc"
+        | "pathIntersectionFunc"
         | "shortcutFunc"
         | "tickCallback"
         | "treeListModelCreateFunc";

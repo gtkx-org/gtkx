@@ -352,6 +352,12 @@ pub struct TickCallbackData {
     pub arg_types: Option<Vec<crate::types::Type>>,
 }
 
+pub struct PathIntersectionCallbackData {
+    pub channel: neon::event::Channel,
+    pub js_func: std::sync::Arc<neon::handle::Root<neon::types::JsFunction>>,
+    pub arg_types: Option<Vec<crate::types::Type>>,
+}
+
 impl TickCallbackData {
     /// # Safety
     ///
@@ -403,6 +409,84 @@ impl TickCallbackData {
             |result| match result {
                 Ok(crate::value::Value::Boolean(b)) => b,
                 _ => false,
+            },
+        );
+
+        result as glib::ffi::gboolean
+    }
+}
+
+impl PathIntersectionCallbackData {
+    /// # Safety
+    ///
+    /// `user_data` must be a valid pointer to a `PathIntersectionCallbackData` that was
+    /// previously allocated with `Box::into_raw`, or null.
+    pub unsafe extern "C" fn release(user_data: *mut c_void) {
+        let Some(data_ptr) = NonNull::new(user_data as *mut PathIntersectionCallbackData) else {
+            return;
+        };
+        let _ = unsafe { Box::from_raw(data_ptr.as_ptr()) };
+    }
+
+    /// Trampoline for `GskPathIntersectionFunc`.
+    ///
+    /// # Safety
+    ///
+    /// - `path1` must be a valid pointer to a GskPath.
+    /// - `point1` must be a valid pointer to a GskPathPoint.
+    /// - `path2` must be a valid pointer to a GskPath.
+    /// - `point2` must be a valid pointer to a GskPathPoint.
+    /// - `kind` is the GskPathIntersection enum value.
+    /// - `user_data` must be a valid pointer to a `PathIntersectionCallbackData` that was
+    ///   previously allocated with `Box::into_raw`, or null.
+    pub unsafe extern "C" fn trampoline(
+        path1: *mut gobject_ffi::GObject,
+        point1: *const c_void,
+        path2: *mut gobject_ffi::GObject,
+        point2: *const c_void,
+        kind: i32,
+        user_data: *mut c_void,
+    ) -> glib::ffi::gboolean {
+        let Some(data_ptr) = NonNull::new(user_data as *mut PathIntersectionCallbackData) else {
+            eprintln!(
+                "[gtkx] WARNING: PathIntersectionCallbackData::trampoline: user_data is null, callback skipped"
+            );
+            return glib::ffi::GFALSE;
+        };
+
+        let data = unsafe { data_ptr.as_ref() };
+
+        let path1_obj = unsafe { glib::Object::from_glib_none(path1) };
+        let path2_obj = unsafe { glib::Object::from_glib_none(path2) };
+
+        let path1_value =
+            crate::value::Value::Object(crate::managed::NativeValue::GObject(path1_obj).into());
+
+        let point1_boxed =
+            crate::managed::Boxed::from_glib_full(None, point1 as *mut c_void);
+        let point1_value =
+            crate::value::Value::Object(crate::managed::NativeValue::Boxed(point1_boxed).into());
+
+        let path2_value =
+            crate::value::Value::Object(crate::managed::NativeValue::GObject(path2_obj).into());
+
+        let point2_boxed =
+            crate::managed::Boxed::from_glib_full(None, point2 as *mut c_void);
+        let point2_value =
+            crate::value::Value::Object(crate::managed::NativeValue::Boxed(point2_boxed).into());
+
+        let kind_value = crate::value::Value::Number(kind as f64);
+
+        let args = vec![path1_value, point1_value, path2_value, point2_value, kind_value];
+
+        let result = crate::js_dispatch::JsDispatcher::global().invoke_and_wait(
+            &data.channel,
+            &data.js_func,
+            args,
+            true,
+            |result| match result {
+                Ok(crate::value::Value::Boolean(b)) => b,
+                _ => true,
             },
         );
 

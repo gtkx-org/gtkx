@@ -38,6 +38,7 @@ pub enum CallbackTrampoline {
     TreeListModelCreateFunc,
     AnimationTargetFunc,
     TickCallback,
+    PathIntersectionFunc,
 }
 
 impl std::str::FromStr for CallbackTrampoline {
@@ -53,8 +54,9 @@ impl std::str::FromStr for CallbackTrampoline {
             "treeListModelCreateFunc" => Ok(CallbackTrampoline::TreeListModelCreateFunc),
             "animationTargetFunc" => Ok(CallbackTrampoline::AnimationTargetFunc),
             "tickCallback" => Ok(CallbackTrampoline::TickCallback),
+            "pathIntersectionFunc" => Ok(CallbackTrampoline::PathIntersectionFunc),
             _ => Err(format!(
-                "'trampoline' must be one of: 'closure', 'asyncReady', 'destroy', 'drawFunc', 'shortcutFunc', 'treeListModelCreateFunc', 'animationTargetFunc', 'tickCallback'; got '{}'",
+                "'trampoline' must be one of: 'closure', 'asyncReady', 'destroy', 'drawFunc', 'shortcutFunc', 'treeListModelCreateFunc', 'animationTargetFunc', 'tickCallback', 'pathIntersectionFunc'; got '{}'",
                 s
             )),
         }
@@ -298,6 +300,27 @@ impl CallbackTrampoline {
                     trampoline_ptr: crate::trampoline::TickCallbackData::trampoline as *mut c_void,
                     closure: FfiStorage::new(data_ptr, FfiStorageKind::Callback(data_ptr)),
                     destroy_ptr: Some(crate::trampoline::TickCallbackData::release as *mut c_void),
+                    data_first: false,
+                })
+            }
+
+            CallbackTrampoline::PathIntersectionFunc => {
+                let arg_types = callback_type.arg_types.clone();
+
+                let data = Box::new(crate::trampoline::PathIntersectionCallbackData {
+                    channel: channel.clone(),
+                    js_func: js_func.clone(),
+                    arg_types,
+                });
+                let data_ptr = Box::into_raw(data) as *mut c_void;
+
+                ffi::FfiValue::TrampolineCallback(TrampolineCallbackValue {
+                    trampoline_ptr: crate::trampoline::PathIntersectionCallbackData::trampoline
+                        as *mut c_void,
+                    closure: FfiStorage::new(data_ptr, FfiStorageKind::Callback(data_ptr)),
+                    destroy_ptr: Some(
+                        crate::trampoline::PathIntersectionCallbackData::release as *mut c_void,
+                    ),
                     data_first: false,
                 })
             }

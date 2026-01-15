@@ -22,6 +22,7 @@ export type TrampolineName =
     | "closure"
     | "destroy"
     | "drawFunc"
+    | "pathIntersectionFunc"
     | "scaleFormatValueFunc"
     | "shortcutFunc"
     | "tickCallback"
@@ -38,6 +39,7 @@ const CALLBACK_TRAMPOLINES: Record<string, TrampolineName> = {
     "Adw.AnimationTargetFunc": "animationTargetFunc",
     "Gio.AsyncReadyCallback": "asyncReady",
     "GLib.DestroyNotify": "destroy",
+    "Gsk.PathIntersectionFunc": "pathIntersectionFunc",
     "Gtk.DrawingAreaDrawFunc": "drawFunc",
     "Gtk.ShortcutFunc": "shortcutFunc",
     "Gtk.TickCallback": "tickCallback",

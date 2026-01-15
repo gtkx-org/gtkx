@@ -79,6 +79,7 @@ export type FfiTypeDescriptor = {
         | "closure"
         | "destroy"
         | "drawFunc"
+        | "pathIntersectionFunc"
         | "scaleFormatValueFunc"
         | "shortcutFunc"
         | "tickCallback"
