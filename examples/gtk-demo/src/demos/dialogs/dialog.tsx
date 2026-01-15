@@ -8,6 +8,7 @@ import sourceCode from "./dialog.tsx?raw";
 const DialogDemo = () => {
     const [lastResponse, setLastResponse] = useState<string | null>(null);
     const [confirmResult, setConfirmResult] = useState<string | null>(null);
+    const [clickCount, setClickCount] = useState(0);
     const app = useApplication();
 
     const showSimpleDialog = async () => {
@@ -67,6 +68,25 @@ const DialogDemo = () => {
             cancel: "Action cancelled",
         };
         setLastResponse(messages[response] ?? response);
+    };
+
+    const showClickCountDialog = async () => {
+        const newCount = clickCount + 1;
+        setClickCount(newCount);
+
+        const dialog = new Adw.AlertDialog(
+            "Click Counter",
+            `This button has been clicked ${newCount} time${newCount === 1 ? "" : "s"}.`,
+        );
+        dialog.addResponse("ok", "OK");
+        dialog.addResponse("reset", "Reset Counter");
+        dialog.setDefaultResponse("ok");
+        dialog.setCloseResponse("ok");
+
+        const response = await dialog.chooseAsync(app.getActiveWindow() ?? undefined);
+        if (response === "reset") {
+            setClickCount(0);
+        }
     };
 
     return (
@@ -164,6 +184,31 @@ const DialogDemo = () => {
                         onClicked={() => void showMultipleChoiceDialog()}
                         halign={Gtk.Align.START}
                     />
+                </GtkBox>
+            </GtkFrame>
+
+            <GtkFrame label="Click Counter">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="A dialog that shows how many times the button has been clicked. Similar to the official GTK demo."
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+                    <GtkBox spacing={12}>
+                        <GtkButton
+                            label="Click Me"
+                            onClicked={() => void showClickCountDialog()}
+                            cssClasses={["suggested-action"]}
+                        />
+                        <GtkLabel label={`Current count: ${clickCount}`} cssClasses={["dim-label"]} />
+                    </GtkBox>
                 </GtkBox>
             </GtkFrame>
 

@@ -1,33 +1,44 @@
 import { css, cx, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkExpander, GtkFrame, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkExpander, GtkFrame, GtkLabel, GtkRevealer } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-accordion.tsx?raw";
 
 injectGlobal`
- /* Transition timing functions */
- .transition-ease {
- transition: all 300ms ease;
+ .accordion-panel {
+ background-color: @theme_bg_color;
+ border-radius: 8px;
+ margin: 4px 0;
+ transition: background-color 200ms ease, box-shadow 200ms ease;
  }
 
- .transition-ease-in {
- transition: all 300ms ease-in;
+ .accordion-panel:hover {
+ background-color: alpha(@accent_bg_color, 0.05);
  }
 
- .transition-ease-out {
- transition: all 300ms ease-out;
+ .accordion-panel-active {
+ background-color: alpha(@accent_bg_color, 0.1);
+ box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
  }
 
- .transition-ease-in-out {
- transition: all 300ms ease-in-out;
+ .accordion-header {
+ padding: 12px 16px;
+ transition: background-color 150ms ease;
  }
 
- .transition-linear {
- transition: all 300ms linear;
+ .accordion-header:hover {
+ background-color: alpha(@accent_bg_color, 0.05);
  }
 
- /* Animated button states */
+ .accordion-arrow {
+ transition: -gtk-icon-transform 250ms ease-out;
+ }
+
+ .accordion-arrow-open {
+ -gtk-icon-transform: rotate(90deg);
+ }
+
  .animated-button {
  transition: all 200ms ease-out;
  padding: 12px 24px;
@@ -44,31 +55,9 @@ injectGlobal`
  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
  }
 
- /* Scale on hover */
- .scale-hover {
+ .smooth-transition {
  transition: all 200ms ease;
  }
-
- .scale-hover:hover {
- -gtk-icon-transform: scale(1.1);
- }
-`;
-
-const accordionPanelStyle = css`
- background-color: @theme_bg_color;
- border-radius: 8px;
- padding: 12px 16px;
- margin: 4px 0;
- transition: background-color 200ms ease, box-shadow 200ms ease;
-
- &:hover {
- background-color: alpha(@accent_bg_color, 0.1);
- }
-`;
-
-const accordionPanelActiveStyle = css`
- background-color: alpha(@accent_bg_color, 0.15);
- box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 `;
 
 const colorTransitionStyle = css`
@@ -98,21 +87,28 @@ interface AccordionItemProps {
 
 const AccordionItem = ({ title, content, isOpen, onToggle }: AccordionItemProps) => (
     <GtkBox
-        cssClasses={[cx(accordionPanelStyle, isOpen && accordionPanelActiveStyle)]}
+        cssClasses={["accordion-panel", isOpen ? "accordion-panel-active" : ""]}
         orientation={Gtk.Orientation.VERTICAL}
-        spacing={8}
     >
-        <GtkButton cssClasses={["flat"]} onClicked={onToggle}>
+        <GtkButton cssClasses={["flat", "accordion-header"]} onClicked={onToggle}>
             <GtkBox spacing={12} hexpand>
-                <GtkLabel label={isOpen ? "-" : "+"} cssClasses={["heading"]} widthChars={2} />
+                <GtkLabel
+                    label="▶"
+                    cssClasses={["accordion-arrow", isOpen ? "accordion-arrow-open" : ""]}
+                    widthChars={2}
+                />
                 <GtkLabel label={title} cssClasses={["heading"]} halign={Gtk.Align.START} hexpand />
             </GtkBox>
         </GtkButton>
-        {isOpen && (
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} marginStart={24} marginTop={8} marginBottom={8}>
+        <GtkRevealer
+            revealChild={isOpen}
+            transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
+            transitionDuration={250}
+        >
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} marginStart={32} marginEnd={16} marginBottom={12}>
                 <GtkLabel label={content} wrap cssClasses={["dim-label"]} halign={Gtk.Align.START} />
             </GtkBox>
-        )}
+        </GtkRevealer>
     </GtkBox>
 );
 
@@ -247,7 +243,7 @@ const CssAccordionDemo = () => {
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                         <GtkButton
-                            cssClasses={["transition-ease", "circular"]}
+                            cssClasses={["smooth-transition", "circular"]}
                             iconName="starred-symbolic"
                             onClicked={() => {}}
                         />
@@ -259,7 +255,7 @@ const CssAccordionDemo = () => {
                     </GtkBox>
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <GtkButton cssClasses={["transition-ease", "pill"]} onClicked={() => {}}>
+                        <GtkButton cssClasses={["smooth-transition", "pill"]} onClicked={() => {}}>
                             <GtkLabel label="Pill Button" />
                         </GtkButton>
                         <GtkLabel

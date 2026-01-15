@@ -1,16 +1,64 @@
-import { css } from "@gtkx/css";
+import { css, injectGlobal } from "@gtkx/css";
 import { type Context, Pattern } from "@gtkx/ffi/cairo";
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import {
+    GtkBox,
+    GtkButton,
+    GtkDrawingArea,
+    GtkFrame,
+    GtkImage,
+    GtkLabel,
+    GtkOverlay,
+    GtkScale,
+    GtkToggleButton,
+    x,
+} from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./transparent.tsx?raw";
+
+injectGlobal`
+.glass-card {
+    background-color: alpha(@card_bg_color, 0.7);
+    border-radius: 12px;
+    border: 1px solid alpha(white, 0.2);
+}
+
+.glass-dark {
+    background-color: alpha(black, 0.4);
+    color: white;
+}
+
+.gradient-overlay {
+    background: linear-gradient(180deg, alpha(@accent_bg_color, 0.3), alpha(@accent_bg_color, 0.1));
+}
+`;
 
 const transparencyInfoStyle = css`
  background-color: alpha(@accent_bg_color, 0.1);
  border-radius: 8px;
  padding: 12px;
 `;
+
+const floatingCardStyle = css`
+ background-color: alpha(@card_bg_color, 0.85);
+ border-radius: 16px;
+ padding: 16px;
+ margin: 12px;
+`;
+
+const drawCheckeredBackground = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+    const checkSize = 12;
+    for (let y = 0; y < height; y += checkSize) {
+        for (let x = 0; x < width; x += checkSize) {
+            const isLight = (x / checkSize + y / checkSize) % 2 === 0;
+            cr.setSourceRgb(isLight ? 0.85 : 0.65, isLight ? 0.85 : 0.65, isLight ? 0.85 : 0.65)
+                .rectangle(x, y, checkSize, checkSize)
+                .fill();
+        }
+    }
+};
 
 const drawTransparencyDemo = (alpha: number, gradientType: "solid" | "linear" | "radial") => {
     return (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -77,28 +125,130 @@ const drawOverlappingShapes = (_self: Gtk.DrawingArea, cr: Context, width: numbe
         .fill();
 };
 
-const drawLayeredTransparency = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-    const checkSize = 8;
-    for (let y = 0; y < height; y += checkSize) {
-        for (let x = 0; x < width; x += checkSize) {
-            const isLight = (x / checkSize + y / checkSize) % 2 === 0;
-            cr.setSourceRgb(isLight ? 0.85 : 0.65, isLight ? 0.85 : 0.65, isLight ? 0.85 : 0.65)
-                .rectangle(x, y, checkSize, checkSize)
-                .fill();
+const OverlayDemo = () => {
+    const [overlayOpacity, setOverlayOpacity] = useState(0.7);
+    const [showOverlay, setShowOverlay] = useState(true);
+    const providerRef = useRef<Gtk.CssProvider | null>(null);
+
+    useEffect(() => {
+        const display = Gdk.Display.getDefault();
+        if (!display) return;
+
+        if (providerRef.current) {
+            Gtk.StyleContext.removeProviderForDisplay(display, providerRef.current);
         }
-    }
 
-    cr.setSourceRgba(0.2, 0.6, 0.9, 0.7)
-        .rectangle(20, 20, width - 40, height - 40)
-        .fill();
+        const provider = new Gtk.CssProvider();
+        providerRef.current = provider;
+        provider.loadFromString(`.overlay-card-dynamic { background-color: alpha(@card_bg_color, ${overlayOpacity}); }`);
+        Gtk.StyleContext.addProviderForDisplay(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
 
-    cr.setSourceRgba(0.9, 0.3, 0.3, 0.5)
-        .rectangle(40, 40, width - 80, height - 80)
-        .fill();
+        return () => {
+            const d = Gdk.Display.getDefault();
+            if (d && providerRef.current) {
+                Gtk.StyleContext.removeProviderForDisplay(d, providerRef.current);
+            }
+        };
+    }, [overlayOpacity]);
 
-    cr.setSourceRgba(0.3, 0.9, 0.3, 0.6)
-        .rectangle(60, 60, width - 120, height - 120)
-        .fill();
+    return (
+        <GtkFrame label="GtkOverlay Demo">
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={12}
+                marginStart={12}
+                marginEnd={12}
+                marginTop={12}
+                marginBottom={12}
+            >
+                <GtkLabel
+                    label="GtkOverlay stacks widgets on top of each other. Combined with CSS alpha transparency, you can create floating panels, HUD elements, and glass-morphism effects."
+                    wrap
+                    halign={Gtk.Align.START}
+                    cssClasses={["dim-label"]}
+                />
+
+                <GtkOverlay>
+                    <GtkDrawingArea onDraw={drawCheckeredBackground} contentWidth={400} contentHeight={200} />
+                    {showOverlay && (
+                        <x.OverlayChild>
+                            <GtkBox
+                                cssClasses={["overlay-card-dynamic", "glass-card"]}
+                                halign={Gtk.Align.CENTER}
+                                valign={Gtk.Align.CENTER}
+                                marginStart={20}
+                                marginEnd={20}
+                                marginTop={20}
+                                marginBottom={20}
+                            >
+                                <GtkBox
+                                    orientation={Gtk.Orientation.VERTICAL}
+                                    spacing={8}
+                                    marginStart={24}
+                                    marginEnd={24}
+                                    marginTop={16}
+                                    marginBottom={16}
+                                >
+                                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
+                                        <GtkImage iconName="weather-clear-symbolic" pixelSize={32} />
+                                        <GtkLabel label="Glass Card" cssClasses={["title-3"]} />
+                                    </GtkBox>
+                                    <GtkLabel
+                                        label={`Opacity: ${(overlayOpacity * 100).toFixed(0)}%`}
+                                        cssClasses={["dim-label"]}
+                                    />
+                                    <GtkLabel label="This overlay floats above the checkered background" wrap />
+                                </GtkBox>
+                            </GtkBox>
+                        </x.OverlayChild>
+                    )}
+                    {showOverlay && (
+                        <x.OverlayChild>
+                            <GtkBox
+                                cssClasses={["glass-dark"]}
+                                halign={Gtk.Align.END}
+                                valign={Gtk.Align.END}
+                                marginStart={8}
+                                marginEnd={8}
+                                marginTop={8}
+                                marginBottom={8}
+                            >
+                                <GtkLabel
+                                    label="Corner Badge"
+                                    cssClasses={["caption"]}
+                                    marginStart={8}
+                                    marginEnd={8}
+                                    marginTop={4}
+                                    marginBottom={4}
+                                />
+                            </GtkBox>
+                        </x.OverlayChild>
+                    )}
+                </GtkOverlay>
+
+                <GtkBox spacing={12}>
+                    <GtkLabel label="Overlay Opacity:" widthRequest={120} halign={Gtk.Align.START} />
+                    <GtkScale drawValue digits={0} valuePos={Gtk.PositionType.RIGHT} hexpand>
+                        <x.Adjustment
+                            value={overlayOpacity * 100}
+                            lower={10}
+                            upper={100}
+                            stepIncrement={5}
+                            pageIncrement={10}
+                            onValueChanged={(v) => setOverlayOpacity(v / 100)}
+                        />
+                    </GtkScale>
+                </GtkBox>
+
+                <GtkToggleButton
+                    label={showOverlay ? "Hide Overlays" : "Show Overlays"}
+                    active={showOverlay}
+                    onToggled={(btn) => setShowOverlay(btn.getActive())}
+                    halign={Gtk.Align.CENTER}
+                />
+            </GtkBox>
+        </GtkFrame>
+    );
 };
 
 const TransparentDemo = () => {
@@ -121,16 +271,18 @@ const TransparentDemo = () => {
             marginTop={20}
             marginBottom={20}
         >
-            <GtkLabel label="Transparency & RGBA" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="Transparency & Overlays" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
-                label="GTK4 supports RGBA visuals for transparent and translucent windows and widgets. Cairo drawing can use alpha channels for smooth transparency effects."
+                label="GTK4 supports RGBA visuals for transparent widgets. GtkOverlay enables stacking widgets with CSS alpha transparency for glass-morphism and floating panel effects."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
             />
 
-            <GtkFrame label="Adjustable Transparency">
+            <OverlayDemo />
+
+            <GtkFrame label="Cairo Alpha Drawing">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={16}
@@ -175,7 +327,7 @@ const TransparentDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            <GtkFrame label="Overlapping Transparent Shapes">
+            <GtkFrame label="Color Blending">
                 <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
                     <GtkDrawingArea
                         onDraw={drawOverlappingShapes}
@@ -197,29 +349,7 @@ const TransparentDemo = () => {
                 </GtkBox>
             </GtkFrame>
 
-            <GtkFrame label="Layered Transparency">
-                <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
-                    <GtkDrawingArea
-                        onDraw={drawLayeredTransparency}
-                        contentWidth={200}
-                        contentHeight={150}
-                        cssClasses={["card"]}
-                    />
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.CENTER}>
-                        <GtkLabel
-                            label="Multiple layers stack with their alpha values affecting the final composited color."
-                            wrap
-                            widthRequest={200}
-                            cssClasses={["dim-label"]}
-                        />
-                        <GtkLabel label="Layer 1: Blue @ 70%" cssClasses={["caption"]} halign={Gtk.Align.START} />
-                        <GtkLabel label="Layer 2: Red @ 50%" cssClasses={["caption"]} halign={Gtk.Align.START} />
-                        <GtkLabel label="Layer 3: Green @ 60%" cssClasses={["caption"]} halign={Gtk.Align.START} />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Transparent Windows">
+            <GtkFrame label="CSS Alpha Functions">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={12}
@@ -228,64 +358,21 @@ const TransparentDemo = () => {
                     marginTop={16}
                     marginBottom={16}
                 >
-                    <GtkLabel
-                        label="For transparent windows, GTK4 requires:"
-                        cssClasses={["heading"]}
-                        halign={Gtk.Align.START}
-                    />
+                    <GtkBox cssClasses={[floatingCardStyle]} halign={Gtk.Align.CENTER}>
+                        <GtkLabel label="alpha(@card_bg_color, 0.85)" cssClasses={["monospace"]} />
+                    </GtkBox>
+
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} cssClasses={[transparencyInfoStyle]}>
+                        <GtkLabel label="alpha(color, opacity) - Set opacity of a color" halign={Gtk.Align.START} />
                         <GtkLabel
-                            label="1. An RGBA visual (usually automatic on modern systems)"
+                            label="shade(color, factor) - Lighten/darken a color"
                             halign={Gtk.Align.START}
                         />
                         <GtkLabel
-                            label="2. CSS with transparent background: background-color: transparent;"
-                            halign={Gtk.Align.START}
-                        />
-                        <GtkLabel
-                            label="3. Compositor support (Wayland/X11 with compositing)"
+                            label="mix(color1, color2, factor) - Blend two colors"
                             halign={Gtk.Align.START}
                         />
                     </GtkBox>
-
-                    <GtkLabel
-                        label="Cairo RGBA Functions:"
-                        cssClasses={["heading"]}
-                        halign={Gtk.Align.START}
-                        marginTop={8}
-                    />
-                    <GtkLabel
-                        label={`setSourceRgba(cr, r, g, b, alpha) - Set color with alpha
-patternAddColorStopRgba(pattern, offset, r, g, b, a) - Gradient stop with alpha
-setOperator(cr, operator) - Control blending mode`}
-                        halign={Gtk.Align.START}
-                        cssClasses={["monospace"]}
-                    />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Alpha Blending">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={8}
-                    marginStart={12}
-                    marginEnd={12}
-                    marginTop={12}
-                    marginBottom={12}
-                >
-                    <GtkLabel label="Alpha blending formula:" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                    <GtkLabel
-                        label="result = (source * alpha) + (destination * (1 - alpha))"
-                        halign={Gtk.Align.START}
-                        cssClasses={["monospace"]}
-                    />
-                    <GtkLabel
-                        label="Where alpha ranges from 0.0 (fully transparent) to 1.0 (fully opaque)."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                        marginTop={4}
-                    />
                 </GtkBox>
             </GtkFrame>
         </GtkBox>
@@ -295,8 +382,8 @@ setOperator(cr, operator) - Control blending mode`}
 export const transparentDemo: Demo = {
     id: "transparent",
     title: "Overlay/Transparency",
-    description: "Transparent and translucent windows with RGBA visuals",
-    keywords: ["transparent", "translucent", "rgba", "alpha", "opacity", "window", "cairo", "blending"],
+    description: "Transparent overlays, glass-morphism, and RGBA alpha blending with GtkOverlay and CSS",
+    keywords: ["transparent", "overlay", "glass", "rgba", "alpha", "opacity", "blur", "cairo", "blending"],
     component: TransparentDemo,
     sourceCode,
 };

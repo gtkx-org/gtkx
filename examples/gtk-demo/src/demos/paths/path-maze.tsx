@@ -217,6 +217,14 @@ const solveMazeAStar = (maze: Cell[][]): { path: [number, number][]; visited: [n
     return { path: [], visited };
 };
 
+interface PlayerState {
+    x: number;
+    y: number;
+    pathTraveled: [number, number][];
+    hasWon: boolean;
+    hasFailed: boolean;
+}
+
 const MazeDemo = () => {
     const areaRef = useRef<Gtk.DrawingArea | null>(null);
     const [mazeSize, setMazeSize] = useState(21);
@@ -228,6 +236,14 @@ const MazeDemo = () => {
     const [animationStep, setAnimationStep] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
     const [algorithm, setAlgorithm] = useState<"bfs" | "astar">("bfs");
+    const [playMode, setPlayMode] = useState(false);
+    const [player, setPlayer] = useState<PlayerState>({
+        x: 1,
+        y: 1,
+        pathTraveled: [[1, 1]],
+        hasWon: false,
+        hasFailed: false,
+    });
 
     const drawMaze = useCallback(
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -311,8 +327,44 @@ const MazeDemo = () => {
                 cr.moveTo(0, y * cellHeight).lineTo(width, y * cellHeight);
             }
             cr.stroke();
+
+            if (playMode) {
+                if (player.pathTraveled.length > 1) {
+                    cr.setSourceRgba(0.3, 0.7, 0.9, 0.6)
+                        .setLineWidth(Math.min(cellWidth, cellHeight) * 0.3)
+                        .setLineCap(LineCap.ROUND)
+                        .setLineJoin(LineJoin.ROUND);
+
+                    const firstCell = player.pathTraveled[0];
+                    if (firstCell) {
+                        cr.moveTo((firstCell[0] + 0.5) * cellWidth, (firstCell[1] + 0.5) * cellHeight);
+                        for (let i = 1; i < player.pathTraveled.length; i++) {
+                            const pathCell = player.pathTraveled[i];
+                            if (pathCell) {
+                                cr.lineTo((pathCell[0] + 0.5) * cellWidth, (pathCell[1] + 0.5) * cellHeight);
+                            }
+                        }
+                        cr.stroke();
+                    }
+                }
+
+                const playerRadius = Math.min(cellWidth, cellHeight) * 0.35;
+                const px = (player.x + 0.5) * cellWidth;
+                const py = (player.y + 0.5) * cellHeight;
+
+                if (player.hasWon) {
+                    cr.setSourceRgb(0.2, 0.8, 0.3);
+                } else if (player.hasFailed) {
+                    cr.setSourceRgb(0.9, 0.2, 0.2);
+                } else {
+                    cr.setSourceRgb(0.2, 0.6, 0.9);
+                }
+                cr.arc(px, py, playerRadius, 0, 2 * Math.PI).fill();
+
+                cr.setSourceRgb(1, 1, 1).setLineWidth(2).arc(px, py, playerRadius, 0, 2 * Math.PI).stroke();
+            }
         },
-        [maze, solution, animationStep],
+        [maze, solution, animationStep, playMode, player],
     );
 
     const animationRef = useRef<TimedAnimation | null>(null);
@@ -338,6 +390,69 @@ const MazeDemo = () => {
         animation.play();
     }, []);
 
+    const handleMouseMotion = useCallback(
+        (mouseX: number, mouseY: number) => {
+            if (!playMode || player.hasWon || player.hasFailed) return;
+
+            const area = areaRef.current;
+            if (!area) return;
+
+            const width = area.getWidth();
+            const height = area.getHeight();
+            const mazeWidth = maze[0]?.length ?? 1;
+            const cellWidth = width / mazeWidth;
+            const cellHeight = height / maze.length;
+
+            const cellX = Math.floor(mouseX / cellWidth);
+            const cellY = Math.floor(mouseY / cellHeight);
+
+            if (cellX < 0 || cellX >= mazeWidth || cellY < 0 || cellY >= maze.length) return;
+            if (cellX === player.x && cellY === player.y) return;
+
+            const dx = Math.abs(cellX - player.x);
+            const dy = Math.abs(cellY - player.y);
+            if (dx + dy !== 1) return;
+
+            const cell = maze[cellY]?.[cellX];
+
+            if (cell === WALL) {
+                setPlayer((p) => ({ ...p, hasFailed: true }));
+                return;
+            }
+
+            if (cell === END) {
+                setPlayer((p) => ({
+                    ...p,
+                    x: cellX,
+                    y: cellY,
+                    pathTraveled: [...p.pathTraveled, [cellX, cellY]],
+                    hasWon: true,
+                }));
+                return;
+            }
+
+            if (cell === PATH || cell === START) {
+                setPlayer((p) => ({
+                    ...p,
+                    x: cellX,
+                    y: cellY,
+                    pathTraveled: [...p.pathTraveled, [cellX, cellY]],
+                }));
+            }
+        },
+        [playMode, player, maze],
+    );
+
+    const resetPlayer = useCallback(() => {
+        setPlayer({
+            x: 1,
+            y: 1,
+            pathTraveled: [[1, 1]],
+            hasWon: false,
+            hasFailed: false,
+        });
+    }, []);
+
     const handleGenerate = () => {
         animationRef.current?.reset();
         const size = mazeSize % 2 === 0 ? mazeSize + 1 : mazeSize;
@@ -346,6 +461,7 @@ const MazeDemo = () => {
         setSolution({ path: [], visited: [] });
         setAnimationStep(0);
         setIsAnimating(false);
+        resetPlayer();
     };
 
     const handleSolve = () => {
@@ -362,9 +478,17 @@ const MazeDemo = () => {
         setSolution({ path: [], visited: [] });
         setAnimationStep(0);
         setIsAnimating(false);
+        resetPlayer();
         if (areaRef.current) {
             areaRef.current.queueDraw();
         }
+    };
+
+    const togglePlayMode = () => {
+        setPlayMode((p) => !p);
+        resetPlayer();
+        setSolution({ path: [], visited: [] });
+        setAnimationStep(0);
     };
 
     return (
@@ -394,6 +518,7 @@ const MazeDemo = () => {
                         contentHeight={400}
                         cssClasses={["card"]}
                         halign={Gtk.Align.CENTER}
+                        onMotion={playMode ? handleMouseMotion : undefined}
                     />
 
                     <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
@@ -428,17 +553,40 @@ const MazeDemo = () => {
                     </GtkBox>
 
                     <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
-                        <GtkButton label="Generate" onClicked={handleGenerate} cssClasses={["flat"]} />
                         <GtkButton
-                            label="Solve"
-                            onClicked={handleSolve}
-                            cssClasses={["suggested-action"]}
-                            sensitive={!isAnimating}
+                            label={playMode ? "Watch Mode" : "Play Mode"}
+                            onClicked={togglePlayMode}
+                            cssClasses={playMode ? ["destructive-action"] : ["suggested-action"]}
                         />
+                        <GtkButton label="Generate" onClicked={handleGenerate} cssClasses={["flat"]} />
+                        {!playMode && (
+                            <>
+                                <GtkButton
+                                    label="Solve"
+                                    onClicked={handleSolve}
+                                    cssClasses={["suggested-action"]}
+                                    sensitive={!isAnimating}
+                                />
+                            </>
+                        )}
                         <GtkButton label="Reset" onClicked={handleReset} cssClasses={["flat"]} />
                     </GtkBox>
 
-                    {solution.path.length > 0 && !isAnimating && (
+                    {playMode && (
+                        <GtkLabel
+                            label={
+                                player.hasWon
+                                    ? `You won! Steps taken: ${player.pathTraveled.length}`
+                                    : player.hasFailed
+                                      ? "You hit a wall! Click Reset to try again."
+                                      : "Move your mouse through the maze to reach the red exit!"
+                            }
+                            cssClasses={player.hasWon ? ["success"] : player.hasFailed ? ["error"] : ["dim-label"]}
+                            halign={Gtk.Align.CENTER}
+                        />
+                    )}
+
+                    {!playMode && solution.path.length > 0 && !isAnimating && (
                         <GtkLabel
                             label={`Solution found! Path length: ${solution.path.length}, Cells explored: ${solution.visited.length}`}
                             cssClasses={["dim-label"]}
@@ -478,8 +626,21 @@ const MazeDemo = () => {
 export const pathMazeDemo: Demo = {
     id: "path-maze",
     title: "Path/Maze",
-    description: "Maze generation and pathfinding visualization",
-    keywords: ["maze", "pathfinding", "bfs", "astar", "algorithm", "generation", "animation", "recursive"],
+    description:
+        "Maze generation and pathfinding visualization with interactive play mode. Navigate the maze with your mouse or watch BFS/A* algorithms solve it.",
+    keywords: [
+        "maze",
+        "pathfinding",
+        "bfs",
+        "astar",
+        "algorithm",
+        "generation",
+        "animation",
+        "recursive",
+        "game",
+        "interactive",
+        "mouse",
+    ],
     component: MazeDemo,
     sourceCode,
 };

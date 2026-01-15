@@ -24,6 +24,45 @@ const LinksDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
+            <GtkFrame label="Inline Links (Pango Markup)">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="GtkLabel supports hyperlinks embedded in text using Pango markup with &lt;a&gt; tags."
+                        wrap
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                    />
+
+                    <GtkLabel
+                        label='Some text with a <a href="https://gtk.org">link to GTK</a> embedded in it.'
+                        useMarkup
+                        wrap
+                        halign={Gtk.Align.START}
+                    />
+
+                    <GtkLabel
+                        label='Visit the <a href="https://gnome.org">GNOME website</a> or read the <a href="https://docs.gtk.org">GTK documentation</a> for more information.'
+                        useMarkup
+                        wrap
+                        halign={Gtk.Align.START}
+                    />
+
+                    <GtkLabel
+                        label='You can also use <a href="mailto:example@example.com">email links</a> and <a href="file:///home">file links</a>.'
+                        useMarkup
+                        wrap
+                        halign={Gtk.Align.START}
+                    />
+                </GtkBox>
+            </GtkFrame>
+
             <GtkFrame label="Basic Link Buttons">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}

@@ -1,15 +1,10 @@
 import { type Context, LineCap, Operator, type Surface } from "@gtkx/ffi/cairo";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkColorDialogButton, GtkDrawingArea } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkColorDialogButton, GtkDrawingArea, GtkLabel, GtkScale, x } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./paint.tsx?raw";
-
-interface Point {
-    x: number;
-    y: number;
-}
 
 interface Color {
     red: number;
@@ -18,13 +13,21 @@ interface Color {
     alpha: number;
 }
 
+interface StylusInfo {
+    pressure: number;
+    tiltX: number;
+    tiltY: number;
+    isStylus: boolean;
+}
+
 const initialColor: Color = { red: 0, green: 0, blue: 0, alpha: 1 };
 
 const PaintDemo = () => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const surfaceRef = useRef<Surface | null>(null);
     const [color, setColor] = useState<Color>(initialColor);
-    const startPointRef = useRef<Point | null>(null);
+    const [baseWidth, setBaseWidth] = useState(6);
+    const [stylusInfo, setStylusInfo] = useState<StylusInfo>({ pressure: 0, tiltX: 0, tiltY: 0, isStylus: false });
     const rgba = new Gdk.RGBA(color);
 
     const drawCanvas = useCallback((_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
@@ -41,14 +44,16 @@ const PaintDemo = () => {
     }, []);
 
     const drawBrush = useCallback(
-        (x: number, y: number) => {
+        (x: number, y: number, pressure: number = 1.0) => {
             const drawingArea = ref.current;
             if (!drawingArea || !surfaceRef.current) return;
+
+            const strokeWidth = baseWidth * (0.5 + pressure * 1.5);
 
             const surfaceCr = surfaceRef.current.createContext();
             surfaceCr.moveTo(x, y);
             surfaceCr.lineTo(x, y);
-            surfaceCr.setLineWidth(6);
+            surfaceCr.setLineWidth(strokeWidth);
             surfaceCr.setLineCap(LineCap.ROUND);
             surfaceCr.setOperator(Operator.SATURATE);
             surfaceCr.setSourceRgba(color.red, color.green, color.blue, color.alpha);
@@ -56,30 +61,27 @@ const PaintDemo = () => {
 
             drawingArea.queueDraw();
         },
-        [color],
+        [color, baseWidth],
     );
 
-    const handleDragBegin = useCallback(
-        (startX: number, startY: number) => {
-            startPointRef.current = { x: startX, y: startY };
-            drawBrush(startX, startY);
+    const handleStylusDown = useCallback(
+        (x: number, y: number, pressure: number, tiltX: number, tiltY: number) => {
+            setStylusInfo({ pressure, tiltX, tiltY, isStylus: true });
+            drawBrush(x, y, pressure);
         },
         [drawBrush],
     );
 
-    const handleDragUpdate = useCallback(
-        (offsetX: number, offsetY: number) => {
-            if (startPointRef.current) {
-                const x = startPointRef.current.x + offsetX;
-                const y = startPointRef.current.y + offsetY;
-                drawBrush(x, y);
-            }
+    const handleStylusMotion = useCallback(
+        (x: number, y: number, pressure: number, tiltX: number, tiltY: number) => {
+            setStylusInfo({ pressure, tiltX, tiltY, isStylus: true });
+            drawBrush(x, y, pressure);
         },
         [drawBrush],
     );
 
-    const handleDragEnd = useCallback(() => {
-        startPointRef.current = null;
+    const handleStylusUp = useCallback(() => {
+        setStylusInfo({ pressure: 0, tiltX: 0, tiltY: 0, isStylus: false });
     }, []);
 
     const handleClear = useCallback(() => {
@@ -101,18 +103,54 @@ const PaintDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkBox halign={Gtk.Align.END} marginTop={8} marginEnd={8} spacing={6}>
+            <GtkBox halign={Gtk.Align.END} marginTop={8} marginEnd={8} marginStart={8} spacing={12}>
+                <GtkBox spacing={8} hexpand>
+                    <GtkLabel label="Width:" cssClasses={["dim-label"]} />
+                    <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} widthRequest={100}>
+                        <x.Adjustment
+                            value={baseWidth}
+                            lower={1}
+                            upper={20}
+                            stepIncrement={1}
+                            pageIncrement={2}
+                            onValueChanged={setBaseWidth}
+                        />
+                    </GtkScale>
+                </GtkBox>
+
+                {stylusInfo.isStylus && (
+                    <GtkBox spacing={8}>
+                        <GtkLabel
+                            label={`Pressure: ${(stylusInfo.pressure * 100).toFixed(0)}%`}
+                            cssClasses={["dim-label", "caption"]}
+                        />
+                        <GtkLabel
+                            label={`Tilt: ${stylusInfo.tiltX.toFixed(1)}°, ${stylusInfo.tiltY.toFixed(1)}°`}
+                            cssClasses={["dim-label", "caption"]}
+                        />
+                    </GtkBox>
+                )}
+
                 <GtkColorDialogButton dialog={new Gtk.ColorDialog()} rgba={rgba} onNotify={handleColorButtonNotify} />
-                <GtkButton iconName="view-refresh-symbolic" onClicked={handleClear} />
+                <GtkButton iconName="view-refresh-symbolic" onClicked={handleClear} tooltipText="Clear canvas" />
             </GtkBox>
+
+            <GtkLabel
+                label="Use a stylus/tablet for pressure-sensitive strokes, or mouse for regular drawing"
+                cssClasses={["dim-label", "caption"]}
+                marginStart={8}
+                marginBottom={4}
+                halign={Gtk.Align.START}
+            />
+
             <GtkDrawingArea
                 ref={ref}
                 hexpand
                 vexpand
                 onDraw={drawCanvas}
-                onGestureDragBegin={handleDragBegin}
-                onGestureDragUpdate={handleDragUpdate}
-                onGestureDragEnd={handleDragEnd}
+                onStylusDown={handleStylusDown}
+                onStylusMotion={handleStylusMotion}
+                onStylusUp={handleStylusUp}
             />
         </GtkBox>
     );
@@ -120,9 +158,9 @@ const PaintDemo = () => {
 
 export const paintDemo: Demo = {
     id: "paint",
-    title: "Paint",
-    description: "Demonstrates practical handling of drawing tablets in a real world usecase.",
-    keywords: ["paint", "GdkDrawingArea", "GtkGesture"],
+    title: "Drawing/Paint",
+    description: "Drawing with tablet/stylus support. Uses GtkGestureStylus for pressure sensitivity and tilt detection via declarative props (onStylusDown, onStylusMotion, onStylusUp).",
+    keywords: ["paint", "drawing", "stylus", "tablet", "pressure", "GtkGestureStylus", "GtkDrawingArea", "cairo"],
     component: PaintDemo,
     sourceCode,
 };

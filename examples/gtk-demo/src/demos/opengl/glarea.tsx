@@ -1,7 +1,7 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkGLArea, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkScale, x } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./glarea.tsx?raw";
@@ -10,11 +10,13 @@ const VERTEX_SHADER = `#version 300 es
 precision mediump float;
 
 in vec3 aPos;
-uniform vec4 uColor;
+in vec3 aColor;
+uniform mat4 uMvp;
 out vec4 vertexColor;
+
 void main() {
- gl_Position = vec4(aPos, 1.0);
- vertexColor = uColor;
+    gl_Position = uMvp * vec4(aPos, 1.0);
+    vertexColor = vec4(aColor, 1.0);
 }`;
 
 const FRAGMENT_SHADER = `#version 300 es
@@ -22,19 +24,48 @@ precision mediump float;
 
 in vec4 vertexColor;
 out vec4 FragColor;
+
 void main() {
- FragColor = vertexColor;
+    FragColor = vertexColor;
 }`;
 
-const TRIANGLE_VERTICES = [0.0, 0.5, 0.0, -0.5, -0.5, 0.0, 0.5, -0.5, 0.0];
+const TRIANGLE_DATA = [0.0, 0.5, 0.0, 1.0, 0.0, 0.0, -0.5, -0.366, 0.0, 0.0, 1.0, 0.0, 0.5, -0.366, 0.0, 0.0, 0.0, 1.0];
 
 interface GLState {
     program: number;
     vao: number;
     vbo: number;
-    colorLocation: number;
+    mvpLocation: number;
     initialized: boolean;
 }
+
+const createRotationMatrix = (rx: number, ry: number, rz: number): number[] => {
+    const cosX = Math.cos(rx);
+    const sinX = Math.sin(rx);
+    const cosY = Math.cos(ry);
+    const sinY = Math.sin(ry);
+    const cosZ = Math.cos(rz);
+    const sinZ = Math.sin(rz);
+
+    return [
+        cosY * cosZ,
+        cosX * sinZ + sinX * sinY * cosZ,
+        sinX * sinZ - cosX * sinY * cosZ,
+        0,
+        -cosY * sinZ,
+        cosX * cosZ - sinX * sinY * sinZ,
+        sinX * cosZ + cosX * sinY * sinZ,
+        0,
+        sinY,
+        -sinX * cosY,
+        cosX * cosY,
+        0,
+        0,
+        0,
+        0,
+        1,
+    ];
+};
 
 const initGL = (): GLState => {
     const vertexShader = gl.createShader(gl.VERTEX_SHADER);
@@ -81,29 +112,29 @@ const initGL = (): GLState => {
 
     const vbo = gl.genBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, TRIANGLE_VERTICES, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, TRIANGLE_DATA, gl.STATIC_DRAW);
 
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 3 * 4, 0);
-    gl.enableVertexAttribArray(0);
+    const posLocation = gl.getAttribLocation(program, "aPos");
+    const colorLocation = gl.getAttribLocation(program, "aColor");
 
-    const colorLocation = gl.getUniformLocation(program, "uColor");
+    gl.vertexAttribPointer(posLocation, 3, gl.FLOAT, false, 6 * 4, 0);
+    gl.enableVertexAttribArray(posLocation);
+    gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 6 * 4, 3 * 4);
+    gl.enableVertexAttribArray(colorLocation);
+
+    const mvpLocation = gl.getUniformLocation(program, "uMvp");
 
     gl.bindVertexArray(0);
 
-    return {
-        program,
-        vao,
-        vbo,
-        colorLocation,
-        initialized: true,
-    };
+    return { program, vao, vbo, mvpLocation, initialized: true };
 };
 
 const GLAreaDemo = () => {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
-    const [clearColor, setClearColor] = useState({ r: 0.2, g: 0.2, b: 0.3, a: 1.0 });
-    const [triangleColor, setTriangleColor] = useState({ r: 0.9, g: 0.3, b: 0.3, a: 1.0 });
+    const [rotationX, setRotationX] = useState(0);
+    const [rotationY, setRotationY] = useState(0);
+    const [rotationZ, setRotationZ] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
     const handleUnrealize = useCallback((_self: Gtk.Widget) => {
@@ -128,14 +159,15 @@ const GLAreaDemo = () => {
             }
 
             const state = glStateRef.current;
+            const mvp = createRotationMatrix(rotationX, rotationY, rotationZ);
 
-            gl.clearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+            gl.clearColor(0.5, 0.5, 0.5, 1.0);
             gl.clearDepth(1.0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
             // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
             gl.useProgram(state.program);
-            gl.uniform4f(state.colorLocation, triangleColor.r, triangleColor.g, triangleColor.b, triangleColor.a);
+            gl.uniformMatrix4fv(state.mvpLocation, 1, false, mvp);
 
             gl.bindVertexArray(state.vao);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -146,59 +178,30 @@ const GLAreaDemo = () => {
 
             return true;
         },
-        [clearColor, triangleColor],
+        [rotationX, rotationY, rotationZ],
     );
 
     const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {
         gl.viewport(0, 0, width, height);
     }, []);
 
-    const cycleTriangleColor = () => {
-        const colors = [
-            { r: 0.9, g: 0.3, b: 0.3, a: 1.0 },
-            { r: 0.3, g: 0.9, b: 0.3, a: 1.0 },
-            { r: 0.3, g: 0.3, b: 0.9, a: 1.0 },
-            { r: 0.9, g: 0.9, b: 0.3, a: 1.0 },
-            { r: 0.9, g: 0.3, b: 0.9, a: 1.0 },
-            { r: 0.3, g: 0.9, b: 0.9, a: 1.0 },
-        ];
-        const currentIndex = colors.findIndex(
-            (c) => c.r === triangleColor.r && c.g === triangleColor.g && c.b === triangleColor.b,
-        );
-        const nextIndex = (currentIndex + 1) % colors.length;
-        const nextColor = colors[nextIndex];
-        if (nextColor) setTriangleColor(nextColor);
+    const handleXChange = useCallback((value: number) => {
+        setRotationX((value * Math.PI) / 180);
         glAreaRef.current?.queueRender();
-    };
+    }, []);
 
-    const cycleClearColor = () => {
-        const colors = [
-            { r: 0.2, g: 0.2, b: 0.3, a: 1.0 },
-            { r: 0.1, g: 0.1, b: 0.1, a: 1.0 },
-            { r: 0.3, g: 0.2, b: 0.2, a: 1.0 },
-            { r: 0.2, g: 0.3, b: 0.2, a: 1.0 },
-            { r: 0.15, g: 0.15, b: 0.2, a: 1.0 },
-        ];
-        const currentIndex = colors.findIndex(
-            (c) => c.r === clearColor.r && c.g === clearColor.g && c.b === clearColor.b,
-        );
-        const nextIndex = (currentIndex + 1) % colors.length;
-        const nextColor = colors[nextIndex];
-        if (nextColor) setClearColor(nextColor);
+    const handleYChange = useCallback((value: number) => {
+        setRotationY((value * Math.PI) / 180);
         glAreaRef.current?.queueRender();
-    };
+    }, []);
+
+    const handleZChange = useCallback((value: number) => {
+        setRotationZ((value * Math.PI) / 180);
+        glAreaRef.current?.queueRender();
+    }, []);
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="GL Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <GtkLabel
-                label="GtkGLArea provides an OpenGL rendering context embedded in a GTK widget. Connect to the 'render' signal to initialize and draw with OpenGL. Use 'unrealize' to clean up GL resources."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
-
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
             {error && (
                 <GtkFrame>
                     <GtkLabel
@@ -212,53 +215,65 @@ const GLAreaDemo = () => {
                 </GtkFrame>
             )}
 
-            <GtkFrame label="OpenGL Triangle">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkGLArea
-                        ref={glAreaRef}
-                        useEs
-                        hasDepthBuffer
-                        vexpand
-                        onUnrealize={handleUnrealize}
-                        onRender={handleRender}
-                        onResize={handleResize}
-                        widthRequest={400}
-                        heightRequest={300}
-                        cssClasses={["card"]}
-                    />
-                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
-                        <GtkButton label="Change Triangle Color" onClicked={cycleTriangleColor} />
-                        <GtkButton label="Change Background" onClicked={cycleClearColor} />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
+            <GtkGLArea
+                ref={glAreaRef}
+                useEs
+                hasDepthBuffer
+                vexpand
+                hexpand
+                onUnrealize={handleUnrealize}
+                onRender={handleRender}
+                onResize={handleResize}
+            />
 
-            <GtkFrame label="How It Works">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={8}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel label="GtkGLArea Signals:" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                    <GtkLabel
-                        label={`onRender: Initialize on first call, then draw content
-onUnrealize: Clean up GL resources
-onResize: Handle viewport changes`}
-                        halign={Gtk.Align.START}
-                        cssClasses={["monospace"]}
-                    />
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={8}
+                marginTop={12}
+                marginBottom={12}
+                marginStart={12}
+                marginEnd={12}
+            >
+                <GtkBox spacing={12}>
+                    <GtkLabel label="X axis" widthRequest={60} halign={Gtk.Align.START} />
+                    <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT} digits={0}>
+                        <x.Adjustment
+                            value={0}
+                            lower={0}
+                            upper={360}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChanged={handleXChange}
+                        />
+                    </GtkScale>
                 </GtkBox>
-            </GtkFrame>
+                <GtkBox spacing={12}>
+                    <GtkLabel label="Y axis" widthRequest={60} halign={Gtk.Align.START} />
+                    <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT} digits={0}>
+                        <x.Adjustment
+                            value={0}
+                            lower={0}
+                            upper={360}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChanged={handleYChange}
+                        />
+                    </GtkScale>
+                </GtkBox>
+                <GtkBox spacing={12}>
+                    <GtkLabel label="Z axis" widthRequest={60} halign={Gtk.Align.START} />
+                    <GtkScale hexpand drawValue valuePos={Gtk.PositionType.RIGHT} digits={0}>
+                        <x.Adjustment
+                            value={0}
+                            lower={0}
+                            upper={360}
+                            stepIncrement={1}
+                            pageIncrement={10}
+                            onValueChanged={handleZChange}
+                        />
+                    </GtkScale>
+                </GtkBox>
+            </GtkBox>
         </GtkBox>
     );
 };
@@ -266,8 +281,9 @@ onResize: Handle viewport changes`}
 export const glareaDemo: Demo = {
     id: "glarea",
     title: "OpenGL/OpenGL Area",
-    description: "Basic OpenGL rendering with GtkGLArea",
-    keywords: ["opengl", "gl", "glarea", "GtkGLArea", "3d", "graphics", "shader", "triangle", "rendering"],
+    description:
+        "GtkGLArea is a widget that allows drawing with OpenGL. Drag the sliders to change the rotation angles on the X, Y, and Z axis.",
+    keywords: ["opengl", "gl", "glarea", "GtkGLArea", "3d", "graphics", "shader", "triangle", "rendering", "rotation"],
     component: GLAreaDemo,
     sourceCode,
 };

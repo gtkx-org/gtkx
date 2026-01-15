@@ -2,7 +2,7 @@ import path from "node:path";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
 
@@ -12,6 +12,17 @@ Do it already!`;
 
 const ExpanderDemo = () => {
     const textViewRef = useRef<Gtk.TextView | null>(null);
+    const expanderRef = useRef<Gtk.Expander | null>(null);
+
+    const handleExpandedChanged = useCallback((expander: Gtk.Expander, propName: string) => {
+        if (propName !== "expanded") return;
+
+        const root = expander.getRoot();
+        if (!root) return;
+
+        const window = root as unknown as Gtk.Window;
+        window.setResizable(expander.getExpanded());
+    }, []);
 
     useEffect(() => {
         const textView = textViewRef.current;
@@ -42,6 +53,17 @@ const ExpanderDemo = () => {
         buffer.applyTag(tag, startIter, endIter);
     }, []);
 
+    useEffect(() => {
+        const expander = expanderRef.current;
+        if (!expander) return;
+
+        const root = expander.getRoot();
+        if (!root) return;
+
+        const window = root as unknown as Gtk.Window;
+        window.setResizable(expander.getExpanded());
+    }, []);
+
     return (
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
@@ -54,7 +76,7 @@ const ExpanderDemo = () => {
             <GtkLabel label="<big><b>Something went wrong</b></big>" useMarkup />
             <GtkLabel label="Here are some more details but not the full story" wrap={false} vexpand={false} />
 
-            <GtkExpander label="Details:" vexpand>
+            <GtkExpander ref={expanderRef} label="Details:" vexpand onNotify={handleExpandedChanged}>
                 <GtkScrolledWindow
                     minContentHeight={100}
                     hasFrame

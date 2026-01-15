@@ -1,16 +1,59 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkSearchBar, GtkSearchEntry } from "@gtkx/react";
-import { useState } from "react";
+import { GtkBox, GtkLabel, GtkSearchBar, GtkSearchEntry, GtkToggleButton } from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./search-entry.tsx?raw";
 
 const SearchEntryDemo = () => {
     const [searchText, setSearchText] = useState("");
+    const [searchMode, setSearchMode] = useState(false);
+    const searchBarRef = useRef<Gtk.SearchBar | null>(null);
+    const containerRef = useRef<Gtk.Box | null>(null);
+
+    useEffect(() => {
+        const searchBar = searchBarRef.current;
+        const container = containerRef.current;
+        if (!searchBar || !container) return;
+
+        const root = container.getRoot();
+        if (root) {
+            searchBar.setKeyCaptureWidget(root as unknown as Gtk.Widget);
+        }
+    }, []);
+
+    const handleSearchModeToggle = useCallback((enabled: boolean) => {
+        setSearchMode(enabled);
+    }, []);
+
+    const handleToggleButtonClicked = useCallback((btn: Gtk.ToggleButton) => {
+        setSearchMode(btn.getActive());
+    }, []);
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-            <GtkSearchBar searchModeEnabled showCloseButton={false}>
-                <GtkSearchEntry halign={Gtk.Align.CENTER} onSearchChanged={(entry) => setSearchText(entry.getText())} />
+        <GtkBox ref={containerRef} orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+            <GtkBox marginStart={12} marginEnd={12} marginTop={6} marginBottom={6}>
+                <GtkToggleButton
+                    iconName="edit-find-symbolic"
+                    active={searchMode}
+                    onToggled={handleToggleButtonClicked}
+                    tooltipText="Toggle search (or just start typing)"
+                />
+            </GtkBox>
+            <GtkSearchBar
+                ref={searchBarRef}
+                searchModeEnabled={searchMode}
+                showCloseButton
+                onNotify={(self, prop) => {
+                    if (prop === "search-mode-enabled") {
+                        handleSearchModeToggle(self.getSearchMode());
+                    }
+                }}
+            >
+                <GtkSearchEntry
+                    halign={Gtk.Align.CENTER}
+                    widthChars={40}
+                    onSearchChanged={(entry) => setSearchText(entry.getText())}
+                />
             </GtkSearchBar>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
@@ -19,10 +62,16 @@ const SearchEntryDemo = () => {
                 marginEnd={18}
                 marginTop={18}
                 marginBottom={18}
+                vexpand
             >
-                <GtkBox spacing={10}>
+                <GtkLabel
+                    label="Start typing anywhere to search..."
+                    cssClasses={["dim-label"]}
+                    visible={!searchMode && searchText.length === 0}
+                />
+                <GtkBox spacing={10} visible={searchText.length > 0}>
                     <GtkLabel label="Searching for:" xalign={0} />
-                    <GtkLabel label={searchText} />
+                    <GtkLabel label={searchText} cssClasses={["accent"]} />
                 </GtkBox>
             </GtkBox>
         </GtkBox>

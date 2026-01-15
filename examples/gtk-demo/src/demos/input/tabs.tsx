@@ -30,7 +30,7 @@ const TabsDemo = () => {
                 leftMargin={20}
                 rightMargin={20}
             >
-                <x.TextBuffer text={"one\t2.0\tthree\nfour\t5.555\tsix\nseven\t88.88\tnine"} />
+                <x.TextBuffer>{"one\t2.0\tthree\nfour\t5.555\tsix\nseven\t88.88\tnine"}</x.TextBuffer>
             </GtkTextView>
         </GtkScrolledWindow>
     );

@@ -1,14 +1,16 @@
+import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
     GtkButton,
     GtkColorDialogButton,
+    GtkEntry,
     GtkFontDialogButton,
     GtkFrame,
     GtkLabel,
     useApplication,
 } from "@gtkx/react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./pickers.tsx?raw";
 
@@ -19,6 +21,8 @@ const PickersDemo = () => {
     const [selectedFile, setSelectedFile] = useState<string | null>(null);
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [saveLocation, setSaveLocation] = useState<string | null>(null);
+    const [launchFile, setLaunchFile] = useState<string | null>(null);
+    const [uri, setUri] = useState("https://gtk.org");
 
     const formatRgba = (rgba: { red: number; green: number; blue: number; alpha: number }) => {
         return `rgba(${Math.round(rgba.red * 255)}, ${Math.round(rgba.green * 255)}, ${Math.round(rgba.blue * 255)}, ${rgba.alpha.toFixed(2)})`;
@@ -107,6 +111,42 @@ const PickersDemo = () => {
             setSelectedFile(`${count} file(s) selected`);
         } catch {}
     };
+
+    const handleSelectFileToLaunch = async () => {
+        try {
+            const fileDialog = new Gtk.FileDialog();
+            fileDialog.setTitle("Select File to Launch");
+            fileDialog.setModal(true);
+
+            const file = await fileDialog.openAsync(app.getActiveWindow() ?? undefined);
+            setLaunchFile(file.getPath() ?? file.getUri());
+        } catch {}
+    };
+
+    const handleLaunchFile = useCallback(async () => {
+        if (!launchFile) return;
+        try {
+            const file = Gio.fileNewForPath(launchFile);
+            const launcher = new Gtk.FileLauncher(file);
+            await launcher.launchAsync(app.getActiveWindow() ?? undefined);
+        } catch {}
+    }, [app, launchFile]);
+
+    const handleOpenContainingFolder = useCallback(async () => {
+        if (!launchFile) return;
+        try {
+            const file = Gio.fileNewForPath(launchFile);
+            const launcher = new Gtk.FileLauncher(file);
+            await launcher.openContainingFolderAsync(app.getActiveWindow() ?? undefined);
+        } catch {}
+    }, [app, launchFile]);
+
+    const handleLaunchUri = useCallback(async () => {
+        try {
+            const launcher = new Gtk.UriLauncher(uri);
+            await launcher.launchAsync(app.getActiveWindow() ?? undefined);
+        } catch {}
+    }, [app, uri]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
@@ -224,6 +264,77 @@ const PickersDemo = () => {
                     )}
                 </GtkBox>
             </GtkFrame>
+
+            <GtkFrame label="File Launcher">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="GtkFileLauncher opens files with the default application or shows their containing folder in the file manager."
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                        wrap
+                    />
+                    <GtkBox spacing={8}>
+                        <GtkButton label="Select File..." onClicked={() => void handleSelectFileToLaunch()} />
+                        <GtkButton
+                            label="Launch"
+                            sensitive={!!launchFile}
+                            onClicked={() => void handleLaunchFile()}
+                            cssClasses={["suggested-action"]}
+                        />
+                        <GtkButton
+                            label="Open Folder"
+                            sensitive={!!launchFile}
+                            onClicked={() => void handleOpenContainingFolder()}
+                        />
+                    </GtkBox>
+                    {launchFile && (
+                        <GtkLabel
+                            label={`Selected: ${launchFile}`}
+                            halign={Gtk.Align.START}
+                            cssClasses={["dim-label"]}
+                            ellipsize={3}
+                        />
+                    )}
+                </GtkBox>
+            </GtkFrame>
+
+            <GtkFrame label="URI Launcher">
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <GtkLabel
+                        label="GtkUriLauncher opens URIs with the appropriate application (browser for http, email client for mailto, etc)."
+                        halign={Gtk.Align.START}
+                        cssClasses={["dim-label"]}
+                        wrap
+                    />
+                    <GtkBox spacing={8}>
+                        <GtkEntry
+                            text={uri}
+                            onChanged={(entry: Gtk.Entry) => setUri(entry.getText())}
+                            hexpand
+                            placeholderText="Enter URI (https://..., mailto:..., etc)"
+                        />
+                        <GtkButton
+                            label="Launch"
+                            onClicked={() => void handleLaunchUri()}
+                            cssClasses={["suggested-action"]}
+                        />
+                    </GtkBox>
+                </GtkBox>
+            </GtkFrame>
         </GtkBox>
     );
 };
@@ -242,8 +353,12 @@ export const pickersDemo: Demo = {
         "GtkColorDialog",
         "GtkFontDialog",
         "GtkFileDialog",
+        "GtkFileLauncher",
+        "GtkUriLauncher",
         "open",
         "save",
+        "launch",
+        "uri",
     ],
     component: PickersDemo,
     sourceCode,

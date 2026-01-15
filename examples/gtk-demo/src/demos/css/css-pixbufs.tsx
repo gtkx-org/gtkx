@@ -1,221 +1,216 @@
-import { css, injectGlobal } from "@gtkx/css";
+import { injectGlobal } from "@gtkx/css";
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useState } from "react";
+import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-pixbufs.tsx?raw";
 
-const ICONS = [
-    "emblem-photos-symbolic",
-    "folder-symbolic",
-    "applications-system-symbolic",
-    "user-home-symbolic",
-    "weather-clear-symbolic",
-    "starred-symbolic",
-];
-
-const EFFECTS = [
-    { name: "None", filter: "none" },
-    { name: "Grayscale", filter: "grayscale(100%)" },
-    { name: "Sepia", filter: "sepia(100%)" },
-    { name: "Invert", filter: "invert(100%)" },
-    { name: "Blur", filter: "blur(2px)" },
-    { name: "Brightness", filter: "brightness(150%)" },
-    { name: "Contrast", filter: "contrast(200%)" },
-    { name: "Saturate", filter: "saturate(200%)" },
-];
-
 injectGlobal`
-.icon-button {
- min-width: 48px;
- min-height: 48px;
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-.icon-button image {
- -gtk-icon-size: 24px;
+@keyframes rotate-hue {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes pulse-scale {
+  0%, 100% { -gtk-icon-transform: scale(1); }
+  50% { -gtk-icon-transform: scale(1.1); }
+}
+
+@keyframes float {
+  0%, 100% { margin-top: 0px; }
+  50% { margin-top: -10px; }
 }
 `;
 
-const createIconBackgroundStyle = (icon: string, size: number) => css`
- background-image: -gtk-icontheme("${icon}");
- background-size: ${size}px ${size}px;
- background-repeat: no-repeat;
- background-position: center;
- min-width: ${size + 48}px;
- min-height: ${size + 48}px;
- border-radius: 12px;
- background-color: alpha(@theme_fg_color, 0.05);
-`;
+const PRESETS: Record<string, string> = {
+    "Gradient Shift": `/* Animated gradient background */
+.animated-bg {
+  background: linear-gradient(
+    270deg,
+    #ff6b6b,
+    #feca57,
+    #48dbfb,
+    #ff9ff3,
+    #54a0ff
+  );
+  background-size: 400% 400%;
+  animation: gradient-shift 8s ease infinite;
+  min-height: 200px;
+  border-radius: 12px;
+}`,
+    "Hue Rotation": `/* Rotating hue filter on gradient */
+.animated-bg {
+  background: linear-gradient(
+    135deg,
+    #667eea 0%,
+    #764ba2 50%,
+    #f093fb 100%
+  );
+  animation: rotate-hue 5s linear infinite;
+  min-height: 200px;
+  border-radius: 12px;
+}`,
+    "Pulsing Icon": `/* Icon with scale animation */
+.animated-bg {
+  background-image: -gtk-icontheme("starred-symbolic");
+  background-size: 64px 64px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: alpha(@accent_bg_color, 0.1);
+  animation: pulse-scale 1.5s ease-in-out infinite;
+  min-height: 200px;
+  border-radius: 12px;
+}`,
+    "Floating Icons": `/* Tiled icons with floating animation */
+.animated-bg {
+  background-image: -gtk-icontheme("emblem-favorite-symbolic");
+  background-size: 32px 32px;
+  background-repeat: repeat;
+  background-color: @theme_bg_color;
+  animation: float 2s ease-in-out infinite;
+  min-height: 200px;
+  border-radius: 12px;
+  opacity: 0.6;
+}`,
+    "Rainbow Waves": `/* Multiple animated gradients */
+.animated-bg {
+  background:
+    linear-gradient(45deg, transparent 45%, rgba(255,0,0,0.2) 50%, transparent 55%),
+    linear-gradient(135deg, transparent 45%, rgba(0,255,0,0.2) 50%, transparent 55%),
+    linear-gradient(225deg, transparent 45%, rgba(0,0,255,0.2) 50%, transparent 55%),
+    linear-gradient(315deg, transparent 45%, rgba(255,255,0,0.2) 50%, transparent 55%),
+    @theme_bg_color;
+  background-size: 200% 200%;
+  animation: gradient-shift 4s linear infinite;
+  min-height: 200px;
+  border-radius: 12px;
+}`,
+    "Morphing Gradient": `/* Smooth color morphing */
+.animated-bg {
+  background: linear-gradient(
+    90deg,
+    #12c2e9,
+    #c471ed,
+    #f64f59
+  );
+  background-size: 200% 100%;
+  animation: gradient-shift 6s ease infinite;
+  min-height: 200px;
+  border-radius: 12px;
+}`,
+};
 
-const createIconWithEffectStyle = (icon: string, size: number, filter: string) => css`
- background-image: -gtk-icontheme("${icon}");
- background-size: ${size}px ${size}px;
- background-repeat: no-repeat;
- background-position: center;
- min-width: ${size + 48}px;
- min-height: ${size + 48}px;
- border-radius: 12px;
- background-color: alpha(@theme_fg_color, 0.05);
- filter: ${filter};
-`;
-
-const createIconTiledStyle = (icon: string) => css`
- background-image: -gtk-icontheme("${icon}");
- background-size: 32px 32px;
- background-repeat: repeat;
- min-height: 150px;
- border-radius: 12px;
- opacity: 0.3;
-`;
+const DEFAULT_CSS = PRESETS["Gradient Shift"] ?? "";
 
 const CssPixbufsDemo = () => {
-    const [iconIndex, setIconIndex] = useState(0);
-    const [effectIndex, setEffectIndex] = useState(0);
-    const [iconSize, setIconSize] = useState(64);
+    const textViewRef = useRef<Gtk.TextView | null>(null);
+    const providerRef = useRef<Gtk.CssProvider | null>(null);
+    const [cssText, setCssText] = useState(DEFAULT_CSS);
+    const [hasError, setHasError] = useState(false);
 
-    const currentIcon = ICONS[iconIndex] ?? "emblem-photos-symbolic";
-    const currentEffect = EFFECTS[effectIndex] ?? EFFECTS[0];
+    const applyCss = useCallback(() => {
+        const display = Gdk.Display.getDefault();
+        if (!display) return;
 
-    const iconBackgroundStyle = createIconBackgroundStyle(currentIcon, iconSize);
-    const iconWithEffectStyle = createIconWithEffectStyle(currentIcon, iconSize, currentEffect?.filter ?? "none");
-    const iconTiledStyle = createIconTiledStyle(currentIcon);
+        if (providerRef.current) {
+            Gtk.StyleContext.removeProviderForDisplay(display, providerRef.current);
+        }
+
+        const provider = new Gtk.CssProvider();
+        providerRef.current = provider;
+
+        try {
+            provider.loadFromString(cssText);
+            setHasError(false);
+        } catch {
+            setHasError(true);
+        }
+
+        Gtk.StyleContext.addProviderForDisplay(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+    }, [cssText]);
+
+    useEffect(() => {
+        applyCss();
+        return () => {
+            const display = Gdk.Display.getDefault();
+            if (display && providerRef.current) {
+                Gtk.StyleContext.removeProviderForDisplay(display, providerRef.current);
+            }
+        };
+    }, [applyCss]);
+
+    const handleTextChanged = useCallback((text: string) => {
+        setCssText(text);
+    }, []);
+
+    const handlePreset = useCallback((presetName: string) => {
+        const preset = PRESETS[presetName];
+        if (preset) {
+            setCssText(preset);
+        }
+    }, []);
 
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={20}
-            marginStart={20}
-            marginEnd={20}
-            marginTop={20}
-            marginBottom={20}
-        >
-            <GtkLabel label="CSS with Icons" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkPaned orientation={Gtk.Orientation.VERTICAL} shrinkStartChild={false} shrinkEndChild={false} vexpand hexpand>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} marginTop={12} marginStart={12} marginEnd={12} marginBottom={12}>
+                <GtkLabel label="Animated Backgrounds" cssClasses={["title-3"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="GTK CSS supports @keyframes animations for continuous motion effects. Animate gradients, icons, filters, and transforms. Edit the CSS below to experiment."
+                    wrap
+                    halign={Gtk.Align.START}
+                    cssClasses={["dim-label"]}
+                />
 
-            <GtkLabel
-                label="GTK CSS can reference theme icons using the -gtk-icontheme() function. This allows using icons as background images with CSS transformations and filters applied."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
+                <GtkBox cssClasses={["animated-bg"]} hexpand vexpand>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} hexpand vexpand>
+                        <GtkLabel label="Live Preview" cssClasses={["title-3"]} />
+                        <GtkLabel label="Watch the animation" cssClasses={["dim-label"]} />
+                    </GtkBox>
+                </GtkBox>
 
-            <GtkFrame label="Select Icon">
-                <GtkBox
-                    spacing={8}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                    halign={Gtk.Align.CENTER}
-                >
-                    {ICONS.map((icon, index) => (
+                <GtkBox spacing={4} halign={Gtk.Align.CENTER}>
+                    {Object.keys(PRESETS).map((name) => (
                         <GtkButton
-                            key={icon}
-                            iconName={icon}
-                            cssClasses={index === iconIndex ? ["suggested-action", "icon-button"] : ["icon-button"]}
-                            onClicked={() => setIconIndex(index)}
+                            key={name}
+                            label={name}
+                            cssClasses={["flat"]}
+                            onClicked={() => handlePreset(name)}
                         />
                     ))}
                 </GtkBox>
-            </GtkFrame>
 
-            <GtkBox spacing={20}>
-                <GtkFrame label="Icon as Background" hexpand>
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={16}
-                        marginStart={16}
-                        marginEnd={16}
-                        marginTop={16}
-                        marginBottom={16}
-                        halign={Gtk.Align.CENTER}
-                    >
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            cssClasses={[iconBackgroundStyle]}
-                            halign={Gtk.Align.CENTER}
-                        />
-                        <GtkLabel label="background-image: -gtk-icontheme()" cssClasses={["caption", "dim-label"]} />
-                    </GtkBox>
-                </GtkFrame>
-
-                <GtkFrame label="With CSS Filter" hexpand>
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={16}
-                        marginStart={16}
-                        marginEnd={16}
-                        marginTop={16}
-                        marginBottom={16}
-                        halign={Gtk.Align.CENTER}
-                    >
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            cssClasses={[iconWithEffectStyle]}
-                            halign={Gtk.Align.CENTER}
-                        />
-                        <GtkLabel
-                            label={`filter: ${currentEffect?.filter ?? "none"}`}
-                            cssClasses={["caption", "dim-label"]}
-                        />
-                    </GtkBox>
-                </GtkFrame>
+                {hasError && <GtkLabel label="CSS has errors" cssClasses={["error"]} halign={Gtk.Align.START} />}
             </GtkBox>
 
-            <GtkFrame label="CSS Filters">
-                <GtkBox
-                    spacing={8}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                    halign={Gtk.Align.CENTER}
+            <GtkScrolledWindow vexpand hexpand>
+                <GtkTextView
+                    ref={textViewRef}
+                    monospace
+                    wrapMode={Gtk.WrapMode.WORD_CHAR}
+                    topMargin={8}
+                    bottomMargin={8}
+                    leftMargin={8}
+                    rightMargin={8}
                 >
-                    {EFFECTS.map((effect, index) => (
-                        <GtkButton
-                            key={effect.name}
-                            label={effect.name}
-                            cssClasses={index === effectIndex ? ["suggested-action"] : []}
-                            onClicked={() => setEffectIndex(index)}
-                        />
-                    ))}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Icon Size">
-                <GtkBox spacing={16} marginStart={16} marginEnd={16} marginTop={16} marginBottom={16}>
-                    <GtkLabel label="Size:" />
-                    <GtkScale drawValue valuePos={Gtk.PositionType.RIGHT} hexpand>
-                        <x.Adjustment
-                            value={iconSize}
-                            lower={24}
-                            upper={128}
-                            stepIncrement={8}
-                            pageIncrement={16}
-                            onValueChanged={setIconSize}
-                        />
-                    </GtkScale>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Tiled Pattern">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={[iconTiledStyle]} hexpand />
-            </GtkFrame>
-
-            <GtkLabel
-                label="The -gtk-icontheme() function loads icons from the current icon theme. Combined with CSS properties like background-size, background-repeat, and filter, you can create various visual effects."
-                wrap
-                cssClasses={["dim-label", "caption"]}
-                halign={Gtk.Align.START}
-            />
-        </GtkBox>
+                    <x.TextBuffer onTextChanged={handleTextChanged}>{cssText}</x.TextBuffer>
+                </GtkTextView>
+            </GtkScrolledWindow>
+        </GtkPaned>
     );
 };
 
 export const cssPixbufsDemo: Demo = {
     id: "css-pixbufs",
     title: "Theming/Animated Backgrounds",
-    description: "Using icons and images in CSS backgrounds",
-    keywords: ["css", "icon", "pixbuf", "image", "background", "icontheme", "filter"],
+    description: "CSS @keyframes animations for gradient shifts, hue rotation, icon pulsing, and more. Edit CSS to experiment with animations.",
+    keywords: ["css", "animation", "keyframes", "gradient", "icon", "pixbuf", "background", "live", "editing"],
     component: CssPixbufsDemo,
     sourceCode,
 };
