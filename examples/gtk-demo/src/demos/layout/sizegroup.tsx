@@ -1,207 +1,129 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel, x } from "@gtkx/react";
-import { useState } from "react";
+import { GtkBox, GtkCheckButton, GtkDropDown, GtkFrame, GtkGrid, GtkLabel, x } from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";
 
+const COLOR_OPTIONS = ["Red", "Green", "Blue"];
+const DASH_OPTIONS = ["Solid", "Dashed", "Dotted"];
+const END_OPTIONS = ["Square", "Round", "Double Arrow"];
+
 const SizeGroupDemo = () => {
-    const [useHomogeneous, setUseHomogeneous] = useState(true);
-    const [buttonWidth, setButtonWidth] = useState(100);
+    const [groupingEnabled, setGroupingEnabled] = useState(true);
+    const sizeGroupRef = useRef<Gtk.SizeGroup | null>(null);
+    const dropdown1Ref = useRef<Gtk.DropDown | null>(null);
+    const dropdown2Ref = useRef<Gtk.DropDown | null>(null);
+    const dropdown3Ref = useRef<Gtk.DropDown | null>(null);
+    const dropdown4Ref = useRef<Gtk.DropDown | null>(null);
+
+    useEffect(() => {
+        const sizeGroup = new Gtk.SizeGroup(Gtk.SizeGroupMode.HORIZONTAL);
+        sizeGroupRef.current = sizeGroup;
+
+        const dropdowns = [dropdown1Ref, dropdown2Ref, dropdown3Ref, dropdown4Ref];
+
+        for (const ref of dropdowns) {
+            if (ref.current) {
+                sizeGroup.addWidget(ref.current);
+            }
+        }
+
+        return () => {
+            sizeGroupRef.current = null;
+        };
+    }, []);
+
+    useEffect(() => {
+        const sizeGroup = sizeGroupRef.current;
+        if (!sizeGroup) return;
+
+        if (groupingEnabled) {
+            sizeGroup.setMode(Gtk.SizeGroupMode.HORIZONTAL);
+        } else {
+            sizeGroup.setMode(Gtk.SizeGroupMode.NONE);
+        }
+    }, [groupingEnabled]);
+
+    const handleToggle = useCallback((button: Gtk.CheckButton) => {
+        setGroupingEnabled(button.getActive());
+    }, []);
 
     return (
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
-            spacing={20}
-            marginStart={20}
-            marginEnd={20}
-            marginTop={20}
-            marginBottom={20}
+            spacing={5}
+            marginStart={5}
+            marginEnd={5}
+            marginTop={5}
+            marginBottom={5}
         >
-            <GtkLabel label="Size Synchronization" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkFrame label="Color Options">
+                <GtkGrid
+                    rowSpacing={5}
+                    columnSpacing={10}
+                    marginStart={5}
+                    marginEnd={5}
+                    marginTop={5}
+                    marginBottom={5}
+                >
+                    <x.GridChild column={0} row={0}>
+                        <GtkLabel label="_Foreground" useUnderline halign={Gtk.Align.START} hexpand />
+                    </x.GridChild>
+                    <x.GridChild column={1} row={0}>
+                        <GtkDropDown ref={dropdown1Ref} halign={Gtk.Align.END}>
+                            {COLOR_OPTIONS.map((option, index) => (
+                                <x.SimpleListItem key={index} id={String(index)} value={option} />
+                            ))}
+                        </GtkDropDown>
+                    </x.GridChild>
 
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="About SizeGroup" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="GtkSizeGroup is a GTK4 utility that groups widgets so they request the same size. This is useful for aligning form labels or making dialog buttons equal width. In GTKX, you can achieve similar effects using GtkGrid, homogeneous boxes, or explicit widthRequest props."
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-            </GtkBox>
+                    <x.GridChild column={0} row={1}>
+                        <GtkLabel label="_Background" useUnderline halign={Gtk.Align.START} hexpand />
+                    </x.GridChild>
+                    <x.GridChild column={1} row={1}>
+                        <GtkDropDown ref={dropdown2Ref} halign={Gtk.Align.END}>
+                            {COLOR_OPTIONS.map((option, index) => (
+                                <x.SimpleListItem key={index} id={String(index)} value={option} />
+                            ))}
+                        </GtkDropDown>
+                    </x.GridChild>
+                </GtkGrid>
+            </GtkFrame>
 
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="Grid-Based Alignment" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="GtkGrid naturally aligns columns, making all labels in a column the same effective width."
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} marginTop={8} marginBottom={8}>
-                    <GtkGrid
-                        columnSpacing={12}
-                        rowSpacing={8}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    >
-                        <x.GridChild column={0} row={0}>
-                            <GtkLabel label="Name:" halign={Gtk.Align.END} />
-                        </x.GridChild>
-                        <x.GridChild column={1} row={0}>
-                            <GtkEntry hexpand placeholderText="John Doe" />
-                        </x.GridChild>
-                        <x.GridChild column={0} row={1}>
-                            <GtkLabel label="Email Address:" halign={Gtk.Align.END} />
-                        </x.GridChild>
-                        <x.GridChild column={1} row={1}>
-                            <GtkEntry hexpand placeholderText="john@example.com" />
-                        </x.GridChild>
-                        <x.GridChild column={0} row={2}>
-                            <GtkLabel label="Phone:" halign={Gtk.Align.END} />
-                        </x.GridChild>
-                        <x.GridChild column={1} row={2}>
-                            <GtkEntry hexpand placeholderText="+1 234 567 8900" />
-                        </x.GridChild>
-                    </GtkGrid>
-                </GtkBox>
-                <GtkLabel
-                    label="Notice how all labels in the first column are aligned to their longest member ('Email Address:')."
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-            </GtkBox>
+            <GtkFrame label="Line Options">
+                <GtkGrid
+                    rowSpacing={5}
+                    columnSpacing={10}
+                    marginStart={5}
+                    marginEnd={5}
+                    marginTop={5}
+                    marginBottom={5}
+                >
+                    <x.GridChild column={0} row={0}>
+                        <GtkLabel label="_Dashing" useUnderline halign={Gtk.Align.START} hexpand />
+                    </x.GridChild>
+                    <x.GridChild column={1} row={0}>
+                        <GtkDropDown ref={dropdown3Ref} halign={Gtk.Align.END}>
+                            {DASH_OPTIONS.map((option, index) => (
+                                <x.SimpleListItem key={index} id={String(index)} value={option} />
+                            ))}
+                        </GtkDropDown>
+                    </x.GridChild>
 
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="Homogeneous Box" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="Setting homogeneous=true on a GtkBox makes all children the same size."
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-                <GtkButton
-                    label={useHomogeneous ? "Disable Homogeneous" : "Enable Homogeneous"}
-                    onClicked={() => setUseHomogeneous(!useHomogeneous)}
-                    halign={Gtk.Align.START}
-                />
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} marginTop={8} marginBottom={8}>
-                    <GtkBox
-                        spacing={8}
-                        homogeneous={useHomogeneous}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    >
-                        <GtkButton label="OK" cssClasses={["suggested-action"]} />
-                        <GtkButton label="Cancel" />
-                        <GtkButton label="Apply Changes" />
-                    </GtkBox>
-                </GtkBox>
-                <GtkLabel
-                    label={
-                        useHomogeneous
-                            ? "All buttons have the same width (based on the widest: 'Apply Changes')."
-                            : "Buttons have different widths based on their content."
-                    }
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-            </GtkBox>
+                    <x.GridChild column={0} row={1}>
+                        <GtkLabel label="_Line ends" useUnderline halign={Gtk.Align.START} hexpand />
+                    </x.GridChild>
+                    <x.GridChild column={1} row={1}>
+                        <GtkDropDown ref={dropdown4Ref} halign={Gtk.Align.END}>
+                            {END_OPTIONS.map((option, index) => (
+                                <x.SimpleListItem key={index} id={String(index)} value={option} />
+                            ))}
+                        </GtkDropDown>
+                    </x.GridChild>
+                </GtkGrid>
+            </GtkFrame>
 
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="Explicit Width Request" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="Use widthRequest to give multiple widgets the same explicit width."
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-                <GtkBox spacing={8}>
-                    <GtkButton label="80px" onClicked={() => setButtonWidth(80)} />
-                    <GtkButton label="100px" onClicked={() => setButtonWidth(100)} />
-                    <GtkButton label="120px" onClicked={() => setButtonWidth(120)} />
-                </GtkBox>
-                <GtkLabel label={`Current width: ${buttonWidth}px`} cssClasses={["dim-label"]} />
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} marginTop={8} marginBottom={8}>
-                    <GtkBox spacing={8} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
-                        <GtkButton label="Yes" widthRequest={buttonWidth} cssClasses={["suggested-action"]} />
-                        <GtkButton label="No" widthRequest={buttonWidth} />
-                        <GtkButton label="Maybe" widthRequest={buttonWidth} />
-                    </GtkBox>
-                </GtkBox>
-            </GtkBox>
-
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel label="Comparison" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                <GtkLabel
-                    label="Compare form layouts with and without aligned labels."
-                    wrap
-                    cssClasses={["dim-label"]}
-                    halign={Gtk.Align.START}
-                />
-                <GtkBox spacing={20}>
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} hexpand>
-                        <GtkLabel label="Without Alignment" cssClasses={["heading"]} marginTop={8} />
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                            marginTop={12}
-                            marginBottom={12}
-                            marginStart={12}
-                            marginEnd={12}
-                        >
-                            <GtkBox spacing={8}>
-                                <GtkLabel label="Name:" />
-                                <GtkEntry hexpand />
-                            </GtkBox>
-                            <GtkBox spacing={8}>
-                                <GtkLabel label="Email:" />
-                                <GtkEntry hexpand />
-                            </GtkBox>
-                            <GtkBox spacing={8}>
-                                <GtkLabel label="Address:" />
-                                <GtkEntry hexpand />
-                            </GtkBox>
-                        </GtkBox>
-                    </GtkBox>
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]} hexpand>
-                        <GtkLabel label="With Grid Alignment" cssClasses={["heading"]} marginTop={8} />
-                        <GtkGrid
-                            columnSpacing={8}
-                            rowSpacing={8}
-                            marginTop={12}
-                            marginBottom={12}
-                            marginStart={12}
-                            marginEnd={12}
-                        >
-                            <x.GridChild column={0} row={0}>
-                                <GtkLabel label="Name:" halign={Gtk.Align.END} />
-                            </x.GridChild>
-                            <x.GridChild column={1} row={0}>
-                                <GtkEntry hexpand />
-                            </x.GridChild>
-                            <x.GridChild column={0} row={1}>
-                                <GtkLabel label="Email:" halign={Gtk.Align.END} />
-                            </x.GridChild>
-                            <x.GridChild column={1} row={1}>
-                                <GtkEntry hexpand />
-                            </x.GridChild>
-                            <x.GridChild column={0} row={2}>
-                                <GtkLabel label="Address:" halign={Gtk.Align.END} />
-                            </x.GridChild>
-                            <x.GridChild column={1} row={2}>
-                                <GtkEntry hexpand />
-                            </x.GridChild>
-                        </GtkGrid>
-                    </GtkBox>
-                </GtkBox>
-            </GtkBox>
+            <GtkCheckButton label="_Enable grouping" useUnderline active={groupingEnabled} onToggled={handleToggle} />
         </GtkBox>
     );
 };
@@ -209,8 +131,9 @@ const SizeGroupDemo = () => {
 export const sizegroupDemo: Demo = {
     id: "sizegroup",
     title: "Size Groups",
-    description: "Techniques for making widgets share the same size.",
-    keywords: ["sizegroup", "size", "width", "alignment", "homogeneous", "grid"],
+    description:
+        "GtkSizeGroup provides a mechanism for grouping a number of widgets together so they all request the same amount of space. This is typically useful when you want a column of widgets to have the same size, but you can't use a GtkGrid widget.",
+    keywords: ["sizegroup", "size", "width", "alignment", "GtkSizeGroup"],
     component: SizeGroupDemo,
     sourceCode,
 };

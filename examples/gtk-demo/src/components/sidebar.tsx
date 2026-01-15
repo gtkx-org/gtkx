@@ -1,60 +1,72 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkExpander, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry, x } from "@gtkx/react";
 import { useDemo } from "../context/demo-context.js";
+import type { Category, Demo } from "../demos/types.js";
 
-export const Sidebar = () => {
-    const { filteredCategories, currentDemo, setCurrentDemo } = useDemo();
+type TreeItem = { type: "category"; data: Category } | { type: "demo"; data: Demo };
+
+interface SidebarProps {
+    searchMode: boolean;
+    onSearchChanged: (text: string) => void;
+}
+
+export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
+    const { filteredCategories, currentDemo, setCurrentDemo, searchQuery } = useDemo();
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} cssClasses={["sidebar"]}>
-            <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["navigation-sidebar"]}>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkSearchBar searchModeEnabled={searchMode}>
+                <GtkSearchEntry
+                    hexpand
+                    text={searchQuery}
+                    onSearchChanged={(entry: Gtk.SearchEntry) => onSearchChanged(entry.getText())}
+                />
+            </GtkSearchBar>
+            <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER} cssClasses={["sidebar"]}>
+                <x.TreeListView<TreeItem>
+                    cssClasses={["navigation-sidebar"]}
+                    autoexpand
+                    selectionMode={Gtk.SelectionMode.SINGLE}
+                    selected={currentDemo ? [`demo-${currentDemo.id}`] : []}
+                    onSelectionChanged={(ids) => {
+                        const selectedId = ids[0];
+                        if (!selectedId?.startsWith("demo-")) return;
+                        const demoId = selectedId.slice(5);
+                        for (const category of filteredCategories) {
+                            const demo = category.demos.find((d) => d.id === demoId);
+                            if (demo) {
+                                setCurrentDemo(demo);
+                                return;
+                            }
+                        }
+                    }}
+                    renderItem={(item) => {
+                        if (!item) return null;
+
+                        if (item.type === "category") {
+                            return <GtkLabel label={item.data.title} hexpand halign={Gtk.Align.START} ellipsize={3} />;
+                        }
+
+                        return <GtkLabel label={item.data.title} hexpand halign={Gtk.Align.START} ellipsize={3} />;
+                    }}
+                >
                     {filteredCategories.map((category) => (
-                        <GtkListBoxRow key={category.id} activatable={false}>
-                            <GtkExpander label={category.title} expanded>
-                                <GtkListBox
-                                    onRowActivated={(_, row) => {
-                                        const index = row.getIndex();
-                                        const demo = category.demos[index];
-                                        if (demo) {
-                                            setCurrentDemo(demo);
-                                        }
-                                    }}
-                                >
-                                    {category.demos.map((demo) => (
-                                        <GtkListBoxRow
-                                            key={demo.id}
-                                            name={`demo-${demo.id}`}
-                                            cssClasses={currentDemo?.id === demo.id ? ["selected"] : []}
-                                        >
-                                            <GtkBox
-                                                orientation={Gtk.Orientation.VERTICAL}
-                                                spacing={2}
-                                                marginTop={6}
-                                                marginBottom={6}
-                                                marginStart={12}
-                                                marginEnd={12}
-                                            >
-                                                <GtkLabel
-                                                    label={demo.title}
-                                                    halign={Gtk.Align.START}
-                                                    cssClasses={["heading"]}
-                                                />
-                                                <GtkLabel
-                                                    label={demo.description}
-                                                    halign={Gtk.Align.START}
-                                                    cssClasses={["dim-label", "caption"]}
-                                                    ellipsize={3}
-                                                    lines={1}
-                                                />
-                                            </GtkBox>
-                                        </GtkListBoxRow>
-                                    ))}
-                                </GtkListBox>
-                            </GtkExpander>
-                        </GtkListBoxRow>
+                        <x.TreeListItem
+                            key={category.id}
+                            id={`category-${category.id}`}
+                            value={{ type: "category", data: category } as TreeItem}
+                        >
+                            {category.demos.map((demo) => (
+                                <x.TreeListItem
+                                    key={demo.id}
+                                    id={`demo-${demo.id}`}
+                                    value={{ type: "demo", data: demo } as TreeItem}
+                                    hideExpander
+                                />
+                            ))}
+                        </x.TreeListItem>
                     ))}
-                </GtkListBox>
+                </x.TreeListView>
             </GtkScrolledWindow>
         </GtkBox>
     );

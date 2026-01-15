@@ -1,469 +1,216 @@
-import type { Context } from "@gtkx/ffi/cairo";
+import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkScale, x } from "@gtkx/react";
+import { useCallback, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./image-filtering.tsx?raw";
 
-type FilterType = "none" | "blur" | "sharpen" | "brightness" | "contrast" | "grayscale" | "sepia";
+interface FilterState {
+    brightness: number;
+    contrast: number;
+    saturation: number;
+    sepia: number;
+    invert: number;
+    hueRotate: number;
+    blur: number;
+}
 
-const KERNELS = {
-    blur: [
-        [1 / 9, 1 / 9, 1 / 9],
-        [1 / 9, 1 / 9, 1 / 9],
-        [1 / 9, 1 / 9, 1 / 9],
-    ],
-    sharpen: [
-        [0, -1, 0],
-        [-1, 5, -1],
-        [0, -1, 0],
-    ],
-    emboss: [
-        [-2, -1, 0],
-        [-1, 1, 1],
-        [0, 1, 2],
-    ],
-    edgeDetect: [
-        [-1, -1, -1],
-        [-1, 8, -1],
-        [-1, -1, -1],
-    ],
+const DEFAULT_FILTERS: FilterState = {
+    brightness: 1,
+    contrast: 1,
+    saturation: 1,
+    sepia: 0,
+    invert: 0,
+    hueRotate: 0,
+    blur: 0,
 };
 
-const generateSampleImage = (width: number, height: number): number[][] => {
-    const data: number[][] = [];
-    for (let y = 0; y < height; y++) {
-        const row: number[] = [];
-        for (let x = 0; x < width; x++) {
-            const cx = width / 2;
-            const cy = height / 2;
-            const dx = x - cx;
-            const dy = y - cy;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const maxDist = Math.sqrt(cx * cx + cy * cy);
-
-            const r = Math.sin((x / width) * Math.PI * 2) * 0.5 + 0.5;
-            const g = Math.sin((y / height) * Math.PI * 2) * 0.5 + 0.5;
-            const b = 1 - dist / maxDist;
-
-            row.push(r, g, b);
-        }
-        data.push(row);
-    }
-    return data;
-};
-
-const applyConvolution = (data: number[][], kernel: number[][]): number[][] => {
-    const height = data.length;
-    const firstRow = data[0];
-    if (!firstRow) return [];
-    const width = firstRow.length / 3;
-    const result: number[][] = [];
-    const kSize = kernel.length;
-    const kHalf = Math.floor(kSize / 2);
-
-    for (let y = 0; y < height; y++) {
-        const row: number[] = [];
-        for (let x = 0; x < width; x++) {
-            let r = 0,
-                g = 0,
-                b = 0;
-
-            for (let ky = 0; ky < kSize; ky++) {
-                for (let kx = 0; kx < kSize; kx++) {
-                    const sy = Math.min(Math.max(y + ky - kHalf, 0), height - 1);
-                    const sx = Math.min(Math.max(x + kx - kHalf, 0), width - 1);
-                    const weight = kernel[ky]?.[kx] ?? 0;
-                    const dataRow = data[sy];
-                    r += (dataRow?.[sx * 3] ?? 0) * weight;
-                    g += (dataRow?.[sx * 3 + 1] ?? 0) * weight;
-                    b += (dataRow?.[sx * 3 + 2] ?? 0) * weight;
-                }
-            }
-
-            row.push(Math.max(0, Math.min(1, r)), Math.max(0, Math.min(1, g)), Math.max(0, Math.min(1, b)));
-        }
-        result.push(row);
-    }
-    return result;
-};
-
-const applyBrightness = (data: number[][], factor: number): number[][] => {
-    return data.map((row) => row.map((v) => Math.max(0, Math.min(1, v + factor))));
-};
-
-const applyContrast = (data: number[][], factor: number): number[][] => {
-    return data.map((row) => row.map((v) => Math.max(0, Math.min(1, (v - 0.5) * factor + 0.5))));
-};
-
-const applyGrayscale = (data: number[][]): number[][] => {
-    return data.map((row) => {
-        const result: number[] = [];
-        for (let i = 0; i < row.length; i += 3) {
-            const gray = (row[i] ?? 0) * 0.299 + (row[i + 1] ?? 0) * 0.587 + (row[i + 2] ?? 0) * 0.114;
-            result.push(gray, gray, gray);
-        }
-        return result;
-    });
-};
-
-const applySepia = (data: number[][]): number[][] => {
-    return data.map((row) => {
-        const result: number[] = [];
-        for (let i = 0; i < row.length; i += 3) {
-            const r = row[i] ?? 0;
-            const g = row[i + 1] ?? 0;
-            const b = row[i + 2] ?? 0;
-            result.push(
-                Math.min(1, r * 0.393 + g * 0.769 + b * 0.189),
-                Math.min(1, r * 0.349 + g * 0.686 + b * 0.168),
-                Math.min(1, r * 0.272 + g * 0.534 + b * 0.131),
-            );
-        }
-        return result;
-    });
-};
-
-const drawPixelData = (cr: Context, data: number[][], x: number, y: number, scale: number) => {
-    const height = data.length;
-    const firstRow = data[0];
-    if (!firstRow) return;
-    const width = firstRow.length / 3;
-
-    for (let py = 0; py < height; py++) {
-        for (let px = 0; px < width; px++) {
-            const dataRow = data[py];
-            const r = dataRow?.[px * 3] ?? 0;
-            const g = dataRow?.[px * 3 + 1] ?? 0;
-            const b = dataRow?.[px * 3 + 2] ?? 0;
-            cr.setSourceRgb(r, g, b)
-                .rectangle(x + px * scale, y + py * scale, scale, scale)
-                .fill();
-        }
-    }
-};
-
-const FilterPreview = ({
-    filter,
+const FilterSlider = ({
     label,
-    isActive,
-    onSelect,
+    value,
+    min,
+    max,
+    step,
+    defaultValue,
+    onChange,
+    unit = "",
 }: {
-    filter: FilterType;
     label: string;
-    isActive: boolean;
-    onSelect: () => void;
-}) => {
-    const imageData = useRef(generateSampleImage(20, 20));
-
-    const drawFunc = useCallback(
-        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            cr.setSourceRgb(0.1, 0.1, 0.1).rectangle(0, 0, width, height).fill();
-
-            let data = imageData.current;
-
-            switch (filter) {
-                case "blur":
-                    data = applyConvolution(data, KERNELS.blur);
-                    break;
-                case "sharpen":
-                    data = applyConvolution(data, KERNELS.sharpen);
-                    break;
-                case "brightness":
-                    data = applyBrightness(data, 0.2);
-                    break;
-                case "contrast":
-                    data = applyContrast(data, 1.5);
-                    break;
-                case "grayscale":
-                    data = applyGrayscale(data);
-                    break;
-                case "sepia":
-                    data = applySepia(data);
-                    break;
-            }
-
-            const scale = Math.floor(Math.min(width, height) / 20);
-            const offsetX = (width - 20 * scale) / 2;
-            const offsetY = (height - 20 * scale) / 2;
-            drawPixelData(cr, data, offsetX, offsetY, scale);
-
-            if (isActive) {
-                cr.setSourceRgb(0.3, 0.6, 1)
-                    .setLineWidth(3)
-                    .rectangle(1.5, 1.5, width - 3, height - 3)
-                    .stroke();
-            }
-        },
-        [filter, isActive],
-    );
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} halign={Gtk.Align.CENTER}>
-            <GtkButton onClicked={onSelect} cssClasses={isActive ? ["suggested-action"] : []}>
-                <GtkDrawingArea onDraw={drawFunc} contentWidth={80} contentHeight={80} />
-            </GtkButton>
-            <GtkLabel label={label} cssClasses={["caption", isActive ? "heading" : "dim-label"]} />
-        </GtkBox>
-    );
-};
-
-const MainPreview = ({ filter, intensity }: { filter: FilterType; intensity: number }) => {
-    const imageData = useRef(generateSampleImage(40, 40));
-
-    const drawFunc = useCallback(
-        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            cr.setSourceRgb(0.05, 0.05, 0.05).rectangle(0, 0, width, height).fill();
-
-            let data = imageData.current;
-
-            const passes = Math.ceil(intensity);
-            switch (filter) {
-                case "blur":
-                    for (let i = 0; i < passes; i++) {
-                        data = applyConvolution(data, KERNELS.blur);
-                    }
-                    break;
-                case "sharpen":
-                    for (let i = 0; i < passes; i++) {
-                        data = applyConvolution(data, KERNELS.sharpen);
-                    }
-                    break;
-                case "brightness":
-                    data = applyBrightness(data, (intensity - 1) * 0.3);
-                    break;
-                case "contrast":
-                    data = applyContrast(data, intensity);
-                    break;
-                case "grayscale":
-                    data = applyGrayscale(data);
-                    break;
-                case "sepia":
-                    data = applySepia(data);
-                    break;
-            }
-
-            const scale = Math.floor(Math.min(width, height) / 40);
-            const offsetX = (width - 40 * scale) / 2;
-            const offsetY = (height - 40 * scale) / 2;
-            drawPixelData(cr, data, offsetX, offsetY, scale);
-        },
-        [filter, intensity],
-    );
-
-    return <GtkDrawingArea onDraw={drawFunc} contentWidth={240} contentHeight={240} cssClasses={["card"]} />;
-};
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+    defaultValue: number;
+    onChange: (value: number) => void;
+    unit?: string;
+}) => (
+    <GtkBox spacing={8}>
+        <GtkLabel label={label} widthRequest={100} xalign={1} cssClasses={["dim-label"]} />
+        <GtkScale hexpand digits={step < 1 ? 1 : 0} drawValue>
+            <x.Adjustment
+                value={value}
+                lower={min}
+                upper={max}
+                stepIncrement={step}
+                pageIncrement={step * 10}
+                onValueChanged={onChange}
+            />
+        </GtkScale>
+        <GtkLabel
+            label={`${value.toFixed(step < 1 ? 1 : 0)}${unit}`}
+            widthRequest={60}
+            xalign={0}
+            cssClasses={["monospace", "dim-label"]}
+        />
+        <GtkButton
+            iconName="edit-undo-symbolic"
+            cssClasses={["flat", "circular"]}
+            sensitive={value !== defaultValue}
+            onClicked={() => onChange(defaultValue)}
+            tooltipText="Reset"
+        />
+    </GtkBox>
+);
 
 const ImageFilteringDemo = () => {
-    const [activeFilter, setActiveFilter] = useState<FilterType>("none");
-    const [intensity, setIntensity] = useState(1);
+    const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
-    const filters: { filter: FilterType; label: string }[] = [
-        { filter: "none", label: "Original" },
-        { filter: "blur", label: "Blur" },
-        { filter: "sharpen", label: "Sharpen" },
-        { filter: "brightness", label: "Brightness" },
-        { filter: "contrast", label: "Contrast" },
-        { filter: "grayscale", label: "Grayscale" },
-        { filter: "sepia", label: "Sepia" },
-    ];
+    const updateFilter = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    }, []);
+
+    const resetAll = useCallback(() => {
+        setFilters(DEFAULT_FILTERS);
+    }, []);
+
+    const filterClass = useMemo(() => {
+        const filterValue = [
+            `brightness(${filters.brightness})`,
+            `contrast(${filters.contrast})`,
+            `saturate(${filters.saturation})`,
+            `sepia(${filters.sepia})`,
+            `invert(${filters.invert})`,
+            `hue-rotate(${filters.hueRotate}deg)`,
+            `blur(${filters.blur}px)`,
+        ].join(" ");
+        return css({ filter: filterValue });
+    }, [filters]);
+
+    const hasChanges = Object.keys(DEFAULT_FILTERS).some(
+        (key) => filters[key as keyof FilterState] !== DEFAULT_FILTERS[key as keyof FilterState],
+    );
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Image Filters" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+                <GtkLabel label="Image Filtering" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+                <GtkLabel
+                    label="GPU-accelerated image filters using GTK CSS. These filters are applied via GSK render nodes for hardware-accelerated rendering."
+                    wrap
+                    halign={Gtk.Align.START}
+                    cssClasses={["dim-label"]}
+                />
+            </GtkBox>
 
-            <GtkLabel
-                label="Demonstrates image filter effects using Cairo graphics. These filters are implemented as pixel-level operations including convolution kernels, color adjustments, and transforms."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
-
-            <GtkBox spacing={24}>
-                <GtkFrame label="Preview">
+            <GtkBox spacing={16} vexpand>
+                <GtkFrame label="Preview" hexpand>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
-                        spacing={12}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        marginTop={16}
+                        marginBottom={16}
+                        marginStart={16}
+                        marginEnd={16}
+                        vexpand
+                    >
+                        <GtkImage iconName="org.gtk.Demo4" pixelSize={256} cssClasses={[filterClass]} />
+                    </GtkBox>
+                </GtkFrame>
+
+                <GtkFrame label="Filters" widthRequest={400}>
+                    <GtkBox
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={8}
                         marginTop={12}
                         marginBottom={12}
                         marginStart={12}
                         marginEnd={12}
-                        halign={Gtk.Align.CENTER}
                     >
-                        <MainPreview filter={activeFilter} intensity={intensity} />
-                        <GtkLabel
-                            label={`Filter: ${activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)}`}
-                            cssClasses={["heading"]}
+                        <FilterSlider
+                            label="Brightness"
+                            value={filters.brightness}
+                            min={0}
+                            max={2}
+                            step={0.1}
+                            defaultValue={DEFAULT_FILTERS.brightness}
+                            onChange={(v) => updateFilter("brightness", v)}
                         />
+                        <FilterSlider
+                            label="Contrast"
+                            value={filters.contrast}
+                            min={0}
+                            max={2}
+                            step={0.1}
+                            defaultValue={DEFAULT_FILTERS.contrast}
+                            onChange={(v) => updateFilter("contrast", v)}
+                        />
+                        <FilterSlider
+                            label="Saturation"
+                            value={filters.saturation}
+                            min={0}
+                            max={2}
+                            step={0.1}
+                            defaultValue={DEFAULT_FILTERS.saturation}
+                            onChange={(v) => updateFilter("saturation", v)}
+                        />
+                        <FilterSlider
+                            label="Sepia"
+                            value={filters.sepia}
+                            min={0}
+                            max={1}
+                            step={0.1}
+                            defaultValue={DEFAULT_FILTERS.sepia}
+                            onChange={(v) => updateFilter("sepia", v)}
+                        />
+                        <FilterSlider
+                            label="Invert"
+                            value={filters.invert}
+                            min={0}
+                            max={1}
+                            step={0.1}
+                            defaultValue={DEFAULT_FILTERS.invert}
+                            onChange={(v) => updateFilter("invert", v)}
+                        />
+                        <FilterSlider
+                            label="Hue Rotate"
+                            value={filters.hueRotate}
+                            min={0}
+                            max={360}
+                            step={1}
+                            defaultValue={DEFAULT_FILTERS.hueRotate}
+                            onChange={(v) => updateFilter("hueRotate", v)}
+                            unit="°"
+                        />
+                        <FilterSlider
+                            label="Blur"
+                            value={filters.blur}
+                            min={0}
+                            max={20}
+                            step={0.5}
+                            defaultValue={DEFAULT_FILTERS.blur}
+                            onChange={(v) => updateFilter("blur", v)}
+                            unit="px"
+                        />
+
+                        <GtkBox marginTop={8} halign={Gtk.Align.END}>
+                            <GtkButton label="Reset All" sensitive={hasChanges} onClicked={resetAll} />
+                        </GtkBox>
                     </GtkBox>
                 </GtkFrame>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} hexpand>
-                    <GtkFrame label="Intensity">
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                            marginTop={12}
-                            marginBottom={12}
-                            marginStart={12}
-                            marginEnd={12}
-                        >
-                            <GtkScale drawValue digits={1} hexpand>
-                                <x.Adjustment
-                                    value={intensity}
-                                    lower={0.5}
-                                    upper={3}
-                                    stepIncrement={0.1}
-                                    pageIncrement={0.5}
-                                    onValueChanged={setIntensity}
-                                />
-                            </GtkScale>
-                            <GtkButton label="Reset" onClicked={() => setIntensity(1)} halign={Gtk.Align.END} />
-                        </GtkBox>
-                    </GtkFrame>
-
-                    <GtkFrame label="Current Filter">
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                            marginTop={12}
-                            marginBottom={12}
-                            marginStart={12}
-                            marginEnd={12}
-                        >
-                            {activeFilter === "blur" && (
-                                <GtkLabel
-                                    label="Box blur: Averages neighboring pixels using a 3x3 kernel. Multiple passes increase blur radius."
-                                    wrap
-                                    halign={Gtk.Align.START}
-                                    cssClasses={["dim-label"]}
-                                />
-                            )}
-                            {activeFilter === "sharpen" && (
-                                <GtkLabel
-                                    label="Sharpening: Enhances edges using a kernel that emphasizes the center pixel and subtracts neighbors."
-                                    wrap
-                                    halign={Gtk.Align.START}
-                                    cssClasses={["dim-label"]}
-                                />
-                            )}
-                            {activeFilter === "brightness" && (
-                                <GtkLabel
-                                    label="Brightness: Adds a constant value to all color channels. Intensity controls the offset amount."
-                                    wrap
-                                    halign={Gtk.Align.START}
-                                    cssClasses={["dim-label"]}
-                                />
-                            )}
-                            {activeFilter === "contrast" && (
-                                <GtkLabel
-                                    label="Contrast: Stretches values away from middle gray. Intensity> 1 increases contrast, < 1 decreases."
-                                    wrap
-                                    halign={Gtk.Align.START}
-                                    cssClasses={["dim-label"]}
-                                />
-                            )}
-                            {activeFilter === "grayscale" && (
-                                <GtkLabel
-                                    label="Grayscale: Converts to luminance using ITU-R BT.601 weights (0.299R + 0.587G + 0.114B)."
-                                    wrap
-                                    halign={Gtk.Align.START}
-                                    cssClasses={["dim-label"]}
-                                />
-                            )}
-                            {activeFilter === "sepia" && (
-                                <GtkLabel
-                                    label="Sepia: Applies a warm, vintage color tone using a color matrix transformation."
-                                    wrap
-                                    halign={Gtk.Align.START}
-                                    cssClasses={["dim-label"]}
-                                />
-                            )}
-                            {activeFilter === "none" && (
-                                <GtkLabel
-                                    label="No filter applied. Select a filter below to see the effect."
-                                    wrap
-                                    halign={Gtk.Align.START}
-                                    cssClasses={["dim-label"]}
-                                />
-                            )}
-                        </GtkBox>
-                    </GtkFrame>
-                </GtkBox>
             </GtkBox>
 
-            <GtkFrame label="Available Filters">
-                <GtkBox
-                    spacing={16}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                    halign={Gtk.Align.CENTER}
-                >
-                    {filters.map(({ filter, label }) => (
-                        <FilterPreview
-                            key={filter}
-                            filter={filter}
-                            label={label}
-                            isActive={activeFilter === filter}
-                            onSelect={() => setActiveFilter(filter)}
-                        />
-                    ))}
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Convolution Kernels">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Convolution applies a kernel matrix to each pixel, computing a weighted sum of the pixel and its neighbors. Different kernels produce different effects:"
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkBox spacing={24}>
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                            <GtkLabel label="Box Blur (3x3)" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                            <GtkLabel
-                                label={`[1/9] [1/9] [1/9]
-[1/9] [1/9] [1/9]
-[1/9] [1/9] [1/9]`}
-                                cssClasses={["monospace"]}
-                                halign={Gtk.Align.START}
-                            />
-                        </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                            <GtkLabel label="Sharpen" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                            <GtkLabel
-                                label={`[ 0] [-1] [ 0]
-[-1] [ 5] [-1]
-[ 0] [-1] [ 0]`}
-                                cssClasses={["monospace"]}
-                                halign={Gtk.Align.START}
-                            />
-                        </GtkBox>
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                            <GtkLabel label="Edge Detect" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                            <GtkLabel
-                                label={`[-1] [-1] [-1]
-[-1] [ 8] [-1]
-[-1] [-1] [-1]`}
-                                cssClasses={["monospace"]}
-                                halign={Gtk.Align.START}
-                            />
-                        </GtkBox>
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Implementation Notes">
+            <GtkFrame label="How It Works">
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={8}
@@ -473,31 +220,29 @@ const ImageFilteringDemo = () => {
                     marginEnd={12}
                 >
                     <GtkLabel
-                        label="These filters are implemented in JavaScript for demonstration. For production use:"
+                        label="GTK's CSS filter property maps directly to GSK render nodes:"
                         wrap
                         halign={Gtk.Align.START}
                         cssClasses={["dim-label"]}
                     />
-                    <GtkLabel
-                        label="1. Use GPU-accelerated rendering via GSK render nodes"
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkLabel
-                        label="2. Apply CSS filters for common effects (blur, grayscale, etc.)"
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkLabel
-                        label="3. Use GdkPixbuf for image loading and manipulation"
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                    <GtkLabel
-                        label="4. Consider Cairo's built-in operators for alpha blending"
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
+                    <GtkBox spacing={24} halign={Gtk.Align.CENTER} marginTop={8}>
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+                            <GtkLabel label="brightness(), contrast()" cssClasses={["monospace", "caption"]} />
+                            <GtkLabel label="→ ColorMatrixNode" cssClasses={["dim-label", "caption"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+                            <GtkLabel label="saturate(), sepia()" cssClasses={["monospace", "caption"]} />
+                            <GtkLabel label="→ ColorMatrixNode" cssClasses={["dim-label", "caption"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+                            <GtkLabel label="blur()" cssClasses={["monospace", "caption"]} />
+                            <GtkLabel label="→ BlurNode" cssClasses={["dim-label", "caption"]} />
+                        </GtkBox>
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+                            <GtkLabel label="hue-rotate()" cssClasses={["monospace", "caption"]} />
+                            <GtkLabel label="→ ColorMatrixNode" cssClasses={["dim-label", "caption"]} />
+                        </GtkBox>
+                    </GtkBox>
                 </GtkBox>
             </GtkFrame>
         </GtkBox>
@@ -507,19 +252,8 @@ const ImageFilteringDemo = () => {
 export const imageFilteringDemo: Demo = {
     id: "image-filtering",
     title: "Image Filtering",
-    description: "Image filters and effects using Cairo convolution",
-    keywords: [
-        "image",
-        "filter",
-        "blur",
-        "sharpen",
-        "grayscale",
-        "sepia",
-        "convolution",
-        "cairo",
-        "effect",
-        "processing",
-    ],
+    description: "GPU-accelerated image filters using CSS and GSK render nodes",
+    keywords: ["image", "filter", "blur", "brightness", "contrast", "saturation", "sepia", "gsk", "css"],
     component: ImageFilteringDemo,
     sourceCode,
 };

@@ -1,168 +1,84 @@
-import { type Context, LineCap, LineJoin, Operator } from "@gtkx/ffi/cairo";
+import { type Context, LineCap, Operator } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./drawingarea.tsx?raw";
 
-const drawCircle = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = Math.min(width, height) / 2 - 10;
-
-    cr.setSourceRgb(0.2, 0.6, 0.9)
-        .arc(centerX, centerY, radius, 0, 2 * Math.PI)
-        .fill();
-
-    cr.setSourceRgb(0.1, 0.4, 0.7)
-        .setLineWidth(3)
-        .arc(centerX, centerY, radius, 0, 2 * Math.PI)
-        .stroke();
-};
-
-const drawShapes = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-    const padding = 20;
-
-    cr.setSourceRgb(0.9, 0.3, 0.3).rectangle(padding, padding, 80, 60).fill();
-
-    cr.setSourceRgb(0.3, 0.8, 0.3)
-        .arc(width / 2, height / 2, 40, 0, 2 * Math.PI)
-        .fill();
-
-    cr.setSourceRgb(0.3, 0.3, 0.9)
-        .moveTo(width - padding - 40, height - padding)
-        .lineTo(width - padding, height - padding)
-        .lineTo(width - padding - 20, height - padding - 60)
-        .closePath()
-        .fill();
-
-    cr.setSourceRgb(0.8, 0.5, 0.2)
-        .setLineWidth(4)
-        .moveTo(padding, height - padding)
-        .curveTo(width / 4, padding, (3 * width) / 4, height - padding, width - padding, padding)
-        .stroke();
-};
+const CHECK_SIZE = 16;
 
 const ovalPath = (cr: Context, xc: number, yc: number, xr: number, yr: number) => {
     cr.save()
         .translate(xc, yc)
         .scale(1, yr / xr)
+        .moveTo(xr, 0)
         .arc(0, 0, xr, 0, 2 * Math.PI)
+        .closePath()
         .restore();
 };
 
 const fillChecks = (cr: Context, width: number, height: number) => {
-    const checkSize = 8;
-    cr.setSourceRgb(0.4, 0.4, 0.4).rectangle(0, 0, width, height).fill();
+    cr.rectangle(0, 0, width, height).setSourceRgb(0.4, 0.4, 0.4).fill();
 
-    cr.setSourceRgb(0.6, 0.6, 0.6);
-    for (let y = 0; y < height; y += checkSize * 2) {
-        for (let x = 0; x < width; x += checkSize * 2) {
-            cr.rectangle(x, y, checkSize, checkSize).rectangle(x + checkSize, y + checkSize, checkSize, checkSize);
+    for (let j = 0; j < height; j += CHECK_SIZE) {
+        for (let i = 0; i < width; i += CHECK_SIZE) {
+            if ((Math.floor(i / CHECK_SIZE) + Math.floor(j / CHECK_SIZE)) % 2 === 0) {
+                cr.rectangle(i, j, CHECK_SIZE, CHECK_SIZE);
+            }
         }
     }
+    cr.setSourceRgb(0.7, 0.7, 0.7).fill();
+};
+
+const draw3Circles = (cr: Context, xc: number, yc: number, radius: number, alpha: number) => {
+    const subradius = radius * (2 / 3 - 0.1);
+
+    cr.setSourceRgba(1, 0, 0, alpha);
+    ovalPath(cr, xc + (radius / 3) * Math.cos(Math.PI * 0.5), yc - (radius / 3) * Math.sin(Math.PI * 0.5), subradius, subradius);
+    cr.fill();
+
+    cr.setSourceRgba(0, 1, 0, alpha);
+    ovalPath(cr, xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 2 / 0.3)), yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 2 / 0.3)), subradius, subradius);
+    cr.fill();
+
+    cr.setSourceRgba(0, 0, 1, alpha);
+    ovalPath(cr, xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 4 / 0.3)), yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 4 / 0.3)), subradius, subradius);
     cr.fill();
 };
 
-const draw3Circles = (cr: Context, xc: number, yc: number, radius: number) => {
-    const subradius = radius * 0.7;
-
-    cr.setSourceRgba(1, 0, 0, 0.5);
-    ovalPath(cr, xc + radius / 2, yc - subradius / 2, subradius, subradius);
-    cr.fill();
-
-    cr.setSourceRgba(0, 1, 0, 0.5);
-    ovalPath(cr, xc, yc + subradius / 2, subradius, subradius);
-    cr.fill();
-
-    cr.setSourceRgba(0, 0, 1, 0.5);
-    ovalPath(cr, xc - radius / 2, yc - subradius / 2, subradius, subradius);
-    cr.fill();
-};
-
-const drawCompositing = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-    const radius = Math.min(width, height) / 2 - 10;
+const drawKnockoutGroups = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+    const radius = 0.5 * Math.min(width, height) - 10;
     const xc = width / 2;
     const yc = height / 2;
 
     fillChecks(cr, width, height);
 
-    draw3Circles(cr, xc, yc, radius);
-};
+    const overlay = cr.getTarget().createSimilar("COLOR_ALPHA", width, height);
+    const punch = cr.getTarget().createSimilar("ALPHA", width, height);
+    const circles = cr.getTarget().createSimilar("COLOR_ALPHA", width, height);
 
-const drawKnockout = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-    const radius = Math.min(width, height) / 2 - 10;
-    const xc = width / 2;
-    const yc = height / 2;
+    const overlayCr = overlay.createContext();
+    overlayCr.setSourceRgb(0, 0, 0);
+    ovalPath(overlayCr, xc, yc, radius, radius);
+    overlayCr.fill();
 
-    fillChecks(cr, width, height);
+    const punchCr = punch.createContext();
+    draw3Circles(punchCr, xc, yc, radius, 1.0);
 
-    cr.setSourceRgb(1, 1, 1)
-        .arc(xc, yc, radius, 0, 2 * Math.PI)
-        .fill();
+    overlayCr.setOperator(Operator.DEST_OUT);
+    overlayCr.setSourceSurface(punch, 0, 0);
+    overlayCr.paint();
 
-    cr.setOperator(Operator.DEST_OUT);
-    draw3Circles(cr, xc, yc, radius);
+    const circlesCr = circles.createContext();
+    circlesCr.setOperator(Operator.OVER);
+    draw3Circles(circlesCr, xc, yc, radius, 0.5);
 
-    cr.setOperator(Operator.OVER);
-};
+    overlayCr.setOperator(Operator.ADD);
+    overlayCr.setSourceSurface(circles, 0, 0);
+    overlayCr.paint();
 
-const drawStar = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const outerRadius = Math.min(width, height) / 2 - 10;
-    const innerRadius = outerRadius * 0.4;
-    const points = 5;
-
-    cr.setSourceRgb(0.95, 0.8, 0.2);
-
-    for (let i = 0; i < points * 2; i++) {
-        const radius = i % 2 === 0 ? outerRadius : innerRadius;
-        const angle = (i * Math.PI) / points - Math.PI / 2;
-        const x = centerX + Math.cos(angle) * radius;
-        const y = centerY + Math.sin(angle) * radius;
-
-        if (i === 0) {
-            cr.moveTo(x, y);
-        } else {
-            cr.lineTo(x, y);
-        }
-    }
-    cr.closePath().fill();
-
-    cr.setSourceRgb(0.8, 0.6, 0.1).setLineWidth(2);
-    for (let i = 0; i < points * 2; i++) {
-        const radius = i % 2 === 0 ? outerRadius : innerRadius;
-        const angle = (i * Math.PI) / points - Math.PI / 2;
-        const x = centerX + Math.cos(angle) * radius;
-        const y = centerY + Math.sin(angle) * radius;
-
-        if (i === 0) {
-            cr.moveTo(x, y);
-        } else {
-            cr.lineTo(x, y);
-        }
-    }
-    cr.closePath().stroke();
-};
-
-const DrawingCanvas = ({
-    width,
-    height,
-    drawFunc,
-    label,
-}: {
-    width: number;
-    height: number;
-    drawFunc: (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => void;
-    label: string;
-}) => {
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
-            <GtkDrawingArea onDraw={drawFunc} contentWidth={width} contentHeight={height} cssClasses={["card"]} />
-            <GtkLabel label={label} cssClasses={["dim-label", "caption"]} />
-        </GtkBox>
-    );
+    cr.setSourceSurface(overlay, 0, 0);
+    cr.paint();
 };
 
 interface Point {
@@ -182,24 +98,32 @@ const ScribbleArea = () => {
         (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
             cr.setSourceRgb(1, 1, 1).rectangle(0, 0, width, height).fill();
 
-            cr.setSourceRgb(0, 0, 0).setLineWidth(3).setLineCap(LineCap.ROUND).setLineJoin(LineJoin.ROUND);
+            cr.setSourceRgb(0, 0, 0).setLineWidth(6).setLineCap(LineCap.ROUND);
 
             for (const stroke of strokes) {
                 const [first, ...rest] = stroke;
-                if (!first || rest.length === 0) continue;
+                if (!first) continue;
                 cr.moveTo(first.x, first.y);
-                for (const point of rest) {
-                    cr.lineTo(point.x, point.y);
+                if (rest.length === 0) {
+                    cr.lineTo(first.x, first.y);
+                } else {
+                    for (const point of rest) {
+                        cr.lineTo(point.x, point.y);
+                    }
                 }
                 cr.stroke();
             }
 
             const currentStroke = currentStrokeRef.current;
             const [currentFirst, ...currentRest] = currentStroke;
-            if (currentFirst && currentRest.length > 0) {
+            if (currentFirst) {
                 cr.moveTo(currentFirst.x, currentFirst.y);
-                for (const point of currentRest) {
-                    cr.lineTo(point.x, point.y);
+                if (currentRest.length === 0) {
+                    cr.lineTo(currentFirst.x, currentFirst.y);
+                } else {
+                    for (const point of currentRest) {
+                        cr.lineTo(point.x, point.y);
+                    }
                 }
                 cr.stroke();
             }
@@ -231,106 +155,44 @@ const ScribbleArea = () => {
         startPointRef.current = null;
     }, []);
 
-    const handleClear = () => {
+    const handleResize = useCallback(() => {
         setStrokes([]);
         currentStrokeRef.current = [];
         startPointRef.current = null;
-    };
+    }, []);
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-            <GtkDrawingArea
-                ref={ref}
-                contentWidth={300}
-                contentHeight={200}
-                cssClasses={["card"]}
-                onDraw={drawScribble}
-                onGestureDragBegin={handleDragBegin}
-                onGestureDragUpdate={handleDragUpdate}
-                onGestureDragEnd={handleDragEnd}
-            />
-            <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
-                <GtkLabel label="Draw with mouse or touch" cssClasses={["dim-label", "caption"]} />
-                <GtkButton label="Clear" onClicked={handleClear} cssClasses={["flat"]} />
-            </GtkBox>
-        </GtkBox>
+        <GtkDrawingArea
+            ref={ref}
+            contentWidth={100}
+            contentHeight={100}
+            onDraw={drawScribble}
+            onGestureDragBegin={handleDragBegin}
+            onGestureDragUpdate={handleDragUpdate}
+            onGestureDragEnd={handleDragEnd}
+            onResize={handleResize}
+        />
     );
 };
 
 const DrawingAreaDemo = () => {
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Drawing Area" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <GtkLabel
-                label="GtkDrawingArea allows custom drawing using Cairo graphics. Set a draw function to render shapes, paths, and patterns."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
-
-            <GtkFrame label="Interactive Scribble">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                    halign={Gtk.Align.CENTER}
-                >
-                    <ScribbleArea />
-                </GtkBox>
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={8}
+            marginStart={16}
+            marginEnd={16}
+            marginTop={16}
+            marginBottom={16}
+        >
+            <GtkLabel label="Knockout groups" cssClasses={["heading"]} />
+            <GtkFrame vexpand>
+                <GtkDrawingArea onDraw={drawKnockoutGroups} contentWidth={100} contentHeight={100} />
             </GtkFrame>
 
-            <GtkFrame label="Basic Shapes">
-                <GtkBox
-                    spacing={24}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                    halign={Gtk.Align.CENTER}
-                >
-                    <DrawingCanvas width={120} height={120} drawFunc={drawCircle} label="Circle" />
-                    <DrawingCanvas width={200} height={150} drawFunc={drawShapes} label="Multiple Shapes" />
-                    <DrawingCanvas width={120} height={120} drawFunc={drawStar} label="Star" />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Compositing & Alpha Blending">
-                <GtkBox
-                    spacing={24}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                    halign={Gtk.Align.CENTER}
-                >
-                    <DrawingCanvas width={150} height={150} drawFunc={drawCompositing} label="Alpha Blending" />
-                    <DrawingCanvas width={150} height={150} drawFunc={drawKnockout} label="Knockout (DEST_OUT)" />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Cairo Drawing API">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={8}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel label="Available Cairo methods:" cssClasses={["heading"]} halign={Gtk.Align.START} />
-                    <GtkLabel
-                        label={`Path: moveTo, lineTo, curveTo, arc, rectangle, closePath
-Draw: fill, stroke, paint, setOperator
-Style: setSourceRgb/Rgba, setLineWidth, setLineCap/Join
-Transform: save, restore, translate, scale, rotate`}
-                        halign={Gtk.Align.START}
-                        cssClasses={["monospace"]}
-                    />
-                </GtkBox>
+            <GtkLabel label="Scribble area" cssClasses={["heading"]} />
+            <GtkFrame vexpand>
+                <ScribbleArea />
             </GtkFrame>
         </GtkBox>
     );
@@ -339,8 +201,9 @@ Transform: save, restore, translate, scale, rotate`}
 export const drawingAreaDemo: Demo = {
     id: "drawingarea",
     title: "Drawing Area",
-    description: "Custom drawing with Cairo graphics",
-    keywords: ["drawing", "canvas", "cairo", "GtkDrawingArea", "custom", "graphics", "shapes", "paths", "scribble"],
+    description:
+        "GtkDrawingArea is a blank area where you can draw custom displays of various kinds. This demo has two drawing areas. The checkerboard area shows how you can just draw something; all you have to do is set a function via gtk_drawing_area_set_draw_func. The scribble area is a bit more advanced, and shows how to handle events such as button presses and mouse motion. Click the mouse and drag in the scribble area to draw squiggles. Resize the window to clear the area.",
+    keywords: ["drawing", "GtkDrawingArea"],
     component: DrawingAreaDemo,
     sourceCode,
 };

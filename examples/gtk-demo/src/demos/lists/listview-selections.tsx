@@ -159,7 +159,7 @@ const ListViewSelectionsDemo = () => {
         (c) =>
             countryFilter === "" ||
             c.name.toLowerCase().includes(countryFilter.toLowerCase()) ||
-            c.code.toLowerCase().includes(countryFilter.toLowerCase())
+            c.code.toLowerCase().includes(countryFilter.toLowerCase()),
     );
 
     const currentModeInfo = selectionModes.find((m) => m.mode === selectionMode);
@@ -169,7 +169,7 @@ const ListViewSelectionsDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Dropdown & Selection" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="Selections" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
                 label="GtkDropDown provides a compact way to select from a list of options. This demo shows basic dropdowns, filtered dropdowns, and dropdowns with custom content alongside ListView selection modes."
@@ -312,7 +312,11 @@ const ListViewSelectionsDemo = () => {
                             />
                         ))}
                     </GtkBox>
-                    <GtkLabel label={currentModeInfo?.description ?? ""} cssClasses={["dim-label"]} halign={Gtk.Align.START} />
+                    <GtkLabel
+                        label={currentModeInfo?.description ?? ""}
+                        cssClasses={["dim-label"]}
+                        halign={Gtk.Align.START}
+                    />
 
                     <GtkBox spacing={8}>
                         <GtkButton
@@ -324,10 +328,17 @@ const ListViewSelectionsDemo = () => {
                         <GtkButton
                             label="Select None"
                             onClicked={selectNone}
-                            sensitive={selectionMode !== Gtk.SelectionMode.BROWSE && selectionMode !== Gtk.SelectionMode.NONE}
+                            sensitive={
+                                selectionMode !== Gtk.SelectionMode.BROWSE && selectionMode !== Gtk.SelectionMode.NONE
+                            }
                             cssClasses={["flat"]}
                         />
-                        <GtkLabel label={`${selected.length} selected`} cssClasses={["dim-label"]} hexpand halign={Gtk.Align.END} />
+                        <GtkLabel
+                            label={`${selected.length} selected`}
+                            cssClasses={["dim-label"]}
+                            hexpand
+                            halign={Gtk.Align.END}
+                        />
                     </GtkBox>
 
                     <GtkScrolledWindow heightRequest={200} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
@@ -367,7 +378,7 @@ const ListViewSelectionsDemo = () => {
 
 export const listviewSelectionsDemo: Demo = {
     id: "listview-selections",
-    title: "Dropdown & Selection",
+    title: "Lists/Selections",
     description: "GtkDropDown examples and ListView selection modes",
     keywords: [
         "dropdown",

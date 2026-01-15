@@ -337,7 +337,7 @@ const ShortcutsDemo = () => {
 
 export const shortcutsDemo: Demo = {
     id: "shortcuts",
-    title: "Shortcuts Dialog",
+    title: "Shortcuts Window",
     description: "AdwShortcutsDialog displays application keyboard shortcuts in a structured, searchable dialog",
     keywords: [
         "keyboard",

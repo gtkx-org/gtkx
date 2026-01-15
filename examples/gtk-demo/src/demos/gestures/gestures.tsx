@@ -403,7 +403,12 @@ const GesturesDemo = () => {
                             <GtkLabel label="Quick swipes with velocity" cssClasses={["dim-label"]} />
                         </GtkBox>
                         <GtkBox spacing={12}>
-                            <GtkLabel label="GtkGestureLongPress" widthChars={18} xalign={0} cssClasses={["monospace"]} />
+                            <GtkLabel
+                                label="GtkGestureLongPress"
+                                widthChars={18}
+                                xalign={0}
+                                cssClasses={["monospace"]}
+                            />
                             <GtkLabel label="Press and hold detection" cssClasses={["dim-label"]} />
                         </GtkBox>
                         <GtkBox spacing={12}>

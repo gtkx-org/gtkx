@@ -13,10 +13,8 @@ import {
     GtkLabel,
     GtkMenuButton,
     GtkNotebook,
-    GtkPaned,
     GtkScrolledWindow,
-    GtkSearchBar,
-    GtkSearchEntry,
+    GtkToggleButton,
     GtkWindow,
     quit,
     useApplication,
@@ -91,7 +89,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
 };
 
 const AppContent = () => {
-    const { currentDemo, searchQuery, setSearchQuery } = useDemo();
+    const { currentDemo, setSearchQuery } = useDemo();
     const [searchMode, setSearchMode] = useState(false);
     const [demoWindows, setDemoWindows] = useState<number[]>([]);
     const [nextWindowId, setNextWindowId] = useState(1);
@@ -148,49 +146,54 @@ const AppContent = () => {
         setShowAbout(false);
     }, []);
 
+    const windowTitle = currentDemo?.title ?? "GTKX Demo";
+
     return (
         <>
             <x.Slot for={GtkWindow} id="titlebar">
                 <GtkHeaderBar>
                     <x.Slot for={GtkHeaderBar} id="titleWidget">
-                        <GtkLabel label="GTKX Demo" cssClasses={["title"]} />
+                        <GtkLabel label={windowTitle} cssClasses={["title"]} />
                     </x.Slot>
                     <x.PackStart>
                         <GtkButton
                             label="Run"
-                            cssClasses={["suggested-action"]}
                             onClicked={handleRun}
                             sensitive={!!currentDemo}
+                            valign={Gtk.Align.CENTER}
+                            focusOnClick={false}
                         />
-                        <GtkButton
+                        <GtkToggleButton
                             iconName="edit-find-symbolic"
-                            cssClasses={searchMode ? ["suggested-action"] : []}
-                            onClicked={() => setSearchMode(!searchMode)}
+                            active={searchMode}
+                            onToggled={(btn: Gtk.ToggleButton) => setSearchMode(btn.getActive())}
+                            valign={Gtk.Align.CENTER}
+                            focusOnClick={false}
                         />
                     </x.PackStart>
                     <x.PackEnd>
-                        <GtkMenuButton iconName="open-menu-symbolic">
+                        <GtkMenuButton iconName="open-menu-symbolic" valign={Gtk.Align.CENTER} focusOnClick={false}>
                             <x.MenuSection>
                                 <x.MenuItem
                                     id="inspector"
-                                    label="Inspector"
+                                    label="_Inspector"
                                     onActivate={handleInspector}
                                     accels="<Control><Shift>i"
                                 />
                                 <x.MenuItem
                                     id="shortcuts"
-                                    label="Keyboard Shortcuts"
+                                    label="_Keyboard Shortcuts"
                                     onActivate={handleKeyboardShortcuts}
                                     accels="<Control>question"
                                 />
-                                <x.MenuItem id="about" label="About GTKX Demo" onActivate={handleAbout} />
+                                <x.MenuItem id="about" label="_About GTKX Demo" onActivate={handleAbout} />
                             </x.MenuSection>
                         </GtkMenuButton>
                     </x.PackEnd>
                 </GtkHeaderBar>
             </x.Slot>
 
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand hexpand>
+            <GtkBox vexpand hexpand>
                 <x.ShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                     <x.Shortcut trigger="<Control>f" onActivate={() => setSearchMode((prev) => !prev)} />
                     <x.Shortcut
@@ -207,41 +210,33 @@ const AppContent = () => {
                         onActivate={() => setNotebookPage((prev) => Math.max(prev - 1, 0))}
                     />
                 </x.ShortcutController>
-                <GtkSearchBar searchModeEnabled={searchMode}>
-                    <GtkSearchEntry
-                        grabFocus={searchMode}
-                        hexpand
-                        placeholderText="Search demos..."
-                        text={searchQuery}
-                        onSearchChanged={(entry: Gtk.SearchEntry) => setSearchQuery(entry.getText())}
-                    />
-                </GtkSearchBar>
 
-                <GtkPaned wideHandle vexpand hexpand shrinkStartChild={false} shrinkEndChild={false} position={280}>
-                    <x.Slot for={GtkPaned} id="startChild">
-                        <Sidebar />
-                    </x.Slot>
-                    <x.Slot for={GtkPaned} id="endChild">
-                        <GtkNotebook
-                            page={notebookPage}
-                            onSwitchPage={(_, __, pageNum) => setNotebookPage(pageNum)}
-                            vexpand
-                            hexpand
-                            scrollable
-                            showBorder={false}
-                        >
-                            <x.NotebookPage>
-                                <x.NotebookPageTab>
-                                    <GtkLabel label="_Info" useUnderline />
-                                </x.NotebookPageTab>
-                                <InfoTab />
-                            </x.NotebookPage>
-                            <x.NotebookPage label="Source">
-                                <SourceViewer />
-                            </x.NotebookPage>
-                        </GtkNotebook>
-                    </x.Slot>
-                </GtkPaned>
+                <Sidebar searchMode={searchMode} onSearchChanged={setSearchQuery} />
+
+                <GtkNotebook
+                    page={notebookPage}
+                    onSwitchPage={(_, __, pageNum) => setNotebookPage(pageNum)}
+                    vexpand
+                    hexpand
+                    scrollable
+                    showBorder={false}
+                    enablePopup
+                >
+                    <x.NotebookPage tabExpand>
+                        <x.NotebookPageTab>
+                            <GtkLabel label="_Info" useUnderline />
+                        </x.NotebookPageTab>
+                        <GtkScrolledWindow vexpand hexpand>
+                            <InfoTab />
+                        </GtkScrolledWindow>
+                    </x.NotebookPage>
+                    <x.NotebookPage tabExpand>
+                        <x.NotebookPageTab>
+                            <GtkLabel label="Source" />
+                        </x.NotebookPageTab>
+                        <SourceViewer />
+                    </x.NotebookPage>
+                </GtkNotebook>
             </GtkBox>
 
             {demoWindows.map((id) => (

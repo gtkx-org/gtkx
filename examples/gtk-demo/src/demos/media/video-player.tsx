@@ -1,16 +1,7 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkCheckButton,
-    GtkFrame,
-    GtkImage,
-    GtkLabel,
-    GtkVideo,
-    useApplication,
-} from "@gtkx/react";
+import { GtkBox, GtkButton, GtkCheckButton, GtkFrame, GtkImage, GtkLabel, GtkVideo, useApplication } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./video-player.tsx?raw";
@@ -107,11 +98,7 @@ const VideoPlayerDemo = () => {
                     marginStart={16}
                     marginEnd={16}
                 >
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        halign={Gtk.Align.CENTER}
-                        cssClasses={["card"]}
-                    >
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER} cssClasses={["card"]}>
                         {videoFile ? (
                             <GtkVideo
                                 file={videoFile}
@@ -129,7 +116,11 @@ const VideoPlayerDemo = () => {
                                 valign={Gtk.Align.CENTER}
                                 halign={Gtk.Align.CENTER}
                             >
-                                <GtkImage iconName="video-x-generic-symbolic" pixelSize={64} cssClasses={["dim-label"]} />
+                                <GtkImage
+                                    iconName="video-x-generic-symbolic"
+                                    pixelSize={64}
+                                    cssClasses={["dim-label"]}
+                                />
                                 <GtkLabel label="No video loaded" cssClasses={["dim-label"]} />
                                 <GtkLabel
                                     label="Open a file or select a sample video below"
@@ -148,14 +139,7 @@ const VideoPlayerDemo = () => {
                         />
                     )}
 
-                    {error && (
-                        <GtkLabel
-                            label={error}
-                            halign={Gtk.Align.CENTER}
-                            cssClasses={["error"]}
-                            wrap
-                        />
-                    )}
+                    {error && <GtkLabel label={error} halign={Gtk.Align.CENTER} cssClasses={["error"]} wrap />}
                 </GtkBox>
             </GtkFrame>
 

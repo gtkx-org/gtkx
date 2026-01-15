@@ -81,9 +81,7 @@ const DndDemo = () => {
     const handleCanvasDrop = useCallback((value: GObject.Value, x: number, y: number) => {
         const itemId = value.getString();
         if (itemId) {
-            setItems((prev) =>
-                prev.map((item) => (item.id === itemId ? { ...item, x: x - 30, y: y - 30 } : item)),
-            );
+            setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, x: x - 30, y: y - 30 } : item)));
         }
         return true;
     }, []);
@@ -101,10 +99,7 @@ const DndDemo = () => {
     const addNewItem = useCallback((color: CanvasItem["color"]) => {
         const id = String(nextId++);
         const label = String.fromCharCode(65 + (nextId % 26));
-        setItems((prev) => [
-            ...prev,
-            { id, label, color, x: 100 + Math.random() * 150, y: 100 + Math.random() * 100 },
-        ]);
+        setItems((prev) => [...prev, { id, label, color, x: 100 + Math.random() * 150, y: 100 + Math.random() * 100 }]);
     }, []);
 
     const deleteItem = useCallback((itemId: string) => {
@@ -141,7 +136,7 @@ const DndDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={20} marginStart={20} marginEnd={20} marginTop={20}>
-            <GtkLabel label="Drag and Drop Canvas" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+            <GtkLabel label="Drag-and-Drop" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
                 label="Drag items around the canvas to reposition them. Drag to the trash zone to delete. Click items to select and use the controls below."
@@ -343,7 +338,7 @@ const DndDemo = () => {
 
 export const dndDemo: Demo = {
     id: "dnd",
-    title: "Drag-and-Drop Canvas",
+    title: "Drag-and-Drop",
     description: "Drag-and-drop with GtkFixed canvas, free positioning, and trash zone",
     keywords: [
         "drag",

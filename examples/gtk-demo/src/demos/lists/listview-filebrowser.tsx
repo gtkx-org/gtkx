@@ -16,7 +16,8 @@ interface FileItem {
 }
 
 const HOME_DIR = GLib.getHomeDir() ?? "/";
-const ATTRIBUTES = "standard::name,standard::display-name,standard::type,standard::size,standard::icon,standard::content-type";
+const ATTRIBUTES =
+    "standard::name,standard::display-name,standard::type,standard::size,standard::icon,standard::content-type";
 
 const formatFileSize = (bytes: number): string => {
     if (bytes < 0) return "-";
@@ -238,7 +239,10 @@ const ListViewFilebrowserDemo = () => {
                                             marginStart={12}
                                             marginEnd={12}
                                         >
-                                            <GtkImage iconName={item?.iconName ?? "text-x-generic-symbolic"} pixelSize={24} />
+                                            <GtkImage
+                                                iconName={item?.iconName ?? "text-x-generic-symbolic"}
+                                                pixelSize={24}
+                                            />
                                             <GtkLabel
                                                 label={item?.displayName ?? ""}
                                                 hexpand

@@ -1,7 +1,7 @@
 import { css } from "@gtkx/css";
-import * as Gdk from "@gtkx/ffi/gdk";
+import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFixed, GtkFrame, GtkLabel, x } from "@gtkx/react";
+import { GtkFixed, GtkFrame, x } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./layoutmanager.tsx?raw";
@@ -9,48 +9,42 @@ import sourceCode from "./layoutmanager.tsx?raw";
 const CHILD_COUNT = 16;
 const COLUMNS = 4;
 const CHILD_SIZE = 50;
-const CONTAINER_SIZE = 400;
+const CONTAINER_SIZE = 500;
+const MARGIN = 4;
 
 const COLORS = [
-    "rgba(239, 41, 41, 0.8)",
-    "rgba(252, 175, 62, 0.8)",
-    "rgba(252, 233, 79, 0.8)",
-    "rgba(138, 226, 52, 0.8)",
-    "rgba(114, 159, 207, 0.8)",
-    "rgba(173, 127, 168, 0.8)",
-    "rgba(233, 185, 110, 0.8)",
-    "rgba(136, 138, 133, 0.8)",
-    "rgba(204, 0, 0, 0.8)",
-    "rgba(206, 92, 0, 0.8)",
-    "rgba(196, 160, 0, 0.8)",
-    "rgba(78, 154, 6, 0.8)",
-    "rgba(52, 101, 164, 0.8)",
-    "rgba(117, 80, 123, 0.8)",
-    "rgba(193, 125, 17, 0.8)",
-    "rgba(85, 87, 83, 0.8)",
+    "red",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "grey",
+    "magenta",
+    "lime",
+    "yellow",
+    "firebrick",
+    "aqua",
+    "purple",
+    "tomato",
+    "pink",
+    "thistle",
+    "maroon",
 ];
 
 const childStyles = COLORS.map(
     (color) => css`
         frame& {
             background-color: ${color};
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
         }
     `,
 );
-
-const containerStyle = css`
-    background: linear-gradient(135deg, alpha(@window_bg_color, 0.95), alpha(@window_bg_color, 0.85));
-    border-radius: 12px;
-`;
 
 function lerp(a: number, b: number, t: number): number {
     return a + (b - a) * t;
 }
 
 function easeInOutCubic(t: number): number {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
 
 interface ChildData {
@@ -58,6 +52,11 @@ interface ChildData {
     circlePosition: number;
 }
 
+/**
+ * Layout Manager/Transition demo matching the official GTK gtk-demo.
+ * Shows a custom layout manager placing children in a grid or circle,
+ * animating the transition between layouts.
+ */
 const LayoutManagerDemo = () => {
     const [transitionProgress, setTransitionProgress] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
@@ -77,21 +76,20 @@ const LayoutManagerDemo = () => {
 
     const centerX = CONTAINER_SIZE / 2;
     const centerY = CONTAINER_SIZE / 2;
-    const gridSpacing = 8;
-    const gridCellSize = CHILD_SIZE + gridSpacing;
-    const circleRadius = (COLUMNS * CHILD_SIZE) / Math.PI;
+    const gridCellSize = CHILD_SIZE + MARGIN * 2;
+    const circleRadius = (COLUMNS * gridCellSize) / Math.PI;
 
     const getGridPosition = useCallback(
         (index: number) => {
             const col = index % COLUMNS;
             const row = Math.floor(index / COLUMNS);
-            const gridWidth = COLUMNS * gridCellSize - gridSpacing;
-            const gridHeight = COLUMNS * gridCellSize - gridSpacing;
+            const gridWidth = COLUMNS * gridCellSize;
+            const gridHeight = COLUMNS * gridCellSize;
             const startX = centerX - gridWidth / 2;
             const startY = centerY - gridHeight / 2;
             return {
-                x: startX + col * gridCellSize,
-                y: startY + row * gridCellSize,
+                x: startX + col * gridCellSize + MARGIN,
+                y: startY + row * gridCellSize + MARGIN,
             };
         },
         [centerX, centerY, gridCellSize],
@@ -223,91 +221,33 @@ const LayoutManagerDemo = () => {
     }, [children, transitionProgress, getChildPosition]);
 
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={20}
-            marginStart={20}
-            marginEnd={20}
-            marginTop={20}
-            marginBottom={20}
+        <GtkFixed
+            ref={handleFixedRef}
+            widthRequest={CONTAINER_SIZE}
+            heightRequest={CONTAINER_SIZE}
+            halign={Gtk.Align.CENTER}
+            valign={Gtk.Align.CENTER}
+            onReleased={handleClick}
         >
-            <GtkFrame label="Grid ↔ Circle Transition">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Click the layout to animate between grid and circular arrangements"
-                        wrap
-                        cssClasses={["dim-label"]}
+            {childPositions.map((child) => (
+                <x.FixedChild key={child.id} x={child.position.x} y={child.position.y}>
+                    <GtkFrame
+                        widthRequest={CHILD_SIZE}
+                        heightRequest={CHILD_SIZE}
+                        cssClasses={[childStyles[child.id] ?? ""]}
                     />
-
-                    <GtkFixed
-                        ref={handleFixedRef}
-                        widthRequest={CONTAINER_SIZE}
-                        heightRequest={CONTAINER_SIZE}
-                        cssClasses={[containerStyle]}
-                        halign={Gtk.Align.CENTER}
-                        onReleased={handleClick}
-                    >
-                        {childPositions.map((child) => (
-                            <x.FixedChild key={child.id} x={child.position.x} y={child.position.y}>
-                                <GtkFrame
-                                    widthRequest={CHILD_SIZE}
-                                    heightRequest={CHILD_SIZE}
-                                    cssClasses={[childStyles[child.id] ?? ""]}
-                                />
-                            </x.FixedChild>
-                        ))}
-                    </GtkFixed>
-
-                    <GtkLabel
-                        label={`Layout: ${transitionProgress < 0.5 ? "Grid" : "Circle"} (${Math.round(transitionProgress * 100)}%)`}
-                        cssClasses={["dim-label", "caption"]}
-                    />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Implementation">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={6}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkBox spacing={12}>
-                        <GtkLabel label="Grid Position" widthChars={16} xalign={0} cssClasses={["monospace"]} />
-                        <GtkLabel label="x = col * cellSize, y = row * cellSize" cssClasses={["dim-label"]} />
-                    </GtkBox>
-                    <GtkBox spacing={12}>
-                        <GtkLabel label="Circle Position" widthChars={16} xalign={0} cssClasses={["monospace"]} />
-                        <GtkLabel label="x = sin(θ) * r, y = cos(θ) * r" cssClasses={["dim-label"]} />
-                    </GtkBox>
-                    <GtkBox spacing={12}>
-                        <GtkLabel label="Interpolation" widthChars={16} xalign={0} cssClasses={["monospace"]} />
-                        <GtkLabel label="pos = lerp(grid, circle, t)" cssClasses={["dim-label"]} />
-                    </GtkBox>
-                    <GtkBox spacing={12}>
-                        <GtkLabel label="Easing" widthChars={16} xalign={0} cssClasses={["monospace"]} />
-                        <GtkLabel label="Cubic ease-in-out for smooth motion" cssClasses={["dim-label"]} />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-        </GtkBox>
+                </x.FixedChild>
+            ))}
+        </GtkFixed>
     );
 };
 
 export const layoutManagerDemo: Demo = {
     id: "layoutmanager",
     title: "Layout Manager/Transition",
-    description: "Custom layout manager patterns and positioning",
-    keywords: ["layout", "manager", "custom", "circular", "grid", "positioning", "transition", "animation"],
+    description:
+        "This demo shows a simple example of a custom layout manager and a widget using it. The layout manager places the children of the widget in a grid or a circle. The widget is animating the transition between the two layouts. Click to start the transition.",
+    keywords: ["layout", "GtkLayoutManager", "grid", "circle", "transition", "animation"],
     component: LayoutManagerDemo,
     sourceCode,
 };

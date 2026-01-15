@@ -230,48 +230,48 @@ const PathFillDemo = () => {
 
     const handleExportPdf = useCallback(() => {
         void (async () => {
-        const dialog = new Gtk.FileDialog();
-        dialog.setTitle("Export GTK Logo as PDF");
-        dialog.setInitialName("gtk-logo.pdf");
+            const dialog = new Gtk.FileDialog();
+            dialog.setTitle("Export GTK Logo as PDF");
+            dialog.setInitialName("gtk-logo.pdf");
 
-        const pdfFilter = new Gtk.FileFilter();
-        pdfFilter.setName("PDF Documents");
-        pdfFilter.addPattern("*.pdf");
-        pdfFilter.addMimeType("application/pdf");
+            const pdfFilter = new Gtk.FileFilter();
+            pdfFilter.setName("PDF Documents");
+            pdfFilter.addPattern("*.pdf");
+            pdfFilter.addMimeType("application/pdf");
 
-        const filters = new Gio.ListStore(GObject.typeFromName("GtkFileFilter"));
-        filters.append(pdfFilter);
-        dialog.setFilters(filters);
-        dialog.setDefaultFilter(pdfFilter);
+            const filters = new Gio.ListStore(GObject.typeFromName("GtkFileFilter"));
+            filters.append(pdfFilter);
+            dialog.setFilters(filters);
+            dialog.setDefaultFilter(pdfFilter);
 
-        try {
-            const file = await dialog.saveAsync(null, null);
-            if (file) {
-                const path = file.getPath();
-                if (path) {
-                    const width = 200;
-                    const height = 210;
-                    const surface = new PdfSurface(path, width, height);
-                    const cr = surface.createContext();
+            try {
+                const file = await dialog.saveAsync(null, null);
+                if (file) {
+                    const path = file.getPath();
+                    if (path) {
+                        const width = 200;
+                        const height = 210;
+                        const surface = new PdfSurface(path, width, height);
+                        const cr = surface.createContext();
 
-                    const logoWidth = 90;
-                    const logoHeight = 95;
-                    const scale = Math.min(width / logoWidth, height / logoHeight) * 0.8;
-                    const offsetX = (width - logoWidth * scale) / 2;
-                    const offsetY = (height - logoHeight * scale) / 2;
+                        const logoWidth = 90;
+                        const logoHeight = 95;
+                        const scale = Math.min(width / logoWidth, height / logoHeight) * 0.8;
+                        const offsetX = (width - logoWidth * scale) / 2;
+                        const offsetY = (height - logoHeight * scale) / 2;
 
-                    drawGtkLogoPath(cr, scale, offsetX, offsetY);
+                        drawGtkLogoPath(cr, scale, offsetX, offsetY);
 
-                    cr.showPage();
-                    surface.finish();
+                        cr.showPage();
+                        surface.finish();
 
-                    setExportStatus(`Exported to ${path}`);
-                    setTimeout(() => setExportStatus(null), 3000);
+                        setExportStatus(`Exported to ${path}`);
+                        setTimeout(() => setExportStatus(null), 3000);
+                    }
                 }
+            } catch {
+                setExportStatus(null);
             }
-        } catch {
-            setExportStatus(null);
-        }
         })();
     }, []);
 
@@ -296,10 +296,19 @@ const PathFillDemo = () => {
                     marginEnd={12}
                 >
                     <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
-                        <DrawingCanvas width={200} height={210} drawFunc={drawGtkLogo} label="GTK Logo (Vector Paths)" />
+                        <DrawingCanvas
+                            width={200}
+                            height={210}
+                            drawFunc={drawGtkLogo}
+                            label="GTK Logo (Vector Paths)"
+                        />
                     </GtkBox>
                     <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
-                        <GtkButton label="Export as PDF" onClicked={handleExportPdf} cssClasses={["suggested-action"]} />
+                        <GtkButton
+                            label="Export as PDF"
+                            onClicked={handleExportPdf}
+                            cssClasses={["suggested-action"]}
+                        />
                         {exportStatus && <GtkLabel label={exportStatus} cssClasses={["dim-label"]} />}
                     </GtkBox>
                 </GtkBox>

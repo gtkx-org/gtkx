@@ -2,15 +2,7 @@ import { css } from "@gtkx/css";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkButton,
-    GtkEntry,
-    GtkFrame,
-    GtkImage,
-    GtkLabel,
-    GtkPicture,
-} from "@gtkx/react";
+import { GtkBox, GtkButton, GtkEntry, GtkFrame, GtkImage, GtkLabel, GtkPicture } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
@@ -107,9 +99,7 @@ const ClipboardDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {copyStatus && (
-                <GtkLabel label={copyStatus} cssClasses={["success"]} halign={Gtk.Align.START} />
-            )}
+            {copyStatus && <GtkLabel label={copyStatus} cssClasses={["success"]} halign={Gtk.Align.START} />}
 
             <GtkFrame label="Text Clipboard">
                 <GtkBox
@@ -241,7 +231,11 @@ const ClipboardDemo = () => {
                         </GtkBox>
                     </GtkBox>
 
-                    <GtkButton onClicked={handleClearClipboard} cssClasses={["destructive-action"]} halign={Gtk.Align.START}>
+                    <GtkButton
+                        onClicked={handleClearClipboard}
+                        cssClasses={["destructive-action"]}
+                        halign={Gtk.Align.START}
+                    >
                         <GtkBox spacing={6}>
                             <GtkImage iconName="edit-clear-symbolic" />
                             <GtkLabel label="Clear Clipboard" />
@@ -295,17 +289,7 @@ export const clipboardDemo: Demo = {
     id: "clipboard",
     title: "Clipboard",
     description: "Copy and paste text and images with GdkClipboard",
-    keywords: [
-        "clipboard",
-        "copy",
-        "paste",
-        "cut",
-        "GdkClipboard",
-        "ContentProvider",
-        "text",
-        "image",
-        "transfer",
-    ],
+    keywords: ["clipboard", "copy", "paste", "cut", "GdkClipboard", "ContentProvider", "text", "image", "transfer"],
     component: ClipboardDemo,
     sourceCode,
 };

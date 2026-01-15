@@ -170,7 +170,7 @@ const PathWalkDemo = () => {
     const pathTable = useMemo(() => buildPathTable(pathSegments), [pathSegments]);
 
     const drawScene = useCallback(
-        (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+        (_self: Gtk.DrawingArea, cr: Context, _width: number, _height: number) => {
             const progress = progressRef.current;
             const { totalLength } = pathTable;
 

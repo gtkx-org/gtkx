@@ -1,12 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useCallback, useEffect, useRef } from "react";
 
-export interface SoundOptions {
+interface SoundOptions {
     volume?: number;
     loop?: boolean;
 }
 
-export interface SoundPlayer {
+interface SoundPlayer {
     play: () => void;
     stop: () => void;
     setVolume: (volume: number) => void;

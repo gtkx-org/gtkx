@@ -1,11 +1,11 @@
+import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import * as Graphene from "@gtkx/ffi/graphene";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel } from "@gtkx/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
-import sourceCode from "./path-sweep.tsx?raw";
 import worldMapData from "./path_world.txt?raw";
+import sourceCode from "./path-sweep.tsx?raw";
 
 const INTERSECTION_CIRCLE_RADIUS = 4;
 
@@ -17,21 +17,22 @@ type PathCommand = {
 const parsePathCommands = (pathStr: string): PathCommand[] => {
     const commands: PathCommand[] = [];
     const regex = /([MmLlCcZz])([^MmLlCcZz]*)/g;
-    let match: RegExpExecArray | null;
+    let match: RegExpExecArray | null = regex.exec(pathStr);
 
-    while ((match = regex.exec(pathStr)) !== null) {
+    while (match !== null) {
         const cmdChar = match[1];
-        if (!cmdChar) continue;
+        if (cmdChar) {
+            const type = cmdChar as PathCommand["type"];
+            const values = (match[2] ?? "")
+                .trim()
+                .split(/[\s,]+/)
+                .filter((s) => s.length > 0)
+                .map(Number)
+                .filter((n) => !Number.isNaN(n));
 
-        const type = cmdChar as PathCommand["type"];
-        const values = (match[2] ?? "")
-            .trim()
-            .split(/[\s,]+/)
-            .filter((s) => s.length > 0)
-            .map(Number)
-            .filter((n) => !isNaN(n));
-
-        commands.push({ type, values });
+            commands.push({ type, values });
+        }
+        match = regex.exec(pathStr);
     }
 
     return commands;
@@ -158,21 +159,15 @@ const PathSweepDemo = () => {
         };
     }, [worldPath]);
 
-    const handleMotion = useCallback(
-        (_x: number, y: number) => {
-            setMouseY(y);
-            areaRef.current?.queueDraw();
-        },
-        [],
-    );
+    const handleMotion = useCallback((_x: number, y: number) => {
+        setMouseY(y);
+        areaRef.current?.queueDraw();
+    }, []);
 
-    const handleEnter = useCallback(
-        (_x: number, y: number) => {
-            setMouseY(y);
-            areaRef.current?.queueDraw();
-        },
-        [],
-    );
+    const handleEnter = useCallback((_x: number, y: number) => {
+        setMouseY(y);
+        areaRef.current?.queueDraw();
+    }, []);
 
     const handleLeave = useCallback(() => {
         setMouseY(null);
@@ -293,18 +288,37 @@ const PathSweepDemo = () => {
                 >
                     <GtkBox spacing={12}>
                         <GtkLabel label="Path.parse()" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                        <GtkLabel label="Load world map from SVG path data (211 lines, 1569 curves)" cssClasses={["dim-label"]} />
+                        <GtkLabel
+                            label="Load world map from SVG path data (211 lines, 1569 curves)"
+                            cssClasses={["dim-label"]}
+                        />
                     </GtkBox>
                     <GtkBox spacing={12}>
                         <GtkLabel label="foreachIntersection()" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                        <GtkLabel label="Find all points where sweep line crosses map boundaries" cssClasses={["dim-label"]} />
+                        <GtkLabel
+                            label="Find all points where sweep line crosses map boundaries"
+                            cssClasses={["dim-label"]}
+                        />
                     </GtkBox>
                     <GtkBox spacing={12}>
-                        <GtkLabel label="PathPoint.getPosition()" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                        <GtkLabel label="Extract X,Y coordinates from each intersection point" cssClasses={["dim-label"]} />
+                        <GtkLabel
+                            label="PathPoint.getPosition()"
+                            widthChars={20}
+                            xalign={0}
+                            cssClasses={["monospace"]}
+                        />
+                        <GtkLabel
+                            label="Extract X,Y coordinates from each intersection point"
+                            cssClasses={["dim-label"]}
+                        />
                     </GtkBox>
                     <GtkBox spacing={12}>
-                        <GtkLabel label="onMotion/onEnter/onLeave" widthChars={20} xalign={0} cssClasses={["monospace"]} />
+                        <GtkLabel
+                            label="onMotion/onEnter/onLeave"
+                            widthChars={20}
+                            xalign={0}
+                            cssClasses={["monospace"]}
+                        />
                         <GtkLabel label="Declarative cursor tracking via React props" cssClasses={["dim-label"]} />
                     </GtkBox>
                 </GtkBox>

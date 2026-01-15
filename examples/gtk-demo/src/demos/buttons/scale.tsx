@@ -1,130 +1,64 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkLabel, GtkScale, x } from "@gtkx/react";
-import { useState } from "react";
+import { GtkGrid, GtkLabel, GtkScale, x } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./scale.tsx?raw";
 
 const ScaleDemo = () => {
-    const [horizontalValue, setHorizontalValue] = useState(50);
-    const [verticalValue, setVerticalValue] = useState(25);
-    const [markedValue, setMarkedValue] = useState(0);
-
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Scale" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkGrid
+            rowSpacing={10}
+            columnSpacing={10}
+            marginStart={20}
+            marginEnd={20}
+            marginTop={20}
+            marginBottom={20}
+        >
+            <x.GridChild column={0} row={0}>
+                <GtkLabel label="Plain" xalign={0} />
+            </x.GridChild>
+            <x.GridChild column={1} row={0}>
+                <GtkScale widthRequest={200} drawValue={false} hexpand>
+                    <x.Adjustment value={2} lower={0} upper={4} stepIncrement={0.1} pageIncrement={1} />
+                </GtkScale>
+            </x.GridChild>
 
-            <GtkLabel
-                label="GtkScale is a slider widget for selecting a numeric value from a range. It can be horizontal or vertical and supports marks for indicating specific values."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
+            <x.GridChild column={0} row={1}>
+                <GtkLabel label="Marks" xalign={0} />
+            </x.GridChild>
+            <x.GridChild column={1} row={1}>
+                <GtkScale widthRequest={200} drawValue={false} hexpand>
+                    <x.Adjustment value={2} lower={0} upper={4} stepIncrement={0.1} pageIncrement={1} />
+                    <x.ScaleMark value={0} position={Gtk.PositionType.BOTTOM} />
+                    <x.ScaleMark value={1} position={Gtk.PositionType.BOTTOM} />
+                    <x.ScaleMark value={2} position={Gtk.PositionType.BOTTOM} />
+                    <x.ScaleMark value={3} position={Gtk.PositionType.BOTTOM} />
+                    <x.ScaleMark value={4} position={Gtk.PositionType.BOTTOM} />
+                </GtkScale>
+            </x.GridChild>
 
-            <GtkFrame label="Horizontal Scale">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkScale drawValue valuePos={Gtk.PositionType.TOP} hexpand>
-                        <x.Adjustment
-                            value={50}
-                            lower={0}
-                            upper={100}
-                            stepIncrement={1}
-                            pageIncrement={10}
-                            onValueChanged={setHorizontalValue}
-                        />
-                    </GtkScale>
-                    <GtkLabel
-                        label={`Value: ${Math.round(horizontalValue)}`}
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Vertical Scale">
-                <GtkBox spacing={24} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
-                    <GtkScale
-                        orientation={Gtk.Orientation.VERTICAL}
-                        drawValue
-                        valuePos={Gtk.PositionType.LEFT}
-                        inverted
-                        heightRequest={150}
-                    >
-                        <x.Adjustment
-                            value={25}
-                            lower={0}
-                            upper={100}
-                            stepIncrement={1}
-                            pageIncrement={10}
-                            onValueChanged={setVerticalValue}
-                        />
-                    </GtkScale>
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6} valign={Gtk.Align.CENTER}>
-                        <GtkLabel label="Volume Control" cssClasses={["heading"]} />
-                        <GtkLabel label={`Level: ${Math.round(verticalValue)}%`} cssClasses={["dim-label"]} />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Scale with Origin">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkScale drawValue hasOrigin hexpand>
-                        <x.Adjustment
-                            value={0}
-                            lower={-10}
-                            upper={10}
-                            stepIncrement={1}
-                            pageIncrement={5}
-                            onValueChanged={setMarkedValue}
-                        />
-                    </GtkScale>
-                    <GtkLabel
-                        label={`Temperature offset: ${markedValue > 0 ? "+" : ""}${Math.round(markedValue)}`}
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Minimal Scale">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkBox spacing={12}>
-                        <GtkLabel label="Brightness:" halign={Gtk.Align.START} />
-                        <GtkScale hexpand>
-                            <x.Adjustment value={50} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />
-                        </GtkScale>
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-        </GtkBox>
+            <x.GridChild column={0} row={2}>
+                <GtkLabel label="Discrete" xalign={0} />
+            </x.GridChild>
+            <x.GridChild column={1} row={2}>
+                <GtkScale widthRequest={200} roundDigits={0} drawValue={false} hexpand>
+                    <x.Adjustment value={2} lower={0} upper={4} stepIncrement={0.1} pageIncrement={1} />
+                    <x.ScaleMark value={0} position={Gtk.PositionType.BOTTOM} />
+                    <x.ScaleMark value={1} position={Gtk.PositionType.BOTTOM} />
+                    <x.ScaleMark value={2} position={Gtk.PositionType.BOTTOM} />
+                    <x.ScaleMark value={3} position={Gtk.PositionType.BOTTOM} />
+                    <x.ScaleMark value={4} position={Gtk.PositionType.BOTTOM} />
+                </GtkScale>
+            </x.GridChild>
+        </GtkGrid>
     );
 };
 
 export const scaleDemo: Demo = {
     id: "scale",
     title: "Scales",
-    description: "Slider widget for selecting numeric values",
-    keywords: ["scale", "slider", "range", "GtkScale", "horizontal", "vertical", "marks", "value"],
+    description:
+        "GtkScale is a way to select a value from a range. Scales can have marks to help pick special values, and they can also restrict the values that can be chosen.",
+    keywords: ["scale", "slider", "range", "GtkScale", "marks", "discrete", "plain"],
     component: ScaleDemo,
     sourceCode,
 };
