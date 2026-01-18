@@ -8,8 +8,8 @@ import {
     disconnectSignal,
     forceGC,
     GIO_LIB,
+    GOBJECT_BORROWED,
     GOBJECT_LIB,
-    GOBJECT_NONE,
     getRefCount,
     INT32,
     NULL,
@@ -28,9 +28,12 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_data",
                 [
-                    { type: GOBJECT_NONE, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
+                    {
+                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
+                        value: () => {},
+                    },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },
@@ -50,7 +53,7 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_closure",
                 [
-                    { type: GOBJECT_NONE, value: cancellable },
+                    { type: GOBJECT_BORROWED, value: cancellable },
                     { type: STRING, value: "cancelled" },
                     {
                         type: {
@@ -68,7 +71,7 @@ describe("call - callback types", () => {
                 UINT64,
             );
 
-            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_NONE, value: cancellable }], UNDEFINED);
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
 
             expect(callbackInvoked).toBe(true);
         });
@@ -81,7 +84,7 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_closure",
                 [
-                    { type: GOBJECT_NONE, value: cancellable },
+                    { type: GOBJECT_BORROWED, value: cancellable },
                     { type: STRING, value: "cancelled" },
                     {
                         type: {
@@ -99,7 +102,7 @@ describe("call - callback types", () => {
                 UINT64,
             );
 
-            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_NONE, value: cancellable }], UNDEFINED);
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
 
             expect(receivedArg).toBeDefined();
         });
@@ -111,9 +114,12 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_data",
                 [
-                    { type: GOBJECT_NONE, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
+                    {
+                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
+                        value: () => {},
+                    },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },
@@ -127,7 +133,7 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_signal_handler_is_connected",
                 [
-                    { type: GOBJECT_NONE, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: UINT64, value: handlerId },
                 ],
                 BOOLEAN,
@@ -145,7 +151,7 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_closure",
                 [
-                    { type: GOBJECT_NONE, value: cancellable },
+                    { type: GOBJECT_BORROWED, value: cancellable },
                     { type: STRING, value: "cancelled" },
                     {
                         type: {
@@ -167,7 +173,7 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_closure",
                 [
-                    { type: GOBJECT_NONE, value: cancellable },
+                    { type: GOBJECT_BORROWED, value: cancellable },
                     { type: STRING, value: "cancelled" },
                     {
                         type: {
@@ -185,7 +191,7 @@ describe("call - callback types", () => {
                 UINT64,
             );
 
-            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_NONE, value: cancellable }], UNDEFINED);
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
 
             expect(count1).toBe(1);
             expect(count2).toBe(1);
@@ -201,10 +207,15 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_object_set_data_full",
                 [
-                    { type: GOBJECT_NONE, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "test-data" },
                     {
-                        type: { type: "callback", kind: "destroyNotify", argTypes: [], returnType: { type: "undefined" } },
+                        type: {
+                            type: "callback",
+                            kind: "destroyNotify",
+                            argTypes: [],
+                            returnType: { type: "undefined" },
+                        },
                         value: () => {
                             destroyCalled = true;
                         },
@@ -217,7 +228,7 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_object_set_data",
                 [
-                    { type: GOBJECT_NONE, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "test-data" },
                     { type: NULL, value: null },
                 ],
@@ -237,7 +248,7 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_closure",
                 [
-                    { type: GOBJECT_NONE, value: cancellable },
+                    { type: GOBJECT_BORROWED, value: cancellable },
                     { type: STRING, value: "cancelled" },
                     {
                         type: {
@@ -255,7 +266,7 @@ describe("call - callback types", () => {
                 UINT64,
             );
 
-            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_NONE, value: cancellable }], UNDEFINED);
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
 
             expect(receivedObject).not.toBeNull();
         });
@@ -296,10 +307,15 @@ describe("call - callback types", () => {
                     GOBJECT_LIB,
                     "g_object_set_data_full",
                     [
-                        { type: GOBJECT_NONE, value: button },
+                        { type: GOBJECT_BORROWED, value: button },
                         { type: STRING, value: "data" },
                         {
-                            type: { type: "callback", kind: "destroyNotify", argTypes: [], returnType: { type: "undefined" } },
+                            type: {
+                                type: "callback",
+                                kind: "destroyNotify",
+                                argTypes: [],
+                                returnType: { type: "undefined" },
+                            },
                             value: () => {},
                         },
                     ],
@@ -310,7 +326,7 @@ describe("call - callback types", () => {
                     GOBJECT_LIB,
                     "g_object_set_data",
                     [
-                        { type: GOBJECT_NONE, value: button },
+                        { type: GOBJECT_BORROWED, value: button },
                         { type: STRING, value: "data" },
                         { type: NULL, value: null },
                     ],
@@ -330,7 +346,7 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_closure",
                 [
-                    { type: GOBJECT_NONE, value: cancellable },
+                    { type: GOBJECT_BORROWED, value: cancellable },
                     { type: STRING, value: "cancelled" },
                     {
                         type: {
@@ -349,7 +365,7 @@ describe("call - callback types", () => {
             );
 
             expect(() => {
-                call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_NONE, value: cancellable }], UNDEFINED);
+                call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
             }).toThrow();
         });
 
@@ -367,7 +383,7 @@ describe("call - callback types", () => {
                     GOBJECT_LIB,
                     "g_signal_handler_is_connected",
                     [
-                        { type: GOBJECT_NONE, value: button },
+                        { type: GOBJECT_BORROWED, value: button },
                         { type: UINT64, value: handlerId },
                     ],
                     BOOLEAN,
@@ -387,9 +403,12 @@ describe("call - callback types", () => {
                 GOBJECT_LIB,
                 "g_signal_connect_data",
                 [
-                    { type: GOBJECT_NONE, value: button },
+                    { type: GOBJECT_BORROWED, value: button },
                     { type: STRING, value: "clicked" },
-                    { type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } }, value: () => {} },
+                    {
+                        type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
+                        value: () => {},
+                    },
                     { type: NULL, value: null },
                     { type: NULL, value: null },
                     { type: INT32, value: 0 },

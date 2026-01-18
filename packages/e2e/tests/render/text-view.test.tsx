@@ -28,7 +28,7 @@ const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number)
     return iter.hasTag(tag);
 };
 
-describe("render - TextBuffer", () => {
+describe("render - TextView", () => {
     describe("basic text content", () => {
         it("renders plain text inside TextView", async () => {
             const ref = createRef<Gtk.TextView>();
@@ -313,7 +313,11 @@ describe("render - TextBuffer", () => {
         it("sets enableUndo on buffer", async () => {
             const ref = createRef<Gtk.TextView>();
 
-            await render(<GtkTextView ref={ref} enableUndo>Content</GtkTextView>);
+            await render(
+                <GtkTextView ref={ref} enableUndo>
+                    Content
+                </GtkTextView>,
+            );
 
             const buffer = ref.current?.getBuffer();
             expect(buffer?.getEnableUndo()).toBe(true);

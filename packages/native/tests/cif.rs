@@ -4,7 +4,7 @@ use std::ffi::{CString, c_void};
 
 use native::arg::Arg;
 use native::ffi::{FfiStorage, FfiStorageKind, FfiValue};
-use native::types::{ArrayType, FloatKind, IntegerKind, ArrayKind, Ownership, StringType, Type};
+use native::types::{ArrayKind, ArrayType, FloatKind, IntegerKind, Ownership, StringType, Type};
 use native::value;
 
 #[test]

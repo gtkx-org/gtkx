@@ -22,7 +22,7 @@ type EditableWidget = Gtk.Widget & {
 export type AdjustableWidget = Gtk.Widget & {
     setAdjustment: (adjustment: Gtk.Adjustment) => void;
 };
-export type BufferedWidget = Gtk.Widget & {
+type BufferedWidget = Gtk.Widget & {
     getBuffer: () => Gtk.TextBuffer;
     setBuffer: (buffer?: Gtk.TextBuffer | null) => void;
 };
@@ -83,7 +83,7 @@ export const isAdjustable = (obj: unknown): obj is AdjustableWidget => {
     return obj instanceof Gtk.Widget && "setAdjustment" in obj && typeof obj.setAdjustment === "function";
 };
 
-export const isBuffered = (obj: unknown): obj is BufferedWidget => {
+const isBuffered = (obj: unknown): obj is BufferedWidget => {
     return (
         obj instanceof Gtk.Widget &&
         "getBuffer" in obj &&

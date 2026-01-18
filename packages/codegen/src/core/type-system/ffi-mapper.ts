@@ -23,6 +23,7 @@ import {
     gArrayType,
     gobjectType,
     hashTableType,
+    type ImportType,
     type MappedType,
     PRIMITIVE_TYPE_MAP,
     ptrArrayType,
@@ -30,7 +31,6 @@ import {
     stringType,
     structType,
     type TypeImport,
-    type ImportType,
 } from "./ffi-types.js";
 
 /**

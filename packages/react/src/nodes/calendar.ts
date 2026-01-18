@@ -22,7 +22,7 @@ class CalendarNode extends WidgetNode<Gtk.Calendar> {
         this.updateMarkedDays(oldProps, newProps);
     }
 
-    private updateMarkedDays(oldProps: CalendarProps | null, newProps: CalendarProps): void {
+    private updateMarkedDays(_oldProps: CalendarProps | null, newProps: CalendarProps): void {
         const newMarkedDays = newProps.markedDays ?? [];
 
         if (this.markedDaysEqual(this.appliedMarks, newMarkedDays)) {

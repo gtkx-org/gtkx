@@ -68,8 +68,9 @@ impl NativeHandle {
     }
 
     pub(crate) fn require_ptr(&self) -> anyhow::Result<*mut c_void> {
-        self.get_ptr()
-            .ok_or_else(|| anyhow::anyhow!("Object with handle {} has been garbage collected", self.0))
+        self.get_ptr().ok_or_else(|| {
+            anyhow::anyhow!("Object with handle {} has been garbage collected", self.0)
+        })
     }
 
     pub(crate) fn require_non_null_ptr(&self) -> anyhow::Result<*mut c_void> {

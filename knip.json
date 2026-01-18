@@ -11,9 +11,9 @@
     },
     "workspaces": {
         "packages/native": {
-            "entry": [],
-            "project": ["src/**/*", "scripts/**/*"],
-            "ignoreDependencies": ["@neon-rs/cli"]
+            "entry": ["vitest.config.ts", "tests/**/*.test.ts"],
+            "project": ["src/**/*", "scripts/**/*", "tests/**/*", "vitest.config.ts"],
+            "ignoreDependencies": ["@neon-rs/cli", "@gtkx/vitest"]
         },
         "examples/deploying": {
             "project": ["src/**/*", "scripts/**/*"],

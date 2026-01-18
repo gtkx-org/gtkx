@@ -19,11 +19,11 @@ type TextViewProps = Props & {
     onCanRedoChanged?: ((canRedo: boolean) => void) | null;
 };
 
-class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements TextContentParent {
+export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements TextContentParent {
     public static override priority = 1;
 
-    private buffer?: Gtk.TextBuffer;
-    private children: TextContentChild[] = [];
+    protected buffer?: Gtk.TextBuffer;
+    protected textChildren: TextContentChild[] = [];
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         if (isContainerType(GtkSource.View, containerOrClass)) return false;
@@ -35,12 +35,16 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
         this.updateBufferProps(oldProps, newProps);
     }
 
-    private ensureBuffer(): Gtk.TextBuffer {
+    protected ensureBuffer(): Gtk.TextBuffer {
         if (!this.buffer) {
-            this.buffer = new Gtk.TextBuffer();
+            this.buffer = this.createBuffer();
             this.container.setBuffer(this.buffer);
         }
         return this.buffer;
+    }
+
+    protected createBuffer(): Gtk.TextBuffer {
+        return new Gtk.TextBuffer();
     }
 
     private updateBufferProps(oldProps: TextViewProps | null, newProps: TextViewProps): void {
@@ -50,7 +54,7 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
             newProps.onCanUndoChanged !== undefined ||
             newProps.onCanRedoChanged !== undefined;
 
-        if (!hasBufferProps && this.children.length === 0) {
+        if (!hasBufferProps && this.textChildren.length === 0) {
             return;
         }
 
@@ -95,7 +99,7 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
         );
     }
 
-    private getBufferText(): string {
+    protected getBufferText(): string {
         const buffer = this.buffer;
         if (!buffer) return "";
 
@@ -141,13 +145,13 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
     private appendTextChild(child: TextContentChild): void {
         const buffer = this.ensureBuffer();
 
-        const wasMoved = this.children.indexOf(child) !== -1;
+        const wasMoved = this.textChildren.indexOf(child) !== -1;
         if (wasMoved) {
-            const existingIndex = this.children.indexOf(child);
+            const existingIndex = this.textChildren.indexOf(child);
             const oldOffset = child.bufferOffset;
             const oldLength = child.getLength();
 
-            this.children.splice(existingIndex, 1);
+            this.textChildren.splice(existingIndex, 1);
 
             if (oldLength > 0) {
                 this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
@@ -158,7 +162,7 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
 
         const offset = this.getTotalLength();
 
-        this.children.push(child);
+        this.textChildren.push(child);
         child.bufferOffset = offset;
         this.setChildParent(child);
 
@@ -183,12 +187,12 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
     private insertTextChildBefore(child: TextContentChild, before: TextContentChild): void {
         const buffer = this.ensureBuffer();
 
-        const existingIndex = this.children.indexOf(child);
+        const existingIndex = this.textChildren.indexOf(child);
         if (existingIndex !== -1) {
             const oldOffset = child.bufferOffset;
             const oldLength = child.getLength();
 
-            this.children.splice(existingIndex, 1);
+            this.textChildren.splice(existingIndex, 1);
 
             if (oldLength > 0) {
                 this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
@@ -197,16 +201,16 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
             this.updateChildOffsets(existingIndex);
         }
 
-        const beforeIndex = this.children.indexOf(before);
-        const insertIndex = beforeIndex !== -1 ? beforeIndex : this.children.length;
+        const beforeIndex = this.textChildren.indexOf(before);
+        const insertIndex = beforeIndex !== -1 ? beforeIndex : this.textChildren.length;
 
         let offset = 0;
         for (let i = 0; i < insertIndex; i++) {
-            const c = this.children[i];
+            const c = this.textChildren[i];
             if (c) offset += c.getLength();
         }
 
-        this.children.splice(insertIndex, 0, child);
+        this.textChildren.splice(insertIndex, 0, child);
         child.bufferOffset = offset;
         this.setChildParent(child);
 
@@ -227,13 +231,13 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
     }
 
     private removeTextChild(child: TextContentChild): void {
-        const index = this.children.indexOf(child);
+        const index = this.textChildren.indexOf(child);
         if (index === -1) return;
 
         const offset = child.bufferOffset;
         const length = child.getLength();
 
-        this.children.splice(index, 1);
+        this.textChildren.splice(index, 1);
 
         if (this.buffer && length > 0) {
             this.deleteTextAtRange(offset, offset + length);
@@ -251,7 +255,7 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
 
     private getTotalLength(): number {
         let length = 0;
-        for (const child of this.children) {
+        for (const child of this.textChildren) {
             length += child.getLength();
         }
         return length;
@@ -286,12 +290,12 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
         let offset = 0;
 
         for (let i = 0; i < startIndex; i++) {
-            const child = this.children[i];
+            const child = this.textChildren[i];
             if (child) offset += child.getLength();
         }
 
-        for (let i = startIndex; i < this.children.length; i++) {
-            const child = this.children[i];
+        for (let i = startIndex; i < this.textChildren.length; i++) {
+            const child = this.textChildren[i];
             if (child) {
                 child.bufferOffset = offset;
                 offset += child.getLength();
@@ -309,7 +313,7 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
     }
 
     private reapplyTagsFromOffset(fromOffset: number): void {
-        for (const child of this.children) {
+        for (const child of this.textChildren) {
             if (child instanceof TextTagNode) {
                 if (child.bufferOffset >= fromOffset) {
                     child.reapplyTag();
@@ -323,8 +327,8 @@ class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements Te
     }
 
     private findDirectChildContaining(offset: number): number {
-        for (let i = 0; i < this.children.length; i++) {
-            const child = this.children[i];
+        for (let i = 0; i < this.textChildren.length; i++) {
+            const child = this.textChildren[i];
             if (child) {
                 const start = child.bufferOffset;
                 const end = start + child.getLength();

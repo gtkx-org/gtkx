@@ -6,11 +6,11 @@ import {
     createLabel,
     forceGC,
     GOBJECT,
-    GOBJECT_NONE,
+    GOBJECT_BORROWED,
     GTK_LIB,
     getRefCount,
     STRING,
-    STRING_NONE,
+    STRING_BORROWED,
     startMemoryMeasurement,
     UNDEFINED,
 } from "../utils.js";
@@ -32,8 +32,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -41,8 +41,8 @@ describe("call - gobject types", () => {
             const firstChild = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: box }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
             );
 
             expect(firstChild).toBeDefined();
@@ -71,13 +71,18 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
 
-            const parent = call(GTK_LIB, "gtk_widget_get_parent", [{ type: GOBJECT_NONE, value: label }], GOBJECT_NONE);
+            const parent = call(
+                GTK_LIB,
+                "gtk_widget_get_parent",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                GOBJECT_BORROWED,
+            );
 
             expect(parent).toBeDefined();
         });
@@ -90,8 +95,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -99,15 +104,15 @@ describe("call - gobject types", () => {
             const child1 = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: box }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
             );
 
             const child2 = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: box }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
             );
 
             expect(child1).toBeDefined();
@@ -117,7 +122,12 @@ describe("call - gobject types", () => {
         it("passes GObject as transfer none argument", () => {
             const label = createLabel("Test");
 
-            const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_NONE, value: label }], STRING_NONE);
+            const text = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(text).toBe("Test");
         });
@@ -133,8 +143,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label1 },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label1 },
                 ],
                 UNDEFINED,
             );
@@ -143,8 +153,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label2 },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label2 },
                 ],
                 UNDEFINED,
             );
@@ -152,15 +162,15 @@ describe("call - gobject types", () => {
             const firstChild = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: box }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
             );
 
             const lastChild = call(
                 GTK_LIB,
                 "gtk_widget_get_last_child",
-                [{ type: GOBJECT_NONE, value: box }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
             );
 
             expect(firstChild).toBeDefined();
@@ -176,8 +186,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -185,8 +195,8 @@ describe("call - gobject types", () => {
             const child = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: box }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
             );
 
             expect(child).toBeDefined();
@@ -200,13 +210,18 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
 
-            const parent = call(GTK_LIB, "gtk_widget_get_parent", [{ type: GOBJECT_NONE, value: label }], GOBJECT_NONE);
+            const parent = call(
+                GTK_LIB,
+                "gtk_widget_get_parent",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                GOBJECT_BORROWED,
+            );
 
             expect(parent).toBeDefined();
         });
@@ -221,8 +236,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label1 },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label1 },
                 ],
                 UNDEFINED,
             );
@@ -230,8 +245,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label2 },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label2 },
                 ],
                 UNDEFINED,
             );
@@ -239,8 +254,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label3 },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label3 },
                 ],
                 UNDEFINED,
             );
@@ -248,22 +263,22 @@ describe("call - gobject types", () => {
             const first = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: box }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
             );
 
             const second = call(
                 GTK_LIB,
                 "gtk_widget_get_next_sibling",
-                [{ type: GOBJECT_NONE, value: first }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: first }],
+                GOBJECT_BORROWED,
             );
 
             const third = call(
                 GTK_LIB,
                 "gtk_widget_get_next_sibling",
-                [{ type: GOBJECT_NONE, value: second }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: second }],
+                GOBJECT_BORROWED,
             );
 
             expect(first).toBeDefined();
@@ -279,26 +294,36 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
 
-            let child = call(GTK_LIB, "gtk_widget_get_first_child", [{ type: GOBJECT_NONE, value: box }], GOBJECT_NONE);
+            let child = call(
+                GTK_LIB,
+                "gtk_widget_get_first_child",
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
+            );
             expect(child).toBeDefined();
 
             call(
                 GTK_LIB,
                 "gtk_box_remove",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
 
-            child = call(GTK_LIB, "gtk_widget_get_first_child", [{ type: GOBJECT_NONE, value: box }], GOBJECT_NONE);
+            child = call(
+                GTK_LIB,
+                "gtk_widget_get_first_child",
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
+            );
             expect(child).toBeNull();
         });
     });
@@ -313,8 +338,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -324,8 +349,8 @@ describe("call - gobject types", () => {
             const child = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: box }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
             );
 
             expect(child).toBeDefined();
@@ -336,7 +361,7 @@ describe("call - gobject types", () => {
             const initialRefCount = getRefCount(label);
 
             for (let i = 0; i < 100; i++) {
-                call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_NONE, value: label }], STRING_NONE);
+                call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
             }
 
             expect(getRefCount(label)).toBe(initialRefCount);
@@ -351,8 +376,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -363,8 +388,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_remove",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -395,8 +420,8 @@ describe("call - gobject types", () => {
                     GTK_LIB,
                     "gtk_box_append",
                     [
-                        { type: GOBJECT_NONE, value: box },
-                        { type: GOBJECT_NONE, value: label },
+                        { type: GOBJECT_BORROWED, value: box },
+                        { type: GOBJECT_BORROWED, value: label },
                     ],
                     UNDEFINED,
                 );
@@ -408,8 +433,8 @@ describe("call - gobject types", () => {
             const firstChild = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: box }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
             );
 
             expect(firstChild).toBeDefined();
@@ -427,8 +452,8 @@ describe("call - gobject types", () => {
                     GTK_LIB,
                     "gtk_box_append",
                     [
-                        { type: GOBJECT_NONE, value: box },
-                        { type: GOBJECT_NONE, value: label },
+                        { type: GOBJECT_BORROWED, value: box },
+                        { type: GOBJECT_BORROWED, value: label },
                     ],
                     UNDEFINED,
                 );
@@ -439,8 +464,8 @@ describe("call - gobject types", () => {
                     GTK_LIB,
                     "gtk_box_remove",
                     [
-                        { type: GOBJECT_NONE, value: box },
-                        { type: GOBJECT_NONE, value: label },
+                        { type: GOBJECT_BORROWED, value: box },
+                        { type: GOBJECT_BORROWED, value: label },
                     ],
                     UNDEFINED,
                 );
@@ -453,8 +478,8 @@ describe("call - gobject types", () => {
             const child = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: box }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: box }],
+                GOBJECT_BORROWED,
             );
 
             expect(child).toBeNull();
@@ -465,7 +490,12 @@ describe("call - gobject types", () => {
         it("handles null GObject when optional", () => {
             const label = createLabel("Test");
 
-            const parent = call(GTK_LIB, "gtk_widget_get_parent", [{ type: GOBJECT_NONE, value: label }], GOBJECT_NONE);
+            const parent = call(
+                GTK_LIB,
+                "gtk_widget_get_parent",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                GOBJECT_BORROWED,
+            );
 
             expect(parent).toBeNull();
         });
@@ -478,8 +508,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: box },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: box },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -488,13 +518,18 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_label_set_text",
                 [
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: label },
                     { type: STRING, value: "Updated" },
                 ],
                 UNDEFINED,
             );
 
-            const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_NONE, value: label }], STRING_NONE);
+            const text = call(
+                GTK_LIB,
+                "gtk_label_get_text",
+                [{ type: GOBJECT_BORROWED, value: label }],
+                STRING_BORROWED,
+            );
 
             expect(text).toBe("Updated");
         });
@@ -509,8 +544,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: outerBox },
-                    { type: GOBJECT_NONE, value: middleBox },
+                    { type: GOBJECT_BORROWED, value: outerBox },
+                    { type: GOBJECT_BORROWED, value: middleBox },
                 ],
                 UNDEFINED,
             );
@@ -518,8 +553,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: middleBox },
-                    { type: GOBJECT_NONE, value: innerBox },
+                    { type: GOBJECT_BORROWED, value: middleBox },
+                    { type: GOBJECT_BORROWED, value: innerBox },
                 ],
                 UNDEFINED,
             );
@@ -527,8 +562,8 @@ describe("call - gobject types", () => {
                 GTK_LIB,
                 "gtk_box_append",
                 [
-                    { type: GOBJECT_NONE, value: innerBox },
-                    { type: GOBJECT_NONE, value: label },
+                    { type: GOBJECT_BORROWED, value: innerBox },
+                    { type: GOBJECT_BORROWED, value: label },
                 ],
                 UNDEFINED,
             );
@@ -536,22 +571,22 @@ describe("call - gobject types", () => {
             let current = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: outerBox }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: outerBox }],
+                GOBJECT_BORROWED,
             );
 
             current = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: current }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: current }],
+                GOBJECT_BORROWED,
             );
 
             current = call(
                 GTK_LIB,
                 "gtk_widget_get_first_child",
-                [{ type: GOBJECT_NONE, value: current }],
-                GOBJECT_NONE,
+                [{ type: GOBJECT_BORROWED, value: current }],
+                GOBJECT_BORROWED,
             );
 
             expect(current).toBeDefined();

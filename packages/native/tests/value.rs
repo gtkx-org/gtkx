@@ -9,7 +9,7 @@ use gtk4::prelude::ObjectType as _;
 use gtk4::prelude::StaticType as _;
 
 use native::ffi;
-use native::types::{ArrayType, BoxedType, GObjectType, ArrayKind, Ownership, StringType, Type};
+use native::types::{ArrayKind, ArrayType, BoxedType, GObjectType, Ownership, StringType, Type};
 use native::value::Value;
 
 use common::get_gobject_refcount;

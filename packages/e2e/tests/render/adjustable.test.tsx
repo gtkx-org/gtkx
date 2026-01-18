@@ -232,7 +232,15 @@ describe("render - Adjustment", () => {
             const ref = createRef<Gtk.Scale>();
 
             await render(
-                <GtkScale ref={ref} value={25} lower={10} upper={50} stepIncrement={2} pageIncrement={5} pageSize={0} />,
+                <GtkScale
+                    ref={ref}
+                    value={25}
+                    lower={10}
+                    upper={50}
+                    stepIncrement={2}
+                    pageIncrement={5}
+                    pageSize={0}
+                />,
             );
 
             const adjustment = ref.current?.getAdjustment();

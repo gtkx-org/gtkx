@@ -21,11 +21,9 @@ export const FLOAT32 = { type: "float" as const, size: 32 as const };
 export const FLOAT64 = { type: "float" as const, size: 64 as const };
 export const BOOLEAN = { type: "boolean" as const };
 export const STRING = { type: "string" as const, ownership: "full" as const };
-export const STRING_NONE = { type: "string" as const, ownership: "borrowed" as const };
-export const STRING_BORROWED = STRING_NONE;
+export const STRING_BORROWED = { type: "string" as const, ownership: "borrowed" as const };
 export const GOBJECT = { type: "gobject" as const, ownership: "full" as const };
-export const GOBJECT_NONE = { type: "gobject" as const, ownership: "borrowed" as const };
-export const GOBJECT_BORROWED = GOBJECT_NONE;
+export const GOBJECT_BORROWED = { type: "gobject" as const, ownership: "borrowed" as const };
 export const NULL = { type: "null" as const };
 export const UNDEFINED = { type: "undefined" as const };
 export const STRING_ARRAY = {
@@ -34,13 +32,6 @@ export const STRING_ARRAY = {
     kind: "array" as const,
     ownership: "full" as const,
 };
-export const STRING_ARRAY_BORROWED = {
-    type: "array" as const,
-    itemType: STRING_BORROWED,
-    kind: "array" as const,
-    ownership: "borrowed" as const,
-};
-export const CALLBACK_CLOSURE = { type: "callback" as const, kind: "closure" as const };
 
 export function createLabel(text: string = "Test"): unknown {
     return call(GTK_LIB, "gtk_label_new", [{ type: STRING, value: text }], GOBJECT);
@@ -124,7 +115,7 @@ export function connectSignal(obj: unknown, signalName: string, callback: (...ar
         GOBJECT_LIB,
         "g_signal_connect_data",
         [
-            { type: GOBJECT_NONE, value: obj },
+            { type: GOBJECT_BORROWED, value: obj },
             { type: STRING, value: signalName },
             {
                 type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } },
@@ -143,7 +134,7 @@ export function disconnectSignal(obj: unknown, handlerId: number): void {
         GOBJECT_LIB,
         "g_signal_handler_disconnect",
         [
-            { type: GOBJECT_NONE, value: obj },
+            { type: GOBJECT_BORROWED, value: obj },
             { type: UINT64, value: handlerId },
         ],
         UNDEFINED,

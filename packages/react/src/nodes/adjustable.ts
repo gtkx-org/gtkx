@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { isAdjustable, type AdjustableWidget } from "./internal/predicates.js";
+import { type AdjustableWidget, isAdjustable } from "./internal/predicates.js";
 import { signalStore } from "./internal/signal-store.js";
 import { isContainerType } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";

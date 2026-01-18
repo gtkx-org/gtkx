@@ -7,7 +7,7 @@ import {
     INT32,
     PANGO_LIB,
     STRING,
-    STRING_NONE,
+    STRING_BORROWED,
     startMemoryMeasurement,
     UNDEFINED,
 } from "../utils.js";
@@ -263,7 +263,7 @@ describe("call - boxed types", () => {
                 PANGO_LIB,
                 "pango_font_description_get_family",
                 [{ type: PANGO_FONT_DESC_NONE, value: fontDesc }],
-                STRING_NONE,
+                STRING_BORROWED,
             );
 
             expect(family).toBe("Sans");
@@ -333,7 +333,7 @@ describe("call - boxed types", () => {
                 PANGO_LIB,
                 "pango_font_description_get_family",
                 [{ type: PANGO_FONT_DESC_NONE, value: fontDesc }],
-                STRING_NONE,
+                STRING_BORROWED,
             );
 
             expect(family).toBe("Monospace");
@@ -439,7 +439,7 @@ describe("call - boxed types", () => {
                 PANGO_LIB,
                 "pango_font_description_get_family",
                 [{ type: PANGO_FONT_DESC_NONE, value: fontDesc }],
-                STRING_NONE,
+                STRING_BORROWED,
             );
 
             expect(family).toBe("Sans");

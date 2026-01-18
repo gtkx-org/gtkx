@@ -118,7 +118,15 @@ describe("call - error handling", () => {
                     [
                         { type: GOBJECT_BORROWED, value: createLabel("Test") },
                         { type: STRING, value: "clicked" },
-                        { type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "undefined" } }, value: "not a function" },
+                        {
+                            type: {
+                                type: "callback",
+                                kind: "closure",
+                                argTypes: [],
+                                returnType: { type: "undefined" },
+                            },
+                            value: "not a function",
+                        },
                         { type: { type: "null" }, value: null },
                         { type: { type: "null" }, value: null },
                         { type: INT32, value: 0 },

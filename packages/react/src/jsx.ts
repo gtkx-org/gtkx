@@ -263,7 +263,6 @@ export type OverlayChildProps = VirtualSlotProps & {
     clipOverlay?: boolean;
 };
 
-
 /**
  * Props for the Toggle virtual element.
  *

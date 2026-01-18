@@ -438,7 +438,10 @@ impl ArrayType {
             }
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                 let handles = storage.as_object_array()?;
-                handles.iter().map(|handle| value::Value::Object(*handle)).collect()
+                handles
+                    .iter()
+                    .map(|handle| value::Value::Object(*handle))
+                    .collect()
             }
             _ => bail!(
                 "Unsupported array item type for ffi value conversion: {:?}",

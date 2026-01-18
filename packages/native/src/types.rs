@@ -245,9 +245,7 @@ impl Type {
 impl Type {
     pub fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         match self {
-            Type::Callback(callback_type)
-                if callback_type.kind != CallbackKind::Closure =>
-            {
+            Type::Callback(callback_type) if callback_type.kind != CallbackKind::Closure => {
                 types.push(libffi::Type::pointer());
                 types.push(libffi::Type::pointer());
 

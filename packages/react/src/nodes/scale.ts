@@ -28,7 +28,7 @@ class ScaleNode extends AdjustableNode<Gtk.Scale> {
         this.updateMarks(oldProps, newProps);
     }
 
-    private updateMarks(oldProps: ScaleProps | null, newProps: ScaleProps): void {
+    private updateMarks(_oldProps: ScaleProps | null, newProps: ScaleProps): void {
         const newMarks = newProps.marks ?? [];
 
         if (this.marksEqual(this.appliedMarks, newMarks)) {

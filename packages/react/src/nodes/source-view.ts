@@ -1,14 +1,12 @@
-import { batch } from "@gtkx/ffi";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
 import { signalStore } from "./internal/signal-store.js";
 import { isContainerType } from "./internal/utils.js";
-import { WidgetNode } from "./widget.js";
+import { TextViewNode } from "./text-view.js";
 
 type SourceViewProps = Props & {
-    text?: string;
     enableUndo?: boolean;
     onTextChanged?: ((text: string) => void) | null;
     onCanUndoChanged?: ((canUndo: boolean) => void) | null;
@@ -22,26 +20,22 @@ type SourceViewProps = Props & {
     onHighlightUpdated?: ((start: Gtk.TextIter, end: Gtk.TextIter) => void) | null;
 };
 
-class SourceViewNode extends WidgetNode<GtkSource.View, SourceViewProps> {
+class SourceViewNode extends TextViewNode {
     public static override priority = 1;
 
-    private buffer?: GtkSource.Buffer;
+    protected declare buffer?: GtkSource.Buffer;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return isContainerType(GtkSource.View, containerOrClass);
     }
 
-    public override updateProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
-        super.updateProps(oldProps, newProps);
-        this.updateBufferProps(oldProps, newProps);
+    protected override createBuffer(): GtkSource.Buffer {
+        return new GtkSource.Buffer();
     }
 
-    private ensureBuffer(): GtkSource.Buffer {
-        if (!this.buffer) {
-            this.buffer = new GtkSource.Buffer();
-            this.container.setBuffer(this.buffer);
-        }
-        return this.buffer;
+    public override updateProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
+        super.updateProps(oldProps, newProps);
+        this.updateSourceViewProps(oldProps, newProps);
     }
 
     private resolveLanguage(language: string | GtkSource.Language): GtkSource.Language | null {
@@ -60,46 +54,30 @@ class SourceViewNode extends WidgetNode<GtkSource.View, SourceViewProps> {
         return scheme;
     }
 
-    private updateBufferProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
-        const hasBufferProps =
-            newProps.text !== undefined ||
-            newProps.enableUndo !== undefined ||
-            newProps.onTextChanged !== undefined ||
-            newProps.onCanUndoChanged !== undefined ||
-            newProps.onCanRedoChanged !== undefined ||
+    private updateSourceViewProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
+        const hasSourceViewProps =
             newProps.language !== undefined ||
             newProps.styleScheme !== undefined ||
             newProps.highlightSyntax !== undefined ||
             newProps.highlightMatchingBrackets !== undefined ||
             newProps.implicitTrailingNewline !== undefined ||
             newProps.onCursorMoved !== undefined ||
-            newProps.onHighlightUpdated !== undefined;
+            newProps.onHighlightUpdated !== undefined ||
+            oldProps?.language !== undefined ||
+            oldProps?.styleScheme !== undefined;
 
-        if (!hasBufferProps) {
+        if (!hasSourceViewProps) {
             return;
         }
 
-        const buffer = this.ensureBuffer();
-
-        if (!oldProps || oldProps.enableUndo !== newProps.enableUndo) {
-            if (newProps.enableUndo !== undefined) {
-                buffer.setEnableUndo(newProps.enableUndo);
-            }
-        }
-
-        if (!oldProps || oldProps.text !== newProps.text) {
-            if (newProps.text !== undefined) {
-                const currentText = this.getBufferText();
-                if (currentText !== newProps.text) {
-                    buffer.setText(newProps.text, -1);
-                }
-            }
-        }
+        const buffer = this.ensureBuffer() as GtkSource.Buffer;
 
         if (!oldProps || oldProps.language !== newProps.language) {
             if (newProps.language !== undefined) {
                 const language = this.resolveLanguage(newProps.language);
                 buffer.setLanguage(language);
+            } else if (oldProps?.language !== undefined) {
+                buffer.setLanguage(null);
             }
         }
 
@@ -107,6 +85,8 @@ class SourceViewNode extends WidgetNode<GtkSource.View, SourceViewProps> {
             if (newProps.styleScheme !== undefined) {
                 const scheme = this.resolveStyleScheme(newProps.styleScheme);
                 buffer.setStyleScheme(scheme);
+            } else if (oldProps?.styleScheme !== undefined) {
+                buffer.setStyleScheme(null);
             }
         }
 
@@ -132,49 +112,18 @@ class SourceViewNode extends WidgetNode<GtkSource.View, SourceViewProps> {
 
         if (
             !oldProps ||
-            oldProps.onTextChanged !== newProps.onTextChanged ||
-            oldProps.onCanUndoChanged !== newProps.onCanUndoChanged ||
-            oldProps.onCanRedoChanged !== newProps.onCanRedoChanged ||
             oldProps.onCursorMoved !== newProps.onCursorMoved ||
             oldProps.onHighlightUpdated !== newProps.onHighlightUpdated
         ) {
-            this.updateSignalHandlers(newProps);
+            this.updateSourceViewSignalHandlers(newProps);
         }
     }
 
-    private getBufferText(): string {
-        const buffer = this.buffer;
-        if (!buffer) return "";
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-        batch(() => {
-            buffer.getStartIter(startIter);
-            buffer.getEndIter(endIter);
-        });
-        return buffer.getText(startIter, endIter, true);
-    }
-
-    private updateSignalHandlers(props: SourceViewProps): void {
+    private updateSourceViewSignalHandlers(props: SourceViewProps): void {
         if (!this.buffer) return;
 
         const buffer = this.buffer;
-        const { onTextChanged, onCanUndoChanged, onCanRedoChanged, onCursorMoved, onHighlightUpdated } = props;
-
-        signalStore.set(this, buffer, "changed", onTextChanged ? () => onTextChanged(this.getBufferText()) : null);
-
-        signalStore.set(
-            this,
-            buffer,
-            "notify::can-undo",
-            onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null,
-        );
-
-        signalStore.set(
-            this,
-            buffer,
-            "notify::can-redo",
-            onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null,
-        );
+        const { onCursorMoved, onHighlightUpdated } = props;
 
         signalStore.set(this, buffer, "cursor-moved", onCursorMoved ?? null);
 

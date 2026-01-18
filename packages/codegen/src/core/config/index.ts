@@ -1,9 +1,9 @@
 export { getHiddenPropNames } from "./hidden-props.js";
 export {
     APPLICATION_PARAM_NAME,
+    type CallbackName,
     getNativeCallbackName,
     isSupportedCallback,
-    type CallbackName,
 } from "./native-callbacks.js";
 export {
     COLUMN_VIEW_WIDGET_NAMES,

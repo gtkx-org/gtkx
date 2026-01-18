@@ -308,18 +308,12 @@ impl CallbackKind {
 
             CallbackKind::DrawFunc => {
                 let closure = ctx.build_void_closure();
-                CallbackValue::build(
-                    closure,
-                    ClosureCallbackData::draw_func as *mut c_void,
-                )
+                CallbackValue::build(closure, ClosureCallbackData::draw_func as *mut c_void)
             }
 
             CallbackKind::ShortcutFunc => {
                 let closure = ctx.build_bool_closure();
-                CallbackValue::build(
-                    closure,
-                    ClosureCallbackData::shortcut_func as *mut c_void,
-                )
+                CallbackValue::build(closure, ClosureCallbackData::shortcut_func as *mut c_void)
             }
 
             CallbackKind::TreeListModelCreateFunc => {
@@ -402,9 +396,9 @@ impl CallbackType {
             .map_err(|e: String| cx.throw_type_error::<_, ()>(e).unwrap_err())?;
 
         let arg_types_prop: Handle<'_, JsValue> = obj.prop(cx, "argTypes").get()?;
-        let arg_types_arr = arg_types_prop
-            .downcast::<JsArray, _>(cx)
-            .or_else(|_| cx.throw_type_error("'argTypes' property is required for callback types"))?;
+        let arg_types_arr = arg_types_prop.downcast::<JsArray, _>(cx).or_else(|_| {
+            cx.throw_type_error("'argTypes' property is required for callback types")
+        })?;
         let arg_types_vec = arg_types_arr.to_vec(cx)?;
         let mut arg_types = Vec::with_capacity(arg_types_vec.len());
         for item in arg_types_vec {
