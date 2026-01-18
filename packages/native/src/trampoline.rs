@@ -5,16 +5,16 @@
 //!
 //! ## Key Types
 //!
-//! - [`CallbackData`]: User data passed to trampolines, contains the GClosure
-//! - [`CallbackData::release`]: Generic destroy notify callback for CallbackData
+//! - [`ClosureCallbackData`]: User data passed to trampolines, contains the GClosure
+//! - [`ClosureCallbackData::release`]: Generic destroy notify callback for ClosureCallbackData
 //!
 //! ## Trampoline Functions
 //!
-//! - [`CallbackData::draw_func`]: For `GtkDrawingArea` set_draw_func
-//! - [`CallbackData::shortcut_func`]: For `GtkShortcutAction` callbacks
-//! - [`CallbackData::tree_list_model_create_func`]: For `GtkTreeListModel` create_func
-//! - [`CallbackData::animation_target_func`]: For `AdwCallbackAnimationTarget`
-//! - [`CallbackData::tick_callback`]: For `GtkWidget` add_tick_callback
+//! - [`ClosureCallbackData::draw_func`]: For `GtkDrawingArea` set_draw_func
+//! - [`ClosureCallbackData::shortcut_func`]: For `GtkShortcutAction` callbacks
+//! - [`ClosureCallbackData::tree_list_model_create_func`]: For `GtkTreeListModel` create_func
+//! - [`ClosureCallbackData::animation_target_func`]: For `AdwCallbackAnimationTarget`
+//! - [`ClosureCallbackData::tick_callback`]: For `GtkWidget` add_tick_callback
 //! - [`destroy_trampoline`]: Generic destroy notify callback
 //! - [`async_ready_trampoline`]: For `GAsyncReadyCallback`
 
@@ -54,21 +54,21 @@ impl Drop for ClosureGuard {
 }
 
 #[derive(Debug)]
-pub struct CallbackData {
+pub struct ClosureCallbackData {
     closure: NonNull<gobject_ffi::GClosure>,
 }
 
-impl CallbackData {
+impl ClosureCallbackData {
     pub fn new(closure: NonNull<gobject_ffi::GClosure>) -> Self {
         Self { closure }
     }
 
     /// # Safety
     ///
-    /// `user_data` must be a valid pointer to a `CallbackData` that was previously
-    /// allocated via `Box::new`, or null. The `CallbackData` and its closure will be freed.
+    /// `user_data` must be a valid pointer to a `ClosureCallbackData` that was previously
+    /// allocated via `Box::new`, or null. The `ClosureCallbackData` and its closure will be freed.
     pub unsafe extern "C" fn release(user_data: *mut c_void) {
-        let Some(data_ptr) = NonNull::new(user_data as *mut CallbackData) else {
+        let Some(data_ptr) = NonNull::new(user_data as *mut ClosureCallbackData) else {
             return;
         };
 
@@ -80,7 +80,7 @@ impl CallbackData {
     ///
     /// - `drawing_area` must be a valid `GtkDrawingArea` pointer.
     /// - `cr` must be a valid `cairo_t` pointer.
-    /// - `user_data` must be a valid pointer to a `CallbackData`, or null.
+    /// - `user_data` must be a valid pointer to a `ClosureCallbackData`, or null.
     pub unsafe extern "C" fn draw_func(
         drawing_area: *mut c_void,
         cr: *mut c_void,
@@ -88,9 +88,9 @@ impl CallbackData {
         height: i32,
         user_data: *mut c_void,
     ) {
-        let Some(data_ptr) = NonNull::new(user_data as *mut CallbackData) else {
+        let Some(data_ptr) = NonNull::new(user_data as *mut ClosureCallbackData) else {
             eprintln!(
-                "[gtkx] WARNING: CallbackData::draw_func: user_data is null, callback skipped"
+                "[gtkx] WARNING: ClosureCallbackData::draw_func: user_data is null, callback skipped"
             );
             return;
         };
@@ -128,15 +128,15 @@ impl CallbackData {
     ///
     /// - `widget` must be a valid `GtkWidget` pointer.
     /// - `args` must be a valid `GVariant` pointer or null.
-    /// - `user_data` must be a valid pointer to a `CallbackData`, or null.
+    /// - `user_data` must be a valid pointer to a `ClosureCallbackData`, or null.
     pub unsafe extern "C" fn shortcut_func(
         widget: *mut gobject_ffi::GObject,
         args: *mut glib::ffi::GVariant,
         user_data: *mut c_void,
     ) -> glib::ffi::gboolean {
-        let Some(data_ptr) = NonNull::new(user_data as *mut CallbackData) else {
+        let Some(data_ptr) = NonNull::new(user_data as *mut ClosureCallbackData) else {
             eprintln!(
-                "[gtkx] WARNING: CallbackData::shortcut_func: user_data is null, callback skipped"
+                "[gtkx] WARNING: ClosureCallbackData::shortcut_func: user_data is null, callback skipped"
             );
             return glib::ffi::GFALSE;
         };
@@ -169,14 +169,14 @@ impl CallbackData {
     /// # Safety
     ///
     /// - `item` must be a valid `GObject` pointer.
-    /// - `user_data` must be a valid pointer to a `CallbackData`, or null.
+    /// - `user_data` must be a valid pointer to a `ClosureCallbackData`, or null.
     pub unsafe extern "C" fn tree_list_model_create_func(
         item: *mut gobject_ffi::GObject,
         user_data: *mut c_void,
     ) -> *mut gobject_ffi::GObject {
-        let Some(data_ptr) = NonNull::new(user_data as *mut CallbackData) else {
+        let Some(data_ptr) = NonNull::new(user_data as *mut ClosureCallbackData) else {
             eprintln!(
-                "[gtkx] WARNING: CallbackData::tree_list_model_create_func: user_data is null, callback skipped"
+                "[gtkx] WARNING: ClosureCallbackData::tree_list_model_create_func: user_data is null, callback skipped"
             );
             return std::ptr::null_mut();
         };
@@ -210,11 +210,11 @@ impl CallbackData {
     /// # Safety
     ///
     /// - `value` is the animation value (0.0 to 1.0 typically).
-    /// - `user_data` must be a valid pointer to a `CallbackData`, or null.
+    /// - `user_data` must be a valid pointer to a `ClosureCallbackData`, or null.
     pub unsafe extern "C" fn animation_target_func(value: f64, user_data: *mut c_void) {
-        let Some(data_ptr) = NonNull::new(user_data as *mut CallbackData) else {
+        let Some(data_ptr) = NonNull::new(user_data as *mut ClosureCallbackData) else {
             eprintln!(
-                "[gtkx] WARNING: CallbackData::animation_target_func: user_data is null, callback skipped"
+                "[gtkx] WARNING: ClosureCallbackData::animation_target_func: user_data is null, callback skipped"
             );
             return;
         };
@@ -241,15 +241,15 @@ impl CallbackData {
     ///
     /// - `widget` must be a valid `GtkWidget` pointer.
     /// - `frame_clock` must be a valid `GdkFrameClock` pointer.
-    /// - `user_data` must be a valid pointer to a `CallbackData`, or null.
+    /// - `user_data` must be a valid pointer to a `ClosureCallbackData`, or null.
     pub unsafe extern "C" fn tick_callback(
         widget: *mut gobject_ffi::GObject,
         frame_clock: *mut gobject_ffi::GObject,
         user_data: *mut c_void,
     ) -> glib::ffi::gboolean {
-        let Some(data_ptr) = NonNull::new(user_data as *mut CallbackData) else {
+        let Some(data_ptr) = NonNull::new(user_data as *mut ClosureCallbackData) else {
             eprintln!(
-                "[gtkx] WARNING: CallbackData::tick_callback: user_data is null, callback skipped"
+                "[gtkx] WARNING: ClosureCallbackData::tick_callback: user_data is null, callback skipped"
             );
             return glib::ffi::GFALSE;
         };
@@ -376,14 +376,14 @@ impl TickCallbackData {
     /// - `frame_clock` must be a valid pointer to a GdkFrameClock.
     /// - `user_data` must be a valid pointer to a `TickCallbackData` that was
     ///   previously allocated with `Box::into_raw`, or null.
-    pub unsafe extern "C" fn trampoline(
+    pub unsafe extern "C" fn tick_callback(
         widget: *mut gobject_ffi::GObject,
         frame_clock: *mut gobject_ffi::GObject,
         user_data: *mut c_void,
     ) -> glib::ffi::gboolean {
         let Some(data_ptr) = NonNull::new(user_data as *mut TickCallbackData) else {
             eprintln!(
-                "[gtkx] WARNING: TickCallbackData::trampoline: user_data is null, callback skipped"
+                "[gtkx] WARNING: TickCallbackData::tick_callback: user_data is null, callback skipped"
             );
             return glib::ffi::GFALSE;
         };
@@ -439,7 +439,7 @@ impl PathIntersectionCallbackData {
     /// - `kind` is the GskPathIntersection enum value.
     /// - `user_data` must be a valid pointer to a `PathIntersectionCallbackData` that was
     ///   previously allocated with `Box::into_raw`, or null.
-    pub unsafe extern "C" fn trampoline(
+    pub unsafe extern "C" fn path_intersection_func(
         path1: *mut gobject_ffi::GObject,
         point1: *const c_void,
         path2: *mut gobject_ffi::GObject,
@@ -449,7 +449,7 @@ impl PathIntersectionCallbackData {
     ) -> glib::ffi::gboolean {
         let Some(data_ptr) = NonNull::new(user_data as *mut PathIntersectionCallbackData) else {
             eprintln!(
-                "[gtkx] WARNING: PathIntersectionCallbackData::trampoline: user_data is null, callback skipped"
+                "[gtkx] WARNING: PathIntersectionCallbackData::path_intersection_func: user_data is null, callback skipped"
             );
             return glib::ffi::GFALSE;
         };

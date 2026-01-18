@@ -48,7 +48,7 @@ impl BoxedType {
             .or_throw(cx)?
             .value(cx);
 
-        let lib_prop: Handle<'_, JsValue> = obj.prop(cx, "lib").get()?;
+        let lib_prop: Handle<'_, JsValue> = obj.prop(cx, "library").get()?;
         let library = lib_prop
             .downcast::<JsString, _>(cx)
             .map(|s: Handle<'_, JsString>| s.value(cx))

@@ -10,7 +10,7 @@ use neon::prelude::*;
 
 use crate::ffi::{FfiStorage, FfiStorageKind, TrampolineCallbackValue};
 use crate::js_dispatch;
-use crate::trampoline::{CallbackData, ClosureGuard};
+use crate::trampoline::{ClosureCallbackData, ClosureGuard};
 use crate::types::Type;
 use crate::value::Callback;
 use crate::{ffi, value};
@@ -74,8 +74,8 @@ impl ClosureContext {
                 args_values,
                 true,
                 |result| match result {
-                    Ok(value::Value::Object(obj_id)) => {
-                        if let Some(ptr) = obj_id.get_ptr() {
+                    Ok(value::Value::Object(handle)) => {
+                        if let Some(ptr) = handle.get_ptr() {
                             let obj: glib::Object = unsafe {
                                 glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
                             };
@@ -287,19 +287,19 @@ impl CallbackTrampoline {
 
             CallbackTrampoline::DrawFunc => {
                 let closure = ctx.build_void_closure();
-                TrampolineCallbackValue::build(closure, CallbackData::draw_func as *mut c_void)
+                TrampolineCallbackValue::build(closure, ClosureCallbackData::draw_func as *mut c_void)
             }
 
             CallbackTrampoline::ShortcutFunc => {
                 let closure = ctx.build_bool_closure();
-                TrampolineCallbackValue::build(closure, CallbackData::shortcut_func as *mut c_void)
+                TrampolineCallbackValue::build(closure, ClosureCallbackData::shortcut_func as *mut c_void)
             }
 
             CallbackTrampoline::TreeListModelCreateFunc => {
                 let closure = ctx.build_object_closure();
                 TrampolineCallbackValue::build(
                     closure,
-                    CallbackData::tree_list_model_create_func as *mut c_void,
+                    ClosureCallbackData::tree_list_model_create_func as *mut c_void,
                 )
             }
 
@@ -307,7 +307,7 @@ impl CallbackTrampoline {
                 let closure = ctx.build_void_closure();
                 TrampolineCallbackValue::build(
                     closure,
-                    CallbackData::animation_target_func as *mut c_void,
+                    ClosureCallbackData::animation_target_func as *mut c_void,
                 )
             }
 
@@ -320,7 +320,7 @@ impl CallbackTrampoline {
 
                 Self::build_custom_data_value(
                     tick_data,
-                    crate::trampoline::TickCallbackData::trampoline as *mut c_void,
+                    crate::trampoline::TickCallbackData::tick_callback as *mut c_void,
                     crate::trampoline::TickCallbackData::release as *mut c_void,
                 )
             }
@@ -334,7 +334,7 @@ impl CallbackTrampoline {
 
                 Self::build_custom_data_value(
                     data,
-                    crate::trampoline::PathIntersectionCallbackData::trampoline as *mut c_void,
+                    crate::trampoline::PathIntersectionCallbackData::path_intersection_func as *mut c_void,
                     crate::trampoline::PathIntersectionCallbackData::release as *mut c_void,
                 )
             }

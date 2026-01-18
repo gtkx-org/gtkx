@@ -449,7 +449,7 @@ impl ffi::FfiDecode for IntegerKind {
 #[derive(Debug, Clone)]
 pub struct IntegerType {
     pub kind: IntegerKind,
-    pub lib: Option<String>,
+    pub library: Option<String>,
     pub get_type_fn: Option<String>,
 }
 
@@ -458,8 +458,8 @@ impl IntegerType {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let kind = IntegerKind::from_js_value(cx, value)?;
 
-        let lib: Option<String> = obj
-            .get_opt::<JsString, _, _>(cx, "lib")?
+        let library: Option<String> = obj
+            .get_opt::<JsString, _, _>(cx, "library")?
             .map(|h| h.value(cx));
         let get_type_fn: Option<String> = obj
             .get_opt::<JsString, _, _>(cx, "getTypeFn")?
@@ -467,13 +467,13 @@ impl IntegerType {
 
         Ok(IntegerType {
             kind,
-            lib,
+            library,
             get_type_fn,
         })
     }
 
     pub fn is_enum_or_flags(&self) -> bool {
-        self.lib.is_some() && self.get_type_fn.is_some()
+        self.library.is_some() && self.get_type_fn.is_some()
     }
 }
 
@@ -481,7 +481,7 @@ impl From<IntegerKind> for IntegerType {
     fn from(kind: IntegerKind) -> Self {
         IntegerType {
             kind,
-            lib: None,
+            library: None,
             get_type_fn: None,
         }
     }

@@ -23,7 +23,7 @@ use crate::{
 struct AllocRequest {
     size: usize,
     type_name: Option<String>,
-    lib_name: Option<String>,
+    library_name: Option<String>,
 }
 
 impl AllocRequest {
@@ -35,7 +35,7 @@ impl AllocRequest {
             .and_then(|v| v.downcast::<JsString, _>(cx).ok())
             .map(|s| s.value(cx));
 
-        let lib_name = cx
+        let library_name = cx
             .argument_opt(2)
             .and_then(|v| v.downcast::<JsString, _>(cx).ok())
             .map(|s| s.value(cx));
@@ -43,14 +43,14 @@ impl AllocRequest {
         Ok(Self {
             size,
             type_name,
-            lib_name,
+            library_name,
         })
     }
 
     fn execute(self) -> anyhow::Result<NativeHandle> {
         let gtype = self.type_name.as_ref().map(|name| {
             let boxed_type =
-                BoxedType::new(Ownership::Full, name.clone(), self.lib_name.clone(), None);
+                BoxedType::new(Ownership::Full, name.clone(), self.library_name.clone(), None);
             boxed_type.gtype()
         });
 
@@ -72,10 +72,10 @@ pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(move || request.execute());
 
-    let object_id = rx
+    let handle = rx
         .recv()
         .or_else(|err| cx.throw_error(format!("Error receiving alloc result: {err}")))?
         .or_else(|err| cx.throw_error(format!("Error during alloc: {err}")))?;
 
-    Ok(cx.boxed(object_id).upcast())
+    Ok(cx.boxed(handle).upcast())
 }

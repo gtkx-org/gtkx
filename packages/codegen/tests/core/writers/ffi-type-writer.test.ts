@@ -240,7 +240,7 @@ describe("FfiTypeWriter", () => {
                     innerType: "SomeType",
                 });
 
-                expect(output).toContain('lib: ""');
+                expect(output).toContain('library: ""');
             });
         });
 
@@ -573,7 +573,7 @@ describe("FfiTypeWriter", () => {
             });
             const output = sourceFile.getFullText();
 
-            expect(output).toContain('lib: ""');
+            expect(output).toContain('library: ""');
         });
     });
 

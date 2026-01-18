@@ -34,28 +34,28 @@ use crate::{
 };
 
 struct ReadRequest {
-    object_id: NativeHandle,
+    handle: NativeHandle,
     field_type: Type,
     offset: usize,
 }
 
 impl ReadRequest {
     fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
-        let object_id = cx.argument::<JsBox<NativeHandle>>(0)?;
+        let handle = cx.argument::<JsBox<NativeHandle>>(0)?;
         let js_type = cx.argument::<JsObject>(1)?;
         let offset = cx.argument::<JsNumber>(2)?.value(cx) as usize;
         let field_type = Type::from_js_value(cx, js_type.upcast())?;
-        let object_id = *object_id.as_inner();
+        let handle = *handle.as_inner();
 
         Ok(Self {
-            object_id,
+            handle,
             field_type,
             offset,
         })
     }
 
     fn execute(self) -> anyhow::Result<Value> {
-        let field_ptr = self.object_id.field_ptr_const(self.offset)?;
+        let field_ptr = self.handle.field_ptr_const(self.offset)?;
 
         match self.field_type {
             Type::Integer(int_type) => {
@@ -131,7 +131,7 @@ pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
 }
 
 struct WriteRequest {
-    object_id: NativeHandle,
+    handle: NativeHandle,
     field_type: Type,
     offset: usize,
     value: Value,
@@ -139,16 +139,16 @@ struct WriteRequest {
 
 impl WriteRequest {
     fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
-        let object_id = cx.argument::<JsBox<NativeHandle>>(0)?;
+        let handle = cx.argument::<JsBox<NativeHandle>>(0)?;
         let js_type = cx.argument::<JsObject>(1)?;
         let offset = cx.argument::<JsNumber>(2)?.value(cx) as usize;
         let js_value = cx.argument::<JsValue>(3)?;
         let field_type = Type::from_js_value(cx, js_type.upcast())?;
         let value = Value::from_js_value(cx, js_value)?;
-        let object_id = *object_id.as_inner();
+        let handle = *handle.as_inner();
 
         Ok(Self {
-            object_id,
+            handle,
             field_type,
             offset,
             value,
@@ -156,7 +156,7 @@ impl WriteRequest {
     }
 
     fn execute(self) -> anyhow::Result<()> {
-        let field_ptr = self.object_id.field_ptr(self.offset)?;
+        let field_ptr = self.handle.field_ptr(self.offset)?;
 
         match (&self.field_type, &self.value) {
             (Type::Integer(int_type), Value::Number(n)) => {

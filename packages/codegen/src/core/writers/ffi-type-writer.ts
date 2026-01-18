@@ -100,7 +100,7 @@ export class FfiTypeWriter {
                 type: '"boxed"',
                 ownership: '"full"',
                 innerType: '"GError"',
-                lib: `"${this.options.glibLibrary}"`,
+                library: `"${this.options.glibLibrary}"`,
                 getTypeFn: '"g_error_get_type"',
             }),
         });
@@ -125,7 +125,7 @@ export class FfiTypeWriter {
                 type: '"boxed"',
                 ownership: '"borrowed"',
                 innerType: `"${options.recordName}"`,
-                lib: `"${lib}"`,
+                library: `"${lib}"`,
             };
             if (options.getTypeFn) {
                 obj.getTypeFn = `"${options.getTypeFn}"`;
@@ -192,7 +192,7 @@ export class FfiTypeWriter {
         ];
 
         if (type.lib) {
-            props.push({ name: "lib", value: `"${type.lib}"` });
+            props.push({ name: "library", value: `"${type.lib}"` });
         }
         if (type.getTypeFn) {
             props.push({ name: "getTypeFn", value: `"${type.getTypeFn}"` });
@@ -232,7 +232,7 @@ export class FfiTypeWriter {
         props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
 
         props.push({ name: "innerType", value: `"${innerType}"` });
-        props.push({ name: "lib", value: `"${lib}"` });
+        props.push({ name: "library", value: `"${lib}"` });
 
         if (type.getTypeFn) {
             props.push({ name: "getTypeFn", value: `"${type.getTypeFn}"` });

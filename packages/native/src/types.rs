@@ -24,7 +24,7 @@
 //! ## Ownership
 //!
 //! Many types have an `ownership` field using the [`Ownership`] enum:
-//! - **`Ownership::Owned`**: Caller takes ownership, responsible for freeing
+//! - **`Ownership::Full`**: Caller takes ownership, responsible for freeing
 //! - **`Ownership::Borrowed`**: Caller receives a reference, must not free
 //!
 //! This is critical for correct memory management across the FFI boundary.

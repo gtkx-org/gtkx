@@ -11,13 +11,13 @@ use crate::types::Type;
 use crate::{ffi, value};
 
 #[derive(Clone, Copy)]
-pub enum HashKeyEncoder {
+pub enum HashTableEntryEncoder {
     String,
     Integer,
     NativeHandle,
 }
 
-impl HashKeyEncoder {
+impl HashTableEntryEncoder {
     pub fn from_type(ty: &Type) -> Option<Self> {
         match ty {
             Type::String(_) => Some(Self::String),
@@ -126,8 +126,8 @@ impl HashTableType {
 
     fn encode_hashtable(
         tuples: &[value::Value],
-        key_encoder: HashKeyEncoder,
-        value_encoder: HashKeyEncoder,
+        key_encoder: HashTableEntryEncoder,
+        value_encoder: HashTableEntryEncoder,
     ) -> anyhow::Result<ffi::FfiValue> {
         let hash_table = unsafe {
             glib::ffi::g_hash_table_new_full(
@@ -183,10 +183,10 @@ impl ffi::FfiEncode for HashTableType {
             ),
         };
 
-        let key_encoder = HashKeyEncoder::from_type(&self.key_type).ok_or_else(|| {
+        let key_encoder = HashTableEntryEncoder::from_type(&self.key_type).ok_or_else(|| {
             anyhow::anyhow!("Unsupported GHashTable key type: {:?}", self.key_type)
         })?;
-        let value_encoder = HashKeyEncoder::from_type(&self.value_type).ok_or_else(|| {
+        let value_encoder = HashTableEntryEncoder::from_type(&self.value_type).ok_or_else(|| {
             anyhow::anyhow!("Unsupported GHashTable value type: {:?}", self.value_type)
         })?;
 

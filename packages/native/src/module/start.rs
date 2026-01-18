@@ -45,14 +45,14 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
             .flags(flags)
             .build();
 
-        let app_object_id: NativeHandle = NativeValue::GObject(app.clone().into()).into();
+        let app_handle: NativeHandle = NativeValue::GObject(app.clone().into()).into();
 
         GtkThreadState::with(|state| {
             state.app_hold_guard = Some(app.hold());
         });
 
         app.connect_activate(move |_| {
-            let _ = tx.send(app_object_id);
+            let _ = tx.send(app_handle);
         });
 
         app.run_with_args::<&str>(&[]);
@@ -60,11 +60,11 @@ pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
 
     GtkThread::global().set_handle(handle);
 
-    let app_object_id = rx
+    let app_handle = rx
         .recv()
         .or_else(|err| cx.throw_error(format!("Error starting GTK thread: {err}")))?;
 
     GtkDispatcher::global().mark_started();
 
-    Ok(cx.boxed(app_object_id).upcast())
+    Ok(cx.boxed(app_handle).upcast())
 }

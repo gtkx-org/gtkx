@@ -201,16 +201,16 @@ impl Value {
         n: f64,
         int_type: &IntegerType,
     ) -> anyhow::Result<glib::Value> {
-        let lib_name = int_type
-            .lib
+        let library_name = int_type
+            .library
             .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Missing lib for enum/flags type"))?;
+            .ok_or_else(|| anyhow::anyhow!("Missing library for enum/flags type"))?;
         let get_type_fn_name = int_type
             .get_type_fn
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Missing get_type_fn for enum/flags type"))?;
 
-        let gtype = crate::ffi::get_gtype_from_lib(lib_name, get_type_fn_name)?;
+        let gtype = crate::ffi::get_gtype_from_lib(library_name, get_type_fn_name)?;
 
         let mut value = glib::Value::from_type(gtype);
         let is_flags = gtype.is_a(glib::types::Type::FLAGS);
@@ -250,8 +250,8 @@ impl Value {
             return Ok(Value::Undefined);
         }
 
-        if let Ok(object_id) = value.downcast::<JsBox<NativeHandle>, _>(cx) {
-            return Ok(Value::Object(*object_id.as_inner()));
+        if let Ok(handle) = value.downcast::<JsBox<NativeHandle>, _>(cx) {
+            return Ok(Value::Object(*handle.as_inner()));
         }
 
         if let Ok(callback) = value.downcast::<JsFunction, _>(cx) {
@@ -415,8 +415,8 @@ impl Value {
                     Boxed::from_glib_none(gtype, boxed_ptr)?
                 };
 
-                let object_id = NativeValue::Boxed(boxed).into();
-                Ok(Value::Object(object_id))
+                let handle = NativeValue::Boxed(boxed).into();
+                Ok(Value::Object(handle))
             }
             Type::Null | Type::Undefined => Ok(Value::Null),
             Type::Struct(_) => {

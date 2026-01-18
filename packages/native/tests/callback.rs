@@ -11,7 +11,7 @@ use gtk4::glib;
 use gtk4::glib::translate::FromGlibPtrFull as _;
 use gtk4::glib::value::ToValue as _;
 
-use native::trampoline::{CallbackData, async_ready_trampoline, destroy_trampoline};
+use native::trampoline::{ClosureCallbackData, async_ready_trampoline, destroy_trampoline};
 
 fn create_test_closure_with_flag(flag: Arc<AtomicBool>) -> NonNull<glib::gobject_ffi::GClosure> {
     common::ensure_gtk_init();
@@ -32,7 +32,7 @@ fn draw_func_trampoline_null_closure_safe() {
     common::ensure_gtk_init();
 
     unsafe {
-        CallbackData::draw_func(
+        ClosureCallbackData::draw_func(
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             100,
@@ -47,11 +47,11 @@ fn draw_func_trampoline_invokes_closure() {
     let invoked = Arc::new(AtomicBool::new(false));
     let closure_ptr = create_test_closure_with_flag(invoked.clone());
 
-    let data = Box::new(CallbackData::new(closure_ptr));
+    let data = Box::new(ClosureCallbackData::new(closure_ptr));
     let data_ptr = Box::into_raw(data);
 
     unsafe {
-        CallbackData::draw_func(
+        ClosureCallbackData::draw_func(
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             100,
@@ -63,7 +63,7 @@ fn draw_func_trampoline_invokes_closure() {
     assert!(invoked.load(Ordering::SeqCst));
 
     unsafe {
-        CallbackData::release(data_ptr as *mut c_void);
+        ClosureCallbackData::release(data_ptr as *mut c_void);
     }
 }
 
@@ -103,10 +103,10 @@ fn async_ready_trampoline_null_safe() {
 
 #[test]
 fn get_trampoline_ptrs_not_null() {
-    assert!((CallbackData::draw_func as *mut c_void) != std::ptr::null_mut());
-    assert!((CallbackData::release as *mut c_void) != std::ptr::null_mut());
-    assert!((CallbackData::shortcut_func as *mut c_void) != std::ptr::null_mut());
-    assert!((CallbackData::tree_list_model_create_func as *mut c_void) != std::ptr::null_mut());
+    assert!((ClosureCallbackData::draw_func as *mut c_void) != std::ptr::null_mut());
+    assert!((ClosureCallbackData::release as *mut c_void) != std::ptr::null_mut());
+    assert!((ClosureCallbackData::shortcut_func as *mut c_void) != std::ptr::null_mut());
+    assert!((ClosureCallbackData::tree_list_model_create_func as *mut c_void) != std::ptr::null_mut());
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn shortcut_func_trampoline_null_safe() {
     common::ensure_gtk_init();
 
     unsafe {
-        let result = CallbackData::shortcut_func(
+        let result = ClosureCallbackData::shortcut_func(
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             std::ptr::null_mut(),
@@ -138,18 +138,18 @@ fn create_bool_returning_closure(return_val: bool) -> NonNull<glib::gobject_ffi:
 fn shortcut_func_trampoline_invokes_closure_returns_true() {
     let closure_ptr = create_bool_returning_closure(true);
 
-    let data = Box::new(CallbackData::new(closure_ptr));
+    let data = Box::new(ClosureCallbackData::new(closure_ptr));
     let data_ptr = Box::into_raw(data);
 
     unsafe {
-        let result = CallbackData::shortcut_func(
+        let result = ClosureCallbackData::shortcut_func(
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             data_ptr as *mut c_void,
         );
         assert_eq!(result, glib::ffi::GTRUE);
 
-        CallbackData::release(data_ptr as *mut c_void);
+        ClosureCallbackData::release(data_ptr as *mut c_void);
     }
 }
 
@@ -157,18 +157,18 @@ fn shortcut_func_trampoline_invokes_closure_returns_true() {
 fn shortcut_func_trampoline_invokes_closure_returns_false() {
     let closure_ptr = create_bool_returning_closure(false);
 
-    let data = Box::new(CallbackData::new(closure_ptr));
+    let data = Box::new(ClosureCallbackData::new(closure_ptr));
     let data_ptr = Box::into_raw(data);
 
     unsafe {
-        let result = CallbackData::shortcut_func(
+        let result = ClosureCallbackData::shortcut_func(
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             data_ptr as *mut c_void,
         );
         assert_eq!(result, glib::ffi::GFALSE);
 
-        CallbackData::release(data_ptr as *mut c_void);
+        ClosureCallbackData::release(data_ptr as *mut c_void);
     }
 }
 
@@ -177,7 +177,7 @@ fn callback_data_destroy_null_safe() {
     common::ensure_gtk_init();
 
     unsafe {
-        CallbackData::release(std::ptr::null_mut());
+        ClosureCallbackData::release(std::ptr::null_mut());
     }
 }
 
@@ -186,11 +186,11 @@ fn callback_data_destroy_unrefs_closure() {
     let invoked = Arc::new(AtomicBool::new(false));
     let closure_ptr = create_test_closure_with_flag(invoked.clone());
 
-    let data = Box::new(CallbackData::new(closure_ptr));
+    let data = Box::new(ClosureCallbackData::new(closure_ptr));
     let data_ptr = Box::into_raw(data);
 
     unsafe {
-        CallbackData::release(data_ptr as *mut c_void);
+        ClosureCallbackData::release(data_ptr as *mut c_void);
     }
 }
 
@@ -200,7 +200,7 @@ fn tree_list_model_create_func_trampoline_null_safe() {
 
     unsafe {
         let result =
-            CallbackData::tree_list_model_create_func(std::ptr::null_mut(), std::ptr::null_mut());
+            ClosureCallbackData::tree_list_model_create_func(std::ptr::null_mut(), std::ptr::null_mut());
         assert!(result.is_null());
     }
 }
@@ -232,17 +232,17 @@ fn create_object_returning_closure(return_object: bool) -> NonNull<glib::gobject
 fn tree_list_model_create_func_trampoline_invokes_closure_returns_null() {
     let closure_ptr = create_object_returning_closure(false);
 
-    let data = Box::new(CallbackData::new(closure_ptr));
+    let data = Box::new(ClosureCallbackData::new(closure_ptr));
     let data_ptr = Box::into_raw(data);
 
     unsafe {
-        let result = CallbackData::tree_list_model_create_func(
+        let result = ClosureCallbackData::tree_list_model_create_func(
             std::ptr::null_mut(),
             data_ptr as *mut c_void,
         );
         assert!(result.is_null());
 
-        CallbackData::release(data_ptr as *mut c_void);
+        ClosureCallbackData::release(data_ptr as *mut c_void);
     }
 }
 
@@ -250,11 +250,11 @@ fn tree_list_model_create_func_trampoline_invokes_closure_returns_null() {
 fn tree_list_model_create_func_trampoline_invokes_closure_returns_object() {
     let closure_ptr = create_object_returning_closure(true);
 
-    let data = Box::new(CallbackData::new(closure_ptr));
+    let data = Box::new(ClosureCallbackData::new(closure_ptr));
     let data_ptr = Box::into_raw(data);
 
     unsafe {
-        let result = CallbackData::tree_list_model_create_func(
+        let result = ClosureCallbackData::tree_list_model_create_func(
             std::ptr::null_mut(),
             data_ptr as *mut c_void,
         );
@@ -262,7 +262,7 @@ fn tree_list_model_create_func_trampoline_invokes_closure_returns_object() {
 
         glib::gobject_ffi::g_object_unref(result as *mut _);
 
-        CallbackData::release(data_ptr as *mut c_void);
+        ClosureCallbackData::release(data_ptr as *mut c_void);
     }
 }
 
@@ -271,10 +271,10 @@ fn tree_list_model_create_func_data_destroy_unrefs_closure() {
     let invoked = Arc::new(AtomicBool::new(false));
     let closure_ptr = create_test_closure_with_flag(invoked.clone());
 
-    let data = Box::new(CallbackData::new(closure_ptr));
+    let data = Box::new(ClosureCallbackData::new(closure_ptr));
     let data_ptr = Box::into_raw(data);
 
     unsafe {
-        CallbackData::release(data_ptr as *mut c_void);
+        ClosureCallbackData::release(data_ptr as *mut c_void);
     }
 }

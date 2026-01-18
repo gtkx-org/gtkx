@@ -10,8 +10,8 @@ use neon::prelude::*;
 use crate::{gtk_dispatch, managed::NativeHandle};
 
 pub fn get_native_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
-    let object_id = cx.argument::<JsBox<NativeHandle>>(0)?;
-    let id = *object_id.as_inner();
+    let handle = cx.argument::<JsBox<NativeHandle>>(0)?;
+    let id = *handle.as_inner();
 
     let (tx, rx) = mpsc::channel();
 
