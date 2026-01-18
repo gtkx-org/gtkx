@@ -1,70 +1,60 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
-import type { Container, ContainerClass } from "../types.js";
+import type { Container, ContainerClass, Props } from "../types.js";
+import { AdjustableNode } from "./adjustable.js";
 import { isContainerType } from "./internal/utils.js";
-import { ScaleMarkNode } from "./scale-mark.js";
-import { WidgetNode } from "./widget.js";
 
-class ScaleNode extends WidgetNode<Gtk.Scale> {
+type ScaleMark = {
+    value: number;
+    position?: Gtk.PositionType;
+    label?: string | null;
+};
+
+type ScaleProps = Props & {
+    marks?: ScaleMark[] | null;
+};
+
+class ScaleNode extends AdjustableNode<Gtk.Scale> {
     public static override priority = 1;
 
-    private markChildren: ScaleMarkNode[] = [];
+    private appliedMarks: ScaleMark[] = [];
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return isContainerType(Gtk.Scale, containerOrClass);
     }
 
-    public override appendChild(child: Node): void {
-        if (child instanceof ScaleMarkNode) {
-            child.setScale(this.container, () => this.scheduleRebuildAllMarks());
-            this.markChildren.push(child);
-            scheduleAfterCommit(() => child.addMark());
+    public override updateProps(oldProps: ScaleProps | null, newProps: ScaleProps): void {
+        super.updateProps(oldProps, newProps);
+        this.updateMarks(oldProps, newProps);
+    }
+
+    private updateMarks(oldProps: ScaleProps | null, newProps: ScaleProps): void {
+        const newMarks = newProps.marks ?? [];
+
+        if (this.marksEqual(this.appliedMarks, newMarks)) {
             return;
         }
 
-        super.appendChild(child);
-    }
+        this.container.clearMarks();
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof ScaleMarkNode) {
-            child.setScale(this.container, () => this.scheduleRebuildAllMarks());
-
-            const beforeIndex = this.markChildren.indexOf(before as ScaleMarkNode);
-            if (beforeIndex >= 0) {
-                this.markChildren.splice(beforeIndex, 0, child);
-            } else {
-                this.markChildren.push(child);
-            }
-
-            this.scheduleRebuildAllMarks();
-            return;
+        for (const mark of newMarks) {
+            this.container.addMark(mark.value, mark.position ?? Gtk.PositionType.BOTTOM, mark.label);
         }
 
-        super.insertBefore(child, before);
+        this.appliedMarks = [...newMarks];
     }
 
-    public override removeChild(child: Node): void {
-        if (child instanceof ScaleMarkNode) {
-            const index = this.markChildren.indexOf(child);
-            if (index >= 0) {
-                this.markChildren.splice(index, 1);
-            }
-            this.scheduleRebuildAllMarks(CommitPriority.HIGH);
-            return;
+    private marksEqual(a: ScaleMark[], b: ScaleMark[]): boolean {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            const markA = a[i];
+            const markB = b[i];
+            if (!markA || !markB) return false;
+            if (markA.value !== markB.value) return false;
+            if (markA.position !== markB.position) return false;
+            if (markA.label !== markB.label) return false;
         }
-
-        super.removeChild(child);
-    }
-
-    private scheduleRebuildAllMarks(priority = CommitPriority.NORMAL): void {
-        scheduleAfterCommit(() => {
-            this.container.clearMarks();
-            for (const mark of this.markChildren) {
-                mark.addMark();
-            }
-        }, priority);
+        return true;
     }
 }
 

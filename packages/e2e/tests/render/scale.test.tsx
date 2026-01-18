@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkScale, x } from "@gtkx/react";
+import { GtkScale } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -18,11 +18,14 @@ describe("render - Scale", () => {
             const ref = createRef<Gtk.Scale>();
 
             await render(
-                <GtkScale ref={ref}>
-                    <x.ScaleMark value={0} label="Min" />
-                    <x.ScaleMark value={50} label="Mid" />
-                    <x.ScaleMark value={100} label="Max" />
-                </GtkScale>,
+                <GtkScale
+                    ref={ref}
+                    marks={[
+                        { value: 0, label: "Min" },
+                        { value: 50, label: "Mid" },
+                        { value: 100, label: "Max" },
+                    ]}
+                />,
             );
 
             expect(ref.current).not.toBeNull();
@@ -32,10 +35,13 @@ describe("render - Scale", () => {
             const ref = createRef<Gtk.Scale>();
 
             await render(
-                <GtkScale ref={ref}>
-                    <x.ScaleMark value={0} position={Gtk.PositionType.TOP} label="Top" />
-                    <x.ScaleMark value={100} position={Gtk.PositionType.BOTTOM} label="Bottom" />
-                </GtkScale>,
+                <GtkScale
+                    ref={ref}
+                    marks={[
+                        { value: 0, position: Gtk.PositionType.TOP, label: "Top" },
+                        { value: 100, position: Gtk.PositionType.BOTTOM, label: "Bottom" },
+                    ]}
+                />,
             );
 
             expect(ref.current).not.toBeNull();
@@ -45,13 +51,10 @@ describe("render - Scale", () => {
             const ref = createRef<Gtk.Scale>();
 
             await render(
-                <GtkScale ref={ref}>
-                    <x.ScaleMark value={0} />
-                    <x.ScaleMark value={25} />
-                    <x.ScaleMark value={50} />
-                    <x.ScaleMark value={75} />
-                    <x.ScaleMark value={100} />
-                </GtkScale>,
+                <GtkScale
+                    ref={ref}
+                    marks={[{ value: 0 }, { value: 25 }, { value: 50 }, { value: 75 }, { value: 100 }]}
+                />,
             );
 
             expect(ref.current).not.toBeNull();
@@ -62,10 +65,13 @@ describe("render - Scale", () => {
 
             function App({ label }: { label: string }) {
                 return (
-                    <GtkScale ref={ref}>
-                        <x.ScaleMark value={0} label={label} />
-                        <x.ScaleMark value={100} label="End" />
-                    </GtkScale>
+                    <GtkScale
+                        ref={ref}
+                        marks={[
+                            { value: 0, label },
+                            { value: 100, label: "End" },
+                        ]}
+                    />
                 );
             }
 
@@ -76,17 +82,21 @@ describe("render - Scale", () => {
             expect(ref.current).not.toBeNull();
         });
 
-        it("removes marks when unmounted", async () => {
+        it("removes marks when array changes", async () => {
             const ref = createRef<Gtk.Scale>();
 
             function App({ showExtra }: { showExtra: boolean }) {
-                return (
-                    <GtkScale ref={ref}>
-                        <x.ScaleMark value={0} label="Min" />
-                        {showExtra && <x.ScaleMark value={50} label="Mid" />}
-                        <x.ScaleMark value={100} label="Max" />
-                    </GtkScale>
-                );
+                const marks = showExtra
+                    ? [
+                          { value: 0, label: "Min" },
+                          { value: 50, label: "Mid" },
+                          { value: 100, label: "Max" },
+                      ]
+                    : [
+                          { value: 0, label: "Min" },
+                          { value: 100, label: "Max" },
+                      ];
+                return <GtkScale ref={ref} marks={marks} />;
             }
 
             await render(<App showExtra={true} />);
@@ -100,13 +110,17 @@ describe("render - Scale", () => {
             const ref = createRef<Gtk.Scale>();
 
             function App({ showMid }: { showMid: boolean }) {
-                return (
-                    <GtkScale ref={ref}>
-                        <x.ScaleMark value={0} label="Min" />
-                        {showMid && <x.ScaleMark value={50} label="Mid" />}
-                        <x.ScaleMark value={100} label="Max" />
-                    </GtkScale>
-                );
+                const marks = showMid
+                    ? [
+                          { value: 0, label: "Min" },
+                          { value: 50, label: "Mid" },
+                          { value: 100, label: "Max" },
+                      ]
+                    : [
+                          { value: 0, label: "Min" },
+                          { value: 100, label: "Max" },
+                      ];
+                return <GtkScale ref={ref} marks={marks} />;
             }
 
             await render(<App showMid={false} />);

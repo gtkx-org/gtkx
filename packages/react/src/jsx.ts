@@ -2,22 +2,27 @@ import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
-import type { AdjustmentProps } from "./nodes/adjustment.js";
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
 import type { ShortcutControllerProps as ShortcutControllerNodeProps } from "./nodes/shortcut-controller.js";
-import type { SourceBufferProps } from "./nodes/source-buffer.js";
 import type { TextAnchorProps } from "./nodes/text-anchor.js";
-import type { TextBufferProps } from "./nodes/text-buffer.js";
 import type { TextTagProps } from "./nodes/text-tag.js";
 
-export type { AdjustmentProps } from "./nodes/adjustment.js";
-export type { SourceBufferProps } from "./nodes/source-buffer.js";
 export type { TextAnchorProps } from "./nodes/text-anchor.js";
-export type { TextBufferProps } from "./nodes/text-buffer.js";
 export type { TextTagProps } from "./nodes/text-tag.js";
 export type { DragSourceProps, DropTargetProps, EventControllerProps, GestureDragProps } from "./types.js";
+
+export type ScaleMark = {
+    value: number;
+    position?: Gtk.PositionType;
+    label?: string | null;
+};
+
+export type LevelBarOffset = {
+    id: string;
+    value: number;
+};
 
 /**
  * Props for slot-based child positioning.
@@ -258,69 +263,6 @@ export type OverlayChildProps = VirtualSlotProps & {
     clipOverlay?: boolean;
 };
 
-/**
- * Props for the ScaleMark virtual element.
- *
- * Used to declaratively add marks to a GtkScale slider.
- *
- * @example
- * ```tsx
- * <GtkScale>
- *     <x.ScaleMark value={0} label="Min" />
- *     <x.ScaleMark value={50} label="Mid" />
- *     <x.ScaleMark value={100} label="Max" />
- * </GtkScale>
- * ```
- */
-export type ScaleMarkProps = {
-    /** The value at which to place the mark */
-    value: number;
-    /** Position of the mark (TOP or BOTTOM for horizontal, LEFT or RIGHT for vertical) */
-    position?: Gtk.PositionType;
-    /** Optional label text (supports Pango markup) */
-    label?: string | null;
-};
-
-/**
- * Props for the CalendarMark virtual element.
- *
- * Used to declaratively mark days on a GtkCalendar.
- *
- * @example
- * ```tsx
- * <GtkCalendar>
- *     <x.CalendarMark day={15} />
- *     <x.CalendarMark day={20} />
- *     <x.CalendarMark day={25} />
- * </GtkCalendar>
- * ```
- */
-export type CalendarMarkProps = {
-    /** The day of the month to mark (1-31) */
-    day: number;
-};
-
-/**
- * Props for the LevelBarOffset virtual element.
- *
- * Used to declaratively add offset thresholds to a GtkLevelBar.
- * Each offset defines a named threshold that triggers visual style changes.
- *
- * @example
- * ```tsx
- * <GtkLevelBar>
- *     <x.LevelBarOffset id="low" value={0.25} />
- *     <x.LevelBarOffset id="high" value={0.75} />
- *     <x.LevelBarOffset id="full" value={1.0} />
- * </GtkLevelBar>
- * ```
- */
-export type LevelBarOffsetProps = {
-    /** Unique identifier for this offset (used for CSS styling) */
-    id: string;
-    /** The threshold value (0.0 to 1.0 for continuous mode, or integer for discrete) */
-    value: number;
-};
 
 /**
  * Props for the Toggle virtual element.
@@ -815,55 +757,6 @@ export const x = {
     MenuSubmenu: "MenuSubmenu" as const,
 
     /**
-     * Declarative adjustment configuration for adjustable widgets.
-     *
-     * Works with Scale, Scrollbar, ScaleButton, SpinButton, and ListBox.
-     *
-     * @example
-     * ```tsx
-     * <GtkScale>
-     *   <x.Adjustment
-     *     value={50}
-     *     lower={0}
-     *     upper={100}
-     *     onValueChanged={(v) => console.log(v)}
-     *   />
-     * </GtkScale>
-     * ```
-     */
-    Adjustment: "Adjustment" as const,
-
-    /**
-     * A mark to display on a GtkScale slider.
-     *
-     * @example
-     * ```tsx
-     * <GtkScale>
-     *   <x.ScaleMark value={0} label="Min" />
-     *   <x.ScaleMark value={50} />
-     *   <x.ScaleMark value={100} label="Max" />
-     * </GtkScale>
-     * ```
-     */
-    ScaleMark: "ScaleMark" as const,
-
-    /**
-     * Declarative text buffer for a GtkTextView.
-     *
-     * Text content is provided as children, with optional TextTag elements for formatting.
-     *
-     * @example
-     * ```tsx
-     * <GtkTextView>
-     *   <x.TextBuffer enableUndo onTextChanged={(text) => console.log(text)}>
-     *     Hello <x.TextTag id="bold" weight={Pango.Weight.BOLD}>world</x.TextTag>!
-     *   </x.TextBuffer>
-     * </GtkTextView>
-     * ```
-     */
-    TextBuffer: "TextBuffer" as const,
-
-    /**
      * Declarative text tag for styling text content.
      *
      * Wrap text content with a TextTag to apply styling. Tags can be nested.
@@ -871,11 +764,9 @@ export const x = {
      * @example
      * ```tsx
      * <GtkTextView>
-     *   <x.TextBuffer>
      *     Normal <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
      *       bold <x.TextTag id="red" foreground="red">and red</x.TextTag>
      *     </x.TextTag> text.
-     *   </x.TextBuffer>
      * </GtkTextView>
      * ```
      */
@@ -889,61 +780,13 @@ export const x = {
      * @example
      * ```tsx
      * <GtkTextView>
-     *   <x.TextBuffer>
      *     Click here: <x.TextAnchor>
      *       <GtkButton label="Click me" />
      *     </x.TextAnchor> to continue.
-     *   </x.TextBuffer>
      * </GtkTextView>
      * ```
      */
     TextAnchor: "TextAnchor" as const,
-
-    /**
-     * Declarative source buffer for a GtkSourceView with syntax highlighting.
-     *
-     * @example
-     * ```tsx
-     * <GtkSourceView>
-     *   <x.SourceBuffer
-     *     text={code}
-     *     language="typescript"
-     *     styleScheme="Adwaita-dark"
-     *     highlightMatchingBrackets
-     *     onTextChanged={(text) => console.log(text)}
-     *   />
-     * </GtkSourceView>
-     * ```
-     */
-    SourceBuffer: "SourceBuffer" as const,
-
-    /**
-     * A day mark on a GtkCalendar.
-     *
-     * @example
-     * ```tsx
-     * <GtkCalendar>
-     *   <x.CalendarMark day={15} />
-     *   <x.CalendarMark day={20} />
-     *   <x.CalendarMark day={25} />
-     * </GtkCalendar>
-     * ```
-     */
-    CalendarMark: "CalendarMark" as const,
-
-    /**
-     * An offset threshold for a GtkLevelBar.
-     *
-     * @example
-     * ```tsx
-     * <GtkLevelBar>
-     *   <x.LevelBarOffset id="low" value={0.25} />
-     *   <x.LevelBarOffset id="high" value={0.75} />
-     *   <x.LevelBarOffset id="full" value={1.0} />
-     * </GtkLevelBar>
-     * ```
-     */
-    LevelBarOffset: "LevelBarOffset" as const,
 
     /**
      * A toggle button for an AdwToggleGroup.
@@ -1054,14 +897,12 @@ declare global {
             interface IntrinsicElements {
                 ActionRowPrefix: VirtualSlotProps;
                 ActionRowSuffix: VirtualSlotProps;
-                CalendarMark: CalendarMarkProps;
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 ColumnViewColumn: ColumnViewColumnProps<any>;
                 ExpanderRowAction: ExpanderRowChildProps;
                 ExpanderRowRow: ExpanderRowChildProps;
                 FixedChild: FixedChildProps;
                 GridChild: GridChildProps;
-                LevelBarOffset: LevelBarOffsetProps;
                 ListItem: ListItemProps;
                 MenuItem: MenuItemProps;
                 MenuSection: MenuSectionProps;
@@ -1071,11 +912,7 @@ declare global {
                 OverlayChild: OverlayChildProps;
                 PackEnd: VirtualSlotProps;
                 PackStart: VirtualSlotProps;
-                Adjustment: AdjustmentProps;
-                ScaleMark: ScaleMarkProps;
-                SourceBuffer: SourceBufferProps;
                 TextAnchor: TextAnchorProps;
-                TextBuffer: TextBufferProps;
                 TextTag: TextTagProps;
                 SimpleListItem: StringListItemProps;
                 StackPage: StackPageProps;

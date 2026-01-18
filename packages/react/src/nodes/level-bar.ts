@@ -1,83 +1,60 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
-import type { Container, ContainerClass } from "../types.js";
+import type { Container, ContainerClass, Props } from "../types.js";
 import { isContainerType } from "./internal/utils.js";
-import { LevelBarOffsetNode } from "./level-bar-offset.js";
 import { WidgetNode } from "./widget.js";
+
+type LevelBarOffset = {
+    id: string;
+    value: number;
+};
+
+type LevelBarProps = Props & {
+    offsets?: LevelBarOffset[] | null;
+};
 
 class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
     public static override priority = 1;
 
-    private offsetChildren: LevelBarOffsetNode[] = [];
     private appliedOffsetIds = new Set<string>();
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return isContainerType(Gtk.LevelBar, containerOrClass);
     }
 
-    public override appendChild(child: Node): void {
-        if (child instanceof LevelBarOffsetNode) {
-            child.setLevelBar(this.container, () => this.scheduleRebuildAllOffsets());
-            this.offsetChildren.push(child);
-            scheduleAfterCommit(() => {
-                const id = child.addOffset();
-                if (id) {
-                    this.appliedOffsetIds.add(id);
-                }
-            });
+    public override updateProps(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
+        super.updateProps(oldProps, newProps);
+        this.updateOffsets(oldProps, newProps);
+    }
+
+    private updateOffsets(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
+        const newOffsets = newProps.offsets ?? [];
+
+        if (this.offsetsEqual(oldProps?.offsets ?? [], newOffsets)) {
             return;
         }
 
-        super.appendChild(child);
-    }
-
-    public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof LevelBarOffsetNode) {
-            child.setLevelBar(this.container, () => this.scheduleRebuildAllOffsets());
-
-            const beforeIndex = this.offsetChildren.indexOf(before as LevelBarOffsetNode);
-            if (beforeIndex >= 0) {
-                this.offsetChildren.splice(beforeIndex, 0, child);
-            } else {
-                this.offsetChildren.push(child);
-            }
-
-            this.scheduleRebuildAllOffsets();
-            return;
+        for (const id of this.appliedOffsetIds) {
+            this.container.removeOffsetValue(id);
         }
+        this.appliedOffsetIds.clear();
 
-        super.insertBefore(child, before);
-    }
-
-    public override removeChild(child: Node): void {
-        if (child instanceof LevelBarOffsetNode) {
-            const index = this.offsetChildren.indexOf(child);
-            if (index >= 0) {
-                this.offsetChildren.splice(index, 1);
-            }
-            this.scheduleRebuildAllOffsets(CommitPriority.HIGH);
-            return;
+        for (const offset of newOffsets) {
+            this.container.addOffsetValue(offset.id, offset.value);
+            this.appliedOffsetIds.add(offset.id);
         }
-
-        super.removeChild(child);
     }
 
-    private scheduleRebuildAllOffsets(priority = CommitPriority.NORMAL): void {
-        scheduleAfterCommit(() => {
-            for (const id of this.appliedOffsetIds) {
-                this.container.removeOffsetValue(id);
-            }
-            this.appliedOffsetIds.clear();
-
-            for (const offset of this.offsetChildren) {
-                const id = offset.addOffset();
-                if (id) {
-                    this.appliedOffsetIds.add(id);
-                }
-            }
-        }, priority);
+    private offsetsEqual(a: LevelBarOffset[], b: LevelBarOffset[]): boolean {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            const offsetA = a[i];
+            const offsetB = b[i];
+            if (!offsetA || !offsetB) return false;
+            if (offsetA.id !== offsetB.id) return false;
+            if (offsetA.value !== offsetB.value) return false;
+        }
+        return true;
     }
 }
 

@@ -6,13 +6,11 @@ import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { AdjustmentNode } from "./adjustment.js";
 import { EVENT_CONTROLLER_PROPS } from "./internal/constants.js";
 import {
     hasSingleContent,
     type InsertableWidget,
     isAddable,
-    isAdjustable,
     isAppendable,
     isEditable,
     isInsertable,
@@ -39,7 +37,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     private dropTargetController?: Gtk.DropTarget;
     private gestureDragController?: Gtk.GestureDrag;
     private gestureStylusController?: Gtk.GestureStylus;
-    private adjustmentChild?: AdjustmentNode;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return isContainerType(Gtk.Widget, containerOrClass);
@@ -64,18 +61,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             return;
         }
 
-        if (child instanceof AdjustmentNode) {
-            if (!isAdjustable(this.container)) {
-                throw new Error(`Cannot add Adjustment to '${this.typeName}': widget does not support adjustments`);
-            }
-            if (this.adjustmentChild) {
-                throw new Error(`${this.typeName} can only have one Adjustment child`);
-            }
-            this.adjustmentChild = child;
-            child.setWidget(this.container);
-            return;
-        }
-
         if (!(child instanceof WidgetNode)) {
             throw new Error(`Cannot append '${child.typeName}' to 'Widget': expected WidgetNode child`);
         }
@@ -94,13 +79,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
 
         if (child instanceof SlotNode) {
-            return;
-        }
-
-        if (child instanceof AdjustmentNode) {
-            if (this.adjustmentChild === child) {
-                this.adjustmentChild = undefined;
-            }
             return;
         }
 
@@ -123,18 +101,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
 
         if (child instanceof SlotNode) {
             child.setParent(this.container);
-            return;
-        }
-
-        if (child instanceof AdjustmentNode) {
-            if (!isAdjustable(this.container)) {
-                throw new Error(`Cannot add Adjustment to '${this.typeName}': widget does not support adjustments`);
-            }
-            if (this.adjustmentChild) {
-                throw new Error(`${this.typeName} can only have one Adjustment child`);
-            }
-            this.adjustmentChild = child;
-            child.setWidget(this.container);
             return;
         }
 

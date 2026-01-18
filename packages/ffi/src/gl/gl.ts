@@ -114,7 +114,7 @@ export function shaderSource(shader: number, source: string): void {
                 type: {
                     type: "array",
                     itemType: { type: "string", ownership: "borrowed" },
-                    listType: "array",
+                    arrayType: "array",
                     ownership: "borrowed",
                 },
                 value: [source],
@@ -440,7 +440,7 @@ export function uniformMatrix4fv(location: number, count: number, transpose: boo
                 type: {
                     type: "array",
                     itemType: { type: "float", size: 32 },
-                    listType: "array",
+                    arrayType: "array",
                     ownership: "borrowed",
                 },
                 value,
@@ -492,7 +492,7 @@ export function deleteVertexArray(array: number): void {
                 type: {
                     type: "array",
                     itemType: { type: "int", size: 32, unsigned: true },
-                    listType: "array",
+                    arrayType: "array",
                     ownership: "borrowed",
                 },
                 value: [array],
@@ -551,7 +551,7 @@ export function deleteBuffer(buffer: number): void {
                 type: {
                     type: "array",
                     itemType: { type: "int", size: 32, unsigned: true },
-                    listType: "array",
+                    arrayType: "array",
                     ownership: "borrowed",
                 },
                 value: [buffer],
@@ -580,7 +580,7 @@ export function bufferData(target: number, data: number[], usage: number): void 
                 type: {
                     type: "array",
                     itemType: { type: "float", size: 32 },
-                    listType: "array",
+                    arrayType: "array",
                     ownership: "borrowed",
                 },
                 value: data,
@@ -681,7 +681,7 @@ export function bufferDataUshort(target: number, data: number[], usage: number):
                 type: {
                     type: "array",
                     itemType: { type: "int", size: 16, unsigned: true },
-                    listType: "array",
+                    arrayType: "array",
                     ownership: "borrowed",
                 },
                 value: data,

@@ -1,70 +1,49 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
-import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
-import type { Container, ContainerClass } from "../types.js";
-import { CalendarMarkNode } from "./calendar-mark.js";
+import type { Container, ContainerClass, Props } from "../types.js";
 import { isContainerType } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
+
+type CalendarProps = Props & {
+    markedDays?: number[] | null;
+};
 
 class CalendarNode extends WidgetNode<Gtk.Calendar> {
     public static override priority = 1;
 
-    private markChildren: CalendarMarkNode[] = [];
+    private appliedMarks: number[] = [];
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return isContainerType(Gtk.Calendar, containerOrClass);
     }
 
-    public override appendChild(child: Node): void {
-        if (child instanceof CalendarMarkNode) {
-            child.setCalendar(this.container, () => this.scheduleRebuildAllMarks());
-            this.markChildren.push(child);
-            scheduleAfterCommit(() => child.addMark());
+    public override updateProps(oldProps: CalendarProps | null, newProps: CalendarProps): void {
+        super.updateProps(oldProps, newProps);
+        this.updateMarkedDays(oldProps, newProps);
+    }
+
+    private updateMarkedDays(oldProps: CalendarProps | null, newProps: CalendarProps): void {
+        const newMarkedDays = newProps.markedDays ?? [];
+
+        if (this.markedDaysEqual(this.appliedMarks, newMarkedDays)) {
             return;
         }
 
-        super.appendChild(child);
-    }
+        this.container.clearMarks();
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof CalendarMarkNode) {
-            child.setCalendar(this.container, () => this.scheduleRebuildAllMarks());
-
-            const beforeIndex = this.markChildren.indexOf(before as CalendarMarkNode);
-            if (beforeIndex >= 0) {
-                this.markChildren.splice(beforeIndex, 0, child);
-            } else {
-                this.markChildren.push(child);
-            }
-
-            this.scheduleRebuildAllMarks();
-            return;
+        for (const day of newMarkedDays) {
+            this.container.markDay(day);
         }
 
-        super.insertBefore(child, before);
+        this.appliedMarks = [...newMarkedDays];
     }
 
-    public override removeChild(child: Node): void {
-        if (child instanceof CalendarMarkNode) {
-            const index = this.markChildren.indexOf(child);
-            if (index >= 0) {
-                this.markChildren.splice(index, 1);
-            }
-            this.scheduleRebuildAllMarks(CommitPriority.HIGH);
-            return;
+    private markedDaysEqual(a: number[], b: number[]): boolean {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
         }
-
-        super.removeChild(child);
-    }
-
-    private scheduleRebuildAllMarks(priority = CommitPriority.NORMAL): void {
-        scheduleAfterCommit(() => {
-            this.container.clearMarks();
-            for (const mark of this.markChildren) {
-                mark.addMark();
-            }
-        }, priority);
+        return true;
     }
 }
 

@@ -771,7 +771,7 @@ Context.prototype.setDash = function (dashes: number[], offset: number): Context
         "cairo_set_dash",
         [
             { type: CAIRO_T, value: this.handle },
-            { type: { type: "array", itemType: DOUBLE_TYPE, listType: "array", ownership: "full" }, value: dashes },
+            { type: { type: "array", itemType: DOUBLE_TYPE, arrayType: "array", ownership: "full" }, value: dashes },
             { type: { type: "int", size: 32, unsigned: false }, value: dashes.length },
             { type: DOUBLE_TYPE, value: offset },
         ],

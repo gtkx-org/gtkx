@@ -55,6 +55,9 @@ export class WidgetMetaBuilder {
             jsxName: `${this.namespace}${className}`,
             isContainer: this.detectIsContainer(),
             isAdjustable: this.detectIsAdjustable(),
+            hasBuffer: this.detectHasBuffer(),
+            hasMarks: this.detectHasMarks(className),
+            hasOffsets: this.detectHasOffsets(className),
             slots: this.detectSlots(),
             propNames,
             signalNames: signals.map((s) => s.name),
@@ -100,6 +103,24 @@ export class WidgetMetaBuilder {
             }
         }
         return false;
+    }
+
+    private detectHasBuffer(): boolean {
+        const allMethods = this.cls.getAllMethods();
+        for (const method of allMethods) {
+            if (method.name === "set_buffer") {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private detectHasMarks(className: string): boolean {
+        return className === "Scale" || className === "Calendar";
+    }
+
+    private detectHasOffsets(className: string): boolean {
+        return className === "LevelBar";
     }
 
     private detectSlots(): string[] {

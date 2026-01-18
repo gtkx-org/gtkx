@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkCalendar, x } from "@gtkx/react";
+import { GtkCalendar } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -17,13 +17,7 @@ describe("render - Calendar", () => {
         it("creates Calendar widget with marks", async () => {
             const ref = createRef<Gtk.Calendar>();
 
-            await render(
-                <GtkCalendar ref={ref}>
-                    <x.CalendarMark day={15} />
-                    <x.CalendarMark day={20} />
-                    <x.CalendarMark day={25} />
-                </GtkCalendar>,
-            );
+            await render(<GtkCalendar ref={ref} markedDays={[15, 20, 25]} />);
 
             expect(ref.current).not.toBeNull();
             expect(ref.current?.getDayIsMarked(15)).toBe(true);
@@ -32,36 +26,28 @@ describe("render - Calendar", () => {
             expect(ref.current?.getDayIsMarked(10)).toBe(false);
         });
 
-        it("updates mark when day prop changes", async () => {
+        it("updates marks when prop changes", async () => {
             const ref = createRef<Gtk.Calendar>();
 
-            function App({ day }: { day: number }) {
-                return (
-                    <GtkCalendar ref={ref}>
-                        <x.CalendarMark day={day} />
-                    </GtkCalendar>
-                );
+            function App({ days }: { days: number[] }) {
+                return <GtkCalendar ref={ref} markedDays={days} />;
             }
 
-            await render(<App day={15} />);
+            await render(<App days={[15]} />);
             expect(ref.current?.getDayIsMarked(15)).toBe(true);
             expect(ref.current?.getDayIsMarked(20)).toBe(false);
 
-            await render(<App day={20} />);
+            await render(<App days={[20]} />);
             expect(ref.current?.getDayIsMarked(15)).toBe(false);
             expect(ref.current?.getDayIsMarked(20)).toBe(true);
         });
 
-        it("removes marks when unmounted", async () => {
+        it("removes marks when array changes", async () => {
             const ref = createRef<Gtk.Calendar>();
 
             function App({ showExtra }: { showExtra: boolean }) {
-                return (
-                    <GtkCalendar ref={ref}>
-                        <x.CalendarMark day={15} />
-                        {showExtra && <x.CalendarMark day={20} />}
-                    </GtkCalendar>
-                );
+                const days = showExtra ? [15, 20] : [15];
+                return <GtkCalendar ref={ref} markedDays={days} />;
             }
 
             await render(<App showExtra={true} />);
@@ -73,17 +59,12 @@ describe("render - Calendar", () => {
             expect(ref.current?.getDayIsMarked(20)).toBe(false);
         });
 
-        it("handles inserting marks dynamically", async () => {
+        it("handles adding marks dynamically", async () => {
             const ref = createRef<Gtk.Calendar>();
 
             function App({ showMid }: { showMid: boolean }) {
-                return (
-                    <GtkCalendar ref={ref}>
-                        <x.CalendarMark day={10} />
-                        {showMid && <x.CalendarMark day={15} />}
-                        <x.CalendarMark day={20} />
-                    </GtkCalendar>
-                );
+                const days = showMid ? [10, 15, 20] : [10, 20];
+                return <GtkCalendar ref={ref} markedDays={days} />;
             }
 
             await render(<App showMid={false} />);

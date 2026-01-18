@@ -151,15 +151,16 @@ export class WidgetPropsBuilder {
             });
         }
 
-        allProps.push(...this.getSpecialWidgetProperties(widget));
+        const existingPropNames = new Set(allProps.map((p) => p.name));
+        const specialProps = this.getSpecialWidgetProperties(widget).filter((p) => !existingPropNames.has(p.name));
+        allProps.push(...specialProps);
 
         if (
             widget.isContainer ||
             widget.isListWidget ||
             widget.isColumnViewWidget ||
             widget.isDropDownWidget ||
-            widget.isAdjustable ||
-            widget.hasVirtualChildren
+            widget.hasBuffer
         ) {
             allProps.push({
                 name: "children",
@@ -192,6 +193,186 @@ export class WidgetPropsBuilder {
 
     private getSpecialWidgetProperties(widget: JsxWidget): PropInfo[] {
         const props: PropInfo[] = [];
+
+        if (widget.isAdjustable) {
+            props.push(
+                {
+                    name: "value",
+                    type: "number",
+                    optional: true,
+                    doc: "The current value of the adjustment",
+                },
+                {
+                    name: "lower",
+                    type: "number",
+                    optional: true,
+                    doc: "The minimum value",
+                },
+                {
+                    name: "upper",
+                    type: "number",
+                    optional: true,
+                    doc: "The maximum value",
+                },
+                {
+                    name: "stepIncrement",
+                    type: "number",
+                    optional: true,
+                    doc: "The increment for arrow keys",
+                },
+                {
+                    name: "pageIncrement",
+                    type: "number",
+                    optional: true,
+                    doc: "The increment for page up/down",
+                },
+                {
+                    name: "pageSize",
+                    type: "number",
+                    optional: true,
+                    doc: "The page size (usually 0 for scales)",
+                },
+                {
+                    name: "onValueChanged",
+                    type: "((value: number) => void) | null",
+                    optional: true,
+                    doc: "Callback when the value changes",
+                },
+            );
+        }
+
+        if (widget.hasMarks && widget.className === "Scale") {
+            props.push({
+                name: "marks",
+                type: 'Array<{ value: number; position?: import("@gtkx/ffi/gtk").PositionType; label?: string | null }> | null',
+                optional: true,
+                doc: "Array of marks to display on the scale",
+            });
+        }
+
+        if (widget.hasMarks && widget.className === "Calendar") {
+            props.push({
+                name: "markedDays",
+                type: "number[] | null",
+                optional: true,
+                doc: "Array of day numbers (1-31) to mark on the calendar",
+            });
+        }
+
+        if (widget.hasOffsets) {
+            props.push({
+                name: "offsets",
+                type: "Array<{ id: string; value: number }> | null",
+                optional: true,
+                doc: "Array of named offset thresholds for visual style changes",
+            });
+        }
+
+        if (widget.hasBuffer && widget.className === "TextView") {
+            props.push(
+                {
+                    name: "enableUndo",
+                    type: "boolean",
+                    optional: true,
+                    doc: "Whether to enable undo/redo",
+                },
+                {
+                    name: "onTextChanged",
+                    type: "((text: string) => void) | null",
+                    optional: true,
+                    doc: "Callback when the text content changes",
+                },
+                {
+                    name: "onCanUndoChanged",
+                    type: "((canUndo: boolean) => void) | null",
+                    optional: true,
+                    doc: "Callback when can-undo state changes",
+                },
+                {
+                    name: "onCanRedoChanged",
+                    type: "((canRedo: boolean) => void) | null",
+                    optional: true,
+                    doc: "Callback when can-redo state changes",
+                },
+            );
+        }
+
+        if (widget.hasBuffer && widget.namespace === "GtkSource") {
+            props.push(
+                {
+                    name: "text",
+                    type: "string",
+                    optional: true,
+                    doc: "Text content",
+                },
+                {
+                    name: "enableUndo",
+                    type: "boolean",
+                    optional: true,
+                    doc: "Whether to enable undo/redo",
+                },
+                {
+                    name: "onTextChanged",
+                    type: "((text: string) => void) | null",
+                    optional: true,
+                    doc: "Callback when the text content changes",
+                },
+                {
+                    name: "onCanUndoChanged",
+                    type: "((canUndo: boolean) => void) | null",
+                    optional: true,
+                    doc: "Callback when can-undo state changes",
+                },
+                {
+                    name: "onCanRedoChanged",
+                    type: "((canRedo: boolean) => void) | null",
+                    optional: true,
+                    doc: "Callback when can-redo state changes",
+                },
+                {
+                    name: "language",
+                    type: 'string | import("@gtkx/ffi/gtksource").Language',
+                    optional: true,
+                    doc: 'Language for syntax highlighting. Can be a language ID string (e.g., "typescript", "python") or a GtkSource.Language object.',
+                },
+                {
+                    name: "styleScheme",
+                    type: 'string | import("@gtkx/ffi/gtksource").StyleScheme',
+                    optional: true,
+                    doc: 'Style scheme for syntax highlighting colors. Can be a scheme ID string (e.g., "Adwaita-dark") or a GtkSource.StyleScheme object.',
+                },
+                {
+                    name: "highlightSyntax",
+                    type: "boolean",
+                    optional: true,
+                    doc: "Whether to enable syntax highlighting. Defaults to true when language is set.",
+                },
+                {
+                    name: "highlightMatchingBrackets",
+                    type: "boolean",
+                    optional: true,
+                    doc: "Whether to highlight matching brackets when cursor is on a bracket. Defaults to true.",
+                },
+                {
+                    name: "implicitTrailingNewline",
+                    type: "boolean",
+                    optional: true,
+                    doc: "Whether the buffer has an implicit trailing newline.",
+                },
+                {
+                    name: "onCursorMoved",
+                    type: "(() => void) | null",
+                    optional: true,
+                    doc: "Callback when the cursor position changes",
+                },
+                {
+                    name: "onHighlightUpdated",
+                    type: '((start: import("@gtkx/ffi/gtk").TextIter, end: import("@gtkx/ffi/gtk").TextIter) => void) | null',
+                    optional: true,
+                    doc: "Callback when syntax highlighting is updated for a region",
+                },
+            );
+        }
 
         if (widget.isListWidget || widget.isColumnViewWidget) {
             props.push(
@@ -328,7 +509,8 @@ export class WidgetPropsBuilder {
         }
 
         const baseName = toPascalCase(parentClassName);
-        return `Omit<${parentNamespace}${baseName}Props, "onNotify">`;
+        const omitList = widget.isAdjustable ? '"onNotify" | "onValueChanged"' : '"onNotify"';
+        return `Omit<${parentNamespace}${baseName}Props, ${omitList}>`;
     }
 
     private buildHandlerType(signal: SignalAnalysis, widgetName: string, namespace: string): string {

@@ -29,6 +29,12 @@ export type CodegenWidgetMeta = {
     readonly isContainer: boolean;
     /** Widget supports an Adjustment child */
     readonly isAdjustable: boolean;
+    /** Widget has a buffer (TextView, SourceView) */
+    readonly hasBuffer: boolean;
+    /** Widget supports marks (Scale, Calendar) */
+    readonly hasMarks: boolean;
+    /** Widget supports offsets (LevelBar) */
+    readonly hasOffsets: boolean;
     /** Named slots for child widgets (kebab-case) */
     readonly slots: readonly string[];
     /** All writable property names (kebab-case) - for internal.ts PROPS map */

@@ -17,7 +17,6 @@ import {
     NOTEBOOK_WIDGET_NAMES,
     SCROLLED_WINDOW_WIDGET_NAMES,
     STACK_WIDGET_NAMES,
-    VIRTUAL_CHILDREN_WIDGET_NAMES,
     WINDOW_WIDGET_NAMES,
 } from "../../../core/config/index.js";
 import type { CodegenProject } from "../../../core/project.js";
@@ -42,7 +41,9 @@ export type JsxWidget = {
     isDrawingArea: boolean;
     isContainer: boolean;
     isAdjustable: boolean;
-    hasVirtualChildren: boolean;
+    hasBuffer: boolean;
+    hasMarks: boolean;
+    hasOffsets: boolean;
     slots: readonly string[];
     hiddenProps: Set<string>;
     meta: CodegenWidgetMeta;
@@ -103,7 +104,9 @@ export class JsxTypesGenerator {
             isDrawingArea: DRAWING_AREA_WIDGET_NAMES.has(meta.className),
             isContainer: meta.isContainer,
             isAdjustable: meta.isAdjustable,
-            hasVirtualChildren: VIRTUAL_CHILDREN_WIDGET_NAMES.has(meta.className),
+            hasBuffer: meta.hasBuffer,
+            hasMarks: meta.hasMarks,
+            hasOffsets: meta.hasOffsets,
             slots: filteredSlots,
             hiddenProps,
             meta,

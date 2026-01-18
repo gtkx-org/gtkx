@@ -30,14 +30,10 @@ const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number)
 
 describe("render - TextBuffer", () => {
     describe("basic text content", () => {
-        it("renders plain text inside TextBuffer", async () => {
+        it("renders plain text inside TextView", async () => {
             const ref = createRef<Gtk.TextView>();
 
-            await render(
-                <GtkTextView ref={ref}>
-                    <x.TextBuffer>Hello World</x.TextBuffer>
-                </GtkTextView>,
-            );
+            await render(<GtkTextView ref={ref}>Hello World</GtkTextView>);
 
             const buffer = ref.current?.getBuffer();
             expect(buffer).not.toBeNull();
@@ -49,9 +45,7 @@ describe("render - TextBuffer", () => {
 
             await render(
                 <GtkTextView ref={ref}>
-                    <x.TextBuffer>
-                        {"Hello"} {"World"}
-                    </x.TextBuffer>
+                    {"Hello"} {"World"}
                 </GtkTextView>,
             );
 
@@ -59,14 +53,10 @@ describe("render - TextBuffer", () => {
             expect(getBufferText(buffer as Gtk.TextBuffer)).toBe("Hello World");
         });
 
-        it("handles empty TextBuffer", async () => {
+        it("handles empty TextView", async () => {
             const ref = createRef<Gtk.TextView>();
 
-            await render(
-                <GtkTextView ref={ref}>
-                    <x.TextBuffer />
-                </GtkTextView>,
-            );
+            await render(<GtkTextView ref={ref} />);
 
             const buffer = ref.current?.getBuffer();
             expect(getBufferText(buffer as Gtk.TextBuffer)).toBe("");
@@ -75,11 +65,7 @@ describe("render - TextBuffer", () => {
         it("handles special characters", async () => {
             const ref = createRef<Gtk.TextView>();
 
-            await render(
-                <GtkTextView ref={ref}>
-                    <x.TextBuffer>Special: &amp; &lt; &gt; &quot;</x.TextBuffer>
-                </GtkTextView>,
-            );
+            await render(<GtkTextView ref={ref}>Special: &amp; &lt; &gt; &quot;</GtkTextView>);
 
             const buffer = ref.current?.getBuffer();
             expect(getBufferText(buffer as Gtk.TextBuffer)).toBe('Special: & < > "');
@@ -92,9 +78,7 @@ describe("render - TextBuffer", () => {
 
             await render(
                 <GtkTextView ref={ref}>
-                    <x.TextBuffer>
-                        Hello <x.TextTag id="bold">World</x.TextTag>
-                    </x.TextBuffer>
+                    Hello <x.TextTag id="bold">World</x.TextTag>
                 </GtkTextView>,
             );
 
@@ -110,11 +94,9 @@ describe("render - TextBuffer", () => {
 
             await render(
                 <GtkTextView ref={ref}>
-                    <x.TextBuffer>
-                        <x.TextTag id="red" foreground="red">
-                            Red Text
-                        </x.TextTag>
-                    </x.TextBuffer>
+                    <x.TextTag id="red" foreground="red">
+                        Red Text
+                    </x.TextTag>
                 </GtkTextView>,
             );
 
@@ -128,11 +110,9 @@ describe("render - TextBuffer", () => {
 
             await render(
                 <GtkTextView ref={ref}>
-                    <x.TextBuffer>
-                        <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
-                            Bold Text
-                        </x.TextTag>
-                    </x.TextBuffer>
+                    <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
+                        Bold Text
+                    </x.TextTag>
                 </GtkTextView>,
             );
 
@@ -149,11 +129,9 @@ describe("render - TextBuffer", () => {
 
             await render(
                 <GtkTextView ref={ref}>
-                    <x.TextBuffer>
-                        <x.TextTag id="underlined" underline={Pango.Underline.SINGLE}>
-                            Underlined
-                        </x.TextTag>
-                    </x.TextBuffer>
+                    <x.TextTag id="underlined" underline={Pango.Underline.SINGLE}>
+                        Underlined
+                    </x.TextTag>
                 </GtkTextView>,
             );
 
@@ -172,14 +150,12 @@ describe("render - TextBuffer", () => {
 
             await render(
                 <GtkTextView ref={ref}>
-                    <x.TextBuffer>
-                        <x.TextTag id="outer" foreground="blue">
-                            Hello{" "}
-                            <x.TextTag id="inner" weight={Pango.Weight.BOLD}>
-                                World
-                            </x.TextTag>
+                    <x.TextTag id="outer" foreground="blue">
+                        Hello{" "}
+                        <x.TextTag id="inner" weight={Pango.Weight.BOLD}>
+                            World
                         </x.TextTag>
-                    </x.TextBuffer>
+                    </x.TextTag>
                 </GtkTextView>,
             );
 
@@ -197,11 +173,9 @@ describe("render - TextBuffer", () => {
 
             await render(
                 <GtkTextView ref={ref}>
-                    <x.TextBuffer>
-                        <x.TextTag id="a">{"A"}</x.TextTag>
-                        <x.TextTag id="b">{"B"}</x.TextTag>
-                        <x.TextTag id="c">{"C"}</x.TextTag>
-                    </x.TextBuffer>
+                    <x.TextTag id="a">{"A"}</x.TextTag>
+                    <x.TextTag id="b">{"B"}</x.TextTag>
+                    <x.TextTag id="c">{"C"}</x.TextTag>
                 </GtkTextView>,
             );
 
@@ -220,13 +194,11 @@ describe("render - TextBuffer", () => {
 
             await render(
                 <GtkTextView ref={ref}>
-                    <x.TextBuffer>
-                        Click here:{" "}
-                        <x.TextAnchor>
-                            <GtkButton label="Button" />
-                        </x.TextAnchor>{" "}
-                        to continue.
-                    </x.TextBuffer>
+                    Click here:{" "}
+                    <x.TextAnchor>
+                        <GtkButton label="Button" />
+                    </x.TextAnchor>{" "}
+                    to continue.
                 </GtkTextView>,
             );
 
@@ -245,11 +217,7 @@ describe("render - TextBuffer", () => {
             const ref = createRef<Gtk.TextView>();
 
             function App({ text }: { text: string }) {
-                return (
-                    <GtkTextView ref={ref}>
-                        <x.TextBuffer>{text}</x.TextBuffer>
-                    </GtkTextView>
-                );
+                return <GtkTextView ref={ref}>{text}</GtkTextView>;
             }
 
             const { rerender } = await render(<App text="Initial" />);
@@ -267,12 +235,10 @@ describe("render - TextBuffer", () => {
             function App({ boldText }: { boldText: string }) {
                 return (
                     <GtkTextView ref={ref}>
-                        <x.TextBuffer>
-                            Hello{" "}
-                            <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
-                                {boldText}
-                            </x.TextTag>
-                        </x.TextBuffer>
+                        Hello{" "}
+                        <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
+                            {boldText}
+                        </x.TextTag>
                     </GtkTextView>
                 );
             }
@@ -288,11 +254,7 @@ describe("render - TextBuffer", () => {
             const ref = createRef<Gtk.TextView>();
 
             function App({ showMiddle }: { showMiddle: boolean }) {
-                return (
-                    <GtkTextView ref={ref}>
-                        <x.TextBuffer>Start{showMiddle && " Middle"} End</x.TextBuffer>
-                    </GtkTextView>
-                );
+                return <GtkTextView ref={ref}>Start{showMiddle && " Middle"} End</GtkTextView>;
             }
 
             await render(<App showMiddle={true} />);
@@ -307,15 +269,13 @@ describe("render - TextBuffer", () => {
             function App({ isBold }: { isBold: boolean }) {
                 return (
                     <GtkTextView ref={ref}>
-                        <x.TextBuffer>
-                            {isBold ? (
-                                <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
-                                    Bold
-                                </x.TextTag>
-                            ) : (
-                                "Normal"
-                            )}
-                        </x.TextBuffer>
+                        {isBold ? (
+                            <x.TextTag id="bold" weight={Pango.Weight.BOLD}>
+                                Bold
+                            </x.TextTag>
+                        ) : (
+                            "Normal"
+                        )}
                     </GtkTextView>
                 );
             }
@@ -335,8 +295,8 @@ describe("render - TextBuffer", () => {
 
             function App({ text }: { text: string }) {
                 return (
-                    <GtkTextView ref={ref}>
-                        <x.TextBuffer onTextChanged={onTextChanged}>{text}</x.TextBuffer>
+                    <GtkTextView ref={ref} onTextChanged={onTextChanged}>
+                        {text}
                     </GtkTextView>
                 );
             }
@@ -353,11 +313,7 @@ describe("render - TextBuffer", () => {
         it("sets enableUndo on buffer", async () => {
             const ref = createRef<Gtk.TextView>();
 
-            await render(
-                <GtkTextView ref={ref}>
-                    <x.TextBuffer enableUndo>Content</x.TextBuffer>
-                </GtkTextView>,
-            );
+            await render(<GtkTextView ref={ref} enableUndo>Content</GtkTextView>);
 
             const buffer = ref.current?.getBuffer();
             expect(buffer?.getEnableUndo()).toBe(true);
@@ -367,8 +323,8 @@ describe("render - TextBuffer", () => {
             const ref = createRef<Gtk.TextView>();
 
             await render(
-                <GtkTextView ref={ref}>
-                    <x.TextBuffer enableUndo={false}>Content</x.TextBuffer>
+                <GtkTextView ref={ref} enableUndo={false}>
+                    Content
                 </GtkTextView>,
             );
 
@@ -383,17 +339,15 @@ describe("render - TextBuffer", () => {
 
             await render(
                 <GtkTextView ref={ref}>
-                    <x.TextBuffer>
-                        Start{" "}
-                        <x.TextTag id="tag1" foreground="red">
-                            Red
-                        </x.TextTag>{" "}
-                        Middle{" "}
-                        <x.TextTag id="tag2" foreground="blue">
-                            Blue
-                        </x.TextTag>{" "}
-                        End
-                    </x.TextBuffer>
+                    Start{" "}
+                    <x.TextTag id="tag1" foreground="red">
+                        Red
+                    </x.TextTag>{" "}
+                    Middle{" "}
+                    <x.TextTag id="tag2" foreground="blue">
+                        Blue
+                    </x.TextTag>{" "}
+                    End
                 </GtkTextView>,
             );
 
@@ -410,13 +364,11 @@ describe("render - TextBuffer", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <GtkTextView ref={ref}>
-                        <x.TextBuffer>
-                            {items.map((item) => (
-                                <x.TextTag key={item} id={item} foreground="blue">
-                                    {item}
-                                </x.TextTag>
-                            ))}
-                        </x.TextBuffer>
+                        {items.map((item) => (
+                            <x.TextTag key={item} id={item} foreground="blue">
+                                {item}
+                            </x.TextTag>
+                        ))}
                     </GtkTextView>
                 );
             }
@@ -439,14 +391,12 @@ describe("render - TextBuffer", () => {
             function App({ innerText }: { innerText: string }) {
                 return (
                     <GtkTextView ref={ref}>
-                        <x.TextBuffer>
-                            <x.TextTag id="first" foreground="red">
-                                {innerText}
-                            </x.TextTag>
-                            <x.TextTag id="second" foreground="blue">
-                                Second
-                            </x.TextTag>
-                        </x.TextBuffer>
+                        <x.TextTag id="first" foreground="red">
+                            {innerText}
+                        </x.TextTag>
+                        <x.TextTag id="second" foreground="blue">
+                            Second
+                        </x.TextTag>
                     </GtkTextView>
                 );
             }
@@ -471,15 +421,13 @@ describe("render - TextBuffer", () => {
             function App({ showTag }: { showTag: boolean }) {
                 return (
                     <GtkTextView ref={ref}>
-                        <x.TextBuffer>
-                            Start
-                            {showTag && (
-                                <x.TextTag id="dynamic" foreground="green">
-                                    New
-                                </x.TextTag>
-                            )}
-                            End
-                        </x.TextBuffer>
+                        Start
+                        {showTag && (
+                            <x.TextTag id="dynamic" foreground="green">
+                                New
+                            </x.TextTag>
+                        )}
+                        End
                     </GtkTextView>
                 );
             }
@@ -501,15 +449,13 @@ describe("render - TextBuffer", () => {
             function App({ showTag }: { showTag: boolean }) {
                 return (
                     <GtkTextView ref={ref}>
-                        <x.TextBuffer>
-                            Start
-                            {showTag && (
-                                <x.TextTag id="removable" foreground="green">
-                                    Remove
-                                </x.TextTag>
-                            )}
-                            End
-                        </x.TextBuffer>
+                        Start
+                        {showTag && (
+                            <x.TextTag id="removable" foreground="green">
+                                Remove
+                            </x.TextTag>
+                        )}
+                        End
                     </GtkTextView>
                 );
             }
@@ -531,13 +477,11 @@ describe("render - TextBuffer", () => {
             function App({ items }: { items: string[] }) {
                 return (
                     <GtkTextView ref={ref}>
-                        <x.TextBuffer>
-                            {items.map((item) => (
-                                <x.TextTag key={item} id={item} foreground="blue">
-                                    {item}
-                                </x.TextTag>
-                            ))}
-                        </x.TextBuffer>
+                        {items.map((item) => (
+                            <x.TextTag key={item} id={item} foreground="blue">
+                                {item}
+                            </x.TextTag>
+                        ))}
                     </GtkTextView>
                 );
             }
@@ -561,15 +505,13 @@ describe("render - TextBuffer", () => {
             function App({ innerText }: { innerText: string }) {
                 return (
                     <GtkTextView ref={ref}>
-                        <x.TextBuffer>
-                            <x.TextTag id="outer" foreground="blue">
-                                Outer{" "}
-                                <x.TextTag id="inner" weight={Pango.Weight.BOLD}>
-                                    {innerText}
-                                </x.TextTag>
-                            </x.TextTag>{" "}
-                            After
-                        </x.TextBuffer>
+                        <x.TextTag id="outer" foreground="blue">
+                            Outer{" "}
+                            <x.TextTag id="inner" weight={Pango.Weight.BOLD}>
+                                {innerText}
+                            </x.TextTag>
+                        </x.TextTag>{" "}
+                        After
                     </GtkTextView>
                 );
             }

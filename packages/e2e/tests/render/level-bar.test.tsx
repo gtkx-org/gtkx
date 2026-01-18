@@ -1,6 +1,6 @@
 import { createRef as createNativeRef } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkLevelBar, x } from "@gtkx/react";
+import { GtkLevelBar } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -19,10 +19,13 @@ describe("render - LevelBar", () => {
             const ref = createRef<Gtk.LevelBar>();
 
             await render(
-                <GtkLevelBar ref={ref}>
-                    <x.LevelBarOffset id="low" value={0.25} />
-                    <x.LevelBarOffset id="high" value={0.75} />
-                </GtkLevelBar>,
+                <GtkLevelBar
+                    ref={ref}
+                    offsets={[
+                        { id: "low", value: 0.25 },
+                        { id: "high", value: 0.75 },
+                    ]}
+                />,
             );
 
             expect(ref.current).not.toBeNull();
@@ -42,11 +45,7 @@ describe("render - LevelBar", () => {
             const ref = createRef<Gtk.LevelBar>();
 
             function App({ value }: { value: number }) {
-                return (
-                    <GtkLevelBar ref={ref}>
-                        <x.LevelBarOffset id="threshold" value={value} />
-                    </GtkLevelBar>
-                );
+                return <GtkLevelBar ref={ref} offsets={[{ id: "threshold", value }]} />;
             }
 
             await render(<App value={0.5} />);
@@ -65,11 +64,7 @@ describe("render - LevelBar", () => {
             const ref = createRef<Gtk.LevelBar>();
 
             function App({ name }: { name: string }) {
-                return (
-                    <GtkLevelBar ref={ref}>
-                        <x.LevelBarOffset id={name} value={0.5} />
-                    </GtkLevelBar>
-                );
+                return <GtkLevelBar ref={ref} offsets={[{ id: name, value: 0.5 }]} />;
             }
 
             await render(<App name="old-name" />);
@@ -84,16 +79,17 @@ describe("render - LevelBar", () => {
             expect(ref.current?.getOffsetValue(valueRef, "new-name")).toBe(true);
         });
 
-        it("removes offsets when unmounted", async () => {
+        it("removes offsets when array changes", async () => {
             const ref = createRef<Gtk.LevelBar>();
 
             function App({ showExtra }: { showExtra: boolean }) {
-                return (
-                    <GtkLevelBar ref={ref}>
-                        <x.LevelBarOffset id="always" value={0.5} />
-                        {showExtra && <x.LevelBarOffset id="extra" value={0.75} />}
-                    </GtkLevelBar>
-                );
+                const offsets = showExtra
+                    ? [
+                          { id: "always", value: 0.5 },
+                          { id: "extra", value: 0.75 },
+                      ]
+                    : [{ id: "always", value: 0.5 }];
+                return <GtkLevelBar ref={ref} offsets={offsets} />;
             }
 
             await render(<App showExtra={true} />);
