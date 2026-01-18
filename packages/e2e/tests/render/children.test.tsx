@@ -4,20 +4,9 @@ import { render, screen, within } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-const getChildWidgets = (parent: Gtk.Widget): Gtk.Widget[] => {
-    const children: Gtk.Widget[] = [];
-    let child = parent.getFirstChild();
-    while (child) {
-        children.push(child);
-        child = child.getNextSibling();
-    }
-    return children;
-};
-
-const getChildLabels = (parent: Gtk.Widget): string[] => {
-    return getChildWidgets(parent)
-        .filter((w): w is Gtk.Label => "getLabel" in w && typeof w.getLabel === "function")
-        .map((l) => l.getLabel() ?? "");
+const getLabelTexts = (parent: Gtk.Widget): string[] => {
+    const labels = within(parent).queryAllByRole(Gtk.AccessibleRole.LABEL);
+    return labels.map((l) => (l as Gtk.Label).getLabel() ?? "");
 };
 
 describe("render - children", () => {
@@ -93,12 +82,12 @@ describe("render - children", () => {
 
             await screen.findByText("A");
             await screen.findByText("C");
-            expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "C"]);
+            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "C"]);
 
             await rerender(<App items={["A", "B", "C"]} />);
 
             await screen.findByText("B");
-            expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
 
         it("falls back to append when before not found", async () => {
@@ -120,7 +109,7 @@ describe("render - children", () => {
 
             const labels = await screen.findAllByText(/A|B|C/);
             expect(labels).toHaveLength(3);
-            expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
     });
 
@@ -182,13 +171,13 @@ describe("render - children", () => {
             }
 
             await render(<App items={["A", "B", "C"]} />);
-            expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
             await render(<App items={["A", "D", "B", "C"]} />);
-            expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "D", "B", "C"]);
+            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "D", "B", "C"]);
 
             await render(<App items={["D", "C"]} />);
-            expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["D", "C"]);
+            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["D", "C"]);
         });
 
         it("handles reordering via key changes", async () => {
@@ -205,10 +194,10 @@ describe("render - children", () => {
             }
 
             await render(<App items={["A", "B", "C"]} />);
-            expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
+            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
             await render(<App items={["C", "B", "A"]} />);
-            expect(getChildLabels(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
+            expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
         });
     });
 
