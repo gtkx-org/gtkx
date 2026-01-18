@@ -7,18 +7,23 @@
  * These setters use g_object_set_property with properly typed GValues.
  */
 
-import type { GirClass, GirProperty, GirRepository, QualifiedName } from "@gtkx/gir";
+import type { GirClass, GirProperty, GirRepository } from "@gtkx/gir";
 import type { MethodDeclarationStructure, WriterFunction } from "ts-morph";
 import { StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { collectDirectMembers, collectParentPropertyNames } from "../../../core/utils/class-traversal.js";
+import { getSyntheticSetterPrimitiveInfo } from "../../../core/type-system/ffi-types.js";
+import {
+    collectDirectMembers,
+    collectOwnAndInterfaceMethodNames,
+    collectParentPropertyNames,
+} from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { createSetterName, toCamelCase } from "../../../core/utils/naming.js";
 
 export class PropertySetterBuilder {
-    private existingMethodNames: Set<string> = new Set();
+    private readonly existingMethodNames: Set<string>;
 
     constructor(
         private readonly cls: GirClass,
@@ -27,21 +32,7 @@ export class PropertySetterBuilder {
         private readonly repository: GirRepository,
         private readonly options: FfiGeneratorOptions,
     ) {
-        this.collectExistingMethodNames();
-    }
-
-    private collectExistingMethodNames(): void {
-        for (const method of this.cls.methods) {
-            this.existingMethodNames.add(toCamelCase(method.name));
-        }
-
-        for (const ifaceQualifiedName of this.cls.implements) {
-            const iface = this.repository.resolveInterface(ifaceQualifiedName as QualifiedName);
-            if (!iface) continue;
-            for (const method of iface.methods) {
-                this.existingMethodNames.add(toCamelCase(method.name));
-            }
-        }
+        this.existingMethodNames = collectOwnAndInterfaceMethodNames(cls, repository, toCamelCase);
     }
 
     buildStructures(): MethodDeclarationStructure[] {
@@ -105,28 +96,12 @@ export class PropertySetterBuilder {
 
     private getGValueSetterInfo(prop: GirProperty): GValueSetterInfo | null {
         const typeName = String(prop.type.name);
-        const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
-
-        const primitiveTypeMap: Record<string, GValueSetterInfo> = {
-            utf8: { staticConstructor: "newFromString" },
-            gchararray: { staticConstructor: "newFromString" },
-            gboolean: { staticConstructor: "newFromBoolean" },
-            gint: { staticConstructor: "newFromInt" },
-            gint32: { staticConstructor: "newFromInt" },
-            guint: { staticConstructor: "newFromUint" },
-            guint32: { staticConstructor: "newFromUint" },
-            gint64: { staticConstructor: "newFromInt64" },
-            guint64: { staticConstructor: "newFromUint64" },
-            gfloat: { staticConstructor: "newFromFloat" },
-            gdouble: { staticConstructor: "newFromDouble" },
-            glong: { staticConstructor: "newFromLong" },
-            gulong: { staticConstructor: "newFromUlong" },
-        };
-
-        if (primitiveTypeMap[typeName]) {
-            return primitiveTypeMap[typeName];
+        const primitiveInfo = getSyntheticSetterPrimitiveInfo(typeName);
+        if (primitiveInfo) {
+            return primitiveInfo;
         }
 
+        const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
         if (typeMapping.kind === "enum") {
             return { gtypeName: "gint", setMethod: "setInt", isEnum: true };
         }

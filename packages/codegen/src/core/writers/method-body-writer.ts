@@ -212,6 +212,12 @@ export class MethodBodyWriter {
         return toValidIdentifier(toCamelCase(param.name));
     }
 
+    resolveMethodName(method: GirMethod): string {
+        const dynamicRename = this.ctx.methodRenames.get(method.cIdentifier);
+        const camelName = toCamelCase(method.name);
+        return dynamicRename ?? camelName;
+    }
+
     /**
      * Identifies Ref parameters where GTK allocates the referenced object.
      * These need to be rewrapped after the call.

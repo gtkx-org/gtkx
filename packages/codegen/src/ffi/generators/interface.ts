@@ -13,7 +13,7 @@ import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
 import { filterSupportedMethods } from "../../core/utils/filtering.js";
-import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
+import { generateConflictingMethodName, toPascalCase } from "../../core/utils/naming.js";
 import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../core/writers/index.js";
 
 /**
@@ -107,12 +107,8 @@ export class InterfaceGenerator {
     }
 
     private buildMethodStructure(method: GirMethod): MethodDeclarationStructure {
-        const dynamicRename = this.ctx.methodRenames.get(method.cIdentifier);
-        const camelName = toCamelCase(method.name);
-        const methodName = dynamicRename ?? camelName;
-
         return this.methodBody.buildMethodStructure(method, {
-            methodName,
+            methodName: this.methodBody.resolveMethodName(method),
             selfTypeDescriptor: SELF_TYPE_GOBJECT,
             sharedLibrary: this.options.sharedLibrary,
             namespace: this.options.namespace,

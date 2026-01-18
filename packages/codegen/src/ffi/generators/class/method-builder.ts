@@ -90,12 +90,8 @@ export class MethodBuilder {
         method: GirMethod,
         selfTypeDescriptor: SelfTypeDescriptor,
     ): MethodDeclarationStructure {
-        const dynamicRename = this.ctx.methodRenames.get(method.cIdentifier);
-        const camelName = toCamelCase(method.name);
-        const methodName = dynamicRename ?? camelName;
-
         return this.methodBody.buildMethodStructure(method, {
-            methodName,
+            methodName: this.methodBody.resolveMethodName(method),
             selfTypeDescriptor,
             sharedLibrary: this.options.sharedLibrary,
             namespace: this.options.namespace,

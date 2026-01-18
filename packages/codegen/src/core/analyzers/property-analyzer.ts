@@ -3,7 +3,7 @@ import { parseQualifiedName } from "@gtkx/gir";
 import { APPLICATION_PARAM_NAME } from "../constants/index.js";
 import type { PropertyAnalysis } from "../generator-types.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
-import { collectExternalNamespaces } from "../type-system/ffi-types.js";
+import { collectExternalNamespaces, isSyntheticSetterSupportedPrimitive } from "../type-system/ffi-types.js";
 import { collectDirectMembers, collectParentPropertyNames } from "../utils/class-traversal.js";
 import { collectPropertiesWithDefaults } from "../utils/default-value.js";
 import { createSetterName, kebabToSnake, snakeToKebab, toCamelCase } from "../utils/naming.js";
@@ -79,28 +79,11 @@ export class PropertyAnalyzer {
 
     private canGenerateSyntheticSetter(prop: GirProperty): boolean {
         const typeName = String(prop.type.name);
-        const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
-
-        const supportedPrimitives = new Set([
-            "utf8",
-            "gchararray",
-            "gboolean",
-            "gint",
-            "gint32",
-            "guint",
-            "guint32",
-            "gint64",
-            "guint64",
-            "gfloat",
-            "gdouble",
-            "glong",
-            "gulong",
-        ]);
-
-        if (supportedPrimitives.has(typeName)) {
+        if (isSyntheticSetterSupportedPrimitive(typeName)) {
             return true;
         }
 
+        const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
         if (typeMapping.kind === "enum" || typeMapping.kind === "flags") {
             return true;
         }

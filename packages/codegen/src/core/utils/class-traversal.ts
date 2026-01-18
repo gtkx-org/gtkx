@@ -121,6 +121,29 @@ export function collectParentFactoryMethodNames(cls: GirClass): Set<string> {
     return names;
 }
 
+export function collectOwnAndInterfaceMethodNames(
+    cls: GirClass,
+    repo: GirRepository,
+    transform: (name: string) => string = (n) => n,
+): Set<string> {
+    const names = new Set<string>();
+
+    for (const method of cls.methods) {
+        names.add(transform(method.name));
+    }
+
+    for (const ifaceQName of cls.implements) {
+        const iface = repo.resolveInterface(ifaceQName);
+        if (iface) {
+            for (const method of iface.methods) {
+                names.add(transform(method.name));
+            }
+        }
+    }
+
+    return names;
+}
+
 /**
  * Options for collecting direct members.
  */

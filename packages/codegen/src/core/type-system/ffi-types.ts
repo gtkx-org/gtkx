@@ -469,6 +469,32 @@ export const isPrimitiveFieldType = (typeName: string): boolean => PRIMITIVE_FIE
  */
 export const isMemoryWritableType = (typeName: string): boolean => MEMORY_WRITABLE_TYPES.has(typeName);
 
+type SyntheticSetterPrimitiveInfo = {
+    staticConstructor: string;
+};
+
+const SYNTHETIC_SETTER_PRIMITIVE_TYPES: Record<string, SyntheticSetterPrimitiveInfo> = {
+    utf8: { staticConstructor: "newFromString" },
+    gchararray: { staticConstructor: "newFromString" },
+    gboolean: { staticConstructor: "newFromBoolean" },
+    gint: { staticConstructor: "newFromInt" },
+    gint32: { staticConstructor: "newFromInt" },
+    guint: { staticConstructor: "newFromUint" },
+    guint32: { staticConstructor: "newFromUint" },
+    gint64: { staticConstructor: "newFromInt64" },
+    guint64: { staticConstructor: "newFromUint64" },
+    gfloat: { staticConstructor: "newFromFloat" },
+    gdouble: { staticConstructor: "newFromDouble" },
+    glong: { staticConstructor: "newFromLong" },
+    gulong: { staticConstructor: "newFromUlong" },
+};
+
+export const isSyntheticSetterSupportedPrimitive = (typeName: string): boolean =>
+    typeName in SYNTHETIC_SETTER_PRIMITIVE_TYPES;
+
+export const getSyntheticSetterPrimitiveInfo = (typeName: string): SyntheticSetterPrimitiveInfo | undefined =>
+    SYNTHETIC_SETTER_PRIMITIVE_TYPES[typeName];
+
 /**
  * Type-safe self type descriptor for instance method calls.
  *
