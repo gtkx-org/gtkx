@@ -529,7 +529,7 @@ export class FfiMapper {
                               type: "int",
                               size: 32,
                               unsigned: false,
-                              lib: this.repo.getNamespace(resolved.namespace)?.sharedLibrary,
+                              library: this.repo.getNamespace(resolved.namespace)?.sharedLibrary,
                               getTypeFn: resolved.glibGetType,
                           }
                         : FFI_INT32,
@@ -545,7 +545,7 @@ export class FfiMapper {
                               type: "int",
                               size: 32,
                               unsigned: true,
-                              lib: this.repo.getNamespace(resolved.namespace)?.sharedLibrary,
+                              library: this.repo.getNamespace(resolved.namespace)?.sharedLibrary,
                               getTypeFn: resolved.glibGetType,
                           }
                         : FFI_UINT32,

@@ -69,7 +69,7 @@ export class FfiTypeWriter {
                 type: "boxed",
                 ownership: "full",
                 innerType: "GError",
-                lib: this.options.glibLibrary,
+                library: this.options.glibLibrary,
                 getTypeFn: "g_error_get_type",
             },
         };
@@ -191,8 +191,8 @@ export class FfiTypeWriter {
             { name: "unsigned", value: type.unsigned ?? false },
         ];
 
-        if (type.lib) {
-            props.push({ name: "library", value: `"${type.lib}"` });
+        if (type.library) {
+            props.push({ name: "library", value: `"${type.library}"` });
         }
         if (type.getTypeFn) {
             props.push({ name: "getTypeFn", value: `"${type.getTypeFn}"` });
@@ -217,7 +217,7 @@ export class FfiTypeWriter {
     private buildFundamentalProperties(type: FfiTypeDescriptor): ObjectProperty[] {
         const props: ObjectProperty[] = [{ name: "type", value: '"fundamental"' }];
         props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });
-        props.push({ name: "library", value: `"${type.lib ?? ""}"` });
+        props.push({ name: "library", value: `"${type.library ?? ""}"` });
         props.push({ name: "refFunc", value: `"${type.refFunc ?? ""}"` });
         props.push({ name: "unrefFunc", value: `"${type.unrefFunc ?? ""}"` });
         return props;
@@ -226,7 +226,7 @@ export class FfiTypeWriter {
     private buildBoxedProperties(type: FfiTypeDescriptor): ObjectProperty[] {
         const innerType = typeof type.innerType === "string" ? type.innerType : "";
 
-        const lib = type.lib ?? this.options.currentSharedLibrary ?? "";
+        const lib = type.library ?? this.options.currentSharedLibrary ?? "";
         const props: ObjectProperty[] = [{ name: "type", value: '"boxed"' }];
 
         props.push({ name: "ownership", value: `"${type.ownership ?? "full"}"` });

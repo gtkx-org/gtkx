@@ -63,10 +63,16 @@ export const kebabToSnake = (str: string): string => str.replace(/-/g, "_");
 
 export const snakeToKebab = (str: string): string => str.replace(/_/g, "-");
 
-export const toPascalCase = (str: string): string => {
-    const camel = toCamelCase(str);
-    return camel.charAt(0).toUpperCase() + camel.slice(1);
-};
+export const capitalize = (str: string): string =>
+    str.length === 0 ? str : str.charAt(0).toUpperCase() + str.slice(1);
+
+export const toPascalCase = (str: string): string => capitalize(toCamelCase(str));
+
+export const createSetterName = (camelName: string): string => `set${capitalize(camelName)}`;
+
+export const createHandlerName = (camelName: string): string => `on${capitalize(camelName)}`;
+
+export const createWrappedName = (paramName: string): string => `wrapped${capitalize(paramName)}`;
 
 export const toKebabCase = (str: string): string =>
     str

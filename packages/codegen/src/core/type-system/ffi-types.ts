@@ -5,6 +5,8 @@
  * This module owns all FFI-specific type logic, separate from the pure GIR data layer.
  */
 
+import type { TrampolineName } from "@gtkx/native";
+
 /**
  * Describes how a type should be marshalled for FFI calls.
  *
@@ -33,7 +35,7 @@ export type FfiTypeDescriptor = {
 
     innerType?: FfiTypeDescriptor | string;
 
-    lib?: string;
+    library?: string;
 
     getTypeFn?: string;
 
@@ -73,17 +75,7 @@ export type FfiTypeDescriptor = {
 
     elementSize?: number;
 
-    trampoline?:
-        | "animationTargetFunc"
-        | "asyncReady"
-        | "closure"
-        | "destroy"
-        | "drawFunc"
-        | "pathIntersectionFunc"
-        | "scaleFormatValueFunc"
-        | "shortcutFunc"
-        | "tickCallback"
-        | "treeListModelCreateFunc";
+    trampoline?: TrampolineName;
 
     sourceType?: FfiTypeDescriptor;
 
@@ -294,7 +286,7 @@ export const fundamentalType = (
     transferFull: boolean,
 ): FfiTypeDescriptor => ({
     type: "fundamental",
-    lib,
+    library: lib,
     refFunc,
     unrefFunc,
     ownership: toOwnership(transferFull),
@@ -313,7 +305,7 @@ export const boxedType = (
     type: "boxed",
     innerType,
     ownership: toOwnership(transferFull),
-    lib,
+    library: lib,
     getTypeFn,
 });
 

@@ -15,7 +15,7 @@ import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { collectDirectMembers, collectParentPropertyNames } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
-import { toCamelCase } from "../../../core/utils/naming.js";
+import { createSetterName, toCamelCase } from "../../../core/utils/naming.js";
 
 export class PropertySetterBuilder {
     private existingMethodNames: Set<string> = new Set();
@@ -67,8 +67,7 @@ export class PropertySetterBuilder {
                 return false;
             }
 
-            const camelName = toCamelCase(prop.name);
-            const setterName = `set${camelName.charAt(0).toUpperCase()}${camelName.slice(1)}`;
+            const setterName = createSetterName(toCamelCase(prop.name));
             return !this.existingMethodNames.has(setterName);
         });
     }
@@ -81,8 +80,7 @@ export class PropertySetterBuilder {
             return null;
         }
 
-        const camelName = toCamelCase(prop.name);
-        const methodName = `set${camelName.charAt(0).toUpperCase()}${camelName.slice(1)}`;
+        const methodName = createSetterName(toCamelCase(prop.name));
         const paramType = typeMapping.ts;
 
         this.ctx.addTypeImports(typeMapping.imports);
@@ -180,7 +178,7 @@ export class PropertySetterBuilder {
                     writer.writeLine(`{ type: { type: "gobject", ownership: "borrowed" }, value: this.handle },`);
                     writer.writeLine(`{ type: { type: "string", ownership: "borrowed" }, value: "${propertyName}" },`);
                     writer.writeLine(
-                        `{ type: { type: "boxed", ownership: "borrowed", innerType: "GValue", lib: "libgobject-2.0.so.0", getTypeFn: "g_value_get_type" }, value: gvalue.handle },`,
+                        `{ type: { type: "boxed", ownership: "borrowed", innerType: "GValue", library: "libgobject-2.0.so.0", getTypeFn: "g_value_get_type" }, value: gvalue.handle },`,
                     );
                 });
                 writer.writeLine("],");

@@ -6,7 +6,7 @@ import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import { collectExternalNamespaces } from "../type-system/ffi-types.js";
 import { collectDirectMembers, collectParentPropertyNames } from "../utils/class-traversal.js";
 import { collectPropertiesWithDefaults } from "../utils/default-value.js";
-import { kebabToSnake, snakeToKebab, toCamelCase } from "../utils/naming.js";
+import { createSetterName, kebabToSnake, snakeToKebab, toCamelCase } from "../utils/naming.js";
 import { qualifyType } from "../utils/type-qualification.js";
 
 /**
@@ -48,8 +48,7 @@ export class PropertyAnalyzer {
 
         const needsSyntheticSetter = prop.writable && !prop.constructOnly && !setter;
         if (needsSyntheticSetter && this.canGenerateSyntheticSetter(prop)) {
-            const camelName = toCamelCase(prop.name);
-            setter = `set${camelName.charAt(0).toUpperCase()}${camelName.slice(1)}`;
+            setter = createSetterName(toCamelCase(prop.name));
         }
 
         const isNullable = prop.type.nullable || this.inferNullabilityFromGetter(prop.getter, cls);

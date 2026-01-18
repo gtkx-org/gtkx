@@ -38,6 +38,7 @@
         "@biomejs/wasm-nodejs": "^2.3.11",
         "@clack/prompts": "^0.11.0",
         "@gtkx/gir": "workspace:*",
+        "@gtkx/native": "workspace:*",
         "citty": "^0.1.6",
         "ts-morph": "^27.0.2"
     }

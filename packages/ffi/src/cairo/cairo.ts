@@ -22,7 +22,7 @@ const LIB_GOBJECT = "libcairo-gobject.so.2";
 const FONT_OPTIONS_T = {
     type: "boxed",
     innerType: "CairoFontOptions",
-    lib: LIB_GOBJECT,
+    library: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_font_options_get_type",
     ownership: "borrowed",
 } as const;
@@ -30,7 +30,7 @@ const FONT_OPTIONS_T = {
 const CAIRO_T = {
     type: "boxed",
     innerType: "CairoContext",
-    lib: LIB_GOBJECT,
+    library: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_context_get_type",
     ownership: "borrowed",
 } as const;
@@ -38,7 +38,7 @@ const CAIRO_T = {
 const PATTERN_T = {
     type: "boxed",
     innerType: "CairoPattern",
-    lib: LIB_GOBJECT,
+    library: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_pattern_get_type",
     ownership: "full",
 } as const;
@@ -46,7 +46,7 @@ const PATTERN_T = {
 const PATTERN_T_NONE = {
     type: "boxed",
     innerType: "CairoPattern",
-    lib: LIB_GOBJECT,
+    library: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_pattern_get_type",
     ownership: "borrowed",
 } as const;
@@ -54,7 +54,7 @@ const PATTERN_T_NONE = {
 const SURFACE_T = {
     type: "boxed",
     innerType: "CairoSurface",
-    lib: LIB_GOBJECT,
+    library: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_surface_get_type",
     ownership: "full",
 } as const;
@@ -62,7 +62,7 @@ const SURFACE_T = {
 const SURFACE_T_NONE = {
     type: "boxed",
     innerType: "CairoSurface",
-    lib: LIB_GOBJECT,
+    library: LIB_GOBJECT,
     getTypeFn: "cairo_gobject_surface_get_type",
     ownership: "borrowed",
 } as const;
@@ -947,7 +947,7 @@ Context.prototype.textExtents = function (text: string): TextExtents {
             { type: CAIRO_T, value: this.handle },
             { type: { type: "string", ownership: "full" }, value: text },
             {
-                type: { type: "boxed", innerType: "cairo_text_extents_t", lib: LIB, ownership: "borrowed" },
+                type: { type: "boxed", innerType: "cairo_text_extents_t", library: LIB, ownership: "borrowed" },
                 value: extents,
             },
         ],
@@ -1102,7 +1102,7 @@ Pattern.prototype.addColorStopRgba = function (
     const ptr = call(LIB, "cairo_font_options_create", [], {
         type: "boxed",
         innerType: "CairoFontOptions",
-        lib: LIB_GOBJECT,
+        library: LIB_GOBJECT,
         getTypeFn: "cairo_gobject_font_options_get_type",
         ownership: "full",
     });

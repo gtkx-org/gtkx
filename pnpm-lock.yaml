@@ -219,6 +219,9 @@ importers:
       '@gtkx/gir':
         specifier: workspace:*
         version: link:../gir
+      '@gtkx/native':
+        specifier: workspace:*
+        version: link:../native
       citty:
         specifier: ^0.1.6
         version: 0.1.6

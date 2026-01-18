@@ -1,16 +1,8 @@
-export const APPLICATION_PARAM_NAME = "application";
+import type { TrampolineName } from "@gtkx/native";
 
-export type TrampolineName =
-    | "animationTargetFunc"
-    | "asyncReady"
-    | "closure"
-    | "destroy"
-    | "drawFunc"
-    | "pathIntersectionFunc"
-    | "scaleFormatValueFunc"
-    | "shortcutFunc"
-    | "tickCallback"
-    | "treeListModelCreateFunc";
+export type { TrampolineName };
+
+export const APPLICATION_PARAM_NAME = "application";
 
 const CALLBACK_TRAMPOLINES: Record<string, TrampolineName> = {
     "Adw.AnimationTargetFunc": "animationTargetFunc",

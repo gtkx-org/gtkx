@@ -260,7 +260,7 @@ export class RecordGenerator {
                 writer.writeLine("],");
                 const getTypeFnPart = glibGetType ? `, getTypeFn: "${glibGetType}"` : "";
                 writer.writeLine(
-                    `{ type: "boxed", ownership: "borrowed", innerType: "${glibTypeName}", lib: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
+                    `{ type: "boxed", ownership: "borrowed", innerType: "${glibTypeName}", library: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
                 );
             });
             writer.writeLine(") as NativeHandle;");
@@ -313,7 +313,7 @@ export class RecordGenerator {
                 type: "boxed",
                 ownership: "borrowed",
                 innerType,
-                lib: this.options.sharedLibrary,
+                library: this.options.sharedLibrary,
                 ...(glibGetType && { getTypeFn: glibGetType }),
             },
             wrapClassName: recordName,

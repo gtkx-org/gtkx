@@ -133,7 +133,7 @@ describe("boxedType", () => {
             type: "boxed",
             innerType: "Rectangle",
             ownership: "full",
-            lib: undefined,
+            library: undefined,
             getTypeFn: undefined,
         });
     });
@@ -143,7 +143,7 @@ describe("boxedType", () => {
             type: "boxed",
             innerType: "Rectangle",
             ownership: "borrowed",
-            lib: undefined,
+            library: undefined,
             getTypeFn: undefined,
         });
     });
@@ -153,7 +153,7 @@ describe("boxedType", () => {
             type: "boxed",
             innerType: "Rectangle",
             ownership: "full",
-            lib: "libgdk-4.so.1",
+            library: "libgdk-4.so.1",
             getTypeFn: "gdk_rectangle_get_type",
         });
     });

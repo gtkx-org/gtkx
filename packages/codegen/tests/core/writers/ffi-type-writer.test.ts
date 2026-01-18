@@ -70,7 +70,7 @@ describe("FfiTypeWriter", () => {
                     type: "boxed",
                     ownership: "full",
                     innerType: "GError",
-                    lib: "libglib-2.0.so.0",
+                    library: "libglib-2.0.so.0",
                     getTypeFn: "g_error_get_type",
                 },
             });
@@ -213,7 +213,7 @@ describe("FfiTypeWriter", () => {
                     type: "boxed",
                     ownership: "full",
                     innerType: "PangoAttrList",
-                    lib: "libpango-1.0.so.0",
+                    library: "libpango-1.0.so.0",
                 });
 
                 expect(output).toContain('"libpango-1.0.so.0"');

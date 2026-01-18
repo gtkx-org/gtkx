@@ -13,7 +13,7 @@ import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType, SelfTypeDescriptor } from "../type-system/ffi-types.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { hasVarargs, isVararg } from "../utils/filtering.js";
-import { toCamelCase, toValidIdentifier } from "../utils/naming.js";
+import { createWrappedName, toCamelCase, toValidIdentifier } from "../utils/naming.js";
 import { formatNullableReturn } from "../utils/type-qualification.js";
 import { type CallArgument, type CallbackWrapperInfo, CallExpressionBuilder } from "./call-expression-builder.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
@@ -517,7 +517,7 @@ export class MethodBodyWriter {
             this.ctx.addTypeImports(w.mapped.imports);
         }
 
-        const wrappedName = `wrapped${jsParamName.charAt(0).toUpperCase()}${jsParamName.slice(1)}`;
+        const wrappedName = createWrappedName(jsParamName);
         const wrapExpression = this.paramWrapWriter.buildCallbackWrapperExpression(
             jsParamName,
             wrapInfos,
@@ -822,7 +822,7 @@ export class MethodBodyWriter {
      *   sharedLibrary: "libgtk-4.so.1",
      *   cIdentifier: "gtk_text_iter_new",
      *   args: callArgs,
-     *   returnTypeDescriptor: { type: "boxed", ownership: "borrowed", innerType: "GtkTextIter", lib: "libgtk-4.so.1" },
+     *   returnTypeDescriptor: { type: "boxed", ownership: "borrowed", innerType: "GtkTextIter", library: "libgtk-4.so.1" },
      *   wrapClassName: "TextIter",
      *   throws: false,
      *   useClassInWrap: true,
