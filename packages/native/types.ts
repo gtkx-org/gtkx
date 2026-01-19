@@ -63,6 +63,7 @@ export type CallbackType = {
         | "drawingAreaDrawFunc"
         | "pathIntersectionFunc"
         | "scaleFormatValueFunc"
+        | "shapeRendererFunc"
         | "shortcutFunc"
         | "tickCallback"
         | "treeListModelCreateModelFunc";

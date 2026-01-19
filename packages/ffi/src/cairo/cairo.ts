@@ -348,6 +348,11 @@ declare module "../generated/cairo/context.js" {
          * @param y - Y coordinate of the surface origin
          */
         setSourceSurface(surface: Surface, x: number, y: number): this;
+        /**
+         * Gets the current point of the current path.
+         * @returns An object with x and y coordinates, or null if there is no current point
+         */
+        getCurrentPoint(): { x: number; y: number } | null;
     }
 }
 
@@ -1218,6 +1223,35 @@ Context.prototype.setSourceSurface = function (surface: Surface, x: number, y: n
         { type: "undefined" },
     );
     return this;
+};
+
+Context.prototype.getCurrentPoint = function (): { x: number; y: number } | null {
+    const hasPoint = call(LIB, "cairo_has_current_point", [{ type: CAIRO_T, value: this.handle }], {
+        type: "boolean",
+    }) as boolean;
+
+    if (!hasPoint) {
+        return null;
+    }
+
+    const xRef = alloc(8);
+    const yRef = alloc(8);
+
+    call(
+        LIB,
+        "cairo_get_current_point",
+        [
+            { type: CAIRO_T, value: this.handle },
+            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
+            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
+        ],
+        { type: "undefined" },
+    );
+
+    return {
+        x: read(xRef, DOUBLE_TYPE, 0) as number,
+        y: read(yRef, DOUBLE_TYPE, 0) as number,
+    };
 };
 
 export class PdfSurface extends Surface {

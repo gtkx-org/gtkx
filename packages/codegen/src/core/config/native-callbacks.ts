@@ -14,6 +14,7 @@ const NATIVE_CALLBACKS: Record<string, CallbackName> = {
     "Gtk.ShortcutFunc": "shortcutFunc",
     "Gtk.TickCallback": "tickCallback",
     "Gtk.TreeListModelCreateModelFunc": "treeListModelCreateModelFunc",
+    "PangoCairo.ShapeRendererFunc": "shapeRendererFunc",
 };
 
 export const getNativeCallbackName = (qualifiedName: string): CallbackName | null => {

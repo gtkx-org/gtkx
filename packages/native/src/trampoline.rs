@@ -403,6 +403,12 @@ pub struct PathIntersectionCallbackData {
     pub arg_types: Vec<crate::types::Type>,
 }
 
+pub struct ShapeRendererCallbackData {
+    pub channel: neon::event::Channel,
+    pub js_func: std::sync::Arc<neon::handle::Root<neon::types::JsFunction>>,
+    pub arg_types: Vec<crate::types::Type>,
+}
+
 impl TickCallbackData {
     /// # Safety
     ///
@@ -540,5 +546,67 @@ impl PathIntersectionCallbackData {
         );
 
         result as glib::ffi::gboolean
+    }
+}
+
+impl ShapeRendererCallbackData {
+    /// # Safety
+    ///
+    /// `user_data` must be a valid pointer to a `ShapeRendererCallbackData` that was
+    /// previously allocated with `Box::into_raw`, or null.
+    pub unsafe extern "C" fn release(user_data: *mut c_void) {
+        let Some(data_ptr) = NonNull::new(user_data as *mut ShapeRendererCallbackData) else {
+            return;
+        };
+        let _ = unsafe { Box::from_raw(data_ptr.as_ptr()) };
+    }
+
+    /// Trampoline for `PangoCairoShapeRendererFunc`.
+    ///
+    /// # Safety
+    ///
+    /// - `cr` must be a valid pointer to a cairo_t.
+    /// - `attr` must be a valid pointer to a PangoAttrShape.
+    /// - `do_path` is a gboolean indicating whether to only append the path.
+    /// - `user_data` must be a valid pointer to a `ShapeRendererCallbackData` that was
+    ///   previously allocated with `Box::into_raw`, or null.
+    pub unsafe extern "C" fn shape_renderer_func(
+        cr: *mut c_void,
+        attr: *const c_void,
+        do_path: glib::ffi::gboolean,
+        user_data: *mut c_void,
+    ) {
+        let Some(data_ptr) = NonNull::new(user_data as *mut ShapeRendererCallbackData) else {
+            eprintln!(
+                "[gtkx] WARNING: ShapeRendererCallbackData::shape_renderer_func: user_data is null, callback skipped"
+            );
+            return;
+        };
+
+        let data = unsafe { data_ptr.as_ref() };
+
+        let cr_value = crate::value::Value::Object(
+            crate::managed::NativeValue::Boxed(crate::managed::Boxed::borrowed(
+                Some(cairo::Context::static_type()),
+                cr,
+            ))
+            .into(),
+        );
+
+        let attr_boxed = crate::managed::Boxed::borrowed(None, attr as *mut c_void);
+        let attr_value =
+            crate::value::Value::Object(crate::managed::NativeValue::Boxed(attr_boxed).into());
+
+        let do_path_value = crate::value::Value::Boolean(do_path != glib::ffi::GFALSE);
+
+        let args = vec![cr_value, attr_value, do_path_value];
+
+        crate::js_dispatch::JsDispatcher::global().invoke_and_wait(
+            &data.channel,
+            &data.js_func,
+            args,
+            false,
+            |_| (),
+        );
     }
 }

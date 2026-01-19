@@ -159,6 +159,7 @@ pub enum CallbackKind {
     TickCallback,
     PathIntersectionFunc,
     ScaleFormatValueFunc,
+    ShapeRendererFunc,
 }
 
 impl std::str::FromStr for CallbackKind {
@@ -176,8 +177,9 @@ impl std::str::FromStr for CallbackKind {
             "tickCallback" => Ok(CallbackKind::TickCallback),
             "pathIntersectionFunc" => Ok(CallbackKind::PathIntersectionFunc),
             "scaleFormatValueFunc" => Ok(CallbackKind::ScaleFormatValueFunc),
+            "shapeRendererFunc" => Ok(CallbackKind::ShapeRendererFunc),
             _ => Err(format!(
-                "'kind' must be one of: 'closure', 'asyncReadyCallback', 'destroyNotify', 'drawingAreaDrawFunc', 'shortcutFunc', 'treeListModelCreateModelFunc', 'animationTargetFunc', 'tickCallback', 'pathIntersectionFunc', 'scaleFormatValueFunc'; got '{}'",
+                "'kind' must be one of: 'closure', 'asyncReadyCallback', 'destroyNotify', 'drawingAreaDrawFunc', 'shortcutFunc', 'treeListModelCreateModelFunc', 'animationTargetFunc', 'tickCallback', 'pathIntersectionFunc', 'scaleFormatValueFunc', 'shapeRendererFunc'; got '{}'",
                 s
             )),
         }
@@ -366,6 +368,21 @@ impl CallbackKind {
                 CallbackValue::build(
                     closure,
                     ClosureCallbackData::scale_format_value_func as *mut c_void,
+                )
+            }
+
+            CallbackKind::ShapeRendererFunc => {
+                let data = crate::trampoline::ShapeRendererCallbackData {
+                    channel: callback.channel.clone(),
+                    js_func: callback.js_func.clone(),
+                    arg_types: callback_type.arg_types.clone(),
+                };
+
+                Self::build_custom_data_value(
+                    data,
+                    crate::trampoline::ShapeRendererCallbackData::shape_renderer_func
+                        as *mut c_void,
+                    crate::trampoline::ShapeRendererCallbackData::release as *mut c_void,
                 )
             }
         }

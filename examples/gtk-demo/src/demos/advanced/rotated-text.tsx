@@ -1,188 +1,166 @@
-import type { Context } from "@gtkx/ffi/cairo";
+import { type Context, Pattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
-import { GtkBox, GtkDrawingArea, GtkFrame, GtkLabel, GtkScale } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { GtkBox, GtkDrawingArea, GtkLabel } from "@gtkx/react";
+import { useCallback, useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./rotated-text.tsx?raw";
 
-const SAMPLE_TEXTS = ["GTKX", "React + GTK4", "Native Desktop Apps", "Linux"];
+const TEXT = "I \u2665 GTK";
+const N_WORDS = 5;
+const RADIUS = 150;
+const FONT = "Serif 18";
+const HEART_CODEPOINT = 0x2665;
+
+const drawHeart = (cr: Context, doPath: boolean) => {
+    cr.moveTo(0.5, 0.0);
+    cr.lineTo(0.9, -0.4);
+    cr.curveTo(1.1, -0.8, 0.5, -0.9, 0.5, -0.5);
+    cr.curveTo(0.5, -0.9, -0.1, -0.8, 0.1, -0.4);
+    cr.closePath();
+
+    if (!doPath) {
+        cr.setSourceRgb(1.0, 0.0, 0.0);
+        cr.fill();
+    }
+};
+
+const createFancyAttrListForLayout = (layout: Pango.Layout): Pango.AttrList => {
+    const fontDesc = layout.getFontDescription();
+    const context = layout.getContext();
+    const metrics = context.getMetrics(fontDesc, undefined);
+    const ascent = metrics.getAscent();
+
+    const inkRect = new Pango.Rectangle({
+        x: 0,
+        y: -ascent,
+        width: ascent,
+        height: ascent,
+    });
+    const logicalRect = new Pango.Rectangle({
+        x: 0,
+        y: -ascent,
+        width: ascent,
+        height: ascent,
+    });
+
+    const attrs = new Pango.AttrList();
+
+    let byteIndex = 0;
+    for (let i = 0; i < TEXT.length; i++) {
+        const char = TEXT[i];
+        const codepoint = TEXT.codePointAt(i);
+
+        if (codepoint === HEART_CODEPOINT) {
+            const attr = Pango.attrShapeNew(inkRect, logicalRect);
+            attr.startIndex = byteIndex;
+            attr.endIndex = byteIndex + 3;
+            attrs.insert(attr);
+        }
+
+        if (codepoint !== undefined && codepoint > 0xffff) {
+            byteIndex += 4;
+            i++;
+        } else if (char !== undefined) {
+            byteIndex += Buffer.byteLength(char, "utf8");
+        }
+    }
+
+    return attrs;
+};
 
 const RotatedTextDemo = () => {
-    const [rotation, setRotation] = useState(0);
-    const [fontSize, setFontSize] = useState(24);
-    const [spacing, setSpacing] = useState(30);
+    const labelRef = useRef<Gtk.Label | null>(null);
+    const shapeRendererSetup = useRef(false);
+
+    const fancyShapeRenderer = useCallback((cr: Context, _attr: Pango.AttrShape, doPath: boolean) => {
+        const currentPoint = cr.getCurrentPoint();
+        if (currentPoint) {
+            cr.translate(currentPoint.x, currentPoint.y);
+        }
+
+        cr.scale(18, 18);
+        drawHeart(cr, doPath);
+    }, []);
 
     const drawFunc = useCallback(
         (_area: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-            cr.setSourceRgba(0.1, 0.1, 0.1, 1).paint();
+            const deviceRadius = Math.min(width, height) / 2;
 
-            const centerX = width / 2;
-            const centerY = height / 2;
+            cr.translate(deviceRadius + (width - 2 * deviceRadius) / 2, deviceRadius + (height - 2 * deviceRadius) / 2);
+            cr.scale(deviceRadius / RADIUS, deviceRadius / RADIUS);
 
-            const numTexts = SAMPLE_TEXTS.length;
-            const angleStep = (360 / numTexts) * (Math.PI / 180);
-            const baseAngle = rotation * (Math.PI / 180);
+            const gradient = Pattern.createLinear(-RADIUS, -RADIUS, RADIUS, RADIUS);
+            gradient.addColorStopRgb(0, 0.5, 0.0, 0.0);
+            gradient.addColorStopRgb(1, 0.0, 0.0, 0.5);
+            cr.setSource(gradient);
 
-            for (let i = 0; i < numTexts; i++) {
-                const text = SAMPLE_TEXTS[i];
-                if (!text) continue;
+            const context = PangoCairo.createContext(cr);
+            PangoCairo.contextSetShapeRenderer(context, fancyShapeRenderer);
 
-                const angle = baseAngle + i * angleStep;
+            const layout = new Pango.Layout(context);
+            const fontDesc = Pango.FontDescription.fromString(FONT);
+            layout.setFontDescription(fontDesc);
+            layout.setText(TEXT, -1);
 
-                cr.save();
+            const attrs = createFancyAttrListForLayout(layout);
+            layout.setAttributes(attrs);
 
-                cr.translate(centerX, centerY)
-                    .rotate(angle)
-                    .translate(0, -80 - spacing);
-
-                const layout = PangoCairo.createLayout(cr);
-                const fontDesc = Pango.FontDescription.fromString(`Sans Bold ${fontSize}px`);
-                layout.setFontDescription(fontDesc);
-                layout.setText(text, -1);
+            for (let i = 0; i < N_WORDS; i++) {
+                PangoCairo.updateLayout(cr, layout);
 
                 const logicalRect = new Pango.Rectangle();
                 layout.getPixelExtents(undefined, logicalRect);
-                cr.translate(-logicalRect.width / 2, -logicalRect.height / 2);
+                const layoutWidth = logicalRect.width;
 
-                cr.setSourceRgba(0, 0, 0, 0.5).translate(2, 2);
-                PangoCairo.showLayout(cr, layout);
-                cr.translate(-2, -2);
-
-                const hue = (i / numTexts + rotation / 360) % 1;
-                const [r, g, b] = hslToRgb(hue, 0.7, 0.6);
-                cr.setSourceRgba(r, g, b, 1);
+                cr.moveTo(-layoutWidth / 2, -RADIUS * 0.9);
                 PangoCairo.showLayout(cr, layout);
 
-                cr.restore();
+                cr.rotate((2 * Math.PI) / N_WORDS);
             }
-
-            cr.arc(centerX, centerY, 10, 0, 2 * Math.PI)
-                .setSourceRgba(1, 1, 1, 0.3)
-                .fill();
         },
-        [rotation, fontSize, spacing],
+        [fancyShapeRenderer],
     );
 
+    useEffect(() => {
+        const label = labelRef.current;
+        if (!label || shapeRendererSetup.current) return;
+
+        shapeRendererSetup.current = true;
+
+        const layout = label.getLayout();
+        const context = layout.getContext();
+        PangoCairo.contextSetShapeRenderer(context, fancyShapeRenderer);
+
+        const attrs = createFancyAttrListForLayout(layout);
+        label.setAttributes(attrs);
+    }, [fancyShapeRenderer]);
+
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={20}
-            marginStart={20}
-            marginEnd={20}
-            marginTop={20}
-            marginBottom={20}
-        >
-            <GtkLabel label="Rotated Text" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <GtkLabel
-                label="Text can be rotated and transformed using Cairo's transformation matrix. This demo shows text arranged in a circle with dynamic rotation, using Pango for text rendering."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} homogeneous>
+            <GtkDrawingArea
+                cssClasses={["view"]}
+                contentWidth={2 * RADIUS}
+                contentHeight={2 * RADIUS}
+                onDraw={drawFunc}
             />
-
-            <GtkFrame label="Preview">
-                <GtkDrawingArea onDraw={drawFunc} contentWidth={400} contentHeight={350} hexpand />
-            </GtkFrame>
-
-            <GtkFrame label="Controls">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={16}
-                    marginStart={16}
-                    marginEnd={16}
-                    marginTop={16}
-                    marginBottom={16}
-                >
-                    <GtkBox spacing={16}>
-                        <GtkLabel label="Rotation:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            value={rotation}
-                            lower={0}
-                            upper={360}
-                            stepIncrement={1}
-                            pageIncrement={15}
-                            onValueChanged={setRotation}
-                        />
-                    </GtkBox>
-
-                    <GtkBox spacing={16}>
-                        <GtkLabel label="Font Size:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            value={fontSize}
-                            lower={12}
-                            upper={72}
-                            stepIncrement={1}
-                            pageIncrement={4}
-                            onValueChanged={setFontSize}
-                        />
-                    </GtkBox>
-
-                    <GtkBox spacing={16}>
-                        <GtkLabel label="Spacing:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            value={spacing}
-                            lower={0}
-                            upper={90}
-                            stepIncrement={5}
-                            pageIncrement={15}
-                            onValueChanged={setSpacing}
-                        />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
             <GtkLabel
-                label="Uses cr.translate() and cr.rotate() for transformations, Pango.Layout for text measurement and rendering, and PangoCairo.showLayout() for drawing."
-                wrap
-                cssClasses={["dim-label", "caption"]}
-                halign={Gtk.Align.START}
+                ref={labelRef}
+                label={TEXT}
+                cssClasses={["view"]}
+                halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.CENTER}
             />
         </GtkBox>
     );
 };
 
-function hslToRgb(h: number, s: number, l: number): [number, number, number] {
-    let r: number, g: number, b: number;
-
-    if (s === 0) {
-        r = g = b = l;
-    } else {
-        const hue2rgb = (p: number, q: number, t: number) => {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1 / 6) return p + (q - p) * 6 * t;
-            if (t < 1 / 2) return q;
-            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-            return p;
-        };
-
-        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        const p = 2 * l - q;
-        r = hue2rgb(p, q, h + 1 / 3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1 / 3);
-    }
-
-    return [r, g, b];
-}
-
 export const rotatedTextDemo: Demo = {
     id: "rotated-text",
     title: "Pango/Rotated Text",
-    description: "Text with rotation and transformation",
-    keywords: ["text", "rotate", "transform", "cairo", "pango", "drawing", "graphics"],
+    description: "Custom shape rendering with Pango",
+    keywords: ["text", "rotate", "transform", "cairo", "pango", "drawing", "graphics", "heart", "shape"],
     component: RotatedTextDemo,
     sourceCode,
 };
