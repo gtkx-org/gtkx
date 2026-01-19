@@ -37,6 +37,7 @@ struct ReadRequest {
     handle: NativeHandle,
     field_type: Type,
     offset: usize,
+    ptr_offset: Option<usize>,
 }
 
 impl ReadRequest {
@@ -47,15 +48,32 @@ impl ReadRequest {
         let field_type = Type::from_js_value(cx, js_type.upcast())?;
         let handle = *handle.as_inner();
 
+        let ptr_offset = cx
+            .argument_opt(3)
+            .and_then(|v| v.downcast::<JsNumber, _>(cx).ok())
+            .map(|n| n.value(cx) as usize);
+
         Ok(Self {
             handle,
             field_type,
             offset,
+            ptr_offset,
         })
     }
 
     fn execute(self) -> anyhow::Result<Value> {
-        let field_ptr = self.handle.field_ptr_const(self.offset)?;
+        let base_ptr = self.handle.require_non_null_ptr()?;
+
+        let field_ptr = if let Some(ptr_offset) = self.ptr_offset {
+            let ptr_field = unsafe { (base_ptr as *const u8).add(ptr_offset) as *const *const u8 };
+            let dereferenced_ptr = unsafe { ptr_field.read_unaligned() };
+            if dereferenced_ptr.is_null() {
+                anyhow::bail!("Pointer at offset {} is null", ptr_offset);
+            }
+            unsafe { dereferenced_ptr.add(self.offset) }
+        } else {
+            unsafe { (base_ptr as *const u8).add(self.offset) }
+        };
 
         match self.field_type {
             Type::Integer(int_type) => {
@@ -135,6 +153,7 @@ struct WriteRequest {
     field_type: Type,
     offset: usize,
     value: Value,
+    ptr_offset: Option<usize>,
 }
 
 impl WriteRequest {
@@ -147,16 +166,33 @@ impl WriteRequest {
         let value = Value::from_js_value(cx, js_value)?;
         let handle = *handle.as_inner();
 
+        let ptr_offset = cx
+            .argument_opt(4)
+            .and_then(|v| v.downcast::<JsNumber, _>(cx).ok())
+            .map(|n| n.value(cx) as usize);
+
         Ok(Self {
             handle,
             field_type,
             offset,
             value,
+            ptr_offset,
         })
     }
 
     fn execute(self) -> anyhow::Result<()> {
-        let field_ptr = self.handle.field_ptr(self.offset)?;
+        let base_ptr = self.handle.require_non_null_ptr()?;
+
+        let field_ptr = if let Some(ptr_offset) = self.ptr_offset {
+            let ptr_field = unsafe { (base_ptr as *const u8).add(ptr_offset) as *const *mut u8 };
+            let dereferenced_ptr = unsafe { ptr_field.read_unaligned() };
+            if dereferenced_ptr.is_null() {
+                anyhow::bail!("Pointer at offset {} is null", ptr_offset);
+            }
+            unsafe { dereferenced_ptr.add(self.offset) }
+        } else {
+            unsafe { (base_ptr as *mut u8).add(self.offset) }
+        };
 
         match (&self.field_type, &self.value) {
             (Type::Integer(int_type), Value::Number(n)) => {

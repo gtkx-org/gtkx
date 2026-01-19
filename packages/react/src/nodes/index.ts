@@ -1,5 +1,6 @@
 import "./action-row.js";
 import "./adjustable.js";
+import "./animation/index.js";
 import "./alert-dialog-response.js";
 import "./application.js";
 import "./autowrapped.js";

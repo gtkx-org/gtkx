@@ -59,7 +59,7 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 
 ## Games
 - [✓] listview-minesweeper.tsx ↔ listview_minesweeper.c (FIXED - matches official behavior)
-- [x] peg-solitaire.tsx ↔ peg_solitaire.c (🔴 Critical - drag-drop)
+- [✓] peg-solitaire.tsx ↔ peg_solitaire.c (FIXED - matches official behavior)
 - [x] sliding-puzzle.tsx ↔ sliding_puzzle.c (🟡 Major - multi-tile, keyboard)
 
 ## Gestures
@@ -145,7 +145,7 @@ The following demos were removed because they require custom GObject subclasses 
 ## Summary
 - Total demos: 77 (10 removed - require GObject subclassing)
 - Not started: 0
-- Reviewed: 60
-- Fully matched: 17
-- Critical issues: 12
+- Reviewed: 59
+- Fully matched: 18
+- Critical issues: 11
 - Major issues: 37

@@ -1,4 +1,4 @@
-export { createRef, getNativeId, type NativeHandle } from "@gtkx/native";
+export { createRef, getNativeId, readPointerView, readView, type NativeHandle } from "@gtkx/native";
 export * from "./batch.js";
 export * from "./native/base.js";
 export * from "./native/error.js";
@@ -8,4 +8,3 @@ export * from "./native/object.js";
 export * from "./registry.js";
 import "./cairo/cairo.js";
 import "./gobject/value.js";
-import "./pango/pango.js";

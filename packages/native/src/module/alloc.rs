@@ -48,16 +48,6 @@ impl AllocRequest {
     }
 
     fn execute(self) -> anyhow::Result<NativeHandle> {
-        let gtype = self.type_name.as_ref().map(|name| {
-            let boxed_type = BoxedType::new(
-                Ownership::Full,
-                name.clone(),
-                self.library_name.clone(),
-                None,
-            );
-            boxed_type.gtype()
-        });
-
         // SAFETY: g_malloc0 is a safe GLib memory allocation function
         let ptr = unsafe { g_malloc0(self.size) };
 
@@ -66,7 +56,17 @@ impl AllocRequest {
             anyhow::bail!("Failed to allocate memory for {}", type_desc);
         }
 
-        let boxed = Boxed::from_glib_full(gtype.flatten(), ptr);
+        let gtype = self.type_name.as_ref().map(|type_name| {
+            let boxed_type = BoxedType::new(
+                Ownership::Full,
+                type_name.clone(),
+                self.library_name.clone(),
+                None,
+            );
+            boxed_type.gtype()
+        }).flatten();
+
+        let boxed = Boxed::from_glib_full(gtype, ptr);
         Ok(NativeValue::Boxed(boxed).into())
     }
 }

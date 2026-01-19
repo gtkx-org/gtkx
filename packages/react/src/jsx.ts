@@ -8,6 +8,7 @@ import type {
     GtkListViewProps as GeneratedGtkListViewProps,
     WidgetSlotNames,
 } from "./generated/jsx.js";
+import type { AnimationProps as AnimationNodeProps } from "./nodes/animation/index.js";
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
@@ -15,6 +16,7 @@ import type { ShortcutControllerProps as ShortcutControllerNodeProps } from "./n
 import type { TextAnchorProps } from "./nodes/text-anchor.js";
 import type { TextTagProps } from "./nodes/text-tag.js";
 
+export type { AnimatableProperties, SpringTransition, TimedTransition, Transition } from "./nodes/animation/index.js";
 export type { TextAnchorProps } from "./nodes/text-anchor.js";
 export type { TextTagProps } from "./nodes/text-tag.js";
 export type { DragSourceProps, DropTargetProps, EventControllerProps, GestureDragProps } from "./types.js";
@@ -920,6 +922,25 @@ export const x = {
      * ```
      */
     Shortcut: "Shortcut" as const,
+
+    /**
+     * Declarative animation wrapper using libadwaita's animation primitives.
+     *
+     * Provides Framer Motion-like API for animating GTK widgets with spring
+     * or timed animations.
+     *
+     * @example
+     * ```tsx
+     * <x.Animation
+     *   initial={{ opacity: 0, marginTop: -20 }}
+     *   animate={{ opacity: 1, marginTop: 0 }}
+     *   transition={{ type: "spring", stiffness: 300, damping: 20 }}
+     * >
+     *   <GtkLabel label="Hello World" />
+     * </x.Animation>
+     * ```
+     */
+    Animation: "Animation" as const,
 };
 
 declare global {
@@ -956,6 +977,7 @@ declare global {
                 NavigationPage: NavigationPageProps;
                 ShortcutController: ShortcutControllerProps;
                 Shortcut: ShortcutProps;
+                Animation: AnimationNodeProps;
             }
         }
     }

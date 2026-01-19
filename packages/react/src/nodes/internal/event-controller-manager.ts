@@ -36,6 +36,9 @@ const PROP_CONTROLLER_MAP: PropToControllerMap = {
     onDragEnd: { type: "dragSource", signalName: "drag-end" },
     onDragCancel: { type: "dragSource", signalName: "drag-cancel" },
     dragActions: { type: "dragSource", isConfig: true },
+    dragIcon: { type: "dragSource", isConfig: true },
+    dragIconHotX: { type: "dragSource", isConfig: true },
+    dragIconHotY: { type: "dragSource", isConfig: true },
     onDrop: { type: "dropTarget", signalName: "drop" },
     onDropEnter: { type: "dropTarget", signalName: "enter" },
     onDropLeave: { type: "dropTarget", signalName: "leave" },
@@ -59,6 +62,9 @@ export class EventControllerManager {
     private owner: object;
     private widget: Gtk.Widget;
     private controllers: Map<ControllerType, Gtk.EventController> = new Map();
+    private pendingDragIcon: Gdk.Paintable | null | undefined = undefined;
+    private pendingDragIconHotX: number | undefined = undefined;
+    private pendingDragIconHotY: number | undefined = undefined;
 
     private readonly controllerFactories: Record<ControllerType, ControllerFactory> = {
         motion: () => new Gtk.EventControllerMotion(),
@@ -125,7 +131,23 @@ export class EventControllerManager {
         } else if (propName === "dropTypes" && controller instanceof Gtk.DropTarget) {
             const types = (value as number[]) ?? [];
             controller.setGtypes(types.length, types);
+        } else if (propName === "dragIcon" && controller instanceof Gtk.DragSource) {
+            this.pendingDragIcon = value as Gdk.Paintable | null | undefined;
+            this.applyDragIcon(controller);
+        } else if (propName === "dragIconHotX" && controller instanceof Gtk.DragSource) {
+            this.pendingDragIconHotX = value as number | undefined;
+            this.applyDragIcon(controller);
+        } else if (propName === "dragIconHotY" && controller instanceof Gtk.DragSource) {
+            this.pendingDragIconHotY = value as number | undefined;
+            this.applyDragIcon(controller);
         }
+    }
+
+    private applyDragIcon(controller: Gtk.DragSource): void {
+        if (this.pendingDragIcon === undefined) return;
+        const hotX = this.pendingDragIconHotX ?? 0;
+        const hotY = this.pendingDragIconHotY ?? 0;
+        controller.setIcon(hotX, hotY, this.pendingDragIcon);
     }
 
     private handleSignalProp(

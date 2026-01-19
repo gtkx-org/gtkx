@@ -10,6 +10,7 @@ import {
     x,
 } from "@gtkx/react";
 import { useState } from "react";
+import { AnimationDemo } from "./demos/animation.js";
 import { LayoutDemo } from "./demos/layout.js";
 import { ListDemo } from "./demos/list.js";
 import { MenuDemo } from "./demos/menu.js";
@@ -65,6 +66,12 @@ export const App = () => {
                     <x.StackPage id="widgets" title="Widgets" iconName="applications-system-symbolic">
                         <GtkScrolledWindow hexpand vexpand propagateNaturalHeight>
                             <WidgetDemo />
+                        </GtkScrolledWindow>
+                    </x.StackPage>
+
+                    <x.StackPage id="animation" title="Animation" iconName="media-playback-start-symbolic">
+                        <GtkScrolledWindow hexpand vexpand propagateNaturalHeight>
+                            <AnimationDemo />
                         </GtkScrolledWindow>
                     </x.StackPage>
                 </AdwViewStack>

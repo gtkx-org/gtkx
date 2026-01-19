@@ -13,16 +13,14 @@ injectGlobal`
 }
 
 .blur-overlay {
-    backdrop-filter: blur(14px);
     background: none;
-    background-color: transparent;
+    background-color: rgba(0, 0, 0, 0.3);
     color: white;
     transition-property: background-color, color;
-    transition-duration: 1s;
+    transition-duration: 0.3s;
 }
 
 .blur-overlay:hover {
-    backdrop-filter: blur(14px);
     background: none;
     background-color: rgba(200, 200, 200, 0.9);
     color: black;
@@ -51,8 +49,8 @@ const TransparentDemo = () => {
 export const transparentDemo: Demo = {
     id: "transparent",
     title: "Transparency",
-    description: "Blur the background behind an overlay",
-    keywords: ["GtkOverlay", "GtkSnapshot", "blur", "backdrop-filter"],
+    description: "Semi-transparent overlay controls",
+    keywords: ["GtkOverlay", "transparency"],
     component: TransparentDemo,
     sourceCode,
 };

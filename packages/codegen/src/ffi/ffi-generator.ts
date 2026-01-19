@@ -322,7 +322,7 @@ export class FfiGenerator {
         const publicFields = record.getPublicFields();
         if (publicFields.length === 0) return false;
 
-        return publicFields.every((field) => this.isGeneratableFieldType(field.type.name as string));
+        return publicFields.some((field) => this.isGeneratableFieldType(field.type.name as string));
     }
 
     private isUsableStubRecord(record: GirRecord): boolean {

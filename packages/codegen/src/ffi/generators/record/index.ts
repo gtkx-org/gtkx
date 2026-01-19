@@ -386,7 +386,11 @@ export class RecordGenerator {
         const layout = this.fieldBuilder.calculateLayout(fields);
         const methodNames = new Set(methods.map((m) => toCamelCase(m.name)));
 
-        for (const { field, offset } of layout) {
+        for (let idx = 0; idx < layout.length; idx++) {
+            const layoutItem = layout[idx];
+            if (!layoutItem) continue;
+            const { field, offset } = layoutItem;
+
             const isReadable = field.readable !== false;
             const isWritable = field.writable !== false;
 
@@ -397,10 +401,12 @@ export class RecordGenerator {
             if (fieldName === "id") fieldName = "id_";
 
             const typeName = String(field.type.name);
+            if (!this.fieldBuilder.isGeneratableFieldType(typeName)) continue;
+
             const isNestedStruct = this.fieldBuilder.isNestedStructType(typeName);
 
             if (isNestedStruct) {
-                this.generateNestedStructAccessor(field, fieldName, offset, classDecl);
+                this.generateFlattenedNestedStructAccessors(field, fieldName, offset, classDecl);
             } else {
                 const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
                 this.ctx.addTypeImports(typeMapping.imports);
@@ -436,39 +442,43 @@ export class RecordGenerator {
         }
     }
 
-    private generateNestedStructAccessor(
+    private generateFlattenedNestedStructAccessors(
         field: GirField,
         fieldName: string,
-        offset: number,
+        baseOffset: number,
         classDecl: ClassDeclaration,
     ): void {
-        const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-        this.ctx.addTypeImports(typeMapping.imports);
+        const typeName = String(field.type.name);
+        const nestedLayout = this.fieldBuilder.getNestedStructLayout(typeName);
+        if (!nestedLayout) return;
 
-        const cacheFieldName = `_${fieldName}`;
+        const isReadable = field.readable !== false;
+        if (!isReadable) return;
 
-        classDecl.addProperty({
-            name: cacheFieldName,
-            type: `${typeMapping.ts} | null`,
-            initializer: "null",
-            scope: "private" as unknown as undefined,
-        });
+        for (const nestedItem of nestedLayout) {
+            const nestedField = nestedItem.field;
+            const nestedOffset = baseOffset + nestedItem.offset;
+            const nestedTypeName = String(nestedField.type.name);
 
-        this.ctx.usesNativeHandle = true;
+            if (!this.fieldBuilder.isGeneratableFieldType(nestedTypeName)) continue;
 
-        classDecl.addGetAccessor({
-            name: fieldName,
-            returnType: typeMapping.ts,
-            docs: buildJsDocStructure(field.doc, this.options.namespace),
-            statements: (writer) => {
-                writer.writeLine(`if (!this.${cacheFieldName}) {`);
-                writer.writeLine(`    this.${cacheFieldName} = new ${typeMapping.ts}();`);
-                writer.writeLine(
-                    `    (this.${cacheFieldName} as { handle: NativeHandle }).handle = (BigInt(this.handle as unknown as bigint) + ${offset}n) as unknown as NativeHandle;`,
-                );
-                writer.writeLine(`}`);
-                writer.writeLine(`return this.${cacheFieldName};`);
-            },
-        });
+            let nestedFieldName = toValidIdentifier(toCamelCase(nestedField.name));
+            const combinedName = `${fieldName}${nestedFieldName.charAt(0).toUpperCase()}${nestedFieldName.slice(1)}`;
+
+            const typeMapping = this.ffiMapper.mapType(nestedField.type, false, nestedField.type.transferOwnership);
+            this.ctx.addTypeImports(typeMapping.imports);
+
+            this.ctx.usesRead = true;
+            classDecl.addGetAccessor({
+                name: combinedName,
+                returnType: typeMapping.ts,
+                docs: buildJsDocStructure(nestedField.doc, this.options.namespace),
+                statements: (writer) => {
+                    writer.write("return read(this.handle, ");
+                    this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
+                    writer.writeLine(`, ${nestedOffset}) as ${typeMapping.ts};`);
+                },
+            });
+        }
     }
 }

@@ -272,9 +272,12 @@ describe("isPrimitiveFieldType", () => {
     });
 
     it("returns false for non-primitive types", () => {
-        expect(isPrimitiveFieldType("utf8")).toBe(false);
         expect(isPrimitiveFieldType("gpointer")).toBe(false);
         expect(isPrimitiveFieldType("GObject")).toBe(false);
+    });
+
+    it("returns true for utf8 string type", () => {
+        expect(isPrimitiveFieldType("utf8")).toBe(true);
     });
 });
 

@@ -70,6 +70,21 @@ export interface DragSourceProps {
      * Defaults to Gdk.DragAction.COPY if not specified.
      */
     dragActions?: Gdk.DragAction;
+    /**
+     * Paintable to use as the drag icon during DND operations.
+     * If null, a default icon is used.
+     */
+    dragIcon?: Gdk.Paintable | null;
+    /**
+     * X coordinate of the hotspot relative to the drag icon's top-left corner.
+     * Defaults to 0.
+     */
+    dragIconHotX?: number;
+    /**
+     * Y coordinate of the hotspot relative to the drag icon's top-left corner.
+     * Defaults to 0.
+     */
+    dragIconHotY?: number;
 }
 
 /**

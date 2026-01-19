@@ -171,4 +171,40 @@ export function poll(): void {
     native.poll();
 }
 
+/**
+ * Creates a view into a parent struct's memory at a given offset.
+ *
+ * Used for accessing nested structs within a parent struct. The returned
+ * handle shares memory ownership with the parent via Arc reference counting.
+ *
+ * @param handle - Native handle pointing to the parent struct (must be Struct or View type)
+ * @param offset - Byte offset from the parent's base pointer
+ * @returns Native handle pointing to the view location
+ */
+export function readView(handle: unknown, offset: number): unknown {
+    return native.readView(handle, offset);
+}
+
+/**
+ * Creates a view into pointed array memory at a given element index.
+ *
+ * Used for accessing elements of arrays pointed to by struct fields.
+ * The array pointer is read from the parent at ptrOffset, then the view
+ * is created at the calculated element offset.
+ *
+ * @param handle - Native handle pointing to the parent struct
+ * @param ptrOffset - Byte offset of the pointer field in the parent
+ * @param elementIndex - Index of the element to access
+ * @param elementSize - Size of each element in bytes
+ * @returns Native handle pointing to the array element
+ */
+export function readPointerView(
+    handle: unknown,
+    ptrOffset: number,
+    elementIndex: number,
+    elementSize: number,
+): unknown {
+    return native.readPointerView(handle, ptrOffset, elementIndex, elementSize);
+}
+
 export type { NativeHandle, Ref, Arg, Type, CallbackType };

@@ -81,18 +81,6 @@ impl NativeHandle {
         Ok(ptr)
     }
 
-    pub(crate) fn field_ptr(&self, offset: usize) -> anyhow::Result<*mut u8> {
-        let ptr = self.require_non_null_ptr()?;
-        // SAFETY: Caller guarantees offset is within bounds of the object
-        Ok(unsafe { (ptr as *mut u8).add(offset) })
-    }
-
-    pub(crate) fn field_ptr_const(&self, offset: usize) -> anyhow::Result<*const u8> {
-        let ptr = self.require_non_null_ptr()?;
-        // SAFETY: Caller guarantees offset is within bounds of the object
-        Ok(unsafe { (ptr as *const u8).add(offset) })
-    }
-
     pub fn inner(&self) -> usize {
         self.0
     }
@@ -114,7 +102,8 @@ impl Finalize for NativeHandle {
 ///
 /// `Boxed` and `Fundamental` use custom wrappers because they require type-specific
 /// lifecycle management:
-/// - `Boxed`: Uses `g_boxed_copy`/`g_boxed_free` which require a GType parameter
+/// - `Boxed`: Uses `g_boxed_copy`/`g_boxed_free` for GType-registered types,
+///   or `g_malloc0`/`g_free` for plain structs without GType
 /// - `Fundamental`: Uses custom ref/unref functions that must be looked up dynamically
 #[derive(Debug, Clone)]
 pub enum NativeValue {

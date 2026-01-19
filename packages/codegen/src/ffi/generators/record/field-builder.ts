@@ -111,11 +111,14 @@ export class FieldBuilder {
         };
     }
 
-    /**
-     * Gets writable fields for init interface.
-     */
     getWritableFields(fields: readonly GirField[]): GirField[] {
-        return fields.filter((f) => !f.private && f.writable !== false && this.isWritableType(f.type));
+        return fields.filter(
+            (f) =>
+                !f.private &&
+                f.writable !== false &&
+                this.isWritableType(f.type) &&
+                this.isGeneratableFieldType(String(f.type.name)),
+        );
     }
 
     /**
@@ -135,6 +138,38 @@ export class FieldBuilder {
         if (!record || record.opaque || record.disguised) return false;
         if (record.glibTypeName) return false;
         return true;
+    }
+
+    getNestedStructLayout(typeName: string): FieldLayout[] | null {
+        const record = this.resolveRecord(typeName);
+        if (!record) return null;
+        return this.calculateLayout(record.fields);
+    }
+
+    /**
+     * Gets the size of a record type for use in array element access.
+     */
+    getRecordSize(typeName: string): number {
+        return this.getFieldSize({ name: typeName });
+    }
+
+    isGeneratableFieldType(typeName: string, visited: Set<string> = new Set()): boolean {
+        if (isPrimitiveFieldType(typeName)) return true;
+
+        if (visited.has(typeName)) return false;
+        visited.add(typeName);
+
+        const resolved = this.resolveRecord(typeName);
+        if (!resolved) return false;
+
+        if (resolved.glibTypeName) return true;
+
+        if (resolved.opaque || resolved.disguised) return false;
+
+        const publicFields = resolved.getPublicFields();
+        if (publicFields.length === 0) return false;
+
+        return publicFields.every((field) => this.isGeneratableFieldType(field.type.name as string, visited));
     }
 
     private resolveRecord(typeName: string): GirRecord | null {

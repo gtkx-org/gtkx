@@ -254,6 +254,7 @@ impl Type {
                     || callback_type.kind == CallbackKind::TreeListModelCreateFunc
                     || callback_type.kind == CallbackKind::TickCallback
                     || callback_type.kind == CallbackKind::ShapeRendererFunc
+                    || callback_type.kind == CallbackKind::AnimationTargetFunc
                 {
                     types.push(libffi::Type::pointer());
                 }
