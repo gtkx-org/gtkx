@@ -31,9 +31,7 @@ injectGlobal`
 
 const TransparentDemo = () => {
     const texture = useMemo(() => {
-        const file = Gdk.Texture.newFromFilename(
-            new URL("./portland-rose.jpg", import.meta.url).pathname,
-        );
+        const file = Gdk.Texture.newFromFilename(new URL("./portland-rose.jpg", import.meta.url).pathname);
         return file;
     }, []);
 
@@ -41,12 +39,7 @@ const TransparentDemo = () => {
         <GtkOverlay>
             <GtkPicture paintable={texture} contentFit={Gtk.ContentFit.COVER} canShrink />
             <x.OverlayChild>
-                <GtkBox
-                    cssClasses={["floating-controls"]}
-                    halign={Gtk.Align.FILL}
-                    valign={Gtk.Align.END}
-                    homogeneous
-                >
+                <GtkBox cssClasses={["floating-controls"]} halign={Gtk.Align.FILL} valign={Gtk.Align.END} homogeneous>
                     <GtkButton label="Don't click this button!" cssClasses={["blur-overlay"]} hexpand />
                     <GtkButton label="Maybe this one?" cssClasses={["blur-overlay"]} hexpand />
                 </GtkBox>

@@ -478,15 +478,25 @@ Complete rewrite from ~390 lines to ~65 lines matching official GTK4 demo:
 ## Games
 
 ### listview-minesweeper.tsx
-**Status**: Reviewed
+**Status**: ✅ FIXED (January 2026)
 **Files Compared**: listview-minesweeper.tsx ↔ listview_minesweeper.c
 
-**Differences Found**:
-- 🔴 **Critical**: gtkx implements flood-fill reveal (lines 90-123) which official does NOT have. Official reveals cells individually.
-- 🟡 **Minor**: Board size differs (gtkx: 10x10 with 15 mines, official: 8x8 with 10 mines).
-- 🟢 **Trivial**: UI presentation differs (gtkx uses frame-based layout).
+**Previous Differences (All Resolved)**:
+- ~~🔴 **Critical**: gtkx implements flood-fill reveal~~ ✅ Removed - now reveals only clicked cell
+- ~~🟡 **Minor**: Board size differs (10x10 with 15 mines)~~ ✅ Changed to 8×8 with 10 mines
+- ~~🟡 **Minor**: UI presentation differs~~ ✅ Simplified to match official layout
+- ~~🟡 **Minor**: Cell display labels differ~~ ✅ Changed to "?" for unrevealed, "💣" for mines
 
-**Required Changes**: Remove flood-fill recursive reveal if exact fidelity required. Adjust board to 8x8 with 10 mines.
+**Implementation Summary**:
+- Removed flood-fill algorithm from `revealCell` - now reveals only the clicked cell
+- Changed grid from 10×10 to 8×8, mines from 15 to 10
+- Updated cell display: "?" for hidden cells, "💣" for mines (was "" and "X")
+- Simplified UI: removed status panel, instructions, implementation notes
+- Added trophy icon display on win
+- Kept sound effects (victory/explosion via useSound hook)
+- Switched from GtkButton to GtkLabel for cells (matches official)
+
+**Required Changes**: None - demo now matches official GTK4 Minesweeper demo.
 
 ### peg-solitaire.tsx
 **Status**: Reviewed
@@ -1100,7 +1110,7 @@ The following demos were removed because they require custom GObject subclasses 
 | CSS | 8 | 0 | 8 | 7 | 4 |
 | Dialogs | 4 | 1 | 3 | 4 | 2 |
 | Drawing | 8 | 0 | 3 | 4 | 3 |
-| Games | 3 | 2 | 4 | 2 | 2 |
+| Games | 3 | 1 | 4 | 2 | 2 | *(minesweeper FIXED)*
 | Gestures | 7 | 4 | 5 | 12 | 4 |
 | Input | 8 | 2 | 5 | 8 | 3 |
 | Layout | 9 | 3 | 4 | 5 | 6 |
@@ -1109,14 +1119,15 @@ The following demos were removed because they require custom GObject subclasses 
 | Navigation | 3 | 0 | 1 | 1 | 4 |
 | OpenGL | 3 | 1 | 1 | 1 | 3 |
 | Paths | 7 | 4 | 10 | 2 | 1 |
-| **Total** | **77** | **18** | **70** | **55** | **43** |
+| **Total** | **77** | **17** | **70** | **55** | **43** |
 
 ## Priority Fixes by Severity
 
-### Critical (Must Fix - 13 issues remaining)
+### Critical (Must Fix - 12 issues remaining)
 - ~~**font-features**: Complete rewrite~~ ✅ **FIXED** - full feature parity achieved
 - ~~**rotated-text**: Missing heart shape renderer, two-pane layout~~ ✅ **FIXED** - shape renderer scaling
 - ~~**transparent**: Missing backdrop-filter blur~~ ✅ **FIXED** - backdrop blur implementation
+- ~~**minesweeper**: Flood-fill behavior differs~~ ✅ **FIXED** - removed flood-fill, 8×8 grid, matches official
 - **listview-colors**: Wrong view type (ListView vs GridView)
 - **dnd**: Missing GtkGestureRotate, context menus, item editing
 - **gestures**: Too elaborate - needs simplification
@@ -1124,7 +1135,6 @@ The following demos were removed because they require custom GObject subclasses 
 - **headerbar**: Missing window titlebar integration
 - **aspect-frame**: Missing GtkPicture widget
 - **overlay-decorative**: Wrong decorative images
-- **minesweeper**: Flood-fill behavior differs
 - **peg-solitaire**: Click-to-move vs drag-and-drop
 - **gears**: Missing FPS display overlay
 - **path-maze, path-sweep**: Grid-based vs GSK Path
