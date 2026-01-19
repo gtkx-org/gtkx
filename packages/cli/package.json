@@ -70,7 +70,7 @@
         "@gtkx/testing": "workspace:*",
         "@types/ejs": "^3.1.5",
         "@types/react-refresh": "^0.14.7",
-        "memfs": "^4.52.0"
+        "memfs": "^4.56.2"
     },
     "peerDependencies": {
         "@gtkx/testing": "workspace:*",
