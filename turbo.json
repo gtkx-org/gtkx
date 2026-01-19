@@ -60,7 +60,11 @@
         },
         "native-build": {
             "inputs": ["Cargo.toml", "Cargo.lock", "src/**/*.rs"],
-            "outputs": ["index.node", "../native-linux-arm64/index.node", "../native-linux-x64/index.node"],
+            "outputs": [
+                "index.node",
+                "$TURBO_ROOT$/packages/native-linux-arm64/index.node",
+                "$TURBO_ROOT$/packages/native-linux-x64/index.node"
+            ],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]
         },
@@ -88,12 +92,14 @@
         },
         "@gtkx/ffi#build": {
             "dependsOn": ["^build", "//#codegen:run"],
+            "inputs": ["package.json", "src/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
             "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
             "outputLogs": "new-only"
         },
         "@gtkx/react#build": {
             "dependsOn": ["^build", "//#codegen:run"],
-            "outputs": ["dist/**", "*.tsbuildinfo", "README.md"],
+            "inputs": ["package.json", "src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.lib.json"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
             "outputLogs": "new-only"
         },
         "website#build": {
