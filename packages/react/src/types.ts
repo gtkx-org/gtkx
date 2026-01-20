@@ -283,4 +283,48 @@ export interface GestureRotateProps {
      * @param event - The underlying Gdk.Event
      */
     onRotateEnd?: (sequence: Gdk.EventSequence | null, event: Gdk.Event | null) => void;
+    /**
+     * Callback ref to access the underlying GestureRotate controller.
+     * @param gesture - The GestureRotate controller instance
+     */
+    gestureRotateRef?: (gesture: Gtk.GestureRotate) => void;
+}
+
+export interface GestureSwipeProps {
+    /**
+     * Called when a swipe gesture is recognized.
+     * @param velocityX - Horizontal velocity in pixels per second
+     * @param velocityY - Vertical velocity in pixels per second
+     * @param event - The underlying Gdk.Event
+     */
+    onSwipe?: (velocityX: number, velocityY: number, event: Gdk.Event | null) => void;
+}
+
+export interface GestureLongPressProps {
+    /**
+     * Called when a long press is detected.
+     * @param x - X coordinate of the press
+     * @param y - Y coordinate of the press
+     * @param event - The underlying Gdk.Event
+     */
+    onLongPressPressed?: (x: number, y: number, event: Gdk.Event | null) => void;
+    /**
+     * Called when the long press is cancelled (finger moved or lifted too early).
+     * @param event - The underlying Gdk.Event
+     */
+    onLongPressCancelled?: (event: Gdk.Event | null) => void;
+}
+
+export interface GestureZoomProps {
+    /**
+     * Called when the zoom scale changes during a two-finger pinch gesture.
+     * @param scale - The current zoom scale (1.0 = original size)
+     * @param event - The underlying Gdk.Event
+     */
+    onZoomScaleChanged?: (scale: number, event: Gdk.Event | null) => void;
+    /**
+     * Callback ref to access the underlying GestureZoom controller.
+     * @param gesture - The GestureZoom controller instance
+     */
+    gestureZoomRef?: (gesture: Gtk.GestureZoom) => void;
 }

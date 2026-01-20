@@ -133,6 +133,9 @@ export class JsxTypesGenerator {
                 "GestureDragProps",
                 "GestureStylusProps",
                 "GestureRotateProps",
+                "GestureSwipeProps",
+                "GestureLongPressProps",
+                "GestureZoomProps",
             ],
             isTypeOnly: true,
         });

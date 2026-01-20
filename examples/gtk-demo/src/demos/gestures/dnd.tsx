@@ -221,8 +221,24 @@ function getItemStyleClass(style: ItemStyle): string {
 const DndDemo = () => {
     const [items, setItems] = useState<CanvasItem[]>([
         { id: "1", label: "Item 1", style: { type: "preset", color: "accent" }, x: 40, y: 40, angle: 0, angleDelta: 0 },
-        { id: "2", label: "Item 2", style: { type: "preset", color: "success" }, x: 190, y: 140, angle: 0, angleDelta: 0 },
-        { id: "3", label: "Item 3", style: { type: "preset", color: "warning" }, x: 340, y: 240, angle: 0, angleDelta: 0 },
+        {
+            id: "2",
+            label: "Item 2",
+            style: { type: "preset", color: "success" },
+            x: 190,
+            y: 140,
+            angle: 0,
+            angleDelta: 0,
+        },
+        {
+            id: "3",
+            label: "Item 3",
+            style: { type: "preset", color: "warning" },
+            x: 340,
+            y: 240,
+            angle: 0,
+            angleDelta: 0,
+        },
     ]);
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [editState, setEditState] = useState<EditState | null>(null);
@@ -444,7 +460,11 @@ const DndDemo = () => {
                                 else buttonRefs.current.delete(item.id);
                             }}
                             label={item.label}
-                            cssClasses={cx(itemStyle, getItemStyleClass(item.style), isDragging === item.id && "dim-label")}
+                            cssClasses={cx(
+                                itemStyle,
+                                getItemStyleClass(item.style),
+                                isDragging === item.id && "dim-label",
+                            )}
                             onDragPrepare={(x, y) => {
                                 dragHotspotRef.current = { x, y };
                                 return createContentProvider(item.id);

@@ -13,7 +13,10 @@ type ControllerType =
     | "dropTarget"
     | "gestureDrag"
     | "gestureStylus"
-    | "gestureRotate";
+    | "gestureRotate"
+    | "gestureSwipe"
+    | "gestureLongPress"
+    | "gestureZoom";
 
 type PropToControllerMap = {
     [propName: string]: {
@@ -56,6 +59,12 @@ const PROP_CONTROLLER_MAP: PropToControllerMap = {
     onRotateAngleChanged: { type: "gestureRotate", signalName: "angle-changed" },
     onRotateBegin: { type: "gestureRotate", signalName: "begin" },
     onRotateEnd: { type: "gestureRotate", signalName: "end" },
+    gestureRotateRef: { type: "gestureRotate", isConfig: true },
+    onSwipe: { type: "gestureSwipe", signalName: "swipe" },
+    onLongPressPressed: { type: "gestureLongPress", signalName: "pressed" },
+    onLongPressCancelled: { type: "gestureLongPress", signalName: "cancelled" },
+    onZoomScaleChanged: { type: "gestureZoom", signalName: "scale-changed" },
+    gestureZoomRef: { type: "gestureZoom", isConfig: true },
 };
 
 export const EVENT_CONTROLLER_PROPS = new Set(Object.keys(PROP_CONTROLLER_MAP));
@@ -88,6 +97,9 @@ export class EventControllerManager {
             return controller;
         },
         gestureRotate: () => new Gtk.GestureRotate(),
+        gestureSwipe: () => new Gtk.GestureSwipe(),
+        gestureLongPress: () => new Gtk.GestureLongPress(),
+        gestureZoom: () => new Gtk.GestureZoom(),
     };
 
     constructor(owner: object, widget: Gtk.Widget) {
@@ -145,6 +157,8 @@ export class EventControllerManager {
         } else if (propName === "dragIconHotY" && controller instanceof Gtk.DragSource) {
             this.pendingDragIconHotY = value as number | undefined;
             this.applyDragIcon(controller);
+        } else if (propName.endsWith("Ref") && typeof value === "function") {
+            (value as (controller: Gtk.EventController) => void)(controller);
         }
     }
 

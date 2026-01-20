@@ -66,7 +66,7 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 - [x] clipboard.tsx ↔ clipboard.c (🟡 Minor - different organization)
 - [x] cursors.tsx ↔ cursors.c (🟠 Major - missing custom cursor)
 - [✓] dnd.tsx ↔ dnd.c (FIXED - matches official behavior)
-- [x] gestures.tsx ↔ gestures.c (🔴 Critical - too elaborate)
+- [✓] gestures.tsx ↔ gestures.c (FIXED - single DrawingArea with Cairo feedback)
 - [x] links.tsx ↔ links.c (🟡 Minor - different organization)
 - [x] shortcuts.tsx ↔ shortcuts.c (🟠 Major - uses AdwShortcutsDialog)
 - [✓] shortcut-triggers.tsx ↔ shortcut_triggers.c (gtkx superset)
@@ -145,7 +145,7 @@ The following demos were removed because they require custom GObject subclasses 
 ## Summary
 - Total demos: 77 (10 removed - require GObject subclassing)
 - Not started: 0
-- Reviewed: 58
-- Fully matched: 19
-- Critical issues: 10
+- Reviewed: 57
+- Fully matched: 20
+- Critical issues: 9
 - Major issues: 37
