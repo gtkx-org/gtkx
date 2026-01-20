@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
 import { TextAnchorNode } from "../text-anchor.js";
 import type { TextContentChild, TextContentParent } from "../text-content.js";
+import { TextPaintableNode } from "../text-paintable.js";
 import { TextSegmentNode } from "../text-segment.js";
 import { TextTagNode } from "../text-tag.js";
 import { signalStore } from "./signal-store.js";
@@ -121,7 +122,12 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
     }
 
     isTextContentChild(child: Node): child is TextContentChild {
-        return child instanceof TextSegmentNode || child instanceof TextTagNode || child instanceof TextAnchorNode;
+        return (
+            child instanceof TextSegmentNode ||
+            child instanceof TextTagNode ||
+            child instanceof TextAnchorNode ||
+            child instanceof TextPaintableNode
+        );
     }
 
     appendChild(child: TextContentChild): void {
@@ -157,6 +163,8 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
                 child.setBuffer(buffer);
             }
         } else if (child instanceof TextAnchorNode) {
+            child.setTextViewAndBuffer(this.container, buffer);
+        } else if (child instanceof TextPaintableNode) {
             child.setTextViewAndBuffer(this.container, buffer);
         }
 
@@ -205,6 +213,8 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
                 child.setBuffer(buffer);
             }
         } else if (child instanceof TextAnchorNode) {
+            child.setTextViewAndBuffer(this.container, buffer);
+        } else if (child instanceof TextPaintableNode) {
             child.setTextViewAndBuffer(this.container, buffer);
         }
 

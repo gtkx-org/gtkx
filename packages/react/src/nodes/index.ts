@@ -39,6 +39,7 @@ import "./stack-page.js";
 import "./stack.js";
 import "./text-anchor.js";
 import "./text-content.js";
+import "./text-paintable.js";
 import "./text-segment.js";
 import "./text-tag.js";
 import "./text-view.js";

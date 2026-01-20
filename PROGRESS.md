@@ -73,7 +73,7 @@ This document tracks the progress of comparing gtkx demos with the official GTK4
 
 ## Input
 - [x] entry-undo.tsx ↔ entry_undo.c (🟡 Minor)
-- [x] hypertext.tsx ↔ hypertext.c (🔴 Critical - pages, widgets)
+- [✓] hypertext.tsx ↔ hypertext.c (FIXED - matches GTK4 3-page layout with inline paintables)
 - [x] password-entry.tsx ↔ password_entry.c (🟠 Major - header bar)
 - [x] search-entry.tsx ↔ search_entry.c (🟠 Major - header bar)
 - [x] tabs.tsx ↔ tabs.c (🟡 Minor)
@@ -145,7 +145,7 @@ The following demos were removed because they require custom GObject subclasses 
 ## Summary
 - Total demos: 77 (10 removed - require GObject subclassing)
 - Not started: 0
-- Reviewed: 57
-- Fully matched: 20
-- Critical issues: 9
+- Reviewed: 56
+- Fully matched: 21
+- Critical issues: 8
 - Major issues: 37

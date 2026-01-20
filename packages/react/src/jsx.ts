@@ -14,10 +14,12 @@ import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
 import type { ShortcutControllerProps as ShortcutControllerNodeProps } from "./nodes/shortcut-controller.js";
 import type { TextAnchorProps } from "./nodes/text-anchor.js";
+import type { TextPaintableProps } from "./nodes/text-paintable.js";
 import type { TextTagProps } from "./nodes/text-tag.js";
 
 export type { AnimatableProperties, SpringTransition, TimedTransition, Transition } from "./nodes/animation/index.js";
 export type { TextAnchorProps } from "./nodes/text-anchor.js";
+export type { TextPaintableProps } from "./nodes/text-paintable.js";
 export type { TextTagProps } from "./nodes/text-tag.js";
 export type { DragSourceProps, DropTargetProps, EventControllerProps, GestureDragProps } from "./types.js";
 
@@ -804,6 +806,20 @@ export const x = {
     TextAnchor: "TextAnchor" as const,
 
     /**
+     * Declarative inline paintable for embedding images/icons in text flow.
+     *
+     * The paintable is placed at the current position in the text.
+     *
+     * @example
+     * ```tsx
+     * <GtkTextView>
+     *     Click the icon <x.TextPaintable paintable={iconPaintable} /> to continue.
+     * </GtkTextView>
+     * ```
+     */
+    TextPaintable: "TextPaintable" as const,
+
+    /**
      * A toggle button for an AdwToggleGroup.
      *
      * @example
@@ -966,6 +982,7 @@ declare global {
                 PackEnd: VirtualSlotProps;
                 PackStart: VirtualSlotProps;
                 TextAnchor: TextAnchorProps;
+                TextPaintable: TextPaintableProps;
                 TextTag: TextTagProps;
                 SimpleListItem: StringListItemProps;
                 StackPage: StackPageProps;

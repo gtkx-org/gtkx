@@ -1,8 +1,9 @@
 import type { TextAnchorNode } from "./text-anchor.js";
+import type { TextPaintableNode } from "./text-paintable.js";
 import type { TextSegmentNode } from "./text-segment.js";
 import type { TextTagNode } from "./text-tag.js";
 
-export type TextContentChild = TextSegmentNode | TextTagNode | TextAnchorNode;
+export type TextContentChild = TextSegmentNode | TextTagNode | TextAnchorNode | TextPaintableNode;
 
 export interface TextContentParent {
     onChildInserted(child: TextContentChild): void;
