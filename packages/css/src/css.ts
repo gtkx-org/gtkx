@@ -103,12 +103,12 @@ export const css = (...args: CSSInterpolation[]): CSSClassName => {
 };
 
 /**
- * Combines multiple class names into a single space-separated string.
+ * Combines multiple class names into an array for use with cssClasses prop.
  *
  * Filters out falsy values, allowing conditional class application.
  *
  * @param classNames - Class names, booleans, undefined, or null values
- * @returns Space-separated string of valid class names
+ * @returns Array of valid class names
  *
  * @example
  * ```tsx
@@ -118,13 +118,13 @@ export const css = (...args: CSSInterpolation[]): CSSClassName => {
  * const active = css({ backgroundColor: "@accent_bg_color" });
  *
  * <GtkButton
- *   cssClasses={[cx(base, isActive && active, "custom-class")]}
+ *   cssClasses={cx(base, isActive && active, "custom-class")}
  *   label="Button"
  * />
  * ```
  */
-export const cx = (...classNames: (string | boolean | undefined | null)[]): string =>
-    classNames.filter((cn): cn is string => typeof cn === "string" && cn.length > 0).join(" ");
+export const cx = (...classNames: (string | boolean | undefined | null)[]): string[] =>
+    classNames.filter((cn): cn is string => typeof cn === "string" && cn.length > 0);
 
 /**
  * Injects global CSS styles without a wrapping class.

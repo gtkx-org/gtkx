@@ -210,7 +210,7 @@ const CssAccordionDemo = () => {
                     </GtkBox>
 
                     <GtkBox
-                        cssClasses={[cx(colorTransitionStyle, colorStyles[selectedColor])]}
+                        cssClasses={cx(colorTransitionStyle, colorStyles[selectedColor])}
                         halign={Gtk.Align.CENTER}
                         orientation={Gtk.Orientation.VERTICAL}
                         spacing={4}

@@ -222,7 +222,14 @@ export interface GestureStylusProps {
      * @param tiltY - Tilt along Y axis in degrees
      * @param event - The underlying Gdk.Event
      */
-    onStylusDown?: (x: number, y: number, pressure: number, tiltX: number, tiltY: number, event: Gdk.Event | null) => void;
+    onStylusDown?: (
+        x: number,
+        y: number,
+        pressure: number,
+        tiltX: number,
+        tiltY: number,
+        event: Gdk.Event | null,
+    ) => void;
     /**
      * Called when the stylus moves while touching the surface.
      * @param x - X coordinate
@@ -232,7 +239,14 @@ export interface GestureStylusProps {
      * @param tiltY - Tilt along Y axis in degrees
      * @param event - The underlying Gdk.Event
      */
-    onStylusMotion?: (x: number, y: number, pressure: number, tiltX: number, tiltY: number, event: Gdk.Event | null) => void;
+    onStylusMotion?: (
+        x: number,
+        y: number,
+        pressure: number,
+        tiltX: number,
+        tiltY: number,
+        event: Gdk.Event | null,
+    ) => void;
     /**
      * Called when the stylus is lifted from the surface.
      * @param x - X coordinate

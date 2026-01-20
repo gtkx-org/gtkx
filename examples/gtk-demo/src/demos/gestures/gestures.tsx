@@ -221,7 +221,7 @@ const GesturesDemo = () => {
                     <GtkDrawingArea
                         contentWidth={400}
                         contentHeight={100}
-                        cssClasses={[cx(gestureAreaStyle, isDragging && activeStyle)]}
+                        cssClasses={cx(gestureAreaStyle, isDragging && activeStyle)}
                         onGestureDragBegin={handleDragBegin}
                         onGestureDragUpdate={handleDragUpdate}
                         onGestureDragEnd={handleDragEnd}
@@ -267,7 +267,7 @@ const GesturesDemo = () => {
                         ref={swipeRef}
                         contentWidth={400}
                         contentHeight={100}
-                        cssClasses={[cx(gestureAreaStyle, swipeDirection && activeStyle)]}
+                        cssClasses={cx(gestureAreaStyle, swipeDirection && activeStyle)}
                     />
 
                     <GtkBox spacing={24} halign={Gtk.Align.CENTER}>
@@ -308,7 +308,7 @@ const GesturesDemo = () => {
                         ref={longPressRef}
                         contentWidth={400}
                         contentHeight={100}
-                        cssClasses={[cx(gestureAreaStyle, longPressActive && activeStyle)]}
+                        cssClasses={cx(gestureAreaStyle, longPressActive && activeStyle)}
                     />
 
                     <GtkBox spacing={24} halign={Gtk.Align.CENTER}>

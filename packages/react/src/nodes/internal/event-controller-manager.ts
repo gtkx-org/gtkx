@@ -170,7 +170,10 @@ export class EventControllerManager {
         }
     }
 
-    private createEventHandler(handler: SignalHandler | null, controller: Gtk.EventController): SignalHandler | undefined {
+    private createEventHandler(
+        handler: SignalHandler | null,
+        controller: Gtk.EventController,
+    ): SignalHandler | undefined {
         if (!handler) return undefined;
 
         return (_self: unknown, ...args: unknown[]) => {

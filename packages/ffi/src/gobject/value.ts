@@ -1,4 +1,4 @@
-import { read, type NativeHandle } from "@gtkx/native";
+import { type NativeHandle, read } from "@gtkx/native";
 import { call } from "../batch.js";
 import { typeFromName, typeName } from "../generated/gobject/functions.js";
 import type { GObject } from "../generated/gobject/object.js";
