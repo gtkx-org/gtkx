@@ -39,10 +39,10 @@ describe("getNativeObject", () => {
             const rgba = new Gdk.RGBA({ red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 });
             const wrapped = getNativeObject(rgba.handle, Gdk.RGBA);
             expect(wrapped).not.toBeNull();
-            expect(wrapped?.red).toBeCloseTo(1.0);
-            expect(wrapped?.green).toBeCloseTo(0.5);
-            expect(wrapped?.blue).toBeCloseTo(0.0);
-            expect(wrapped?.alpha).toBeCloseTo(1.0);
+            expect(wrapped?.getRed()).toBeCloseTo(1.0);
+            expect(wrapped?.getGreen()).toBeCloseTo(0.5);
+            expect(wrapped?.getBlue()).toBeCloseTo(0.0);
+            expect(wrapped?.getAlpha()).toBeCloseTo(1.0);
         });
 
         it("sets the correct prototype chain", () => {

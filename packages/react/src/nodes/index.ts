@@ -13,6 +13,7 @@ import "./drawing-area.js";
 import "./expander-row.js";
 import "./fixed-child.js";
 import "./font-dialog-button.js";
+import "./grid.js";
 import "./grid-child.js";
 import "./level-bar.js";
 import "./list-item.js";

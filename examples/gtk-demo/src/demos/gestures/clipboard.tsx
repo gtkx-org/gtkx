@@ -122,7 +122,14 @@ const ClipboardDemo = () => {
             if (boxedPtr !== null) {
                 const rgba = new Gdk.RGBA({});
                 rgba.handle = boxedPtr as unknown as typeof rgba.handle;
-                setPastedColor(new Gdk.RGBA({ red: rgba.red, green: rgba.green, blue: rgba.blue, alpha: rgba.alpha }));
+                setPastedColor(
+                    new Gdk.RGBA({
+                        red: rgba.getRed(),
+                        green: rgba.getGreen(),
+                        blue: rgba.getBlue(),
+                        alpha: rgba.getAlpha(),
+                    }),
+                );
             }
         } catch {
             setPastedColor(null);
@@ -141,7 +148,14 @@ const ClipboardDemo = () => {
     const handleColorChanged = useCallback((button: Gtk.ColorDialogButton) => {
         const rgba = button.getRgba();
         if (rgba) {
-            setSelectedColor(new Gdk.RGBA({ red: rgba.red, green: rgba.green, blue: rgba.blue, alpha: rgba.alpha }));
+            setSelectedColor(
+                new Gdk.RGBA({
+                    red: rgba.getRed(),
+                    green: rgba.getGreen(),
+                    blue: rgba.getBlue(),
+                    alpha: rgba.getAlpha(),
+                }),
+            );
         }
     }, []);
 

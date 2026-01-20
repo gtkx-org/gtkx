@@ -93,10 +93,10 @@ const PaintDemo = () => {
         if (propName === "rgba") {
             const rgba = button.getRgba();
             setColor({
-                red: rgba.red,
-                green: rgba.green,
-                blue: rgba.blue,
-                alpha: rgba.alpha,
+                red: rgba.getRed(),
+                green: rgba.getGreen(),
+                blue: rgba.getBlue(),
+                alpha: rgba.getAlpha(),
             });
         }
     }, []);

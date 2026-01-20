@@ -80,23 +80,17 @@ export class AnimationController {
 
         const accessor = getPropertyAccessor(property);
         const widget = this.widget;
-        const isMapped = widget.getMapped?.();
-
-        console.log("[AnimationController] startPropertyAnimation", { property, from, to, isMapped });
 
         const animation = createAnimation(widget, from, to, transition, (value) => {
-            console.log("[AnimationController] animation tick", { property, value });
             accessor.set(widget, value);
         });
 
         const connectionId = animation.connect("done", () => {
-            console.log("[AnimationController] animation done", { property });
             this.onAnimationDone(property);
         });
 
         this.activeAnimations.set(property, { animation, connectionId });
         animation.play();
-        console.log("[AnimationController] animation.play() called");
     }
 
     private onAnimationDone(property: AnimatableProperty): void {

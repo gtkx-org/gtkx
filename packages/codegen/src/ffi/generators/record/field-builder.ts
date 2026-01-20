@@ -92,21 +92,57 @@ export class FieldBuilder {
      */
     writeFieldWrites(fields: readonly GirField[]): WriterFunction {
         const layout = this.calculateLayout(fields);
-        const writeableFields = layout.filter(
-            ({ field }) => this.isWritableType(field.type) && field.writable !== false,
+        const initializableFields = layout.filter(
+            ({ field }) =>
+                !field.private &&
+                field.writable !== false &&
+                this.isGeneratableFieldType(String(field.type.name)) &&
+                (this.isWritableType(field.type) || this.isInlineNestedStruct(field)),
         );
 
         return (writer) => {
-            for (const { field, offset } of writeableFields) {
+            for (const { field, offset } of initializableFields) {
                 let fieldName = toValidIdentifier(toCamelCase(field.name));
                 if (fieldName === "id") fieldName = "id_";
 
-                const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                this.ctx.addTypeImports(typeMapping.imports);
+                if (this.isInlineNestedStruct(field)) {
+                    const typeName = String(field.type.name);
+                    const nestedLayout = this.getNestedStructLayout(typeName);
+                    if (!nestedLayout) continue;
 
-                writer.write(`if (init.${fieldName} !== undefined) write(this.handle, `);
-                this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
-                writer.writeLine(`, ${offset}, init.${fieldName});`);
+                    const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+                    this.ctx.addTypeImports(typeMapping.imports);
+
+                    writer.writeLine(`if (init.${fieldName} !== undefined) {`);
+                    writer.indent(() => {
+                        for (const nestedItem of nestedLayout) {
+                            if (!this.isWritableType(nestedItem.field.type)) continue;
+                            const nestedFieldName = toValidIdentifier(toCamelCase(nestedItem.field.name));
+                            const capitalizedNestedFieldName =
+                                nestedFieldName.charAt(0).toUpperCase() + nestedFieldName.slice(1);
+                            const nestedOffset = offset + nestedItem.offset;
+                            const nestedTypeMapping = this.ffiMapper.mapType(
+                                nestedItem.field.type,
+                                false,
+                                nestedItem.field.type.transferOwnership,
+                            );
+
+                            writer.write(`write(this.handle, `);
+                            this.writers.ffiTypeWriter.toWriter(nestedTypeMapping.ffi)(writer);
+                            writer.writeLine(
+                                `, ${nestedOffset}, init.${fieldName}.get${capitalizedNestedFieldName}());`,
+                            );
+                        }
+                    });
+                    writer.writeLine("}");
+                } else {
+                    const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+                    this.ctx.addTypeImports(typeMapping.imports);
+
+                    writer.write(`if (init.${fieldName} !== undefined) write(this.handle, `);
+                    this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
+                    writer.writeLine(`, ${offset}, init.${fieldName});`);
+                }
             }
         };
     }
@@ -118,6 +154,16 @@ export class FieldBuilder {
                 f.writable !== false &&
                 this.isWritableType(f.type) &&
                 this.isGeneratableFieldType(String(f.type.name)),
+        );
+    }
+
+    getInitializableFields(fields: readonly GirField[]): GirField[] {
+        return fields.filter(
+            (f) =>
+                !f.private &&
+                f.writable !== false &&
+                this.isGeneratableFieldType(String(f.type.name)) &&
+                (this.isWritableType(f.type) || this.isInlineNestedStruct(f)),
         );
     }
 
@@ -138,6 +184,21 @@ export class FieldBuilder {
         if (!record || record.opaque || record.disguised) return false;
         if (record.glibTypeName) return false;
         return true;
+    }
+
+    /**
+     * Checks if a field is an inline nested struct (not a pointer to struct)
+     * that has writable sub-fields.
+     */
+    isInlineNestedStruct(field: GirField): boolean {
+        const typeName = String(field.type.name);
+        if (!this.isNestedStructType(typeName)) return false;
+        const cType = field.type.cType;
+        if (cType?.includes("*")) return false;
+        const nestedLayout = this.getNestedStructLayout(typeName);
+        if (!nestedLayout) return false;
+        const hasWritableFields = nestedLayout.some((item) => this.isWritableType(item.field.type));
+        return hasWritableFields;
     }
 
     getNestedStructLayout(typeName: string): FieldLayout[] | null {

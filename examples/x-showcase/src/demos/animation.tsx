@@ -1,51 +1,15 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    AdwPreferencesGroup,
-    GtkBox,
-    GtkButton,
-    GtkFrame,
-    GtkLabel,
-    x,
-} from "@gtkx/react";
-import { useEffect, useRef, useState } from "react";
-
-const DirectApiDemo = () => {
-    const labelRef = useRef<Gtk.Label>(null);
-
-    const runAnimation = () => {
-        const label = labelRef.current;
-        if (!label) return;
-
-        label.setOpacity(0);
-
-        const target = new Adw.CallbackAnimationTarget((value) => {
-            label.setOpacity(value);
-        });
-
-        const animation = new Adw.TimedAnimation(label, 0, 1, 1000, target);
-        animation.play();
-    };
-
-    useEffect(() => {
-        runAnimation();
-    }, []);
-
-    return (
-        <GtkBox spacing={12} valign={Gtk.Align.CENTER}>
-            <GtkLabel ref={labelRef} label="Direct API" cssClasses={["title-2"]} />
-            <GtkButton label="Run" onClicked={runAnimation} />
-        </GtkBox>
-    );
-};
+import { AdwPreferencesGroup, GtkBox, GtkButton, GtkFrame, GtkLabel, x } from "@gtkx/react";
+import { useState } from "react";
 
 const FadeInDemo = () => {
     const [key, setKey] = useState(0);
 
     return (
         <GtkBox spacing={12} valign={Gtk.Align.CENTER}>
-            <x.Animation key={key} initial={{ opacity: 1 }} animate={{ opacity: 1 }} transition={{ duration: 500 }}>
-                <GtkLabel label="Fade In (should be visible)" cssClasses={["title-2"]} />
+            <x.Animation key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 500 }}>
+                <GtkLabel label="Fade In" cssClasses={["title-2"]} />
             </x.Animation>
             <GtkButton label="Replay" onClicked={() => setKey((k) => k + 1)} />
         </GtkBox>
@@ -183,14 +147,6 @@ export const AnimationDemo = () => {
             marginEnd={24}
         >
             <GtkLabel label="Animation Components" cssClasses={["title-1"]} halign={Gtk.Align.START} />
-
-            <AdwPreferencesGroup title="Direct API Test" description="Tests libadwaita animation API directly">
-                <GtkFrame marginTop={12}>
-                    <GtkBox marginTop={24} marginBottom={24} marginStart={24} marginEnd={24} halign={Gtk.Align.CENTER}>
-                        <DirectApiDemo />
-                    </GtkBox>
-                </GtkFrame>
-            </AdwPreferencesGroup>
 
             <AdwPreferencesGroup title="x.Animation - Fade In" description="Simple opacity animation">
                 <GtkFrame marginTop={12}>

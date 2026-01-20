@@ -59,8 +59,8 @@ const TextmaskDemo = () => {
 
             const logicalRect = new Pango.Rectangle();
             layout.getPixelExtents(undefined, logicalRect);
-            const textWidth = logicalRect.width;
-            const textHeight = logicalRect.height;
+            const textWidth = logicalRect.getWidth();
+            const textHeight = logicalRect.getHeight();
 
             const xPos = (width - textWidth) / 2;
             const yPos = (height - textHeight) / 2;

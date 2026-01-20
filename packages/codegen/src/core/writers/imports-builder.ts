@@ -202,6 +202,8 @@ export class ImportsBuilder {
         if (this.ctx.usesAlloc) imports.push("alloc");
         if (this.ctx.usesArg) imports.push("Arg");
         if (this.ctx.usesRead) imports.push("read");
+        if (this.ctx.usesReadPointer) imports.push("readPointer");
+        if (this.ctx.usesWritePointer) imports.push("writePointer");
         if (this.ctx.usesWrite) imports.push("write");
         if (this.ctx.usesRef) imports.push("Ref");
         if (this.ctx.usesType) imports.push("Type");

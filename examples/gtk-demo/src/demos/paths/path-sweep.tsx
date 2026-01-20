@@ -206,7 +206,7 @@ const PathSweepDemo = () => {
                     ) => {
                         const pos = new Graphene.Point();
                         point1.getPosition(path1, pos);
-                        intersections.push({ x: pos.x, y: pos.y });
+                        intersections.push({ x: pos.getX(), y: pos.getY() });
                         return true;
                     },
                     linePath,

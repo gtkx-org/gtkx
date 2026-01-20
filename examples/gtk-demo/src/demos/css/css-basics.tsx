@@ -70,10 +70,10 @@ const CssBasicsDemo = () => {
             const startIter = new Gtk.TextIter();
             const endIter = new Gtk.TextIter();
 
-            buffer.getIterAtLineOffset(startIter, startLocation.lines, startLocation.lineChars);
-            buffer.getIterAtLineOffset(endIter, endLocation.lines, endLocation.lineChars);
+            buffer.getIterAtLineOffset(startIter, startLocation.getLines(), startLocation.getLineChars());
+            buffer.getIterAtLineOffset(endIter, endLocation.getLines(), endLocation.getLineChars());
 
-            const isWarning = error.domain === cssParserWarningQuark();
+            const isWarning = error.getDomain() === cssParserWarningQuark();
             const tag = isWarning ? warningTagRef.current : errorTagRef.current;
 
             if (tag) {

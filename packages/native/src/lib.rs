@@ -58,6 +58,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("batchCall", module::batch_call)?;
     cx.export_function("read", module::read)?;
     cx.export_function("write", module::write)?;
+    cx.export_function("readPointer", module::read_pointer)?;
+    cx.export_function("writePointer", module::write_pointer)?;
     cx.export_function("alloc", module::alloc)?;
     cx.export_function("getNativeId", module::get_native_id)?;
     cx.export_function("poll", module::poll)?;

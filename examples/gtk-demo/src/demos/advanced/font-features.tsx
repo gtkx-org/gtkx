@@ -296,13 +296,13 @@ const discoverVariableAxes = (face: HarfBuzz.FaceT): AxisInfo[] => {
 
         if (axisCountRef.value > 0 && axisInfoRef.value[0]) {
             const axis = axisInfoRef.value[0];
-            const tagStr = tagToString(axis.tag);
+            const tagStr = tagToString(axis.getTag());
             axes.push({
                 tag: tagStr,
                 name: AXIS_NAMES[tagStr] ?? tagStr,
-                minValue: axis.minValue,
-                defaultValue: axis.defaultValue,
-                maxValue: axis.maxValue,
+                minValue: axis.getMinValue(),
+                defaultValue: axis.getDefaultValue(),
+                maxValue: axis.getMaxValue(),
             });
         }
     }
@@ -544,12 +544,12 @@ const FontFeaturesDemo = () => {
         const fontFamily = fontDesc?.getFamily() ?? "Sans";
         const fontSize = fontDesc?.getSize() ? fontDesc.getSize() / 1024 : 24;
 
-        const fgR = Math.round(fgColor.red * 255);
-        const fgG = Math.round(fgColor.green * 255);
-        const fgB = Math.round(fgColor.blue * 255);
-        const bgR = Math.round(bgColor.red * 255);
-        const bgG = Math.round(bgColor.green * 255);
-        const bgB = Math.round(bgColor.blue * 255);
+        const fgR = Math.round(fgColor.getRed() * 255);
+        const fgG = Math.round(fgColor.getGreen() * 255);
+        const fgB = Math.round(fgColor.getBlue() * 255);
+        const bgR = Math.round(bgColor.getRed() * 255);
+        const bgG = Math.round(bgColor.getGreen() * 255);
+        const bgB = Math.round(bgColor.getBlue() * 255);
 
         return css`
             label& {
@@ -569,12 +569,12 @@ const FontFeaturesDemo = () => {
     const createWaterfallStyle = useCallback(
         (size: number) => {
             const fontFamily = fontDesc?.getFamily() ?? "Sans";
-            const fgR = Math.round(fgColor.red * 255);
-            const fgG = Math.round(fgColor.green * 255);
-            const fgB = Math.round(fgColor.blue * 255);
-            const bgR = Math.round(bgColor.red * 255);
-            const bgG = Math.round(bgColor.green * 255);
-            const bgB = Math.round(bgColor.blue * 255);
+            const fgR = Math.round(fgColor.getRed() * 255);
+            const fgG = Math.round(fgColor.getGreen() * 255);
+            const fgB = Math.round(fgColor.getBlue() * 255);
+            const bgR = Math.round(bgColor.getRed() * 255);
+            const bgG = Math.round(bgColor.getGreen() * 255);
+            const bgB = Math.round(bgColor.getBlue() * 255);
 
             return css`
                 label& {

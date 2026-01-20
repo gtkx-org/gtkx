@@ -359,7 +359,7 @@ const ShadertoyDemo = () => {
             if (!glStateRef.current) {
                 const glError = self.getError();
                 if (glError) {
-                    setCompileError(`GL context error: ${glError.message}`);
+                    setCompileError(`GL context error: ${glError.getMessage()}`);
                     return true;
                 }
 

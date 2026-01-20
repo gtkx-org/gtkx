@@ -104,7 +104,7 @@ export class WidgetPropsBuilder {
             isExported: true,
             docs: widgetDoc ? [{ description: this.formatDocDescription(widgetDoc, namespace) }] : undefined,
             type: this.buildIntersectionTypeWriter(
-                "EventControllerProps & DragSourceProps & DropTargetProps & GestureDragProps & GestureStylusProps",
+                "EventControllerProps & DragSourceProps & DropTargetProps & GestureDragProps & GestureStylusProps & GestureRotateProps",
                 allProps,
             ),
         });

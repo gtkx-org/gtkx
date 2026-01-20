@@ -56,7 +56,7 @@ impl AllocRequest {
             anyhow::bail!("Failed to allocate memory for {}", type_desc);
         }
 
-        let gtype = self.type_name.as_ref().map(|type_name| {
+        let gtype = self.type_name.as_ref().and_then(|type_name| {
             let boxed_type = BoxedType::new(
                 Ownership::Full,
                 type_name.clone(),
@@ -64,7 +64,7 @@ impl AllocRequest {
                 None,
             );
             boxed_type.gtype()
-        }).flatten();
+        });
 
         let boxed = Boxed::from_glib_full(gtype, ptr);
         Ok(NativeValue::Boxed(boxed).into())

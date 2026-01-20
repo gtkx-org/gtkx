@@ -1,3 +1,4 @@
+import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
@@ -24,8 +25,8 @@ const PickersDemo = () => {
     const [launchFile, setLaunchFile] = useState<string | null>(null);
     const [uri, setUri] = useState("https://gtk.org");
 
-    const formatRgba = (rgba: { red: number; green: number; blue: number; alpha: number }) => {
-        return `rgba(${Math.round(rgba.red * 255)}, ${Math.round(rgba.green * 255)}, ${Math.round(rgba.blue * 255)}, ${rgba.alpha.toFixed(2)})`;
+    const formatRgba = (rgba: Gdk.RGBA) => {
+        return `rgba(${Math.round(rgba.getRed() * 255)}, ${Math.round(rgba.getGreen() * 255)}, ${Math.round(rgba.getBlue() * 255)}, ${rgba.getAlpha().toFixed(2)})`;
     };
 
     const handleColorButtonNotify = (button: Gtk.ColorDialogButton, propName: string) => {

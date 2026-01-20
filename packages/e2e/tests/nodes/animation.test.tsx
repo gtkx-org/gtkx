@@ -83,7 +83,7 @@ describe("render - Animation", () => {
 
         it("animates to target values with timed animation", async () => {
             const labelRef = createRef<Gtk.Label>();
-            const values: number[] = [];
+            let completed = false;
 
             function App() {
                 return (
@@ -92,7 +92,9 @@ describe("render - Animation", () => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ duration: 100 }}
-                            onAnimationComplete={() => values.push(-1)}
+                            onAnimationComplete={() => {
+                                completed = true;
+                            }}
                         >
                             <GtkLabel ref={labelRef} label="Animated" />
                         </x.Animation>
@@ -102,37 +104,37 @@ describe("render - Animation", () => {
 
             await render(<App />);
 
-            await waitFor(
-                () => {
-                    expect(values).toContain(-1);
-                },
-                { timeout: 500 },
-            );
+            await waitFor(() => expect(completed).toBe(true), { timeout: 500 });
 
             expect(labelRef.current?.getOpacity()).toBeCloseTo(1, 1);
         });
 
         it("animates with spring physics", async () => {
             const labelRef = createRef<Gtk.Label>();
+            let completed = false;
 
-            await render(
-                <GtkBox>
-                    <x.Animation
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 100, damping: 10 }}
-                    >
-                        <GtkLabel ref={labelRef} label="Animated" />
-                    </x.Animation>
-                </GtkBox>,
-            );
+            function App() {
+                return (
+                    <GtkBox>
+                        <x.Animation
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ type: "spring", stiffness: 100, damping: 10 }}
+                            onAnimationComplete={() => {
+                                completed = true;
+                            }}
+                        >
+                            <GtkLabel ref={labelRef} label="Animated" />
+                        </x.Animation>
+                    </GtkBox>
+                );
+            }
 
-            await waitFor(
-                () => {
-                    expect(labelRef.current?.getOpacity()).toBeCloseTo(1, 1);
-                },
-                { timeout: 1000 },
-            );
+            await render(<App />);
+
+            await waitFor(() => expect(completed).toBe(true), { timeout: 2000 });
+
+            expect(labelRef.current?.getOpacity()).toBeCloseTo(1, 1);
         });
 
         it("calls onAnimationComplete when animation finishes", async () => {

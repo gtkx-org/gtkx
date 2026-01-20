@@ -12,7 +12,8 @@ type ControllerType =
     | "dragSource"
     | "dropTarget"
     | "gestureDrag"
-    | "gestureStylus";
+    | "gestureStylus"
+    | "gestureRotate";
 
 type PropToControllerMap = {
     [propName: string]: {
@@ -52,6 +53,9 @@ const PROP_CONTROLLER_MAP: PropToControllerMap = {
     onStylusMotion: { type: "gestureStylus", signalName: "motion" },
     onStylusUp: { type: "gestureStylus", signalName: "up" },
     onStylusProximity: { type: "gestureStylus", signalName: "proximity" },
+    onRotateAngleChanged: { type: "gestureRotate", signalName: "angle-changed" },
+    onRotateBegin: { type: "gestureRotate", signalName: "begin" },
+    onRotateEnd: { type: "gestureRotate", signalName: "end" },
 };
 
 export const EVENT_CONTROLLER_PROPS = new Set(Object.keys(PROP_CONTROLLER_MAP));
@@ -83,6 +87,7 @@ export class EventControllerManager {
             controller.setStylusOnly(false);
             return controller;
         },
+        gestureRotate: () => new Gtk.GestureRotate(),
     };
 
     constructor(owner: object, widget: Gtk.Widget) {

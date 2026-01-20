@@ -11,10 +11,8 @@ import {
     GtkEntry,
     GtkFontDialogButton,
     GtkGrid,
-    GtkHeaderBar,
     GtkLabel,
     GtkToggleButton,
-    GtkWindow,
     x,
 } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -128,10 +126,10 @@ const FontRenderingDemo = () => {
             const baseline = layout.getBaseline();
 
             const inkPixel = {
-                x: Math.floor(inkRect.x / PANGO_SCALE),
-                y: Math.floor(inkRect.y / PANGO_SCALE),
-                width: Math.ceil(inkRect.width / PANGO_SCALE),
-                height: Math.ceil(inkRect.height / PANGO_SCALE),
+                x: Math.floor(inkRect.getX() / PANGO_SCALE),
+                y: Math.floor(inkRect.getY() / PANGO_SCALE),
+                width: Math.ceil(inkRect.getWidth() / PANGO_SCALE),
+                height: Math.ceil(inkRect.getHeight() / PANGO_SCALE),
             };
 
             const surfaceWidth = inkPixel.width + 20;
@@ -186,15 +184,15 @@ const FontRenderingDemo = () => {
 
                 cr.setSourceRgb(0, 0, 1);
                 cr.rectangle(
-                    logicalRect.x / PANGO_SCALE,
-                    logicalRect.y / PANGO_SCALE,
-                    logicalRect.width / PANGO_SCALE,
-                    logicalRect.height / PANGO_SCALE,
+                    logicalRect.getX() / PANGO_SCALE,
+                    logicalRect.getY() / PANGO_SCALE,
+                    logicalRect.getWidth() / PANGO_SCALE,
+                    logicalRect.getHeight() / PANGO_SCALE,
                 );
                 cr.stroke();
 
-                cr.moveTo(logicalRect.x / PANGO_SCALE, baseline / PANGO_SCALE);
-                cr.lineTo((logicalRect.x + logicalRect.width) / PANGO_SCALE, baseline / PANGO_SCALE);
+                cr.moveTo(logicalRect.getX() / PANGO_SCALE, baseline / PANGO_SCALE);
+                cr.lineTo((logicalRect.getX() + logicalRect.getWidth()) / PANGO_SCALE, baseline / PANGO_SCALE);
                 cr.stroke();
 
                 cr.setSourceRgb(1, 0, 0);
@@ -250,24 +248,30 @@ const FontRenderingDemo = () => {
             const glyphItem = new Pango.GlyphItem();
             (glyphItem as { handle: unknown }).handle = runPtr;
 
-            const glyphString = glyphItem.glyphs;
-            const glyphs = glyphString.glyphs;
+            const glyphString = glyphItem.getGlyphs();
 
-            if (glyphs.length < 8) {
+            if (glyphString.getNumGlyphs() < 8) {
                 ch = "a";
                 layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
             }
 
             for (let i = 0; i < 4; i++) {
-                const g = glyphs[2 * i];
-                if (g) {
-                    const newWidth = Math.round((g.geometry.width * 3) / 2);
-                    g.geometry.width = newWidth;
-                }
+                const g = glyphString.getGlyph(2 * i);
+                const geom = g.getGeometry();
+                const newGlyph = new Pango.GlyphInfo({
+                    glyph: g.getGlyph(),
+                    geometry: new Pango.GlyphGeometry({
+                        width: Math.round((geom.getWidth() * 3) / 2),
+                        xOffset: geom.getXOffset(),
+                        yOffset: geom.getYOffset(),
+                    }),
+                    attr: g.getAttr(),
+                });
+                glyphString.setGlyph(2 * i, newGlyph);
             }
 
-            const surfaceWidth = Math.round((logicalRect.width * 3) / 2);
-            const surfaceHeight = logicalRect.height * 4;
+            const surfaceWidth = Math.round((logicalRect.getWidth() * 3) / 2);
+            const surfaceHeight = logicalRect.getHeight() * 4;
 
             cr.save();
             cr.scale(scale, scale);
@@ -286,14 +290,21 @@ const FontRenderingDemo = () => {
 
             for (let j = 0; j < 4; j++) {
                 for (let i = 0; i < 4; i++) {
-                    const g = glyphs[2 * i];
-                    if (g) {
-                        g.geometry.xOffset = Math.round((i * PANGO_SCALE) / 4);
-                        g.geometry.yOffset = Math.round((j * PANGO_SCALE) / 4);
-                    }
+                    const g = glyphString.getGlyph(2 * i);
+                    const geom = g.getGeometry();
+                    const newGlyph = new Pango.GlyphInfo({
+                        glyph: g.getGlyph(),
+                        geometry: new Pango.GlyphGeometry({
+                            width: geom.getWidth(),
+                            xOffset: Math.round((i * PANGO_SCALE) / 4),
+                            yOffset: Math.round((j * PANGO_SCALE) / 4),
+                        }),
+                        attr: g.getAttr(),
+                    });
+                    glyphString.setGlyph(2 * i, newGlyph);
                 }
 
-                cr.moveTo(0, j * logicalRect.height);
+                cr.moveTo(0, j * logicalRect.getHeight());
                 PangoCairo.showLayout(cr, layout);
             }
 
@@ -324,102 +335,104 @@ const FontRenderingDemo = () => {
     const zoomOut = useCallback(() => setScale((s) => Math.max(1, s - 1)), []);
 
     return (
-        <GtkWindow title="Font Rendering" defaultWidth={800} defaultHeight={600} cssClasses={["background"]}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkHeaderBar>
-                    <x.PackStart>
-                        <GtkBox cssClasses={["linked"]}>
-                            <GtkToggleButton label="Text" active={mode === "text"} onToggled={() => setMode("text")} />
-                            <GtkToggleButton
-                                label="Glyphs"
-                                active={mode === "glyphs"}
-                                onToggled={() => setMode("glyphs")}
-                            />
-                        </GtkBox>
-                    </x.PackStart>
-                    <x.PackEnd>
-                        <GtkBox spacing={6}>
-                            <GtkButton
-                                iconName="zoom-out-symbolic"
-                                onClicked={zoomOut}
-                                sensitive={scale > 1}
-                                cssClasses={["circular"]}
-                            />
-                            <GtkButton
-                                iconName="zoom-in-symbolic"
-                                onClicked={zoomIn}
-                                sensitive={scale < 32}
-                                cssClasses={["circular"]}
-                            />
-                        </GtkBox>
-                    </x.PackEnd>
-                </GtkHeaderBar>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
-                    <GtkGrid
-                        columnSpacing={12}
-                        rowSpacing={6}
-                        marginStart={12}
-                        marginEnd={12}
-                        marginTop={12}
-                        marginBottom={12}
-                    >
-                        <GtkLabel label="Text:" halign={Gtk.Align.END} />
-                        <GtkEntry text={text} onChanged={(entry) => setText(entry.getText())} hexpand />
-                        <GtkCheckButton
-                            label="Show Pixels"
-                            active={overlays.showPixels}
-                            onToggled={(btn) => setOverlays((o) => ({ ...o, showPixels: btn.getActive() }))}
-                        />
-                        <GtkDropDown
-                            selectedId={hintStyleOptions.find((o) => o.value === hintStyle)?.id}
-                            onSelectionChanged={(id) => {
-                                const opt = hintStyleOptions.find((o) => o.id === id);
-                                if (opt) setHintStyle(opt.value);
-                            }}
-                        >
-                            {hintStyleOptions.map((opt) => (
-                                <x.SimpleListItem key={opt.id} id={opt.id} value={opt.label} />
-                            ))}
-                        </GtkDropDown>
-                        <GtkCheckButton
-                            label="Show Extents"
-                            active={overlays.showExtents}
-                            onToggled={(btn) => setOverlays((o) => ({ ...o, showExtents: btn.getActive() }))}
-                        />
-                        <GtkLabel label={`Zoom: ${scale}x`} halign={Gtk.Align.END} />
-
-                        <GtkLabel label="Font:" halign={Gtk.Align.END} />
-                        <GtkFontDialogButton fontDesc={fontDesc} onFontDescChanged={setFontDesc} hexpand />
-                        <GtkCheckButton
-                            label="Show Outlines"
-                            active={overlays.showOutlines}
-                            onToggled={(btn) => setOverlays((o) => ({ ...o, showOutlines: btn.getActive() }))}
-                        />
-                        <GtkBox spacing={12}>
-                            <GtkCheckButton
-                                label="Antialias"
-                                active={antialias}
-                                onToggled={(btn) => setAntialias(btn.getActive())}
-                            />
-                            <GtkCheckButton
-                                label="Hint Metrics"
-                                active={hintMetrics}
-                                onToggled={(btn) => setHintMetrics(btn.getActive())}
-                            />
-                        </GtkBox>
-                        <GtkCheckButton
-                            label="Show Grid"
-                            active={overlays.showGrid}
-                            onToggled={(btn) => setOverlays((o) => ({ ...o, showGrid: btn.getActive() }))}
-                        />
-                        <GtkBox />
-                    </GtkGrid>
-
-                    <GtkDrawingArea onDraw={drawFunc} vexpand hexpand cssClasses={["view"]} />
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
+            <GtkBox spacing={12} marginStart={12} marginEnd={12} marginTop={12}>
+                <GtkBox cssClasses={["linked"]}>
+                    <GtkToggleButton label="Text" active={mode === "text"} onToggled={() => setMode("text")} />
+                    <GtkToggleButton label="Glyphs" active={mode === "glyphs"} onToggled={() => setMode("glyphs")} />
+                </GtkBox>
+                <GtkBox spacing={6}>
+                    <GtkButton
+                        iconName="zoom-out-symbolic"
+                        onClicked={zoomOut}
+                        sensitive={scale > 1}
+                        cssClasses={["circular"]}
+                    />
+                    <GtkLabel label={`${scale}x`} />
+                    <GtkButton
+                        iconName="zoom-in-symbolic"
+                        onClicked={zoomIn}
+                        sensitive={scale < 32}
+                        cssClasses={["circular"]}
+                    />
                 </GtkBox>
             </GtkBox>
-        </GtkWindow>
+
+            <GtkGrid columnSpacing={12} rowSpacing={6} marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                <x.GridChild column={0} row={0}>
+                    <GtkLabel label="Text:" halign={Gtk.Align.END} />
+                </x.GridChild>
+                <x.GridChild column={1} row={0}>
+                    <GtkEntry text={text} onChanged={(entry) => setText(entry.getText())} hexpand />
+                </x.GridChild>
+                <x.GridChild column={2} row={0}>
+                    <GtkLabel label="Font:" halign={Gtk.Align.END} />
+                </x.GridChild>
+                <x.GridChild column={3} row={0}>
+                    <GtkFontDialogButton fontDesc={fontDesc} onFontDescChanged={setFontDesc} hexpand />
+                </x.GridChild>
+                <x.GridChild column={0} row={1}>
+                    <GtkLabel label="Hint Style:" halign={Gtk.Align.END} />
+                </x.GridChild>
+                <x.GridChild column={1} row={1}>
+                    <GtkDropDown
+                        selectedId={hintStyleOptions.find((o) => o.value === hintStyle)?.id}
+                        onSelectionChanged={(id) => {
+                            const opt = hintStyleOptions.find((o) => o.id === id);
+                            if (opt) setHintStyle(opt.value);
+                        }}
+                    >
+                        {hintStyleOptions.map((opt) => (
+                            <x.SimpleListItem key={opt.id} id={opt.id} value={opt.label} />
+                        ))}
+                    </GtkDropDown>
+                </x.GridChild>
+                <x.GridChild column={2} row={1}>
+                    <GtkCheckButton
+                        label="Antialias"
+                        active={antialias}
+                        onToggled={(btn) => setAntialias(btn.getActive())}
+                    />
+                </x.GridChild>
+                <x.GridChild column={3} row={1}>
+                    <GtkCheckButton
+                        label="Hint Metrics"
+                        active={hintMetrics}
+                        onToggled={(btn) => setHintMetrics(btn.getActive())}
+                    />
+                </x.GridChild>
+                <x.GridChild column={0} row={2}>
+                    <GtkCheckButton
+                        label="Show Pixels"
+                        active={overlays.showPixels}
+                        onToggled={(btn) => setOverlays((o) => ({ ...o, showPixels: btn.getActive() }))}
+                    />
+                </x.GridChild>
+                <x.GridChild column={1} row={2}>
+                    <GtkCheckButton
+                        label="Show Outlines"
+                        active={overlays.showOutlines}
+                        onToggled={(btn) => setOverlays((o) => ({ ...o, showOutlines: btn.getActive() }))}
+                    />
+                </x.GridChild>
+                <x.GridChild column={2} row={2}>
+                    <GtkCheckButton
+                        label="Show Extents"
+                        active={overlays.showExtents}
+                        onToggled={(btn) => setOverlays((o) => ({ ...o, showExtents: btn.getActive() }))}
+                    />
+                </x.GridChild>
+                <x.GridChild column={3} row={2}>
+                    <GtkCheckButton
+                        label="Show Grid"
+                        active={overlays.showGrid}
+                        onToggled={(btn) => setOverlays((o) => ({ ...o, showGrid: btn.getActive() }))}
+                    />
+                </x.GridChild>
+            </GtkGrid>
+
+            <GtkDrawingArea onDraw={drawFunc} vexpand hexpand cssClasses={["view"]} />
+        </GtkBox>
     );
 };
 

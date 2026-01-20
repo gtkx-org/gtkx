@@ -60,8 +60,14 @@ export class GenerationContext {
     /** Whether the module uses the read function */
     usesRead = false;
 
-    /** Whether the module uses the write function */
+    /** Whether the module uses the write function (for constructor initialization) */
     usesWrite = false;
+
+    /** Whether the module uses the readPointer function (for pointer array access) */
+    usesReadPointer = false;
+
+    /** Whether the module uses the writePointer function (for array element setters) */
+    usesWritePointer = false;
 
     /** Whether the module uses the alloc function */
     usesAlloc = false;
@@ -134,6 +140,8 @@ export class GenerationContext {
         this.usesType = false;
         this.usesRead = false;
         this.usesWrite = false;
+        this.usesReadPointer = false;
+        this.usesWritePointer = false;
         this.usesAlloc = false;
         this.usesNativeError = false;
         this.currentNamespace = undefined;

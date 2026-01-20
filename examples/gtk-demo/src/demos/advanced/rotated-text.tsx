@@ -54,8 +54,8 @@ const createFancyAttrListForLayout = (layout: Pango.Layout): Pango.AttrList => {
 
         if (codepoint === HEART_CODEPOINT) {
             const attr = Pango.attrShapeNew(inkRect, logicalRect);
-            attr.startIndex = byteIndex;
-            attr.endIndex = byteIndex + 3;
+            attr.setStartIndex(byteIndex);
+            attr.setEndIndex(byteIndex + 3);
             attrs.insert(attr);
         }
 
@@ -80,7 +80,7 @@ const RotatedTextDemo = () => {
             cr.translate(currentPoint.x, currentPoint.y);
         }
 
-        cr.scale(attr.inkRect.width / Pango.SCALE, attr.inkRect.height / Pango.SCALE);
+        cr.scale(attr.getInkRect().getWidth() / Pango.SCALE, attr.getInkRect().getHeight() / Pango.SCALE);
         drawHeart(cr, doPath);
     }, []);
 
@@ -112,7 +112,7 @@ const RotatedTextDemo = () => {
 
                 const logicalRect = new Pango.Rectangle();
                 layout.getPixelExtents(undefined, logicalRect);
-                const layoutWidth = logicalRect.width;
+                const layoutWidth = logicalRect.getWidth();
 
                 cr.moveTo(-layoutWidth / 2, -RADIUS * 0.9);
                 PangoCairo.showLayout(cr, layout);

@@ -23,10 +23,10 @@ describe("render - ColorDialogButton", () => {
 
             expect(ref.current).not.toBeNull();
             const currentRgba = ref.current?.getRgba();
-            expect(currentRgba?.red).toBeCloseTo(1.0);
-            expect(currentRgba?.green).toBeCloseTo(0.5);
-            expect(currentRgba?.blue).toBeCloseTo(0.25);
-            expect(currentRgba?.alpha).toBeCloseTo(1.0);
+            expect(currentRgba?.getRed()).toBeCloseTo(1.0);
+            expect(currentRgba?.getGreen()).toBeCloseTo(0.5);
+            expect(currentRgba?.getBlue()).toBeCloseTo(0.25);
+            expect(currentRgba?.getAlpha()).toBeCloseTo(1.0);
         });
 
         it("updates rgba when prop changes", async () => {
@@ -40,15 +40,15 @@ describe("render - ColorDialogButton", () => {
             await render(<App color={initialColor} />);
 
             const rgba1 = ref.current?.getRgba();
-            expect(rgba1?.red).toBeCloseTo(1.0);
-            expect(rgba1?.green).toBeCloseTo(0.0);
+            expect(rgba1?.getRed()).toBeCloseTo(1.0);
+            expect(rgba1?.getGreen()).toBeCloseTo(0.0);
 
             const newColor = new Gdk.RGBA({ red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0 });
             await render(<App color={newColor} />);
 
             const rgba2 = ref.current?.getRgba();
-            expect(rgba2?.red).toBeCloseTo(0.0);
-            expect(rgba2?.green).toBeCloseTo(1.0);
+            expect(rgba2?.getRed()).toBeCloseTo(0.0);
+            expect(rgba2?.getGreen()).toBeCloseTo(1.0);
         });
 
         it("sets dialog title", async () => {

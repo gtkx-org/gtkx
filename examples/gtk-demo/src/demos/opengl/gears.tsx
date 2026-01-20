@@ -381,7 +381,7 @@ const GearsDemo = () => {
         if (!glStateRef.current) {
             const glError = self.getError();
             if (glError) {
-                setError(`GL context error: ${glError.message}`);
+                setError(`GL context error: ${glError.getMessage()}`);
                 return true;
             }
 

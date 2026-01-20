@@ -3,11 +3,7 @@ import type { Node } from "../../node.js";
 import { registerNodeClass } from "../../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
 import { VirtualSingleChildNode } from "../abstract/virtual-single-child.js";
-import {
-    attachChild,
-    detachChild,
-    getAttachmentStrategy,
-} from "../internal/child-attachment.js";
+import { attachChild, detachChild, getAttachmentStrategy } from "../internal/child-attachment.js";
 import { isRemovable } from "../internal/predicates.js";
 import { WidgetNode } from "../widget.js";
 import { type AnimatableProperties, AnimationController } from "./animation-controller.js";
@@ -23,7 +19,7 @@ export type AnimationProps = {
 
 type Props = Partial<AnimationProps>;
 
-export class AnimationNode extends VirtualSingleChildNode<Props> {
+class AnimationNode extends VirtualSingleChildNode<Props> {
     public static override priority = 2;
 
     private controller = new AnimationController();
@@ -86,8 +82,16 @@ export class AnimationNode extends VirtualSingleChildNode<Props> {
     }
 
     public override unmount(): void {
+        if (this.parent && this.child) {
+            const strategy = getAttachmentStrategy(this.parent);
+            if (strategy) {
+                detachChild(this.child, strategy);
+            }
+        }
+
         this.controller.dispose();
         this.hasAppliedInitial = false;
+        this.child = null;
         super.unmount();
     }
 

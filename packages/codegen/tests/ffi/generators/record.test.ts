@@ -184,13 +184,14 @@ describe("RecordGenerator", () => {
             generator.generateToSourceFile(record, sourceFile);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("get x()");
+            expect(code).toContain("getX()");
         });
 
-        it("generates setter for writable field", () => {
+        it("generates setter for writable field on boxed type", () => {
             const { generator, sourceFile } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
+                glibTypeName: "GdkRectangle",
                 fields: [
                     createNormalizedField({
                         name: "x",
@@ -204,7 +205,7 @@ describe("RecordGenerator", () => {
             generator.generateToSourceFile(record, sourceFile);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("set x(value");
+            expect(code).toContain("setX(value");
         });
 
         it("converts field names to camelCase", () => {
@@ -224,7 +225,7 @@ describe("RecordGenerator", () => {
             generator.generateToSourceFile(record, sourceFile);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("get someField()");
+            expect(code).toContain("getSomeField()");
         });
 
         it("renames id field to id_", () => {
@@ -244,7 +245,7 @@ describe("RecordGenerator", () => {
             generator.generateToSourceFile(record, sourceFile);
 
             const code = getGeneratedCode(sourceFile);
-            expect(code).toContain("get id_()");
+            expect(code).toContain("getId_()");
         });
     });
 

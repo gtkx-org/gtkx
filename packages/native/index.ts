@@ -172,39 +172,40 @@ export function poll(): void {
 }
 
 /**
- * Creates a view into a parent struct's memory at a given offset.
+ * Reads a value from memory pointed to by a pointer field.
  *
- * Used for accessing nested structs within a parent struct. The returned
- * handle shares memory ownership with the parent via Arc reference counting.
- *
- * @param handle - Native handle pointing to the parent struct (must be Struct or View type)
- * @param offset - Byte offset from the parent's base pointer
- * @returns Native handle pointing to the view location
- */
-export function readView(handle: unknown, offset: number): unknown {
-    return native.readView(handle, offset);
-}
-
-/**
- * Creates a view into pointed array memory at a given element index.
- *
- * Used for accessing elements of arrays pointed to by struct fields.
- * The array pointer is read from the parent at ptrOffset, then the view
- * is created at the calculated element offset.
+ * Used for accessing array elements or dereferencing pointer fields.
+ * Reads the pointer at ptrOffset, then reads from that location plus elementOffset.
  *
  * @param handle - Native handle pointing to the parent struct
  * @param ptrOffset - Byte offset of the pointer field in the parent
- * @param elementIndex - Index of the element to access
- * @param elementSize - Size of each element in bytes
- * @returns Native handle pointing to the array element
+ * @param elementOffset - Byte offset from the dereferenced pointer
+ * @returns Native handle pointing to the element (borrowed, non-owning)
  */
-export function readPointerView(
-    handle: unknown,
+export function readPointer(handle: unknown, ptrOffset: number, elementOffset: number): unknown {
+    return native.readPointer(handle, ptrOffset, elementOffset);
+}
+
+/**
+ * Writes a struct value to memory pointed to by a pointer field.
+ *
+ * Used for setting array elements. Copies the data from source to the
+ * destination array element.
+ *
+ * @param destHandle - Native handle pointing to the parent struct containing the pointer
+ * @param ptrOffset - Byte offset of the pointer field in the parent
+ * @param elementOffset - Byte offset from the dereferenced pointer (index * elementSize)
+ * @param sourceHandle - Native handle of the struct to copy from
+ * @param size - Size in bytes of the struct to copy
+ */
+export function writePointer(
+    destHandle: unknown,
     ptrOffset: number,
-    elementIndex: number,
-    elementSize: number,
-): unknown {
-    return native.readPointerView(handle, ptrOffset, elementIndex, elementSize);
+    elementOffset: number,
+    sourceHandle: unknown,
+    size: number,
+): void {
+    native.writePointer(destHandle, ptrOffset, elementOffset, sourceHandle, size);
 }
 
 export type { NativeHandle, Ref, Arg, Type, CallbackType };

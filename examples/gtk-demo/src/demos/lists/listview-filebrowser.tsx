@@ -60,7 +60,7 @@ const ListViewFilebrowserDemo = () => {
 
             const listError = dirList.getError();
             if (listError) {
-                setError(listError.message ?? "Failed to read directory");
+                setError(listError.getMessage() ?? "Failed to read directory");
                 setLoading(false);
                 return;
             }

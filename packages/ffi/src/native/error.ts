@@ -7,11 +7,11 @@ import type { NativeObject } from "./base.js";
  */
 export interface GErrorLike extends NativeObject {
     /** The error domain (quark identifying the error source) */
-    readonly domain: number;
+    getDomain(): number;
     /** The error code within the domain */
-    readonly code: number;
+    getCode(): number;
     /** Human-readable error message */
-    readonly message: string;
+    getMessage(): string;
 }
 
 /**
@@ -34,12 +34,12 @@ export interface GErrorLike extends NativeObject {
 export class NativeError extends Error {
     readonly gerror: GErrorLike;
 
-    get domain(): number {
-        return this.gerror.domain;
+    getDomain(): number {
+        return this.gerror.getDomain();
     }
 
-    get code(): number {
-        return this.gerror.code;
+    getCode(): number {
+        return this.gerror.getCode();
     }
 
     /**
@@ -48,7 +48,7 @@ export class NativeError extends Error {
      * @param gerror - GError wrapper instance
      */
     constructor(gerror: GErrorLike) {
-        super(gerror.message ?? "Unknown error");
+        super(gerror.getMessage() ?? "Unknown error");
 
         this.gerror = gerror;
         this.name = "NativeError";

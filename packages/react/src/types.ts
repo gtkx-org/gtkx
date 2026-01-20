@@ -197,3 +197,22 @@ export interface GestureStylusProps {
      */
     onStylusProximity?: (x: number, y: number) => void;
 }
+
+export interface GestureRotateProps {
+    /**
+     * Called when the rotation angle changes during a two-finger rotation gesture.
+     * @param angle - The absolute rotation angle in radians
+     * @param angleDelta - The change in angle since the last event, in radians
+     */
+    onRotateAngleChanged?: (angle: number, angleDelta: number) => void;
+    /**
+     * Called when a rotation gesture begins.
+     * @param sequence - The event sequence that triggered the gesture
+     */
+    onRotateBegin?: (sequence: Gdk.EventSequence | null) => void;
+    /**
+     * Called when a rotation gesture ends.
+     * @param sequence - The event sequence that triggered the gesture
+     */
+    onRotateEnd?: (sequence: Gdk.EventSequence | null) => void;
+}
