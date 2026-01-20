@@ -1,7 +1,19 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
+import {
+    createPortal,
+    GtkBox,
+    GtkButton,
+    GtkFrame,
+    GtkGLArea,
+    GtkLabel,
+    GtkOverlay,
+    GtkScale,
+    GtkWindow,
+    useApplication,
+    x,
+} from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
@@ -304,31 +316,62 @@ const initGL = (): GLState => {
     return { program, gears, uniforms };
 };
 
-const GearsDemo = () => {
+const AxisSlider = ({ axis, value, onChange }: { axis: string; value: number; onChange: (value: number) => void }) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+        <GtkLabel label={axis} />
+        <GtkScale
+            orientation={Gtk.Orientation.VERTICAL}
+            inverted
+            vexpand
+            value={value}
+            lower={0}
+            upper={360}
+            stepIncrement={1}
+            pageIncrement={12}
+            onValueChanged={onChange}
+        />
+    </GtkBox>
+);
+
+const GearsWindow = ({ onClose }: { onClose: () => void }) => {
+    const app = useApplication();
+    const activeWindow = app.getActiveWindow();
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
     const [viewRotX, setViewRotX] = useState(20);
     const [viewRotY, setViewRotY] = useState(30);
-    const [isAnimating, setIsAnimating] = useState(true);
+    const [viewRotZ, setViewRotZ] = useState(0);
+    const [fps, setFps] = useState(0);
     const [error, setError] = useState<string | null>(null);
-    const aspectRef = useRef(1.0);
-    const sizeRef = useRef({ width: 500, height: 400 });
     const tickIdRef = useRef<number | null>(null);
     const lastFrameTimeRef = useRef<number | null>(null);
     const angleRef = useRef(0);
+    const frameCountRef = useRef(0);
     const viewRotXRef = useRef(viewRotX);
     const viewRotYRef = useRef(viewRotY);
+    const viewRotZRef = useRef(viewRotZ);
     viewRotXRef.current = viewRotX;
     viewRotYRef.current = viewRotY;
+    viewRotZRef.current = viewRotZ;
 
     const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
         const frameTime = frameClock.getFrameTime();
         if (lastFrameTimeRef.current !== null) {
             const delta = (frameTime - lastFrameTimeRef.current) / 1_000_000;
-            angleRef.current = (angleRef.current + delta * 120) % 360;
+            angleRef.current = (angleRef.current + delta * 70) % 360;
             glAreaRef.current?.queueRender();
         }
         lastFrameTimeRef.current = frameTime;
+
+        frameCountRef.current++;
+        if (frameCountRef.current >= 20) {
+            frameCountRef.current = 0;
+            const currentFps = frameClock.getFps();
+            if (currentFps > 0) {
+                setFps(currentFps);
+            }
+        }
+
         return true;
     }, []);
 
@@ -347,31 +390,23 @@ const GearsDemo = () => {
         lastFrameTimeRef.current = null;
     }, []);
 
-    const handleGLAreaRef = useCallback((glArea: Gtk.GLArea | null) => {
-        if (glAreaRef.current && tickIdRef.current !== null) {
-            glAreaRef.current.removeTickCallback(tickIdRef.current);
-            tickIdRef.current = null;
-        }
-        glAreaRef.current = glArea;
-    }, []);
-
-    const handleToggleAnimation = useCallback(() => {
-        setIsAnimating((prev) => {
-            if (prev) {
-                stopAnimation();
-            } else {
+    const handleGLAreaRef = useCallback(
+        (glArea: Gtk.GLArea | null) => {
+            if (glAreaRef.current && tickIdRef.current !== null) {
+                glAreaRef.current.removeTickCallback(tickIdRef.current);
+                tickIdRef.current = null;
+            }
+            glAreaRef.current = glArea;
+            if (glArea) {
                 startAnimation();
             }
-            return !prev;
-        });
-    }, [startAnimation, stopAnimation]);
+        },
+        [startAnimation],
+    );
 
     useEffect(() => {
-        if (isAnimating) {
-            startAnimation();
-        }
         return stopAnimation;
-    }, [isAnimating, startAnimation, stopAnimation]);
+    }, [stopAnimation]);
 
     const handleUnrealize = useCallback((_self: Gtk.Widget) => {
         glStateRef.current = null;
@@ -418,6 +453,7 @@ const GearsDemo = () => {
         view = mat4Translate(view, 0, 0, -25);
         view = mat4RotateX(view, (viewRotXRef.current * Math.PI) / 180);
         view = mat4RotateY(view, (viewRotYRef.current * Math.PI) / 180);
+        view = mat4RotateZ(view, (viewRotZRef.current * Math.PI) / 180);
 
         const angleRad = (angleRef.current * Math.PI) / 180;
 
@@ -461,10 +497,57 @@ const GearsDemo = () => {
         return true;
     }, []);
 
-    const handleResize = useCallback((_self: Gtk.GLArea, width: number, height: number) => {
-        aspectRef.current = width / height;
-        sizeRef.current = { width, height };
-    }, []);
+    if (!activeWindow) return null;
+
+    if (error) {
+        return createPortal(
+            <GtkWindow title="Gears" defaultWidth={640} defaultHeight={640} onClose={onClose}>
+                <GtkFrame marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                    <GtkLabel
+                        label={error}
+                        cssClasses={["error"]}
+                        marginTop={12}
+                        marginBottom={12}
+                        marginStart={12}
+                        marginEnd={12}
+                    />
+                </GtkFrame>
+            </GtkWindow>,
+            activeWindow,
+        );
+    }
+
+    return createPortal(
+        <GtkWindow title="Gears" defaultWidth={640} defaultHeight={640} onClose={onClose}>
+            <GtkOverlay marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                    <GtkGLArea
+                        ref={handleGLAreaRef}
+                        useEs
+                        hasDepthBuffer
+                        hexpand
+                        vexpand
+                        onUnrealize={handleUnrealize}
+                        onRender={handleRender}
+                    />
+                    <AxisSlider axis="X" value={viewRotX} onChange={setViewRotX} />
+                    <AxisSlider axis="Y" value={viewRotY} onChange={setViewRotY} />
+                    <AxisSlider axis="Z" value={viewRotZ} onChange={setViewRotZ} />
+                </GtkBox>
+
+                <x.OverlayChild>
+                    <GtkFrame cssClasses={["app-notification"]} halign={Gtk.Align.START} valign={Gtk.Align.START}>
+                        <GtkLabel label={fps > 0 ? `FPS: ${fps.toFixed(1)}` : "FPS: ---"} />
+                    </GtkFrame>
+                </x.OverlayChild>
+            </GtkOverlay>
+        </GtkWindow>,
+        activeWindow,
+    );
+};
+
+const GearsDemo = () => {
+    const [showWindow, setShowWindow] = useState(false);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
@@ -477,90 +560,9 @@ const GearsDemo = () => {
                 cssClasses={["dim-label"]}
             />
 
-            {error && (
-                <GtkFrame>
-                    <GtkLabel
-                        label={error}
-                        cssClasses={["error"]}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    />
-                </GtkFrame>
-            )}
+            <GtkButton label="Open Gears Window" onClicked={() => setShowWindow(true)} />
 
-            <GtkFrame label="Rotating Gears">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkGLArea
-                        ref={handleGLAreaRef}
-                        useEs
-                        hasDepthBuffer
-                        vexpand
-                        onUnrealize={handleUnrealize}
-                        onRender={handleRender}
-                        onResize={handleResize}
-                        widthRequest={500}
-                        heightRequest={400}
-                        cssClasses={["card"]}
-                    />
-
-                    <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
-                        <GtkButton
-                            label={isAnimating ? "Pause" : "Play"}
-                            onClicked={handleToggleAnimation}
-                            cssClasses={isAnimating ? [] : ["suggested-action"]}
-                        />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="View Controls">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkBox spacing={12}>
-                        <GtkLabel label="Rotation X:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            value={viewRotX}
-                            lower={-90}
-                            upper={90}
-                            stepIncrement={1}
-                            pageIncrement={10}
-                            onValueChanged={setViewRotX}
-                        />
-                    </GtkBox>
-                    <GtkBox spacing={12}>
-                        <GtkLabel label="Rotation Y:" widthRequest={80} halign={Gtk.Align.START} />
-                        <GtkScale
-                            drawValue
-                            valuePos={Gtk.PositionType.RIGHT}
-                            hexpand
-                            value={viewRotY}
-                            lower={-180}
-                            upper={180}
-                            stepIncrement={1}
-                            pageIncrement={10}
-                            onValueChanged={setViewRotY}
-                        />
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
+            {showWindow && <GearsWindow onClose={() => setShowWindow(false)} />}
         </GtkBox>
     );
 };
