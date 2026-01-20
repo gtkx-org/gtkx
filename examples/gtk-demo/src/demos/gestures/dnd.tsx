@@ -120,11 +120,11 @@ const DndDemo = () => {
     }, []);
 
     const handleContextMenu = useCallback(
-        (_nPress: number, x: number, y: number) => {
+        (clickX: number, clickY: number) => {
             const hitItem = items.find(
-                (item) => x >= item.x && x <= item.x + ITEM_SIZE && y >= item.y && y <= item.y + ITEM_SIZE,
+                (item) => clickX >= item.x && clickX <= item.x + ITEM_SIZE && clickY >= item.y && clickY <= item.y + ITEM_SIZE,
             );
-            setContextMenu({ x, y, itemId: hitItem?.id ?? null });
+            setContextMenu({ x: clickX, y: clickY, itemId: hitItem?.id ?? null });
             setTimeout(() => contextMenuRef.current?.popup(), 0);
         },
         [items],
@@ -232,10 +232,10 @@ const DndDemo = () => {
                 cssClasses={[canvasStyle]}
                 dropTypes={[GObject.Type.STRING]}
                 onDropMotion={() => Gdk.DragAction.MOVE}
-                onDrop={(value: GObject.Value, x: number, y: number) => handleCanvasDrop(value, x, y)}
-                onPressed={(nPress, x, y) => {
-                    if (nPress === 1) {
-                        handleContextMenu(nPress, x, y);
+                onDrop={(value: GObject.Value, dropX: number, dropY: number) => handleCanvasDrop(value, dropX, dropY)}
+                onPressed={(_nPress, pressX, pressY, event) => {
+                    if (event?.triggersContextMenu()) {
+                        handleContextMenu(pressX, pressY);
                     }
                 }}
             >

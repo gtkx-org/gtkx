@@ -560,7 +560,12 @@ describe("widget - signals", () => {
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Press" });
                 await userEvent.pointer(button, "down");
 
-                expect(handlePressed).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), expect.any(Number));
+                expect(handlePressed).toHaveBeenCalled();
+                const [nPress, x, y, event] = handlePressed.mock.calls[0] as [number, number, number, unknown];
+                expect(typeof nPress).toBe("number");
+                expect(typeof x).toBe("number");
+                expect(typeof y).toBe("number");
+                expect(event === null || typeof event === "object").toBe(true);
             });
         });
 

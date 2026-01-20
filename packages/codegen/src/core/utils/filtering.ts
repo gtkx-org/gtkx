@@ -21,8 +21,11 @@ type MethodLike = {
     readonly name: string;
     readonly cIdentifier: string;
     readonly parameters: readonly { readonly name: string }[];
+    readonly returnType?: { readonly name: string };
     readonly shadowedBy?: string;
 };
+
+const hasUnsupportedReturnType = (method: MethodLike): boolean => method.returnType?.name === "gpointer";
 
 export function filterSupportedMethods<T extends MethodLike>(
     methods: readonly T[],
@@ -33,14 +36,18 @@ export function filterSupportedMethods<T extends MethodLike>(
         if (method.shadowedBy) return false;
         if (isMethodDuplicate(method.name, method.cIdentifier, seen)) return false;
         if (hasUnsupportedCallbacks(method.parameters)) return false;
+        if (hasUnsupportedReturnType(method)) return false;
         return true;
     });
 }
 
 type FunctionLike = {
     readonly parameters: readonly { readonly name: string }[];
+    readonly returnType?: { readonly name: string };
     readonly shadowedBy?: string;
 };
+
+const hasUnsupportedFunctionReturnType = (fn: FunctionLike): boolean => fn.returnType?.name === "gpointer";
 
 export function filterSupportedFunctions<T extends FunctionLike>(
     functions: readonly T[],
@@ -48,6 +55,8 @@ export function filterSupportedFunctions<T extends FunctionLike>(
 ): T[] {
     return functions.filter((fn) => {
         if (fn.shadowedBy) return false;
-        return !hasUnsupportedCallbacks(fn.parameters);
+        if (hasUnsupportedCallbacks(fn.parameters)) return false;
+        if (hasUnsupportedFunctionReturnType(fn)) return false;
+        return true;
     });
 }

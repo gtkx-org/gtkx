@@ -15,22 +15,66 @@ export type ContainerClass = typeof Gtk.Widget | typeof Gtk.Application;
  * pointer motion, clicks, keyboard events, and drag-and-drop.
  */
 export interface EventControllerProps {
-    /** Called when the pointer enters the widget */
-    onEnter?: (x: number, y: number) => void;
-    /** Called when the pointer leaves the widget */
-    onLeave?: () => void;
-    /** Called when the pointer moves over the widget */
-    onMotion?: (x: number, y: number) => void;
-    /** Called when a mouse button is pressed */
-    onPressed?: (nPress: number, x: number, y: number) => void;
-    /** Called when a mouse button is released */
-    onReleased?: (nPress: number, x: number, y: number) => void;
-    /** Called when a key is pressed (for focusable widgets) */
-    onKeyPressed?: (keyval: number, keycode: number, state: Gdk.ModifierType) => boolean;
-    /** Called when a key is released */
-    onKeyReleased?: (keyval: number, keycode: number, state: Gdk.ModifierType) => void;
-    /** Called when the widget is scrolled */
-    onScroll?: (dx: number, dy: number) => boolean;
+    /**
+     * Called when the pointer enters the widget.
+     * @param x - X coordinate
+     * @param y - Y coordinate
+     * @param event - The underlying Gdk.Event
+     */
+    onEnter?: (x: number, y: number, event: Gdk.Event | null) => void;
+    /**
+     * Called when the pointer leaves the widget.
+     * @param event - The underlying Gdk.Event
+     */
+    onLeave?: (event: Gdk.Event | null) => void;
+    /**
+     * Called when the pointer moves over the widget.
+     * @param x - X coordinate
+     * @param y - Y coordinate
+     * @param event - The underlying Gdk.Event
+     */
+    onMotion?: (x: number, y: number, event: Gdk.Event | null) => void;
+    /**
+     * Called when a mouse button is pressed.
+     * @param nPress - The press count (1 for single click, 2 for double click, etc.)
+     * @param x - X coordinate of the press
+     * @param y - Y coordinate of the press
+     * @param event - The underlying Gdk.Event, useful for checking triggersContextMenu()
+     */
+    onPressed?: (nPress: number, x: number, y: number, event: Gdk.Event | null) => void;
+    /**
+     * Called when a mouse button is released.
+     * @param nPress - The press count
+     * @param x - X coordinate of the release
+     * @param y - Y coordinate of the release
+     * @param event - The underlying Gdk.Event
+     */
+    onReleased?: (nPress: number, x: number, y: number, event: Gdk.Event | null) => void;
+    /**
+     * Called when a key is pressed (for focusable widgets).
+     * @param keyval - The key value
+     * @param keycode - The hardware keycode
+     * @param state - Modifier state (Shift, Ctrl, etc.)
+     * @param event - The underlying Gdk.Event
+     * @returns true if the key press was handled
+     */
+    onKeyPressed?: (keyval: number, keycode: number, state: Gdk.ModifierType, event: Gdk.Event | null) => boolean;
+    /**
+     * Called when a key is released.
+     * @param keyval - The key value
+     * @param keycode - The hardware keycode
+     * @param state - Modifier state
+     * @param event - The underlying Gdk.Event
+     */
+    onKeyReleased?: (keyval: number, keycode: number, state: Gdk.ModifierType, event: Gdk.Event | null) => void;
+    /**
+     * Called when the widget is scrolled.
+     * @param dx - Horizontal scroll delta
+     * @param dy - Vertical scroll delta
+     * @param event - The underlying Gdk.Event
+     * @returns true if the scroll was handled
+     */
+    onScroll?: (dx: number, dy: number, event: Gdk.Event | null) => boolean;
 }
 
 /**
@@ -143,20 +187,23 @@ export interface GestureDragProps {
      * Called when a drag gesture begins.
      * @param startX - X coordinate where the drag started
      * @param startY - Y coordinate where the drag started
+     * @param event - The underlying Gdk.Event
      */
-    onGestureDragBegin?: (startX: number, startY: number) => void;
+    onGestureDragBegin?: (startX: number, startY: number, event: Gdk.Event | null) => void;
     /**
      * Called as the drag gesture continues.
      * @param offsetX - Horizontal offset from the start point
      * @param offsetY - Vertical offset from the start point
+     * @param event - The underlying Gdk.Event
      */
-    onGestureDragUpdate?: (offsetX: number, offsetY: number) => void;
+    onGestureDragUpdate?: (offsetX: number, offsetY: number, event: Gdk.Event | null) => void;
     /**
      * Called when the drag gesture ends.
      * @param offsetX - Final horizontal offset from the start point
      * @param offsetY - Final vertical offset from the start point
+     * @param event - The underlying Gdk.Event
      */
-    onGestureDragEnd?: (offsetX: number, offsetY: number) => void;
+    onGestureDragEnd?: (offsetX: number, offsetY: number, event: Gdk.Event | null) => void;
 }
 
 /**
@@ -173,8 +220,9 @@ export interface GestureStylusProps {
      * @param pressure - Pressure value (0.0 to 1.0)
      * @param tiltX - Tilt along X axis in degrees
      * @param tiltY - Tilt along Y axis in degrees
+     * @param event - The underlying Gdk.Event
      */
-    onStylusDown?: (x: number, y: number, pressure: number, tiltX: number, tiltY: number) => void;
+    onStylusDown?: (x: number, y: number, pressure: number, tiltX: number, tiltY: number, event: Gdk.Event | null) => void;
     /**
      * Called when the stylus moves while touching the surface.
      * @param x - X coordinate
@@ -182,20 +230,23 @@ export interface GestureStylusProps {
      * @param pressure - Pressure value (0.0 to 1.0)
      * @param tiltX - Tilt along X axis in degrees
      * @param tiltY - Tilt along Y axis in degrees
+     * @param event - The underlying Gdk.Event
      */
-    onStylusMotion?: (x: number, y: number, pressure: number, tiltX: number, tiltY: number) => void;
+    onStylusMotion?: (x: number, y: number, pressure: number, tiltX: number, tiltY: number, event: Gdk.Event | null) => void;
     /**
      * Called when the stylus is lifted from the surface.
      * @param x - X coordinate
      * @param y - Y coordinate
+     * @param event - The underlying Gdk.Event
      */
-    onStylusUp?: (x: number, y: number) => void;
+    onStylusUp?: (x: number, y: number, event: Gdk.Event | null) => void;
     /**
      * Called when the stylus enters proximity of the surface (hovering).
      * @param x - X coordinate
      * @param y - Y coordinate
+     * @param event - The underlying Gdk.Event
      */
-    onStylusProximity?: (x: number, y: number) => void;
+    onStylusProximity?: (x: number, y: number, event: Gdk.Event | null) => void;
 }
 
 export interface GestureRotateProps {
@@ -203,16 +254,19 @@ export interface GestureRotateProps {
      * Called when the rotation angle changes during a two-finger rotation gesture.
      * @param angle - The absolute rotation angle in radians
      * @param angleDelta - The change in angle since the last event, in radians
+     * @param event - The underlying Gdk.Event
      */
-    onRotateAngleChanged?: (angle: number, angleDelta: number) => void;
+    onRotateAngleChanged?: (angle: number, angleDelta: number, event: Gdk.Event | null) => void;
     /**
      * Called when a rotation gesture begins.
      * @param sequence - The event sequence that triggered the gesture
+     * @param event - The underlying Gdk.Event
      */
-    onRotateBegin?: (sequence: Gdk.EventSequence | null) => void;
+    onRotateBegin?: (sequence: Gdk.EventSequence | null, event: Gdk.Event | null) => void;
     /**
      * Called when a rotation gesture ends.
      * @param sequence - The event sequence that triggered the gesture
+     * @param event - The underlying Gdk.Event
      */
-    onRotateEnd?: (sequence: Gdk.EventSequence | null) => void;
+    onRotateEnd?: (sequence: Gdk.EventSequence | null, event: Gdk.Event | null) => void;
 }

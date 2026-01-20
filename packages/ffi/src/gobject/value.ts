@@ -1,8 +1,10 @@
-import { read } from "@gtkx/native";
+import { read, type NativeHandle } from "@gtkx/native";
+import { call } from "../batch.js";
 import { typeFromName, typeName } from "../generated/gobject/functions.js";
 import type { GObject } from "../generated/gobject/object.js";
 import { Value } from "../generated/gobject/value.js";
-import type { NativeObject } from "../native/base.js";
+import type { NativeClass, NativeObject } from "../native/base.js";
+import { getNativeObject } from "../native/object.js";
 import { Type } from "./types.js";
 
 declare module "../generated/gobject/value.js" {
@@ -28,6 +30,22 @@ declare module "../generated/gobject/value.js" {
          * @returns true if the value holds the specified type
          */
         holds(gtype: number): boolean;
+
+        /**
+         * Gets the contents of a G_TYPE_BOXED derived GValue.
+         * Returns a borrowed reference to the boxed value.
+         * @param targetType - The class constructor to wrap the result with
+         * @returns The boxed value wrapped in the target type, or null
+         */
+        getBoxed<T extends NativeObject>(targetType: NativeClass<T>): T | null;
+
+        /**
+         * Gets the contents of a G_TYPE_BOXED derived GValue, duplicating the value.
+         * Returns an owned copy that must be freed by the caller.
+         * @param targetType - The class constructor to wrap the result with
+         * @returns A duplicated boxed value wrapped in the target type, or null
+         */
+        dupBoxed<T extends NativeObject>(targetType: NativeClass<T>): T | null;
     }
 
     namespace Value {
@@ -119,6 +137,46 @@ Value.prototype.getTypeName = function (): string {
 
 Value.prototype.holds = function (gtype: number): boolean {
     return this.getType() === gtype;
+};
+
+Value.prototype.getBoxed = function <T extends NativeObject>(targetType: NativeClass<T>): T | null {
+    const glibTypeName = targetType.glibTypeName;
+    if (!glibTypeName) {
+        throw new Error("targetType must have a glibTypeName");
+    }
+    const ptr = call(
+        "libgobject-2.0.so.0",
+        "g_value_get_boxed",
+        [
+            {
+                type: { type: "boxed", ownership: "borrowed", innerType: "GValue", library: "libgobject-2.0.so.0" },
+                value: this.handle,
+            },
+        ],
+        { type: "boxed", ownership: "borrowed", innerType: glibTypeName, library: "libgobject-2.0.so.0" },
+    );
+    if (ptr === null) return null;
+    return getNativeObject(ptr as NativeHandle, targetType);
+};
+
+Value.prototype.dupBoxed = function <T extends NativeObject>(targetType: NativeClass<T>): T | null {
+    const glibTypeName = targetType.glibTypeName;
+    if (!glibTypeName) {
+        throw new Error("targetType must have a glibTypeName");
+    }
+    const ptr = call(
+        "libgobject-2.0.so.0",
+        "g_value_dup_boxed",
+        [
+            {
+                type: { type: "boxed", ownership: "borrowed", innerType: "GValue", library: "libgobject-2.0.so.0" },
+                value: this.handle,
+            },
+        ],
+        { type: "boxed", ownership: "full", innerType: glibTypeName, library: "libgobject-2.0.so.0" },
+    );
+    if (ptr === null) return null;
+    return getNativeObject(ptr as NativeHandle, targetType);
 };
 
 interface ValueStatic {

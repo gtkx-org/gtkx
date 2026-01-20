@@ -118,10 +118,8 @@ const ClipboardDemo = () => {
 
         try {
             const value = await clipboard.readValueAsync(getGdkRgbaType(), 0);
-            const boxedPtr = value.getBoxed();
-            if (boxedPtr !== null) {
-                const rgba = new Gdk.RGBA({});
-                rgba.handle = boxedPtr as unknown as typeof rgba.handle;
+            const rgba = value.getBoxed(Gdk.RGBA);
+            if (rgba !== null) {
                 setPastedColor(
                     new Gdk.RGBA({
                         red: rgba.getRed(),

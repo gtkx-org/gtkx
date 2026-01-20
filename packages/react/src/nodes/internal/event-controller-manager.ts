@@ -165,9 +165,18 @@ export class EventControllerManager {
             const stylusHandler = this.createStylusHandler(propName, handler);
             signalStore.set(this.owner, controller, signalName, stylusHandler);
         } else {
-            const wrappedHandler = handler ? (_self: unknown, ...args: unknown[]) => handler(...args) : undefined;
+            const wrappedHandler = this.createEventHandler(handler, controller);
             signalStore.set(this.owner, controller, signalName, wrappedHandler);
         }
+    }
+
+    private createEventHandler(handler: SignalHandler | null, controller: Gtk.EventController): SignalHandler | undefined {
+        if (!handler) return undefined;
+
+        return (_self: unknown, ...args: unknown[]) => {
+            const event = controller.getCurrentEvent();
+            return handler(...args, event);
+        };
     }
 
     private createStylusHandler(propName: string, handler: SignalHandler | null): SignalHandler | undefined {
@@ -185,12 +194,14 @@ export class EventControllerManager {
                 gesture.getAxis(Gdk.AxisUse.XTILT, tiltXRef);
                 gesture.getAxis(Gdk.AxisUse.YTILT, tiltYRef);
 
-                handler(x, y, pressureRef.value || 0.5, tiltXRef.value || 0, tiltYRef.value || 0);
+                const event = gesture.getCurrentEvent();
+                handler(x, y, pressureRef.value || 0.5, tiltXRef.value || 0, tiltYRef.value || 0, event);
             };
         }
 
-        return (_gesture: Gtk.GestureStylus, x: number, y: number) => {
-            handler(x, y);
+        return (gesture: Gtk.GestureStylus, x: number, y: number) => {
+            const event = gesture.getCurrentEvent();
+            handler(x, y, event);
         };
     }
 }
