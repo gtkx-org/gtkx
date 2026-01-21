@@ -1,9 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { ADJUSTABLE_INTERFACE_METHODS } from "../generated/internal.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
-import { type AdjustableWidget, isAdjustable } from "./internal/predicates.js";
+import type { AdjustableWidget } from "./internal/predicates.js";
 import { signalStore } from "./internal/signal-store.js";
-import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { filterProps, hasChanged, matchesInterface } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["value", "lower", "upper", "stepIncrement", "pageIncrement", "pageSize", "onValueChanged"] as const;
@@ -24,7 +25,7 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
     private adjustment: Gtk.Adjustment | null = null;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.Widget], containerOrClass) && isAdjustable(containerOrClass);
+        return matchesInterface(ADJUSTABLE_INTERFACE_METHODS, containerOrClass);
     }
 
     public override updateProps(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {

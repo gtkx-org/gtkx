@@ -10,6 +10,7 @@
 import { XMLParser } from "fast-xml-parser";
 import type {
     ContainerType,
+    RawAlias,
     RawCallback,
     RawClass,
     RawConstant,
@@ -37,6 +38,7 @@ const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.record",
     "namespace.callback",
     "namespace.constant",
+    "namespace.alias",
     "namespace.class.method",
     "namespace.class.constructor",
     "namespace.class.function",
@@ -142,6 +144,7 @@ export class RawGirParser {
             records: this.parseRecords(namespace.record ?? []),
             callbacks: this.parseCallbacks(namespace.callback ?? []),
             constants: this.parseConstants(namespace.constant ?? []),
+            aliases: this.parseAliases(namespace.alias ?? []),
         };
     }
 
@@ -613,6 +616,18 @@ export class RawGirParser {
             value: String(constant["@_value"] ?? ""),
             type: this.parseType((constant.type ?? constant.array) as Record<string, unknown> | undefined),
             doc: extractDoc(constant),
+        }));
+    }
+
+    private parseAliases(aliases: Record<string, unknown>[]): RawAlias[] {
+        if (!aliases || !Array.isArray(aliases)) {
+            return [];
+        }
+        return aliases.map((alias) => ({
+            name: String(alias["@_name"] ?? ""),
+            cType: String(alias["@_c:type"] ?? ""),
+            targetType: this.parseType(alias.type as Record<string, unknown> | undefined),
+            doc: extractDoc(alias),
         }));
     }
 }

@@ -9,6 +9,7 @@
 
 import { isIntrinsicType } from "../intrinsics.js";
 import {
+    GirAlias,
     GirCallback,
     GirClass,
     GirConstant,
@@ -30,6 +31,7 @@ import {
     qualifiedName,
 } from "../types.js";
 import type {
+    RawAlias,
     RawCallback,
     RawClass,
     RawConstant,
@@ -70,6 +72,7 @@ export const normalizeNamespace = (raw: RawNamespace, ctx: NormalizerContext): G
     const callbacks = new Map<string, GirCallback>();
     const functions = new Map<string, GirFunction>();
     const constants = new Map<string, GirConstant>();
+    const aliases = new Map<string, GirAlias>();
 
     for (const rawClass of raw.classes) {
         const normalized = normalizeClass(rawClass, nsName, ctx);
@@ -111,6 +114,11 @@ export const normalizeNamespace = (raw: RawNamespace, ctx: NormalizerContext): G
         constants.set(normalized.name, normalized);
     }
 
+    for (const rawAlias of raw.aliases) {
+        const normalized = normalizeAlias(rawAlias, nsName, ctx);
+        aliases.set(normalized.name, normalized);
+    }
+
     return new GirNamespace({
         name: raw.name,
         version: raw.version,
@@ -124,6 +132,7 @@ export const normalizeNamespace = (raw: RawNamespace, ctx: NormalizerContext): G
         callbacks,
         functions,
         constants,
+        aliases,
         doc: raw.doc,
     });
 };
@@ -168,7 +177,8 @@ const typeExistsInNamespace = (typeName: string, ns: RawNamespace): boolean => {
         ns.records.some((r) => r.name === typeName) ||
         ns.enumerations.some((e) => e.name === typeName) ||
         ns.bitfields.some((b) => b.name === typeName) ||
-        ns.callbacks.some((c) => c.name === typeName)
+        ns.callbacks.some((c) => c.name === typeName) ||
+        ns.aliases.some((a) => a.name === typeName)
     );
 };
 
@@ -399,6 +409,21 @@ const normalizeConstant = (raw: RawConstant, currentNamespace: string, ctx: Norm
         cType: raw.cType,
         value: raw.value,
         type: normalizeType(raw.type, currentNamespace, ctx),
+        doc: raw.doc,
+    });
+};
+
+/**
+ * Normalizes a raw alias to a normalized alias.
+ */
+const normalizeAlias = (raw: RawAlias, currentNamespace: string, ctx: NormalizerContext): GirAlias => {
+    const qn = qualifiedName(currentNamespace, raw.name);
+
+    return new GirAlias({
+        name: raw.name,
+        qualifiedName: qn,
+        cType: raw.cType,
+        targetType: normalizeType(raw.targetType, currentNamespace, ctx),
         doc: raw.doc,
     });
 };

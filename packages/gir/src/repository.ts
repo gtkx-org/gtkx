@@ -12,6 +12,7 @@ import { type ParserOptions, RawGirParser } from "./internal/parser.js";
 import type { RawNamespace } from "./internal/raw-types.js";
 import { isIntrinsicType } from "./intrinsics.js";
 import {
+    type GirAlias,
     type GirCallback,
     type GirClass,
     type GirConstant,
@@ -20,6 +21,7 @@ import {
     type GirInterface,
     type GirNamespace,
     type GirRecord,
+    type GirType,
     parseQualifiedName,
     type QualifiedName,
     type TypeKind,
@@ -212,6 +214,27 @@ export class GirRepository {
         this.ensureResolved();
         const { namespace, name } = parseQualifiedName(qualifiedName);
         return this.normalizedNamespaces.get(namespace)?.functions.get(name) ?? null;
+    }
+
+    /**
+     * Resolves an alias by qualified name.
+     * @example repo.resolveAlias("Pango.LayoutRun" as QualifiedName)
+     */
+    resolveAlias(qualifiedName: QualifiedName): GirAlias | null {
+        this.ensureResolved();
+        const { namespace, name } = parseQualifiedName(qualifiedName);
+        return this.normalizedNamespaces.get(namespace)?.aliases.get(name) ?? null;
+    }
+
+    /**
+     * Resolves a type name through aliases to get the target type.
+     * If the type is an alias, returns the target type.
+     * If not an alias, returns null.
+     * @example repo.resolveTypeAlias("Pango.LayoutRun" as QualifiedName) // returns GirType pointing to Pango.GlyphItem
+     */
+    resolveTypeAlias(qualifiedName: QualifiedName): GirType | null {
+        const alias = this.resolveAlias(qualifiedName);
+        return alias?.targetType ?? null;
     }
 
     /**

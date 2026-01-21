@@ -30,6 +30,7 @@ export type RawNamespace = {
     records: RawRecord[];
     callbacks: RawCallback[];
     constants: RawConstant[];
+    aliases: RawAlias[];
     doc?: string;
 };
 
@@ -253,5 +254,15 @@ export type RawEnumerationMember = {
     name: string;
     value: string;
     cIdentifier: string;
+    doc?: string;
+};
+
+/**
+ * A type alias definition.
+ */
+export type RawAlias = {
+    name: string;
+    cType: string;
+    targetType: RawType;
     doc?: string;
 };

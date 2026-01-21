@@ -15,6 +15,7 @@ const createRawNamespace = (overrides: Partial<RawNamespace> = {}): RawNamespace
     callbacks: [],
     functions: [],
     constants: [],
+    aliases: [],
     doc: undefined,
     ...overrides,
 });

@@ -39,6 +39,7 @@ export type {
     TypeKind,
 } from "./types.js";
 export {
+    GirAlias,
     GirCallback,
     GirClass,
     GirConstant,

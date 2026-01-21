@@ -451,6 +451,17 @@ export class FfiMapper {
             };
         }
 
+        const alias = ns.aliases?.get(name);
+        if (alias) {
+            const targetTypeName = alias.targetType.name;
+            if (typeof targetTypeName === "string" && !targetTypeName.includes(".")) {
+                return this.resolveFromNamespace(ns, targetTypeName, namespace, isExternal);
+            }
+            if (typeof targetTypeName === "string" && targetTypeName.includes(".")) {
+                return this.resolveQualifiedType(targetTypeName as QualifiedName);
+            }
+        }
+
         return null;
     }
 

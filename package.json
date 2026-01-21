@@ -16,7 +16,7 @@
         "knip:all": "knip --no-gitignore --no-config-hints",
         "lint": "turbo lint:all && turbo lint --filter=!website --filter=!gtkx",
         "lint:all": "biome check .",
-        "test": "turbo test --filter=!website --filter=!gtkx --concurrency=1"
+        "test": "turbo test --filter=!website --filter=!gtkx"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.3.11",

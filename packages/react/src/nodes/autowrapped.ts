@@ -17,7 +17,7 @@ const isAutowrappedChild = (obj: unknown): obj is AutowrappedChild => {
 };
 
 class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
-    public static override priority = 2;
+    public static override priority = 1;
 
     public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
         return matchesAnyClass(AUTOWRAP_CLASSES, containerOrClass);

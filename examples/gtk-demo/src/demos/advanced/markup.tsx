@@ -10,7 +10,7 @@ This demonstrates how <span foreground="red">Pango markup</span> can be used to 
 
 <b>Bold</b>, <i>italic</i>, <u>underline</u>, and <s>strikethrough</s> are easy.
 
-You can use <tt>monospace</tt> for code, <span rise="-4096" scale="small">subscripts</span> and <span rise="4096" scale="small">superscripts</span>.
+You can use <tt>monospace</tt> for code, <span rise="-4096" size="small">subscripts</span> and <span rise="4096" size="small">superscripts</span>.
 
 <span foreground="#3584e4" size="large">Colors and sizes</span> work too.
 

@@ -116,6 +116,7 @@ export class GirNamespace {
     readonly callbacks: Map<string, GirCallback>;
     readonly functions: Map<string, GirFunction>;
     readonly constants: Map<string, GirConstant>;
+    readonly aliases: Map<string, GirAlias>;
     readonly doc?: string;
 
     constructor(data: {
@@ -131,6 +132,7 @@ export class GirNamespace {
         callbacks: Map<string, GirCallback>;
         functions: Map<string, GirFunction>;
         constants: Map<string, GirConstant>;
+        aliases: Map<string, GirAlias>;
         doc?: string;
     }) {
         this.name = data.name;
@@ -145,6 +147,7 @@ export class GirNamespace {
         this.callbacks = data.callbacks;
         this.functions = data.functions;
         this.constants = data.constants;
+        this.aliases = data.aliases;
         this.doc = data.doc;
     }
 }
@@ -661,6 +664,35 @@ export class GirConstant {
         this.value = data.value;
         this.type = data.type;
         this.doc = data.doc;
+    }
+}
+
+/**
+ * Normalized type alias.
+ */
+export class GirAlias {
+    readonly name: string;
+    readonly qualifiedName: QualifiedName;
+    readonly cType: string;
+    readonly targetType: GirType;
+    readonly doc?: string;
+
+    constructor(data: {
+        name: string;
+        qualifiedName: QualifiedName;
+        cType: string;
+        targetType: GirType;
+        doc?: string;
+    }) {
+        this.name = data.name;
+        this.qualifiedName = data.qualifiedName;
+        this.cType = data.cType;
+        this.targetType = data.targetType;
+        this.doc = data.doc;
+    }
+
+    isRecordAlias(): boolean {
+        return !this.targetType.isIntrinsic() && !this.targetType.isArray;
     }
 }
 

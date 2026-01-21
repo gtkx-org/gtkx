@@ -246,6 +246,10 @@ export class FieldBuilder {
     }
 
     private getFieldSize(type: { name: string | unknown; cType?: string }): number {
+        if (type.cType?.includes("*")) {
+            return 8;
+        }
+
         const typeName = String(type.name);
 
         if (isPrimitiveFieldType(typeName)) {
@@ -269,6 +273,10 @@ export class FieldBuilder {
     }
 
     private getFieldAlignment(type: { name: string | unknown; cType?: string }, visited = new Set<string>()): number {
+        if (type.cType?.includes("*")) {
+            return 8;
+        }
+
         const typeName = String(type.name);
 
         if (isPrimitiveFieldType(typeName)) {

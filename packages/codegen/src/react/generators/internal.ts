@@ -12,6 +12,7 @@
 
 import { type SourceFile, type WriterFunction, Writers } from "ts-morph";
 import {
+    ADJUSTABLE_INTERFACE_METHODS,
     PACK_INTERFACE_METHODS,
     PREFIX_SUFFIX_INTERFACE_METHODS,
     WIDGET_CLASSIFICATIONS,
@@ -118,6 +119,12 @@ export class InternalGenerator {
                     docs: "Methods that define the prefix/suffix interface (Adwaita action rows).",
                 },
             ),
+        );
+
+        sourceFile.addVariableStatement(
+            createConstExport("ADJUSTABLE_INTERFACE_METHODS", writeStringArray([...ADJUSTABLE_INTERFACE_METHODS]), {
+                docs: "Methods that define the adjustable interface (widgets with GtkAdjustment).",
+            }),
         );
     }
 

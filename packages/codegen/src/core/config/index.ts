@@ -6,6 +6,7 @@ export {
     isSupportedCallback,
 } from "./native-callbacks.js";
 export {
+    ADJUSTABLE_INTERFACE_METHODS,
     COLUMN_VIEW_WIDGET_NAMES,
     DRAWING_AREA_WIDGET_NAMES,
     DROP_DOWN_WIDGET_NAMES,

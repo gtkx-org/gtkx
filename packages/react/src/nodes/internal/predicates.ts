@@ -81,9 +81,6 @@ export const isEditable = (obj: unknown): obj is EditableWidget =>
     "getText" in obj &&
     typeof obj.getText === "function";
 
-export const isAdjustable = (obj: unknown): obj is AdjustableWidget =>
-    obj instanceof Gtk.Widget && "setAdjustment" in obj && typeof obj.setAdjustment === "function";
-
 const isBuffered = (obj: unknown): obj is BufferedWidget =>
     obj instanceof Gtk.Widget &&
     "getBuffer" in obj &&

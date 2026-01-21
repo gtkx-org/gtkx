@@ -10,6 +10,10 @@ const END_OPTIONS = ["Square", "Round", "Double Arrow"];
 
 const SizeGroupDemo = () => {
     const [groupingEnabled, setGroupingEnabled] = useState(true);
+    const [foreground, setForeground] = useState("Red");
+    const [background, setBackground] = useState("Red");
+    const [dashing, setDashing] = useState("Solid");
+    const [lineEnd, setLineEnd] = useState("Square");
     const sizeGroupRef = useRef<Gtk.SizeGroup | null>(null);
     const dropdown1Ref = useRef<Gtk.DropDown | null>(null);
     const dropdown2Ref = useRef<Gtk.DropDown | null>(null);
@@ -63,7 +67,12 @@ const SizeGroupDemo = () => {
                         <GtkLabel label="_Foreground" useUnderline halign={Gtk.Align.START} hexpand />
                     </x.GridChild>
                     <x.GridChild column={1} row={0}>
-                        <GtkDropDown ref={dropdown1Ref} halign={Gtk.Align.END}>
+                        <GtkDropDown
+                            ref={dropdown1Ref}
+                            halign={Gtk.Align.END}
+                            selectedId={foreground}
+                            onSelectionChanged={setForeground}
+                        >
                             {COLOR_OPTIONS.map((option) => (
                                 <x.SimpleListItem key={option} id={option} value={option} />
                             ))}
@@ -74,7 +83,12 @@ const SizeGroupDemo = () => {
                         <GtkLabel label="_Background" useUnderline halign={Gtk.Align.START} hexpand />
                     </x.GridChild>
                     <x.GridChild column={1} row={1}>
-                        <GtkDropDown ref={dropdown2Ref} halign={Gtk.Align.END}>
+                        <GtkDropDown
+                            ref={dropdown2Ref}
+                            halign={Gtk.Align.END}
+                            selectedId={background}
+                            onSelectionChanged={setBackground}
+                        >
                             {COLOR_OPTIONS.map((option) => (
                                 <x.SimpleListItem key={option} id={option} value={option} />
                             ))}
@@ -89,7 +103,12 @@ const SizeGroupDemo = () => {
                         <GtkLabel label="_Dashing" useUnderline halign={Gtk.Align.START} hexpand />
                     </x.GridChild>
                     <x.GridChild column={1} row={0}>
-                        <GtkDropDown ref={dropdown3Ref} halign={Gtk.Align.END}>
+                        <GtkDropDown
+                            ref={dropdown3Ref}
+                            halign={Gtk.Align.END}
+                            selectedId={dashing}
+                            onSelectionChanged={setDashing}
+                        >
                             {DASH_OPTIONS.map((option) => (
                                 <x.SimpleListItem key={option} id={option} value={option} />
                             ))}
@@ -100,7 +119,12 @@ const SizeGroupDemo = () => {
                         <GtkLabel label="_Line ends" useUnderline halign={Gtk.Align.START} hexpand />
                     </x.GridChild>
                     <x.GridChild column={1} row={1}>
-                        <GtkDropDown ref={dropdown4Ref} halign={Gtk.Align.END}>
+                        <GtkDropDown
+                            ref={dropdown4Ref}
+                            halign={Gtk.Align.END}
+                            selectedId={lineEnd}
+                            onSelectionChanged={setLineEnd}
+                        >
                             {END_OPTIONS.map((option) => (
                                 <x.SimpleListItem key={option} id={option} value={option} />
                             ))}

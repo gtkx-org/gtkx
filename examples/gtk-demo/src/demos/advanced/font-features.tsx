@@ -3,7 +3,7 @@ import { createRef } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as HarfBuzz from "@gtkx/ffi/harfbuzz";
-import type * as Pango from "@gtkx/ffi/pango";
+import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import {
     GtkBox,
@@ -404,9 +404,10 @@ const DEFAULT_PREVIEW_TEXT = "The quick brown fox jumps over the lazy dog. 01234
 
 const createDefaultFgColor = () => new Gdk.RGBA({ red: 0, green: 0, blue: 0, alpha: 1 });
 const createDefaultBgColor = () => new Gdk.RGBA({ red: 1, green: 1, blue: 1, alpha: 1 });
+const createDefaultFontDesc = () => Pango.FontDescription.fromString("Sans 24");
 
 const FontFeaturesDemo = () => {
-    const [fontDesc, setFontDesc] = useState<Pango.FontDescription | null>(null);
+    const [fontDesc, setFontDesc] = useState<Pango.FontDescription | null>(createDefaultFontDesc);
     const [enabledFeatures, setEnabledFeatures] = useState<Set<string>>(new Set(["liga", "kern"]));
     const [previewText, setPreviewText] = useState(DEFAULT_PREVIEW_TEXT);
     const [availableFeatures, setAvailableFeatures] = useState<DiscoveredFeature[]>([]);

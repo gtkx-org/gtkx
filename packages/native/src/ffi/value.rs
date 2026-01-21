@@ -74,7 +74,7 @@ impl FfiValue {
             FfiValue::F32(value) => value as *const f32 as *mut c_void,
             FfiValue::F64(value) => value as *const f64 as *mut c_void,
             FfiValue::Ptr(ptr) => ptr as *const *mut c_void as *mut c_void,
-            FfiValue::Storage(storage) => storage as *const FfiStorage as *mut c_void,
+            FfiValue::Storage(storage) => storage.ptr(),
             FfiValue::Callback(_) => {
                 unreachable!(
                     "Callback should not be converted to a single pointer - it requires special handling in call.rs"
