@@ -9,9 +9,23 @@ export type RenderItemFn<T> = (item: T | null) => ReactNode;
 
 export class ListItemRenderer extends BaseItemRenderer<ListStore> {
     private renderFn: RenderItemFn<unknown> | null = () => null;
+    private boundItems = new Map<string, number>();
 
     public setRenderFn(renderFn: RenderItemFn<unknown> | null): void {
         this.renderFn = renderFn;
+    }
+
+    public rebindItem(id: string): void {
+        const ptr = this.boundItems.get(id);
+        if (ptr === undefined) return;
+
+        const fiberRoot = this.fiberRoots.get(ptr);
+        if (!fiberRoot) return;
+
+        const item = this.getStore().getItem(id);
+        const element = this.renderFn?.(item);
+
+        reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
     }
 
     protected override getStoreTypeName(): string {
@@ -22,10 +36,10 @@ export class ListItemRenderer extends BaseItemRenderer<ListStore> {
         return this.renderFn?.(null);
     }
 
-    protected override getItemFromListItem(listItem: Gtk.ListItem): unknown {
+    protected override getItemFromListItem(listItem: Gtk.ListItem): string | null {
         const stringObject = listItem.getItem();
         if (!(stringObject instanceof Gtk.StringObject)) return null;
-        return this.getStore().getItem(stringObject.getString());
+        return stringObject.getString();
     }
 
     protected override onSetup(listItem: Gtk.ListItem, _ptr: number): Gtk.Widget {
@@ -35,7 +49,12 @@ export class ListItemRenderer extends BaseItemRenderer<ListStore> {
     }
 
     protected override onBind(listItem: Gtk.ListItem, ptr: number, fiberRoot: Reconciler.FiberRoot): void {
-        const item = this.getItemFromListItem(listItem);
+        const id = this.getItemFromListItem(listItem);
+        if (id !== null) {
+            this.boundItems.set(id, ptr);
+        }
+
+        const item = id !== null ? this.getStore().getItem(id) : null;
         const element = this.renderFn?.(item);
 
         reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {
@@ -46,7 +65,12 @@ export class ListItemRenderer extends BaseItemRenderer<ListStore> {
         });
     }
 
-    protected override onUnbind(_listItem: Gtk.ListItem): void {}
+    protected override onUnbind(listItem: Gtk.ListItem): void {
+        const id = this.getItemFromListItem(listItem);
+        if (id !== null) {
+            this.boundItems.delete(id);
+        }
+    }
 
     protected override onTeardown(_listItem: Gtk.ListItem, _ptr: number): void {}
 }

@@ -40,6 +40,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
         });
         this.itemRenderer = new ListItemRenderer();
         this.itemRenderer.setStore(this.list.getStore());
+        this.list.getStore().setOnItemUpdated((id) => this.itemRenderer.rebindItem(id));
         this.container.setFactory(this.itemRenderer.getFactory());
     }
 

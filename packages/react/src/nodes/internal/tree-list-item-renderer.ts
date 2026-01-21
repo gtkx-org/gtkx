@@ -18,9 +18,23 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
     private setupComplete = new Set<number>();
     private pendingBinds = new Map<number, PendingBind>();
     private renderFn: TreeRenderItemFn<unknown> | null = () => null;
+    private boundItems = new Map<string, { ptr: number; treeListRow: Gtk.TreeListRow }>();
 
     public setRenderFn(renderFn: TreeRenderItemFn<unknown> | null): void {
         this.renderFn = renderFn;
+    }
+
+    public rebindItem(id: string): void {
+        const binding = this.boundItems.get(id);
+        if (!binding) return;
+
+        const fiberRoot = this.fiberRoots.get(binding.ptr);
+        if (!fiberRoot) return;
+
+        const expander = this.expanders.get(binding.ptr);
+        if (!expander) return;
+
+        this.renderBind(binding.ptr, expander, binding.treeListRow, id, fiberRoot);
     }
 
     protected override getStoreTypeName(): string {
@@ -32,6 +46,7 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
         this.expanders.clear();
         this.setupComplete.clear();
         this.pendingBinds.clear();
+        this.boundItems.clear();
     }
 
     protected override renderItem(_ptr: number): ReactNode {
@@ -73,6 +88,7 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
         if (!(stringObject instanceof Gtk.StringObject)) return;
 
         const id = stringObject.getString();
+        this.boundItems.set(id, { ptr, treeListRow });
 
         if (!this.setupComplete.has(ptr)) {
             this.pendingBinds.set(ptr, { treeListRow, expander, id });
@@ -86,6 +102,13 @@ export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
         const expander = listItem.getChild();
         if (expander instanceof Gtk.TreeExpander) {
             expander.setListRow(null);
+            const treeListRow = listItem.getItem();
+            if (treeListRow instanceof Gtk.TreeListRow) {
+                const stringObject = treeListRow.getItem();
+                if (stringObject instanceof Gtk.StringObject) {
+                    this.boundItems.delete(stringObject.getString());
+                }
+            }
         }
     }
 

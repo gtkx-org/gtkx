@@ -2,6 +2,8 @@ import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { BaseStore } from "./base-store.js";
 
+export type TreeItemUpdatedCallback = (id: string) => void;
+
 export interface TreeItemData<T = unknown> {
     value: T;
     indentForDepth?: boolean;
@@ -16,10 +18,24 @@ export class TreeStore extends BaseStore<TreeItemData> {
     private newChildren: Map<string, string[]> = new Map();
     private rootModel: Gtk.StringList;
     private childModels: Map<string, Gtk.StringList> = new Map();
+    private onItemUpdated: TreeItemUpdatedCallback | null = null;
 
     constructor() {
         super();
         this.rootModel = new Gtk.StringList();
+    }
+
+    public setOnItemUpdated(callback: TreeItemUpdatedCallback | null): void {
+        this.onItemUpdated = callback;
+    }
+
+    public override updateItem(id: string, item: TreeItemData): void {
+        if (this.items.has(id)) {
+            this.items.set(id, item);
+            this.onItemUpdated?.(id);
+        } else {
+            this.addItem(id, item);
+        }
     }
 
     public addItem(id: string, data: TreeItemData, parentId?: string): void {

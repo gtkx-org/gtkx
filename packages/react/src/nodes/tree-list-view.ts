@@ -41,6 +41,7 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
         });
         this.itemRenderer = new TreeListItemRenderer();
         this.itemRenderer.setStore(this.treeList.getStore());
+        this.treeList.getStore().setOnItemUpdated((id) => this.itemRenderer.rebindItem(id));
         this.container.setFactory(this.itemRenderer.getFactory());
     }
 

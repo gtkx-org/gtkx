@@ -160,6 +160,39 @@ describe("render - ListView", () => {
 
             await render(<App itemName="Updated" />);
         });
+
+        it("re-renders bound items when value changes", async () => {
+            const ref = createRef<Gtk.ListView>();
+
+            function App({ itemName }: { itemName: string }) {
+                return (
+                    <ScrollWrapper>
+                        <GtkListView
+                            ref={ref}
+                            renderItem={(item: { name: string } | null) => <GtkLabel label={item?.name ?? "Empty"} />}
+                        >
+                            <x.ListItem id="1" value={{ name: itemName }} />
+                        </GtkListView>
+                    </ScrollWrapper>
+                );
+            }
+
+            await render(<App itemName="Initial" />);
+
+            const listView = ref.current as Gtk.ListView;
+            const getFirstLabelText = (): string | null => {
+                const cell = listView.getFirstChild();
+                const box = cell?.getFirstChild();
+                const label = box?.getFirstChild() as Gtk.Label | null;
+                return label?.getLabel() ?? null;
+            };
+
+            expect(getFirstLabelText()).toBe("Initial");
+
+            await render(<App itemName="Updated" />);
+
+            expect(getFirstLabelText()).toBe("Updated");
+        });
     });
 
     describe("renderItem", () => {
@@ -321,6 +354,48 @@ describe("render - ListView", () => {
             );
 
             expect(ref.current).not.toBeNull();
+        });
+
+        it("sets singleClickActivate property correctly", async () => {
+            const ref = createRef<Gtk.GridView>();
+
+            await render(
+                <ScrollWrapper>
+                    <GtkGridView ref={ref} renderItem={() => <GtkLabel label="Item" />} singleClickActivate>
+                        <x.ListItem id="1" value={{ name: "First" }} />
+                    </GtkGridView>
+                </ScrollWrapper>,
+            );
+
+            expect(ref.current?.getSingleClickActivate()).toBe(true);
+        });
+
+        it("calls onActivate when clicking directly on list item cell", async () => {
+            const ref = createRef<Gtk.GridView>();
+            const onActivate = vi.fn();
+
+            await render(
+                <ScrollWrapper>
+                    <GtkGridView
+                        ref={ref}
+                        renderItem={() => <GtkLabel label="Item" />}
+                        singleClickActivate
+                        onActivate={onActivate}
+                    >
+                        <x.ListItem id="1" value={{ name: "First" }} />
+                        <x.ListItem id="2" value={{ name: "Second" }} />
+                    </GtkGridView>
+                </ScrollWrapper>,
+            );
+
+            const gridView = ref.current as Gtk.GridView;
+            const listItemCell = gridView.getFirstChild();
+
+            if (listItemCell) {
+                await userEvent.pointer(listItemCell, "click");
+            }
+
+            expect(onActivate).toHaveBeenCalledWith(ref.current, 0);
         });
     });
 

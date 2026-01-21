@@ -2,11 +2,18 @@ import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { BaseStore } from "./base-store.js";
 
+export type ItemUpdatedCallback = (id: string) => void;
+
 export class ListStore extends BaseStore<unknown> {
     private model: Gtk.StringList = new Gtk.StringList();
     private newSortedIds: string[] = [];
     private newIdSet: Set<string> = new Set();
     private sortedIds: string[] = [];
+    private onItemUpdated: ItemUpdatedCallback | null = null;
+
+    public setOnItemUpdated(callback: ItemUpdatedCallback | null): void {
+        this.onItemUpdated = callback;
+    }
 
     public addItem(id: string, item: unknown): void {
         this.items.set(id, item);
@@ -54,6 +61,7 @@ export class ListStore extends BaseStore<unknown> {
     public override updateItem(id: string, item: unknown): void {
         if (this.items.has(id)) {
             this.items.set(id, item);
+            this.onItemUpdated?.(id);
         } else {
             this.addItem(id, item);
         }
