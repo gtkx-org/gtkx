@@ -7,7 +7,8 @@ use std::sync::mpsc;
 
 use neon::prelude::*;
 
-use crate::{gtk_dispatch, managed::NativeHandle};
+use crate::gtk_dispatch;
+use crate::managed::NativeHandle;
 
 pub fn get_native_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
     let boxed_handle = cx.argument::<JsBox<NativeHandle>>(0)?;

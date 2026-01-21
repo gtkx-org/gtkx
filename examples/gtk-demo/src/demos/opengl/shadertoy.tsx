@@ -10,6 +10,7 @@ import {
     GtkGLArea,
     GtkScrolledWindow,
     GtkSourceView,
+    x,
 } from "@gtkx/react";
 import { type RefCallback, useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
@@ -483,19 +484,23 @@ const ShadertoyDemo = () => {
             </GtkScrolledWindow>
 
             <GtkCenterBox>
-                <GtkBox spacing={6}>
-                    <GtkButton iconName="view-refresh-symbolic" tooltipText="Restart the demo" onClicked={handleRun} />
-                    <GtkButton
-                        iconName="edit-clear-all-symbolic"
-                        tooltipText="Clear the text view"
-                        onClicked={handleClear}
-                    />
-                </GtkBox>
-                <GtkBox spacing={6}>
-                    {SHADER_PRESETS.map((preset) => (
-                        <GtkButton key={preset.name} label={preset.name} onClicked={() => loadPreset(preset.code)} />
-                    ))}
-                </GtkBox>
+                <x.Slot for={GtkCenterBox} id="startWidget">
+                    <GtkBox spacing={6}>
+                        <GtkButton iconName="view-refresh-symbolic" tooltipText="Restart the demo" onClicked={handleRun} />
+                        <GtkButton
+                            iconName="edit-clear-all-symbolic"
+                            tooltipText="Clear the text view"
+                            onClicked={handleClear}
+                        />
+                    </GtkBox>
+                </x.Slot>
+                <x.Slot for={GtkCenterBox} id="centerWidget">
+                    <GtkBox spacing={6}>
+                        {SHADER_PRESETS.map((preset) => (
+                            <GtkButton key={preset.name} label={preset.name} onClicked={() => loadPreset(preset.code)} />
+                        ))}
+                    </GtkBox>
+                </x.Slot>
             </GtkCenterBox>
         </GtkBox>
     );

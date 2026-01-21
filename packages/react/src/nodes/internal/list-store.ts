@@ -5,37 +5,37 @@ import { BaseStore } from "./base-store.js";
 export class ListStore extends BaseStore<unknown> {
     private model: Gtk.StringList = new Gtk.StringList();
     private newSortedIds: string[] = [];
+    private newIdSet: Set<string> = new Set();
     private sortedIds: string[] = [];
 
     public addItem(id: string, item: unknown): void {
         this.items.set(id, item);
 
-        const existingIndex = this.newSortedIds.indexOf(id);
-
-        if (existingIndex !== -1) {
+        if (this.newIdSet.has(id)) {
+            const existingIndex = this.newSortedIds.indexOf(id);
             this.newSortedIds.splice(existingIndex, 1);
         }
 
         this.newSortedIds.push(id);
+        this.newIdSet.add(id);
         this.scheduleSync();
     }
 
     public removeItem(id: string): void {
-        const index = this.newSortedIds.indexOf(id);
+        if (!this.newIdSet.has(id)) return;
 
-        if (index !== -1) {
-            this.newSortedIds.splice(index, 1);
-            this.items.delete(id);
-            this.scheduleSync();
-        }
+        const index = this.newSortedIds.indexOf(id);
+        this.newSortedIds.splice(index, 1);
+        this.newIdSet.delete(id);
+        this.items.delete(id);
+        this.scheduleSync();
     }
 
     public insertItemBefore(id: string, beforeId: string, item: unknown): void {
         this.items.set(id, item);
 
-        const existingIndex = this.newSortedIds.indexOf(id);
-
-        if (existingIndex !== -1) {
+        if (this.newIdSet.has(id)) {
+            const existingIndex = this.newSortedIds.indexOf(id);
             this.newSortedIds.splice(existingIndex, 1);
         }
 
@@ -47,6 +47,7 @@ export class ListStore extends BaseStore<unknown> {
             this.newSortedIds.splice(beforeIndex, 0, id);
         }
 
+        this.newIdSet.add(id);
         this.scheduleSync();
     }
 

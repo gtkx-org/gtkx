@@ -1,11 +1,15 @@
 import type { ComponentType } from "react";
 
+export interface DemoProps {
+    onClose?: () => void;
+}
+
 export interface Demo {
     id: string;
     title: string;
     description: string;
     keywords: string[];
-    component?: ComponentType;
+    component?: ComponentType<DemoProps>;
     sourceCode?: string;
 }
 

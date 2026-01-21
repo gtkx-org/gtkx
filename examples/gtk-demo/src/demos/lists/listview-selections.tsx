@@ -3,16 +3,16 @@ import {
     GtkBox,
     GtkButton,
     GtkDropDown,
-    GtkEntry,
     GtkFrame,
     GtkImage,
     GtkLabel,
+    GtkMenuButton,
     GtkPopover,
     GtkScrolledWindow,
     GtkSearchEntry,
     x,
 } from "@gtkx/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
 
@@ -196,9 +196,6 @@ const words = [
 
 const SuggestionEntry = () => {
     const [text, setText] = useState("");
-    const [showPopover, setShowPopover] = useState(false);
-    const entryRef = useRef<Gtk.Entry | null>(null);
-    const popoverRef = useRef<Gtk.Popover | null>(null);
 
     const suggestions = useMemo(() => {
         if (text.length < 1) return [];
@@ -206,57 +203,41 @@ const SuggestionEntry = () => {
         return words.filter((w) => w.toLowerCase().includes(lower)).slice(0, 10);
     }, [text]);
 
-    useEffect(() => {
-        if (entryRef.current && popoverRef.current) {
-            popoverRef.current.setParent(entryRef.current);
-        }
-        return () => {
-            if (popoverRef.current) {
-                popoverRef.current.unparent();
-            }
-        };
-    }, []);
-
-    useEffect(() => {
-        setShowPopover(text.length >= 1 && suggestions.length > 0);
-    }, [text, suggestions.length]);
-
-    const handleTextChange = (entry: Gtk.Entry) => {
-        const newText = entry.getText();
-        setText(newText);
-    };
-
-    const handleSelect = (word: string) => {
-        setText(word);
-        setShowPopover(false);
-        entryRef.current?.grabFocus();
-    };
+    const hasSuggestions = suggestions.length > 0;
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-            <GtkEntry
-                ref={entryRef}
-                text={text}
-                placeholderText="Type to see suggestions..."
-                onChanged={handleTextChange}
-            />
-            <GtkPopover
-                ref={popoverRef}
-                hasArrow={false}
-                autohide={false}
-                visible={showPopover}
-                position={Gtk.PositionType.BOTTOM}
-            >
-                <GtkScrolledWindow heightRequest={200} widthRequest={300} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                        {suggestions.map((word) => (
-                            <GtkButton key={word} cssClasses={["flat"]} onClicked={() => handleSelect(word)}>
-                                <GtkLabel label={word} halign={Gtk.Align.START} hexpand />
-                            </GtkButton>
-                        ))}
-                    </GtkBox>
-                </GtkScrolledWindow>
-            </GtkPopover>
+            <GtkBox spacing={8}>
+                <GtkSearchEntry
+                    text={text}
+                    hexpand
+                    placeholderText="Type to see suggestions..."
+                    onSearchChanged={(entry) => setText(entry.getText())}
+                />
+                <GtkMenuButton iconName="view-more-symbolic" sensitive={hasSuggestions} active={hasSuggestions}>
+                    <x.Slot id="popover">
+                        <GtkPopover hasArrow={false} position={Gtk.PositionType.BOTTOM}>
+                            <GtkScrolledWindow
+                                heightRequest={200}
+                                widthRequest={300}
+                                hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                            >
+                                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                                    {suggestions.map((word) => (
+                                        <GtkButton
+                                            key={word}
+                                            cssClasses={["flat"]}
+                                            onClicked={() => setText(word)}
+                                        >
+                                            <GtkLabel label={word} halign={Gtk.Align.START} hexpand />
+                                        </GtkButton>
+                                    ))}
+                                </GtkBox>
+                            </GtkScrolledWindow>
+                        </GtkPopover>
+                    </x.Slot>
+                </GtkMenuButton>
+            </GtkBox>
             <GtkLabel
                 label={text ? `Current text: "${text}"` : "Start typing to see suggestions"}
                 cssClasses={["dim-label", "caption"]}
@@ -319,8 +300,9 @@ const ListViewSelectionsDemo = () => {
     const selectedIconInfo = iconOptions.find((i) => i.id === selectedIcon);
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Selections" cssClasses={["title-2"]} halign={Gtk.Align.START} />
+        <GtkScrolledWindow hexpand vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24} marginStart={24} marginEnd={24} marginTop={24} marginBottom={24}>
+                <GtkLabel label="Selections" cssClasses={["title-2"]} halign={Gtk.Align.START} />
 
             <GtkLabel
                 label="GtkDropDown provides a compact way to select from a list of options. This demo shows basic dropdowns, filtered dropdowns, and dropdowns with custom content alongside ListView selection modes."
@@ -542,7 +524,8 @@ const ListViewSelectionsDemo = () => {
                     )}
                 </GtkBox>
             </GtkFrame>
-        </GtkBox>
+            </GtkBox>
+        </GtkScrolledWindow>
     );
 };
 

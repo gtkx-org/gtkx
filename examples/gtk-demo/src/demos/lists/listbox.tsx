@@ -146,9 +146,11 @@ const MessageRow = ({ message, onFavorite, onReshare }: MessageRowProps) => {
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand>
                         <GtkBox hexpand>
                             <GtkButton hasFrame={false} valign={Gtk.Align.BASELINE}>
-                                <GtkLabel label={message.senderName} valign={Gtk.Align.BASELINE} useMarkup>
-                                    <GtkLabel label={message.senderName} cssClasses={["heading"]} />
-                                </GtkLabel>
+                                <GtkLabel
+                                    label={message.senderName}
+                                    valign={Gtk.Align.BASELINE}
+                                    cssClasses={["heading"]}
+                                />
                             </GtkButton>
                             <GtkLabel
                                 label={message.senderNick}

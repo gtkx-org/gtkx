@@ -1,14 +1,15 @@
 import type { GirClass, GirNamespace, GirRecord, GirRepository, QualifiedName } from "@gtkx/gir";
 import { parseQualifiedName } from "@gtkx/gir";
-import type { SourceFile } from "ts-morph";
+import type { MethodDeclarationStructure, SourceFile } from "ts-morph";
 import { GenerationContext } from "../core/generation-context.js";
 import { CodegenProject } from "../core/project.js";
 import { FfiMapper } from "../core/type-system/ffi-mapper.js";
-import { isPrimitiveFieldType } from "../core/type-system/ffi-types.js";
-import { normalizeClassName, toKebabCase, toPascalCase } from "../core/utils/naming.js";
+import { boxedSelfType, isPrimitiveFieldType } from "../core/type-system/ffi-types.js";
+import { filterSupportedMethods } from "../core/utils/filtering.js";
+import { normalizeClassName, toCamelCase, toKebabCase, toPascalCase } from "../core/utils/naming.js";
 import { parseParentReference } from "../core/utils/parent-reference.js";
 import { ImportsBuilder } from "../core/writers/imports-builder.js";
-import { createWriters } from "../core/writers/index.js";
+import { createMethodBodyWriter, createWriters } from "../core/writers/index.js";
 import { ClassGenerator } from "./generators/class/index.js";
 import { ConstantGenerator } from "./generators/constant.js";
 import { EnumGenerator } from "./generators/enum.js";
@@ -132,13 +133,17 @@ export class FfiGenerator {
                 });
                 importsBuilder.applyToSourceFile(sourceFile);
             } else if (this.isUsableStubRecord(record)) {
+                this.ctx.reset();
+                this.ctx.currentNamespace = this.options.namespace;
+
                 const fileName = `${toKebabCase(record.name)}.ts`;
                 const sourceFile = this.createSourceFile(fileName);
                 const recordName = normalizeClassName(record.name, this.options.namespace);
 
+                const hasMethods = record.methods.length > 0;
                 sourceFile.addImportDeclaration({
                     moduleSpecifier: "../../native/base.js",
-                    namedImports: ["NativeObject", "NativeHandle"],
+                    namedImports: hasMethods ? ["NativeObject"] : ["NativeObject", "NativeHandle"],
                 });
 
                 const classDecl = sourceFile.addClass({
@@ -164,6 +169,53 @@ export class FfiGenerator {
                     isReadonly: true,
                     initializer: '"boxed" as const',
                 });
+
+                if (record.methods.length > 0) {
+                    const methodBody = createMethodBodyWriter(this.ffiMapper, this.ctx, writers);
+                    const supportedMethods = filterSupportedMethods(record.methods, (params) =>
+                        methodBody.hasUnsupportedCallbacks(params),
+                    );
+
+                    if (supportedMethods.length > 0) {
+                        this.ctx.usesCall = true;
+                        this.ctx.usesNativeHandle = true;
+                        this.ctx.usesGetNativeObject = true;
+                        this.ctx.usesRef = supportedMethods.some((m) =>
+                            methodBody.hasRefParameter(m.parameters),
+                        );
+
+                        const methodStructures: MethodDeclarationStructure[] = [];
+                        for (const method of supportedMethods) {
+                            const methodName = toCamelCase(method.name);
+                            const instanceOwnership =
+                                method.instanceParameter?.transferOwnership === "full" ? "full" : "borrowed";
+                            const selfTypeDescriptor = boxedSelfType(
+                                record.cType,
+                                namespace.sharedLibrary ?? "",
+                                record.glibGetType,
+                                instanceOwnership,
+                            );
+
+                            methodStructures.push(
+                                methodBody.buildMethodStructure(method, {
+                                    methodName,
+                                    selfTypeDescriptor,
+                                    sharedLibrary: namespace.sharedLibrary ?? "",
+                                    namespace: this.options.namespace,
+                                    className: record.cType,
+                                }),
+                            );
+                        }
+
+                        classDecl.addMethods(methodStructures);
+
+                        const importsBuilder = new ImportsBuilder(this.ctx, {
+                            namespace: this.options.namespace,
+                            currentClassName: recordName,
+                        });
+                        importsBuilder.applyToSourceFile(sourceFile);
+                    }
+                }
             }
         }
 

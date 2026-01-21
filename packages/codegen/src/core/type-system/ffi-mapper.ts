@@ -570,9 +570,11 @@ export class FfiMapper {
 
                 const { glibTypeName, glibGetType } = resolved;
                 if (!glibTypeName || !glibGetType) {
+                    const qualifiedTypeName = `${resolved.namespace}.${resolved.name}`;
+                    const size = BOXED_TYPE_SIZES.get(resolved.name) ?? BOXED_TYPE_SIZES.get(qualifiedTypeName);
                     return {
                         ts: qualifiedName,
-                        ffi: structType(resolved.transformedName, transferFull),
+                        ffi: structType(resolved.transformedName, transferFull, size),
                         imports,
                         kind: "record",
                     };

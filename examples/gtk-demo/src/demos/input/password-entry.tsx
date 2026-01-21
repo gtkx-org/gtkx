@@ -1,10 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkPasswordEntry, x } from "@gtkx/react";
 import { useCallback, useState } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./password-entry.tsx?raw";
 
-const PasswordEntryDemo = () => {
+const PasswordEntryDemo = ({ onClose }: DemoProps) => {
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
 
@@ -28,6 +28,7 @@ const PasswordEntryDemo = () => {
                             useUnderline
                             cssClasses={["suggested-action"]}
                             sensitive={passwordsMatch}
+                            onClicked={onClose}
                         />
                     </x.PackEnd>
                 </GtkHeaderBar>

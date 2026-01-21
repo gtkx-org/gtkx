@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { registerNodeClass } from "../registry.js";
 import type { Container, ContainerClass, Props } from "../types.js";
+import { DialogNode } from "./dialog.js";
 import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { MenuModel } from "./models/menu.js";
@@ -75,6 +76,11 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
             return;
         }
 
+        if (child instanceof DialogNode) {
+            child.parent = this.container;
+            return;
+        }
+
         this.menu.appendChild(child);
         super.appendChild(child);
     }
@@ -82,6 +88,11 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     public override removeChild(child: Node): void {
         if (child.container instanceof Gtk.Window) {
             child.container.setTransientFor(null);
+            return;
+        }
+
+        if (child instanceof DialogNode) {
+            child.parent = null;
             return;
         }
 

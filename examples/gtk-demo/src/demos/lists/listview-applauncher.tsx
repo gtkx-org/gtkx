@@ -1,5 +1,6 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
+import "@gtkx/ffi/giounix";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
@@ -8,6 +9,7 @@ import sourceCode from "./listview-applauncher.tsx?raw";
 
 interface AppItem {
     appInfo: Gio.AppInfo;
+    id: string;
     name: string;
     iconName: string;
 }
@@ -28,6 +30,7 @@ const ListViewApplauncherDemo = () => {
         const allApps = Gio.appInfoGetAll();
         const appItems: AppItem[] = allApps.map((app) => ({
             appInfo: app,
+            id: app.getId() ?? crypto.randomUUID(),
             name: app.getDisplayName(),
             iconName: getIconName(app.getIcon()),
         }));
@@ -68,7 +71,7 @@ const ListViewApplauncherDemo = () => {
                 )}
             >
                 {apps.map((app) => (
-                    <x.ListItem key={app.name} id={app.name} value={app} />
+                    <x.ListItem key={app.id} id={app.id} value={app} />
                 ))}
             </x.ListView>
         </GtkScrolledWindow>

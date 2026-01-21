@@ -1,11 +1,25 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AdwAlertDialog, GtkBox, GtkButton, GtkEntry, GtkGrid, GtkLabel, GtkSeparator, x } from "@gtkx/react";
+import {
+    AdwAlertDialog,
+    createPortal,
+    GtkBox,
+    GtkButton,
+    GtkEntry,
+    GtkGrid,
+    GtkLabel,
+    GtkSeparator,
+    useApplication,
+    x,
+} from "@gtkx/react";
 import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./dialog.tsx?raw";
 
 const DialogDemo = () => {
+    const app = useApplication();
+    const activeWindow = app.getActiveWindow();
+
     const [clickCount, setClickCount] = useState(0);
     const [entry1, setEntry1] = useState("");
     const [entry2, setEntry2] = useState("");
@@ -62,52 +76,58 @@ const DialogDemo = () => {
                 </GtkGrid>
             </GtkBox>
 
-            {showMessageDialog && (
-                <AdwAlertDialog
-                    heading="Information"
-                    body={`This message box has been popped up ${clickCount} time${clickCount === 1 ? "" : "s"}.`}
-                    defaultResponse="ok"
-                    closeResponse="ok"
-                    onResponse={() => setShowMessageDialog(false)}
-                >
-                    <x.AlertDialogResponse id="ok" label="_OK" />
-                </AdwAlertDialog>
-            )}
+            {showMessageDialog &&
+                activeWindow &&
+                createPortal(
+                    <AdwAlertDialog
+                        heading="Information"
+                        body={`This message box has been popped up ${clickCount} time${clickCount === 1 ? "" : "s"}.`}
+                        defaultResponse="ok"
+                        closeResponse="ok"
+                        onResponse={() => setShowMessageDialog(false)}
+                    >
+                        <x.AlertDialogResponse id="ok" label="_OK" />
+                    </AdwAlertDialog>,
+                    activeWindow,
+                )}
 
-            {showInteractiveDialog && (
-                <AdwAlertDialog
-                    heading="Interactive Dialog"
-                    defaultResponse="ok"
-                    closeResponse="cancel"
-                    onResponse={handleInteractiveDialogResponse}
-                >
-                    <x.Slot for="AdwAlertDialog" id="extraChild">
-                        <GtkGrid
-                            rowSpacing={6}
-                            columnSpacing={6}
-                            hexpand
-                            vexpand
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                        >
-                            <x.GridChild column={0} row={0}>
-                                <GtkLabel label="_Entry 1" useUnderline />
-                            </x.GridChild>
-                            <x.GridChild column={1} row={0}>
-                                <GtkEntry ref={dialogEntry1Ref} text={entry1} />
-                            </x.GridChild>
-                            <x.GridChild column={0} row={1}>
-                                <GtkLabel label="E_ntry 2" useUnderline />
-                            </x.GridChild>
-                            <x.GridChild column={1} row={1}>
-                                <GtkEntry ref={dialogEntry2Ref} text={entry2} />
-                            </x.GridChild>
-                        </GtkGrid>
-                    </x.Slot>
-                    <x.AlertDialogResponse id="cancel" label="_Cancel" />
-                    <x.AlertDialogResponse id="ok" label="_OK" appearance={Adw.ResponseAppearance.SUGGESTED} />
-                </AdwAlertDialog>
-            )}
+            {showInteractiveDialog &&
+                activeWindow &&
+                createPortal(
+                    <AdwAlertDialog
+                        heading="Interactive Dialog"
+                        defaultResponse="ok"
+                        closeResponse="cancel"
+                        onResponse={handleInteractiveDialogResponse}
+                    >
+                        <x.Slot for="AdwAlertDialog" id="extraChild">
+                            <GtkGrid
+                                rowSpacing={6}
+                                columnSpacing={6}
+                                hexpand
+                                vexpand
+                                halign={Gtk.Align.CENTER}
+                                valign={Gtk.Align.CENTER}
+                            >
+                                <x.GridChild column={0} row={0}>
+                                    <GtkLabel label="_Entry 1" useUnderline />
+                                </x.GridChild>
+                                <x.GridChild column={1} row={0}>
+                                    <GtkEntry ref={dialogEntry1Ref} text={entry1} />
+                                </x.GridChild>
+                                <x.GridChild column={0} row={1}>
+                                    <GtkLabel label="E_ntry 2" useUnderline />
+                                </x.GridChild>
+                                <x.GridChild column={1} row={1}>
+                                    <GtkEntry ref={dialogEntry2Ref} text={entry2} />
+                                </x.GridChild>
+                            </GtkGrid>
+                        </x.Slot>
+                        <x.AlertDialogResponse id="cancel" label="_Cancel" />
+                        <x.AlertDialogResponse id="ok" label="_OK" appearance={Adw.ResponseAppearance.SUGGESTED} />
+                    </AdwAlertDialog>,
+                    activeWindow,
+                )}
         </GtkBox>
     );
 };

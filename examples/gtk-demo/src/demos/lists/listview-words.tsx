@@ -86,7 +86,7 @@ const ListViewWordsDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-            <GtkBox marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+            <GtkBox hexpand marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
                 <GtkSearchEntry
                     text={searchText}
                     placeholderText="Search words..."
@@ -105,6 +105,8 @@ const ListViewWordsDemo = () => {
 
             <GtkScrolledWindow vexpand hexpand>
                 <x.ListView<string>
+                    vexpand
+                    hexpand
                     estimatedItemHeight={32}
                     renderItem={(word) => (
                         <GtkLabel

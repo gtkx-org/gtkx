@@ -257,6 +257,10 @@ export const PRIMITIVE_TYPE_MAP = new Map<string, { ts: string; ffi: FfiTypeDesc
 export const BOXED_TYPE_SIZES = new Map<string, number>([
     ["GValue", 24],
     ["GObject.Value", 24],
+    ["TypeClass", 8],
+    ["GObject.TypeClass", 8],
+    ["TypeInterface", 16],
+    ["GObject.TypeInterface", 16],
 ]);
 
 /**

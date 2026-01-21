@@ -220,16 +220,20 @@ const FormattedTextBuffer = ({ onButtonClick }: { onButtonClick?: () => void }) 
 
 const TextViewDemo = () => (
     <GtkPaned orientation={Gtk.Orientation.VERTICAL} shrinkStartChild shrinkEndChild>
-        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
-            <GtkTextView wrapMode={Gtk.WrapMode.WORD}>
-                <FormattedTextBuffer />
-            </GtkTextView>
-        </GtkScrolledWindow>
-        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
-            <GtkTextView wrapMode={Gtk.WrapMode.WORD}>
-                <FormattedTextBuffer />
-            </GtkTextView>
-        </GtkScrolledWindow>
+        <x.Slot for={GtkPaned} id="startChild">
+            <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+                <GtkTextView wrapMode={Gtk.WrapMode.WORD}>
+                    <FormattedTextBuffer />
+                </GtkTextView>
+            </GtkScrolledWindow>
+        </x.Slot>
+        <x.Slot for={GtkPaned} id="endChild">
+            <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+                <GtkTextView wrapMode={Gtk.WrapMode.WORD}>
+                    <FormattedTextBuffer />
+                </GtkTextView>
+            </GtkScrolledWindow>
+        </x.Slot>
     </GtkPaned>
 );
 

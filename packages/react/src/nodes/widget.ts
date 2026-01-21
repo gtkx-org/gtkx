@@ -1,5 +1,6 @@
-import { batch, isObjectEqual, NativeObject } from "@gtkx/ffi";
+import { batch, getNativeObject, isObjectEqual, NativeObject } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
+import { ObjectClass, Type, typeClassPeek, typeFromName, typeFundamental, TypeInstance, typeNameFromInstance } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
@@ -24,6 +25,19 @@ import { type SignalHandler, signalStore } from "./internal/signal-store.js";
 import { filterProps, matchesAnyClass, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 
 const EXCLUDED_PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
+
+function findProperty(obj: NativeObject, propertyName: string): GObject.ParamSpec | null {
+    if (!obj.handle) return null;
+
+    const typeInstance = getNativeObject(obj.handle, TypeInstance);
+    const typeName = typeNameFromInstance(typeInstance);
+    const gtype = typeFromName(typeName);
+    const typeClass = typeClassPeek(gtype);
+    if (!typeClass) return null;
+
+    const objectClass = getNativeObject(typeClass.handle, ObjectClass);
+    return objectClass.findProperty(propertyName) ?? null;
+}
 
 export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Props> extends Node<T, P> {
     public static override priority = 3;
@@ -154,6 +168,11 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 pendingSignals.push({ name, newValue });
             } else if (newValue !== undefined) {
                 pendingProperties.push({ name, oldValue, newValue });
+            } else if (oldValue !== undefined) {
+                const defaultValue = this.getPropertyDefaultValue(name);
+                if (defaultValue !== undefined) {
+                    pendingProperties.push({ name, oldValue, newValue: defaultValue });
+                }
             }
         }
 
@@ -244,6 +263,34 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         if (getter && typeof getter === "function") {
             return getter.call(this.container);
         }
+
+        return undefined;
+    }
+
+    private getPropertyDefaultValue(key: string): unknown {
+        const propMeta = resolvePropMeta(this.container, key);
+        if (!propMeta) return undefined;
+
+        const propName = key.replace(/([A-Z])/g, "-$1").toLowerCase();
+        const pspec = findProperty(this.container, propName);
+        if (!pspec) return undefined;
+
+        const value = pspec.getDefaultValue();
+        const gtype = value.getType();
+        const fundamental = typeFundamental(gtype);
+
+        if (fundamental === Type.BOOLEAN) return value.getBoolean();
+        if (fundamental === Type.INT) return value.getInt();
+        if (fundamental === Type.UINT) return value.getUint();
+        if (fundamental === Type.LONG) return value.getLong();
+        if (fundamental === Type.ULONG) return value.getUlong();
+        if (fundamental === Type.INT64) return value.getInt64();
+        if (fundamental === Type.UINT64) return value.getUint64();
+        if (fundamental === Type.FLOAT) return value.getFloat();
+        if (fundamental === Type.DOUBLE) return value.getDouble();
+        if (fundamental === Type.STRING) return value.getString();
+        if (fundamental === Type.ENUM) return value.getEnum();
+        if (fundamental === Type.FLAGS) return value.getFlags();
 
         return undefined;
     }

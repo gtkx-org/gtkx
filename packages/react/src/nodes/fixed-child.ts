@@ -14,12 +14,18 @@ class FixedChildNode extends PositionalChildNode<Props> {
         return type === "FixedChild";
     }
 
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
+        super.onChildChange(oldChild);
+        if (this.child) {
+            this.applyTransform();
+        }
+    }
+
     protected override attachToParent(parent: Gtk.Widget, child: Gtk.Widget): void {
         const fixed = parent as Gtk.Fixed;
         const x = this.props.x ?? 0;
         const y = this.props.y ?? 0;
         fixed.put(child, x, y);
-        this.applyTransform();
     }
 
     protected override detachFromParent(parent: Gtk.Widget, child: Gtk.Widget): void {

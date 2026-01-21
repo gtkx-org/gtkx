@@ -10,7 +10,7 @@ This demonstrates how <span foreground="red">Pango markup</span> can be used to 
 
 <b>Bold</b>, <i>italic</i>, <u>underline</u>, and <s>strikethrough</s> are easy.
 
-You can use <tt>monospace</tt> for code, <sub>subscripts</sub> and <sup>superscripts</sup>.
+You can use <tt>monospace</tt> for code, <span rise="-4096" scale="small">subscripts</span> and <span rise="4096" scale="small">superscripts</span>.
 
 <span foreground="#3584e4" size="large">Colors and sizes</span> work too.
 
@@ -18,7 +18,7 @@ You can use <tt>monospace</tt> for code, <sub>subscripts</sub> and <sup>superscr
 
 <span font_family="serif">Different</span> <span font_family="sans">font</span> <span font_family="monospace">families</span>
 
-Visit <a href="https://docs.gtk.org/Pango/pango_markup.html">Pango Documentation</a> for more.`;
+See <span foreground="#3584e4"><u>docs.gtk.org/Pango/pango_markup.html</u></span> for more.`;
 
 const MarkupDemo = () => {
     const formattedViewRef = useRef<Gtk.TextView | null>(null);
