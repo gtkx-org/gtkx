@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 export class SimpleListStore {
@@ -13,15 +12,13 @@ export class SimpleListStore {
     public appendItem(id: string, label: string): void {
         const existingIndex = this.ids.indexOf(id);
 
-        batch(() => {
-            if (existingIndex >= 0) {
-                this.model.remove(existingIndex);
-                this.ids.splice(existingIndex, 1);
-            }
+        if (existingIndex >= 0) {
+            this.model.remove(existingIndex);
+            this.ids.splice(existingIndex, 1);
+        }
 
-            this.ids.push(id);
-            this.model.append(label);
-        });
+        this.ids.push(id);
+        this.model.append(label);
     }
 
     public removeItem(id: string): void {

@@ -605,7 +605,7 @@ describe("widget - signals", () => {
             });
         });
 
-        describe.skip("key controller", () => {
+        describe("key controller", () => {
             it("connects onKeyPressed handler", async () => {
                 const handleKeyPressed = vi.fn(() => false);
 

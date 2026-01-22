@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
 import { TextAnchorNode } from "../text-anchor.js";
@@ -257,10 +256,8 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         if (!buffer || text.length === 0) return;
 
         const iter = new Gtk.TextIter();
-        batch(() => {
-            buffer.getIterAtOffset(iter, offset);
-            buffer.insert(iter, text, text.length);
-        });
+        buffer.getIterAtOffset(iter, offset);
+        buffer.insert(iter, text, text.length);
     }
 
     private deleteTextAtRange(start: number, end: number): void {
@@ -270,11 +267,9 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         const startIter = new Gtk.TextIter();
         const endIter = new Gtk.TextIter();
 
-        batch(() => {
-            buffer.getIterAtOffset(startIter, start);
-            buffer.getIterAtOffset(endIter, end);
-            buffer.delete(startIter, endIter);
-        });
+        buffer.getIterAtOffset(startIter, start);
+        buffer.getIterAtOffset(endIter, end);
+        buffer.delete(startIter, endIter);
     }
 
     private updateChildOffsets(startIndex: number): void {

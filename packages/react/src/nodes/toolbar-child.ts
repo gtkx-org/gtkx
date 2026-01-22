@@ -1,4 +1,4 @@
-import { batch, isObjectEqual } from "@gtkx/ffi";
+import { isObjectEqual } from "@gtkx/ffi";
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { registerNodeClass } from "../registry.js";
@@ -28,25 +28,23 @@ class ToolbarChildNode extends SlotNode {
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const toolbar = this.getToolbar();
 
-        batch(() => {
-            if (oldChild) {
-                const parent = oldChild.getParent();
+        if (oldChild) {
+            const parent = oldChild.getParent();
 
-                if (parent && isObjectEqual(parent, toolbar)) {
-                    toolbar.remove(oldChild);
-                }
+            if (parent && isObjectEqual(parent, toolbar)) {
+                toolbar.remove(oldChild);
             }
+        }
 
-            if (this.child) {
-                const position = this.getPosition();
+        if (this.child) {
+            const position = this.getPosition();
 
-                if (position === "top") {
-                    toolbar.addTopBar(this.child);
-                } else {
-                    toolbar.addBottomBar(this.child);
-                }
+            if (position === "top") {
+                toolbar.addTopBar(this.child);
+            } else {
+                toolbar.addBottomBar(this.child);
             }
-        });
+        }
     }
 }
 

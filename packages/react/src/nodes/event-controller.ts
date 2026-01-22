@@ -110,11 +110,10 @@ class EventControllerNode extends Node<Gtk.EventController, Props> implements At
             return;
         }
 
-        const propMeta = resolvePropMeta(this.container, name);
+        const setterName = resolvePropMeta(this.container, name);
 
-        if (propMeta) {
-            const [, setter] = propMeta;
-            const setterFn = (this.container as unknown as Record<string, (v: unknown) => void>)[setter];
+        if (setterName) {
+            const setterFn = (this.container as unknown as Record<string, (v: unknown) => void>)[setterName];
             if (typeof setterFn === "function") {
                 setterFn.call(this.container, value);
             }

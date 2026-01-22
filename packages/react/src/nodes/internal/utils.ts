@@ -70,7 +70,7 @@ const walkPrototypeChain = <T>(instance: Container, lookup: (typeName: string) =
     return null;
 };
 
-export const resolvePropMeta = (instance: Container, key: string): [string | null, string, boolean] | null =>
+export const resolvePropMeta = (instance: Container, key: string): string | null =>
     walkPrototypeChain(instance, (typeName) => PROPS[typeName]?.[key] ?? null);
 
 export const resolveSignal = (instance: Container, signalName: string): boolean => {

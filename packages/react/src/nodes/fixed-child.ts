@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { FixedChildProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
@@ -62,10 +61,8 @@ class FixedChildNode extends PositionalChildNode<Props> {
         const x = this.props.x ?? 0;
         const y = this.props.y ?? 0;
 
-        batch(() => {
-            fixed.remove(child);
-            fixed.put(child, x, y);
-        });
+        fixed.remove(child);
+        fixed.put(child, x, y);
         this.applyTransform();
     }
 

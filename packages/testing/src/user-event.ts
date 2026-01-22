@@ -310,19 +310,22 @@ const parseKeyboardInput = (input: string): Array<{ keyval: number; press: boole
     return actions;
 };
 
+let gdkModifierType: number | null = null;
+
 const keyboard = async (element: Gtk.Widget, input: string): Promise<void> => {
+    gdkModifierType ??= typeFromName("GdkModifierType");
     const controller = getOrCreateController(element, Gtk.EventControllerKey);
     const actions = parseKeyboardInput(input);
 
     for (const action of actions) {
         const signalName = action.press ? "key-pressed" : "key-released";
-        const returnValue = Value.newFromBoolean(false);
+        const returnValue = action.press ? Value.newFromBoolean(false) : null;
         signalEmitv(
             [
                 Value.newFromObject(controller),
                 Value.newFromUint(action.keyval),
                 Value.newFromUint(0),
-                Value.newFromUint(0),
+                Value.newFromFlags(gdkModifierType, 0),
             ],
             getSignalId(controller, signalName),
             0,

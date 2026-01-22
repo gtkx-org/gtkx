@@ -1,4 +1,4 @@
-import { batch, isObjectEqual } from "@gtkx/ffi";
+import { isObjectEqual } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { AUTOWRAP_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
@@ -33,18 +33,16 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             throw new Error(`Cannot append '${child.typeName}' to 'ListBox/FlowBox': expected Widget`);
         }
 
-        batch(() => {
-            if (isAutowrappedChild(child.container)) {
-                const currentParent = child.container.getParent();
-                if (currentParent !== null && isRemovable(currentParent)) {
-                    currentParent.remove(child.container);
-                }
-            } else {
-                this.removeExistingWrapper(child.container);
+        if (isAutowrappedChild(child.container)) {
+            const currentParent = child.container.getParent();
+            if (currentParent !== null && isRemovable(currentParent)) {
+                currentParent.remove(child.container);
             }
+        } else {
+            this.removeExistingWrapper(child.container);
+        }
 
-            this.container.append(child.container);
-        });
+        this.container.append(child.container);
     }
 
     public override removeChild(child: Node): void {
@@ -57,19 +55,17 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             throw new Error(`Cannot remove '${child.typeName}' from 'ListBox/FlowBox': expected Widget`);
         }
 
-        batch(() => {
-            if (!isAutowrappedChild(child.container)) {
-                const wrapper = child.container.getParent();
+        if (!isAutowrappedChild(child.container)) {
+            const wrapper = child.container.getParent();
 
-                if (wrapper && isSingleChild(wrapper)) {
-                    wrapper.setChild(null);
-                    this.container.remove(wrapper);
-                    return;
-                }
+            if (wrapper && isSingleChild(wrapper)) {
+                wrapper.setChild(null);
+                this.container.remove(wrapper);
+                return;
             }
+        }
 
-            this.container.remove(child.container);
-        });
+        this.container.remove(child.container);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -82,29 +78,27 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             throw new Error(`Cannot insert '${child.typeName}' into 'ListBox/FlowBox': expected Widget`);
         }
 
-        batch(() => {
-            const currentParent = child.container.getParent();
+        const currentParent = child.container.getParent();
 
-            if (currentParent !== null) {
-                if (isAutowrappedChild(child.container)) {
-                    if (isRemovable(currentParent)) {
-                        currentParent.remove(child.container);
-                    }
-                } else {
-                    this.removeExistingWrapper(child.container);
+        if (currentParent !== null) {
+            if (isAutowrappedChild(child.container)) {
+                if (isRemovable(currentParent)) {
+                    currentParent.remove(child.container);
                 }
-            } else if (!isAutowrappedChild(child.container)) {
+            } else {
                 this.removeExistingWrapper(child.container);
             }
+        } else if (!isAutowrappedChild(child.container)) {
+            this.removeExistingWrapper(child.container);
+        }
 
-            const position = this.findChildPosition(before);
+        const position = this.findChildPosition(before);
 
-            if (position !== null) {
-                this.container.insert(child.container, position);
-            } else {
-                this.container.append(child.container);
-            }
-        });
+        if (position !== null) {
+            this.container.insert(child.container, position);
+        } else {
+            this.container.append(child.container);
+        }
     }
 
     private removeExistingWrapper(childWidget: Gtk.Widget): void {

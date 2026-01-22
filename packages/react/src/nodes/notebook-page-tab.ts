@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { SlotProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
@@ -41,20 +40,18 @@ export class NotebookPageTabNode extends SlotNode<Props> {
     }
 
     protected override onChildChange(_oldChild: Gtk.Widget | null): void {
-        batch(() => {
-            if (!this.notebook || !this.page) {
-                return;
-            }
+        if (!this.notebook || !this.page) {
+            return;
+        }
 
-            const notebook = this.getNotebook();
-            const page = this.getPage();
+        const notebook = this.getNotebook();
+        const page = this.getPage();
 
-            if (notebook.pageNum(page) === -1) {
-                return;
-            }
+        if (notebook.pageNum(page) === -1) {
+            return;
+        }
 
-            notebook.setTabLabel(page, this.child);
-        });
+        notebook.setTabLabel(page, this.child);
     }
 }
 

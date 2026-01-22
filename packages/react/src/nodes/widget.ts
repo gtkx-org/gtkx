@@ -1,4 +1,4 @@
-import { batch, getNativeObject, isObjectEqual, NativeObject } from "@gtkx/ffi";
+import { getNativeObject, isObjectEqual, type NativeObject } from "@gtkx/ffi";
 import type * as GObject from "@gtkx/ffi/gobject";
 import {
     ObjectClass,
@@ -79,7 +79,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             throw new Error(`Cannot append 'Window' to '${this.typeName}': windows must be top-level containers`);
         }
 
-        batch(() => this.attachChild(child));
+        this.attachChild(child);
     }
 
     public removeChild(child: Node): void {
@@ -96,7 +96,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             throw new Error(`Cannot remove 'Window' from '${this.typeName}': windows must be top-level containers`);
         }
 
-        batch(() => this.detachChild(child));
+        this.detachChild(child);
     }
 
     public insertBefore(child: Node, before: Node): void {
@@ -113,15 +113,13 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             throw new Error(`Cannot insert 'Window' into '${this.typeName}': windows must be top-level containers`);
         }
 
-        batch(() => {
-            if (isReorderable(this.container)) {
-                this.insertBeforeReorderable(this.container, child, before);
-            } else if (isInsertable(this.container)) {
-                this.insertBeforeInsertable(this.container, child, before);
-            } else {
-                this.appendChild(child);
-            }
-        });
+        if (isReorderable(this.container)) {
+            this.insertBeforeReorderable(this.container, child, before);
+        } else if (isInsertable(this.container)) {
+            this.insertBeforeInsertable(this.container, child, before);
+        } else {
+            this.appendChild(child);
+        }
     }
 
     private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {
@@ -185,12 +183,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
 
         for (const { name, oldValue, newValue } of pendingProperties) {
-            const isEditableText = name === "text" && isEditable(this.container);
-
-            if (isEditableText && oldValue !== undefined) {
-                const currentValue = this.getProperty(name);
-
-                if (oldValue !== currentValue) {
+            if (name === "text" && oldValue !== undefined && isEditable(this.container)) {
+                if (oldValue !== this.container.getText()) {
                     continue;
                 }
             }
@@ -219,23 +213,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
     }
 
-    private getProperty(key: string): unknown {
-        const propMeta = resolvePropMeta(this.container, key);
-        if (!propMeta) return undefined;
-
-        const [getterName] = propMeta;
-        const getter = getterName ? this.container[getterName as keyof typeof this.container] : undefined;
-
-        if (getter && typeof getter === "function") {
-            return getter.call(this.container);
-        }
-
-        return undefined;
-    }
-
     private getPropertyDefaultValue(key: string): unknown {
-        const propMeta = resolvePropMeta(this.container, key);
-        if (!propMeta) return undefined;
+        if (!resolvePropMeta(this.container, key)) return undefined;
 
         const propName = key.replace(/([A-Z])/g, "-$1").toLowerCase();
         const pspec = findProperty(this.container, propName);
@@ -262,28 +241,10 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     private setProperty(key: string, value: unknown): void {
-        const propMeta = resolvePropMeta(this.container, key);
-        if (!propMeta) return;
+        const setterName = resolvePropMeta(this.container, key);
+        if (!setterName) return;
 
-        const [getterName, setterName, getterHasParams] = propMeta;
         const setter = this.container[setterName as keyof typeof this.container];
-        const getter = getterName ? this.container[getterName as keyof typeof this.container] : undefined;
-
-        if (getter && typeof getter === "function" && !getterHasParams) {
-            const currentValue = getter.call(this.container);
-
-            if (currentValue === value) {
-                return;
-            }
-
-            if (
-                currentValue instanceof NativeObject &&
-                value instanceof NativeObject &&
-                isObjectEqual(currentValue, value)
-            ) {
-                return;
-            }
-        }
 
         if (setter && typeof setter === "function") {
             setter.call(this.container, value);

@@ -1,4 +1,4 @@
-import { beginBatch, endBatch, getNativeId } from "@gtkx/ffi";
+import { getNativeId } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
@@ -142,11 +142,9 @@ export function createHostConfig(): HostConfig {
         },
         prepareForCommit: () => {
             signalStore.blockAll();
-            beginBatch();
             return null;
         },
         resetAfterCommit: () => {
-            endBatch();
             flushAfterCommit();
             signalStore.unblockAll();
         },

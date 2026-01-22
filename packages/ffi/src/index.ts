@@ -1,5 +1,5 @@
 export { createRef, getNativeId, type NativeHandle, readPointer, writePointer } from "@gtkx/native";
-export * from "./batch.js";
+export { call } from "./batch.js";
 export * from "./native/base.js";
 export * from "./native/error.js";
 export * from "./native/events.js";

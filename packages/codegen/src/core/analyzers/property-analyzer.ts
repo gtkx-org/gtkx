@@ -52,7 +52,6 @@ export class PropertyAnalyzer {
         }
 
         const isNullable = prop.type.nullable || this.inferNullabilityFromGetter(prop.getter, cls);
-        const getterHasParams = this.checkGetterHasParams(prop.getter, cls);
 
         return {
             name: prop.name,
@@ -66,7 +65,6 @@ export class PropertyAnalyzer {
             doc: prop.doc,
             referencedNamespaces: collectExternalNamespaces(typeMapping.imports),
             hasSyntheticSetter: needsSyntheticSetter && this.canGenerateSyntheticSetter(prop),
-            getterHasParams,
         };
     }
 
@@ -77,15 +75,6 @@ export class PropertyAnalyzer {
         if (!method) return false;
 
         return method.returnType.nullable;
-    }
-
-    private checkGetterHasParams(getterName: string | undefined, cls: GirClass): boolean {
-        if (!getterName) return false;
-
-        const method = cls.getMethodByCIdentifier(getterName) ?? cls.findMethod(getterName);
-        if (!method) return false;
-
-        return method.parameters.length > 0;
     }
 
     private canGenerateSyntheticSetter(prop: GirProperty): boolean {

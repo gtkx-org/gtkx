@@ -438,8 +438,7 @@ class McpClient {
                     throw widgetNotFoundError(p.widgetId);
                 }
                 const signalArgs = (p.args ?? []).map((arg) => {
-                    const isTypedArg =
-                        typeof arg === "object" && arg !== null && "type" in arg && "value" in arg;
+                    const isTypedArg = typeof arg === "object" && arg !== null && "type" in arg && "value" in arg;
                     const argType = isTypedArg ? (arg as { type: string }).type : typeof arg;
                     const argValue = isTypedArg ? (arg as { value: unknown }).value : arg;
 

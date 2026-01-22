@@ -1,4 +1,4 @@
-import { batch, isObjectEqual } from "@gtkx/ffi";
+import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
@@ -38,14 +38,12 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
             const children = [...this.children];
             this.children.clear();
 
-            batch(() => {
-                for (const child of children) {
-                    const currentParent = child.getParent();
-                    if (currentParent && isObjectEqual(currentParent, parent)) {
-                        parent.removeOverlay(child);
-                    }
+            for (const child of children) {
+                const currentParent = child.getParent();
+                if (currentParent && isObjectEqual(currentParent, parent)) {
+                    parent.removeOverlay(child);
                 }
-            });
+            }
         }
 
         this.parent = null;
@@ -62,7 +60,7 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
 
         scheduleAfterCommit(() => {
             if (this.parent) {
-                batch(() => this.attachChild(widget));
+                this.attachChild(widget);
             }
         }, CommitPriority.NORMAL);
     }
@@ -77,7 +75,7 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
 
         scheduleAfterCommit(() => {
             if (this.parent) {
-                batch(() => this.attachChild(widget));
+                this.attachChild(widget);
             }
         }, CommitPriority.NORMAL);
     }
@@ -93,12 +91,10 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
 
         scheduleAfterCommit(() => {
             if (parent) {
-                batch(() => {
-                    const currentParent = widget.getParent();
-                    if (currentParent && isObjectEqual(currentParent, parent)) {
-                        parent.removeOverlay(widget);
-                    }
-                });
+                const currentParent = widget.getParent();
+                if (currentParent && isObjectEqual(currentParent, parent)) {
+                    parent.removeOverlay(widget);
+                }
             }
         }, CommitPriority.HIGH);
     }
@@ -115,16 +111,14 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
 
         if (measureChanged || clipOverlayChanged) {
             const parent = this.parent;
-            batch(() => {
-                for (const child of this.children) {
-                    if (measureChanged) {
-                        parent.setMeasureOverlay(child, newProps.measure ?? false);
-                    }
-                    if (clipOverlayChanged) {
-                        parent.setClipOverlay(child, newProps.clipOverlay ?? false);
-                    }
+            for (const child of this.children) {
+                if (measureChanged) {
+                    parent.setMeasureOverlay(child, newProps.measure ?? false);
                 }
-            });
+                if (clipOverlayChanged) {
+                    parent.setClipOverlay(child, newProps.clipOverlay ?? false);
+                }
+            }
         }
     }
 

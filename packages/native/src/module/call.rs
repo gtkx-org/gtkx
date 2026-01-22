@@ -1,8 +1,8 @@
 //! FFI function call execution.
 //!
-//! This module implements [`call`] and [`batch_call`], which execute native
-//! function calls via libffi. This is the core mechanism for invoking GTK
-//! and GLib functions from JavaScript.
+//! This module implements [`call`], which executes native function calls via
+//! libffi. This is the core mechanism for invoking GTK and GLib functions from
+//! JavaScript.
 //!
 //! ## Call Flow
 //!
@@ -173,57 +173,4 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
     }
 
     value.to_js_value(&mut cx)
-}
-
-pub fn batch_call(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    if !gtk_dispatch::GtkDispatcher::global().is_started() {
-        return cx.throw_error("GTK application has not been started. Call start() first.");
-    }
-
-    let js_calls = cx.argument::<JsArray>(0)?;
-    let len = js_calls.len(&mut cx);
-
-    if len == 0 {
-        return Ok(cx.undefined());
-    }
-
-    let mut requests = Vec::with_capacity(len as usize);
-
-    for i in 0..len {
-        let js_call = js_calls.get::<JsObject, _, _>(&mut cx, i)?;
-
-        let library_name = js_call
-            .get::<JsString, _, _>(&mut cx, "library")?
-            .value(&mut cx);
-        let symbol_name = js_call
-            .get::<JsString, _, _>(&mut cx, "symbol")?
-            .value(&mut cx);
-        let js_args = js_call.get::<JsArray, _, _>(&mut cx, "args")?;
-        let args = Arg::from_js_array(&mut cx, js_args)?;
-
-        requests.push(CallRequest {
-            library_name,
-            symbol_name,
-            args,
-            result_type: Type::Undefined,
-        });
-    }
-
-    let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
-
-    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
-    gtk_dispatch::GtkDispatcher::global().schedule(move || {
-        let result = requests
-            .into_iter()
-            .try_for_each(|request| request.execute().map(|_| ()));
-        let _ = tx.send(result);
-    });
-
-    let result = gtk_dispatch::GtkDispatcher::global()
-        .wait_for_gtk_result(&mut cx, &rx)
-        .or_else(|err| cx.throw_error(err.to_string()))?;
-
-    result.or_else(|err| cx.throw_error(format!("Error during batch FFI call: {err}")))?;
-
-    Ok(cx.undefined())
 }

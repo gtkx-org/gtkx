@@ -1,4 +1,4 @@
-import { batch, isObjectEqual } from "@gtkx/ffi";
+import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { toCamelCase } from "@gtkx/gir";
 import type { SlotProps } from "../jsx.js";
@@ -32,13 +32,11 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChil
             this.child = null;
 
             queueMicrotask(() => {
-                batch(() => {
-                    if (parent.getRoot() !== null) {
-                        this.parent = parent;
-                        this.onChildChange(oldChild);
-                    }
-                    this.parent = null;
-                });
+                if (parent.getRoot() !== null) {
+                    this.parent = parent;
+                    this.onChildChange(oldChild);
+                }
+                this.parent = null;
             });
         } else {
             this.parent = null;
@@ -78,13 +76,12 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChil
 
         const parent = this.getParent();
         const parentType = (parent.constructor as ContainerClass).glibTypeName;
-        const propMeta = resolvePropMeta(parent, this.getId());
+        const setterName = resolvePropMeta(parent, this.getId());
 
-        if (!propMeta) {
+        if (!setterName) {
             throw new Error(`Unable to find property for Slot '${this.getId()}' on type '${parentType}'`);
         }
 
-        const [, setterName] = propMeta;
         const setter = parent[setterName as keyof Gtk.Widget];
 
         if (typeof setter !== "function") {

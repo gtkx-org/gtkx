@@ -1,4 +1,4 @@
-import { batch, isObjectEqual } from "@gtkx/ffi";
+import { isObjectEqual } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
@@ -94,33 +94,29 @@ export class MenuModel extends VirtualNode<MenuProps> {
     }
 
     public createAction(): void {
-        batch(() => {
-            if (this.action) {
-                signalStore.set(this, this.action, "activate", null);
-            }
+        if (this.action) {
+            signalStore.set(this, this.action, "activate", null);
+        }
 
-            this.action = new Gio.SimpleAction(this.getId());
-            signalStore.set(this, this.action, "activate", this.getOnActivate());
-            this.getActionMap().addAction(this.action);
+        this.action = new Gio.SimpleAction(this.getId());
+        signalStore.set(this, this.action, "activate", this.getOnActivate());
+        this.getActionMap().addAction(this.action);
 
-            if (this.application && this.props.accels) {
-                this.application.setAccelsForAction(this.getActionName(), this.getAccels());
-            }
-        });
+        if (this.application && this.props.accels) {
+            this.application.setAccelsForAction(this.getActionName(), this.getAccels());
+        }
     }
 
     private removeAction(): void {
-        batch(() => {
-            if (this.application && this.props.accels) {
-                this.application.setAccelsForAction(this.getActionName(), []);
-            }
+        if (this.application && this.props.accels) {
+            this.application.setAccelsForAction(this.getActionName(), []);
+        }
 
-            if (this.action) {
-                this.getActionMap().removeAction(this.getId());
-                signalStore.set(this, this.action, "activate", null);
-                this.action = null;
-            }
-        });
+        if (this.action) {
+            this.getActionMap().removeAction(this.getId());
+            signalStore.set(this, this.action, "activate", null);
+            this.action = null;
+        }
     }
 
     private getPosition(): number {
@@ -321,20 +317,17 @@ export class MenuModel extends VirtualNode<MenuProps> {
 
         if (!oldProps || oldProps.label !== newProps.label) {
             const parent = this.parent;
+            const position = this.findPositionIn(parent);
 
-            batch(() => {
-                const position = this.findPositionIn(parent);
+            if (position >= 0) {
+                parent.remove(position);
 
-                if (position >= 0) {
-                    parent.remove(position);
-
-                    if (this.type === "section") {
-                        parent.insertSection(position, this.menu, this.props.label);
-                    } else if (this.type === "submenu") {
-                        parent.insertSubmenu(position, this.menu, this.props.label);
-                    }
+                if (this.type === "section") {
+                    parent.insertSection(position, this.menu, this.props.label);
+                } else if (this.type === "submenu") {
+                    parent.insertSubmenu(position, this.menu, this.props.label);
                 }
-            });
+            }
         }
     }
 

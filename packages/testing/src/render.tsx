@@ -1,4 +1,4 @@
-import { discardAllBatches, start, stop } from "@gtkx/ffi";
+import { start, stop } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
@@ -33,7 +33,6 @@ const update = async (
 };
 
 const handleError = (error: Error): void => {
-    discardAllBatches();
     lastRenderError = error;
 };
 

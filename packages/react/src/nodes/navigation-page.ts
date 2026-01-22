@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import type { NavigationPageProps } from "../jsx.js";
 import { registerNodeClass } from "../registry.js";
@@ -40,30 +39,28 @@ export class NavigationPageNode extends SlotNode<Props> {
     }
 
     protected override onChildChange(oldChild: Adw.NavigationPage | null): void {
-        batch(() => {
-            const navigationView = this.getParent() as Adw.NavigationView | Adw.NavigationSplitView;
-            const title = this.props.title ?? "";
+        const navigationView = this.getParent() as Adw.NavigationView | Adw.NavigationSplitView;
+        const title = this.props.title ?? "";
+
+        if (this.child) {
+            this.child = this.props.id
+                ? Adw.NavigationPage.newWithTag(this.child, title, this.props.id)
+                : new Adw.NavigationPage(this.child, title);
+
+            this.updateProps(null, this.props);
+        }
+
+        if (navigationView instanceof Adw.NavigationView) {
+            if (oldChild instanceof Adw.NavigationPage) {
+                navigationView.remove(oldChild);
+            }
 
             if (this.child) {
-                this.child = this.props.id
-                    ? Adw.NavigationPage.newWithTag(this.child, title, this.props.id)
-                    : new Adw.NavigationPage(this.child, title);
-
-                this.updateProps(null, this.props);
+                navigationView.add(this.child as Adw.NavigationPage);
             }
-
-            if (navigationView instanceof Adw.NavigationView) {
-                if (oldChild instanceof Adw.NavigationPage) {
-                    navigationView.remove(oldChild);
-                }
-
-                if (this.child) {
-                    navigationView.add(this.child as Adw.NavigationPage);
-                }
-            } else {
-                super.onChildChange(oldChild);
-            }
-        });
+        } else {
+            super.onChildChange(oldChild);
+        }
     }
 }
 

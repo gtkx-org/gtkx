@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { BaseStore } from "./base-store.js";
 
@@ -153,14 +152,14 @@ export class TreeStore extends BaseStore<TreeItemData> {
 
     protected override sync(): void {
         const oldRootLength = this.rootIds.length;
-        batch(() => this.rootModel.splice(0, oldRootLength, this.newRootIds.length > 0 ? this.newRootIds : undefined));
+        this.rootModel.splice(0, oldRootLength, this.newRootIds.length > 0 ? this.newRootIds : undefined);
         this.rootIds = [...this.newRootIds];
 
         for (const [parentId, newChildIds] of this.newChildren) {
             const model = this.childModels.get(parentId);
             if (model) {
                 const oldLength = model.getNItems();
-                batch(() => model.splice(0, oldLength, newChildIds.length > 0 ? newChildIds : undefined));
+                model.splice(0, oldLength, newChildIds.length > 0 ? newChildIds : undefined);
             }
         }
 

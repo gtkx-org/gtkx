@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { BaseStore } from "./base-store.js";
 
@@ -74,7 +73,7 @@ export class ListStore extends BaseStore<unknown> {
     protected override sync(): void {
         const newOrder = this.newSortedIds;
         const oldLength = this.sortedIds.length;
-        batch(() => this.model.splice(0, oldLength, newOrder.length > 0 ? newOrder : undefined));
+        this.model.splice(0, oldLength, newOrder.length > 0 ? newOrder : undefined);
         this.sortedIds = [...newOrder];
     }
 }

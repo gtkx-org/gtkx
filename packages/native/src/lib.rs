@@ -10,7 +10,6 @@
 //! | `start` | Initialize GTK application and spawn GTK thread |
 //! | `stop` | Shutdown GTK application and join thread |
 //! | `call` | Execute FFI function call to native library |
-//! | `batchCall` | Execute multiple FFI calls in one round-trip |
 //! | `alloc` | Allocate memory for boxed types |
 //! | `read` | Read field from boxed memory |
 //! | `write` | Write field to boxed memory |
@@ -55,7 +54,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("start", module::start)?;
     cx.export_function("stop", module::stop)?;
     cx.export_function("call", module::call)?;
-    cx.export_function("batchCall", module::batch_call)?;
     cx.export_function("read", module::read)?;
     cx.export_function("write", module::write)?;
     cx.export_function("readPointer", module::read_pointer)?;

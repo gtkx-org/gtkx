@@ -68,30 +68,6 @@ export function call(library: string, symbol: string, args: Arg[], returnType: T
 }
 
 /**
- * Descriptor for a batched FFI call.
- */
-export type CallDescriptor = {
-    /** Shared library name */
-    library: string;
-    /** Function symbol name */
-    symbol: string;
-    /** Function arguments */
-    args: Arg[];
-};
-
-/**
- * Executes multiple FFI calls in a single native round-trip.
- *
- * Improves performance by reducing FFI overhead for multiple
- * void-returning calls.
- *
- * @param calls - Array of call descriptors to execute
- */
-export function batchCall(calls: CallDescriptor[]): void {
-    native.batchCall(calls);
-}
-
-/**
  * Starts the GTK runtime and creates an application.
  *
  * @param appId - Application ID in reverse domain notation

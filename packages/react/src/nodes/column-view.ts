@@ -63,9 +63,9 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             this.container.removeColumn(existingColumn);
         }
 
-        this.container.appendColumn(child.column);
         child.setStore(this.list.getStore());
         child.setEstimatedRowHeight(this.estimatedRowHeight);
+        this.container.appendColumn(child.column);
         this.columnNodes.add(child);
     }
 
@@ -87,6 +87,9 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             this.container.removeColumn(existingColumn);
         }
 
+        child.setStore(this.list.getStore());
+        child.setEstimatedRowHeight(this.estimatedRowHeight);
+
         if (before instanceof ColumnViewColumnNode) {
             const beforeIndex = this.getColumnIndex(before.column);
             this.container.insertColumn(beforeIndex, child.column);
@@ -94,8 +97,6 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
             this.container.appendColumn(child.column);
         }
 
-        child.setStore(this.list.getStore());
-        child.setEstimatedRowHeight(this.estimatedRowHeight);
         this.columnNodes.add(child);
     }
 

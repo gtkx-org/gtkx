@@ -37,8 +37,6 @@ export type PropertyAnalysis = {
     referencedNamespaces: string[];
     /** Whether this property uses a synthetic setter (generated via g_object_set_property) */
     hasSyntheticSetter?: boolean;
-    /** Whether the getter requires parameters (out-param style getters) */
-    getterHasParams?: boolean;
 };
 
 /**

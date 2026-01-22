@@ -1,4 +1,3 @@
-import { batch } from "@gtkx/ffi";
 import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CommitPriority } from "../../scheduler.js";
@@ -109,26 +108,23 @@ export class SelectionModelManager {
 
     private applySelection(): void {
         const ids = this.pendingSelection;
+        const nItems = this.getItemCount();
 
-        batch(() => {
-            const nItems = this.getItemCount();
+        if (nItems === 0 && ids && ids.length > 0) {
+            this.setSelection(ids);
+            return;
+        }
 
-            if (nItems === 0 && ids && ids.length > 0) {
-                this.setSelection(ids);
-                return;
-            }
+        this.pendingSelection = null;
 
-            this.pendingSelection = null;
+        const selected = ids ? this.resolveSelectionIndices(ids) : new Gtk.Bitset();
+        const mask = Gtk.Bitset.newRange(0, nItems);
 
-            const selected = ids ? this.resolveSelectionIndices(ids) : new Gtk.Bitset();
-            const mask = Gtk.Bitset.newRange(0, nItems);
-
-            if (this.selectionModel instanceof Gtk.SingleSelection) {
-                const position = selected.getSize() > 0 ? selected.getNth(0) : Gtk.INVALID_LIST_POSITION;
-                (this.selectionModel as Gtk.SingleSelection).setSelected(position);
-            } else {
-                this.selectionModel.setSelection(selected, mask);
-            }
-        });
+        if (this.selectionModel instanceof Gtk.SingleSelection) {
+            const position = selected.getSize() > 0 ? selected.getNth(0) : Gtk.INVALID_LIST_POSITION;
+            (this.selectionModel as Gtk.SingleSelection).setSelected(position);
+        } else {
+            this.selectionModel.setSelection(selected, mask);
+        }
     }
 }
