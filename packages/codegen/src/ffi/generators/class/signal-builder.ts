@@ -249,14 +249,16 @@ export class SignalBuilder {
             }
             writer.newLine();
             writer.indent(() => {
+                writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
                 paramData.forEach((p, index) => {
                     const argAccess = `args[${index + 1}]`;
                     const expression = this.paramWrapWriter.writeWrapExpression(argAccess, p.wrapInfo);
                     writer.write(expression);
-                    writer.write(",");
+                    if (index < paramData.length - 1) {
+                        writer.write(",");
+                    }
                     writer.newLine();
                 });
-                writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className}`);
             });
             writer.writeLine(");");
             if (needsReturnUnwrap) {
@@ -311,7 +313,7 @@ export class SignalBuilder {
         writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
         writer.indent(() => {
             writer.writeLine(
-                `return handler(...args.slice(1), getNativeObject(args[0] as NativeHandle) as ${this.className});`,
+                `return handler(getNativeObject(args[0] as NativeHandle) as ${this.className}, ...args.slice(1));`,
             );
         });
         writer.writeLine("};");
@@ -348,7 +350,7 @@ export class SignalBuilder {
     }
 
     private buildHandlerParams(signal: GirSignal): string {
-        const params: string[] = [];
+        const params: string[] = [`self: ${this.className}`];
 
         for (const param of filterVarargs(signal.parameters)) {
             const mapped = this.ffiMapper.mapParameter(param);
@@ -360,7 +362,6 @@ export class SignalBuilder {
             params.push(`${paramName}: ${mapped.ts}`);
         }
 
-        params.push(`self: ${this.className}`);
         return params.join(", ");
     }
 }

@@ -127,8 +127,12 @@ impl CallRequest {
 
         for (i, arg) in self.args.iter().enumerate() {
             if let Value::Ref(ref_val) = &arg.value {
-                let new_value =
-                    Value::from_ffi_value_with_args(&ffi_values[i], &arg.ty, &ffi_values, &self.args)?;
+                let new_value = Value::from_ffi_value_with_args(
+                    &ffi_values[i],
+                    &arg.ty,
+                    &ffi_values,
+                    &self.args,
+                )?;
                 ref_updates.push((ref_val.js_obj.clone(), new_value));
             }
         }

@@ -65,22 +65,20 @@ impl ffi::FfiEncode for RefType {
                     ),
                 }
             }
-            Type::Array(_) => {
-                match &*ref_val.value {
-                    value::Value::Null | value::Value::Undefined | value::Value::Array(_) => {
-                        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
-                        let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
-                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                            ptr,
-                            FfiStorageKind::PtrStorage(ptr_storage),
-                        )))
-                    }
-                    _ => bail!(
-                        "Expected Array, Null, or Undefined for Ref<Array>, got {:?}",
-                        ref_val.value
-                    ),
+            Type::Array(_) => match &*ref_val.value {
+                value::Value::Null | value::Value::Undefined | value::Value::Array(_) => {
+                    let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
+                    let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+                    Ok(ffi::FfiValue::Storage(FfiStorage::new(
+                        ptr,
+                        FfiStorageKind::PtrStorage(ptr_storage),
+                    )))
                 }
-            }
+                _ => bail!(
+                    "Expected Array, Null, or Undefined for Ref<Array>, got {:?}",
+                    ref_val.value
+                ),
+            },
             Type::String(string_type) => {
                 let (buffer_size, initial_content) = match (&string_type.length, &*ref_val.value) {
                     (Some(len), value::Value::String(s)) => (*len, Some(s.as_bytes())),

@@ -22,6 +22,13 @@ const LIFECYCLE_SIGNALS = new Set([
     "teardown",
 ]);
 
+function wrapHandlerSelfLast(handler: SignalHandler): SignalHandler {
+    return (...args: unknown[]) => {
+        const [self, ...rest] = args;
+        return handler(...rest, self);
+    };
+}
+
 type HandlerEntry = { obj: GObject.GObject; handlerId: number };
 
 class SignalStore {
@@ -53,7 +60,8 @@ class SignalStore {
     private connect(owner: SignalOwner, obj: GObject.GObject, signal: string, handler: SignalHandler): void {
         const objectId = getNativeId(obj.handle);
         const key = `${objectId}:${signal}`;
-        const handlerId = obj.connect(signal, handler);
+        const wrappedHandler = wrapHandlerSelfLast(handler);
+        const handlerId = obj.connect(signal, wrappedHandler);
         this.getOwnerMap(owner).set(key, { obj, handlerId });
 
         if (this.isBlocking && !LIFECYCLE_SIGNALS.has(signal)) {

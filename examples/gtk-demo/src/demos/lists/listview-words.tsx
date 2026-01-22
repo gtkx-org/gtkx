@@ -1,3 +1,4 @@
+import { createRef } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkLabel, GtkProgressBar, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
@@ -19,8 +20,8 @@ const ListViewWordsDemo = () => {
         const loadWords = () => {
             try {
                 const file = Gio.fileNewForPath(DICT_FILE);
-                const contentsRef = { value: [] as number[] };
-                const lengthRef = { value: 0 };
+                const contentsRef = createRef<number[]>([]);
+                const lengthRef = createRef(0);
                 const success = file.loadContents(contentsRef, null, lengthRef);
                 if (success && lengthRef.value > 0) {
                     const text = new TextDecoder().decode(new Uint8Array(contentsRef.value));

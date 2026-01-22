@@ -21,7 +21,7 @@ import {
     GtkSeparator,
     x,
 } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
 
@@ -245,7 +245,6 @@ const DndDemo = () => {
 
     const contextMenuRef = useRef<Gtk.Popover | null>(null);
     const buttonRefs = useRef<Map<string, Gtk.Button>>(new Map());
-    const rotateGestureRefs = useRef<Map<string, Gtk.GestureRotate>>(new Map());
     const dragHotspotRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
     const createContentProvider = useCallback((itemId: string) => {
@@ -354,19 +353,6 @@ const DndDemo = () => {
             ),
         );
     }, []);
-
-    useEffect(() => {
-        const connections: Array<{ gesture: Gtk.GestureRotate; handlerId: number }> = [];
-        for (const [itemId, gesture] of rotateGestureRefs.current.entries()) {
-            const handlerId = gesture.connect("end", () => handleRotateEnd(itemId));
-            connections.push({ gesture, handlerId });
-        }
-        return () => {
-            for (const { gesture, handlerId } of connections) {
-                GObject.signalHandlerDisconnect(gesture, handlerId);
-            }
-        };
-    }, [handleRotateEnd]);
 
     const handleItemColorDrop = useCallback((itemId: string, value: GObject.Value) => {
         const gtype = value.getType();
@@ -499,11 +485,8 @@ const DndDemo = () => {
                                 onDrop={(value: GObject.Value) => handleItemColorDrop(item.id, value)}
                             />
                             <GtkGestureRotate
-                                ref={(g: Gtk.GestureRotate | null) => {
-                                    if (g) rotateGestureRefs.current.set(item.id, g);
-                                    else rotateGestureRefs.current.delete(item.id);
-                                }}
                                 onAngleChanged={handleRotateAngleChanged(item.id)}
+                                onEnd={() => handleRotateEnd(item.id)}
                             />
                             <GtkGestureClick
                                 onReleased={() => {

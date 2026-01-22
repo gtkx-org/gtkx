@@ -38,12 +38,6 @@ class EventControllerNode extends Node<Gtk.EventController, Props> implements At
     protected parentWidget: Gtk.Widget | null = null;
 
     constructor(typeName: string, props: Props, container: Gtk.EventController, rootContainer?: Container) {
-        if (!container) {
-            throw new Error(
-                `EventControllerNode constructor: container is undefined for ${typeName}. ` +
-                `Props: ${JSON.stringify(Object.keys(props))}`,
-            );
-        }
         super(typeName, props, container, rootContainer);
         this.props = props;
     }
@@ -84,13 +78,6 @@ class EventControllerNode extends Node<Gtk.EventController, Props> implements At
     }
 
     private applyProps(oldProps: Props | null, newProps: Props): void {
-        if (!this.container) {
-            throw new Error(
-                `EventControllerNode.applyProps: container is undefined for ${this.typeName}. ` +
-                `Props: ${JSON.stringify(Object.keys(newProps))}`,
-            );
-        }
-
         const propNames = new Set([...Object.keys(oldProps ?? {}), ...Object.keys(newProps ?? {})]);
 
         for (const name of propNames) {
