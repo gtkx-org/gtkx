@@ -93,10 +93,10 @@ export function getRefCount(obj: unknown): number {
     return read(obj, { type: "int", size: 32, unsigned: true }, GOBJECT_REF_COUNT_OFFSET) as number;
 }
 
-interface MemoryMeasurement {
+type MemoryMeasurement = {
     initial: number;
     measure: () => number;
-}
+};
 
 export function startMemoryMeasurement(): MemoryMeasurement {
     forceGC();

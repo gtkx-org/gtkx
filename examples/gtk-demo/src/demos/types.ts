@@ -1,17 +1,17 @@
 import type { ComponentType } from "react";
 
-export interface DemoProps {
+export type DemoProps = {
     onClose?: () => void;
-}
+};
 
-export interface Demo {
+export type Demo = {
     id: string;
     title: string;
     description: string;
     keywords: string[];
     component?: ComponentType<DemoProps>;
     sourceCode?: string;
-}
+};
 
 export type TreeItem =
     | { type: "category"; title: string; children: TreeItem[] }

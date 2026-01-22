@@ -163,11 +163,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
                 continue;
             }
 
-            if (name === "onNotify") {
-                pendingSignals.push({ name, newValue });
-                continue;
-            }
-
             const signalName = this.propNameToSignalName(name);
 
             if (resolveSignal(this.container, signalName)) {
@@ -185,8 +180,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         for (const { name, newValue } of pendingSignals) {
             if (EVENT_CONTROLLER_PROPS.has(name)) {
                 this.ensureEventControllerManager().updateProp(name, (newValue as SignalHandler) ?? null);
-            } else if (name === "onNotify") {
-                this.setNotifyHandler((newValue as SignalHandler) ?? null);
             } else {
                 const signalName = this.propNameToSignalName(name);
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
@@ -239,16 +232,6 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         if (!oldGrabFocus && newGrabFocus) {
             this.container.grabFocus();
         }
-    }
-
-    private setNotifyHandler(handler: SignalHandler | null): void {
-        const wrappedHandler = handler
-            ? (obj: Gtk.Widget, pspec: GObject.ParamSpec) => {
-                  handler(obj, pspec.getName());
-              }
-            : undefined;
-
-        signalStore.set(this, this.container, "notify", wrappedHandler);
     }
 
     private propNameToSignalName(name: string): string {

@@ -7,9 +7,9 @@ import { WidgetNode } from "./widget.js";
 
 type DrawFunc = (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
 
-interface DrawingAreaProps extends Props {
+type DrawingAreaProps = Props & {
     onDraw?: DrawFunc;
-}
+};
 
 const OWN_PROPS = ["onDraw"] as const;
 

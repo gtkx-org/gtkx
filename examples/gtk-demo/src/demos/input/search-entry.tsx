@@ -23,10 +23,6 @@ const SearchEntryDemo = () => {
         }
     }, []);
 
-    const handleSearchModeToggle = useCallback((enabled: boolean) => {
-        setSearchMode(enabled);
-    }, []);
-
     const handleToggleButtonClicked = useCallback((btn: Gtk.ToggleButton) => {
         setSearchMode(btn.getActive());
     }, []);
@@ -49,11 +45,7 @@ const SearchEntryDemo = () => {
                     ref={searchBarRef}
                     searchModeEnabled={searchMode}
                     showCloseButton={false}
-                    onNotify={(self, prop) => {
-                        if (prop === "search-mode-enabled") {
-                            handleSearchModeToggle(self.getSearchMode());
-                        }
-                    }}
+                    onSearchModeChanged={setSearchMode}
                 >
                     <GtkSearchEntry
                         halign={Gtk.Align.CENTER}

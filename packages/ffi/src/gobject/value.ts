@@ -179,7 +179,7 @@ Value.prototype.dupBoxed = function <T extends NativeObject>(targetType: NativeC
     return getNativeObject(ptr as NativeHandle, targetType);
 };
 
-interface ValueStatic {
+type ValueStatic = {
     newFromBoolean(value: boolean): Value;
     newFromInt(value: number): Value;
     newFromUint(value: number): Value;
@@ -194,7 +194,7 @@ interface ValueStatic {
     newFromBoxed(value: NativeObject): Value;
     newFromEnum(gtype: number, value: number): Value;
     newFromFlags(gtype: number, value: number): Value;
-}
+};
 
 const ValueWithStatics = Value as typeof Value & ValueStatic;
 

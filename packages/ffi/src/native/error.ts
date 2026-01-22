@@ -5,14 +5,14 @@ import type { NativeObject } from "./base.js";
  *
  * Contains the error domain, code, and message from native GTK/GLib errors.
  */
-export interface GErrorLike extends NativeObject {
+export type GErrorLike = NativeObject & {
     /** The error domain (quark identifying the error source) */
     getDomain(): number;
     /** The error code within the domain */
     getCode(): number;
     /** Human-readable error message */
     getMessage(): string;
-}
+};
 
 /**
  * Error class wrapping GLib GError structures.

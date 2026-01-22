@@ -1,4 +1,5 @@
 import { css } from "@gtkx/css";
+import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as WebKit from "@gtkx/ffi/webkit";
 import {
@@ -66,7 +67,7 @@ export const App = () => {
         webViewRef.current?.stopLoading();
     }, []);
 
-    const handleLoadChanged = useCallback((webView: WebKit.WebView, loadEvent: WebKit.LoadEvent) => {
+    const handleLoadChanged = useCallback((loadEvent: WebKit.LoadEvent, webView: WebKit.WebView) => {
         setCanGoBack(webView.canGoBack());
         setCanGoForward(webView.canGoForward());
 
@@ -89,8 +90,9 @@ export const App = () => {
         }
     }, []);
 
-    const handleNotify = useCallback((webView: WebKit.WebView, pspec: string) => {
-        if (pspec === "estimated-load-progress") {
+    const handleNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Widget) => {
+        if (pspec.getName() === "estimated-load-progress") {
+            const webView = self as WebKit.WebView;
             setProgress(webView.getEstimatedLoadProgress());
         }
     }, []);

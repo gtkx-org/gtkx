@@ -54,7 +54,7 @@ export type IpcResponse = z.infer<typeof IpcResponseSchema>;
 /**
  * A serialized representation of a GTK widget for IPC transfer.
  */
-export interface SerializedWidget {
+export type SerializedWidget = {
     /** Unique widget identifier */
     id: string;
     /** Widget type name (e.g., "GtkButton") */
@@ -82,7 +82,7 @@ export interface SerializedWidget {
         width: number;
         height: number;
     };
-}
+};
 
 /**
  * Information about a connected GTKX application.

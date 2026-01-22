@@ -3,12 +3,12 @@ import { join } from "node:path";
 import ejs from "ejs";
 import type { TestingOption } from "./create.js";
 
-export interface TemplateContext {
+export type TemplateContext = {
     name: string;
     appId: string;
     title: string;
     testing: TestingOption;
-}
+};
 
 const getTemplatesDir = (): string => {
     return join(import.meta.dirname, "..", "templates");

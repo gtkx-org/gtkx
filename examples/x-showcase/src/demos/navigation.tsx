@@ -220,7 +220,7 @@ export const NavigationDemo = () => {
                                 <GtkScrolledWindow vexpand propagateNaturalHeight>
                                     <GtkListBox
                                         cssClasses={["navigation-sidebar"]}
-                                        onRowSelected={(_, row) => {
+                                        onRowSelected={(row) => {
                                             if (!row) return;
                                             const item = splitViewItems[row.getIndex()];
                                             if (item) setSelectedItem(item);

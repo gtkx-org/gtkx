@@ -1,3 +1,4 @@
+import type * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     AdwPreferencesGroup,
@@ -166,8 +167,9 @@ export const WidgetDemo = () => {
                         <AdwToggleGroup
                             halign={Gtk.Align.START}
                             active={viewMode === "list" ? 0 : viewMode === "grid" ? 1 : 2}
-                            onNotify={(group, prop) => {
-                                if (prop === "active") {
+                            onNotify={(pspec, self) => {
+                                if (pspec.getName() === "active") {
+                                    const group = self as Adw.ToggleGroup;
                                     const toggle = group.getToggle(group.getActive());
                                     if (toggle) setViewMode(toggle.getName() ?? "list");
                                 }

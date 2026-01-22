@@ -1,3 +1,4 @@
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkCheckButton, GtkEntry, GtkImage, GtkLabel, GtkSwitch } from "@gtkx/react";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
@@ -641,7 +642,7 @@ describe("widget - signals", () => {
             await render(<App text="Initial" />);
 
             await waitFor(() => {
-                expect(handleNotify).toHaveBeenCalledWith(expect.anything(), expect.any(String));
+                expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec), expect.any(Gtk.Label));
             });
         });
     });

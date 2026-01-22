@@ -15,9 +15,7 @@ const ExpanderDemo = () => {
     const textViewRef = useRef<Gtk.TextView | null>(null);
     const expanderRef = useRef<Gtk.Expander | null>(null);
 
-    const handleExpandedChanged = useCallback((expander: Gtk.Expander, propName: string) => {
-        if (propName !== "expanded") return;
-
+    const handleActivate = useCallback((expander: Gtk.Expander) => {
         const root = expander.getRoot();
         if (!root) return;
 
@@ -79,7 +77,7 @@ const ExpanderDemo = () => {
             <GtkLabel label="<big><b>Something went wrong</b></big>" useMarkup />
             <GtkLabel label="Here are some more details but not the full story" wrap={false} vexpand={false} />
 
-            <GtkExpander ref={expanderRef} label="Details:" vexpand onNotify={handleExpandedChanged}>
+            <GtkExpander ref={expanderRef} label="Details:" vexpand onActivate={handleActivate}>
                 <GtkScrolledWindow
                     minContentHeight={100}
                     hasFrame

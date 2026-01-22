@@ -15,16 +15,16 @@ type ConnectionManagerEventMap = {
     appUnregistered: [string];
 };
 
-interface PendingRequest {
+type PendingRequest = {
     resolve: (result: unknown) => void;
     reject: (error: Error) => void;
     timeout: NodeJS.Timeout;
-}
+};
 
-interface RegisteredApp {
+type RegisteredApp = {
     info: AppInfo;
     connection: AppConnection;
-}
+};
 
 /**
  * Manages connections between the MCP server and GTKX applications.

@@ -42,7 +42,7 @@ export const RowDemo = () => {
                         <GtkSwitch
                             valign={Gtk.Align.CENTER}
                             active={switchValue}
-                            onStateSet={(_, state) => {
+                            onStateSet={(state) => {
                                 setSwitchValue(state);
                                 return true;
                             }}

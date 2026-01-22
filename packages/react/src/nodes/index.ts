@@ -29,6 +29,7 @@ import "./pack.js";
 import "./popover-menu.js";
 import "./scale.js";
 import "./scrolled-window.js";
+import "./search-bar.js";
 import "./shortcut-controller.js";
 import "./shortcut.js";
 import "./simple-list-item.js";

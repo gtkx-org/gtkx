@@ -18,7 +18,7 @@ import { VirtualNode } from "./virtual.js";
  * </x.ShortcutController>
  * ```
  */
-export interface ShortcutProps extends Props {
+export type ShortcutProps = Props & {
     /** The trigger string(s) using GTK accelerator format (e.g., "\<Control\>s", "F1") */
     trigger: string | string[];
     /**
@@ -29,7 +29,7 @@ export interface ShortcutProps extends Props {
     onActivate: () => boolean | void;
     /** Whether the shortcut is disabled */
     disabled?: boolean;
-}
+};
 
 export class ShortcutNode extends VirtualNode<ShortcutProps> {
     public static override priority = 1;

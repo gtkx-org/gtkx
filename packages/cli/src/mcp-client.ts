@@ -43,11 +43,11 @@ type McpClientOptions = {
     appId: string;
 };
 
-interface PendingRequest {
+type PendingRequest = {
     resolve: (result: unknown) => void;
     reject: (error: Error) => void;
     timeout: NodeJS.Timeout;
-}
+};
 
 const RECONNECT_DELAY_MS = 2000;
 const REQUEST_TIMEOUT_MS = 30000;

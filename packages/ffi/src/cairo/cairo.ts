@@ -928,7 +928,7 @@ Context.prototype.textPath = function (text: string): Context {
  * Text extents returned by {@link Context.textExtents}.
  * All values are in user-space units.
  */
-export interface TextExtents {
+export type TextExtents = {
     /** Horizontal distance from the origin to the leftmost part of the glyphs */
     xBearing: number;
     /** Vertical distance from the origin to the topmost part of the glyphs */
@@ -941,7 +941,7 @@ export interface TextExtents {
     xAdvance: number;
     /** Vertical distance to advance after drawing the text */
     yAdvance: number;
-}
+};
 
 Context.prototype.textExtents = function (text: string): TextExtents {
     const extents = alloc(48, "cairo_text_extents_t", LIB);
@@ -1017,10 +1017,10 @@ Context.prototype.getAntialias = function (): Antialias {
 };
 
 /** Type for Pattern class with static factory methods */
-interface PatternStatic {
+type PatternStatic = {
     createLinear(x0: number, y0: number, x1: number, y1: number): Pattern;
     createRadial(cx0: number, cy0: number, radius0: number, cx1: number, cy1: number, radius1: number): Pattern;
-}
+};
 
 const PatternWithStatics = Pattern as typeof Pattern & PatternStatic;
 

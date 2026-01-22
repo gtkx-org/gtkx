@@ -7,11 +7,11 @@ import type { TreeStore } from "./tree-store.js";
 
 export type TreeRenderItemFn<T> = (item: T | null, row: Gtk.TreeListRow | null) => ReactNode;
 
-interface PendingBind {
+type PendingBind = {
     treeListRow: Gtk.TreeListRow;
     expander: Gtk.TreeExpander;
     id: string;
-}
+};
 
 export class TreeListItemRenderer extends BaseItemRenderer<TreeStore> {
     private expanders = new Map<number, Gtk.TreeExpander>();

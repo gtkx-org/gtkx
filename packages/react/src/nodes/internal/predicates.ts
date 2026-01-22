@@ -94,11 +94,11 @@ export const isBufferedType = (type: string): boolean => {
     return containerClass !== null && isBuffered(containerClass.prototype);
 };
 
-export interface Attachable {
+export type Attachable = {
     canBeChildOf(parent: Node): boolean;
     attachTo(parent: Node): void;
     detachFrom(parent: Node): void;
-}
+};
 
 export function isAttachable(node: Node): node is Node & Attachable {
     const candidate = node as Partial<Attachable>;

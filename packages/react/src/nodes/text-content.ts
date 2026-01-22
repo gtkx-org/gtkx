@@ -5,8 +5,8 @@ import type { TextTagNode } from "./text-tag.js";
 
 export type TextContentChild = TextSegmentNode | TextTagNode | TextAnchorNode | TextPaintableNode;
 
-export interface TextContentParent {
+export type TextContentParent = {
     onChildInserted(child: TextContentChild): void;
     onChildRemoved(child: TextContentChild): void;
     onChildTextChanged(child: TextSegmentNode, oldLength: number, newLength: number): void;
-}
+};

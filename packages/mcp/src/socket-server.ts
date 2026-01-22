@@ -22,14 +22,14 @@ type SocketServerEventMap = {
 /**
  * Represents a connected application.
  */
-export interface AppConnection {
+export type AppConnection = {
     /** Unique connection identifier */
     id: string;
     /** The underlying socket */
     socket: net.Socket;
     /** Buffer for incomplete messages */
     buffer: string;
-}
+};
 
 /**
  * Unix domain socket server for MCP communication.

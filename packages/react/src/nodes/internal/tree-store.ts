@@ -4,12 +4,12 @@ import { BaseStore } from "./base-store.js";
 
 export type TreeItemUpdatedCallback = (id: string) => void;
 
-export interface TreeItemData<T = unknown> {
+export type TreeItemData<T = unknown> = {
     value: T;
     indentForDepth?: boolean;
     indentForIcon?: boolean;
     hideExpander?: boolean;
-}
+};
 
 export class TreeStore extends BaseStore<TreeItemData> {
     private rootIds: string[] = [];

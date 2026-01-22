@@ -180,28 +180,6 @@ const ClipboardDemo = () => {
         } catch {}
     }, [getClipboard]);
 
-    const handleDropDownChanged = useCallback((dropdown: Gtk.DropDown) => {
-        const selected = dropdown.getSelected();
-        const type = SOURCE_TYPES[selected];
-        if (type !== undefined) {
-            setSourceType(type);
-        }
-    }, []);
-
-    const handleColorChanged = useCallback((button: Gtk.ColorDialogButton) => {
-        const rgba = button.getRgba();
-        if (rgba) {
-            setSourceColor(
-                new Gdk.RGBA({
-                    red: rgba.getRed(),
-                    green: rgba.getGreen(),
-                    blue: rgba.getBlue(),
-                    alpha: rgba.getAlpha(),
-                }),
-            );
-        }
-    }, []);
-
     const handleFileSelect = useCallback(async () => {
         const dialog = new Gtk.FileDialog();
         try {
@@ -228,14 +206,7 @@ const ClipboardDemo = () => {
             />
 
             <GtkBox spacing={12}>
-                <GtkDropDown
-                    valign={Gtk.Align.CENTER}
-                    onNotify={(self, pspec) => {
-                        if (pspec === "selected") {
-                            handleDropDownChanged(self);
-                        }
-                    }}
-                >
+                <GtkDropDown valign={Gtk.Align.CENTER} onSelectionChanged={(id) => setSourceType(id as SourceType)}>
                     {SOURCE_TYPES.map((type) => (
                         <x.SimpleListItem key={type} id={type} value={type} />
                     ))}
@@ -251,14 +222,18 @@ const ClipboardDemo = () => {
                     </x.StackPage>
                     <x.StackPage id="Color">
                         <GtkColorDialogButton
-                            dialog={new Gtk.ColorDialog()}
                             rgba={sourceColor}
                             valign={Gtk.Align.CENTER}
-                            onNotify={(self, pspec) => {
-                                if (pspec === "rgba") {
-                                    handleColorChanged(self as Gtk.ColorDialogButton);
-                                }
-                            }}
+                            onRgbaChanged={(rgba) =>
+                                setSourceColor(
+                                    new Gdk.RGBA({
+                                        red: rgba.getRed(),
+                                        green: rgba.getGreen(),
+                                        blue: rgba.getBlue(),
+                                        alpha: rgba.getAlpha(),
+                                    }),
+                                )
+                            }
                         />
                     </x.StackPage>
                     <x.StackPage id="Image">

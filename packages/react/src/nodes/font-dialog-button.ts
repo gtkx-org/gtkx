@@ -8,7 +8,7 @@ import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
-interface FontDialogButtonProps extends Props {
+type FontDialogButtonProps = Props & {
     fontDesc?: Pango.FontDescription | null;
     onFontDescChanged?: (fontDesc: Pango.FontDescription) => void;
     title?: string;
@@ -17,7 +17,7 @@ interface FontDialogButtonProps extends Props {
     useFont?: boolean;
     useSize?: boolean;
     level?: Gtk.FontLevel;
-}
+};
 
 const OWN_PROPS = [
     "fontDesc",

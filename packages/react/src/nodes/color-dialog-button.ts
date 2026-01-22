@@ -8,13 +8,13 @@ import { signalStore } from "./internal/signal-store.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
-interface ColorDialogButtonProps extends Props {
+type ColorDialogButtonProps = Props & {
     rgba?: Gdk.RGBA | null;
     onRgbaChanged?: (rgba: Gdk.RGBA) => void;
     title?: string;
     modal?: boolean;
     withAlpha?: boolean;
-}
+};
 
 const OWN_PROPS = ["rgba", "onRgbaChanged", "title", "modal", "withAlpha"] as const;
 

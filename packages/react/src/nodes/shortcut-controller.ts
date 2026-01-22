@@ -22,10 +22,10 @@ import { WidgetNode } from "./widget.js";
  * </GtkBox>
  * ```
  */
-export interface ShortcutControllerProps extends Props {
+export type ShortcutControllerProps = Props & {
     /** The scope for shortcuts (LOCAL, MANAGED, or GLOBAL) */
     scope?: Gtk.ShortcutScope;
-}
+};
 
 class ShortcutControllerNode extends VirtualNode<ShortcutControllerProps> {
     public static override priority = 1;
