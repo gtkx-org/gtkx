@@ -21,13 +21,13 @@
     "devDependencies": {
         "@biomejs/biome": "^2.3.11",
         "@gtkx/codegen": "workspace:*",
-        "@types/node": "^25.0.9",
+        "@types/node": "^25.0.10",
         "@types/react": "^19.2.9",
         "knip": "^5.82.1",
         "react": "^19.2.3",
         "turbo": "^2.7.5",
         "typescript": "^5.9.3",
-        "vitest": "^4.0.17"
+        "vitest": "^4.0.18"
     },
     "packageManager": "pnpm@10.28.1"
 }

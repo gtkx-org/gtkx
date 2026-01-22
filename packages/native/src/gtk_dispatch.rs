@@ -30,6 +30,7 @@ use std::sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},
     mpsc,
 };
+use std::time::Duration;
 
 use gtk4::glib;
 use neon::prelude::*;
@@ -187,15 +188,15 @@ impl GtkDispatcher {
         cx: &mut C,
         rx: &mpsc::Receiver<R>,
     ) -> Result<R, GtkDisconnectedError> {
+        const POLL_INTERVAL: Duration = Duration::from_micros(100);
+
         let result = loop {
             js_dispatch::JsDispatcher::global().process_pending(cx);
 
-            match rx.try_recv() {
+            match rx.recv_timeout(POLL_INTERVAL) {
                 Ok(result) => break result,
-                Err(mpsc::TryRecvError::Empty) => {
-                    std::thread::yield_now();
-                }
-                Err(mpsc::TryRecvError::Disconnected) => {
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
                     self.exit_js_wait();
                     return Err(GtkDisconnectedError);
                 }

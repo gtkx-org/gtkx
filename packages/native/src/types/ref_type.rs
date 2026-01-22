@@ -65,7 +65,14 @@ impl ffi::FfiEncode for RefType {
                     ),
                 }
             }
-            Type::Array(_) => match &*ref_val.value {
+            Type::Array(array_type) => match &*ref_val.value {
+                value::Value::Array(arr) if !arr.is_empty() => {
+                    let encoded = array_type.encode(&ref_val.value, false)?;
+                    match encoded {
+                        ffi::FfiValue::Storage(storage) => Ok(ffi::FfiValue::Storage(storage)),
+                        _ => bail!("Expected Storage from array encode for Ref<Array>"),
+                    }
+                }
                 value::Value::Null | value::Value::Undefined | value::Value::Array(_) => {
                     let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
                     let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
@@ -220,8 +227,13 @@ impl ffi::FfiDecode for RefType {
                 ),
             };
 
-            // SAFETY: storage.ptr() points to a pointer-to-array allocated by encode
-            let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
+            let actual_ptr = match storage.kind() {
+                FfiStorageKind::PtrStorage(_) => {
+                    unsafe { *(storage.ptr() as *const *mut c_void) }
+                }
+                _ => storage.ptr(),
+            };
+
             if actual_ptr.is_null() {
                 return Ok(value::Value::Array(vec![]));
             }
@@ -229,8 +241,7 @@ impl ffi::FfiDecode for RefType {
             let ptr_ffi_value = ffi::FfiValue::Ptr(actual_ptr);
             let result = array_type.decode_with_context(&ptr_ffi_value, ffi_args, args)?;
 
-            if array_type.ownership.is_full() {
-                // SAFETY: actual_ptr was allocated by GLib and we have full ownership
+            if matches!(storage.kind(), FfiStorageKind::PtrStorage(_)) && array_type.ownership.is_full() {
                 unsafe { glib::ffi::g_free(actual_ptr) };
             }
 

@@ -159,6 +159,38 @@ const MyComponent = () => {
 };
 ```
 
+## AdwDialog
+
+`AdwDialog` provides modern Adwaita-styled dialogs that are automatically presented and cleaned up:
+
+```tsx
+import { AdwDialog, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
+import { useState } from "react";
+
+const DialogExample = () => {
+  const [showDialog, setShowDialog] = useState(false);
+
+  return (
+    <>
+      <GtkButton label="Open Dialog" onClicked={() => setShowDialog(true)} />
+      {showDialog && (
+        <AdwDialog
+          title="My Dialog"
+          onClosed={() => setShowDialog(false)}
+        >
+          <GtkBox>
+            <GtkLabel label="Dialog content goes here" />
+            <GtkButton label="Close" onClicked={() => setShowDialog(false)} />
+          </GtkBox>
+        </AdwDialog>
+      )}
+    </>
+  );
+};
+```
+
+The dialog is automatically presented when mounted and closed when unmounted.
+
 ## Modal State Management
 
 For apps with multiple dialog types:

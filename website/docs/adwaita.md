@@ -360,6 +360,91 @@ const SplitViewExample = () => {
 
 The `x.NavigationPage` component works with both `AdwNavigationView` (stack-based navigation) and `AdwNavigationSplitView` (sidebar/content layout). The `for` prop is required and determines valid `id` values: for `AdwNavigationView`, `id` can be any string (page tags); for `AdwNavigationSplitView`, `id` must be `"sidebar"` or `"content"` (slot positions).
 
+### AdwAlertDialog
+
+Modern confirmation dialogs using `x.AlertDialogResponse` for declarative response buttons:
+
+```tsx
+import { x, AdwAlertDialog, GtkButton } from "@gtkx/react";
+import * as Adw from "@gtkx/ffi/adw";
+import { useState } from "react";
+
+const DeleteConfirmation = () => {
+  const [showDialog, setShowDialog] = useState(false);
+
+  return (
+    <>
+      <GtkButton
+        label="Delete"
+        cssClasses={["destructive-action"]}
+        onClicked={() => setShowDialog(true)}
+      />
+      {showDialog && (
+        <AdwAlertDialog
+          heading="Delete File?"
+          body="This action cannot be undone."
+          onResponse={(id) => {
+            if (id === "delete") {
+              console.log("Deleting...");
+            }
+            setShowDialog(false);
+          }}
+        >
+          <x.AlertDialogResponse id="cancel" label="Cancel" />
+          <x.AlertDialogResponse
+            id="delete"
+            label="Delete"
+            appearance={Adw.ResponseAppearance.DESTRUCTIVE}
+          />
+        </AdwAlertDialog>
+      )}
+    </>
+  );
+};
+```
+
+**x.AlertDialogResponse Props:**
+
+| Prop         | Type                     | Description                              |
+| ------------ | ------------------------ | ---------------------------------------- |
+| `id`         | string                   | Response identifier passed to onResponse |
+| `label`      | string                   | Button label                             |
+| `appearance` | `Adw.ResponseAppearance` | SUGGESTED or DESTRUCTIVE styling         |
+| `enabled`    | boolean                  | Whether the response button is enabled   |
+
+### AdwToggleGroup
+
+Segmented button group for mutually exclusive options:
+
+```tsx
+import { x, AdwToggleGroup } from "@gtkx/react";
+import { useState } from "react";
+
+const ViewModeSelector = () => {
+  const [mode, setMode] = useState("list");
+
+  return (
+    <AdwToggleGroup
+      activeName={mode}
+      onActiveChanged={(_index, name) => setMode(name ?? "list")}
+    >
+      <x.Toggle id="list" iconName="view-list-symbolic" tooltip="List view" />
+      <x.Toggle id="grid" iconName="view-grid-symbolic" tooltip="Grid view" />
+    </AdwToggleGroup>
+  );
+};
+```
+
+**x.Toggle Props:**
+
+| Prop       | Type    | Description                   |
+| ---------- | ------- | ----------------------------- |
+| `id`       | string  | Unique identifier             |
+| `label`    | string  | Text label                    |
+| `iconName` | string  | Icon name                     |
+| `tooltip`  | string  | Tooltip text                  |
+| `enabled`  | boolean | Whether the toggle is enabled |
+
 ## Settings Page Example
 
 ```tsx

@@ -715,29 +715,11 @@ const Canvas = () => {
 };
 ```
 
-Use `onGestureDragBegin`, `onGestureDragUpdate`, `onGestureDragEnd` for interactive drawing. Call `widget.queueDraw()` to trigger redraws.
+Add a `GtkGestureDrag` child for interactive drawing. Call `widget.queueDraw()` to trigger redraws.
 
-## Gesture Controllers
+## Event Controllers
 
-All widgets support gesture props. Event callbacks receive `Gdk.Event | null` as the final parameter.
-
-### Basic Gestures
-- `onEnter(x, y, event)`, `onLeave(event)`, `onMotion(x, y, event)`
-- `onPressed(nPress, x, y, event)`, `onReleased(nPress, x, y, event)`
-- `onKeyPressed(keyval, keycode, state, event)`, `onKeyReleased(keyval, keycode, state, event)`
-- `onScroll(dx, dy, event)`
-- `onGestureDragBegin`, `onGestureDragUpdate`, `onGestureDragEnd`
-
-### Advanced Gestures
-- **Stylus:** `onStylusDown`, `onStylusMotion`, `onStylusUp`, `onStylusProximity` (with pressure, tilt)
-- **Rotate:** `onRotateAngleChanged`, `onRotateBegin`, `onRotateEnd`, `gestureRotateRef`
-- **Swipe:** `onSwipe(velocityX, velocityY, event)`
-- **Long Press:** `onLongPressPressed`, `onLongPressCancelled`
-- **Zoom:** `onZoomScaleChanged(scale, event)`, `gestureZoomRef`
-
-## Event Controllers (Child Elements)
-
-Event controllers can also be added as child elements to any widget for more control:
+Event controllers are added as children to any widget. They are auto-generated from GTK's introspection data.
 
 ```tsx
 <GtkBox focusable>
@@ -752,11 +734,16 @@ Event controllers can also be added as child elements to any widget for more con
             return false;
         }}
     />
+    <GtkGestureClick onPressed={(nPress, x, y) => console.log("Clicked")} />
     <GtkLabel label="Hover or type here" />
 </GtkBox>
 ```
 
-**Common controllers:** `GtkEventControllerMotion`, `GtkEventControllerKey`, `GtkEventControllerScroll`, `GtkEventControllerFocus`, `GtkGestureClick`, `GtkGestureDrag`, `GtkGestureLongPress`, `GtkGestureZoom`, `GtkGestureRotate`, `GtkGestureSwipe`, `GtkGestureStylus`
+**Input controllers:** `GtkEventControllerMotion`, `GtkEventControllerKey`, `GtkEventControllerScroll`, `GtkEventControllerFocus`
+
+**Gesture controllers:** `GtkGestureClick`, `GtkGestureDrag`, `GtkGestureLongPress`, `GtkGestureZoom`, `GtkGestureRotate`, `GtkGestureSwipe`, `GtkGestureStylus`, `GtkGesturePan`
+
+**Drag-and-drop:** `GtkDragSource`, `GtkDropTarget`, `GtkDropControllerMotion`
 
 ## SearchBar
 

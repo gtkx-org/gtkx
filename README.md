@@ -71,6 +71,7 @@ render(<App />, "com.example.counter");
 - **React 19** — Hooks, concurrent features, and the component model you know
 - **Native GTK4 widgets** — Real native controls, not web components in a webview
 - **Adwaita support** — Modern GNOME styling with Libadwaita components
+- **Declarative animations** — Framer Motion-like API using native Adwaita animations
 - **Hot Module Replacement** — Fast refresh during development
 - **TypeScript first** — Full type safety with auto-generated bindings
 - **CSS-in-JS styling** — Familiar styling patterns adapted for GTK

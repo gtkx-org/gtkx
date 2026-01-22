@@ -470,10 +470,10 @@ const CustomCanvas = () => {
 
 ### Interactive Drawing
 
-Combine `onDraw` with gesture callbacks for interactive applications like paint programs:
+Combine `onDraw` with a `GtkGestureDrag` controller for interactive applications like paint programs:
 
 ```tsx
-import { GtkDrawingArea } from "@gtkx/react";
+import { GtkDrawingArea, GtkGestureDrag } from "@gtkx/react";
 import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useRef, useState } from "react";
@@ -515,22 +515,25 @@ const PaintCanvas = () => {
       contentWidth={400}
       contentHeight={300}
       onDraw={handleDraw}
-      onGestureDragBegin={(startX, startY) => {
-        startRef.current = { x: startX, y: startY };
-        setPoints([{ x: startX, y: startY }]);
-      }}
-      onGestureDragUpdate={(offsetX, offsetY) => {
-        if (startRef.current) {
-          const x = startRef.current.x + offsetX;
-          const y = startRef.current.y + offsetY;
-          setPoints((prev) => [...prev, { x, y }]);
-          ref.current?.queueDraw();
-        }
-      }}
-      onGestureDragEnd={() => {
-        startRef.current = null;
-      }}
-    />
+    >
+      <GtkGestureDrag
+        onDragBegin={(startX, startY) => {
+          startRef.current = { x: startX, y: startY };
+          setPoints([{ x: startX, y: startY }]);
+        }}
+        onDragUpdate={(offsetX, offsetY) => {
+          if (startRef.current) {
+            const x = startRef.current.x + offsetX;
+            const y = startRef.current.y + offsetY;
+            setPoints((prev) => [...prev, { x, y }]);
+            ref.current?.queueDraw();
+          }
+        }}
+        onDragEnd={() => {
+          startRef.current = null;
+        }}
+      />
+    </GtkDrawingArea>
   );
 };
 ```

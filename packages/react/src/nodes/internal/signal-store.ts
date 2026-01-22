@@ -22,18 +22,10 @@ const LIFECYCLE_SIGNALS = new Set([
     "teardown",
 ]);
 
-function wrapHandlerSelfLast(handler: SignalHandler): SignalHandler {
-    return (...args: unknown[]) => {
-        const [self, ...rest] = args;
-        return handler(...rest, self);
-    };
-}
-
 type HandlerEntry = { obj: GObject.GObject; handlerId: number };
 
 class SignalStore {
     private ownerHandlers: Map<SignalOwner, Map<string, HandlerEntry>> = new Map();
-    private blockedHandlers: Set<number> = new Set();
     private blockDepth = 0;
 
     private getOwnerMap(owner: SignalOwner): Map<string, HandlerEntry> {
@@ -43,6 +35,16 @@ class SignalStore {
             this.ownerHandlers.set(owner, map);
         }
         return map;
+    }
+
+    private wrapHandler(handler: SignalHandler, signal: string): SignalHandler {
+        return (...args: unknown[]) => {
+            if (this.blockDepth > 0 && !LIFECYCLE_SIGNALS.has(signal)) {
+                return;
+            }
+            const [self, ...rest] = args;
+            return handler(...rest, self);
+        };
     }
 
     private disconnect(owner: SignalOwner, obj: GObject.GObject, signal: string): void {
@@ -60,14 +62,9 @@ class SignalStore {
     private connect(owner: SignalOwner, obj: GObject.GObject, signal: string, handler: SignalHandler): void {
         const objectId = getNativeId(obj.handle);
         const key = `${objectId}:${signal}`;
-        const wrappedHandler = wrapHandlerSelfLast(handler);
+        const wrappedHandler = this.wrapHandler(handler, signal);
         const handlerId = obj.connect(signal, wrappedHandler);
         this.getOwnerMap(owner).set(key, { obj, handlerId });
-
-        if (this.blockDepth > 0 && !LIFECYCLE_SIGNALS.has(signal)) {
-            GObject.signalHandlerBlock(obj, handlerId);
-            this.blockedHandlers.add(handlerId);
-        }
     }
 
     public set(owner: SignalOwner, obj: GObject.GObject, signal: string, handler?: SignalHandler | null): void {
@@ -92,48 +89,16 @@ class SignalStore {
 
     public blockAll(): void {
         this.blockDepth++;
-
-        if (this.blockDepth === 1) {
-            this.blockedHandlers.clear();
-
-            for (const ownerMap of this.ownerHandlers.values()) {
-                for (const [key, { obj, handlerId }] of ownerMap.entries()) {
-                    if (LIFECYCLE_SIGNALS.has(key.split(":")[1] ?? "")) {
-                        continue;
-                    }
-
-                    GObject.signalHandlerBlock(obj, handlerId);
-                    this.blockedHandlers.add(handlerId);
-                }
-            }
-        }
     }
 
     public unblockAll(): void {
         if (this.blockDepth > 0) {
             this.blockDepth--;
         }
-
-        if (this.blockDepth === 0) {
-            this.performUnblock();
-        }
     }
 
     public forceUnblockAll(): void {
         this.blockDepth = 0;
-        this.performUnblock();
-    }
-
-    private performUnblock(): void {
-        for (const ownerMap of this.ownerHandlers.values()) {
-            for (const { obj, handlerId } of ownerMap.values()) {
-                if (this.blockedHandlers.has(handlerId)) {
-                    GObject.signalHandlerUnblock(obj, handlerId);
-                }
-            }
-        }
-
-        this.blockedHandlers.clear();
     }
 }
 

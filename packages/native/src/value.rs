@@ -126,7 +126,13 @@ impl Value {
         match &self {
             Value::Undefined => match return_type {
                 Some(Type::Boolean) => Some(false.into()),
-                Some(Type::Integer(_)) => Some(0i32.into()),
+                Some(Type::Integer(int_type)) => {
+                    if int_type.is_enum_or_flags() {
+                        Self::number_to_enum_or_flags_value(0.0, int_type).ok()
+                    } else {
+                        Some(0i32.into())
+                    }
+                }
                 Some(Type::Float(FloatKind::F32)) => Some(0.0f32.into()),
                 Some(Type::Float(FloatKind::F64)) => Some(0.0f64.into()),
                 Some(Type::String(_)) => Some(Option::<String>::None.into()),
