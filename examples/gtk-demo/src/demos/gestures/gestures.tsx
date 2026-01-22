@@ -118,13 +118,13 @@ const GesturesDemo = () => {
             <GtkGestureSwipe onSwipe={handleSwipe} />
             <GtkGestureLongPress onPressed={handleLongPressPressed} onCancelled={handleLongPressCancelled} />
             <GtkGestureRotate
-                ref={(g) => {
+                ref={(g: Gtk.GestureRotate | null) => {
                     rotateRef.current = g;
                 }}
                 onAngleChanged={handleRotateChanged}
             />
             <GtkGestureZoom
-                ref={(g) => {
+                ref={(g: Gtk.GestureZoom | null) => {
                     zoomRef.current = g;
                 }}
                 onScaleChanged={handleZoomChanged}

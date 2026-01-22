@@ -452,6 +452,7 @@ const DndDemo = () => {
                     }
                 />
                 <GtkGestureClick
+                    button={0}
                     onPressed={(_nPress: number, pressX: number, pressY: number, self: Gtk.GestureClick) => {
                         const event = self.getCurrentEvent();
                         if (event?.triggersContextMenu()) {
@@ -498,7 +499,7 @@ const DndDemo = () => {
                                 onDrop={(value: GObject.Value) => handleItemColorDrop(item.id, value)}
                             />
                             <GtkGestureRotate
-                                ref={(g) => {
+                                ref={(g: Gtk.GestureRotate | null) => {
                                     if (g) rotateGestureRefs.current.set(item.id, g);
                                     else rotateGestureRefs.current.delete(item.id);
                                 }}

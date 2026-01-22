@@ -65,6 +65,22 @@ impl ffi::FfiEncode for RefType {
                     ),
                 }
             }
+            Type::Array(_) => {
+                match &*ref_val.value {
+                    value::Value::Null | value::Value::Undefined | value::Value::Array(_) => {
+                        let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
+                        let ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
+                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+                            ptr,
+                            FfiStorageKind::PtrStorage(ptr_storage),
+                        )))
+                    }
+                    _ => bail!(
+                        "Expected Array, Null, or Undefined for Ref<Array>, got {:?}",
+                        ref_val.value
+                    ),
+                }
+            }
             Type::String(string_type) => {
                 let (buffer_size, initial_content) = match (&string_type.length, &*ref_val.value) {
                     (Some(len), value::Value::String(s)) => (*len, Some(s.as_bytes())),
@@ -180,11 +196,50 @@ impl ffi::FfiDecode for RefType {
                 Ok(value::Value::Number(number))
             }
             Type::String(string_type) => self.decode_ref_string(storage, string_type),
+            Type::Array(_) => {
+                bail!("Ref<Array> requires decode_with_context to get size from another parameter")
+            }
             _ => bail!(
                 "Unsupported ref inner type for reading: {:?}",
                 self.inner_type
             ),
         }
+    }
+
+    fn decode_with_context(
+        &self,
+        ffi_value: &ffi::FfiValue,
+        ffi_args: &[ffi::FfiValue],
+        args: &[Arg],
+    ) -> anyhow::Result<value::Value> {
+        if let Type::Array(array_type) = &*self.inner_type {
+            let storage = match ffi_value {
+                ffi::FfiValue::Storage(s) => s,
+                ffi::FfiValue::Ptr(ptr) if ptr.is_null() => return Ok(value::Value::Null),
+                _ => bail!(
+                    "Expected a Storage ffi::FfiValue for Ref<Array>, got {:?}",
+                    ffi_value
+                ),
+            };
+
+            // SAFETY: storage.ptr() points to a pointer-to-array allocated by encode
+            let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
+            if actual_ptr.is_null() {
+                return Ok(value::Value::Array(vec![]));
+            }
+
+            let ptr_ffi_value = ffi::FfiValue::Ptr(actual_ptr);
+            let result = array_type.decode_with_context(&ptr_ffi_value, ffi_args, args)?;
+
+            if array_type.ownership.is_full() {
+                // SAFETY: actual_ptr was allocated by GLib and we have full ownership
+                unsafe { glib::ffi::g_free(actual_ptr) };
+            }
+
+            return Ok(result);
+        }
+
+        self.decode(ffi_value)
     }
 }
 

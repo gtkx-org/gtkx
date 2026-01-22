@@ -20,8 +20,9 @@ const ListViewWordsDemo = () => {
             try {
                 const file = Gio.fileNewForPath(DICT_FILE);
                 const contentsRef = { value: [] as number[] };
-                const success = file.loadContents(contentsRef, null);
-                if (success && contentsRef.value.length > 0) {
+                const lengthRef = { value: 0 };
+                const success = file.loadContents(contentsRef, null, lengthRef);
+                if (success && lengthRef.value > 0) {
                     const text = new TextDecoder().decode(new Uint8Array(contentsRef.value));
                     const wordList = text
                         .split("\n")

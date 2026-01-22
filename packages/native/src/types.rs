@@ -395,9 +395,10 @@ impl ffi::FfiDecode for Type {
         ffi_args: &[ffi::FfiValue],
         args: &[crate::arg::Arg],
     ) -> anyhow::Result<value::Value> {
-        if let Type::Array(array_type) = self {
-            return array_type.decode_with_context(ffi_value, ffi_args, args);
+        match self {
+            Type::Array(array_type) => array_type.decode_with_context(ffi_value, ffi_args, args),
+            Type::Ref(ref_type) => ref_type.decode_with_context(ffi_value, ffi_args, args),
+            _ => self.decode(ffi_value),
         }
-        self.decode(ffi_value)
     }
 }
