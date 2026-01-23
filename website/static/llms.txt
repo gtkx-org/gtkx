@@ -6,7 +6,7 @@ GTKX enables React developers to build Linux desktop applications using familiar
 
 ## Core Packages
 
-- `@gtkx/react`: React reconciler, GTK/Adwaita components, render() function, portals, animations
+- `@gtkx/react`: React reconciler, GTK/Adwaita components, render() function, portals
 - `@gtkx/ffi`: TypeScript FFI bindings, GTK/GLib/Adwaita type definitions and enums
 - `@gtkx/css`: CSS-in-JS styling (Emotion-like API adapted for GTK CSS syntax)
 - `@gtkx/testing`: Component testing utilities (Testing Library-style API for GTK)
@@ -20,7 +20,6 @@ GTKX enables React developers to build Linux desktop applications using familiar
 - [CLI Reference](https://eugeniodepalo.github.io/gtkx/docs/cli): gtkx create, gtkx dev commands, npm scripts, programmatic API
 - [Styling](https://eugeniodepalo.github.io/gtkx/docs/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
 - [Event Controllers](https://eugeniodepalo.github.io/gtkx/docs/event-controllers): Event controllers as JSX children (GtkEventControllerMotion, GtkEventControllerKey, GtkEventControllerFocus, GtkGestureClick, GtkGestureDrag, GtkDragSource, GtkDropTarget, etc.)
-- [Animations](https://eugeniodepalo.github.io/gtkx/docs/animations): x.Animation wrapper for declarative animations with spring and timed transitions
 - [Async Operations](https://eugeniodepalo.github.io/gtkx/docs/async-operations): Async event handlers, loading states, file I/O, network requests
 - [Error Handling](https://eugeniodepalo.github.io/gtkx/docs/error-handling): Try/catch patterns, error states, toast notifications, form validation
 - [Widgets](https://eugeniodepalo.github.io/gtkx/docs/widgets): Declarative widget features — direct props for adjustments/marks/offsets on Scale/Calendar/LevelBar, x.TextTag for rich text, x.TextAnchor for embedded widgets, x.ShortcutController, x.GridChild, x.Toggle, x.AlertDialogResponse, GtkSearchBar with onSearchModeChanged, AdwToggleGroup with onActiveChanged, GtkStack/AdwViewStack with onPageChanged, GtkTextView/GtkSourceView with granular callbacks (onTextInserted, onTextDeleted, onCanUndoChanged), custom drawing (onDraw), drag-and-drop, GValue factories

@@ -8,7 +8,6 @@ import type {
     GtkListViewProps as GeneratedGtkListViewProps,
     WidgetSlotNames,
 } from "./generated/jsx.js";
-import type { AnimationProps as AnimationNodeProps } from "./nodes/animation/index.js";
 import type { RenderItemFn } from "./nodes/internal/list-item-renderer.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
 import type { ShortcutProps as ShortcutNodeProps } from "./nodes/shortcut.js";
@@ -16,19 +15,40 @@ import type { TextAnchorProps } from "./nodes/text-anchor.js";
 import type { TextPaintableProps } from "./nodes/text-paintable.js";
 import type { TextTagProps } from "./nodes/text-tag.js";
 
-export type { AnimatableProperties, SpringTransition, TimedTransition, Transition } from "./nodes/animation/index.js";
 export type { TextAnchorProps } from "./nodes/text-anchor.js";
 export type { TextPaintableProps } from "./nodes/text-paintable.js";
 export type { TextTagProps } from "./nodes/text-tag.js";
 
+/**
+ * Configuration for a mark on a GtkScale widget.
+ *
+ * Marks are visual indicators placed along the scale at specific values,
+ * optionally with text labels.
+ *
+ * @see {@link https://docs.gtk.org/gtk4/method.Scale.add_mark.html GtkScale.add_mark}
+ */
 export type ScaleMark = {
+    /** The value at which to place the mark */
     value: number;
+    /** Position of the mark relative to the scale (default: BOTTOM) */
     position?: Gtk.PositionType;
+    /** Optional text label to display at the mark */
     label?: string | null;
 };
 
+/**
+ * Configuration for an offset threshold on a GtkLevelBar widget.
+ *
+ * Offsets define named value thresholds that change the bar's appearance
+ * (e.g., "low", "high", "full"). Built-in offsets include GTK_LEVEL_BAR_OFFSET_LOW,
+ * GTK_LEVEL_BAR_OFFSET_HIGH, and GTK_LEVEL_BAR_OFFSET_FULL.
+ *
+ * @see {@link https://docs.gtk.org/gtk4/method.LevelBar.add_offset_value.html GtkLevelBar.add_offset_value}
+ */
 export type LevelBarOffset = {
+    /** Unique identifier for this offset (e.g., "low", "high", "full") */
     id: string;
+    /** The threshold value at which this offset applies */
     value: number;
 };
 
@@ -300,6 +320,13 @@ export type ToggleProps = {
     useUnderline?: boolean;
 };
 
+/**
+ * Props for response buttons in an AdwAlertDialog.
+ *
+ * Each response represents a button the user can click to dismiss the dialog.
+ *
+ * @see {@link x.AlertDialogResponse} for usage
+ */
 export type AlertDialogResponseProps = {
     /** Unique response ID (used in response signal and for default/close response) */
     id: string;
@@ -926,25 +953,6 @@ export const x = {
      * ```
      */
     Shortcut: "Shortcut" as const,
-
-    /**
-     * Declarative animation wrapper using libadwaita's animation primitives.
-     *
-     * Provides Framer Motion-like API for animating GTK widgets with spring
-     * or timed animations.
-     *
-     * @example
-     * ```tsx
-     * <x.Animation
-     *   initial={{ opacity: 0, y: -20 }}
-     *   animate={{ opacity: 1, y: 0 }}
-     *   transition={{ type: "spring", stiffness: 300, damping: 20 }}
-     * >
-     *   <GtkLabel label="Hello World" />
-     * </x.Animation>
-     * ```
-     */
-    Animation: "Animation" as const,
 };
 
 declare global {
@@ -981,7 +989,6 @@ declare global {
                 TreeListItem: TreeListItemProps<any>;
                 NavigationPage: NavigationPageProps;
                 Shortcut: ShortcutProps;
-                Animation: AnimationNodeProps;
             }
         }
     }
