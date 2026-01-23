@@ -1,4 +1,4 @@
-import { isObjectEqual } from "@gtkx/ffi";
+import { getNativeId, isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
@@ -18,7 +18,7 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
     }
 
     private parent: Gtk.Overlay | null = null;
-    private children = new Set<Gtk.Widget>();
+    private children = new Map<number, Gtk.Widget>();
 
     public canBeChildOf(parent: Node): boolean {
         return parent instanceof WidgetNode;
@@ -35,7 +35,7 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
     public override unmount(): void {
         if (this.parent && this.children.size > 0) {
             const parent = this.parent;
-            const children = [...this.children];
+            const children = [...this.children.values()];
             this.children.clear();
 
             for (const child of children) {
@@ -56,7 +56,7 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
         }
 
         const widget = child.container;
-        this.children.add(widget);
+        this.children.set(getNativeId(widget.handle), widget);
 
         scheduleAfterCommit(() => {
             if (this.parent) {
@@ -71,7 +71,7 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
         }
 
         const widget = child.container;
-        this.children.add(widget);
+        this.children.set(getNativeId(widget.handle), widget);
 
         scheduleAfterCommit(() => {
             if (this.parent) {
@@ -87,7 +87,7 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
 
         const widget = child.container;
         const parent = this.parent;
-        this.children.delete(widget);
+        this.children.delete(getNativeId(widget.handle));
 
         scheduleAfterCommit(() => {
             if (parent) {
@@ -111,7 +111,7 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
 
         if (measureChanged || clipOverlayChanged) {
             const parent = this.parent;
-            for (const child of this.children) {
+            for (const child of this.children.values()) {
                 if (measureChanged) {
                     parent.setMeasureOverlay(child, newProps.measure ?? false);
                 }

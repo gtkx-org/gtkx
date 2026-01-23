@@ -19,7 +19,7 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChil
     private cachedSetter: ((child: Gtk.Widget | null) => void) | null = null;
 
     public override setParent(parent: Gtk.Widget | null): void {
-        if (this.parent !== parent) {
+        if (!isObjectEqual(this.parent, parent)) {
             this.cachedSetter = null;
         }
         super.setParent(parent);

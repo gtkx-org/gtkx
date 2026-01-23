@@ -64,12 +64,14 @@ export function getNativeObject<
 /**
  * Compares two NativeObject instances for equality based on their underlying handles.
  *
- * @param obj - The first NativeObject to compare.
- * @param other - The second NativeObject to compare.
- * @returns True if both objects have the same underlying handle, false otherwise.
+ * @param a - The first NativeObject or null/undefined.
+ * @param b - The second NativeObject or null/undefined.
+ * @returns True if both are null/undefined, or if both have the same underlying handle.
  */
-export const isObjectEqual = (obj: NativeObject, other: NativeObject): boolean => {
-    return getNativeId(obj.handle) === getNativeId(other.handle);
+export const isObjectEqual = (a: NativeObject | null | undefined, b: NativeObject | null | undefined): boolean => {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return getNativeId(a.handle) === getNativeId(b.handle);
 };
 
 const gtypeCache = new Map<string, number>();

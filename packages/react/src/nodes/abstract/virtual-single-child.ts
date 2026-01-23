@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
 import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
@@ -50,7 +51,7 @@ export abstract class VirtualSingleChildNode<P extends Props = Props> extends Vi
         const oldChild = this.child;
 
         scheduleAfterCommit(() => {
-            if (oldChild === this.child) {
+            if (isObjectEqual(oldChild, this.child)) {
                 this.child = null;
             }
 

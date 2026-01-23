@@ -1,3 +1,4 @@
+import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { LIST_WIDGET_CLASSES } from "../generated/internal.js";
 import type { Node } from "../node.js";
@@ -99,7 +100,7 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
         this.list.updateProps(oldProps, newProps);
         const currentModel = this.list.getSelectionModel();
 
-        if (previousModel !== currentModel) {
+        if (!isObjectEqual(previousModel, currentModel)) {
             this.container.setModel(currentModel);
         }
     }
