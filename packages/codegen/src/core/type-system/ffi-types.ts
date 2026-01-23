@@ -556,6 +556,34 @@ export const isSyntheticSetterSupportedPrimitive = (typeName: string): boolean =
 export const getSyntheticSetterPrimitiveInfo = (typeName: string): SyntheticSetterPrimitiveInfo | undefined =>
     SYNTHETIC_SETTER_PRIMITIVE_TYPES[typeName];
 
+type SyntheticGetterPrimitiveInfo = {
+    gtypeName: string;
+    getMethod: string;
+    isString?: boolean;
+};
+
+const SYNTHETIC_GETTER_PRIMITIVE_TYPES: Record<string, SyntheticGetterPrimitiveInfo> = {
+    utf8: { gtypeName: "gchararray", getMethod: "getString", isString: true },
+    gchararray: { gtypeName: "gchararray", getMethod: "getString", isString: true },
+    gboolean: { gtypeName: "gboolean", getMethod: "getBoolean" },
+    gint: { gtypeName: "gint", getMethod: "getInt" },
+    gint32: { gtypeName: "gint", getMethod: "getInt" },
+    guint: { gtypeName: "guint", getMethod: "getUint" },
+    guint32: { gtypeName: "guint", getMethod: "getUint" },
+    gint64: { gtypeName: "gint64", getMethod: "getInt64" },
+    guint64: { gtypeName: "guint64", getMethod: "getUint64" },
+    gfloat: { gtypeName: "gfloat", getMethod: "getFloat" },
+    gdouble: { gtypeName: "gdouble", getMethod: "getDouble" },
+    glong: { gtypeName: "glong", getMethod: "getInt64" },
+    gulong: { gtypeName: "gulong", getMethod: "getUint64" },
+};
+
+export const isSyntheticGetterSupportedPrimitive = (typeName: string): boolean =>
+    typeName in SYNTHETIC_GETTER_PRIMITIVE_TYPES;
+
+export const getSyntheticGetterPrimitiveInfo = (typeName: string): SyntheticGetterPrimitiveInfo | undefined =>
+    SYNTHETIC_GETTER_PRIMITIVE_TYPES[typeName];
+
 /**
  * Type-safe self type descriptor for instance method calls.
  *

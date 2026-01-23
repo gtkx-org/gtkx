@@ -104,10 +104,13 @@ export class ImportsBuilder {
             });
         }
 
-        if (this.ctx.usesGetNativeObject) {
+        if (this.ctx.usesGetNativeObject || this.ctx.usesGetNativeInterface) {
+            const namedImports: string[] = [];
+            if (this.ctx.usesGetNativeObject) namedImports.push("getNativeObject");
+            if (this.ctx.usesGetNativeInterface) namedImports.push("getNativeInterface");
             imports.push({
                 moduleSpecifier: FFI_IMPORT_NATIVE_OBJECT,
-                namedImports: ["getNativeObject"],
+                namedImports,
             });
         }
 
@@ -131,6 +134,20 @@ export class ImportsBuilder {
             imports.push({
                 moduleSpecifier: "./enums.js",
                 namedImports: Array.from(this.ctx.usedEnums).sort(),
+            });
+        }
+
+        if (
+            (this.ctx.usesSyntheticPropertySetter || this.ctx.usesSyntheticPropertyGetter) &&
+            this.options.namespace === "GObject"
+        ) {
+            imports.push({
+                moduleSpecifier: "./value.js",
+                namedImports: ["Value"],
+            });
+            imports.push({
+                moduleSpecifier: "./functions.js",
+                namedImports: ["typeFromName"],
             });
         }
 
@@ -318,7 +335,9 @@ export class ImportsBuilder {
         }
 
         if (
-            (this.ctx.usesGObjectNamespace || this.ctx.usesSyntheticPropertySetter) &&
+            (this.ctx.usesGObjectNamespace ||
+                this.ctx.usesSyntheticPropertySetter ||
+                this.ctx.usesSyntheticPropertyGetter) &&
             this.options.namespace !== "GObject"
         ) {
             externalNamespaces.add("GObject");

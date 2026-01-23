@@ -26,6 +26,7 @@ import type { Writers } from "../../../core/writers/index.js";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
 import { ConstructorBuilder } from "./constructor-builder.js";
 import { MethodBuilder } from "./method-builder.js";
+import { PropertyGetterBuilder } from "./property-getter-builder.js";
 import { PropertySetterBuilder } from "./property-setter-builder.js";
 import { SignalBuilder } from "./signal-builder.js";
 import { StaticFunctionBuilder } from "./static-function-builder.js";
@@ -73,6 +74,7 @@ export class ClassGenerator {
     private readonly methodBuilder: MethodBuilder;
     private readonly staticBuilder: StaticFunctionBuilder;
     private readonly signalBuilder: SignalBuilder;
+    private readonly propertyGetterBuilder: PropertyGetterBuilder;
     private readonly propertySetterBuilder: PropertySetterBuilder;
     private readonly classMetaBuilder: ClassMetaBuilder;
 
@@ -90,6 +92,7 @@ export class ClassGenerator {
         this.methodBuilder = new MethodBuilder(ffiMapper, ctx, writers, options);
         this.staticBuilder = new StaticFunctionBuilder(cls, ffiMapper, ctx, writers, options);
         this.signalBuilder = new SignalBuilder(cls, ffiMapper, ctx, repository, writers, options);
+        this.propertyGetterBuilder = new PropertyGetterBuilder(cls, ffiMapper, ctx, repository, options);
         this.propertySetterBuilder = new PropertySetterBuilder(cls, ffiMapper, ctx, repository, options);
 
         const analyzers: ClassMetaAnalyzers = {
@@ -155,6 +158,7 @@ export class ClassGenerator {
                 this.methodBuilder.buildStructures(methods, selfTypeDescriptor, asyncAnalysis),
             ),
             ...this.signalBuilder.buildConnectMethodStructures(),
+            ...this.propertyGetterBuilder.buildStructures(),
             ...this.propertySetterBuilder.buildStructures(),
         ];
 

@@ -87,6 +87,9 @@ export class GenerationContext {
     /** Whether the module uses getNativeObject helper */
     usesGetNativeObject = false;
 
+    /** Whether the module uses getNativeInterface helper */
+    usesGetNativeInterface = false;
+
     /** Whether the module registers a native class */
     usesRegisterNativeClass = false;
 
@@ -101,6 +104,9 @@ export class GenerationContext {
 
     /** Whether the module uses synthetic property setters (GObject.Value and typeFromName) */
     usesSyntheticPropertySetter = false;
+
+    /** Whether the module uses synthetic property getters (GObject.Value and typeFromName) */
+    usesSyntheticPropertyGetter = false;
 
     /** Enums used from the same namespace */
     usedEnums = new Set<string>();
@@ -148,11 +154,13 @@ export class GenerationContext {
         this.usesNativeObject = false;
         this.usesNativeHandle = false;
         this.usesGetNativeObject = false;
+        this.usesGetNativeInterface = false;
         this.usesRegisterNativeClass = false;
         this.usesGetClassByTypeName = false;
         this.usesGObjectNamespace = false;
         this.usesArg = false;
         this.usesSyntheticPropertySetter = false;
+        this.usesSyntheticPropertyGetter = false;
 
         this.usedEnums.clear();
         this.usedRecords.clear();
