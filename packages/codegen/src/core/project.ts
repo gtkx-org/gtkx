@@ -104,6 +104,16 @@ export class CodegenProject {
     }
 
     /**
+     * Creates a source file in the Motion directory.
+     *
+     * @param filePath - Path within Motion directory (e.g., "components.ts")
+     * @returns The created SourceFile
+     */
+    createAnimatedSourceFile(filePath: string): SourceFile {
+        return this.project.createSourceFile(`motion/${filePath}`, "", { overwrite: true });
+    }
+
+    /**
      * Creates an index file that re-exports all specified files.
      *
      * @param filePath - Path for the index file (e.g., "ffi/gtk/index.ts")
@@ -179,18 +189,23 @@ export class CodegenProject {
     }
 
     /**
-     * Emits all files grouped by type (FFI vs React).
+     * Emits all files grouped by type (FFI, React, Motion).
      * Uses Biome for fast formatting.
      *
-     * @returns Object with ffi and react Maps of file paths to formatted content
+     * @returns Object with ffi, react, and motion Maps of file paths to formatted content
      */
-    async emitGrouped(): Promise<{ ffi: Map<string, string>; react: Map<string, string> }> {
+    async emitGrouped(): Promise<{
+        ffi: Map<string, string>;
+        react: Map<string, string>;
+        motion: Map<string, string>;
+    }> {
         const sourceFiles = this.project.getSourceFiles();
 
         await getBiome();
 
         const ffi = new Map<string, string>();
         const react = new Map<string, string>();
+        const motion = new Map<string, string>();
 
         for (const sourceFile of sourceFiles) {
             const fullPath = sourceFile.getFilePath().replace(/^\//, "");
@@ -203,10 +218,13 @@ export class CodegenProject {
             } else if (fullPath.startsWith("react/")) {
                 const relativePath = fullPath.slice(6);
                 react.set(relativePath, formatted);
+            } else if (fullPath.startsWith("motion/")) {
+                const relativePath = fullPath.slice(7);
+                motion.set(relativePath, formatted);
             }
         }
 
-        return { ffi, react };
+        return { ffi, react, motion };
     }
 
     /**

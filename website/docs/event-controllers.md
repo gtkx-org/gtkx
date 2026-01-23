@@ -39,38 +39,6 @@ const InteractiveBox = () => {
 
 Controllers are automatically attached to their parent widget and cleaned up on unmount.
 
-## Available Controllers
-
-### Input Controllers
-
-| Controller | Description |
-| ---------- | ----------- |
-| `GtkEventControllerMotion` | Pointer enter/leave/motion events |
-| `GtkEventControllerKey` | Keyboard input events |
-| `GtkEventControllerScroll` | Scroll wheel events (requires `flags` prop) |
-| `GtkEventControllerFocus` | Focus enter/leave events |
-
-### Gesture Controllers
-
-| Controller | Description |
-| ---------- | ----------- |
-| `GtkGestureClick` | Click/tap gestures with button detection |
-| `GtkGestureDrag` | Drag gestures with start position tracking |
-| `GtkGestureLongPress` | Long press detection |
-| `GtkGestureZoom` | Pinch-to-zoom gestures |
-| `GtkGestureRotate` | Two-finger rotation gestures |
-| `GtkGestureSwipe` | Swipe gestures with velocity |
-| `GtkGestureStylus` | Stylus/pen input with pressure and tilt |
-| `GtkGesturePan` | Panning gestures (requires `orientation` prop) |
-
-### Drag-and-Drop Controllers
-
-| Controller | Description |
-| ---------- | ----------- |
-| `GtkDragSource` | Initiates drag operations from a widget |
-| `GtkDropTarget` | Accepts drops on a widget (requires `actions` prop) |
-| `GtkDropControllerMotion` | Motion events during drag-over operations |
-
 ## Props and Signals
 
 Controllers support GTK properties as props and signals with the `on<SignalName>` convention:
@@ -83,7 +51,7 @@ Controllers support GTK properties as props and signals with the `on<SignalName>
 />
 ```
 
-See the [GTK4 documentation](https://docs.gtk.org/gtk4/) for the full list of properties and signals for each controller.
+Event controllers are auto-generated from GTK's introspection data. Use TypeScript autocomplete to discover available controllers (look for `GtkEventController*` and `GtkGesture*` components).
 
 ## Multiple Controllers
 

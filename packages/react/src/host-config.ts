@@ -5,7 +5,6 @@ import type ReactReconciler from "react-reconciler";
 import { createNode } from "./factory.js";
 import type { Node } from "./node.js";
 import { isBufferedType } from "./nodes/internal/predicates.js";
-import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { flushAfterCommit } from "./scheduler.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
@@ -108,13 +107,11 @@ export function createHostConfig(): HostConfig {
             parent.appendChild(child);
         },
         finalizeInitialChildren: (instance, _type, props) => {
-            instance.signalStore.blockAll();
-            instance.updateProps(null, props);
-            instance.signalStore.unblockAll();
+            instance.commitProps(null, props);
             return true;
         },
         commitUpdate: (instance, _type, oldProps, newProps) => {
-            instance.updateProps(oldProps, newProps);
+            instance.commitProps(oldProps, newProps);
         },
         commitMount: (instance, _type) => {
             instance.mount();
@@ -140,19 +137,17 @@ export function createHostConfig(): HostConfig {
             const parent = getOrCreateContainerNode(container);
             parent.insertBefore(child, beforeChild);
         },
-        prepareForCommit: (containerInfo) => {
-            getSignalStore(containerInfo).blockAll();
+        prepareForCommit: () => {
             return null;
         },
-        resetAfterCommit: (containerInfo) => {
+        resetAfterCommit: () => {
             flushAfterCommit();
-            getSignalStore(containerInfo).unblockAll();
         },
         commitTextUpdate: (textInstance, oldText, newText) => {
             if (textInstance.typeName === "TextSegment") {
-                textInstance.updateProps({ text: oldText }, { text: newText });
+                textInstance.commitProps({ text: oldText }, { text: newText });
             } else {
-                textInstance.updateProps({ label: oldText }, { label: newText });
+                textInstance.commitProps({ label: oldText }, { label: newText });
             }
         },
         clearContainer: () => {},

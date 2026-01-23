@@ -1,17 +1,8 @@
 # Adwaita
 
-Libadwaita (Adw) is GNOME's design system library, providing modern widgets and styling for Linux desktop applications. GTKX includes full support for Adwaita components.
+GTKX includes full support for Libadwaita (Adw) components. All Adwaita widgets are available with the `Adw` prefix.
 
-## Overview
-
-Adwaita components are prefixed with `Adw` and provide:
-
-- Modern GNOME visual design
-- Responsive layouts
-- Adaptive widgets that work on different screen sizes
-- Consistent styling across GNOME applications
-
-## Common Components
+## Components
 
 ### AdwHeaderBar
 
@@ -403,15 +394,6 @@ const DeleteConfirmation = () => {
 };
 ```
 
-**x.AlertDialogResponse Props:**
-
-| Prop         | Type                     | Description                              |
-| ------------ | ------------------------ | ---------------------------------------- |
-| `id`         | string                   | Response identifier passed to onResponse |
-| `label`      | string                   | Button label                             |
-| `appearance` | `Adw.ResponseAppearance` | SUGGESTED or DESTRUCTIVE styling         |
-| `enabled`    | boolean                  | Whether the response button is enabled   |
-
 ### AdwToggleGroup
 
 Segmented button group for mutually exclusive options:
@@ -434,16 +416,6 @@ const ViewModeSelector = () => {
   );
 };
 ```
-
-**x.Toggle Props:**
-
-| Prop       | Type    | Description                   |
-| ---------- | ------- | ----------------------------- |
-| `id`       | string  | Unique identifier             |
-| `label`    | string  | Text label                    |
-| `iconName` | string  | Icon name                     |
-| `tooltip`  | string  | Tooltip text                  |
-| `enabled`  | boolean | Whether the toggle is enabled |
 
 ## Settings Page Example
 
@@ -526,13 +498,3 @@ const SettingsPage = () => {
 };
 ```
 
-## Tips
-
-1. **Use AdwActionRow for settings** — Provides consistent list item styling
-2. **Use boxed-list class** — Gives lists a modern card-like appearance
-3. **Prefer Adw components** — They handle responsive behavior automatically
-4. **Follow GNOME HIG** — Check the [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/) for design patterns
-
-## Reference
-
-For the complete list of Adwaita CSS classes (typography, buttons, containers, status colors), see the [Libadwaita Style Classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html).

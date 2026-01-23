@@ -128,7 +128,6 @@ export const render = (element: ReactNode, appId: string, flags?: Gio.Applicatio
         },
         () => {},
         () => {},
-        null,
     );
 
     instance.updateContainer(

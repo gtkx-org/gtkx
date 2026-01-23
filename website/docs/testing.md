@@ -263,10 +263,3 @@ describe("TodoApp", () => {
 });
 ```
 
-## Tips
-
-1. **Always cleanup** — Use `afterEach(() => cleanup())` to prevent test pollution
-2. **Use `wrapper: false`** — When your component includes its own `GtkApplicationWindow`
-3. **Prefer role queries** — More robust than text queries
-4. **Use test IDs sparingly** — Add `name` props only when role/text queries aren't sufficient
-5. **Check widget properties** — Cast to specific types to access GTK properties like `getLabel()`

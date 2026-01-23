@@ -22,6 +22,7 @@ export {
     queryByText,
 } from "./queries.js";
 export { cleanup, render } from "./render.js";
+export { renderHook } from "./render-hook.js";
 export type { RoleInfo } from "./role-helpers.js";
 export { getRoles, logRoles, prettyRoles } from "./role-helpers.js";
 export { screen } from "./screen.js";
@@ -32,6 +33,8 @@ export type {
     BoundQueries,
     ByRoleOptions,
     NormalizerOptions,
+    RenderHookOptions,
+    RenderHookResult,
     RenderOptions,
     RenderResult,
     ScreenshotResult,

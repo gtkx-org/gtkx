@@ -1,1 +1,1 @@
-export { call } from "./native/lifecycle.js";
+export { alloc, call, read, readPointer, write, writePointer } from "./native/lifecycle.js";

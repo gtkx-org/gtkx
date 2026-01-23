@@ -1,10 +1,15 @@
 import {
     type Arg,
     type NativeHandle,
+    alloc as nativeAlloc,
     call as nativeCall,
     poll as nativePoll,
+    read as nativeRead,
+    readPointer as nativeReadPointer,
     start as nativeStart,
     stop as nativeStop,
+    write as nativeWrite,
+    writePointer as nativeWritePointer,
     type Type,
 } from "@gtkx/native";
 import { init as initAdwaita } from "../generated/adw/functions.js";
@@ -40,6 +45,16 @@ export const getStartError = (): string | null => {
     return null;
 };
 
+/**
+ * Invokes a native function through FFI.
+ *
+ * @param library - Library name (e.g., "gtk", "adw")
+ * @param symbol - Function symbol name
+ * @param args - Arguments with type information for marshaling
+ * @param returnType - Expected return type descriptor
+ * @returns The unmarshaled return value
+ * @throws If runtime not started or undefined required argument
+ */
 export const call = (library: string, symbol: string, args: Arg[], returnType: Type): unknown => {
     const startError = getStartError();
     if (startError) {
@@ -57,6 +72,98 @@ export const call = (library: string, symbol: string, args: Arg[], returnType: T
     }
 
     return nativeCall(library, symbol, args, returnType);
+};
+
+/**
+ * Allocates native memory for a structure or buffer.
+ *
+ * @param size - Number of bytes to allocate
+ * @param typeName - Optional type name for debugging
+ * @param library - Optional library name for debugging
+ * @returns Handle to the allocated memory
+ * @throws If runtime not started
+ */
+export const alloc = (size: number, typeName?: string, library?: string): unknown => {
+    const startError = getStartError();
+    if (startError) {
+        throw new Error(`[gtkx] ${startError} (attempted alloc: ${library ?? "unknown"}:${typeName ?? "unknown"})`);
+    }
+    return nativeAlloc(size, typeName, library);
+};
+
+/**
+ * Reads a value from native memory.
+ *
+ * @param handle - Handle to the memory region
+ * @param type - Type descriptor for unmarshaling
+ * @param offset - Byte offset within the memory region
+ * @returns The unmarshaled value
+ * @throws If runtime not started
+ */
+export const read = (handle: unknown, type: Type, offset: number): unknown => {
+    const startError = getStartError();
+    if (startError) {
+        throw new Error(`[gtkx] ${startError} (attempted read)`);
+    }
+    return nativeRead(handle, type, offset);
+};
+
+/**
+ * Reads a value through a pointer in native memory.
+ *
+ * @param handle - Handle to the memory region containing the pointer
+ * @param ptrOffset - Byte offset to the pointer within handle
+ * @param elementOffset - Byte offset from the dereferenced pointer
+ * @returns Handle to the dereferenced memory location
+ * @throws If runtime not started
+ */
+export const readPointer = (handle: unknown, ptrOffset: number, elementOffset: number): unknown => {
+    const startError = getStartError();
+    if (startError) {
+        throw new Error(`[gtkx] ${startError} (attempted readPointer)`);
+    }
+    return nativeReadPointer(handle, ptrOffset, elementOffset);
+};
+
+/**
+ * Writes a value to native memory.
+ *
+ * @param handle - Handle to the memory region
+ * @param type - Type descriptor for marshaling
+ * @param offset - Byte offset within the memory region
+ * @param value - Value to write
+ * @throws If runtime not started
+ */
+export const write = (handle: unknown, type: Type, offset: number, value: unknown): void => {
+    const startError = getStartError();
+    if (startError) {
+        throw new Error(`[gtkx] ${startError} (attempted write)`);
+    }
+    nativeWrite(handle, type, offset, value);
+};
+
+/**
+ * Writes data through a pointer in native memory.
+ *
+ * @param destHandle - Handle to the destination memory region
+ * @param ptrOffset - Byte offset to the pointer within destHandle
+ * @param elementOffset - Byte offset from the dereferenced pointer
+ * @param sourceHandle - Handle to the source data
+ * @param size - Number of bytes to copy
+ * @throws If runtime not started
+ */
+export const writePointer = (
+    destHandle: unknown,
+    ptrOffset: number,
+    elementOffset: number,
+    sourceHandle: unknown,
+    size: number,
+): void => {
+    const startError = getStartError();
+    if (startError) {
+        throw new Error(`[gtkx] ${startError} (attempted writePointer)`);
+    }
+    nativeWritePointer(destHandle, ptrOffset, elementOffset, sourceHandle, size);
 };
 
 const keepAlive = (): void => {

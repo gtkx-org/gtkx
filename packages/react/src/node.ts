@@ -28,6 +28,15 @@ export class Node<T = unknown, P = Props> {
     public updateProps(_oldProps: P | null, _newProps: P) {}
     public mount() {}
 
+    public commitProps(oldProps: P | null, newProps: P): void {
+        this.signalStore.blockAll();
+        try {
+            this.updateProps(oldProps, newProps);
+        } finally {
+            this.signalStore.unblockAll();
+        }
+    }
+
     public unmount() {
         this.signalStore.clear(this);
     }

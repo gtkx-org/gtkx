@@ -15,6 +15,12 @@ export type Config = {
      * Allows customizing how errors are constructed.
      */
     getElementError: (message: string, container: Container) => Error;
+
+    /**
+     * Default timeout in milliseconds for async utilities (waitFor, findBy* queries).
+     * @default 1000
+     */
+    asyncUtilTimeout: number;
 };
 
 const defaultGetElementError = (message: string, _container: Container): Error => {
@@ -24,6 +30,7 @@ const defaultGetElementError = (message: string, _container: Container): Error =
 const defaultConfig: Config = {
     showSuggestions: true,
     getElementError: defaultGetElementError,
+    asyncUtilTimeout: 1000,
 };
 
 let currentConfig: Config = { ...defaultConfig };

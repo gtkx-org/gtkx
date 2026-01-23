@@ -37,13 +37,6 @@ const buttonStyle = css`
 `;
 ```
 
-## GTK CSS Reference
-
-GTK CSS is similar to web CSS but with its own selectors, properties, and theme variables. For the full reference, see:
-
-- [GTK4 CSS Overview](https://docs.gtk.org/gtk4/css-overview.html) — Selectors, properties, and `@theme_*` variables
-- [Libadwaita Style Classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html) — Built-in CSS classes for typography, buttons, and containers
-
 ## Practical Examples
 
 ### Themed Card

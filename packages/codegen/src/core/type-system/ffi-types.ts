@@ -578,9 +578,6 @@ const SYNTHETIC_GETTER_PRIMITIVE_TYPES: Record<string, SyntheticGetterPrimitiveI
     gulong: { gtypeName: "gulong", getMethod: "getUint64" },
 };
 
-export const isSyntheticGetterSupportedPrimitive = (typeName: string): boolean =>
-    typeName in SYNTHETIC_GETTER_PRIMITIVE_TYPES;
-
 export const getSyntheticGetterPrimitiveInfo = (typeName: string): SyntheticGetterPrimitiveInfo | undefined =>
     SYNTHETIC_GETTER_PRIMITIVE_TYPES[typeName];
 

@@ -16,6 +16,5 @@ export const createFiberRoot = (container: Gtk.Widget): Reconciler.FiberRoot => 
         () => {},
         () => {},
         () => {},
-        null,
     );
 };

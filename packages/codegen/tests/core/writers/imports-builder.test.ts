@@ -22,28 +22,31 @@ describe("ImportsBuilder", () => {
             it("collects @gtkx/native imports based on flags", () => {
                 const { ctx, builder } = createTestSetup();
                 ctx.usesRef = true;
-                ctx.usesAlloc = true;
-                ctx.usesRead = true;
+                ctx.usesArg = true;
+                ctx.usesType = true;
 
                 const imports = builder.collectImports();
 
                 const nativeImport = imports.find((i) => i.moduleSpecifier === "@gtkx/native");
                 expect(nativeImport).toBeDefined();
                 expect(nativeImport?.namedImports).toContain("Ref");
-                expect(nativeImport?.namedImports).toContain("alloc");
-                expect(nativeImport?.namedImports).toContain("read");
+                expect(nativeImport?.namedImports).toContain("Arg");
+                expect(nativeImport?.namedImports).toContain("Type");
             });
 
-            it("collects write and Type imports", () => {
+            it("collects batch module imports", () => {
                 const { ctx, builder } = createTestSetup();
+                ctx.usesAlloc = true;
+                ctx.usesRead = true;
                 ctx.usesWrite = true;
-                ctx.usesType = true;
 
                 const imports = builder.collectImports();
 
-                const nativeImport = imports.find((i) => i.moduleSpecifier === "@gtkx/native");
-                expect(nativeImport?.namedImports).toContain("write");
-                expect(nativeImport?.namedImports).toContain("Type");
+                const batchImport = imports.find((i) => i.moduleSpecifier.includes("batch"));
+                expect(batchImport).toBeDefined();
+                expect(batchImport?.namedImports).toContain("alloc");
+                expect(batchImport?.namedImports).toContain("read");
+                expect(batchImport?.namedImports).toContain("write");
             });
         });
 

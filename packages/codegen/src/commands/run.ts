@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { defineCommand } from "citty";
 import { CodegenOrchestrator } from "../core/codegen-orchestrator.js";
 import { intro, log, outro, spinner } from "../core/utils/progress.js";
-import { FFI_OUTPUT_DIR, GIRS_DIR, REACT_OUTPUT_DIR } from "./constants.js";
+import { ANIMATED_OUTPUT_DIR, FFI_OUTPUT_DIR, GIRS_DIR, REACT_OUTPUT_DIR } from "./constants.js";
 
 /**
  * CLI command that generates FFI and React bindings from GIR files.
@@ -29,6 +29,7 @@ export const run = defineCommand({
             girsDir: GIRS_DIR,
             ffiOutputDir: FFI_OUTPUT_DIR,
             reactOutputDir: REACT_OUTPUT_DIR,
+            animatedOutputDir: ANIMATED_OUTPUT_DIR,
         });
 
         const genSpinner = spinner("Generating bindings");
@@ -67,6 +68,19 @@ export const run = defineCommand({
         }
 
         reactSpinner.stop(`Wrote ${result.reactFiles.size} React files`);
+
+        const motionSpinner = spinner("Writing Motion files");
+
+        if (existsSync(ANIMATED_OUTPUT_DIR)) {
+            rmSync(ANIMATED_OUTPUT_DIR, { recursive: true, force: true });
+        }
+        mkdirSync(ANIMATED_OUTPUT_DIR, { recursive: true });
+
+        for (const [filePath, content] of result.animatedFiles) {
+            writeFileSync(join(ANIMATED_OUTPUT_DIR, filePath), content);
+        }
+
+        motionSpinner.stop(`Wrote ${result.animatedFiles.size} Motion files`);
 
         log.success(`Completed in ${result.stats.duration}ms`);
         outro("Code generation complete");

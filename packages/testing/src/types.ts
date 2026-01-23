@@ -159,3 +159,34 @@ export type ScreenshotResult = {
     /** Height of the captured image in pixels */
     height: number;
 };
+
+/**
+ * Options for {@link renderHook}.
+ */
+export type RenderHookOptions<Props> = {
+    /**
+     * Initial props passed to the hook callback.
+     */
+    initialProps?: Props;
+    /**
+     * Wrapper component or boolean.
+     * - `false` (default): No wrapper
+     * - `true`: Wrap in GtkApplicationWindow
+     * - Component: Custom wrapper component
+     */
+    wrapper?: boolean | ComponentType<{ children: ReactNode }>;
+};
+
+/**
+ * Result returned by {@link renderHook}.
+ *
+ * Provides access to the hook result and utilities for re-rendering and cleanup.
+ */
+export type RenderHookResult<Result, Props> = {
+    /** Object containing the current hook return value */
+    result: { current: Result };
+    /** Re-render the hook with optional new props */
+    rerender: (newProps?: Props) => Promise<void>;
+    /** Unmount the component containing the hook */
+    unmount: () => Promise<void>;
+};

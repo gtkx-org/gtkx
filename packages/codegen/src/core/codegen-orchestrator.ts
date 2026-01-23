@@ -14,6 +14,7 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { GirRepository, type RepositoryOptions } from "@gtkx/gir";
+import { AnimatedGenerator } from "../animated/animated-generator.js";
 import { FfiGenerator } from "../ffi/ffi-generator.js";
 import { ReactGenerator } from "../react/react-generator.js";
 import type { CodegenWidgetMeta } from "./codegen-metadata.js";
@@ -31,6 +32,8 @@ export type CodegenOrchestratorOptions = {
     ffiOutputDir: string;
     /** Output directory for React bindings */
     reactOutputDir: string;
+    /** Output directory for Motion bindings */
+    animatedOutputDir: string;
 };
 
 /**
@@ -41,6 +44,8 @@ export type CodegenResult = {
     ffiFiles: Map<string, string>;
     /** React files: path -> content */
     reactFiles: Map<string, string>;
+    /** Motion files: path -> content */
+    animatedFiles: Map<string, string>;
     /** Generation statistics */
     stats: CodegenStats;
 };
@@ -97,14 +102,15 @@ export class CodegenOrchestrator {
         await this.loadGirFiles();
         await this.generateFfi();
         this.generateReact();
+        this.generateMotion();
 
-        const { ffi: ffiFiles, react: reactFiles } = await this.project.emitGrouped();
+        const { ffi: ffiFiles, react: reactFiles, motion: animatedFiles } = await this.project.emitGrouped();
         this.releaseAstNodes();
 
         const duration = performance.now() - startTime;
-        const stats = this.computeStats(ffiFiles, reactFiles, duration);
+        const stats = this.computeStats(ffiFiles, reactFiles, animatedFiles, duration);
 
-        return { ffiFiles, reactFiles, stats };
+        return { ffiFiles, reactFiles, animatedFiles, stats };
     }
 
     /**
@@ -189,11 +195,29 @@ export class CodegenOrchestrator {
     }
 
     /**
+     * Generates Motion component types from widget metadata.
+     *
+     * Creates typed motion component definitions for `@gtkx/motion`.
+     * Files are added to the shared project's motion/ directory.
+     */
+    private generateMotion(): void {
+        const widgetMeta = this.project.metadata.getAllWidgetMeta();
+        if (widgetMeta.length === 0) {
+            return;
+        }
+
+        const namespaceNames = [...new Set(widgetMeta.map((m) => m.namespace))];
+        const generator = new AnimatedGenerator(widgetMeta, this.project, namespaceNames);
+        generator.generate();
+    }
+
+    /**
      * Computes generation statistics.
      */
     private computeStats(
         ffiFiles: Map<string, string>,
         reactFiles: Map<string, string>,
+        animatedFiles: Map<string, string>,
         duration: number,
     ): CodegenStats {
         const widgetMeta = this.project.metadata.getAllWidgetMeta();
@@ -201,7 +225,7 @@ export class CodegenOrchestrator {
         return {
             namespaces: this.repository.getNamespaceNames().length,
             widgets: widgetMeta.length,
-            totalFiles: ffiFiles.size + reactFiles.size,
+            totalFiles: ffiFiles.size + reactFiles.size + animatedFiles.size,
             duration: Math.round(duration),
         };
     }

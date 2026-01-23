@@ -109,7 +109,7 @@ Nested menu with its own items.
 
 ## Keyboard Shortcuts
 
-The `accels` prop accepts GTK accelerator strings (e.g., `"<Control>s"`). See [GTK Key Values](https://docs.gtk.org/gtk4/func.accelerator_parse.html) for the full syntax.
+The `accels` prop accepts GTK accelerator strings (e.g., `"<Control>s"`, `"<Alt>F4"`).
 
 Multiple shortcuts for one action:
 

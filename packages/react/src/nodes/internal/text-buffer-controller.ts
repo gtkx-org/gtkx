@@ -94,8 +94,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
             buffer,
             "insert-text",
             onTextInserted
-                ? (location: Gtk.TextIter, text: string, _len: number) =>
-                      onTextInserted(buffer, location.getOffset(), text)
+                ? (location: Gtk.TextIter, text: string) => onTextInserted(buffer, location.getOffset(), text)
                 : null,
         );
 

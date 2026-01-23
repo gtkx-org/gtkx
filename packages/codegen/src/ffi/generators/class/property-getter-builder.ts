@@ -112,11 +112,7 @@ export class PropertyGetterBuilder {
         return null;
     }
 
-    private writeGetterBody(
-        propertyName: string,
-        getterInfo: GValueGetterInfo,
-        returnType: string,
-    ): WriterFunction {
+    private writeGetterBody(propertyName: string, getterInfo: GValueGetterInfo, returnType: string): WriterFunction {
         this.ctx.usesCall = true;
         this.ctx.usesSyntheticPropertyGetter = true;
 

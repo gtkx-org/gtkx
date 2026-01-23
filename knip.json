@@ -1,6 +1,13 @@
 {
     "$schema": "https://unpkg.com/knip@5/schema.json",
-    "ignore": ["**/node_modules/**", "**/.pnpm-store/**", "**/.turbo/**", "**/build-dir/**", "**/.flatpak-builder/**"],
+    "ignore": [
+        "**/node_modules/**",
+        "**/.pnpm-store/**",
+        "**/.turbo/**",
+        "**/build-dir/**",
+        "**/.flatpak-builder/**",
+        "**/packages/animated/**"
+    ],
     "ignoreIssues": {
         "**/src/generated/**": ["enumMembers"],
         "examples/*/src/app.tsx": ["exports", "duplicates"],

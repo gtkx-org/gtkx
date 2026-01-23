@@ -1,10 +1,10 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import { getConfig } from "./config.js";
 import { buildMultipleFoundError, buildNotFoundError, buildTimeoutError } from "./error-builder.js";
 import { type Container, findAll } from "./traversal.js";
 import type { ByRoleOptions, TextMatch, TextMatchOptions, WaitForOptions } from "./types.js";
 import { getWidgetCheckedState, getWidgetExpandedState, getWidgetTestId, getWidgetText } from "./widget-text.js";
 
-const DEFAULT_TIMEOUT = 1000;
 const DEFAULT_INTERVAL = 50;
 
 const buildNormalizer = (options?: TextMatchOptions): ((text: string) => string) => {
@@ -80,7 +80,8 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
 };
 
 const waitFor = async <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
-    const { timeout = DEFAULT_TIMEOUT, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
+    const config = getConfig();
+    const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
     const startTime = Date.now();
     let lastError: Error | null = null;
 

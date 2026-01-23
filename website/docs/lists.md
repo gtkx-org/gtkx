@@ -4,15 +4,13 @@ GTKX provides several list components for different use cases, from simple stati
 
 ## Choosing a List Component
 
-| Component        | Use Case                      | Virtual Scrolling |
-| ---------------- | ----------------------------- | ----------------- |
-| `x.ListView`     | Large lists (1000+ items)     | Yes               |
-| `x.GridView`     | Photo galleries, icon grids   | Yes               |
-| `GtkColumnView`  | Data tables with sorting      | Yes               |
-| `x.TreeListView` | Hierarchical data, file trees | Yes               |
-| `GtkDropDown`    | Small selection lists         | No                |
-| `GtkListBox`     | Medium lists, complex rows    | No                |
-| `GtkFlowBox`     | Tag clouds, reflowing grids   | No                |
+- **`x.ListView`** — Large lists (1000+ items) with virtual scrolling
+- **`x.GridView`** — Photo galleries, icon grids with virtual scrolling
+- **`GtkColumnView`** — Data tables with sorting and virtual scrolling
+- **`x.TreeListView`** — Hierarchical data, file trees with virtual scrolling
+- **`GtkDropDown`** — Small selection lists (no virtual scrolling)
+- **`GtkListBox`** — Medium lists with complex rows (no virtual scrolling)
+- **`GtkFlowBox`** — Tag clouds, reflowing grids (no virtual scrolling)
 
 ## ListView
 
@@ -121,7 +119,7 @@ const PhotoGallery = ({ photos }: { photos: Photo[] }) => (
 
 ## ColumnView
 
-Data table with sortable, columns.
+Data table with sortable columns.
 
 ```tsx
 import { x, GtkColumnView, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
@@ -414,10 +412,3 @@ const [selected, setSelected] = useState<string[]>([]);
 </x.TreeListView>;
 ```
 
-## Performance Tips
-
-1. **Use virtualized lists** (`x.ListView`, `x.GridView`, `GtkColumnView`, `x.TreeListView`) for large datasets
-2. **Wrap in ScrolledWindow** for scrolling support
-3. **Memoize renderItem** with `useCallback` if it has dependencies
-4. **Use stable keys** — the `id` prop should be unique and stable
-5. **Avoid inline objects** in `value` prop when possible

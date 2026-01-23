@@ -20,11 +20,13 @@ const LIFECYCLE_SIGNALS = new Set([
     "bind",
     "unbind",
     "teardown",
-    "load-changed",
-    "notify",
 ]);
 
 type HandlerEntry = { obj: GObject.GObject; handlerId: number };
+
+export interface SignalOptions {
+    blockable?: boolean;
+}
 
 export class SignalStore {
     private ownerHandlers: Map<SignalOwner, Map<string, HandlerEntry>> = new Map();
@@ -39,9 +41,9 @@ export class SignalStore {
         return map;
     }
 
-    private wrapHandler(handler: SignalHandler, signal: string): SignalHandler {
+    private wrapHandler(handler: SignalHandler, signal: string, blockable: boolean): SignalHandler {
         return (...args: unknown[]) => {
-            if (this.blockDepth > 0 && !LIFECYCLE_SIGNALS.has(signal)) {
+            if (this.blockDepth > 0 && blockable && !LIFECYCLE_SIGNALS.has(signal)) {
                 return;
             }
             const [self, ...rest] = args;
@@ -61,19 +63,31 @@ export class SignalStore {
         }
     }
 
-    private connect(owner: SignalOwner, obj: GObject.GObject, signal: string, handler: SignalHandler): void {
+    private connect(
+        owner: SignalOwner,
+        obj: GObject.GObject,
+        signal: string,
+        handler: SignalHandler,
+        blockable: boolean,
+    ): void {
         const objectId = getNativeId(obj.handle);
         const key = `${objectId}:${signal}`;
-        const wrappedHandler = this.wrapHandler(handler, signal);
+        const wrappedHandler = this.wrapHandler(handler, signal, blockable);
         const handlerId = obj.connect(signal, wrappedHandler);
         this.getOwnerMap(owner).set(key, { obj, handlerId });
     }
 
-    public set(owner: SignalOwner, obj: GObject.GObject, signal: string, handler?: SignalHandler | null): void {
+    public set(
+        owner: SignalOwner,
+        obj: GObject.GObject,
+        signal: string,
+        handler?: SignalHandler | null,
+        options?: SignalOptions,
+    ): void {
         this.disconnect(owner, obj, signal);
 
         if (handler) {
-            this.connect(owner, obj, signal, handler);
+            this.connect(owner, obj, signal, handler, options?.blockable ?? true);
         }
     }
 

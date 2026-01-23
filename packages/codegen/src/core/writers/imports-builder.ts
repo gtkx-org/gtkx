@@ -82,18 +82,19 @@ export class ImportsBuilder {
     collectImports(): ImportSpec[] {
         const imports: ImportSpec[] = [];
 
-        const nativeImports = this.collectNativeImports();
-        if (nativeImports.length > 0) {
+        const nativeTypeImports = this.collectNativeTypeImports();
+        if (nativeTypeImports.length > 0) {
             imports.push({
                 moduleSpecifier: "@gtkx/native",
-                namedImports: nativeImports,
+                namedImports: nativeTypeImports,
             });
         }
 
-        if (this.ctx.usesCall) {
+        const batchImports = this.collectBatchImports();
+        if (batchImports.length > 0) {
             imports.push({
                 moduleSpecifier: FFI_IMPORT_BATCH,
-                namedImports: ["call"],
+                namedImports: batchImports,
             });
         }
 
@@ -214,16 +215,22 @@ export class ImportsBuilder {
         }
     }
 
-    private collectNativeImports(): string[] {
+    private collectNativeTypeImports(): string[] {
         const imports: string[] = [];
-        if (this.ctx.usesAlloc) imports.push("alloc");
         if (this.ctx.usesArg) imports.push("Arg");
-        if (this.ctx.usesRead) imports.push("read");
-        if (this.ctx.usesReadPointer) imports.push("readPointer");
-        if (this.ctx.usesWritePointer) imports.push("writePointer");
-        if (this.ctx.usesWrite) imports.push("write");
         if (this.ctx.usesRef) imports.push("Ref");
         if (this.ctx.usesType) imports.push("Type");
+        return imports;
+    }
+
+    private collectBatchImports(): string[] {
+        const imports: string[] = [];
+        if (this.ctx.usesAlloc) imports.push("alloc");
+        if (this.ctx.usesCall) imports.push("call");
+        if (this.ctx.usesRead) imports.push("read");
+        if (this.ctx.usesReadPointer) imports.push("readPointer");
+        if (this.ctx.usesWrite) imports.push("write");
+        if (this.ctx.usesWritePointer) imports.push("writePointer");
         return imports;
     }
 

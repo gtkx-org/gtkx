@@ -35,26 +35,6 @@ const VolumeSlider = () => {
 };
 ```
 
-### Scale Props
-
-| Prop            | Type               | Description                               |
-| --------------- | ------------------ | ----------------------------------------- |
-| `value`         | number             | Current value                             |
-| `lower`         | number             | Minimum value (default: 0)                |
-| `upper`         | number             | Maximum value (default: 100)              |
-| `stepIncrement` | number             | Increment for arrow keys (default: 1)     |
-| `pageIncrement` | number             | Increment for page up/down (default: 10)  |
-| `onValueChanged`| (value: number) => void | Callback when value changes          |
-| `marks`         | ScaleMark[]        | Array of marks to display                 |
-
-### ScaleMark Type
-
-| Field      | Type               | Description                               |
-| ---------- | ------------------ | ----------------------------------------- |
-| `value`    | number             | Position on the scale                     |
-| `label`    | string             | Optional text label                       |
-| `position` | `Gtk.PositionType` | Label position (TOP, BOTTOM, LEFT, RIGHT) |
-
 ## Calendar with Marks
 
 Mark specific days on a `GtkCalendar` using the `markedDays` prop:
@@ -76,12 +56,6 @@ const EventCalendar = () => {
   );
 };
 ```
-
-### Calendar Props
-
-| Prop         | Type     | Description                     |
-| ------------ | -------- | ------------------------------- |
-| `markedDays` | number[] | Array of days to mark (1-31)    |
 
 ## LevelBar with Offsets
 
@@ -109,18 +83,7 @@ const BatteryIndicator = () => {
 };
 ```
 
-The level bar changes color at each offset threshold:
-
-- Below 25%: Critical (red)
-- 25-75%: Normal
-- Above 75%: High (green)
-
-### LevelBarOffset Type
-
-| Field   | Type   | Description                      |
-| ------- | ------ | -------------------------------- |
-| `id`    | string | Unique identifier for the offset |
-| `value` | number | Threshold value                  |
+The level bar changes color at each offset threshold: below 25% shows critical (red), 25-75% is normal, and above 75% shows high (green).
 
 ## ToggleGroup with Toggles
 
@@ -157,7 +120,7 @@ const ViewModeSelector = () => {
 };
 ```
 
-### Text Labels
+Text labels work too:
 
 ```tsx
 <AdwToggleGroup>
@@ -166,16 +129,6 @@ const ViewModeSelector = () => {
   <x.Toggle id="month" label="Month" />
 </AdwToggleGroup>
 ```
-
-### x.Toggle Props
-
-| Prop       | Type    | Description                   |
-| ---------- | ------- | ----------------------------- |
-| `id`       | string  | Unique identifier             |
-| `label`    | string  | Text label                    |
-| `iconName` | string  | Icon name                     |
-| `tooltip`  | string  | Tooltip text                  |
-| `enabled`  | boolean | Whether the toggle is enabled |
 
 ## ExpanderRow Children
 
@@ -209,13 +162,7 @@ const SettingsExpander = () => (
 );
 ```
 
-### x.ExpanderRowAction
-
-Places a widget in the expander row header (next to the expand arrow).
-
-### x.ExpanderRowRow
-
-Contains the rows that appear when the expander is expanded.
+`x.ExpanderRowAction` places a widget in the expander row header (next to the expand arrow), while `x.ExpanderRowRow` contains the rows that appear when expanded.
 
 ## Grid Layout
 
@@ -246,15 +193,6 @@ const FormGrid = () => (
 );
 ```
 
-### x.GridChild Props
-
-| Prop         | Type   | Description               |
-| ------------ | ------ | ------------------------- |
-| `column`     | number | Column position (0-based) |
-| `row`        | number | Row position (0-based)    |
-| `columnSpan` | number | Number of columns to span |
-| `rowSpan`    | number | Number of rows to span    |
-
 ## Fixed Positioning
 
 Position children absolutely in a `GtkFixed` using `x.FixedChild`:
@@ -273,14 +211,6 @@ const AbsoluteLayout = () => (
   </GtkFixed>
 );
 ```
-
-### x.FixedChild Props
-
-| Prop        | Type           | Description                   |
-| ----------- | -------------- | ----------------------------- |
-| `x`         | number         | X coordinate in pixels        |
-| `y`         | number         | Y coordinate in pixels        |
-| `transform` | `Gsk.Transform`| Optional 3D transform         |
 
 ## Overlay Children
 
@@ -337,17 +267,7 @@ const TabbedView = () => (
 );
 ```
 
-### x.NotebookPage Props
-
-| Prop        | Type    | Description                                     |
-| ----------- | ------- | ----------------------------------------------- |
-| `label`     | string  | Tab label text                                  |
-| `tabExpand` | boolean | Whether the tab should expand to fill space     |
-| `tabFill`   | boolean | Whether the tab should fill its allocated space |
-
-### x.NotebookPageTab
-
-Custom widget to use as the tab label instead of text.
+Use `x.NotebookPageTab` for a custom widget as the tab label instead of text.
 
 ## Drag and Drop
 
@@ -391,44 +311,6 @@ const DropZone = () => {
 ```
 
 For a complete example with visual feedback, see the drag-and-drop demo in `examples/gtk-demo/src/demos/gestures/dnd.tsx`.
-
-### Drag Source Props
-
-| Prop           | Type              | Description                   |
-| -------------- | ----------------- | ----------------------------- |
-| `dragIcon`     | `Gdk.Paintable`   | Custom drag icon              |
-| `dragIconHotX` | number            | Drag icon hotspot X coordinate|
-| `dragIconHotY` | number            | Drag icon hotspot Y coordinate|
-
-### GValue Factories
-
-Create typed values for drag-and-drop content and signal emission:
-
-| Factory                        | Description                   |
-| ------------------------------ | ----------------------------- |
-| `Value.newFromString(str)`     | String values                 |
-| `Value.newFromDouble(num)`     | 64-bit floating point         |
-| `Value.newFromInt(num)`        | 32-bit signed integer         |
-| `Value.newFromUint(num)`       | 32-bit unsigned integer       |
-| `Value.newFromBoolean(bool)`   | Boolean values                |
-| `Value.newFromObject(obj)`     | GObject instances             |
-| `Value.newFromBoxed(boxed)`    | Boxed types (Gdk.RGBA, etc.)  |
-| `Value.newFromEnum(gtype, n)`  | Enum values (requires GType)  |
-| `Value.newFromFlags(gtype, n)` | Flags values (requires GType) |
-
-Type constants for `dropTypes`:
-
-```tsx
-import { Type } from "@gtkx/ffi/gobject";
-
-<GtkBox
-  dropTypes={[Type.STRING]}
-  onDrop={(value) => {
-    console.log(value.getString());
-    return true;
-  }}
-/>;
-```
 
 ## Custom Drawing
 
@@ -650,56 +532,6 @@ const TextWithIcons = () => {
 };
 ```
 
-### TextView Props
-
-| Prop               | Type                       | Description                                    |
-| ------------------ | -------------------------- | ---------------------------------------------- |
-| `enableUndo`       | boolean                    | Enable undo/redo functionality                 |
-| `onBufferChanged`  | (text: string) => void     | Callback when text changes                     |
-| `onTextInserted`   | (text: string, offset: number) => void | Callback when text is inserted   |
-| `onTextDeleted`    | (offset: number, length: number) => void | Callback when text is deleted  |
-| `onCanUndoChanged` | (canUndo: boolean) => void | Callback when undo availability changes        |
-| `onCanRedoChanged` | (canRedo: boolean) => void | Callback when redo availability changes        |
-
-### x.TextTag Props
-
-| Prop               | Type              | Description                                  |
-| ------------------ | ----------------- | -------------------------------------------- |
-| `id`               | string            | Unique identifier for the tag (required)     |
-| `priority`         | number            | Tag priority (higher wins for same property) |
-| `foreground`       | string            | Text color (e.g., "red", "#ff0000")          |
-| `background`       | string            | Background color                             |
-| `weight`           | Pango.Weight      | Font weight (e.g., `Pango.Weight.BOLD`)      |
-| `style`            | Pango.Style       | Font style (e.g., `Pango.Style.ITALIC`)      |
-| `underline`        | Pango.Underline   | Underline style                              |
-| `strikethrough`    | boolean           | Whether to strike through text               |
-| `family`           | string            | Font family (e.g., "Monospace")              |
-| `size`             | number            | Font size in Pango units                     |
-| `sizePoints`       | number            | Font size in points                          |
-| `scale`            | number            | Font scale factor                            |
-| `rise`             | number            | Baseline offset in Pango units               |
-| `letterSpacing`    | number            | Extra character spacing in Pango units       |
-| `justification`    | Gtk.Justification | Text justification                           |
-| `leftMargin`       | number            | Left margin in pixels                        |
-| `rightMargin`      | number            | Right margin in pixels                       |
-| `indent`           | number            | Paragraph indent in pixels                   |
-| `pixelsAboveLines` | number            | Spacing above paragraphs                     |
-| `pixelsBelowLines` | number            | Spacing below paragraphs                     |
-| `editable`         | boolean           | Whether text can be modified                 |
-| `invisible`        | boolean           | Whether text is hidden                       |
-
-### x.TextAnchor Props
-
-| Prop       | Type      | Description                            |
-| ---------- | --------- | -------------------------------------- |
-| `children` | ReactNode | Widget to embed at the anchor position |
-
-### x.TextPaintable Props
-
-| Prop        | Type           | Description                            |
-| ----------- | -------------- | -------------------------------------- |
-| `paintable` | Gdk.Paintable  | The paintable to display inline        |
-
 ## SourceView for Code Editing
 
 Configure a `GtkSourceView` for syntax-highlighted code editing:
@@ -733,22 +565,6 @@ const CodeEditor = () => {
   );
 };
 ```
-
-### SourceView Props
-
-| Prop                        | Type                               | Description                                                |
-| --------------------------- | ---------------------------------- | ---------------------------------------------------------- |
-| `language`                  | string \| GtkSource.Language       | Language ID (e.g., "typescript", "python", "rust")         |
-| `styleScheme`               | string \| GtkSource.StyleScheme    | Color scheme ID (e.g., "Adwaita-dark", "classic")          |
-| `highlightSyntax`           | boolean                            | Enable syntax highlighting (default: true if language set) |
-| `highlightMatchingBrackets` | boolean                            | Highlight matching brackets (default: true)                |
-| `enableUndo`                | boolean                            | Enable undo/redo functionality                             |
-| `implicitTrailingNewline`   | boolean                            | Handle trailing newlines automatically                     |
-| `onBufferChanged`           | (text: string) => void             | Callback when text changes                                 |
-| `onCanUndoChanged`          | (canUndo: boolean) => void         | Callback when undo availability changes                    |
-| `onCanRedoChanged`          | (canRedo: boolean) => void         | Callback when redo availability changes                    |
-| `onCursorMoved`             | () => void                         | Callback when cursor position changes                      |
-| `onHighlightUpdated`        | (start, end: Gtk.TextIter) => void | Callback when highlighting is updated                      |
 
 ## Keyboard Shortcuts
 
@@ -786,83 +602,19 @@ const App = () => {
 };
 ```
 
-### Controller Scopes
+The `scope` prop controls when shortcuts are active: `LOCAL` (only when focused), `MANAGED` (managed by parent), or `GLOBAL` (anywhere in window).
 
-| Scope     | Description                                     |
-| --------- | ----------------------------------------------- |
-| `LOCAL`   | Shortcuts active only when the widget has focus |
-| `MANAGED` | Shortcuts managed by a parent controller        |
-| `GLOBAL`  | Shortcuts active anywhere in the window         |
-
-### Trigger Syntax
-
-The `trigger` prop accepts GTK accelerator strings (e.g., `"<Control>s"`, `"<Alt>F4"`). See [GTK Key Values](https://docs.gtk.org/gtk4/func.accelerator_parse.html) for the full syntax.
-
-### Multiple Triggers
-
-Pass an array to `trigger` for alternative key combinations:
+The `trigger` prop accepts GTK accelerator strings (e.g., `"<Control>s"`, `"<Alt>F4"`). Pass an array for multiple triggers:
 
 ```tsx
 <x.Shortcut trigger={["F5", "<Control>r"]} onActivate={refresh} />
 ```
 
-### Disabling Shortcuts
-
-Use the `disabled` prop to temporarily disable a shortcut without removing it:
+Use `disabled` to temporarily disable a shortcut:
 
 ```tsx
 <x.Shortcut trigger="<Control>s" onActivate={save} disabled={!hasChanges} />
 ```
-
-### x.ShortcutController Props
-
-| Prop    | Type                | Description               |
-| ------- | ------------------- | ------------------------- |
-| `scope` | `Gtk.ShortcutScope` | Shortcut activation scope |
-
-### x.Shortcut Props
-
-| Prop         | Type                  | Description                                         |
-| ------------ | --------------------- | --------------------------------------------------- |
-| `trigger`    | string \| string[]    | Key combination(s) to trigger the shortcut          |
-| `onActivate` | () => boolean \| void | Callback when triggered (return false to propagate) |
-| `disabled`   | boolean               | Whether the shortcut is disabled                    |
-
-## Event Controllers
-
-Event controllers are auto-generated from GIR files and can be added as children to any widget. They provide a declarative way to handle input events:
-
-```tsx
-import { GtkBox, GtkLabel, GtkEventControllerMotion, GtkEventControllerKey } from "@gtkx/react";
-import { useState } from "react";
-
-const InteractiveLabel = () => {
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [lastKey, setLastKey] = useState<string | null>(null);
-
-  return (
-    <GtkBox focusable>
-      <GtkEventControllerMotion
-        onEnter={(x, y) => console.log("Entered at", x, y)}
-        onMotion={(x, y) => setPosition({ x, y })}
-        onLeave={() => console.log("Left")}
-      />
-      <GtkEventControllerKey
-        onKeyPressed={(keyval, keycode, state) => {
-          setLastKey(String.fromCharCode(keyval));
-          return false;
-        }}
-      />
-      <GtkLabel label={`Position: ${position.x}, ${position.y}`} />
-      {lastKey && <GtkLabel label={`Last key: ${lastKey}`} />}
-    </GtkBox>
-  );
-};
-```
-
-### Available Event Controllers
-
-Event controllers are auto-generated from GTK's introspection data. Use TypeScript autocomplete to discover available controllers (type `Gtk` and look for `EventController*` and `Gesture*` types). See [GTK Event Controllers](https://docs.gtk.org/gtk4/class.EventController.html) for details on each controller type.
 
 ## SearchBar
 
@@ -938,15 +690,6 @@ const DeleteConfirmation = () => {
   );
 };
 ```
-
-### x.AlertDialogResponse Props
-
-| Prop         | Type                      | Description                      |
-| ------------ | ------------------------- | -------------------------------- |
-| `id`         | string                    | Response identifier              |
-| `label`      | string                    | Button label                     |
-| `appearance` | `Adw.ResponseAppearance`  | Visual style (SUGGESTED, DESTRUCTIVE) |
-| `enabled`    | boolean                   | Whether the response is enabled  |
 
 ## Color and Font Dialog Buttons
 

@@ -39,7 +39,7 @@ class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProps> {
         }
 
         if (callback) {
-            this.notifyHandler = (pspec: GObject.ParamSpec, _toggleGroup: Adw.ToggleGroup) => {
+            this.notifyHandler = (pspec: GObject.ParamSpec) => {
                 if (pspec.getName() === "active") {
                     callback(this.container.getActive(), this.container.getActiveName());
                 }

@@ -9,3 +9,6 @@ export const FFI_OUTPUT_DIR = "packages/ffi/src/generated";
 
 /** Output directory for generated React components */
 export const REACT_OUTPUT_DIR = "packages/react/src/generated";
+
+/** Output directory for generated Motion types */
+export const ANIMATED_OUTPUT_DIR = "packages/animated/src/generated";

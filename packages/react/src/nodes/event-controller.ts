@@ -10,7 +10,10 @@ import { WidgetNode } from "./widget.js";
 
 const G_TYPE_INVALID = 0;
 
-class EventControllerNode extends Node<Gtk.EventController, Props> implements Attachable {
+export class EventControllerNode<T extends Gtk.EventController = Gtk.EventController>
+    extends Node<T, Props>
+    implements Attachable
+{
     public static override priority = 1;
 
     public static override matches(type: string): boolean {
@@ -37,7 +40,7 @@ class EventControllerNode extends Node<Gtk.EventController, Props> implements At
     props: Props;
     protected parentWidget: Gtk.Widget | null = null;
 
-    constructor(typeName: string, props: Props, container: Gtk.EventController, rootContainer: Container) {
+    constructor(typeName: string, props: Props, container: T, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.props = props;
     }
@@ -96,7 +99,7 @@ class EventControllerNode extends Node<Gtk.EventController, Props> implements At
 
             if (resolveSignal(this.container, signalName)) {
                 const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-                this.signalStore.set(this, this.container, signalName, handler);
+                this.signalStore.set(this, this.container, signalName, handler, { blockable: false });
             } else if (newValue !== undefined) {
                 this.setProperty(name, newValue);
             }

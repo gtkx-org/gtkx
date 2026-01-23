@@ -41,7 +41,7 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
             this.trackNamespacesFromAnalysis(signal.referencedNamespaces);
             allProps.push({
                 name: signal.handlerName,
-                type: `${this.buildHandlerType(signal, "Widget", namespace)} | null`,
+                type: `(${this.buildHandlerType(signal, "Widget", namespace)}) | null`,
                 optional: true,
                 doc: signal.doc ? this.formatDocDescription(signal.doc, namespace) : undefined,
             });
@@ -102,7 +102,7 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
             this.trackNamespacesFromAnalysis(signal.referencedNamespaces);
             allProps.push({
                 name: signal.handlerName,
-                type: `${this.buildHandlerType(signal, className, namespace)} | null`,
+                type: `(${this.buildHandlerType(signal, className, namespace)}) | null`,
                 optional: true,
                 doc: signal.doc ? this.formatDocDescription(signal.doc, namespace) : undefined,
             });

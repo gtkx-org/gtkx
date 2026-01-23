@@ -1,4 +1,4 @@
-import { alloc, call, createRef, type NativeHandle, read } from "@gtkx/native";
+import { createRef, type NativeHandle } from "@gtkx/native";
 import { Context } from "../generated/cairo/context.js";
 import type {
     Antialias,
@@ -12,6 +12,7 @@ import type {
 import { FontOptions } from "../generated/cairo/font-options.js";
 import { Pattern } from "../generated/cairo/pattern.js";
 import { Surface } from "../generated/cairo/surface.js";
+import { alloc, call, read } from "../native/lifecycle.js";
 import { getNativeObject } from "../native/object.js";
 
 export { Context, Pattern, FontOptions, Surface };

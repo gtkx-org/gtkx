@@ -1,6 +1,5 @@
 import "./action-row.js";
 import "./adjustable.js";
-import "./animation/index.js";
 import "./alert-dialog-response.js";
 import "./application.js";
 import "./autowrapped.js";
@@ -51,6 +50,7 @@ import "./toolbar-child.js";
 import "./tree-list-item.js";
 import "./tree-list-view.js";
 import "./virtual.js";
+import "./web-view.js";
 import "./action-row-child.js";
 import "./expander-row-child.js";
 import "./pack-child.js";
