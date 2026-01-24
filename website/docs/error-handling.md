@@ -19,22 +19,24 @@ try {
 }
 ```
 
-## Common Error Codes
+## Error Codes
 
-Check `error.code` against these enums:
+The `error.code` property contains GTK/GLib error codes. Import the relevant enum and compare:
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Gio from "@gtkx/ffi/gio";
 
-// Dialog errors
-Gtk.DialogError.DISMISSED; // User cancelled dialog
+if (error.code === Gtk.DialogError.DISMISSED) {
+  // User cancelled dialog
+}
 
-// I/O errors
-Gio.IOErrorEnum.NOT_FOUND; // File not found
-Gio.IOErrorEnum.PERMISSION_DENIED; // Permission denied
-Gio.IOErrorEnum.CANCELLED; // Operation cancelled via Cancellable
+if (error.code === Gio.IOErrorEnum.NOT_FOUND) {
+  // File not found
+}
 ```
+
+All GTK/GLib error enums are available through `@gtkx/ffi`. See the GTK and GLib documentation for the complete list of error codes.
 
 ## Handling Dialog Cancellation
 

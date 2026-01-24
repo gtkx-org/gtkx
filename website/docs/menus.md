@@ -109,15 +109,7 @@ Nested menu with its own items.
 
 ## Keyboard Shortcuts
 
-Shortcuts use GTK's accelerator syntax:
-
-| Shortcut     | Syntax              |
-| ------------ | ------------------- |
-| Ctrl+N       | `<Control>n`        |
-| Ctrl+Shift+Z | `<Control><Shift>z` |
-| Ctrl+,       | `<Control>comma`    |
-| F1           | `F1`                |
-| Alt+F4       | `<Alt>F4`           |
+The `accels` prop accepts GTK accelerator strings (e.g., `"<Control>s"`). See [GTK Key Values](https://docs.gtk.org/gtk4/func.accelerator_parse.html) for the full syntax.
 
 Multiple shortcuts for one action:
 

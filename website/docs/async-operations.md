@@ -88,11 +88,4 @@ try {
 
 ## Error Handling
 
-All GTKX async operations throw `NativeError` on failure. The `code` property contains the GTK/GLib error code:
-
-- `Gtk.DialogError.DISMISSED` — User cancelled the dialog
-- `Gio.IOErrorEnum.CANCELLED` — Operation cancelled via `Cancellable`
-- `Gio.IOErrorEnum.NOT_FOUND` — File not found
-- `Gio.IOErrorEnum.PERMISSION_DENIED` — Permission denied
-
-See [Error Handling](./error-handling.md) for more details on `NativeError`.
+All GTKX async operations throw `NativeError` on failure. See [Error Handling](./error-handling.md) for details on error codes and handling patterns.

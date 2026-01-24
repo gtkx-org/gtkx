@@ -87,7 +87,7 @@ const input = await screen.findByTestId("email-input");
 const allButtons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
 ```
 
-Common accessible roles: `BUTTON`, `CHECKBOX`, `TEXT_BOX`, `LABEL`, `WINDOW`, `LIST`, `LIST_ITEM`.
+See `Gtk.AccessibleRole` for all available roles.
 
 ## User Interactions
 

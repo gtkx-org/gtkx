@@ -796,16 +796,7 @@ const App = () => {
 
 ### Trigger Syntax
 
-Shortcuts use GTK accelerator string format:
-
-| Example             | Description                          |
-| ------------------- | ------------------------------------ |
-| `<Control>s`        | Ctrl+S                               |
-| `<Control><Shift>s` | Ctrl+Shift+S                         |
-| `<Alt>F4`           | Alt+F4                               |
-| `<Primary>q`        | Platform primary key (Ctrl on Linux) |
-| `_m`                | Mnemonic trigger (Alt+M)             |
-| `F5`                | F5 key                               |
+The `trigger` prop accepts GTK accelerator strings (e.g., `"<Control>s"`, `"<Alt>F4"`). See [GTK Key Values](https://docs.gtk.org/gtk4/func.accelerator_parse.html) for the full syntax.
 
 ### Multiple Triggers
 
@@ -869,21 +860,9 @@ const InteractiveLabel = () => {
 };
 ```
 
-### Common Event Controllers
+### Available Event Controllers
 
-| Controller                    | Description                             |
-| ----------------------------- | --------------------------------------- |
-| `GtkEventControllerMotion`    | Pointer enter/leave/motion events       |
-| `GtkEventControllerKey`       | Keyboard input events                   |
-| `GtkEventControllerScroll`    | Scroll wheel events                     |
-| `GtkEventControllerFocus`     | Focus enter/leave events                |
-| `GtkGestureClick`             | Click/tap gestures                      |
-| `GtkGestureDrag`              | Drag gestures                           |
-| `GtkGestureLongPress`         | Long press gestures                     |
-| `GtkGestureZoom`              | Pinch zoom gestures                     |
-| `GtkGestureRotate`            | Rotation gestures                       |
-| `GtkGestureSwipe`             | Swipe gestures                          |
-| `GtkGestureStylus`            | Stylus/pen input                        |
+Event controllers are auto-generated from GTK's introspection data. Use TypeScript autocomplete to discover available controllers (type `Gtk` and look for `EventController*` and `Gesture*` types). See [GTK Event Controllers](https://docs.gtk.org/gtk4/class.EventController.html) for details on each controller type.
 
 ## SearchBar
 
