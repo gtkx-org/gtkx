@@ -18,10 +18,12 @@
 use std::cell::RefCell;
 use std::collections::{HashMap, hash_map::Entry};
 use std::mem::ManuallyDrop;
+use std::ptr::NonNull;
 use std::sync::{Mutex, OnceLock};
 use std::thread::JoinHandle;
 
 use gtk4::gio::ApplicationHoldGuard;
+use gtk4::glib::gobject_ffi;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
 use crate::managed::NativeValue;
@@ -67,6 +69,9 @@ pub struct GtkThreadState {
     /// like WebKit spawn threads with TLS destructors - calling dlclose() while
     /// those threads exist causes segfaults. Libraries are reclaimed at process exit.
     pub libraries: ManuallyDrop<HashMap<String, Library>>,
+    /// Closures that need to be unreffed after the current callback completes.
+    /// Used to defer closure cleanup during signal emission to prevent use-after-free.
+    pub deferred_closure_unrefs: Vec<NonNull<gobject_ffi::GClosure>>,
 }
 
 impl Default for GtkThreadState {
@@ -76,6 +81,7 @@ impl Default for GtkThreadState {
             next_handle_id: 1,
             libraries: ManuallyDrop::new(HashMap::new()),
             app_hold_guard: None,
+            deferred_closure_unrefs: Vec::new(),
         }
     }
 }

@@ -6,15 +6,10 @@
 //!
 //! ## Flow
 //!
-//! 1. GTK signal handler calls [`JsDispatcher::queue`] or [`JsDispatcher::queue_with_wakeup`] with callback and args
-//! 2. Callback is added to the pending queue
-//! 3. [`JsDispatcher::process_pending`] is called in the JS context (via poll or channel wakeup)
+//! 1. GTK signal handler calls [`JsDispatcher::queue`] with callback and args
+//! 2. Callback is added to the pending queue and a Neon channel wakeup is sent
+//! 3. [`JsDispatcher::process_pending`] is called in the JS context when the wakeup is received
 //! 4. Each callback is invoked, and results are sent back via mpsc channel
-//!
-//! ## Wakeup Mechanism
-//!
-//! - [`JsDispatcher::queue`]: Queues callback without waking JavaScript (for use during blocking calls)
-//! - [`JsDispatcher::queue_with_wakeup`]: Queues and sends a Neon channel message to wake JavaScript
 //!
 //! ## Synchronous Invocation
 //!
@@ -63,6 +58,7 @@ impl JsDispatcher {
 
     pub fn queue(
         &self,
+        channel: &Channel,
         callback: Arc<Root<JsFunction>>,
         args: Vec<Value>,
         capture_result: bool,
@@ -75,18 +71,6 @@ impl JsDispatcher {
             capture_result,
             result_tx: tx,
         });
-
-        rx
-    }
-
-    pub fn queue_with_wakeup(
-        &self,
-        channel: &Channel,
-        callback: Arc<Root<JsFunction>>,
-        args: Vec<Value>,
-        capture_result: bool,
-    ) -> mpsc::Receiver<Result<Value, ()>> {
-        let rx = self.queue(callback, args, capture_result);
 
         channel.send(|mut cx| {
             Self::global().process_pending(&mut cx);
@@ -119,13 +103,11 @@ impl JsDispatcher {
     where
         F: FnOnce(Result<Value, ()>) -> T,
     {
-        let rx = if gtk_dispatch::GtkDispatcher::global().is_js_waiting() {
-            self.queue(callback.clone(), args, capture_result)
-        } else {
-            self.queue_with_wakeup(channel, callback.clone(), args, capture_result)
-        };
-
-        self.wait_for_result(rx, on_result)
+        gtk_dispatch::GtkDispatcher::global().enter_callback();
+        let rx = self.queue(channel, callback.clone(), args, capture_result);
+        let result = self.wait_for_result(rx, on_result);
+        gtk_dispatch::GtkDispatcher::global().exit_callback();
+        result
     }
 
     fn wait_for_result<T, F>(&self, rx: mpsc::Receiver<Result<Value, ()>>, on_result: F) -> T

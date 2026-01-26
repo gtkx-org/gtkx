@@ -25,6 +25,7 @@
 //! application hold guard is released and the GTK main loop has exited.
 
 use std::collections::VecDeque;
+use std::ptr::NonNull;
 use std::sync::{
     Mutex, OnceLock,
     atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -32,10 +33,11 @@ use std::sync::{
 };
 use std::time::Duration;
 
-use gtk4::glib;
+use gtk4::glib::{self, gobject_ffi};
 use neon::prelude::*;
 
 use crate::js_dispatch;
+use crate::state::GtkThreadState;
 
 type Task = Box<dyn FnOnce() + Send + 'static>;
 
@@ -45,6 +47,7 @@ pub struct GtkDispatcher {
     started: AtomicBool,
     stopped: AtomicBool,
     js_wait_depth: AtomicUsize,
+    callback_depth: AtomicUsize,
 }
 
 static DISPATCHER: OnceLock<GtkDispatcher> = OnceLock::new();
@@ -61,6 +64,7 @@ impl GtkDispatcher {
             started: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
             js_wait_depth: AtomicUsize::new(0),
+            callback_depth: AtomicUsize::new(0),
         }
     }
 
@@ -118,6 +122,67 @@ impl GtkDispatcher {
 
     pub fn is_stopped(&self) -> bool {
         self.stopped.load(Ordering::Acquire)
+    }
+
+    pub fn enter_callback(&self) {
+        self.callback_depth.fetch_add(1, Ordering::AcqRel);
+    }
+
+    pub fn exit_callback(&self) {
+        let prev = self.callback_depth.fetch_sub(1, Ordering::AcqRel);
+        if prev == 1 {
+            self.process_deferred_closure_unrefs();
+        }
+    }
+
+    pub fn is_in_callback(&self) -> bool {
+        self.callback_depth.load(Ordering::Acquire) > 0
+    }
+
+    pub fn defer_closure_unref(&self, closure: NonNull<gobject_ffi::GClosure>) {
+        GtkThreadState::with(|state| {
+            state.deferred_closure_unrefs.push(closure);
+        });
+    }
+
+    fn process_deferred_closure_unrefs(&self) {
+        GtkThreadState::with(|state| {
+            let closures: Vec<_> = state.deferred_closure_unrefs.drain(..).collect();
+            for closure in closures {
+                unsafe { gobject_ffi::g_closure_unref(closure.as_ptr()) };
+            }
+        });
+    }
+
+    /// # Safety
+    /// `closure_ptr` must be a valid pointer to a `GClosure`.
+    pub unsafe fn install_closure_invalidate_notifier(closure_ptr: *mut gobject_ffi::GClosure) {
+        unsafe extern "C" fn invalidate_notifier(
+            _data: *mut std::ffi::c_void,
+            closure: *mut gobject_ffi::GClosure,
+        ) {
+            let Some(closure_ptr) = NonNull::new(closure) else {
+                return;
+            };
+
+            unsafe { gobject_ffi::g_closure_ref(closure) };
+
+            if GtkDispatcher::global().is_in_callback() {
+                GtkDispatcher::global().defer_closure_unref(closure_ptr);
+            } else {
+                glib::idle_add_local_once(move || {
+                    unsafe { gobject_ffi::g_closure_unref(closure_ptr.as_ptr()) };
+                });
+            }
+        }
+
+        unsafe {
+            gobject_ffi::g_closure_add_invalidate_notifier(
+                closure_ptr,
+                std::ptr::null_mut(),
+                Some(invalidate_notifier),
+            );
+        }
     }
 
     pub fn schedule<F>(&self, task: F)

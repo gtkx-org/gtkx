@@ -10,6 +10,7 @@ use gtk4::glib::{
 use neon::prelude::*;
 
 use crate::ffi::{CallbackValue, FfiStorage, FfiStorageKind};
+use crate::gtk_dispatch::GtkDispatcher;
 use crate::js_dispatch;
 use crate::trampoline::{ClosureCallbackData, ClosureGuard};
 use crate::types::Type;
@@ -115,13 +116,13 @@ impl ClosureContext {
         let closure_holder_for_callback = closure_holder.clone();
 
         let closure = glib::Closure::new(move |args: &[glib::Value]| {
+            let _guard =
+                ClosureGuard::from_ptr(closure_holder_for_callback.load(Ordering::Acquire));
+
             let return_type_inner = *return_type.clone();
 
             let args_values = value::Value::from_glib_values(args, &self.arg_types)
                 .expect("Failed to convert GLib callback arguments");
-
-            let _guard =
-                ClosureGuard::from_ptr(closure_holder_for_callback.load(Ordering::Acquire));
 
             js_dispatch::JsDispatcher::global().invoke_and_wait(
                 &self.channel,
@@ -142,6 +143,7 @@ impl ClosureContext {
 
         let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
         closure_holder.store(closure_ptr, Ordering::Release);
+        unsafe { GtkDispatcher::install_closure_invalidate_notifier(closure_ptr) };
 
         unsafe { glib::Closure::from_glib_full(closure_ptr) }
     }
@@ -188,10 +190,7 @@ impl std::str::FromStr for CallbackKind {
 
 impl CallbackKind {
     fn build_closure_value(closure_ptr: *mut gobject_ffi::GClosure) -> ffi::FfiValue {
-        ffi::FfiValue::Storage(FfiStorage::new(
-            closure_ptr as *mut c_void,
-            FfiStorageKind::Unit,
-        ))
+        ffi::FfiValue::Storage(FfiStorage::closure(closure_ptr))
     }
 
     fn build_callback_value(
@@ -201,6 +200,7 @@ impl CallbackKind {
         data_first: bool,
     ) -> ffi::FfiValue {
         let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
+        unsafe { GtkDispatcher::install_closure_invalidate_notifier(closure_ptr) };
 
         ffi::FfiValue::Callback(CallbackValue {
             callback_fn,

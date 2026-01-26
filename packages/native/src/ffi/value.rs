@@ -11,6 +11,7 @@ use gtk4::glib::{self, gobject_ffi};
 use libffi::middle as libffi;
 
 use super::storage::{FfiStorage, FfiStorageKind};
+use crate::gtk_dispatch::GtkDispatcher;
 
 #[derive(Debug)]
 pub struct CallbackValue {
@@ -25,6 +26,8 @@ impl CallbackValue {
         use glib::translate::ToGlibPtr as _;
 
         let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
+        unsafe { GtkDispatcher::install_closure_invalidate_notifier(closure_ptr) };
+
         // SAFETY: closure pointer from glib::Closure::to_glib_full is guaranteed non-null
         let closure_nonnull =
             NonNull::new(closure_ptr).expect("closure pointer should not be null");

@@ -440,6 +440,8 @@ impl TickCallbackData {
         };
 
         let data = unsafe { data_ptr.as_ref() };
+        let channel = data.channel.clone();
+        let js_func = data.js_func.clone();
 
         let widget_obj = unsafe { glib::Object::from_glib_none(widget) };
         let frame_clock_obj = unsafe { glib::Object::from_glib_none(frame_clock) };
@@ -453,8 +455,8 @@ impl TickCallbackData {
         let args = vec![widget_value, frame_clock_value];
 
         let result = crate::js_dispatch::JsDispatcher::global().invoke_and_wait(
-            &data.channel,
-            &data.js_func,
+            &channel,
+            &js_func,
             args,
             true,
             |result| match result {
@@ -506,6 +508,8 @@ impl PathIntersectionCallbackData {
         };
 
         let data = unsafe { data_ptr.as_ref() };
+        let channel = data.channel.clone();
+        let js_func = data.js_func.clone();
 
         let path1_obj = unsafe { glib::Object::from_glib_none(path1) };
         let path2_obj = unsafe { glib::Object::from_glib_none(path2) };
@@ -535,8 +539,8 @@ impl PathIntersectionCallbackData {
         ];
 
         let result = crate::js_dispatch::JsDispatcher::global().invoke_and_wait(
-            &data.channel,
-            &data.js_func,
+            &channel,
+            &js_func,
             args,
             true,
             |result| match result {
@@ -584,6 +588,8 @@ impl ShapeRendererCallbackData {
         };
 
         let data = unsafe { data_ptr.as_ref() };
+        let channel = data.channel.clone();
+        let js_func = data.js_func.clone();
 
         let cr_value = crate::value::Value::Object(
             crate::managed::NativeValue::Boxed(crate::managed::Boxed::borrowed(
@@ -602,8 +608,8 @@ impl ShapeRendererCallbackData {
         let args = vec![cr_value, attr_value, do_path_value];
 
         crate::js_dispatch::JsDispatcher::global().invoke_and_wait(
-            &data.channel,
-            &data.js_func,
+            &channel,
+            &js_func,
             args,
             false,
             |_| (),

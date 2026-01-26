@@ -20,6 +20,7 @@ pub struct FfiStorage {
 #[derive(Debug)]
 pub enum FfiStorageKind {
     Unit,
+    GClosure,
     U8Vec(Vec<u8>),
     I8Vec(Vec<i8>),
     U16Vec(Vec<u16>),
@@ -145,6 +146,35 @@ impl FfiStorage {
         match &self.kind {
             FfiStorageKind::ObjectArray(ids, _) => Ok(ids),
             _ => anyhow::bail!("FfiStorage does not contain object array data"),
+        }
+    }
+
+    pub fn closure(closure_ptr: *mut glib::gobject_ffi::GClosure) -> Self {
+        Self {
+            ptr: closure_ptr as *mut c_void,
+            kind: FfiStorageKind::GClosure,
+        }
+    }
+}
+
+impl Drop for FfiStorage {
+    fn drop(&mut self) {
+        match &self.kind {
+            FfiStorageKind::GClosure => {
+                if !self.ptr.is_null() {
+                    unsafe {
+                        glib::gobject_ffi::g_closure_unref(
+                            self.ptr as *mut glib::gobject_ffi::GClosure,
+                        )
+                    };
+                }
+            }
+            FfiStorageKind::HashTable(data) => {
+                if !data.handle.is_null() {
+                    unsafe { glib::ffi::g_hash_table_unref(data.handle) };
+                }
+            }
+            _ => {}
         }
     }
 }
