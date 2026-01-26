@@ -3,6 +3,7 @@ import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
+import type { AnimationProps } from "./animation/types.js";
 import type {
     GtkGridViewProps as GeneratedGtkGridViewProps,
     GtkListViewProps as GeneratedGtkListViewProps,
@@ -15,6 +16,13 @@ import type { TextAnchorProps } from "./nodes/text-anchor.js";
 import type { TextPaintableProps } from "./nodes/text-paintable.js";
 import type { TextTagProps } from "./nodes/text-tag.js";
 
+export type {
+    AnimatableProperties,
+    AnimationMode,
+    AnimationProps,
+    SpringTransition,
+    TimedTransition,
+} from "./animation/types.js";
 export type { TextAnchorProps } from "./nodes/text-anchor.js";
 export type { TextPaintableProps } from "./nodes/text-paintable.js";
 export type { TextTagProps } from "./nodes/text-tag.js";
@@ -953,6 +961,25 @@ export const x = {
      * ```
      */
     Shortcut: "Shortcut" as const,
+
+    /**
+     * Declarative animation wrapper using Adw.TimedAnimation or Adw.SpringAnimation.
+     *
+     * Provides framer-motion-inspired API for animating child widgets.
+     *
+     * @example
+     * ```tsx
+     * <x.Animation
+     *   mode="spring"
+     *   initial={{ opacity: 0, scale: 0.9 }}
+     *   animate={{ opacity: 1, scale: 1 }}
+     *   animateOnMount
+     * >
+     *   <GtkButton label="Animated Button" />
+     * </x.Animation>
+     * ```
+     */
+    Animation: "Animation" as const,
 };
 
 declare global {
@@ -962,6 +989,7 @@ declare global {
                 ActionRowPrefix: VirtualSlotProps;
                 ActionRowSuffix: VirtualSlotProps;
                 AlertDialogResponse: AlertDialogResponseProps;
+                Animation: AnimationProps;
                 // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant behavior
                 ColumnViewColumn: ColumnViewColumnProps<any>;
                 ExpanderRowAction: ExpanderRowChildProps;
