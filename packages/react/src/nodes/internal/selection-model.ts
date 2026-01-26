@@ -24,7 +24,6 @@ export class SelectionModelManager {
     private getSelection: () => string[];
     private resolveSelectionIndices: (ids: string[]) => Gtk.Bitset;
     private getItemCount: () => number;
-    private hasPendingSync: () => boolean;
 
     constructor(
         config: SelectionModelConfig,
@@ -32,7 +31,6 @@ export class SelectionModelManager {
         getSelection: () => string[],
         resolveSelectionIndices: (ids: string[]) => Gtk.Bitset,
         getItemCount: () => number,
-        hasPendingSync: () => boolean,
     ) {
         this.owner = config.owner;
         this.signalStore = config.signalStore;
@@ -41,7 +39,6 @@ export class SelectionModelManager {
         this.getSelection = getSelection;
         this.resolveSelectionIndices = resolveSelectionIndices;
         this.getItemCount = getItemCount;
-        this.hasPendingSync = hasPendingSync;
         this.selectionAction = new DeferredAction(() => this.applySelection(), CommitPriority.LOW);
         this.initSelectionHandler(config.onSelectionChanged);
         this.setSelection(config.selected);
@@ -115,11 +112,6 @@ export class SelectionModelManager {
     private applySelection(): void {
         const ids = this.pendingSelection;
         const nItems = this.getItemCount();
-
-        if (nItems === 0 && ids && ids.length > 0 && this.hasPendingSync()) {
-            this.selectionAction.schedule();
-            return;
-        }
 
         this.pendingSelection = null;
 

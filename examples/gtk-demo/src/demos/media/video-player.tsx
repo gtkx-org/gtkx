@@ -43,7 +43,7 @@ const VideoPlayerDemo = () => {
     };
 
     const handleLogo = () => {
-        const file = Gio.fileNewForPath(import.meta.dirname + "/gtk-logo.webm");
+        const file = Gio.fileNewForPath(`${import.meta.dirname}/gtk-logo.webm`);
         setVideoFile(file);
     };
 

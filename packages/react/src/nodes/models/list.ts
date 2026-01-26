@@ -30,7 +30,6 @@ export class ListModel {
             () => this.getSelection(),
             (ids) => this.resolveSelectionIndices(ids),
             () => this.store.getModel().getNItems(),
-            () => this.store.hasPendingSync,
         );
     }
 

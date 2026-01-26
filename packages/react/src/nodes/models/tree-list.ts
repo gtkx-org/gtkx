@@ -37,7 +37,6 @@ export class TreeList extends VirtualNode<TreeListProps> {
             () => this.getSelection(),
             (ids) => this.resolveSelectionIndices(ids),
             () => this.treeListModel.getNItems(),
-            () => this.store.hasPendingSync,
         );
     }
 
@@ -76,11 +75,11 @@ export class TreeList extends VirtualNode<TreeListProps> {
         const id = node.props.id;
         if (id === undefined) return;
 
-        this.store.addItem(id, createTreeItemData(node.props), parentId);
-
         for (const child of node.getChildNodes()) {
             this.addItemWithChildren(child, id);
         }
+
+        this.store.addItem(id, createTreeItemData(node.props), parentId);
     }
 
     public override insertBefore(child: Node, before: Node): void {
