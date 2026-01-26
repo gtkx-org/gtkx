@@ -34,7 +34,7 @@ describe("ImportsBuilder", () => {
                 expect(nativeImport?.namedImports).toContain("Type");
             });
 
-            it("collects batch module imports", () => {
+            it("collects lifecycle module imports", () => {
                 const { ctx, builder } = createTestSetup();
                 ctx.usesAlloc = true;
                 ctx.usesRead = true;
@@ -42,16 +42,16 @@ describe("ImportsBuilder", () => {
 
                 const imports = builder.collectImports();
 
-                const batchImport = imports.find((i) => i.moduleSpecifier.includes("batch"));
-                expect(batchImport).toBeDefined();
-                expect(batchImport?.namedImports).toContain("alloc");
-                expect(batchImport?.namedImports).toContain("read");
-                expect(batchImport?.namedImports).toContain("write");
+                const lifecycleImport = imports.find((i) => i.moduleSpecifier.includes("lifecycle"));
+                expect(lifecycleImport).toBeDefined();
+                expect(lifecycleImport?.namedImports).toContain("alloc");
+                expect(lifecycleImport?.namedImports).toContain("read");
+                expect(lifecycleImport?.namedImports).toContain("write");
             });
         });
 
         describe("call import", () => {
-            it("collects call from batch module", () => {
+            it("collects call from lifecycle module", () => {
                 const { ctx, builder } = createTestSetup();
                 ctx.usesCall = true;
 
@@ -59,7 +59,7 @@ describe("ImportsBuilder", () => {
 
                 const callImport = imports.find((i) => i.namedImports?.includes("call"));
                 expect(callImport).toBeDefined();
-                expect(callImport?.moduleSpecifier).toContain("batch");
+                expect(callImport?.moduleSpecifier).toContain("lifecycle");
             });
         });
 

@@ -8,7 +8,7 @@
 import type { ImportDeclarationStructure, SourceFile } from "ts-morph";
 import { StructureKind } from "ts-morph";
 import {
-    FFI_IMPORT_BATCH,
+    FFI_IMPORT_LIFECYCLE,
     FFI_IMPORT_NATIVE_BASE,
     FFI_IMPORT_NATIVE_ERROR,
     FFI_IMPORT_NATIVE_OBJECT,
@@ -68,12 +68,8 @@ export class ImportsBuilder {
         private readonly ctx: GenerationContext,
         private readonly options: ImportsBuilderOptions,
     ) {
-        this.currentNormalized = options.currentClassName
-            ? normalizeClassName(options.currentClassName, options.namespace)
-            : "";
-        this.parentNormalized = options.parentClassName
-            ? normalizeClassName(options.parentClassName, options.namespace)
-            : "";
+        this.currentNormalized = options.currentClassName ? normalizeClassName(options.currentClassName) : "";
+        this.parentNormalized = options.parentClassName ? normalizeClassName(options.parentClassName) : "";
     }
 
     /**
@@ -90,11 +86,11 @@ export class ImportsBuilder {
             });
         }
 
-        const batchImports = this.collectBatchImports();
-        if (batchImports.length > 0) {
+        const lifecycleImports = this.collectLifecycleImports();
+        if (lifecycleImports.length > 0) {
             imports.push({
-                moduleSpecifier: FFI_IMPORT_BATCH,
-                namedImports: batchImports,
+                moduleSpecifier: FFI_IMPORT_LIFECYCLE,
+                namedImports: lifecycleImports,
             });
         }
 
@@ -105,10 +101,9 @@ export class ImportsBuilder {
             });
         }
 
-        if (this.ctx.usesGetNativeObject || this.ctx.usesGetNativeInterface) {
+        if (this.ctx.usesGetNativeObject) {
             const namedImports: string[] = [];
             if (this.ctx.usesGetNativeObject) namedImports.push("getNativeObject");
-            if (this.ctx.usesGetNativeInterface) namedImports.push("getNativeInterface");
             imports.push({
                 moduleSpecifier: FFI_IMPORT_NATIVE_OBJECT,
                 namedImports,
@@ -223,7 +218,7 @@ export class ImportsBuilder {
         return imports;
     }
 
-    private collectBatchImports(): string[] {
+    private collectLifecycleImports(): string[] {
         const imports: string[] = [];
         if (this.ctx.usesAlloc) imports.push("alloc");
         if (this.ctx.usesCall) imports.push("call");
@@ -322,7 +317,7 @@ export class ImportsBuilder {
 
     private collectSignalClassImports(): ImportSpec[] {
         return this.collectSameNamespaceImports(this.ctx.signalClasses.entries(), (name) => {
-            const normalized = normalizeClassName(name, this.options.namespace);
+            const normalized = normalizeClassName(name);
             return normalized === this.currentNormalized || normalized === this.parentNormalized;
         });
     }
