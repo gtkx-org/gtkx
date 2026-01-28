@@ -15,27 +15,27 @@ GTKX enables React developers to build Linux desktop applications using familiar
 
 ## Documentation
 
-- [Introduction](https://gtkx.devdocs/introduction): What GTKX is, how it works, architecture overview, and target audience
-- [Getting Started](https://gtkx.devdocs/getting-started): Create first app, project structure, basic component patterns
-- [CLI Reference](https://gtkx.devdocs/cli): gtkx create, gtkx dev commands, npm scripts, programmatic API
-- [Styling](https://gtkx.devdocs/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
-- [Event Controllers](https://gtkx.devdocs/event-controllers): Event controllers as JSX children (GtkEventControllerMotion, GtkEventControllerKey, GtkEventControllerFocus, GtkGestureClick, GtkGestureDrag, GtkDragSource, GtkDropTarget, etc.)
-- [Async Operations](https://gtkx.devdocs/async-operations): Async event handlers, loading states, file I/O, network requests
-- [Error Handling](https://gtkx.devdocs/error-handling): Try/catch patterns, error states, toast notifications, form validation
-- [Widgets](https://gtkx.devdocs/widgets): Declarative widget features — direct props for adjustments/marks/offsets on Scale/Calendar/LevelBar, x.TextTag for rich text, x.TextAnchor for embedded widgets, x.ShortcutController, x.GridChild, x.Toggle, x.AlertDialogResponse, x.Animation (spring/timed animations with opacity, translate, scale, rotate, skew), GtkSearchBar with onSearchModeChanged, AdwToggleGroup with onActiveChanged, GtkStack/AdwViewStack with onPageChanged, GtkTextView/GtkSourceView with granular callbacks (onTextInserted, onTextDeleted, onCanUndoChanged), custom drawing (onDraw), drag-and-drop, GValue factories
-- [Lists](https://gtkx.devdocs/lists): x.ListView, x.GridView, GtkColumnView, x.TreeListView, GtkDropDown with virtual scrolling
-- [Menus](https://gtkx.devdocs/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu, keyboard shortcuts, GtkPopoverMenu
-- [Slots](https://gtkx.devdocs/slots): Named child positions for widgets like GtkHeaderBar, GtkPaned, GtkMenuButton
-- [Portals and Dialogs](https://gtkx.devdocs/portals): createPortal(), AdwDialog, AdwAlertDialog, GtkAboutDialog, FileDialog, ColorDialogButton, FontDialogButton, modal windows
-- [Adwaita](https://gtkx.devdocs/adwaita): Libadwaita components — AdwToolbarView, AdwHeaderBar, AdwActionRow, AdwNavigationView, AdwAlertDialog with x.AlertDialogResponse, AdwToggleGroup with x.Toggle
-- [Animations](https://gtkx.devdocs/animations): x.Animation component, spring and timed animations, animatable properties (opacity, translate, scale, rotate, skew), exit animations, callbacks
-- [Testing](https://gtkx.devdocs/testing): render(), renderHook(), screen queries, userEvent, fireEvent, waitFor, Xvfb setup for CI
-- [MCP Integration](https://gtkx.devdocs/mcp): AI assistant integration via Model Context Protocol, widget tree inspection, automated UI interaction
-- [Deploying](https://gtkx.devdocs/deploying): Node.js Single Executable Application (SEA), Flatpak packaging
+- [Introduction](https://gtkx.dev/docs/introduction): What GTKX is, how it works, architecture overview, and target audience
+- [Getting Started](https://gtkx.dev/docs/getting-started): Create first app, project structure, basic component patterns
+- [CLI Reference](https://gtkx.dev/docs/cli): gtkx create, gtkx dev commands, npm scripts, programmatic API
+- [Styling](https://gtkx.dev/docs/styling): css(), cx(), injectGlobal(), GTK CSS syntax differences, Adwaita CSS classes
+- [Event Controllers](https://gtkx.dev/docs/event-controllers): Event controllers as JSX children (GtkEventControllerMotion, GtkEventControllerKey, GtkEventControllerFocus, GtkGestureClick, GtkGestureDrag, GtkDragSource, GtkDropTarget, etc.)
+- [Async Operations](https://gtkx.dev/docs/async-operations): Async event handlers, loading states, file I/O, network requests
+- [Error Handling](https://gtkx.dev/docs/error-handling): Try/catch patterns, error states, toast notifications, form validation
+- [Widgets](https://gtkx.dev/docs/widgets): Declarative widget features — direct props for adjustments/marks/offsets on Scale/Calendar/LevelBar, x.TextTag for rich text, x.TextAnchor for embedded widgets, x.ShortcutController, x.GridChild, x.Toggle, x.AlertDialogResponse, x.Animation (spring/timed animations with opacity, translate, scale, rotate, skew), GtkSearchBar with onSearchModeChanged, AdwToggleGroup with onActiveChanged, GtkStack/AdwViewStack with onPageChanged, GtkTextView/GtkSourceView with granular callbacks (onTextInserted, onTextDeleted, onCanUndoChanged), custom drawing (onDraw), drag-and-drop, GValue factories
+- [Lists](https://gtkx.dev/docs/lists): x.ListView, x.GridView, GtkColumnView, x.TreeListView, GtkDropDown with virtual scrolling
+- [Menus](https://gtkx.dev/docs/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu, keyboard shortcuts, GtkPopoverMenu
+- [Slots](https://gtkx.dev/docs/slots): Named child positions for widgets like GtkHeaderBar, GtkPaned, GtkMenuButton
+- [Portals and Dialogs](https://gtkx.dev/docs/portals): createPortal(), AdwDialog, AdwAlertDialog, GtkAboutDialog, FileDialog, ColorDialogButton, FontDialogButton, modal windows
+- [Adwaita](https://gtkx.dev/docs/adwaita): Libadwaita components — AdwToolbarView, AdwHeaderBar, AdwActionRow, AdwNavigationView, AdwAlertDialog with x.AlertDialogResponse, AdwToggleGroup with x.Toggle
+- [Animations](https://gtkx.dev/docs/animations): x.Animation component, spring and timed animations, animatable properties (opacity, translate, scale, rotate, skew), exit animations, callbacks
+- [Testing](https://gtkx.dev/docs/testing): render(), renderHook(), screen queries, userEvent, fireEvent, waitFor, Xvfb setup for CI
+- [MCP Integration](https://gtkx.dev/docs/mcp): AI assistant integration via Model Context Protocol, widget tree inspection, automated UI interaction
+- [Deploying](https://gtkx.dev/docs/deploying): Node.js Single Executable Application (SEA), Flatpak packaging
 
 ## API Reference
 
-- [React Package API](https://gtkx.devdocs/api/react): Component props, render functions, hooks, and utilities
+- [React Package API](https://gtkx.dev/docs/api/react): Component props, render functions, hooks, and utilities
 
 ## Optional
 

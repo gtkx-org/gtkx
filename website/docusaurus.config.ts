@@ -193,7 +193,7 @@ const config: Config = {
                         },
                         {
                             label: "llms.txt",
-                            href: "https://gtkx.devllms.txt",
+                            href: "https://gtkx.dev/llms.txt",
                         },
                     ],
                 },
