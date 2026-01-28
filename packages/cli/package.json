@@ -60,7 +60,7 @@
         "@gtkx/ffi": "workspace:*",
         "@gtkx/mcp": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "@swc/core": "^1.15.10",
+        "@swc/core": "^1.15.11",
         "citty": "^0.2.0",
         "ejs": "^4.0.1",
         "react-refresh": "^0.18.0",
