@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/native-linux-x64",
-    "version": "0.17.3",
+    "version": "0.17.4",
     "description": "Linux x64 native binary for @gtkx/native",
     "keywords": [
         "gtkx",

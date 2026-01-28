@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/vitest",
-    "version": "0.17.3",
+    "version": "0.17.4",
     "description": "Vitest plugin for GTKX applications with Xvfb display isolation",
     "keywords": [
         "gtkx",
