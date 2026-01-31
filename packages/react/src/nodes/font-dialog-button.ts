@@ -1,10 +1,9 @@
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type * as Pango from "@gtkx/ffi/pango";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Container, Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type FontDialogButtonProps = Props & {
@@ -29,15 +28,9 @@ const OWN_PROPS = [
     "level",
 ] as const;
 
-class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogButtonProps> {
-    public static override priority = 1;
-
+export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogButtonProps> {
     private dialog: Gtk.FontDialog;
     private notifyHandler: SignalHandler | null = null;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.FontDialogButton], containerOrClass);
-    }
 
     public static override createContainer(
         _props: FontDialogButtonProps,
@@ -126,5 +119,3 @@ class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogBu
         super.unmount();
     }
 }
-
-registerNodeClass(FontDialogButtonNode);

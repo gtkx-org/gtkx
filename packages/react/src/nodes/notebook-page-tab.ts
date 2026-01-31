@@ -1,19 +1,12 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { SlotProps } from "../jsx.js";
-import { registerNodeClass } from "../registry.js";
 import { SlotNode } from "./slot.js";
 
 type Props = Partial<SlotProps>;
 
 export class NotebookPageTabNode extends SlotNode<Props> {
-    public static override priority = 1;
-
     private notebook: Gtk.Notebook | null = null;
     private page: Gtk.Widget | null = null;
-
-    public static override matches(type: string): boolean {
-        return type === "NotebookPageTab";
-    }
 
     public setPage(notebook: Gtk.Notebook | null, page: Gtk.Widget | null): void {
         this.notebook = notebook;
@@ -54,5 +47,3 @@ export class NotebookPageTabNode extends SlotNode<Props> {
         notebook.setTabLabel(page, this.child);
     }
 }
-
-registerNodeClass(NotebookPageTabNode);

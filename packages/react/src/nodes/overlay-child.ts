@@ -2,7 +2,6 @@ import { getNativeId, isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Attachable } from "./internal/predicates.js";
 import { VirtualNode } from "./virtual.js";
@@ -10,13 +9,7 @@ import { WidgetNode } from "./widget.js";
 
 type Props = Partial<OverlayChildProps>;
 
-class OverlayChildNode extends VirtualNode<Props> implements Attachable {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "OverlayChild";
-    }
-
+export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
     private parent: Gtk.Overlay | null = null;
     private children = new Map<number, Gtk.Widget>();
 
@@ -138,5 +131,3 @@ class OverlayChildNode extends VirtualNode<Props> implements Attachable {
         }
     }
 }
-
-registerNodeClass(OverlayChildNode);

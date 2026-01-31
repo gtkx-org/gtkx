@@ -1,10 +1,7 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import { POPOVER_MENU_CLASSES } from "../reconciler-metadata.js";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
-import { matchesAnyClass } from "./internal/utils.js";
+import type { Container, Props } from "../types.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { SlotNode } from "./slot.js";
@@ -12,14 +9,8 @@ import { WidgetNode } from "./widget.js";
 
 const ACTION_PREFIX = "menu";
 
-class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton> {
-    public static override priority = 1;
-
+export class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton> {
     private menu: MenuModel;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass(POPOVER_MENU_CLASSES, containerOrClass);
-    }
 
     constructor(
         typeName: string,
@@ -80,5 +71,3 @@ class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | 
         throw new Error(`Cannot remove '${child.typeName}' from 'PopoverMenu': expected MenuItem or Widget`);
     }
 }
-
-registerNodeClass(PopoverMenuNode);

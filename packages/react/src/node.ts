@@ -2,12 +2,6 @@ import { getSignalStore, type SignalStore } from "./nodes/internal/signal-store.
 import type { Container, ContainerClass, Props } from "./types.js";
 
 export class Node<T = unknown, P = Props> {
-    public static priority = 0;
-
-    public static matches(_type: string, _containerOrClass?: Container | ContainerClass | null): boolean {
-        return false;
-    }
-
     public static createContainer(_props: Props, _containerClass: ContainerClass, _rootContainer?: Container): unknown {
         throw new Error("Cannot create container: unsupported node type");
     }

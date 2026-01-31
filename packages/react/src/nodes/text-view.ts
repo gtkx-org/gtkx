@@ -1,10 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import * as GtkSource from "@gtkx/ffi/gtksource";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Props } from "../types.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
-import { filterProps, matchesAnyClass } from "./internal/utils.js";
+import { filterProps } from "./internal/utils.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
 import type { TextSegmentNode } from "./text-segment.js";
 import { WidgetNode } from "./widget.js";
@@ -28,14 +26,7 @@ type TextViewProps = Props & {
 };
 
 export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements TextContentParent {
-    public static override priority = 1;
-
     protected bufferController: TextBufferController | null = null;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        if (matchesAnyClass([GtkSource.View], containerOrClass)) return false;
-        return matchesAnyClass([Gtk.TextView], containerOrClass);
-    }
 
     protected ensureBufferController(): TextBufferController {
         if (!this.bufferController) {
@@ -99,5 +90,3 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
         this.ensureBufferController().onChildTextChanged(child, oldLength, newLength);
     }
 }
-
-registerNodeClass(TextViewNode);

@@ -1,6 +1,5 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { registerNodeClass } from "../registry.js";
 import { VirtualNode } from "./virtual.js";
 
 const PLACEHOLDER = "\uFFFC";
@@ -16,14 +15,8 @@ export type TextPaintableProps = {
 };
 
 export class TextPaintableNode extends VirtualNode<TextPaintableProps> {
-    public static override priority = 1;
-
     private buffer: Gtk.TextBuffer | null = null;
     public bufferOffset = 0;
-
-    public static override matches(type: string): boolean {
-        return type === "TextPaintable";
-    }
 
     public getLength(): number {
         return 1;
@@ -50,5 +43,3 @@ export class TextPaintableNode extends VirtualNode<TextPaintableProps> {
         super.unmount();
     }
 }
-
-registerNodeClass(TextPaintableNode);

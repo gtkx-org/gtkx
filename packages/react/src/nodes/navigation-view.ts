@@ -1,9 +1,8 @@
-import * as Adw from "@gtkx/ffi/adw";
+import type * as Adw from "@gtkx/ffi/adw";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
-import type { Container, ContainerClass, Props } from "../types.js";
-import { filterProps, hasChanged, matchesAnyClass, primitiveArrayEqual } from "./internal/utils.js";
+import type { Props } from "../types.js";
+import { filterProps, hasChanged, primitiveArrayEqual } from "./internal/utils.js";
 import { NavigationPageNode } from "./navigation-page.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
@@ -15,13 +14,7 @@ type NavigationViewProps = Props & {
     onHistoryChanged?: (history: string[]) => void;
 };
 
-class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps> {
-    public static override priority = 1;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Adw.NavigationView], containerOrClass);
-    }
-
+export class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps> {
     public override appendChild(child: Node): void {
         if (child instanceof NavigationPageNode) {
             child.setParent(this.container);
@@ -123,5 +116,3 @@ class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewPr
         return history;
     }
 }
-
-registerNodeClass(NavigationViewNode);

@@ -1,10 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import { COLUMN_VIEW_CLASSES } from "../reconciler-metadata.js";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass } from "../types.js";
+import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
-import { filterProps, matchesAnyClass } from "./internal/utils.js";
+import { filterProps } from "./internal/utils.js";
 import { ListItemNode } from "./list-item.js";
 import { ListModel, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
@@ -18,17 +16,11 @@ type ColumnViewProps = ListProps & {
     estimatedRowHeight?: number;
 };
 
-class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
-    public static override priority = 1;
-
+export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
     private handleSortChange: (() => void) | null = null;
     private list: ListModel;
     private columnNodes = new Set<ColumnViewColumnNode>();
     private estimatedRowHeight: number | null = null;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass(COLUMN_VIEW_CLASSES, containerOrClass);
-    }
 
     constructor(typeName: string, props: ColumnViewProps, container: Gtk.ColumnView, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
@@ -200,5 +192,3 @@ class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
         super.unmount();
     }
 }
-
-registerNodeClass(ColumnViewNode);

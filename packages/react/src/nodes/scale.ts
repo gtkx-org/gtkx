@@ -1,8 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Props } from "../types.js";
 import { AdjustableNode } from "./adjustable.js";
-import { matchesAnyClass, shallowArrayEqual } from "./internal/utils.js";
+import { shallowArrayEqual } from "./internal/utils.js";
 
 type ScaleMark = {
     value: number;
@@ -14,14 +13,8 @@ type ScaleProps = Props & {
     marks?: ScaleMark[] | null;
 };
 
-class ScaleNode extends AdjustableNode<Gtk.Scale> {
-    public static override priority = 1;
-
+export class ScaleNode extends AdjustableNode<Gtk.Scale> {
     private appliedMarks: ScaleMark[] = [];
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.Scale], containerOrClass);
-    }
 
     protected override applyOwnProps(oldProps: ScaleProps | null, newProps: ScaleProps): void {
         super.applyOwnProps(oldProps, newProps);
@@ -44,5 +37,3 @@ class ScaleNode extends AdjustableNode<Gtk.Scale> {
         this.appliedMarks = [...newMarks];
     }
 }
-
-registerNodeClass(ScaleNode);

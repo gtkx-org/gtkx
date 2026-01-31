@@ -1,8 +1,7 @@
-import * as WebKit from "@gtkx/ffi/webkit";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type * as WebKit from "@gtkx/ffi/webkit";
+import type { Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { filterProps, hasChanged, matchesAnyClass, propNameToSignalName, resolveSignal } from "./internal/utils.js";
+import { filterProps, hasChanged, propNameToSignalName, resolveSignal } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const NON_BLOCKABLE_SIGNALS = ["load-changed"] as const;
@@ -11,13 +10,7 @@ type WebViewProps = Props & {
     onLoadChanged?: SignalHandler;
 };
 
-class WebViewNode extends WidgetNode<WebKit.WebView, WebViewProps> {
-    public static override priority = 1;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([WebKit.WebView], containerOrClass);
-    }
-
+export class WebViewNode extends WidgetNode<WebKit.WebView, WebViewProps> {
     public override updateProps(oldProps: WebViewProps | null, newProps: WebViewProps): void {
         super.updateProps(
             oldProps ? (filterProps(oldProps, NON_BLOCKABLE_SIGNALS) as WebViewProps) : null,
@@ -43,5 +36,3 @@ class WebViewNode extends WidgetNode<WebKit.WebView, WebViewProps> {
         }
     }
 }
-
-registerNodeClass(WebViewNode);

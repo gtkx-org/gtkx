@@ -1,7 +1,6 @@
 import { isObjectEqual } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import type { Container } from "../types.js";
 import { TreeListItemRenderer, type TreeRenderItemFn } from "./internal/tree-list-item-renderer.js";
 import { filterProps } from "./internal/utils.js";
@@ -17,15 +16,9 @@ type TreeListViewProps = TreeListProps & {
     estimatedItemHeight?: number;
 };
 
-class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
-    public static override priority = 1;
-
+export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
     private itemRenderer: TreeListItemRenderer;
     private treeList: TreeList;
-
-    public static override matches(type: string): boolean {
-        return type === "TreeListView";
-    }
 
     public static override createContainer(): Gtk.ListView {
         return new Gtk.ListView();
@@ -111,5 +104,3 @@ class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
         super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 }
-
-registerNodeClass(TreeListViewNode);

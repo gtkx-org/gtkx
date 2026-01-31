@@ -2,19 +2,12 @@ import { isObjectEqual } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GridChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { PositionalChildNode } from "./abstract/positional-child.js";
 import { hasChanged } from "./internal/utils.js";
 
 type Props = Partial<GridChildProps>;
 
-class GridChildNode extends PositionalChildNode<Props> {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "GridChild";
-    }
-
+export class GridChildNode extends PositionalChildNode<Props> {
     public override canBeChildOf(parent: Node): boolean {
         return parent.container instanceof Gtk.Grid;
     }
@@ -77,5 +70,3 @@ class GridChildNode extends PositionalChildNode<Props> {
         grid.attach(child, column, row, columnSpan, rowSpan);
     }
 }
-
-registerNodeClass(GridChildNode);

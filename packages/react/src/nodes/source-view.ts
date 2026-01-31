@@ -1,9 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Props } from "../types.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
-import { hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { hasChanged } from "./internal/utils.js";
 import { TextViewNode } from "./text-view.js";
 
 type SourceViewProps = Props & {
@@ -22,13 +21,7 @@ type SourceViewProps = Props & {
     onHighlightUpdated?: ((start: Gtk.TextIter, end: Gtk.TextIter) => void) | null;
 };
 
-class SourceViewNode extends TextViewNode {
-    public static override priority = 1;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([GtkSource.View], containerOrClass);
-    }
-
+export class SourceViewNode extends TextViewNode {
     protected override createBufferController(): TextBufferController<GtkSource.Buffer> {
         return new TextBufferController<GtkSource.Buffer>(this, this.container, () => new GtkSource.Buffer());
     }
@@ -131,5 +124,3 @@ class SourceViewNode extends TextViewNode {
         );
     }
 }
-
-registerNodeClass(SourceViewNode);

@@ -2,7 +2,6 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type * as Pango from "@gtkx/ffi/pango";
 import type { ReactNode } from "react";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { applyStyleChanges, type TagStyleProps } from "./internal/text-tag-styles.js";
 import { hasChanged } from "./internal/utils.js";
 import { TextAnchorNode } from "./text-anchor.js";
@@ -120,18 +119,12 @@ export type TextTagProps = {
 };
 
 export class TextTagNode extends VirtualNode<TextTagProps> implements TextContentParent {
-    public static override priority = 1;
-
     private buffer: Gtk.TextBuffer | null = null;
     private tag: Gtk.TextTag | null = null;
     private children: TextContentChild[] = [];
     private parent: TextContentParent | null = null;
 
     public bufferOffset = 0;
-
-    public static override matches(type: string): boolean {
-        return type === "TextTag";
-    }
 
     public setParent(parent: TextContentParent): void {
         this.parent = parent;
@@ -355,5 +348,3 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
         super.unmount();
     }
 }
-
-registerNodeClass(TextTagNode);

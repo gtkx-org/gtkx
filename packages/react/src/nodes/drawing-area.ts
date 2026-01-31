@@ -1,8 +1,7 @@
 import type * as cairo from "@gtkx/ffi/cairo";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
-import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import type { Props } from "../types.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type DrawFunc = (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
@@ -13,14 +12,8 @@ type DrawingAreaProps = Props & {
 
 const OWN_PROPS = ["onDraw"] as const;
 
-class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {
-    public static override priority = 1;
-
+export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {
     private pendingDrawFunc: DrawFunc | null = null;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.DrawingArea], containerOrClass);
-    }
 
     public override updateProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
         super.updateProps(
@@ -50,5 +43,3 @@ class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {
         this.signalStore.set(this, this.container, "realize", null);
     }
 }
-
-registerNodeClass(DrawingAreaNode);

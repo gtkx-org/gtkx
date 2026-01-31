@@ -1,14 +1,7 @@
 import { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import type { Container, Props } from "../types.js";
 
 export class VirtualNode<P = Props> extends Node<undefined, P> {
-    public static override priority = 1;
-
-    public static override matches(_type: string) {
-        return false;
-    }
-
     public static override createContainer() {}
 
     props: P;
@@ -26,5 +19,3 @@ export class VirtualNode<P = Props> extends Node<undefined, P> {
         this.props = newProps;
     }
 }
-
-registerNodeClass(VirtualNode);

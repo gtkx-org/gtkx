@@ -1,6 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import type { Container } from "../types.js";
 import { VirtualContainerNode } from "./abstract/virtual-container.js";
 import { matchesInterface } from "./internal/utils.js";
@@ -13,13 +12,7 @@ type ExpanderRowWidget = Gtk.Widget & {
 
 const EXPANDER_ROW_INTERFACE_METHODS = ["addRow", "addAction", "remove"] as const;
 
-class ExpanderRowRowNode extends VirtualContainerNode<ExpanderRowWidget> {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "ExpanderRowRow";
-    }
-
+export class ExpanderRowRowNode extends VirtualContainerNode<ExpanderRowWidget> {
     public override canBeChildOf(parent: Node): boolean {
         return matchesInterface(EXPANDER_ROW_INTERFACE_METHODS, parent.container as Container);
     }
@@ -29,13 +22,7 @@ class ExpanderRowRowNode extends VirtualContainerNode<ExpanderRowWidget> {
     }
 }
 
-class ExpanderRowActionNode extends VirtualContainerNode<ExpanderRowWidget> {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "ExpanderRowAction";
-    }
-
+export class ExpanderRowActionNode extends VirtualContainerNode<ExpanderRowWidget> {
     public override canBeChildOf(parent: Node): boolean {
         return matchesInterface(EXPANDER_ROW_INTERFACE_METHODS, parent.container as Container);
     }
@@ -44,6 +31,3 @@ class ExpanderRowActionNode extends VirtualContainerNode<ExpanderRowWidget> {
         parent.addAction(widget);
     }
 }
-
-registerNodeClass(ExpanderRowRowNode);
-registerNodeClass(ExpanderRowActionNode);

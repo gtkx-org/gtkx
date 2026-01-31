@@ -1,7 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import { PACK_INTERFACE_METHODS } from "../reconciler-metadata.js";
-import { registerNodeClass } from "../registry.js";
 import type { Container } from "../types.js";
 import { VirtualContainerNode } from "./abstract/virtual-container.js";
 import { matchesInterface } from "./internal/utils.js";
@@ -12,13 +11,7 @@ type PackableWidget = Gtk.Widget & {
     remove(child: Gtk.Widget): void;
 };
 
-class PackStartNode extends VirtualContainerNode<PackableWidget> {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "PackStart";
-    }
-
+export class PackStartNode extends VirtualContainerNode<PackableWidget> {
     public override canBeChildOf(parent: Node): boolean {
         return matchesInterface(PACK_INTERFACE_METHODS, parent.container as Container);
     }
@@ -28,13 +21,7 @@ class PackStartNode extends VirtualContainerNode<PackableWidget> {
     }
 }
 
-class PackEndNode extends VirtualContainerNode<PackableWidget> {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "PackEnd";
-    }
-
+export class PackEndNode extends VirtualContainerNode<PackableWidget> {
     public override canBeChildOf(parent: Node): boolean {
         return matchesInterface(PACK_INTERFACE_METHODS, parent.container as Container);
     }
@@ -43,6 +30,3 @@ class PackEndNode extends VirtualContainerNode<PackableWidget> {
         parent.packEnd(widget);
     }
 }
-
-registerNodeClass(PackStartNode);
-registerNodeClass(PackEndNode);

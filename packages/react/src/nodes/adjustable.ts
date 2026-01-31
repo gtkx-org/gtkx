@@ -1,9 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { ADJUSTABLE_INTERFACE_METHODS } from "../reconciler-metadata.js";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Props } from "../types.js";
 import type { AdjustableWidget } from "./internal/predicates.js";
-import { filterProps, hasChanged, matchesInterface } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["value", "lower", "upper", "stepIncrement", "pageIncrement", "pageSize", "onValueChanged"] as const;
@@ -19,13 +17,7 @@ type AdjustableProps = Props & {
 };
 
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
-    public static override priority = 2;
-
     private adjustment: Gtk.Adjustment | null = null;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesInterface(ADJUSTABLE_INTERFACE_METHODS, containerOrClass);
-    }
 
     public override updateProps(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
         super.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
@@ -89,5 +81,3 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
         }
     }
 }
-
-registerNodeClass(AdjustableNode);

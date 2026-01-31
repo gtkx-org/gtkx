@@ -13,8 +13,7 @@ import {
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Container, Props } from "../types.js";
 import {
     getAttachmentStrategy,
     attachChild as performAttachment,
@@ -30,13 +29,7 @@ import {
     type ReorderableWidget,
 } from "./internal/predicates.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import {
-    filterProps,
-    matchesAnyClass,
-    propNameToSignalName,
-    resolvePropMeta,
-    resolveSignal,
-} from "./internal/utils.js";
+import { filterProps, propNameToSignalName, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 
 const EXCLUDED_PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
 
@@ -53,12 +46,6 @@ function findProperty(obj: NativeObject, key: string): GObject.ParamSpec | null 
 }
 
 export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Props> extends Node<T, P> {
-    public static override priority = 3;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.Widget], containerOrClass);
-    }
-
     public static override createContainer(
         props: Props,
         containerClass: typeof Gtk.Widget,
@@ -323,5 +310,3 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         throw new Error(`Cannot find 'before' child in container`);
     }
 }
-
-registerNodeClass(WidgetNode);

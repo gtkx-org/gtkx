@@ -1,21 +1,14 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { ToggleProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-class ToggleNode extends VirtualNode<ToggleProps> {
-    public static override priority = 1;
-
+export class ToggleNode extends VirtualNode<ToggleProps> {
     private toggleGroup: Adw.ToggleGroup | null = null;
     private toggle: Adw.Toggle | null = null;
-
-    public static override matches(type: string): boolean {
-        return type === "Toggle";
-    }
 
     public canBeChildOf(parent: Node): boolean {
         return parent instanceof WidgetNode && parent.container instanceof Adw.ToggleGroup;
@@ -90,5 +83,3 @@ class ToggleNode extends VirtualNode<ToggleProps> {
         super.unmount();
     }
 }
-
-registerNodeClass(ToggleNode);

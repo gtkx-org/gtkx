@@ -2,20 +2,13 @@ import { isObjectEqual } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { StackPageProps } from "../jsx.js";
-import { registerNodeClass } from "../registry.js";
 import { hasChanged } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 
 type Props = Partial<StackPageProps>;
 
-class StackPageNode extends SlotNode<Props> {
-    public static override priority = 1;
-
+export class StackPageNode extends SlotNode<Props> {
     private page: Gtk.StackPage | Adw.ViewStackPage | null = null;
-
-    public static override matches(type: string): boolean {
-        return type === "StackPage";
-    }
 
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
@@ -104,5 +97,3 @@ class StackPageNode extends SlotNode<Props> {
         }
     }
 }
-
-registerNodeClass(StackPageNode);

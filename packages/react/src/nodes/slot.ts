@@ -2,7 +2,6 @@ import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { toCamelCase } from "@gtkx/gir";
 import type { SlotProps } from "../jsx.js";
-import { registerNodeClass } from "../registry.js";
 import type { ContainerClass, Props } from "../types.js";
 import { VirtualSingleChildNode } from "./abstract/virtual-single-child.js";
 import { resolvePropMeta } from "./internal/utils.js";
@@ -10,12 +9,6 @@ import { resolvePropMeta } from "./internal/utils.js";
 type SlotNodeProps = Omit<SlotProps, "children">;
 
 export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChildNode<P> {
-    public static override priority = 2;
-
-    public static override matches(type: string): boolean {
-        return type === "Slot";
-    }
-
     private cachedSetter: ((child: Gtk.Widget | null) => void) | null = null;
 
     public override setParent(parent: Gtk.Widget | null): void {
@@ -123,5 +116,3 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChil
         return false;
     }
 }
-
-registerNodeClass(SlotNode);

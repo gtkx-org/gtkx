@@ -4,7 +4,6 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { buildCss, interpolate } from "../animation/css-builder.js";
 import type { AnimatableProperties, AnimationProps, SpringTransition, TimedTransition } from "../animation/types.js";
-import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container } from "../types.js";
 import { VirtualSingleChildNode } from "./abstract/virtual-single-child.js";
@@ -18,13 +17,7 @@ const DEFAULT_SPRING_DAMPING = 1;
 const DEFAULT_SPRING_MASS = 1;
 const DEFAULT_SPRING_STIFFNESS = 100;
 
-class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
-    public static override priority = 2;
-
-    public static override matches(type: string): boolean {
-        return type === "Animation";
-    }
-
+export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
     private className: string;
     private provider: Gtk.CssProvider | null = null;
     private display: Gdk.Display | null = null;
@@ -305,5 +298,3 @@ class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
         return true;
     }
 }
-
-registerNodeClass(AnimationNode);

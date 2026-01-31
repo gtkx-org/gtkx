@@ -166,25 +166,7 @@ export class InternalGenerator {
     }
 
     private generateControllerMetadata(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
-        this.generateControllerClasses(sourceFile, controllers);
         this.generateControllerConstructorProps(sourceFile, controllers);
-    }
-
-    private generateControllerClasses(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {
-        const objectProperties: Record<string, WriterFunction> = {};
-
-        for (const controller of controllers) {
-            if (controller.abstract) continue;
-
-            const identifier = `${controller.namespace}.${controller.className}`;
-            objectProperties[controller.jsxName] = (writer) => writer.write(identifier);
-        }
-
-        sourceFile.addVariableStatement(
-            createConstExport("CONTROLLER_CLASSES", writeObjectOrEmpty(objectProperties, Writers), {
-                docs: "Map from JSX element name to controller class.",
-            }),
-        );
     }
 
     private generateControllerConstructorProps(sourceFile: SourceFile, controllers: CodegenControllerMeta[]): void {

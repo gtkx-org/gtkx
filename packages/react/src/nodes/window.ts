@@ -1,8 +1,7 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Container, Props } from "../types.js";
 import { DialogNode } from "./dialog.js";
 import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
 import { MenuModel } from "./models/menu.js";
@@ -23,13 +22,7 @@ export type WindowProps = Props & {
 };
 
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
-    public static override priority = 1;
-
     private menu: MenuModel;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.Window], containerOrClass);
-    }
 
     public static override createContainer(
         props: Props,
@@ -138,5 +131,3 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         }
     }
 }
-
-registerNodeClass(WindowNode);

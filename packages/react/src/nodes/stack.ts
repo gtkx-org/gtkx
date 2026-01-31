@@ -1,10 +1,7 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { STACK_CLASSES } from "../reconciler-metadata.js";
-import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
-import type { Container, ContainerClass } from "../types.js";
-import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["page", "onPageChanged"] as const;
@@ -16,13 +13,7 @@ type StackProps = {
     onPageChanged?: ((page: string | null, self: StackWidget) => void) | null;
 };
 
-class StackNode extends WidgetNode<StackWidget, StackProps> {
-    public static override priority = 1;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass(STACK_CLASSES, containerOrClass);
-    }
-
+export class StackNode extends WidgetNode<StackWidget, StackProps> {
     public override updateProps(oldProps: StackProps | null, newProps: StackProps): void {
         super.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
@@ -52,5 +43,3 @@ class StackNode extends WidgetNode<StackWidget, StackProps> {
         }
     }
 }
-
-registerNodeClass(StackNode);

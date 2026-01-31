@@ -1,21 +1,14 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { AlertDialogResponseProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProps> {
-    public static override priority = 1;
-
+export class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProps> {
     private dialog: Adw.AlertDialog | null = null;
     private responseId: string | null = null;
-
-    public static override matches(type: string): boolean {
-        return type === "AlertDialogResponse";
-    }
 
     public canBeChildOf(parent: Node): boolean {
         return parent instanceof WidgetNode && parent.container instanceof Adw.AlertDialog;
@@ -103,5 +96,3 @@ class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProps> {
         super.unmount();
     }
 }
-
-registerNodeClass(AlertDialogResponseNode);

@@ -1,22 +1,14 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Container, Props } from "../types.js";
 import { DialogNode } from "./dialog.js";
-import { matchesAnyClass } from "./internal/utils.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { WindowNode } from "./window.js";
 
-class ApplicationNode extends Node<Gtk.Application> {
-    static override priority = 0;
-
+export class ApplicationNode extends Node<Gtk.Application> {
     private menu: MenuModel;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null) {
-        return matchesAnyClass([Gtk.Application], containerOrClass);
-    }
 
     constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
@@ -88,5 +80,3 @@ class ApplicationNode extends Node<Gtk.Application> {
         );
     }
 }
-
-registerNodeClass(ApplicationNode);

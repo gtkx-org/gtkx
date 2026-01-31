@@ -1,6 +1,5 @@
 import type { TreeListItemProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import type { TreeItemData, TreeStore } from "./internal/tree-store.js";
 import { VirtualNode } from "./virtual.js";
 
@@ -14,15 +13,9 @@ export const createTreeItemData = (props: Props): TreeItemData => ({
 });
 
 export class TreeListItemNode extends VirtualNode<Props> {
-    public static override priority = 1;
-
     private store: TreeStore | null = null;
     private parentItemId: string | null = null;
     private childNodes: TreeListItemNode[] = [];
-
-    public static override matches(type: string): boolean {
-        return type === "TreeListItem";
-    }
 
     public setStore(store: TreeStore | null): void {
         this.store = store;
@@ -120,5 +113,3 @@ export class TreeListItemNode extends VirtualNode<Props> {
         }
     }
 }
-
-registerNodeClass(TreeListItemNode);

@@ -1,10 +1,9 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Container, Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type ColorDialogButtonProps = Props & {
@@ -17,15 +16,9 @@ type ColorDialogButtonProps = Props & {
 
 const OWN_PROPS = ["rgba", "onRgbaChanged", "title", "modal", "withAlpha"] as const;
 
-class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialogButtonProps> {
-    public static override priority = 1;
-
+export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialogButtonProps> {
     private dialog: Gtk.ColorDialog;
     private notifyHandler: SignalHandler | null = null;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.ColorDialogButton], containerOrClass);
-    }
 
     public static override createContainer(
         _props: ColorDialogButtonProps,
@@ -105,5 +98,3 @@ class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialo
         super.unmount();
     }
 }
-
-registerNodeClass(ColorDialogButtonNode);

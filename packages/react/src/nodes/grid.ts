@@ -1,19 +1,10 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass } from "../types.js";
 import { isAttachable } from "./internal/predicates.js";
-import { matchesAnyClass } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-class GridNode extends WidgetNode<Gtk.Grid> {
-    public static override priority = 0;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.Grid], containerOrClass);
-    }
-
+export class GridNode extends WidgetNode<Gtk.Grid> {
     private isGridChild(child: Node): boolean {
         return child.typeName === "GridChild";
     }
@@ -50,5 +41,3 @@ class GridNode extends WidgetNode<Gtk.Grid> {
         throw new Error(`Cannot remove '${child.typeName}' from 'Grid': expected x.GridChild`);
     }
 }
-
-registerNodeClass(GridNode);

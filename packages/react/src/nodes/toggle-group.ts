@@ -1,9 +1,8 @@
-import * as Adw from "@gtkx/ffi/adw";
+import type * as Adw from "@gtkx/ffi/adw";
 import type * as GObject from "@gtkx/ffi/gobject";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type ToggleGroupProps = Props & {
@@ -12,14 +11,8 @@ type ToggleGroupProps = Props & {
 
 const OWN_PROPS = ["onActiveChanged"] as const;
 
-class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProps> {
-    public static override priority = 1;
-
+export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProps> {
     private notifyHandler: SignalHandler | null = null;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Adw.ToggleGroup], containerOrClass);
-    }
 
     public override updateProps(oldProps: ToggleGroupProps | null, newProps: ToggleGroupProps): void {
         super.updateProps(
@@ -56,5 +49,3 @@ class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProps> {
         super.unmount();
     }
 }
-
-registerNodeClass(ToggleGroupNode);

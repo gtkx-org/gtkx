@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { CONTROLLER_CLASSES, CONTROLLER_CONSTRUCTOR_PROPS } from "../generated/internal.js";
+import { CONTROLLER_CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import type { Container, Props } from "../types.js";
 import type { Attachable } from "./internal/predicates.js";
 import type { SignalHandler } from "./internal/signal-store.js";
@@ -14,12 +13,6 @@ export class EventControllerNode<T extends Gtk.EventController = Gtk.EventContro
     extends Node<T, Props>
     implements Attachable
 {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type in CONTROLLER_CLASSES;
-    }
-
     public static override createContainer(
         props: Props,
         containerClass: typeof Gtk.EventController,
@@ -124,5 +117,3 @@ export class EventControllerNode<T extends Gtk.EventController = Gtk.EventContro
         }
     }
 }
-
-registerNodeClass(EventControllerNode);

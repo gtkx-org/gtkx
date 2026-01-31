@@ -1,18 +1,11 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { NavigationPageProps } from "../jsx.js";
-import { registerNodeClass } from "../registry.js";
 import { hasChanged } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 
 type Props = Partial<NavigationPageProps>;
 
 export class NavigationPageNode extends SlotNode<Props> {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "NavigationPage";
-    }
-
     public override updateProps(oldProps: Props | null, newProps: Props): void {
         super.updateProps(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
@@ -63,5 +56,3 @@ export class NavigationPageNode extends SlotNode<Props> {
         }
     }
 }
-
-registerNodeClass(NavigationPageNode);

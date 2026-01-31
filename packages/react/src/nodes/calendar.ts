@@ -1,7 +1,6 @@
-import * as Gtk from "@gtkx/ffi/gtk";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
-import { filterProps, matchesAnyClass, primitiveArrayEqual } from "./internal/utils.js";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import type { Props } from "../types.js";
+import { filterProps, primitiveArrayEqual } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type CalendarProps = Props & {
@@ -10,14 +9,8 @@ type CalendarProps = Props & {
 
 const OWN_PROPS = ["markedDays"] as const;
 
-class CalendarNode extends WidgetNode<Gtk.Calendar> {
-    public static override priority = 1;
-
+export class CalendarNode extends WidgetNode<Gtk.Calendar> {
     private appliedMarks: number[] = [];
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.Calendar], containerOrClass);
-    }
 
     public override updateProps(oldProps: CalendarProps | null, newProps: CalendarProps): void {
         super.updateProps(
@@ -47,5 +40,3 @@ class CalendarNode extends WidgetNode<Gtk.Calendar> {
         this.appliedMarks = [...newMarkedDays];
     }
 }
-
-registerNodeClass(CalendarNode);

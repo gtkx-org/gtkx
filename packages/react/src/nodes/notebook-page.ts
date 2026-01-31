@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { NotebookPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import { hasChanged } from "./internal/utils.js";
 import { NotebookPageTabNode } from "./notebook-page-tab.js";
@@ -11,14 +10,8 @@ import { WidgetNode } from "./widget.js";
 type Props = Partial<NotebookPageProps>;
 
 export class NotebookPageNode extends SlotNode<Props> {
-    public static override priority = 1;
-
     position: number | null = null;
     private tabNode: NotebookPageTabNode | null = null;
-
-    public static override matches(type: string): boolean {
-        return type === "NotebookPage";
-    }
 
     public override setParent(parent: Gtk.Widget | null): void {
         super.setParent(parent);
@@ -157,5 +150,3 @@ export class NotebookPageNode extends SlotNode<Props> {
         }
     }
 }
-
-registerNodeClass(NotebookPageNode);

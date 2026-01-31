@@ -1,9 +1,8 @@
 import type * as GObject from "@gtkx/ffi/gobject";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import type { Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type SearchBarProps = Props & {
@@ -12,14 +11,8 @@ type SearchBarProps = Props & {
 
 const OWN_PROPS = ["onSearchModeChanged"] as const;
 
-class SearchBarNode extends WidgetNode<Gtk.SearchBar, SearchBarProps> {
-    public static override priority = 1;
-
+export class SearchBarNode extends WidgetNode<Gtk.SearchBar, SearchBarProps> {
     private notifyHandler: SignalHandler | null = null;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.SearchBar], containerOrClass);
-    }
 
     public override updateProps(oldProps: SearchBarProps | null, newProps: SearchBarProps): void {
         super.updateProps(
@@ -56,5 +49,3 @@ class SearchBarNode extends WidgetNode<Gtk.SearchBar, SearchBarProps> {
         super.unmount();
     }
 }
-
-registerNodeClass(SearchBarNode);

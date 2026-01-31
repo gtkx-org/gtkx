@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
-import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import type { Props } from "../types.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const PROPS = ["hscrollbarPolicy", "vscrollbarPolicy"] as const;
@@ -11,13 +10,7 @@ type ScrolledWindowProps = Props & {
     vscrollbarPolicy?: Gtk.PolicyType;
 };
 
-class ScrolledWindowNode extends WidgetNode<Gtk.ScrolledWindow, ScrolledWindowProps> {
-    public static override priority = 2;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.ScrolledWindow], containerOrClass);
-    }
-
+export class ScrolledWindowNode extends WidgetNode<Gtk.ScrolledWindow, ScrolledWindowProps> {
     public override updateProps(oldProps: ScrolledWindowProps | null, newProps: ScrolledWindowProps): void {
         super.updateProps(oldProps ? filterProps(oldProps, PROPS) : null, filterProps(newProps, PROPS));
         this.applyOwnProps(oldProps, newProps);
@@ -31,5 +24,3 @@ class ScrolledWindowNode extends WidgetNode<Gtk.ScrolledWindow, ScrolledWindowPr
         }
     }
 }
-
-registerNodeClass(ScrolledWindowNode);

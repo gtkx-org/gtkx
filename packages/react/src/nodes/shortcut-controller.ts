@@ -1,16 +1,9 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { EventControllerNode } from "./event-controller.js";
 import { ShortcutNode } from "./shortcut.js";
 
-class ShortcutControllerNode extends EventControllerNode<Gtk.ShortcutController> {
-    public static override priority = 0;
-
-    public static override matches(type: string): boolean {
-        return type === "GtkShortcutController";
-    }
-
+export class ShortcutControllerNode extends EventControllerNode<Gtk.ShortcutController> {
     private shortcuts: ShortcutNode[] = [];
 
     public override appendChild(child: Node): void {
@@ -41,5 +34,3 @@ class ShortcutControllerNode extends EventControllerNode<Gtk.ShortcutController>
         }
     }
 }
-
-registerNodeClass(ShortcutControllerNode);

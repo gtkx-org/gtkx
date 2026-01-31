@@ -1,5 +1,4 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { registerNodeClass } from "../registry.js";
 import type { Props } from "../types.js";
 import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
@@ -32,12 +31,6 @@ export type ShortcutProps = Props & {
 };
 
 export class ShortcutNode extends VirtualNode<ShortcutProps> {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "Shortcut";
-    }
-
     public shortcut: Gtk.Shortcut | null = null;
     private action: Gtk.CallbackAction | null = null;
 
@@ -88,5 +81,3 @@ export class ShortcutNode extends VirtualNode<ShortcutProps> {
         return result;
     }
 }
-
-registerNodeClass(ShortcutNode);

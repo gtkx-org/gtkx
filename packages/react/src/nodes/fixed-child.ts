@@ -1,19 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { FixedChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { PositionalChildNode } from "./abstract/positional-child.js";
 import { hasChanged } from "./internal/utils.js";
 
 type Props = Partial<FixedChildProps>;
 
-class FixedChildNode extends PositionalChildNode<Props> {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "FixedChild";
-    }
-
+export class FixedChildNode extends PositionalChildNode<Props> {
     public override canBeChildOf(parent: Node): boolean {
         return parent.container instanceof Gtk.Fixed;
     }
@@ -87,5 +80,3 @@ class FixedChildNode extends PositionalChildNode<Props> {
         layoutChild.setTransform(this.props.transform);
     }
 }
-
-registerNodeClass(FixedChildNode);

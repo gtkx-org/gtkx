@@ -1,11 +1,9 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import { DROP_DOWN_CLASSES } from "../reconciler-metadata.js";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
+import type { Container, Props } from "../types.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";
-import { filterProps, matchesAnyClass } from "./internal/utils.js";
+import { filterProps } from "./internal/utils.js";
 import { SimpleListItemNode } from "./simple-list-item.js";
 import { WidgetNode } from "./widget.js";
 
@@ -16,13 +14,7 @@ type SimpleListViewProps = Props & {
     onSelectionChanged?: (id: string) => void;
 };
 
-class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleListViewProps> {
-    public static override priority = -1;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass(DROP_DOWN_CLASSES, containerOrClass);
-    }
-
+export class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleListViewProps> {
     private store = new SimpleListStore();
 
     constructor(
@@ -107,5 +99,3 @@ class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleL
         this.store.removeItem(id);
     }
 }
-
-registerNodeClass(SimpleListViewNode);

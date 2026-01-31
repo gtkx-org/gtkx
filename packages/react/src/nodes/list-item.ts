@@ -1,5 +1,4 @@
 import type { ListItemProps } from "../jsx.js";
-import { registerNodeClass } from "../registry.js";
 import type { ListStore } from "./internal/list-store.js";
 import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
@@ -10,13 +9,7 @@ export class ListItemNode<
     T extends { updateItem(id: string, value: unknown): void } = ListStore,
     P extends Props = Props,
 > extends VirtualNode<P> {
-    public static override priority = 1;
-
     private store: T | null = null;
-
-    public static override matches(type: string): boolean {
-        return type === "ListItem";
-    }
 
     public setStore(store: T | null): void {
         this.store = store;
@@ -37,5 +30,3 @@ export class ListItemNode<
         }
     }
 }
-
-registerNodeClass(ListItemNode);

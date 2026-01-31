@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
 import type { Node } from "../node.js";
-import { registerNodeClass } from "../registry.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -30,18 +29,12 @@ export type TextAnchorProps = {
 };
 
 export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
-    public static override priority = 1;
-
     private textView: Gtk.TextView | null = null;
     private buffer: Gtk.TextBuffer | null = null;
     private anchor: Gtk.TextChildAnchor | null = null;
     private widgetChild: WidgetNode | null = null;
 
     public bufferOffset = 0;
-
-    public static override matches(type: string): boolean {
-        return type === "TextAnchor";
-    }
 
     public getLength(): number {
         return 1;
@@ -96,5 +89,3 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
         super.unmount();
     }
 }
-
-registerNodeClass(TextAnchorNode);

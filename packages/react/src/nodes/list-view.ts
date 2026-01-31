@@ -1,11 +1,9 @@
 import { isObjectEqual } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import { LIST_WIDGET_CLASSES } from "../reconciler-metadata.js";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass } from "../types.js";
+import type { Container } from "../types.js";
 import { ListItemRenderer, type RenderItemFn } from "./internal/list-item-renderer.js";
-import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { filterProps, hasChanged } from "./internal/utils.js";
 import { ListItemNode } from "./list-item.js";
 import { ListModel, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
@@ -17,15 +15,9 @@ type ListViewProps = ListProps & {
     estimatedItemHeight?: number;
 };
 
-class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps> {
-    public static override priority = 1;
-
+export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps> {
     private itemRenderer: ListItemRenderer;
     private list: ListModel;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass(LIST_WIDGET_CLASSES, containerOrClass);
-    }
 
     constructor(
         typeName: string,
@@ -105,5 +97,3 @@ class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps
         }
     }
 }
-
-registerNodeClass(ListViewNode);

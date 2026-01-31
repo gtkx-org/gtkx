@@ -1,7 +1,6 @@
-import * as Gtk from "@gtkx/ffi/gtk";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass, Props } from "../types.js";
-import { filterProps, matchesAnyClass, shallowArrayEqual } from "./internal/utils.js";
+import type * as Gtk from "@gtkx/ffi/gtk";
+import type { Props } from "../types.js";
+import { filterProps, shallowArrayEqual } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type LevelBarOffset = {
@@ -15,14 +14,8 @@ type LevelBarProps = Props & {
 
 const OWN_PROPS = ["offsets"] as const;
 
-class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
-    public static override priority = 1;
-
+export class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
     private appliedOffsetIds = new Set<string>();
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass([Gtk.LevelBar], containerOrClass);
-    }
 
     public override updateProps(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
         super.updateProps(
@@ -54,5 +47,3 @@ class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
         }
     }
 }
-
-registerNodeClass(LevelBarNode);

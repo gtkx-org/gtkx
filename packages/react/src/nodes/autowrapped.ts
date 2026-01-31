@@ -1,11 +1,7 @@
 import { isObjectEqual } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
-import { AUTOWRAP_CLASSES } from "../reconciler-metadata.js";
-import { registerNodeClass } from "../registry.js";
-import type { Container, ContainerClass } from "../types.js";
 import { isRemovable, isSingleChild } from "./internal/predicates.js";
-import { matchesAnyClass } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
@@ -16,13 +12,7 @@ const isAutowrappedChild = (obj: unknown): obj is AutowrappedChild => {
     return obj instanceof Gtk.ListBoxRow || obj instanceof Gtk.FlowBoxChild;
 };
 
-class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
-    public static override priority = 1;
-
-    public static override matches(_type: string, containerOrClass?: Container | ContainerClass | null): boolean {
-        return matchesAnyClass(AUTOWRAP_CLASSES, containerOrClass);
-    }
-
+export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
     public override appendChild(child: Node): void {
         if (child instanceof SlotNode) {
             super.appendChild(child);
@@ -141,5 +131,3 @@ class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         return child;
     }
 }
-
-registerNodeClass(AutowrappedNode);

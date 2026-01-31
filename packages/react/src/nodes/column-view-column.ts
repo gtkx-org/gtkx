@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ColumnViewColumnProps } from "../jsx.js";
-import { registerNodeClass } from "../registry.js";
 import type { Container } from "../types.js";
 import { ListItemRenderer } from "./internal/list-item-renderer.js";
 import type { ListStore } from "./internal/list-store.js";
@@ -9,12 +8,6 @@ import { VirtualNode } from "./virtual.js";
 type Props = Partial<ColumnViewColumnProps>;
 
 export class ColumnViewColumnNode extends VirtualNode<Props> {
-    public static override priority = 1;
-
-    public static override matches(type: string): boolean {
-        return type === "ColumnViewColumn";
-    }
-
     column: Gtk.ColumnViewColumn;
     private itemRenderer: ListItemRenderer;
 
@@ -78,5 +71,3 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
         super.updateProps(oldProps, newProps);
     }
 }
-
-registerNodeClass(ColumnViewColumnNode);

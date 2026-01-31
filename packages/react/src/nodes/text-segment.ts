@@ -1,4 +1,3 @@
-import { registerNodeClass } from "../registry.js";
 import { hasChanged } from "./internal/utils.js";
 import type { TextContentParent } from "./text-content.js";
 import { VirtualNode } from "./virtual.js";
@@ -8,15 +7,9 @@ export type TextSegmentProps = {
 };
 
 export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
-    public static override priority = 1;
-
     private parent: TextContentParent | null = null;
 
     public bufferOffset = 0;
-
-    public static override matches(type: string): boolean {
-        return type === "TextSegment";
-    }
 
     public setParent(parent: TextContentParent): void {
         this.parent = parent;
@@ -41,5 +34,3 @@ export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
         }
     }
 }
-
-registerNodeClass(TextSegmentNode);
