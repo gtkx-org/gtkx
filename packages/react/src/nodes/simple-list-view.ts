@@ -1,10 +1,8 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";
-import { filterProps } from "./internal/utils.js";
-import { SimpleListItemNode } from "./simple-list-item.js";
+import type { SimpleListItemNode } from "./simple-list-item.js";
 import { WidgetNode } from "./widget.js";
 
 const PROP_NAMES = ["selectedId", "onSelectionChanged"] as const;
@@ -14,7 +12,12 @@ type SimpleListViewProps = Props & {
     onSelectionChanged?: (id: string) => void;
 };
 
-export class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, SimpleListViewProps> {
+export class SimpleListViewNode extends WidgetNode<
+    Gtk.DropDown | Adw.ComboRow,
+    SimpleListViewProps,
+    SimpleListItemNode
+> {
+    protected override readonly excludedPropNames = PROP_NAMES;
     private store = new SimpleListStore();
 
     constructor(
@@ -52,53 +55,23 @@ export class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, 
             }
         }
 
-        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.commitUpdate(oldProps, newProps);
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof SimpleListItemNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'DropDown': expected x.SimpleListItem`);
-        }
-
-        const { id, value } = child.props;
-
-        if (!id || value === undefined) {
-            throw new Error("Expected 'id' and 'value' props to be present on SimpleListItem");
-        }
-
+    public override appendChild(child: SimpleListItemNode): void {
         super.appendChild(child);
         child.setStore(this.store);
-        this.store.addItem(id, value);
+        this.store.addItem(child.props.id, child.props.value);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof SimpleListItemNode) || !(before instanceof SimpleListItemNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' into 'DropDown': expected x.SimpleListItem`);
-        }
-
-        const { id, value } = child.props;
-        const beforeId = before.props.id;
-
-        if (!id || value === undefined || !beforeId) {
-            throw new Error("Expected 'id' and 'value' props to be present on SimpleListItem");
-        }
-
+    public override insertBefore(child: SimpleListItemNode, before: SimpleListItemNode): void {
         super.insertBefore(child, before);
         child.setStore(this.store);
-        this.store.insertItemBefore(id, beforeId, value);
+        this.store.insertItemBefore(child.props.id, before.props.id, child.props.value);
     }
 
-    public override removeChild(child: Node): void {
-        if (!(child instanceof SimpleListItemNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'DropDown': expected x.SimpleListItem`);
-        }
-
-        const { id } = child.props;
-        if (!id) {
-            throw new Error("Expected 'id' prop to be present on SimpleListItem");
-        }
-
-        this.store.removeItem(id);
+    public override removeChild(child: SimpleListItemNode): void {
+        this.store.removeItem(child.props.id);
         super.removeChild(child);
     }
 }

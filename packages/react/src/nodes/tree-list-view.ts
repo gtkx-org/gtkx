@@ -1,10 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { TreeListItemRenderer, type TreeRenderItemFn } from "./internal/tree-list-item-renderer.js";
 import { filterProps } from "./internal/utils.js";
 import { TreeList, type TreeListProps } from "./models/tree-list.js";
-import { TreeListItemNode } from "./tree-list-item.js";
+import type { TreeListItemNode } from "./tree-list-item.js";
 import { WidgetNode } from "./widget.js";
 
 const RENDERER_PROP_NAMES = ["renderItem", "estimatedItemHeight"] as const;
@@ -15,7 +14,8 @@ type TreeListViewProps = TreeListProps & {
     estimatedItemHeight?: number;
 };
 
-export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps> {
+export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps, TreeListItemNode> {
+    protected override readonly excludedPropNames = PROP_NAMES;
     private itemRenderer: TreeListItemRenderer;
     private treeList: TreeList;
 
@@ -61,29 +61,17 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
         super.detachDeletedInstance();
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof TreeListItemNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected x.TreeListItem`);
-        }
-
+    public override appendChild(child: TreeListItemNode): void {
         super.appendChild(child);
         this.treeList.appendChild(child);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof TreeListItemNode) || !(before instanceof TreeListItemNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected x.TreeListItem`);
-        }
-
+    public override insertBefore(child: TreeListItemNode, before: TreeListItemNode): void {
         super.insertBefore(child, before);
         this.treeList.insertBefore(child, before);
     }
 
-    public override removeChild(child: Node): void {
-        if (!(child instanceof TreeListItemNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected x.TreeListItem`);
-        }
-
+    public override removeChild(child: TreeListItemNode): void {
         this.treeList.removeChild(child);
         super.removeChild(child);
     }
@@ -108,6 +96,6 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
             this.container.setModel(currentModel);
         }
 
-        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.commitUpdate(oldProps, newProps);
     }
 }

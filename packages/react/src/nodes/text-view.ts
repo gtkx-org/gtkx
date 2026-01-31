@@ -1,8 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import type { Props } from "../types.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
-import { filterProps } from "./internal/utils.js";
+import type { SlotNode } from "./slot.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
 import type { TextSegmentNode } from "./text-segment.js";
 import { WidgetNode } from "./widget.js";
@@ -25,7 +24,10 @@ type TextViewProps = Props & {
     onCanRedoChanged?: ((canRedo: boolean) => void) | null;
 };
 
-export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implements TextContentParent {
+type TextViewChild = TextContentChild | SlotNode | WidgetNode;
+
+export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextViewChild> implements TextContentParent {
+    protected override readonly excludedPropNames = OWN_PROPS;
     bufferController: TextBufferController | null = null;
 
     ensureBufferController(): TextBufferController {
@@ -40,11 +42,11 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
     }
 
     public override commitUpdate(oldProps: TextViewProps | null, newProps: TextViewProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.ensureBufferController().applyOwnProps(oldProps, newProps);
     }
 
-    public override appendChild(child: Node): void {
+    public override appendChild(child: TextViewChild): void {
         const controller = this.ensureBufferController();
         if (controller.isTextContentChild(child)) {
             controller.appendChild(child);
@@ -53,7 +55,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
         super.appendChild(child);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
+    public override insertBefore(child: TextViewChild, before: TextViewChild): void {
         const controller = this.ensureBufferController();
         if (controller.isTextContentChild(child)) {
             controller.insertBefore(child, before as TextContentChild);
@@ -62,7 +64,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
         super.insertBefore(child, before);
     }
 
-    public override removeChild(child: Node): void {
+    public override removeChild(child: TextViewChild): void {
         const controller = this.ensureBufferController();
         if (controller.isTextContentChild(child)) {
             controller.removeChild(child);

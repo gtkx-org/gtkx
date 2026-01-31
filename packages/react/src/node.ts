@@ -8,14 +8,16 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
     }
 
     container: TContainer;
+    props: TProps;
     typeName: string;
     signalStore: SignalStore;
     rootContainer: Container;
     parent: TParent | null = null;
     children: TChild[] = [];
 
-    constructor(typeName: string, _props: TProps, container: TContainer, rootContainer: Container) {
+    constructor(typeName: string, props: TProps, container: TContainer, rootContainer: Container) {
         this.typeName = typeName;
+        this.props = props;
         this.container = container;
         this.rootContainer = rootContainer;
         this.signalStore = getSignalStore(rootContainer);
@@ -83,7 +85,9 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
         return false;
     }
 
-    public commitUpdate(_oldProps: TProps | null, _newProps: TProps): void {}
+    public commitUpdate(_oldProps: TProps | null, newProps: TProps): void {
+        this.props = newProps;
+    }
 
     public commitMount(): void {}
 

@@ -1,9 +1,8 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { ListItemRenderer, type RenderItemFn } from "./internal/list-item-renderer.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
-import { ListItemNode } from "./list-item.js";
+import { hasChanged } from "./internal/utils.js";
+import type { ListItemNode } from "./list-item.js";
 import { ListModel, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
@@ -14,7 +13,8 @@ type ListViewProps = ListProps & {
     estimatedItemHeight?: number;
 };
 
-export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps> {
+export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListViewProps, ListItemNode> {
+    protected override readonly excludedPropNames = OWN_PROPS;
     private itemRenderer: ListItemRenderer;
     private list: ListModel;
 
@@ -54,35 +54,23 @@ export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListVi
         super.detachDeletedInstance();
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof ListItemNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected x.ListItem`);
-        }
-
+    public override appendChild(child: ListItemNode): void {
         super.appendChild(child);
         this.list.appendChild(child);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof ListItemNode) || !(before instanceof ListItemNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected x.ListItem`);
-        }
-
+    public override insertBefore(child: ListItemNode, before: ListItemNode): void {
         super.insertBefore(child, before);
         this.list.insertBefore(child, before);
     }
 
-    public override removeChild(child: Node): void {
-        if (!(child instanceof ListItemNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected x.ListItem`);
-        }
-
+    public override removeChild(child: ListItemNode): void {
         this.list.removeChild(child);
         super.removeChild(child);
     }
 
     public override commitUpdate(oldProps: ListViewProps | null, newProps: ListViewProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 

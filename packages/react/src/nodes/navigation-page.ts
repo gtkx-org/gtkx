@@ -4,7 +4,7 @@ import { hasChanged } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 import type { WidgetNode } from "./widget.js";
 
-type Props = Partial<NavigationPageProps>;
+type Props = NavigationPageProps;
 
 export class NavigationPageNode extends SlotNode<Props> {
     private wrappedPage: Adw.NavigationPage | null = null;
@@ -41,7 +41,7 @@ export class NavigationPageNode extends SlotNode<Props> {
             return;
         }
 
-        if (hasChanged(oldProps, newProps, "id") && newProps.id !== undefined) {
+        if (hasChanged(oldProps, newProps, "id")) {
             this.wrappedPage.setTag(newProps.id);
         }
 

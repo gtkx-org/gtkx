@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { SlotProps } from "../jsx.js";
 import { SlotNode } from "./slot.js";
 
-type Props = Partial<SlotProps>;
+type Props = SlotProps;
 
 export class NotebookPageTabNode extends SlotNode<Props> {
     private notebook: Gtk.Notebook | null = null;

@@ -1,9 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../../node.js";
 import { ListStore } from "../internal/list-store.js";
 import { SelectionModelManager } from "../internal/selection-model.js";
 import type { SignalStore } from "../internal/signal-store.js";
-import { ListItemNode } from "../list-item.js";
+import type { ListItemNode } from "../list-item.js";
 
 export type ListProps = {
     selectionMode?: Gtk.SelectionMode;
@@ -41,29 +40,17 @@ export class ListModel {
         return this.selectionManager.getSelectionModel();
     }
 
-    public appendChild(child: Node): void {
-        if (!(child instanceof ListItemNode)) {
-            return;
-        }
-
+    public appendChild(child: ListItemNode): void {
         child.setStore(this.store);
         this.store.addItem(child.props.id, child.props.value);
     }
 
-    public insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof ListItemNode) || !(before instanceof ListItemNode)) {
-            return;
-        }
-
+    public insertBefore(child: ListItemNode, before: ListItemNode): void {
         child.setStore(this.store);
         this.store.insertItemBefore(child.props.id, before.props.id, child.props.value);
     }
 
-    public removeChild(child: Node): void {
-        if (!(child instanceof ListItemNode)) {
-            return;
-        }
-
+    public removeChild(child: ListItemNode): void {
         this.store.removeItem(child.props.id);
         child.setStore(null);
     }

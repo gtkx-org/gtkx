@@ -3,7 +3,7 @@ import type { ListStore } from "./internal/list-store.js";
 import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 
-type Props = Partial<ListItemProps>;
+type Props = ListItemProps;
 
 export class ListItemNode<
     T extends { updateItem(id: string, value: unknown): void } = ListStore,
@@ -24,9 +24,7 @@ export class ListItemNode<
         if (!this.store) return;
 
         if (hasChanged(oldProps, newProps, "id") || hasChanged(oldProps, newProps, "value")) {
-            if (newProps.id !== undefined) {
-                this.store.updateItem(newProps.id, newProps.value);
-            }
+            this.store.updateItem(newProps.id, newProps.value);
         }
     }
 }

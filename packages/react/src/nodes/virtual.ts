@@ -10,14 +10,11 @@ export class VirtualNode<TProps = any, TParent extends Node = any, TChild extend
 > {
     public static override createContainer() {}
 
-    props: TProps;
-
     constructor(typeName: string, props: TProps = {} as TProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
-        this.props = props;
     }
 
-    public override commitUpdate(_oldProps: TProps | null, newProps: TProps): void {
-        this.props = newProps;
+    public override commitUpdate(oldProps: TProps | null, newProps: TProps): void {
+        super.commitUpdate(oldProps, newProps);
     }
 }

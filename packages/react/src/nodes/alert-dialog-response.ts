@@ -1,19 +1,18 @@
-import * as Adw from "@gtkx/ffi/adw";
+import type * as Adw from "@gtkx/ffi/adw";
 import type { AlertDialogResponseProps } from "../jsx.js";
-import type { Node } from "../node.js";
 import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
-import { WidgetNode } from "./widget.js";
+import type { WidgetNode } from "./widget.js";
 
-export class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProps> {
+export class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProps, WidgetNode<Adw.AlertDialog>> {
     private dialog: Adw.AlertDialog | null = null;
     private responseId: string | null = null;
 
-    public override setParent(parent: Node | null): void {
+    public override setParent(parent: WidgetNode<Adw.AlertDialog> | null): void {
         if (parent !== null) {
             super.setParent(parent);
 
-            if (parent instanceof WidgetNode && parent.container instanceof Adw.AlertDialog && !this.dialog) {
+            if (!this.dialog) {
                 this.dialog = parent.container;
                 this.responseId = this.props.id;
                 this.dialog.addResponse(this.responseId, this.props.label);

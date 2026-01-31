@@ -3,7 +3,7 @@ import type { Node } from "../node.js";
 import type { TreeItemData, TreeStore } from "./internal/tree-store.js";
 import { VirtualNode } from "./virtual.js";
 
-type Props = Partial<TreeListItemProps>;
+type Props = TreeListItemProps;
 
 export const createTreeItemData = (props: Props): TreeItemData => ({
     value: props.value,
@@ -12,7 +12,7 @@ export const createTreeItemData = (props: Props): TreeItemData => ({
     hideExpander: props.hideExpander,
 });
 
-export class TreeListItemNode extends VirtualNode<Props> {
+export class TreeListItemNode extends VirtualNode<Props, Node, TreeListItemNode> {
     private store: TreeStore | null = null;
     private parentItemId: string | null = null;
     private childNodes: TreeListItemNode[] = [];
@@ -40,29 +40,21 @@ export class TreeListItemNode extends VirtualNode<Props> {
         return child instanceof TreeListItemNode;
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof TreeListItemNode)) {
-            return;
-        }
-
+    public override appendChild(child: TreeListItemNode): void {
         super.appendChild(child);
         child.setStore(this.store);
-        child.setParentItemId(this.props.id ?? null);
+        child.setParentItemId(this.props.id);
         this.childNodes.push(child);
 
-        if (this.store && child.props.id !== undefined) {
+        if (this.store) {
             this.store.addItem(child.props.id, createTreeItemData(child.props), this.props.id);
         }
     }
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof TreeListItemNode) || !(before instanceof TreeListItemNode)) {
-            return;
-        }
-
+    public override insertBefore(child: TreeListItemNode, before: TreeListItemNode): void {
         super.insertBefore(child, before);
         child.setStore(this.store);
-        child.setParentItemId(this.props.id ?? null);
+        child.setParentItemId(this.props.id);
 
         const beforeIndex = this.childNodes.indexOf(before);
         if (beforeIndex === -1) {
@@ -71,7 +63,7 @@ export class TreeListItemNode extends VirtualNode<Props> {
             this.childNodes.splice(beforeIndex, 0, child);
         }
 
-        if (this.store && child.props.id !== undefined && before.props.id !== undefined) {
+        if (this.store) {
             this.store.insertItemBefore(
                 child.props.id,
                 before.props.id,
@@ -81,17 +73,13 @@ export class TreeListItemNode extends VirtualNode<Props> {
         }
     }
 
-    public override removeChild(child: Node): void {
-        if (!(child instanceof TreeListItemNode)) {
-            return;
-        }
-
+    public override removeChild(child: TreeListItemNode): void {
         const index = this.childNodes.indexOf(child);
         if (index !== -1) {
             this.childNodes.splice(index, 1);
         }
 
-        if (this.store && child.props.id !== undefined) {
+        if (this.store) {
             this.store.removeItem(child.props.id, this.props.id);
         }
 
@@ -115,7 +103,7 @@ export class TreeListItemNode extends VirtualNode<Props> {
             oldProps.indentForIcon !== newProps.indentForIcon ||
             oldProps.hideExpander !== newProps.hideExpander;
 
-        if (propsChanged && newProps.id !== undefined) {
+        if (propsChanged) {
             this.store.updateItem(newProps.id, createTreeItemData(newProps));
         }
     }

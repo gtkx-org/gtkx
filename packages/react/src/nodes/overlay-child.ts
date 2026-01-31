@@ -4,7 +4,7 @@ import type { Node } from "../node.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-type Props = Partial<OverlayChildProps>;
+type Props = OverlayChildProps;
 
 export class OverlayChildNode extends VirtualNode<Props, WidgetNode<Gtk.Overlay>, WidgetNode> {
     public override isValidChild(child: Node): boolean {

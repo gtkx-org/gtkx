@@ -3,7 +3,7 @@ import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Container, Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type ColorDialogButtonProps = Props & {
@@ -17,6 +17,7 @@ type ColorDialogButtonProps = Props & {
 const OWN_PROPS = ["rgba", "onRgbaChanged", "title", "modal", "withAlpha"] as const;
 
 export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialogButtonProps> {
+    protected override readonly excludedPropNames = OWN_PROPS;
     private dialog: Gtk.ColorDialog;
     private notifyHandler: SignalHandler | null = null;
 
@@ -44,7 +45,7 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
     }
 
     public override commitUpdate(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 

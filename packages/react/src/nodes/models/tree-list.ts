@@ -15,7 +15,7 @@ export type TreeListProps = {
     onSelectionChanged?: (ids: string[]) => void;
 };
 
-export class TreeList extends VirtualNode<TreeListProps> {
+export class TreeList extends VirtualNode<TreeListProps, Node, TreeListItemNode> {
     private store: TreeStore;
     private treeListModel: Gtk.TreeListModel;
     private selectionManager: SelectionModelManager;
@@ -62,15 +62,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         return child instanceof TreeListItemNode;
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof TreeListItemNode)) {
-            return;
-        }
-
-        if (!child.props.id) {
-            throw new Error("Cannot append 'TreeListItem' to 'TreeList': missing required 'id' prop");
-        }
-
+    public override appendChild(child: TreeListItemNode): void {
         super.appendChild(child);
         child.setStore(this.store);
         this.addItemWithChildren(child);
@@ -78,7 +70,6 @@ export class TreeList extends VirtualNode<TreeListProps> {
 
     private addItemWithChildren(node: TreeListItemNode, parentId?: string): void {
         const id = node.props.id;
-        if (id === undefined) return;
 
         for (const child of node.getChildNodes()) {
             this.addItemWithChildren(child, id);
@@ -87,37 +78,14 @@ export class TreeList extends VirtualNode<TreeListProps> {
         this.store.addItem(id, createTreeItemData(node.props), parentId);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof TreeListItemNode) || !(before instanceof TreeListItemNode)) {
-            return;
-        }
-
-        if (!child.props.id) {
-            throw new Error("Cannot insert 'TreeListItem' into 'TreeList': missing required 'id' prop");
-        }
-
-        if (!before.props.id) {
-            throw new Error("Cannot insert 'TreeListItem' into 'TreeList': 'before' node missing required 'id' prop");
-        }
-
+    public override insertBefore(child: TreeListItemNode, before: TreeListItemNode): void {
         super.insertBefore(child, before);
-        const id = child.props.id;
-        const beforeId = before.props.id;
         child.setStore(this.store);
-        this.store.insertItemBefore(id, beforeId, createTreeItemData(child.props));
+        this.store.insertItemBefore(child.props.id, before.props.id, createTreeItemData(child.props));
     }
 
-    public override removeChild(child: Node): void {
-        if (!(child instanceof TreeListItemNode)) {
-            return;
-        }
-
-        if (!child.props.id) {
-            throw new Error("Cannot remove 'TreeListItem' from 'TreeList': missing required 'id' prop");
-        }
-
-        const id = child.props.id;
-        this.store.removeItem(id);
+    public override removeChild(child: TreeListItemNode): void {
+        this.store.removeItem(child.props.id);
         child.setStore(null);
         super.removeChild(child);
     }

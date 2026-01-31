@@ -3,26 +3,20 @@ import type { Node } from "../node.js";
 import { EventControllerNode } from "./event-controller.js";
 import { ShortcutNode } from "./shortcut.js";
 
-export class ShortcutControllerNode extends EventControllerNode<Gtk.ShortcutController> {
+export class ShortcutControllerNode extends EventControllerNode<Gtk.ShortcutController, ShortcutNode> {
     private shortcuts: ShortcutNode[] = [];
 
     public override isValidChild(child: Node): boolean {
         return child instanceof ShortcutNode;
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof ShortcutNode)) {
-            throw new Error(`ShortcutController only accepts Shortcut children, got '${child.typeName}'`);
-        }
-
+    public override appendChild(child: ShortcutNode): void {
         super.appendChild(child);
         this.shortcuts.push(child);
         this.addShortcutToController(child);
     }
 
-    public override removeChild(child: Node): void {
-        if (!(child instanceof ShortcutNode)) return;
-
+    public override removeChild(child: ShortcutNode): void {
         const index = this.shortcuts.indexOf(child);
         if (index !== -1) {
             this.shortcuts.splice(index, 1);

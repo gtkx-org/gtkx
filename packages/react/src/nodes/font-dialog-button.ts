@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type * as Pango from "@gtkx/ffi/pango";
 import type { Container, Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type FontDialogButtonProps = Props & {
@@ -29,6 +29,7 @@ const OWN_PROPS = [
 ] as const;
 
 export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogButtonProps> {
+    protected override readonly excludedPropNames = OWN_PROPS;
     private dialog: Gtk.FontDialog;
     private notifyHandler: SignalHandler | null = null;
 
@@ -51,7 +52,7 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
     }
 
     public override commitUpdate(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 

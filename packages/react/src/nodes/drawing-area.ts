@@ -1,7 +1,7 @@
 import type * as cairo from "@gtkx/ffi/cairo";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../types.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type DrawFunc = (self: Gtk.DrawingArea, cr: cairo.Context, width: number, height: number) => void;
@@ -13,10 +13,11 @@ type DrawingAreaProps = Props & {
 const OWN_PROPS = ["onDraw"] as const;
 
 export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {
+    protected override readonly excludedPropNames = OWN_PROPS;
     private pendingDrawFunc: DrawFunc | null = null;
 
     public override commitUpdate(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 

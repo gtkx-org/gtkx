@@ -1,15 +1,20 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
-import { SlotNode } from "./slot.js";
+import type { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 const ACTION_PREFIX = "menu";
 
-export class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton> {
+type PopoverMenuChild = MenuNode | SlotNode | WidgetNode;
+
+export class PopoverMenuNode extends WidgetNode<
+    Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton,
+    Props,
+    PopoverMenuChild
+> {
     private menu: MenuModel;
 
     constructor(
@@ -29,48 +34,24 @@ export class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMen
         this.container.setMenuModel(this.menu.getMenu());
     }
 
-    public override appendChild(child: Node): void {
+    public override appendChild(child: PopoverMenuChild): void {
         if (child instanceof MenuNode) {
-            super.appendChild(child);
             this.menu.appendChild(child);
-            return;
         }
-
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.appendChild(child);
-            return;
-        }
-
-        throw new Error(`Cannot append '${child.typeName}' to 'PopoverMenu': expected MenuItem or Widget`);
+        super.appendChild(child);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof MenuNode) {
-            super.insertBefore(child, before);
+    public override insertBefore(child: PopoverMenuChild, before: PopoverMenuChild): void {
+        if (child instanceof MenuNode && before instanceof MenuNode) {
             this.menu.insertBefore(child, before);
-            return;
         }
-
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.insertBefore(child, before);
-            return;
-        }
-
-        throw new Error(`Cannot insert '${child.typeName}' into 'PopoverMenu': expected MenuItem or Widget`);
+        super.insertBefore(child, before);
     }
 
-    public override removeChild(child: Node): void {
+    public override removeChild(child: PopoverMenuChild): void {
         if (child instanceof MenuNode) {
             this.menu.removeChild(child);
-            super.removeChild(child);
-            return;
         }
-
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
-            super.removeChild(child);
-            return;
-        }
-
-        throw new Error(`Cannot remove '${child.typeName}' from 'PopoverMenu': expected MenuItem or Widget`);
+        super.removeChild(child);
     }
 }

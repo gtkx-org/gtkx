@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { filterProps, hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["page", "onPageChanged"] as const;
@@ -13,8 +13,10 @@ type StackProps = {
 };
 
 export class StackNode extends WidgetNode<StackWidget, StackProps> {
+    protected override readonly excludedPropNames = OWN_PROPS;
+
     public override commitUpdate(oldProps: StackProps | null, newProps: StackProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 

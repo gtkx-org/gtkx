@@ -45,7 +45,13 @@ function findProperty(obj: NativeObject, key: string): GObject.ParamSpec | null 
     return objectClass.findProperty(propertyName) ?? null;
 }
 
-export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Props> extends Node<T, P> {
+export class WidgetNode<
+    T extends Gtk.Widget = Gtk.Widget,
+    P extends Props = Props,
+    // biome-ignore lint/suspicious/noExplicitAny: Self-referential type bounds require any
+    TChild extends Node = any,
+> extends Node<T, P, Node, TChild> {
+    protected readonly excludedPropNames: readonly string[] = [];
     public static override createContainer(
         props: Props,
         containerClass: typeof Gtk.Widget,
@@ -65,7 +71,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         return true;
     }
 
-    public override appendChild(child: Node): void {
+    public override appendChild(child: TChild): void {
         super.appendChild(child);
 
         if (child instanceof WidgetNode) {
@@ -73,7 +79,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
     }
 
-    public override removeChild(child: Node): void {
+    public override removeChild(child: TChild): void {
         if (child instanceof WidgetNode) {
             if (this.isChildAutowrapped(child)) {
                 const wrapper = child.container.getParent();
@@ -97,7 +103,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         super.removeChild(child);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
+    public override insertBefore(child: TChild, before: TChild): void {
         super.insertBefore(child, before);
 
         if (!(child instanceof WidgetNode)) return;
@@ -119,9 +125,13 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
     }
 
     public override commitUpdate(oldProps: P | null, newProps: P): void {
+        super.commitUpdate(oldProps, newProps);
+
         if (!this.container) {
             throw new Error(`WidgetNode.commitUpdate: container is undefined for ${this.typeName}`);
         }
+
+        const allExcluded = [...EXCLUDED_PROPS, ...this.excludedPropNames];
 
         this.signalStore.blockAll();
         try {
@@ -129,8 +139,8 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             this.updateGrabFocus(oldProps, newProps);
 
             const propNames = new Set([
-                ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
-                ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
+                ...Object.keys(filterProps(oldProps ?? {}, allExcluded)),
+                ...Object.keys(filterProps(newProps ?? {}, allExcluded)),
             ]);
 
             const pendingSignals: Array<{ name: string; newValue: unknown }> = [];

@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../types.js";
 import type { AdjustableWidget } from "./internal/predicates.js";
-import { filterProps, hasChanged } from "./internal/utils.js";
+import { hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["value", "lower", "upper", "stepIncrement", "pageIncrement", "pageSize", "onValueChanged"] as const;
@@ -17,10 +17,11 @@ type AdjustableProps = Props & {
 };
 
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
+    protected override readonly excludedPropNames = OWN_PROPS;
     private adjustment: Gtk.Adjustment | null = null;
 
     public override commitUpdate(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyAdjustmentProps(oldProps, newProps);
     }
 

@@ -13,7 +13,7 @@ export type MenuProps = {
     onActivate?: () => void;
 };
 
-export class MenuModel extends VirtualNode<MenuProps> {
+export class MenuModel extends VirtualNode<MenuProps, Node, MenuModel> {
     private actionMap: Gio.ActionMap | null = null;
     private actionPrefix: string;
     private parentMenu: Gio.Menu | null = null;
@@ -218,11 +218,7 @@ export class MenuModel extends VirtualNode<MenuProps> {
         }
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof MenuModel)) {
-            return;
-        }
-
+    public override appendChild(child: MenuModel): void {
         this.menuChildren.push(child);
 
         if (this.actionMap) {
@@ -233,11 +229,7 @@ export class MenuModel extends VirtualNode<MenuProps> {
         child.appendToParentMenu();
     }
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof MenuModel) || !(before instanceof MenuModel)) {
-            return;
-        }
-
+    public override insertBefore(child: MenuModel, before: MenuModel): void {
         const beforeIndex = this.menuChildren.indexOf(before);
 
         if (beforeIndex >= 0) {
@@ -254,11 +246,7 @@ export class MenuModel extends VirtualNode<MenuProps> {
         child.insertInParentBefore(before);
     }
 
-    public override removeChild(child: Node): void {
-        if (!(child instanceof MenuModel)) {
-            return;
-        }
-
+    public override removeChild(child: MenuModel): void {
         const index = this.menuChildren.indexOf(child);
 
         if (index >= 0) {

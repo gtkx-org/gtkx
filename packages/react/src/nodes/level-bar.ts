@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../types.js";
-import { filterProps, shallowArrayEqual } from "./internal/utils.js";
+import { shallowArrayEqual } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type LevelBarOffset = {
@@ -15,10 +15,11 @@ type LevelBarProps = Props & {
 const OWN_PROPS = ["offsets"] as const;
 
 export class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
+    protected override readonly excludedPropNames = OWN_PROPS;
     private appliedOffsetIds = new Set<string>();
 
     public override commitUpdate(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyOffsets(oldProps, newProps);
     }
 

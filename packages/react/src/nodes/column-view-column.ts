@@ -5,7 +5,7 @@ import { ListItemRenderer } from "./internal/list-item-renderer.js";
 import type { ListStore } from "./internal/list-store.js";
 import { VirtualNode } from "./virtual.js";
 
-type Props = Partial<ColumnViewColumnProps>;
+type Props = ColumnViewColumnProps;
 
 export class ColumnViewColumnNode extends VirtualNode<Props> {
     column: Gtk.ColumnViewColumn;
@@ -33,13 +33,11 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
 
     public override commitUpdate(oldProps: Props | null, newProps: Props): void {
         if (!oldProps || oldProps.renderCell !== newProps.renderCell) {
-            if (newProps.renderCell) {
-                this.itemRenderer.setRenderFn(newProps.renderCell);
-            }
+            this.itemRenderer.setRenderFn(newProps.renderCell);
         }
 
         if (!oldProps || oldProps.title !== newProps.title) {
-            this.column.setTitle(newProps.title ?? "");
+            this.column.setTitle(newProps.title);
         }
 
         if (!oldProps || oldProps.expand !== newProps.expand) {
@@ -55,9 +53,7 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
         }
 
         if (!oldProps || oldProps.id !== newProps.id) {
-            if (newProps.id) {
-                this.column.setId(newProps.id);
-            }
+            this.column.setId(newProps.id);
         }
 
         if (!oldProps || oldProps.sortable !== newProps.sortable) {

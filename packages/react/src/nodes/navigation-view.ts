@@ -1,9 +1,8 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import type { Node } from "../node.js";
 import type { Props } from "../types.js";
-import { filterProps, hasChanged, primitiveArrayEqual } from "./internal/utils.js";
-import { NavigationPageNode } from "./navigation-page.js";
-import { SlotNode } from "./slot.js";
+import { hasChanged, primitiveArrayEqual } from "./internal/utils.js";
+import type { NavigationPageNode } from "./navigation-page.js";
+import type { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["history", "onHistoryChanged"] as const;
@@ -13,36 +12,24 @@ type NavigationViewProps = Props & {
     onHistoryChanged?: (history: string[]) => void;
 };
 
-export class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps> {
-    public override appendChild(child: Node): void {
-        if (child instanceof NavigationPageNode || child instanceof SlotNode || child instanceof WidgetNode) {
-            super.appendChild(child);
-            return;
-        }
+type NavigationViewChild = NavigationPageNode | SlotNode | WidgetNode;
 
-        throw new Error(`Cannot append '${child.typeName}' to 'NavigationView': expected x.NavigationPage or Widget`);
+export class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps, NavigationViewChild> {
+    protected override readonly excludedPropNames = OWN_PROPS;
+    public override appendChild(child: NavigationViewChild): void {
+        super.appendChild(child);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof NavigationPageNode || child instanceof SlotNode || child instanceof WidgetNode) {
-            super.insertBefore(child, before);
-            return;
-        }
-
-        throw new Error(`Cannot insert '${child.typeName}' into 'NavigationView': expected x.NavigationPage or Widget`);
+    public override insertBefore(child: NavigationViewChild, before: NavigationViewChild): void {
+        super.insertBefore(child, before);
     }
 
-    public override removeChild(child: Node): void {
-        if (child instanceof NavigationPageNode || child instanceof SlotNode || child instanceof WidgetNode) {
-            super.removeChild(child);
-            return;
-        }
-
-        throw new Error(`Cannot remove '${child.typeName}' from 'NavigationView': expected x.NavigationPage or Widget`);
+    public override removeChild(child: NavigationViewChild): void {
+        super.removeChild(child);
     }
 
     public override commitUpdate(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 

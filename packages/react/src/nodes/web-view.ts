@@ -1,9 +1,10 @@
 import type * as WebKit from "@gtkx/ffi/webkit";
 import type { Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { filterProps, hasChanged, propNameToSignalName, resolveSignal } from "./internal/utils.js";
+import { hasChanged, propNameToSignalName, resolveSignal } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
+const OWN_PROPS = ["onLoadChanged"] as const;
 const NON_BLOCKABLE_SIGNALS = ["load-changed"] as const;
 
 type WebViewProps = Props & {
@@ -11,11 +12,10 @@ type WebViewProps = Props & {
 };
 
 export class WebViewNode extends WidgetNode<WebKit.WebView, WebViewProps> {
+    protected override readonly excludedPropNames = OWN_PROPS;
+
     public override commitUpdate(oldProps: WebViewProps | null, newProps: WebViewProps): void {
-        super.commitUpdate(
-            oldProps ? filterProps(oldProps, NON_BLOCKABLE_SIGNALS) : null,
-            filterProps(newProps, NON_BLOCKABLE_SIGNALS),
-        );
+        super.commitUpdate(oldProps, newProps);
         this.applyNonBlockableSignals(oldProps, newProps);
     }
 

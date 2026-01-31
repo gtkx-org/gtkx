@@ -1,8 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
-import { filterProps } from "./internal/utils.js";
 import { ListItemNode } from "./list-item.js";
 import { ListModel, type ListProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
@@ -16,7 +14,10 @@ type ColumnViewProps = ListProps & {
     estimatedRowHeight?: number;
 };
 
-export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> {
+type ColumnViewChild = ListItemNode | ColumnViewColumnNode;
+
+export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, ColumnViewChild> {
+    protected override readonly excludedPropNames = PROP_NAMES;
     private handleSortChange: (() => void) | null = null;
     private list: ListModel;
     private columnNodes = new Set<ColumnViewColumnNode>();
@@ -44,16 +45,10 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> 
         this.container.setModel(this.list.getSelectionModel());
     }
 
-    public override appendChild(child: Node): void {
+    public override appendChild(child: ColumnViewChild): void {
         if (child instanceof ListItemNode) {
             this.list.appendChild(child);
             return;
-        }
-
-        if (!(child instanceof ColumnViewColumnNode)) {
-            throw new Error(
-                `Cannot append '${child.typeName}' to '${this.typeName}': expected x.ColumnViewColumn or x.ListItem`,
-            );
         }
 
         const existingColumn = this.findColumnInView(child.column);
@@ -68,16 +63,12 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> 
         this.columnNodes.add(child);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
+    public override insertBefore(child: ColumnViewChild, before: ColumnViewChild): void {
         if (child instanceof ListItemNode) {
-            this.list.insertBefore(child, before);
+            if (before instanceof ListItemNode) {
+                this.list.insertBefore(child, before);
+            }
             return;
-        }
-
-        if (!(child instanceof ColumnViewColumnNode)) {
-            throw new Error(
-                `Cannot insert '${child.typeName}' into '${this.typeName}': expected x.ColumnViewColumn or x.ListItem`,
-            );
         }
 
         const existingColumn = this.findColumnInView(child.column);
@@ -99,16 +90,10 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> 
         this.columnNodes.add(child);
     }
 
-    public override removeChild(child: Node): void {
+    public override removeChild(child: ColumnViewChild): void {
         if (child instanceof ListItemNode) {
             this.list.removeChild(child);
             return;
-        }
-
-        if (!(child instanceof ColumnViewColumnNode)) {
-            throw new Error(
-                `Cannot remove '${child.typeName}' from '${this.typeName}': expected x.ColumnViewColumn or x.ListItem`,
-            );
         }
 
         const existingColumn = this.findColumnInView(child.column);
@@ -122,7 +107,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> 
     }
 
     public override commitUpdate(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
         this.list.updateProps(oldProps, newProps);
     }

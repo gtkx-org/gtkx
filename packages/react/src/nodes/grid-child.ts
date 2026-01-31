@@ -5,7 +5,7 @@ import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-type Props = Partial<GridChildProps>;
+type Props = GridChildProps;
 
 export class GridChildNode extends VirtualNode<Props, WidgetNode<Gtk.Grid>, WidgetNode> {
     public override isValidChild(child: Node): boolean {

@@ -5,7 +5,7 @@ import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-type Props = Partial<FixedChildProps>;
+type Props = FixedChildProps;
 
 export class FixedChildNode extends VirtualNode<Props, WidgetNode<Gtk.Fixed>, WidgetNode> {
     public override isValidChild(child: Node): boolean {

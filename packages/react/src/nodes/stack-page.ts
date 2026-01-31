@@ -5,7 +5,7 @@ import { hasChanged } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
 import type { WidgetNode } from "./widget.js";
 
-type Props = Partial<StackPageProps>;
+type Props = StackPageProps;
 
 export class StackPageNode extends SlotNode<Props> {
     private page: Gtk.StackPage | Adw.ViewStackPage | null = null;

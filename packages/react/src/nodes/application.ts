@@ -6,7 +6,9 @@ import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { WindowNode } from "./window.js";
 
-export class ApplicationNode extends Node<Gtk.Application> {
+type ApplicationChild = WindowNode | DialogNode | MenuNode;
+
+export class ApplicationNode extends Node<Gtk.Application, Props, Node, ApplicationChild> {
     private menu: MenuModel;
 
     constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer: Container) {
@@ -22,7 +24,7 @@ export class ApplicationNode extends Node<Gtk.Application> {
         return false;
     }
 
-    public override appendChild(child: Node): void {
+    public override appendChild(child: ApplicationChild): void {
         if (child instanceof MenuNode) {
             this.menu.appendChild(child);
             this.container.setMenubar(this.menu.getMenu());
@@ -45,9 +47,11 @@ export class ApplicationNode extends Node<Gtk.Application> {
         );
     }
 
-    public override insertBefore(child: Node, before: Node): void {
+    public override insertBefore(child: ApplicationChild, before: ApplicationChild): void {
         if (child instanceof MenuNode) {
-            this.menu.insertBefore(child, before);
+            if (before instanceof MenuNode) {
+                this.menu.insertBefore(child, before);
+            }
             super.insertBefore(child, before);
             return;
         }
@@ -67,7 +71,7 @@ export class ApplicationNode extends Node<Gtk.Application> {
         );
     }
 
-    public override removeChild(child: Node): void {
+    public override removeChild(child: ApplicationChild): void {
         if (child instanceof MenuNode) {
             this.menu.removeChild(child);
 

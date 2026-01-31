@@ -6,9 +6,11 @@ import { NotebookPageTabNode } from "./notebook-page-tab.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-type Props = Partial<NotebookPageProps>;
+type Props = NotebookPageProps;
 
-export class NotebookPageNode extends SlotNode<Props> {
+type NotebookPageChild = WidgetNode | NotebookPageTabNode;
+
+export class NotebookPageNode extends SlotNode<Props, NotebookPageChild> {
     position: number | null = null;
     private tabNode: NotebookPageTabNode | null = null;
     private contentChild: WidgetNode | null = null;
@@ -55,16 +57,12 @@ export class NotebookPageNode extends SlotNode<Props> {
         }
     }
 
-    public override appendChild(child: Node): void {
+    public override appendChild(child: NotebookPageChild): void {
         if (child instanceof NotebookPageTabNode) {
             this.tabNode = child;
             Node.prototype.appendChild.call(this, child);
             this.updateTabNode();
             return;
-        }
-
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'NotebookPage': expected Widget`);
         }
 
         const oldContent = this.contentChild?.container ?? null;
@@ -76,7 +74,7 @@ export class NotebookPageNode extends SlotNode<Props> {
         }
     }
 
-    public override removeChild(child: Node): void {
+    public override removeChild(child: NotebookPageChild): void {
         if (child instanceof NotebookPageTabNode) {
             this.tabNode = null;
             Node.prototype.removeChild.call(this, child);

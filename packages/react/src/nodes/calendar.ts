@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Props } from "../types.js";
-import { filterProps, primitiveArrayEqual } from "./internal/utils.js";
+import { primitiveArrayEqual } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 type CalendarProps = Props & {
@@ -10,10 +10,11 @@ type CalendarProps = Props & {
 const OWN_PROPS = ["markedDays"] as const;
 
 export class CalendarNode extends WidgetNode<Gtk.Calendar> {
+    protected override readonly excludedPropNames = OWN_PROPS;
     private appliedMarks: number[] = [];
 
     public override commitUpdate(oldProps: CalendarProps | null, newProps: CalendarProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyMarkedDays(newProps);
     }
 

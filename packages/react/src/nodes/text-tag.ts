@@ -118,7 +118,7 @@ export type TextTagProps = {
     children?: ReactNode;
 };
 
-export class TextTagNode extends VirtualNode<TextTagProps> implements TextContentParent {
+export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChild> implements TextContentParent {
     private buffer: Gtk.TextBuffer | null = null;
     private tag: Gtk.TextTag | null = null;
     private contentChildren: TextContentChild[] = [];
@@ -267,54 +267,44 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
         return this.isTextContentChild(child);
     }
 
-    public override appendChild(child: Node): void {
-        if (this.isTextContentChild(child)) {
-            super.appendChild(child);
-            const index = this.contentChildren.length;
-            this.contentChildren.push(child);
-            this.setChildContentParent(child);
-
-            if (child instanceof TextTagNode && this.buffer) {
-                child.setBuffer(this.buffer);
-            }
-
-            this.updateChildOffsets(index);
-            this.contentParent?.onChildInserted(child);
-            return;
-        }
+    public override appendChild(child: TextContentChild): void {
         super.appendChild(child);
+        const index = this.contentChildren.length;
+        this.contentChildren.push(child);
+        this.setChildContentParent(child);
+
+        if (child instanceof TextTagNode && this.buffer) {
+            child.setBuffer(this.buffer);
+        }
+
+        this.updateChildOffsets(index);
+        this.contentParent?.onChildInserted(child);
     }
 
-    public override removeChild(child: Node): void {
-        const index = this.contentChildren.indexOf(child as TextContentChild);
+    public override removeChild(child: TextContentChild): void {
+        const index = this.contentChildren.indexOf(child);
         if (index !== -1) {
             this.contentChildren.splice(index, 1);
             this.updateChildOffsets(index);
-            this.contentParent?.onChildRemoved(child as TextContentChild);
-            super.removeChild(child);
-            return;
+            this.contentParent?.onChildRemoved(child);
         }
         super.removeChild(child);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
-        if (this.isTextContentChild(child)) {
-            super.insertBefore(child, before);
-            const beforeIndex = this.contentChildren.indexOf(before as TextContentChild);
-            const insertIndex = beforeIndex !== -1 ? beforeIndex : this.contentChildren.length;
-
-            this.contentChildren.splice(insertIndex, 0, child);
-            this.setChildContentParent(child);
-
-            if (child instanceof TextTagNode && this.buffer) {
-                child.setBuffer(this.buffer);
-            }
-
-            this.updateChildOffsets(insertIndex);
-            this.contentParent?.onChildInserted(child);
-            return;
-        }
+    public override insertBefore(child: TextContentChild, before: TextContentChild): void {
         super.insertBefore(child, before);
+        const beforeIndex = this.contentChildren.indexOf(before);
+        const insertIndex = beforeIndex !== -1 ? beforeIndex : this.contentChildren.length;
+
+        this.contentChildren.splice(insertIndex, 0, child);
+        this.setChildContentParent(child);
+
+        if (child instanceof TextTagNode && this.buffer) {
+            child.setBuffer(this.buffer);
+        }
+
+        this.updateChildOffsets(insertIndex);
+        this.contentParent?.onChildInserted(child);
     }
 
     private isTextContentChild(child: Node): child is TextContentChild {

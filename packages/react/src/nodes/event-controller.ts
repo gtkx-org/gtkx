@@ -1,14 +1,18 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONTROLLER_CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
-import type { Container, Props } from "../types.js";
+import type { Props } from "../types.js";
 import type { SignalHandler } from "./internal/signal-store.js";
 import { propNameToSignalName, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const G_TYPE_INVALID = 0;
 
-export class EventControllerNode<T extends Gtk.EventController = Gtk.EventController> extends Node<T, Props> {
+export class EventControllerNode<
+    T extends Gtk.EventController = Gtk.EventController,
+    // biome-ignore lint/suspicious/noExplicitAny: Self-referential type bounds require any
+    TChild extends Node = any,
+> extends Node<T, Props, WidgetNode, TChild> {
     public static override createContainer(
         props: Props,
         containerClass: typeof Gtk.EventController,
@@ -26,35 +30,28 @@ export class EventControllerNode<T extends Gtk.EventController = Gtk.EventContro
         return new (containerClass as any)(...args);
     }
 
-    props: Props;
-
-    constructor(typeName: string, props: Props, container: T, rootContainer: Container) {
-        super(typeName, props, container, rootContainer);
-        this.props = props;
-    }
-
     public override isValidParent(parent: Node): boolean {
         return parent instanceof WidgetNode;
     }
 
-    public override setParent(parent: Node | null): void {
+    public override setParent(parent: WidgetNode | null): void {
         const previousParent = this.parent;
         super.setParent(parent);
 
-        if (parent instanceof WidgetNode) {
+        if (parent) {
             parent.container.addController(this.container);
-        } else if (previousParent instanceof WidgetNode) {
+        } else if (previousParent) {
             previousParent.container.removeController(this.container);
         }
     }
 
     public override commitUpdate(oldProps: Props | null, newProps: Props): void {
-        this.props = newProps;
+        super.commitUpdate(oldProps, newProps);
         this.applyProps(oldProps, newProps);
     }
 
     public override detachDeletedInstance(): void {
-        if (this.parent instanceof WidgetNode && this.container.getWidget() === this.parent.container) {
+        if (this.parent && this.container.getWidget() === this.parent.container) {
             this.parent.container.removeController(this.container);
         }
         super.detachDeletedInstance();

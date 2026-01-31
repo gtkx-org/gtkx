@@ -3,8 +3,10 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { DialogNode } from "./dialog.js";
-import { filterProps, hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { hasChanged, matchesAnyClass } from "./internal/utils.js";
+import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
+import type { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["defaultWidth", "defaultHeight", "onClose"] as const;
@@ -21,7 +23,10 @@ export type WindowProps = Props & {
     creditSections?: CreditSection[];
 };
 
-export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
+type WindowChild = WindowNode | DialogNode | MenuNode | SlotNode | WidgetNode;
+
+export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild> {
+    protected override readonly excludedPropNames = OWN_PROPS;
     private menu: MenuModel;
 
     public override isValidChild(child: Node): boolean {
@@ -69,8 +74,8 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         }
     }
 
-    public override appendChild(child: Node): void {
-        if (child.container instanceof Gtk.Window) {
+    public override appendChild(child: WindowChild): void {
+        if (child instanceof WindowNode) {
             child.container.setTransientFor(this.container);
             super.appendChild(child);
             return;
@@ -82,12 +87,14 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
             return;
         }
 
-        this.menu.appendChild(child);
+        if (child instanceof MenuNode) {
+            this.menu.appendChild(child);
+        }
         super.appendChild(child);
     }
 
-    public override removeChild(child: Node): void {
-        if (child.container instanceof Gtk.Window) {
+    public override removeChild(child: WindowChild): void {
+        if (child instanceof WindowNode) {
             child.container.setTransientFor(null);
             super.removeChild(child);
             return;
@@ -99,12 +106,16 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
             return;
         }
 
-        this.menu.removeChild(child);
+        if (child instanceof MenuNode) {
+            this.menu.removeChild(child);
+        }
         super.removeChild(child);
     }
 
-    public override insertBefore(child: Node, before: Node): void {
-        this.menu.insertBefore(child, before);
+    public override insertBefore(child: WindowChild, before: WindowChild): void {
+        if (child instanceof MenuNode && before instanceof MenuNode) {
+            this.menu.insertBefore(child, before);
+        }
         this.appendChild(child);
     }
 
@@ -123,7 +134,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     }
 
     public override commitUpdate(oldProps: WindowProps | null, newProps: WindowProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 

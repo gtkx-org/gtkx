@@ -28,7 +28,7 @@ export type TextAnchorProps = {
     children?: ReactNode;
 };
 
-export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
+export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node, WidgetNode> {
     private textView: Gtk.TextView | null = null;
     private buffer: Gtk.TextBuffer | null = null;
     private anchor: Gtk.TextChildAnchor | null = null;
@@ -67,11 +67,7 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
         }
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`TextAnchor can only contain widget children, got '${child.typeName}'`);
-        }
-
+    public override appendChild(child: WidgetNode): void {
         super.appendChild(child);
         this.widgetChild = child;
 
@@ -80,7 +76,7 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
         }
     }
 
-    public override removeChild(child: Node): void {
+    public override removeChild(child: WidgetNode): void {
         if (child === this.widgetChild) {
             this.widgetChild = null;
         }

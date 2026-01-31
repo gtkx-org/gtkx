@@ -1,18 +1,17 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { ToggleProps } from "../jsx.js";
-import type { Node } from "../node.js";
 import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
-import { WidgetNode } from "./widget.js";
+import type { WidgetNode } from "./widget.js";
 
-export class ToggleNode extends VirtualNode<ToggleProps> {
+export class ToggleNode extends VirtualNode<ToggleProps, WidgetNode<Adw.ToggleGroup>> {
     private toggle: Adw.Toggle | null = null;
 
-    public override setParent(parent: Node | null): void {
+    public override setParent(parent: WidgetNode<Adw.ToggleGroup> | null): void {
         if (parent !== null) {
             super.setParent(parent);
 
-            if (parent instanceof WidgetNode && parent.container instanceof Adw.ToggleGroup && !this.toggle) {
+            if (!this.toggle) {
                 this.toggle = new Adw.Toggle();
                 this.applyOwnProps(null, this.props);
                 parent.container.add(this.toggle);
@@ -26,9 +25,7 @@ export class ToggleNode extends VirtualNode<ToggleProps> {
     private removeFromGroup(): void {
         if (!this.parent || !this.toggle) return;
 
-        if (this.parent instanceof WidgetNode && this.parent.container instanceof Adw.ToggleGroup) {
-            this.parent.container.remove(this.toggle);
-        }
+        this.parent.container.remove(this.toggle);
         this.toggle = null;
     }
 

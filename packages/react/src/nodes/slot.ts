@@ -9,7 +9,11 @@ import { WidgetNode } from "./widget.js";
 
 type SlotNodeProps = Omit<SlotProps, "children">;
 
-export class SlotNode<P extends Props = SlotNodeProps> extends VirtualNode<P, WidgetNode, WidgetNode> {
+export class SlotNode<P extends Props = SlotNodeProps, TChild extends Node = WidgetNode> extends VirtualNode<
+    P,
+    WidgetNode,
+    TChild
+> {
     private cachedSetter: ((child: Gtk.Widget | null) => void) | null = null;
     private detachedParentWidget: Gtk.Widget | null = null;
 
@@ -34,8 +38,9 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualNode<P, Wi
         }
     }
 
-    public override appendChild(child: WidgetNode): void {
-        const oldChildWidget = this.children[0]?.container ?? null;
+    public override appendChild(child: TChild): void {
+        const firstChild = this.children[0];
+        const oldChildWidget = firstChild instanceof WidgetNode ? firstChild.container : null;
 
         super.appendChild(child);
 
@@ -44,8 +49,8 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualNode<P, Wi
         }
     }
 
-    public override removeChild(child: WidgetNode): void {
-        const oldChildWidget = child.container;
+    public override removeChild(child: TChild): void {
+        const oldChildWidget = child instanceof WidgetNode ? child.container : null;
 
         super.removeChild(child);
 
