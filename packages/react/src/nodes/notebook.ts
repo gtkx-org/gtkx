@@ -10,7 +10,6 @@ export class NotebookNode extends WidgetNode<Gtk.Notebook> {
         }
 
         super.appendChild(child);
-        child.setParentWidget(this.container);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -27,10 +26,6 @@ export class NotebookNode extends WidgetNode<Gtk.Notebook> {
         }
 
         super.insertBefore(child, before);
-
-        if (!isMove) {
-            child.setParentWidget(this.container);
-        }
     }
 
     public override removeChild(child: Node): void {

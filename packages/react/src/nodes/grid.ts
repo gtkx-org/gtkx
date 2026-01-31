@@ -5,7 +5,7 @@ import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 export class GridNode extends WidgetNode<Gtk.Grid> {
-    public override canAcceptChild(child: Node): boolean {
+    public override isValidChild(child: Node): boolean {
         return child instanceof GridChildNode || child instanceof SlotNode;
     }
 

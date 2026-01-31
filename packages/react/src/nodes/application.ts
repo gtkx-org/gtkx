@@ -15,7 +15,7 @@ export class ApplicationNode extends Node<Gtk.Application> {
         this.menu = new MenuModel("root", {}, rootContainer, container, application);
     }
 
-    public override canAcceptChild(child: Node): boolean {
+    public override isValidChild(child: Node): boolean {
         if (child instanceof MenuNode) return true;
         if (child instanceof WindowNode && child.container instanceof Gtk.ApplicationWindow) return true;
         if (child instanceof DialogNode) return true;

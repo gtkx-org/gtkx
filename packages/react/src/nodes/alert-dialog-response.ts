@@ -9,21 +9,20 @@ export class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProp
     private dialog: Adw.AlertDialog | null = null;
     private responseId: string | null = null;
 
-    public override onAddedToParent(parent: Node): void {
-        if (!(parent instanceof WidgetNode) || !(parent.container instanceof Adw.AlertDialog)) {
-            return;
+    public override setParent(parent: Node | null): void {
+        if (parent !== null) {
+            super.setParent(parent);
+
+            if (parent instanceof WidgetNode && parent.container instanceof Adw.AlertDialog && !this.dialog) {
+                this.dialog = parent.container;
+                this.responseId = this.props.id;
+                this.dialog.addResponse(this.responseId, this.props.label);
+                this.applyOptionalProps(null, this.props);
+            }
+        } else {
+            this.removeFromDialog();
+            super.setParent(parent);
         }
-
-        if (this.dialog) return;
-
-        this.dialog = parent.container;
-        this.responseId = this.props.id;
-        this.dialog.addResponse(this.responseId, this.props.label);
-        this.applyOptionalProps(null, this.props);
-    }
-
-    public override onRemovedFromParent(_parent: Node): void {
-        this.removeFromDialog();
     }
 
     private removeFromDialog(): void {

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { Node } from "../node.js";
+import { Node } from "../node.js";
 import { isRemovable, isSingleChild } from "./internal/predicates.js";
 import { SlotNode } from "./slot.js";
 import { detachChildFromParent, WidgetNode } from "./widget.js";
@@ -12,30 +12,6 @@ const isAutowrappedChild = (obj: unknown): obj is AutowrappedChild => {
 };
 
 export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
-    public override attachChildWidget(child: WidgetNode): void {
-        if (isAutowrappedChild(child.container)) {
-            detachChildFromParent(child);
-        } else {
-            this.removeExistingWrapper(child.container);
-        }
-
-        this.container.append(child.container);
-    }
-
-    public override detachChildWidget(child: WidgetNode): void {
-        if (!isAutowrappedChild(child.container)) {
-            const wrapper = child.container.getParent();
-
-            if (wrapper && isSingleChild(wrapper)) {
-                wrapper.setChild(null);
-                this.container.remove(wrapper);
-                return;
-            }
-        }
-
-        this.container.remove(child.container);
-    }
-
     public override appendChild(child: Node): void {
         if (child instanceof SlotNode) {
             super.appendChild(child);
@@ -46,7 +22,16 @@ export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             throw new Error(`Cannot append '${child.typeName}' to 'ListBox/FlowBox': expected Widget`);
         }
 
-        super.appendChild(child);
+        // biome-ignore lint/suspicious/noExplicitAny: Bypass base class private attachChildWidget
+        (Node.prototype.appendChild as any).call(this, child);
+
+        if (isAutowrappedChild(child.container)) {
+            detachChildFromParent(child);
+        } else {
+            this.removeExistingWrapper(child.container);
+        }
+
+        this.container.append(child.container);
     }
 
     public override removeChild(child: Node): void {
@@ -59,7 +44,21 @@ export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             throw new Error(`Cannot remove '${child.typeName}' from 'ListBox/FlowBox': expected Widget`);
         }
 
-        super.removeChild(child);
+        if (!isAutowrappedChild(child.container)) {
+            const wrapper = child.container.getParent();
+
+            if (wrapper && isSingleChild(wrapper)) {
+                wrapper.setChild(null);
+                this.container.remove(wrapper);
+                // biome-ignore lint/suspicious/noExplicitAny: Bypass base class private detachChildWidget
+                (Node.prototype.removeChild as any).call(this, child);
+                return;
+            }
+        }
+
+        this.container.remove(child.container);
+        // biome-ignore lint/suspicious/noExplicitAny: Bypass base class private detachChildWidget
+        (Node.prototype.removeChild as any).call(this, child);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -72,14 +71,8 @@ export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
             throw new Error(`Cannot insert '${child.typeName}' into 'ListBox/FlowBox': expected Widget`);
         }
 
-        child.parent = this;
-        const index = this.children.indexOf(before);
-        if (index !== -1) {
-            this.children.splice(index, 0, child);
-        } else {
-            this.children.push(child);
-        }
-        child.onAddedToParent(this);
+        // biome-ignore lint/suspicious/noExplicitAny: Bypass base class private methods
+        (Node.prototype.insertBefore as any).call(this, child, before);
 
         const currentParent = child.container.getParent();
 

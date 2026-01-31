@@ -11,7 +11,6 @@ export class NotebookPageTabNode extends SlotNode<Props> {
     public setPage(notebook: Gtk.Notebook | null, page: Gtk.Widget | null): void {
         this.notebook = notebook;
         this.page = page;
-        this.setParentWidget(notebook);
     }
 
     private getNotebook(): Gtk.Notebook {
@@ -40,6 +39,6 @@ export class NotebookPageTabNode extends SlotNode<Props> {
             return;
         }
 
-        notebook.setTabLabel(page, this.childWidget);
+        notebook.setTabLabel(page, this.children[0]?.container ?? null);
     }
 }

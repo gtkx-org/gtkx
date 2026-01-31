@@ -126,7 +126,7 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
 
     public bufferOffset = 0;
 
-    public setParent(parent: TextContentParent): void {
+    public setContentParent(parent: TextContentParent): void {
         this.contentParent = parent;
     }
 
@@ -263,7 +263,7 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
         this.contentParent?.onChildTextChanged(child, oldLength, newLength);
     }
 
-    public override canAcceptChild(child: Node): boolean {
+    public override isValidChild(child: Node): boolean {
         return this.isTextContentChild(child);
     }
 
@@ -272,7 +272,7 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
             super.appendChild(child);
             const index = this.contentChildren.length;
             this.contentChildren.push(child);
-            this.setChildParent(child);
+            this.setChildContentParent(child);
 
             if (child instanceof TextTagNode && this.buffer) {
                 child.setBuffer(this.buffer);
@@ -304,7 +304,7 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
             const insertIndex = beforeIndex !== -1 ? beforeIndex : this.contentChildren.length;
 
             this.contentChildren.splice(insertIndex, 0, child);
-            this.setChildParent(child);
+            this.setChildContentParent(child);
 
             if (child instanceof TextTagNode && this.buffer) {
                 child.setBuffer(this.buffer);
@@ -321,9 +321,9 @@ export class TextTagNode extends VirtualNode<TextTagProps> implements TextConten
         return child instanceof TextSegmentNode || child instanceof TextTagNode || child instanceof TextAnchorNode;
     }
 
-    private setChildParent(child: TextContentChild): void {
+    private setChildContentParent(child: TextContentChild): void {
         if (child instanceof TextSegmentNode || child instanceof TextTagNode) {
-            child.setParent(this);
+            child.setContentParent(this);
         }
     }
 

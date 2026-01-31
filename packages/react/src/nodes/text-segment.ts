@@ -11,7 +11,7 @@ export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
 
     public bufferOffset = 0;
 
-    public setParent(parent: TextContentParent): void {
+    public setContentParent(parent: TextContentParent): void {
         this.contentParent = parent;
     }
 

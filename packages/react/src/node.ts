@@ -21,8 +21,19 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
         this.signalStore = getSignalStore(rootContainer);
     }
 
-    public canAcceptChild(_child: Node): boolean {
+    public isValidChild(_child: Node): boolean {
         return false;
+    }
+
+    public isValidParent(_parent: Node): boolean {
+        return true;
+    }
+
+    public setParent(parent: TParent | null): void {
+        if (parent !== null && !this.isValidParent(parent)) {
+            throw new Error(`Cannot add '${this.typeName}' to '${parent.typeName}'`);
+        }
+        this.parent = parent;
     }
 
     public appendInitialChild(child: Node): void {
@@ -30,20 +41,18 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
     }
 
     public appendChild(child: Node): void {
-        if (!this.canAcceptChild(child)) {
+        if (!this.isValidChild(child)) {
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}'`);
         }
-        child.parent = this;
         (this.children as Node[]).push(child);
-        child.onAddedToParent(this);
+        child.setParent(this);
     }
 
     public removeChild(child: Node): void {
         const index = (this.children as Node[]).indexOf(child);
         if (index !== -1) {
-            child.onRemovedFromParent(this);
+            child.setParent(null);
             this.children.splice(index, 1);
-            child.parent = null;
         }
     }
 
@@ -61,13 +70,12 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
             return;
         }
 
-        if (!this.canAcceptChild(child)) {
+        if (!this.isValidChild(child)) {
             throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}'`);
         }
 
-        child.parent = this;
         (this.children as Node[]).splice(beforeIndex, 0, child);
-        child.onAddedToParent(this);
+        child.setParent(this);
     }
 
     public finalizeInitialChildren(props: TProps): boolean {
@@ -82,8 +90,4 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
     public detachDeletedInstance(): void {
         this.signalStore.clear(this);
     }
-
-    public onAddedToParent(_parent: Node): void {}
-
-    public onRemovedFromParent(_parent: Node): void {}
 }

@@ -15,13 +15,7 @@ type NavigationViewProps = Props & {
 
 export class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps> {
     public override appendChild(child: Node): void {
-        if (child instanceof NavigationPageNode) {
-            child.setParentWidget(this.container);
-            super.appendChild(child);
-            return;
-        }
-
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
+        if (child instanceof NavigationPageNode || child instanceof SlotNode || child instanceof WidgetNode) {
             super.appendChild(child);
             return;
         }
@@ -30,13 +24,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof NavigationPageNode) {
-            child.setParentWidget(this.container);
-            super.insertBefore(child, before);
-            return;
-        }
-
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
+        if (child instanceof NavigationPageNode || child instanceof SlotNode || child instanceof WidgetNode) {
             super.insertBefore(child, before);
             return;
         }
@@ -45,12 +33,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
     }
 
     public override removeChild(child: Node): void {
-        if (child instanceof NavigationPageNode) {
-            super.removeChild(child);
-            return;
-        }
-
-        if (child instanceof SlotNode || child instanceof WidgetNode) {
+        if (child instanceof NavigationPageNode || child instanceof SlotNode || child instanceof WidgetNode) {
             super.removeChild(child);
             return;
         }

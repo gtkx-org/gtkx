@@ -11,13 +11,26 @@ type Props = Partial<NotebookPageProps>;
 export class NotebookPageNode extends SlotNode<Props> {
     position: number | null = null;
     private tabNode: NotebookPageTabNode | null = null;
+    private contentChild: WidgetNode | null = null;
 
-    public override canAcceptChild(child: Node): boolean {
+    public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode || child instanceof NotebookPageTabNode;
     }
 
-    public override setParentWidget(parent: Gtk.Widget | null): void {
-        super.setParentWidget(parent);
+    public override setParent(parent: WidgetNode | null): void {
+        if (!parent && this.parent) {
+            const childWidget = this.contentChild?.container ?? null;
+            if (childWidget) {
+                this.detachPage(childWidget);
+            }
+        }
+
+        Node.prototype.setParent.call(this, parent);
+
+        if (parent && this.contentChild) {
+            this.onContentChange(null);
+        }
+
         this.updateTabNode();
     }
 
@@ -26,16 +39,19 @@ export class NotebookPageNode extends SlotNode<Props> {
     }
 
     private getNotebook(): Gtk.Notebook {
-        if (!this.parentWidget) {
+        if (!this.parent) {
             throw new Error("Expected Notebook reference to be set on NotebookPageNode");
         }
 
-        return this.parentWidget as Gtk.Notebook;
+        return this.parent.container as Gtk.Notebook;
     }
 
     private updateTabNode(): void {
         if (this.tabNode) {
-            this.tabNode.setPage(this.parentWidget as Gtk.Notebook | null, this.childWidget);
+            this.tabNode.setPage(
+                this.parent ? (this.parent.container as Gtk.Notebook) : null,
+                this.contentChild?.container ?? null,
+            );
         }
     }
 
@@ -47,8 +63,17 @@ export class NotebookPageNode extends SlotNode<Props> {
             return;
         }
 
-        super.appendChild(child);
-        this.updateTabNode();
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot append '${child.typeName}' to 'NotebookPage': expected Widget`);
+        }
+
+        const oldContent = this.contentChild?.container ?? null;
+        this.contentChild = child;
+        Node.prototype.appendChild.call(this, child);
+
+        if (this.parent) {
+            this.onContentChange(oldContent);
+        }
     }
 
     public override removeChild(child: Node): void {
@@ -58,12 +83,27 @@ export class NotebookPageNode extends SlotNode<Props> {
             return;
         }
 
-        super.removeChild(child);
+        if (child === this.contentChild) {
+            const oldContent = this.contentChild.container;
+            this.contentChild = null;
+            Node.prototype.removeChild.call(this, child);
+
+            if (this.parent && oldContent) {
+                this.onContentChange(oldContent);
+            }
+            return;
+        }
+
+        Node.prototype.removeChild.call(this, child);
     }
 
     public override detachDeletedInstance(): void {
+        const childWidget = this.contentChild?.container ?? null;
+        if (childWidget && this.parent) {
+            this.detachPage(childWidget);
+        }
+        this.contentChild = null;
         this.tabNode = null;
-        super.detachDeletedInstance();
     }
 
     public override commitUpdate(oldProps: Props | null, newProps: Props): void {
@@ -71,20 +111,25 @@ export class NotebookPageNode extends SlotNode<Props> {
         this.applyOwnProps(oldProps, newProps);
     }
 
+    public override getChildWidget(): Gtk.Widget {
+        if (!this.contentChild) {
+            throw new Error("Expected content child widget to be set on NotebookPageNode");
+        }
+
+        return this.contentChild.container;
+    }
+
     private applyOwnProps(oldProps: Props | null, newProps: Props): void {
-        if (
-            hasChanged(oldProps, newProps, "label") &&
-            this.childWidget &&
-            this.parentWidget &&
-            !this.tabNode?.childWidget
-        ) {
-            const tabLabel = this.getNotebook().getTabLabel(this.childWidget) as Gtk.Label;
+        const childWidget = this.contentChild?.container ?? null;
+
+        if (hasChanged(oldProps, newProps, "label") && childWidget && this.parent && !this.tabNode?.children[0]) {
+            const tabLabel = this.getNotebook().getTabLabel(childWidget) as Gtk.Label;
             tabLabel.setLabel(newProps.label ?? "");
         }
 
         const pagePropsChanged =
             hasChanged(oldProps, newProps, "tabExpand") || hasChanged(oldProps, newProps, "tabFill");
-        if (this.childWidget && this.parentWidget && pagePropsChanged) {
+        if (childWidget && this.parent && pagePropsChanged) {
             this.applyPageProps();
         }
     }
@@ -95,8 +140,8 @@ export class NotebookPageNode extends SlotNode<Props> {
 
         let tabLabel: Gtk.Widget;
 
-        if (this.tabNode?.childWidget) {
-            tabLabel = this.tabNode.childWidget;
+        if (this.tabNode?.children[0]) {
+            tabLabel = this.tabNode.children[0].container;
         } else {
             const label = new Gtk.Label();
             label.setLabel(this.props.label ?? "");
@@ -113,8 +158,8 @@ export class NotebookPageNode extends SlotNode<Props> {
     }
 
     private applyPageProps(): void {
-        const child = this.childWidget;
-        if (!child || !this.parentWidget) return;
+        const child = this.contentChild?.container ?? null;
+        if (!child || !this.parent) return;
 
         const notebook = this.getNotebook();
         const page = notebook.getPage(child);
@@ -132,15 +177,17 @@ export class NotebookPageNode extends SlotNode<Props> {
     private detachPage(childToDetach: Gtk.Widget): void {
         const notebook = this.getNotebook();
         const pageNum = notebook.pageNum(childToDetach);
-        notebook.removePage(pageNum);
+        if (pageNum !== -1) {
+            notebook.removePage(pageNum);
+        }
     }
 
-    public override onChildChange(oldChild: Gtk.Widget | null): void {
+    private onContentChange(oldChild: Gtk.Widget | null): void {
         if (oldChild) {
             this.detachPage(oldChild);
         }
 
-        if (this.childWidget) {
+        if (this.contentChild) {
             this.attachPage();
         }
     }

@@ -24,11 +24,11 @@ export type WindowProps = Props & {
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     private menu: MenuModel;
 
-    public override canAcceptChild(child: Node): boolean {
+    public override isValidChild(child: Node): boolean {
         if (child.container instanceof Gtk.Window) {
             return true;
         }
-        return super.canAcceptChild(child);
+        return super.isValidChild(child);
     }
 
     public static override createContainer(

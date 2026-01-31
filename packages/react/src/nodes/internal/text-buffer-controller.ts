@@ -242,7 +242,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
     private setChildParent(child: TextContentChild): void {
         if (child instanceof TextSegmentNode || child instanceof TextTagNode) {
-            child.setParent(this.owner as TextContentParent);
+            child.setContentParent(this.owner as TextContentParent);
         }
     }
 

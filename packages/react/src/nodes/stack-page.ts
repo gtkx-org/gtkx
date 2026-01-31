@@ -3,11 +3,34 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import type { StackPageProps } from "../jsx.js";
 import { hasChanged } from "./internal/utils.js";
 import { SlotNode } from "./slot.js";
+import type { WidgetNode } from "./widget.js";
 
 type Props = Partial<StackPageProps>;
 
 export class StackPageNode extends SlotNode<Props> {
     private page: Gtk.StackPage | Adw.ViewStackPage | null = null;
+
+    public override setParent(parent: WidgetNode | null): void {
+        const previousParent = this.parent;
+
+        if (previousParent && !parent) {
+            const childWidget = this.children[0]?.container ?? null;
+            if (childWidget) {
+                this.removePage(childWidget);
+            }
+            this.page = null;
+        }
+
+        super.setParent(parent);
+    }
+
+    public override detachDeletedInstance(): void {
+        const childWidget = this.children[0]?.container ?? null;
+        if (childWidget && this.parent) {
+            this.removePage(childWidget);
+        }
+        this.page = null;
+    }
 
     public override commitUpdate(oldProps: Props | null, newProps: Props): void {
         super.commitUpdate(oldProps, newProps);
@@ -47,7 +70,7 @@ export class StackPageNode extends SlotNode<Props> {
     public override onChildChange(oldChild: Gtk.Widget | null): void {
         this.removePage(oldChild);
 
-        if (this.childWidget) {
+        if (this.children[0]) {
             this.addPage();
         }
     }

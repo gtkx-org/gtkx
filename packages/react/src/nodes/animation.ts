@@ -18,64 +18,54 @@ const DEFAULT_SPRING_MASS = 1;
 const DEFAULT_SPRING_STIFFNESS = 100;
 
 export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, WidgetNode> {
-    private parentWidget: Gtk.Widget | null = null;
-    public childWidget: Gtk.Widget | null = null;
     private className: string;
     private provider: Gtk.CssProvider | null = null;
     private display: Gdk.Display | null = null;
     private currentAnimation: Adw.Animation | null = null;
     private currentValues: AnimatableProperties = {};
     private isExiting = false;
+    private detachedParentWidget: Gtk.Widget | null = null;
 
     constructor(typeName: string, props: AnimationProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.className = `gtkx-anim-${animationCounter++}`;
     }
 
-    public override canAcceptChild(child: Node): boolean {
+    public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected Widget`);
+    public override setParent(parent: WidgetNode | null): void {
+        if (!parent && this.parent) {
+            this.detachedParentWidget = this.parent.container;
         }
 
-        const oldChild = this.childWidget;
-        this.childWidget = child.container;
+        super.setParent(parent);
+
+        if (parent && this.children[0]) {
+            this.onChildChange(null);
+        }
+    }
+
+    public override appendChild(child: Node): void {
+        const oldChildWidget = this.children[0]?.container ?? null;
 
         super.appendChild(child);
 
-        if (this.parentWidget) {
-            this.onChildChange(oldChild);
+        if (this.parent) {
+            this.onChildChange(oldChildWidget);
         }
     }
 
     public override removeChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected Widget`);
-        }
-
-        const oldChild = this.childWidget;
-        this.childWidget = null;
+        const oldChildWidget = (child as WidgetNode).container;
 
         super.removeChild(child);
 
-        if (this.parentWidget && oldChild) {
-            this.onChildChange(oldChild);
+        if (this.parent && oldChildWidget) {
+            this.onChildChange(oldChildWidget);
         }
     }
-
-    public override onAddedToParent(parent: Node): void {
-        if (parent instanceof WidgetNode) {
-            this.parentWidget = parent.container;
-            if (this.childWidget) {
-                this.onChildChange(null);
-            }
-        }
-    }
-
-    public override onRemovedFromParent(_parent: Node): void {}
 
     public override commitUpdate(oldProps: AnimationProps | null, newProps: AnimationProps): void {
         super.commitUpdate(oldProps, newProps);
@@ -86,7 +76,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
 
         if (oldProps && newProps.animate && !this.arePropsEqual(oldProps.animate, newProps.animate)) {
             const target = newProps.animate;
-            if (this.childWidget && !this.isExiting) {
+            if (this.children[0] && !this.isExiting) {
                 this.animateTo(target);
             }
         }
@@ -97,45 +87,46 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
             return;
         }
 
-        if (this.props.exit && this.childWidget) {
+        if (this.props.exit && this.children[0]) {
             this.isExiting = true;
 
             this.animateTo(this.props.exit, () => {
                 this.detachChildFromParentWidget();
                 this.cleanup();
-                this.parentWidget = null;
                 super.detachDeletedInstance();
             });
         } else {
             this.detachChildFromParentWidget();
             this.cleanup();
-            this.parentWidget = null;
             super.detachDeletedInstance();
         }
     }
 
     private onChildChange(oldChild: Gtk.Widget | null): void {
+        const parentWidget = this.parent?.container ?? null;
+        const childWidget = this.children[0]?.container ?? null;
+
         if (oldChild && this.provider) {
             oldChild.removeCssClass(this.className);
         }
 
-        if (oldChild && this.parentWidget && this.isWidgetAttachedTo(oldChild, this.parentWidget)) {
-            const strategy = getAttachmentStrategy(this.parentWidget);
+        if (oldChild && parentWidget && this.isWidgetAttachedTo(oldChild, parentWidget)) {
+            const strategy = getAttachmentStrategy(parentWidget);
             if (strategy) {
                 detachChild(oldChild, strategy);
-            } else if (isRemovable(this.parentWidget)) {
-                this.parentWidget.remove(oldChild);
+            } else if (isRemovable(parentWidget)) {
+                parentWidget.remove(oldChild);
             }
         }
 
-        if (this.childWidget && this.parentWidget) {
-            const strategy = getAttachmentStrategy(this.parentWidget);
+        if (childWidget && parentWidget) {
+            const strategy = getAttachmentStrategy(parentWidget);
             if (strategy) {
-                attachChild(this.childWidget, strategy);
+                attachChild(childWidget, strategy);
             }
 
             this.setupCssProvider();
-            this.childWidget.addCssClass(this.className);
+            childWidget.addCssClass(this.className);
 
             const initial = this.props.initial;
             const animate = this.props.animate;
@@ -158,18 +149,17 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
     }
 
     private detachChildFromParentWidget(): void {
-        if (this.childWidget && this.parentWidget && this.isChildAttachedToParent()) {
-            const strategy = getAttachmentStrategy(this.parentWidget);
+        const parentWidget = this.parent?.container ?? this.detachedParentWidget;
+        const childWidget = this.children[0]?.container ?? null;
+
+        if (childWidget && parentWidget && this.isWidgetAttachedTo(childWidget, parentWidget)) {
+            const strategy = getAttachmentStrategy(parentWidget);
             if (strategy) {
-                detachChild(this.childWidget, strategy);
-            } else if (isRemovable(this.parentWidget)) {
-                this.parentWidget.remove(this.childWidget);
+                detachChild(childWidget, strategy);
+            } else if (isRemovable(parentWidget)) {
+                parentWidget.remove(childWidget);
             }
         }
-    }
-
-    private isChildAttachedToParent(): boolean {
-        return this.isWidgetAttachedTo(this.childWidget, this.parentWidget);
     }
 
     private isWidgetAttachedTo(child: Gtk.Widget | null, parent: Gtk.Widget | null): boolean {
@@ -179,7 +169,8 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
     }
 
     private setupCssProvider(): void {
-        if (this.provider || !this.childWidget) return;
+        const childWidget = this.children[0]?.container ?? null;
+        if (this.provider || !childWidget) return;
 
         this.provider = new Gtk.CssProvider();
         this.display = Gdk.DisplayManager.get().getDefaultDisplay();
@@ -194,6 +185,8 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
     }
 
     private cleanup(): void {
+        const childWidget = this.children[0]?.container ?? null;
+
         if (this.currentAnimation) {
             this.currentAnimation.skip();
             this.currentAnimation = null;
@@ -203,8 +196,8 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
             Gtk.StyleContext.removeProviderForDisplay(this.display, this.provider);
         }
 
-        if (this.childWidget) {
-            this.childWidget.removeCssClass(this.className);
+        if (childWidget) {
+            childWidget.removeCssClass(this.className);
         }
 
         this.provider = null;
@@ -212,7 +205,8 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
     }
 
     private animateTo(target: AnimatableProperties, onComplete?: () => void): void {
-        if (!this.childWidget) return;
+        const childWidget = this.children[0]?.container ?? null;
+        if (!childWidget) return;
 
         if (this.currentAnimation) {
             this.currentAnimation.skip();
@@ -230,7 +224,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
             this.applyValues(interpolated);
         });
 
-        const animation = this.createAnimation(this.childWidget, callback);
+        const animation = this.createAnimation(childWidget, callback);
 
         animation.connect("done", () => {
             this.currentValues = { ...to };
@@ -315,8 +309,9 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
             return;
         }
 
-        if (this.childWidget && !this.childWidget.getCssClasses()?.includes(this.className)) {
-            this.childWidget.addCssClass(this.className);
+        const childWidget = this.children[0]?.container ?? null;
+        if (childWidget && !childWidget.getCssClasses()?.includes(this.className)) {
+            childWidget.addCssClass(this.className);
         }
 
         const css = buildCss(this.className, values);

@@ -58,7 +58,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
         return this.selectionManager.getSelectionModel();
     }
 
-    public override canAcceptChild(child: Node): boolean {
+    public override isValidChild(child: Node): boolean {
         return child instanceof TreeListItemNode;
     }
 

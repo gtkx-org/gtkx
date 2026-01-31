@@ -10,168 +10,126 @@ type ExpanderRowWidget = Gtk.Widget & {
 };
 
 export class ExpanderRowRowNode extends VirtualNode<unknown, WidgetNode<ExpanderRowWidget>, WidgetNode> {
-    private parentWidget: ExpanderRowWidget | null = null;
-
-    public override canAcceptChild(child: Node): boolean {
+    public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected Widget`);
-        }
+    public override setParent(parent: WidgetNode<ExpanderRowWidget> | null): void {
+        const previousParent = this.parent;
+        super.setParent(parent);
 
+        if (parent) {
+            for (const child of this.children) {
+                parent.container.addRow(child.container);
+            }
+        } else if (previousParent) {
+            this.detachAllChildren(previousParent.container);
+        }
+    }
+
+    public override appendChild(child: Node): void {
         super.appendChild(child);
 
-        if (this.parentWidget) {
-            this.parentWidget.addRow(child.container);
+        if (this.parent) {
+            this.parent.container.addRow((child as WidgetNode).container);
         }
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected Widget`);
-        }
-
         super.insertBefore(child, before);
 
-        if (this.parentWidget) {
-            this.parentWidget.addRow(child.container);
+        if (this.parent) {
+            this.parent.container.addRow((child as WidgetNode).container);
         }
     }
 
     public override removeChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected Widget`);
-        }
-
-        if (this.parentWidget) {
-            const currentParent = child.container.getParent();
-            if (currentParent && currentParent === this.parentWidget) {
-                this.parentWidget.remove(child.container);
+        if (this.parent) {
+            const widget = (child as WidgetNode).container;
+            const currentParent = widget.getParent();
+            if (currentParent && currentParent === this.parent.container) {
+                this.parent.container.remove(widget);
             }
         }
 
         super.removeChild(child);
     }
 
-    public override onAddedToParent(parent: Node): void {
-        if (parent instanceof WidgetNode) {
-            this.parentWidget = parent.container as ExpanderRowWidget;
-            for (const child of this.children) {
-                if (child instanceof WidgetNode && this.parentWidget) {
-                    this.parentWidget.addRow(child.container);
-                }
-            }
-        }
-    }
-
-    public override onRemovedFromParent(parent: Node): void {
-        if (parent instanceof WidgetNode) {
-            this.detachAllChildren(parent.container as ExpanderRowWidget);
-        }
-        this.parentWidget = null;
-    }
-
     public override detachDeletedInstance(): void {
-        if (this.parentWidget) {
-            this.detachAllChildren(this.parentWidget);
+        if (this.parent) {
+            this.detachAllChildren(this.parent.container);
         }
-        this.parentWidget = null;
         super.detachDeletedInstance();
     }
 
     private detachAllChildren(parent: ExpanderRowWidget): void {
         for (const child of this.children) {
-            if (child instanceof WidgetNode) {
-                const currentParent = child.container.getParent();
-                if (currentParent && currentParent === parent) {
-                    parent.remove(child.container);
-                }
+            const currentParent = child.container.getParent();
+            if (currentParent && currentParent === parent) {
+                parent.remove(child.container);
             }
         }
     }
 }
 
 export class ExpanderRowActionNode extends VirtualNode<unknown, WidgetNode<ExpanderRowWidget>, WidgetNode> {
-    private parentWidget: ExpanderRowWidget | null = null;
-
-    public override canAcceptChild(child: Node): boolean {
+    public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
     }
 
-    public override appendChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected Widget`);
-        }
+    public override setParent(parent: WidgetNode<ExpanderRowWidget> | null): void {
+        const previousParent = this.parent;
+        super.setParent(parent);
 
+        if (parent) {
+            for (const child of this.children) {
+                parent.container.addAction(child.container);
+            }
+        } else if (previousParent) {
+            this.detachAllChildren(previousParent.container);
+        }
+    }
+
+    public override appendChild(child: Node): void {
         super.appendChild(child);
 
-        if (this.parentWidget) {
-            this.parentWidget.addAction(child.container);
+        if (this.parent) {
+            this.parent.container.addAction((child as WidgetNode).container);
         }
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected Widget`);
-        }
-
         super.insertBefore(child, before);
 
-        if (this.parentWidget) {
-            this.parentWidget.addAction(child.container);
+        if (this.parent) {
+            this.parent.container.addAction((child as WidgetNode).container);
         }
     }
 
     public override removeChild(child: Node): void {
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected Widget`);
-        }
-
-        if (this.parentWidget) {
-            const currentParent = child.container.getParent();
-            if (currentParent && currentParent === this.parentWidget) {
-                this.parentWidget.remove(child.container);
+        if (this.parent) {
+            const widget = (child as WidgetNode).container;
+            const currentParent = widget.getParent();
+            if (currentParent && currentParent === this.parent.container) {
+                this.parent.container.remove(widget);
             }
         }
 
         super.removeChild(child);
     }
 
-    public override onAddedToParent(parent: Node): void {
-        if (parent instanceof WidgetNode) {
-            this.parentWidget = parent.container as ExpanderRowWidget;
-            for (const child of this.children) {
-                if (child instanceof WidgetNode && this.parentWidget) {
-                    this.parentWidget.addAction(child.container);
-                }
-            }
-        }
-    }
-
-    public override onRemovedFromParent(parent: Node): void {
-        if (parent instanceof WidgetNode) {
-            this.detachAllChildren(parent.container as ExpanderRowWidget);
-        }
-        this.parentWidget = null;
-    }
-
     public override detachDeletedInstance(): void {
-        if (this.parentWidget) {
-            this.detachAllChildren(this.parentWidget);
+        if (this.parent) {
+            this.detachAllChildren(this.parent.container);
         }
-        this.parentWidget = null;
         super.detachDeletedInstance();
     }
 
     private detachAllChildren(parent: ExpanderRowWidget): void {
         for (const child of this.children) {
-            if (child instanceof WidgetNode) {
-                const currentParent = child.container.getParent();
-                if (currentParent && currentParent === parent) {
-                    parent.remove(child.container);
-                }
+            const currentParent = child.container.getParent();
+            if (currentParent && currentParent === parent) {
+                parent.remove(child.container);
             }
         }
     }

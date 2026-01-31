@@ -6,31 +6,29 @@ import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
 export class ToggleNode extends VirtualNode<ToggleProps> {
-    private toggleGroup: Adw.ToggleGroup | null = null;
     private toggle: Adw.Toggle | null = null;
 
-    public override onAddedToParent(parent: Node): void {
-        if (!(parent instanceof WidgetNode) || !(parent.container instanceof Adw.ToggleGroup)) {
-            return;
+    public override setParent(parent: Node | null): void {
+        if (parent !== null) {
+            super.setParent(parent);
+
+            if (parent instanceof WidgetNode && parent.container instanceof Adw.ToggleGroup && !this.toggle) {
+                this.toggle = new Adw.Toggle();
+                this.applyOwnProps(null, this.props);
+                parent.container.add(this.toggle);
+            }
+        } else {
+            this.removeFromGroup();
+            super.setParent(parent);
         }
-
-        if (this.toggle) return;
-
-        this.toggleGroup = parent.container;
-        this.toggle = new Adw.Toggle();
-        this.applyOwnProps(null, this.props);
-        this.toggleGroup.add(this.toggle);
-    }
-
-    public override onRemovedFromParent(_parent: Node): void {
-        this.removeFromGroup();
     }
 
     private removeFromGroup(): void {
-        if (!this.toggleGroup || !this.toggle) return;
+        if (!this.parent || !this.toggle) return;
 
-        this.toggleGroup.remove(this.toggle);
-        this.toggleGroup = null;
+        if (this.parent instanceof WidgetNode && this.parent.container instanceof Adw.ToggleGroup) {
+            this.parent.container.remove(this.toggle);
+        }
         this.toggle = null;
     }
 

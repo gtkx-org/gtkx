@@ -57,7 +57,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         return new WidgetClass(...(args as ConstructorParameters<typeof Gtk.Widget>));
     }
 
-    public override canAcceptChild(child: Node): boolean {
+    public override isValidChild(child: Node): boolean {
         if (child instanceof WidgetNode) {
             return !(child.container instanceof Gtk.Window);
         }
@@ -154,7 +154,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         }
     }
 
-    public attachChildWidget(child: WidgetNode): void {
+    private attachChildWidget(child: WidgetNode): void {
         const strategy = getAttachmentStrategy(this.container);
         if (!strategy) {
             throw new Error(
@@ -167,7 +167,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         performAttachment(child.container, strategy);
     }
 
-    public detachChildWidget(child: WidgetNode): void {
+    private detachChildWidget(child: WidgetNode): void {
         const strategy = getAttachmentStrategy(this.container);
         if (!strategy) {
             throw new Error(

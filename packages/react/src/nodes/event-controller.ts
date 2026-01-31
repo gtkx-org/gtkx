@@ -27,29 +27,25 @@ export class EventControllerNode<T extends Gtk.EventController = Gtk.EventContro
     }
 
     props: Props;
-    private parentWidget: Gtk.Widget | null = null;
 
     constructor(typeName: string, props: Props, container: T, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.props = props;
     }
 
-    public override canAcceptChild(_child: Node): boolean {
-        return false;
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof WidgetNode;
     }
 
-    public override onAddedToParent(parent: Node): void {
+    public override setParent(parent: Node | null): void {
+        const previousParent = this.parent;
+        super.setParent(parent);
+
         if (parent instanceof WidgetNode) {
-            this.parentWidget = parent.container;
             parent.container.addController(this.container);
+        } else if (previousParent instanceof WidgetNode) {
+            previousParent.container.removeController(this.container);
         }
-    }
-
-    public override onRemovedFromParent(_parent: Node): void {
-        if (this.parentWidget) {
-            this.parentWidget.removeController(this.container);
-        }
-        this.parentWidget = null;
     }
 
     public override commitUpdate(oldProps: Props | null, newProps: Props): void {
@@ -58,10 +54,9 @@ export class EventControllerNode<T extends Gtk.EventController = Gtk.EventContro
     }
 
     public override detachDeletedInstance(): void {
-        if (this.parentWidget) {
-            this.parentWidget.removeController(this.container);
+        if (this.parent instanceof WidgetNode && this.container.getWidget() === this.parent.container) {
+            this.parent.container.removeController(this.container);
         }
-        this.parentWidget = null;
         super.detachDeletedInstance();
     }
 
