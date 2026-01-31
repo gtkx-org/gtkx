@@ -1,5 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
+import type { Node } from "../../node.js";
 import type { Props } from "../../types.js";
+import { WidgetNode } from "../widget.js";
 import { VirtualSingleChildNode } from "./virtual-single-child.js";
 
 export abstract class PositionalChildNode<P extends Props = Props> extends VirtualSingleChildNode<P> {
@@ -7,33 +9,42 @@ export abstract class PositionalChildNode<P extends Props = Props> extends Virtu
 
     protected abstract detachFromParent(parent: Gtk.Widget, child: Gtk.Widget): void;
 
-    public override unmount(): void {
-        if (this.parent && this.child) {
-            const parent = this.parent;
-            const oldChild = this.child;
-            this.child = null;
-
-            const parentOfOld = oldChild.getParent();
-            if (parentOfOld && parentOfOld === parent) {
-                this.detachFromParent(parent, oldChild);
-            }
+    public override onRemovedFromParent(parent: Node): void {
+        if (parent instanceof WidgetNode && this.childWidget) {
+            this.detachChildFromParentWidget(parent.container);
         }
+        super.onRemovedFromParent(parent);
+    }
 
-        this.parent = null;
-        super.unmount();
+    public override detachDeletedInstance(): void {
+        if (this.parentWidget && this.childWidget) {
+            this.detachChildFromParentWidget(this.parentWidget);
+        }
+        this.childWidget = null;
+        super.detachDeletedInstance();
     }
 
     protected onChildChange(oldChild: Gtk.Widget | null): void {
-        const parent = this.getParent();
+        const parent = this.getParentWidget();
 
         if (oldChild) {
-            const parentOfOld = oldChild.getParent();
-            if (parentOfOld && parentOfOld === parent) {
-                this.detachFromParent(parent, oldChild);
-            }
+            this.detachWidgetIfAttached(parent, oldChild);
         }
-        if (this.child) {
-            this.attachToParent(parent, this.child);
+        if (this.childWidget) {
+            this.attachToParent(parent, this.childWidget);
+        }
+    }
+
+    private detachChildFromParentWidget(parent: Gtk.Widget): void {
+        if (this.childWidget) {
+            this.detachWidgetIfAttached(parent, this.childWidget);
+        }
+    }
+
+    private detachWidgetIfAttached(parent: Gtk.Widget, child: Gtk.Widget): void {
+        const childParent = child.getParent();
+        if (childParent && childParent === parent) {
+            this.detachFromParent(parent, child);
         }
     }
 }

@@ -7,12 +7,12 @@ export type TextSegmentProps = {
 };
 
 export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
-    private parent: TextContentParent | null = null;
+    private contentParent: TextContentParent | null = null;
 
     public bufferOffset = 0;
 
     public setParent(parent: TextContentParent): void {
-        this.parent = parent;
+        this.contentParent = parent;
     }
 
     public getText(): string {
@@ -23,14 +23,14 @@ export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
         return this.props.text.length;
     }
 
-    public override updateProps(oldProps: TextSegmentProps | null, newProps: TextSegmentProps): void {
+    public override commitUpdate(oldProps: TextSegmentProps | null, newProps: TextSegmentProps): void {
         const oldText = oldProps?.text ?? "";
         const newText = newProps.text;
 
-        super.updateProps(oldProps, newProps);
+        super.commitUpdate(oldProps, newProps);
 
-        if (hasChanged(oldProps, newProps, "text") && this.parent) {
-            this.parent.onChildTextChanged(this, oldText.length, newText.length);
+        if (hasChanged(oldProps, newProps, "text") && this.contentParent) {
+            this.contentParent.onChildTextChanged(this, oldText.length, newText.length);
         }
     }
 }

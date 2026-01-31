@@ -1,6 +1,5 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type { Node } from "../node.js";
-import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Props } from "../types.js";
 import { filterProps, hasChanged, primitiveArrayEqual } from "./internal/utils.js";
 import { NavigationPageNode } from "./navigation-page.js";
@@ -17,7 +16,8 @@ type NavigationViewProps = Props & {
 export class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps> {
     public override appendChild(child: Node): void {
         if (child instanceof NavigationPageNode) {
-            child.setParent(this.container);
+            child.setParentWidget(this.container);
+            super.appendChild(child);
             return;
         }
 
@@ -31,7 +31,8 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
 
     public override insertBefore(child: Node, before: Node): void {
         if (child instanceof NavigationPageNode) {
-            child.setParent(this.container);
+            child.setParentWidget(this.container);
+            super.insertBefore(child, before);
             return;
         }
 
@@ -45,6 +46,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
 
     public override removeChild(child: Node): void {
         if (child instanceof NavigationPageNode) {
+            super.removeChild(child);
             return;
         }
 
@@ -56,8 +58,8 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
         throw new Error(`Cannot remove '${child.typeName}' from 'NavigationView': expected x.NavigationPage or Widget`);
     }
 
-    public override updateProps(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
-        super.updateProps(
+    protected override applyUpdate(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
+        super.applyUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as NavigationViewProps) : null,
             filterProps(newProps, OWN_PROPS) as NavigationViewProps,
         );
@@ -69,7 +71,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
         const newHistory = newProps.history;
 
         if (newHistory && !primitiveArrayEqual(oldHistory, newHistory)) {
-            this.syncHistory(newHistory);
+            this.container.replaceWithTags(newHistory, newHistory.length);
         }
 
         if (hasChanged(oldProps, newProps, "onHistoryChanged")) {
@@ -90,14 +92,6 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
                 this.signalStore.set(this, this.container, "replaced", null);
             }
         }
-    }
-
-    private syncHistory(history: string[]): void {
-        const container = this.container;
-
-        scheduleAfterCommit(() => {
-            container.replaceWithTags(history, history.length);
-        }, CommitPriority.NORMAL);
     }
 
     private getCurrentHistory(): string[] {

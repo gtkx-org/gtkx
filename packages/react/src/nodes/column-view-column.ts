@@ -18,9 +18,9 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
         this.column.setFactory(this.itemRenderer.getFactory());
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.itemRenderer.dispose();
-        super.unmount();
+        super.detachDeletedInstance();
     }
 
     public setStore(model: ListStore | null): void {
@@ -31,7 +31,7 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
         this.itemRenderer.setEstimatedItemHeight(height);
     }
 
-    public override updateProps(oldProps: Props | null, newProps: Props): void {
+    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
         if (!oldProps || oldProps.renderCell !== newProps.renderCell) {
             if (newProps.renderCell) {
                 this.itemRenderer.setRenderFn(newProps.renderCell);
@@ -68,6 +68,6 @@ export class ColumnViewColumnNode extends VirtualNode<Props> {
             }
         }
 
-        super.updateProps(oldProps, newProps);
+        super.commitUpdate(oldProps, newProps);
     }
 }

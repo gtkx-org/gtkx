@@ -43,8 +43,8 @@ export class ShortcutNode extends VirtualNode<ShortcutProps> {
         this.shortcut = new Gtk.Shortcut(trigger, this.action);
     }
 
-    public override updateProps(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 
@@ -56,10 +56,10 @@ export class ShortcutNode extends VirtualNode<ShortcutProps> {
         }
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.shortcut = null;
         this.action = null;
-        super.unmount();
+        super.detachDeletedInstance();
     }
 
     private createTrigger(): Gtk.ShortcutTrigger {

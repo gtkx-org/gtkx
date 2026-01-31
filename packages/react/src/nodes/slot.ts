@@ -10,39 +10,39 @@ type SlotNodeProps = Omit<SlotProps, "children">;
 export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChildNode<P> {
     private cachedSetter: ((child: Gtk.Widget | null) => void) | null = null;
 
-    public override setParent(parent: Gtk.Widget | null): void {
-        if (this.parent !== parent) {
+    public override setParentWidget(parent: Gtk.Widget | null): void {
+        if (this.parentWidget !== parent) {
             this.cachedSetter = null;
         }
-        super.setParent(parent);
+        super.setParentWidget(parent);
     }
 
-    public override unmount(): void {
-        if (this.parent && this.child) {
-            const parent = this.parent;
-            const oldChild = this.child;
-            this.child = null;
+    public override detachDeletedInstance(): void {
+        if (this.parentWidget && this.childWidget) {
+            const parent = this.parentWidget;
+            const oldChild = this.childWidget;
+            this.childWidget = null;
 
             queueMicrotask(() => {
                 if (parent.getRoot() !== null) {
-                    this.parent = parent;
+                    this.parentWidget = parent;
                     this.onChildChange(oldChild);
                 }
-                this.parent = null;
+                this.parentWidget = null;
             });
         } else {
-            this.parent = null;
+            this.parentWidget = null;
         }
 
-        super.unmount();
+        super.detachDeletedInstance();
     }
 
-    public getChild(): Gtk.Widget {
-        if (!this.child) {
+    public getChildWidget(): Gtk.Widget {
+        if (!this.childWidget) {
             throw new Error(`Expected child widget to be set on '${this.getId()}' SlotNode`);
         }
 
-        return this.child;
+        return this.childWidget;
     }
 
     protected getId(): string {
@@ -55,18 +55,18 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChil
         return toCamelCase(id);
     }
 
-    protected override getParent(): Gtk.Widget {
-        if (!this.parent) {
+    protected override getParentWidget(): Gtk.Widget {
+        if (!this.parentWidget) {
             throw new Error(`Expected parent widget to be set on '${this.getId()}' SlotNode`);
         }
 
-        return this.parent;
+        return this.parentWidget;
     }
 
     protected ensureChildSetter(): (child: Gtk.Widget | null) => void {
         if (this.cachedSetter) return this.cachedSetter;
 
-        const parent = this.getParent();
+        const parent = this.getParentWidget();
         const parentType = (parent.constructor as ContainerClass).glibTypeName;
         const propMeta = resolvePropMeta(parent, this.getId());
 
@@ -88,8 +88,8 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChil
     protected onChildChange(oldChild: Gtk.Widget | null): void {
         const setter = this.ensureChildSetter();
 
-        if (oldChild && !this.child) {
-            const parent = this.getParent();
+        if (oldChild && !this.childWidget) {
+            const parent = this.getParentWidget();
             const root = oldChild.getRoot();
             const focusWidget = root?.getFocus?.();
 
@@ -98,7 +98,7 @@ export class SlotNode<P extends Props = SlotNodeProps> extends VirtualSingleChil
             }
         }
 
-        setter(this.child);
+        setter(this.childWidget);
     }
 
     private isDescendantOf(widget: Gtk.Widget, ancestor: Gtk.Widget): boolean {

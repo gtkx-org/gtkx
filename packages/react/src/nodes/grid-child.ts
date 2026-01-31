@@ -1,16 +1,11 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GridChildProps } from "../jsx.js";
-import type { Node } from "../node.js";
 import { PositionalChildNode } from "./abstract/positional-child.js";
 import { hasChanged } from "./internal/utils.js";
 
 type Props = Partial<GridChildProps>;
 
 export class GridChildNode extends PositionalChildNode<Props> {
-    public override canBeChildOf(parent: Node): boolean {
-        return parent.container instanceof Gtk.Grid;
-    }
-
     protected override attachToParent(parent: Gtk.Widget, child: Gtk.Widget): void {
         const grid = parent as Gtk.Grid;
         const column = this.props.column ?? 0;
@@ -30,8 +25,8 @@ export class GridChildNode extends PositionalChildNode<Props> {
         (parent as Gtk.Grid).remove(child);
     }
 
-    public override updateProps(oldProps: Props | null, newProps: Props): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 
@@ -42,14 +37,14 @@ export class GridChildNode extends PositionalChildNode<Props> {
             hasChanged(oldProps, newProps, "columnSpan") ||
             hasChanged(oldProps, newProps, "rowSpan");
 
-        if (positionChanged && this.parent && this.child) {
+        if (positionChanged && this.parentWidget && this.childWidget) {
             this.reattachChild();
         }
     }
 
     private reattachChild(): void {
-        const grid = this.getTypedParent<Gtk.Grid>();
-        const child = this.child;
+        const grid = this.getTypedParentWidget<Gtk.Grid>();
+        const child = this.childWidget;
 
         if (!child) {
             return;

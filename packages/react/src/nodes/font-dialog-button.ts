@@ -50,8 +50,8 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
         this.dialog = dialog;
     }
 
-    public override updateProps(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {
-        super.updateProps(
+    protected override applyUpdate(oldProps: FontDialogButtonProps | null, newProps: FontDialogButtonProps): void {
+        super.applyUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as FontDialogButtonProps) : null,
             filterProps(newProps, OWN_PROPS) as FontDialogButtonProps,
         );
@@ -111,11 +111,11 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
         }
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         if (this.notifyHandler) {
             this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;
         }
-        super.unmount();
+        super.detachDeletedInstance();
     }
 }

@@ -1,12 +1,7 @@
-import { type CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
-
 export class DeferredAction {
     private scheduled = false;
 
-    constructor(
-        private action: () => void,
-        private priority: CommitPriority,
-    ) {}
+    constructor(private action: () => void) {}
 
     get isPending(): boolean {
         return this.scheduled;
@@ -15,9 +10,9 @@ export class DeferredAction {
     schedule(): void {
         if (this.scheduled) return;
         this.scheduled = true;
-        scheduleAfterCommit(() => {
+        queueMicrotask(() => {
             this.scheduled = false;
             this.action();
-        }, this.priority);
+        });
     }
 }

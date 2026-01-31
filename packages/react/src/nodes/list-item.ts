@@ -15,8 +15,8 @@ export class ListItemNode<
         this.store = store;
     }
 
-    public override updateProps(oldProps: P | null, newProps: P): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: P | null, newProps: P): void {
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 

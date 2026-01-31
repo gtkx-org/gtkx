@@ -20,17 +20,6 @@ export const matchesAnyClass = (
     );
 };
 
-export const matchesInterface = (
-    methods: readonly string[],
-    containerOrClass?: Container | ContainerClass | null,
-): boolean => {
-    if (!containerOrClass) {
-        return false;
-    }
-
-    const proto = typeof containerOrClass === "function" ? containerOrClass.prototype : containerOrClass;
-    return methods.every((method) => method in proto);
-};
 
 export const filterProps = (props: Props, excludeKeys: readonly string[]): Props => {
     const result: Props = {};

@@ -27,7 +27,7 @@ export class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, 
         this.container.setModel(this.store.getModel());
     }
 
-    public override updateProps(oldProps: SimpleListViewProps | null, newProps: SimpleListViewProps): void {
+    protected override applyUpdate(oldProps: SimpleListViewProps | null, newProps: SimpleListViewProps): void {
         if (!oldProps || oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
             const onSelectionChanged = newProps.onSelectionChanged;
 
@@ -52,7 +52,7 @@ export class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, 
             }
         }
 
-        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.applyUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 
     public override appendChild(child: Node): void {
@@ -66,6 +66,7 @@ export class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, 
             throw new Error("Expected 'id' and 'value' props to be present on SimpleListItem");
         }
 
+        super.appendChild(child);
         child.setStore(this.store);
         this.store.addItem(id, value);
     }
@@ -82,6 +83,7 @@ export class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, 
             throw new Error("Expected 'id' and 'value' props to be present on SimpleListItem");
         }
 
+        super.insertBefore(child, before);
         child.setStore(this.store);
         this.store.insertItemBefore(id, beforeId, value);
     }
@@ -97,5 +99,6 @@ export class SimpleListViewNode extends WidgetNode<Gtk.DropDown | Adw.ComboRow, 
         }
 
         this.store.removeItem(id);
+        super.removeChild(child);
     }
 }

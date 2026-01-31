@@ -24,6 +24,13 @@ export type WindowProps = Props & {
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     private menu: MenuModel;
 
+    public override canAcceptChild(child: Node): boolean {
+        if (child.container instanceof Gtk.Window) {
+            return true;
+        }
+        return super.canAcceptChild(child);
+    }
+
     public static override createContainer(
         props: Props,
         containerClass: typeof Gtk.Window,
@@ -65,11 +72,13 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     public override appendChild(child: Node): void {
         if (child.container instanceof Gtk.Window) {
             child.container.setTransientFor(this.container);
+            super.appendChild(child);
             return;
         }
 
         if (child instanceof DialogNode) {
-            child.parent = this.container;
+            child.parentWindow = this.container;
+            super.appendChild(child);
             return;
         }
 
@@ -80,11 +89,13 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
     public override removeChild(child: Node): void {
         if (child.container instanceof Gtk.Window) {
             child.container.setTransientFor(null);
+            super.removeChild(child);
             return;
         }
 
         if (child instanceof DialogNode) {
-            child.parent = null;
+            child.parentWindow = null;
+            super.removeChild(child);
             return;
         }
 
@@ -97,18 +108,22 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps> {
         this.appendChild(child);
     }
 
-    public override mount(): void {
+    public override finalizeInitialChildren(props: WindowProps): boolean {
+        this.commitUpdate(null, props);
+        return true;
+    }
+
+    public override commitMount(): void {
         this.container.present();
-        super.mount();
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.container.destroy();
-        super.unmount();
+        super.detachDeletedInstance();
     }
 
-    public override updateProps(oldProps: WindowProps | null, newProps: WindowProps): void {
-        super.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+    protected override applyUpdate(oldProps: WindowProps | null, newProps: WindowProps): void {
+        super.applyUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

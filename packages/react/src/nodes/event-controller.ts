@@ -2,17 +2,13 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { CONTROLLER_CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
-import type { Attachable } from "./internal/predicates.js";
 import type { SignalHandler } from "./internal/signal-store.js";
 import { propNameToSignalName, resolvePropMeta, resolveSignal } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
 const G_TYPE_INVALID = 0;
 
-export class EventControllerNode<T extends Gtk.EventController = Gtk.EventController>
-    extends Node<T, Props>
-    implements Attachable
-{
+export class EventControllerNode<T extends Gtk.EventController = Gtk.EventController> extends Node<T, Props> {
     public static override createContainer(
         props: Props,
         containerClass: typeof Gtk.EventController,
@@ -38,39 +34,35 @@ export class EventControllerNode<T extends Gtk.EventController = Gtk.EventContro
         this.props = props;
     }
 
-    public canBeChildOf(parent: Node): boolean {
-        return parent instanceof WidgetNode;
+    public override canAcceptChild(_child: Node): boolean {
+        return false;
     }
 
-    public override appendChild(_child: Node): void {}
-    public override removeChild(_child: Node): void {}
-    public override insertBefore(_child: Node, _before: Node): void {}
-
-    public attachTo(parent: Node): void {
+    public override onAddedToParent(parent: Node): void {
         if (parent instanceof WidgetNode) {
             this.parentWidget = parent.container;
             parent.container.addController(this.container);
         }
     }
 
-    public detachFrom(_parent: Node): void {
+    public override onRemovedFromParent(_parent: Node): void {
         if (this.parentWidget) {
             this.parentWidget.removeController(this.container);
         }
         this.parentWidget = null;
     }
 
-    public override updateProps(oldProps: Props | null, newProps: Props): void {
+    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
         this.props = newProps;
         this.applyProps(oldProps, newProps);
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         if (this.parentWidget) {
             this.parentWidget.removeController(this.container);
         }
         this.parentWidget = null;
-        super.unmount();
+        super.detachDeletedInstance();
     }
 
     private applyProps(oldProps: Props | null, newProps: Props): void {

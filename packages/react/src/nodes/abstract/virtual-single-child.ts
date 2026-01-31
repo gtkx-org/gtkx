@@ -1,45 +1,47 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
-import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
 import type { Props } from "../../types.js";
-import type { Attachable } from "../internal/predicates.js";
 import { VirtualNode } from "../virtual.js";
 import { WidgetNode } from "../widget.js";
 
-export abstract class VirtualSingleChildNode<P extends Props = Props> extends VirtualNode<P> implements Attachable {
-    protected parent: Gtk.Widget | null = null;
-    child: Gtk.Widget | null = null;
+export abstract class VirtualSingleChildNode<P extends Props = Props> extends VirtualNode<P> {
+    protected parentWidget: Gtk.Widget | null = null;
+    childWidget: Gtk.Widget | null = null;
 
-    public setParent(parent: Gtk.Widget | null): void {
-        this.parent = parent;
+    public setParentWidget(parent: Gtk.Widget | null): void {
+        this.parentWidget = parent;
     }
 
-    protected getParent(): Gtk.Widget {
-        if (!this.parent) {
+    protected getParentWidget(): Gtk.Widget {
+        if (!this.parentWidget) {
             throw new Error(`Expected parent widget to be set on ${this.typeName}`);
         }
-        return this.parent;
+        return this.parentWidget;
     }
 
-    protected getTypedParent<T extends Gtk.Widget>(): T {
-        return this.getParent() as T;
+    protected getTypedParentWidget<T extends Gtk.Widget>(): T {
+        return this.getParentWidget() as T;
     }
 
     protected abstract onChildChange(oldChild: Gtk.Widget | null): void;
+
+    public override canAcceptChild(child: Node): boolean {
+        return child instanceof WidgetNode;
+    }
 
     public override appendChild(child: Node): void {
         if (!(child instanceof WidgetNode)) {
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected Widget`);
         }
 
-        const oldChild = this.child;
-        this.child = child.container;
+        const oldChild = this.childWidget;
+        this.childWidget = child.container;
 
-        scheduleAfterCommit(() => {
-            if (this.parent) {
-                this.onChildChange(oldChild);
-            }
-        }, CommitPriority.NORMAL);
+        super.appendChild(child);
+
+        if (this.parentWidget) {
+            this.onChildChange(oldChild);
+        }
     }
 
     public override removeChild(child: Node): void {
@@ -47,28 +49,29 @@ export abstract class VirtualSingleChildNode<P extends Props = Props> extends Vi
             throw new Error(`Cannot remove '${child.typeName}' from '${this.typeName}': expected Widget`);
         }
 
-        const oldChild = this.child;
+        const oldChild = this.childWidget;
+        this.childWidget = null;
 
-        scheduleAfterCommit(() => {
-            if (oldChild === this.child) {
-                this.child = null;
-            }
+        super.removeChild(child);
 
-            if (this.parent && oldChild) {
-                this.onChildChange(oldChild);
-            }
-        }, CommitPriority.HIGH);
-    }
-
-    public canBeChildOf(parent: Node): boolean {
-        return parent instanceof WidgetNode;
-    }
-
-    public attachTo(parent: Node): void {
-        if (parent instanceof WidgetNode) {
-            this.setParent(parent.container);
+        if (this.parentWidget && oldChild) {
+            this.onChildChange(oldChild);
         }
     }
 
-    public detachFrom(_parent: Node): void {}
+    public override onAddedToParent(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.setParentWidget(parent.container);
+            if (this.childWidget) {
+                this.onChildChange(null);
+            }
+        }
+    }
+
+    public override onRemovedFromParent(_parent: Node): void {}
+
+    public override detachDeletedInstance(): void {
+        this.parentWidget = null;
+        super.detachDeletedInstance();
+    }
 }

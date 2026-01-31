@@ -4,7 +4,6 @@ import type ReactReconciler from "react-reconciler";
 import { createNode } from "./factory.js";
 import type { Node } from "./node.js";
 import { isBufferedType } from "./nodes/internal/predicates.js";
-import { flushAfterCommit } from "./scheduler.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
 declare global {
@@ -93,26 +92,25 @@ export function createHostConfig(): HostConfig {
             if (hostContext.insideTextBuffer) {
                 const props = { text };
                 const node = createNode("TextSegment", props, undefined, rootContainer);
-                node.updateProps(null, props);
+                node.commitUpdate(null, props);
                 return node;
             }
             const props = { label: text };
             const node = createNode("GtkLabel", props, undefined, rootContainer);
-            node.updateProps(null, props);
+            node.commitUpdate(null, props);
             return node;
         },
         appendInitialChild: (parent, child) => {
-            parent.appendChild(child);
+            parent.appendInitialChild(child);
         },
         finalizeInitialChildren: (instance, _type, props) => {
-            instance.commitProps(null, props);
-            return true;
+            return instance.finalizeInitialChildren(props);
         },
         commitUpdate: (instance, _type, oldProps, newProps) => {
-            instance.commitProps(oldProps, newProps);
+            instance.commitUpdate(oldProps, newProps);
         },
-        commitMount: (instance, _type) => {
-            instance.mount();
+        commitMount: (instance) => {
+            instance.commitMount();
         },
         appendChild: (parent, child) => {
             parent.appendChild(child);
@@ -138,14 +136,12 @@ export function createHostConfig(): HostConfig {
         prepareForCommit: () => {
             return null;
         },
-        resetAfterCommit: () => {
-            flushAfterCommit();
-        },
+        resetAfterCommit: () => {},
         commitTextUpdate: (textInstance, oldText, newText) => {
             if (textInstance.typeName === "TextSegment") {
-                textInstance.commitProps({ text: oldText }, { text: newText });
+                textInstance.commitUpdate({ text: oldText }, { text: newText });
             } else {
-                textInstance.commitProps({ label: oldText }, { label: newText });
+                textInstance.commitUpdate({ label: oldText }, { label: newText });
             }
         },
         clearContainer: () => {},
@@ -168,7 +164,7 @@ export function createHostConfig(): HostConfig {
         afterActiveInstanceBlur: () => {},
         prepareScopeUpdate: () => {},
         getInstanceFromScope: () => null,
-        detachDeletedInstance: (instance) => instance.unmount(),
+        detachDeletedInstance: (instance) => instance.detachDeletedInstance(),
         resetFormInstance: () => {},
         requestPostPaintCallback: () => {},
         shouldAttemptEagerTransition: () => false,

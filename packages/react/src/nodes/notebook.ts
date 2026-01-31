@@ -9,7 +9,8 @@ export class NotebookNode extends WidgetNode<Gtk.Notebook> {
             throw new Error(`Cannot append '${child.typeName}' to 'Notebook': expected x.NotebookPage`);
         }
 
-        child.setParent(this.container);
+        super.appendChild(child);
+        child.setParentWidget(this.container);
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -17,9 +18,19 @@ export class NotebookNode extends WidgetNode<Gtk.Notebook> {
             throw new Error(`Cannot insert '${child.typeName}' into 'Notebook': expected x.NotebookPage`);
         }
 
-        const beforePosition = this.container.pageNum(before.getChild());
+        const isMove = this.children.includes(child);
+        const beforePosition = this.container.pageNum(before.getChildWidget());
         child.setPosition(beforePosition);
-        child.setParent(this.container);
+
+        if (isMove) {
+            this.container.reorderChild(child.getChildWidget(), beforePosition);
+        }
+
+        super.insertBefore(child, before);
+
+        if (!isMove) {
+            child.setParentWidget(this.container);
+        }
     }
 
     public override removeChild(child: Node): void {
@@ -28,5 +39,6 @@ export class NotebookNode extends WidgetNode<Gtk.Notebook> {
         }
 
         child.setPosition(null);
+        super.removeChild(child);
     }
 }

@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Node } from "../node.js";
-import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container, Props } from "../types.js";
 import { DialogNode } from "./dialog.js";
 import { MenuNode } from "./menu.js";
@@ -20,14 +19,17 @@ export class ApplicationNode extends Node<Gtk.Application> {
         if (child instanceof MenuNode) {
             this.menu.appendChild(child);
             this.container.setMenubar(this.menu.getMenu());
+            super.appendChild(child);
             return;
         }
 
         if (child instanceof WindowNode && child.container instanceof Gtk.ApplicationWindow) {
+            super.appendChild(child);
             return;
         }
 
         if (child instanceof DialogNode) {
+            super.appendChild(child);
             return;
         }
 
@@ -39,14 +41,17 @@ export class ApplicationNode extends Node<Gtk.Application> {
     public override insertBefore(child: Node, before: Node): void {
         if (child instanceof MenuNode) {
             this.menu.insertBefore(child, before);
+            super.insertBefore(child, before);
             return;
         }
 
         if (child instanceof WindowNode && child.container instanceof Gtk.ApplicationWindow) {
+            super.insertBefore(child, before);
             return;
         }
 
         if (child instanceof DialogNode) {
+            super.insertBefore(child, before);
             return;
         }
 
@@ -59,19 +64,21 @@ export class ApplicationNode extends Node<Gtk.Application> {
         if (child instanceof MenuNode) {
             this.menu.removeChild(child);
 
-            scheduleAfterCommit(() => {
-                if (this.menu.getMenu().getNItems() === 0) {
-                    this.container.setMenubar(null);
-                }
-            }, CommitPriority.LOW);
+            if (this.menu.getMenu().getNItems() === 0) {
+                this.container.setMenubar(null);
+            }
+
+            super.removeChild(child);
             return;
         }
 
         if (child instanceof WindowNode && child.container instanceof Gtk.ApplicationWindow) {
+            super.removeChild(child);
             return;
         }
 
         if (child instanceof DialogNode) {
+            super.removeChild(child);
             return;
         }
 

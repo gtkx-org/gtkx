@@ -39,8 +39,8 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps> implem
         return new TextBufferController(this, this.container, () => new Gtk.TextBuffer());
     }
 
-    public override updateProps(oldProps: TextViewProps | null, newProps: TextViewProps): void {
-        super.updateProps(
+    protected override applyUpdate(oldProps: TextViewProps | null, newProps: TextViewProps): void {
+        super.applyUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as TextViewProps) : null,
             filterProps(newProps, OWN_PROPS) as TextViewProps,
         );

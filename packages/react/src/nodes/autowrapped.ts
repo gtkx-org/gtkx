@@ -12,21 +12,9 @@ const isAutowrappedChild = (obj: unknown): obj is AutowrappedChild => {
 };
 
 export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
-    public override appendChild(child: Node): void {
-        if (child instanceof SlotNode) {
-            super.appendChild(child);
-            return;
-        }
-
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'ListBox/FlowBox': expected Widget`);
-        }
-
+    protected override attachChildWidget(child: WidgetNode): void {
         if (isAutowrappedChild(child.container)) {
-            const currentParent = child.container.getParent();
-            if (currentParent !== null && isRemovable(currentParent)) {
-                currentParent.remove(child.container);
-            }
+            this.detachChildFromParent(child);
         } else {
             this.removeExistingWrapper(child.container);
         }
@@ -34,16 +22,7 @@ export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         this.container.append(child.container);
     }
 
-    public override removeChild(child: Node): void {
-        if (child instanceof SlotNode) {
-            super.removeChild(child);
-            return;
-        }
-
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'ListBox/FlowBox': expected Widget`);
-        }
-
+    protected override detachChildWidget(child: WidgetNode): void {
         if (!isAutowrappedChild(child.container)) {
             const wrapper = child.container.getParent();
 
@@ -57,6 +36,32 @@ export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         this.container.remove(child.container);
     }
 
+    public override appendChild(child: Node): void {
+        if (child instanceof SlotNode) {
+            super.appendChild(child);
+            return;
+        }
+
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot append '${child.typeName}' to 'ListBox/FlowBox': expected Widget`);
+        }
+
+        super.appendChild(child);
+    }
+
+    public override removeChild(child: Node): void {
+        if (child instanceof SlotNode) {
+            super.removeChild(child);
+            return;
+        }
+
+        if (!(child instanceof WidgetNode)) {
+            throw new Error(`Cannot remove '${child.typeName}' from 'ListBox/FlowBox': expected Widget`);
+        }
+
+        super.removeChild(child);
+    }
+
     public override insertBefore(child: Node, before: Node): void {
         if (child instanceof SlotNode) {
             super.insertBefore(child, before);
@@ -66,6 +71,15 @@ export class AutowrappedNode extends WidgetNode<AutowrappingContainer> {
         if (!(child instanceof WidgetNode) || !(before instanceof WidgetNode)) {
             throw new Error(`Cannot insert '${child.typeName}' into 'ListBox/FlowBox': expected Widget`);
         }
+
+        child.parent = this;
+        const index = this.children.indexOf(before);
+        if (index !== -1) {
+            this.children.splice(index, 0, child);
+        } else {
+            this.children.push(child);
+        }
+        child.onAddedToParent(this);
 
         const currentParent = child.container.getParent();
 

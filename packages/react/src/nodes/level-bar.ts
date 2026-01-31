@@ -17,8 +17,8 @@ const OWN_PROPS = ["offsets"] as const;
 export class LevelBarNode extends WidgetNode<Gtk.LevelBar> {
     private appliedOffsetIds = new Set<string>();
 
-    public override updateProps(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
-        super.updateProps(
+    protected override applyUpdate(oldProps: LevelBarProps | null, newProps: LevelBarProps): void {
+        super.applyUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as LevelBarProps) : null,
             filterProps(newProps, OWN_PROPS) as LevelBarProps,
         );

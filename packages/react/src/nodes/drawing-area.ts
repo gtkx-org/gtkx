@@ -15,8 +15,8 @@ const OWN_PROPS = ["onDraw"] as const;
 export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProps> {
     private pendingDrawFunc: DrawFunc | null = null;
 
-    public override updateProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
-        super.updateProps(
+    protected override applyUpdate(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
+        super.applyUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as DrawingAreaProps) : null,
             filterProps(newProps, OWN_PROPS) as DrawingAreaProps,
         );

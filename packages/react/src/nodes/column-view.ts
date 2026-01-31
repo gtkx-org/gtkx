@@ -34,8 +34,13 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> 
         );
     }
 
-    public override mount(): void {
-        super.mount();
+    public override finalizeInitialChildren(props: ColumnViewProps): boolean {
+        super.finalizeInitialChildren(props);
+        return true;
+    }
+
+    public override commitMount(): void {
+        super.commitMount();
         this.container.setModel(this.list.getSelectionModel());
     }
 
@@ -116,8 +121,8 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> 
         this.columnNodes.delete(child);
     }
 
-    public override updateProps(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
-        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+    protected override applyUpdate(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
+        super.applyUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
         this.applyOwnProps(oldProps, newProps);
         this.list.updateProps(oldProps, newProps);
     }
@@ -187,8 +192,8 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps> 
         return this.findColumn((col) => (col.getId() === targetId ? col : null));
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.columnNodes.clear();
-        super.unmount();
+        super.detachDeletedInstance();
     }
 }

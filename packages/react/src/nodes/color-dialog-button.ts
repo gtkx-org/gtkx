@@ -43,8 +43,8 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
         this.dialog = dialog;
     }
 
-    public override updateProps(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {
-        super.updateProps(
+    protected override applyUpdate(oldProps: ColorDialogButtonProps | null, newProps: ColorDialogButtonProps): void {
+        super.applyUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as ColorDialogButtonProps) : null,
             filterProps(newProps, OWN_PROPS) as ColorDialogButtonProps,
         );
@@ -90,11 +90,11 @@ export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, Col
         }
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         if (this.notifyHandler) {
             this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;
         }
-        super.unmount();
+        super.detachDeletedInstance();
     }
 }

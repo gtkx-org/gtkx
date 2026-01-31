@@ -11,8 +11,8 @@ type ScrolledWindowProps = Props & {
 };
 
 export class ScrolledWindowNode extends WidgetNode<Gtk.ScrolledWindow, ScrolledWindowProps> {
-    public override updateProps(oldProps: ScrolledWindowProps | null, newProps: ScrolledWindowProps): void {
-        super.updateProps(oldProps ? filterProps(oldProps, PROPS) : null, filterProps(newProps, PROPS));
+    protected override applyUpdate(oldProps: ScrolledWindowProps | null, newProps: ScrolledWindowProps): void {
+        super.applyUpdate(oldProps ? filterProps(oldProps, PROPS) : null, filterProps(newProps, PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

@@ -9,8 +9,8 @@ type Props = Partial<StackPageProps>;
 export class StackPageNode extends SlotNode<Props> {
     private page: Gtk.StackPage | Adw.ViewStackPage | null = null;
 
-    public override updateProps(oldProps: Props | null, newProps: Props): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 
@@ -47,14 +47,14 @@ export class StackPageNode extends SlotNode<Props> {
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
         this.removePage(oldChild);
 
-        if (this.child) {
+        if (this.childWidget) {
             this.addPage();
         }
     }
 
     private addPage(): void {
-        const child = this.getChild();
-        const parent = this.getParent() as Gtk.Stack | Adw.ViewStack;
+        const child = this.getChildWidget();
+        const parent = this.getParentWidget() as Gtk.Stack | Adw.ViewStack;
 
         let page: Gtk.StackPage | Adw.ViewStackPage;
 
@@ -79,11 +79,11 @@ export class StackPageNode extends SlotNode<Props> {
         }
 
         this.page = page;
-        this.updateProps(null, this.props);
+        this.commitUpdate(null, this.props);
     }
 
     private removePage(oldChild: Gtk.Widget | null): void {
-        const parent = this.getParent() as Gtk.Stack | Adw.ViewStack;
+        const parent = this.getParentWidget() as Gtk.Stack | Adw.ViewStack;
 
         if (!oldChild) {
             return;

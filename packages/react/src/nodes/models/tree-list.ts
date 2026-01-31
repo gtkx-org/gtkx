@@ -67,6 +67,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
             throw new Error("Cannot append 'TreeListItem' to 'TreeList': missing required 'id' prop");
         }
 
+        super.appendChild(child);
         child.setStore(this.store);
         this.addItemWithChildren(child);
     }
@@ -95,6 +96,7 @@ export class TreeList extends VirtualNode<TreeListProps> {
             throw new Error("Cannot insert 'TreeListItem' into 'TreeList': 'before' node missing required 'id' prop");
         }
 
+        super.insertBefore(child, before);
         const id = child.props.id;
         const beforeId = before.props.id;
         child.setStore(this.store);
@@ -113,10 +115,11 @@ export class TreeList extends VirtualNode<TreeListProps> {
         const id = child.props.id;
         this.store.removeItem(id);
         child.setStore(null);
+        super.removeChild(child);
     }
 
-    public updateProps(oldProps: TreeListProps | null, newProps: TreeListProps): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: TreeListProps | null, newProps: TreeListProps): void {
+        super.commitUpdate(oldProps, newProps);
 
         if (!oldProps || oldProps.autoexpand !== newProps.autoexpand) {
             this.treeListModel.setAutoexpand(newProps.autoexpand ?? false);

@@ -15,7 +15,6 @@
  */
 import * as Gtk from "@gtkx/ffi/gtk";
 import { resolveContainerClass } from "../../factory.js";
-import type { Node } from "../../node.js";
 
 type AppendableWidget = Gtk.Widget & { append: (child: Gtk.Widget) => void };
 type AddableWidget = Gtk.Widget & { add: (child: Gtk.Widget) => void };
@@ -93,18 +92,3 @@ export const isBufferedType = (type: string): boolean => {
     const containerClass = resolveContainerClass(type);
     return containerClass !== null && isBuffered(containerClass.prototype);
 };
-
-export type Attachable = {
-    canBeChildOf(parent: Node): boolean;
-    attachTo(parent: Node): void;
-    detachFrom(parent: Node): void;
-};
-
-export function isAttachable(node: Node): node is Node & Attachable {
-    const candidate = node as Partial<Attachable>;
-    return (
-        typeof candidate.canBeChildOf === "function" &&
-        typeof candidate.attachTo === "function" &&
-        typeof candidate.detachFrom === "function"
-    );
-}

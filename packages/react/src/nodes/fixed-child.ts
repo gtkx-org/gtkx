@@ -1,19 +1,14 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { FixedChildProps } from "../jsx.js";
-import type { Node } from "../node.js";
 import { PositionalChildNode } from "./abstract/positional-child.js";
 import { hasChanged } from "./internal/utils.js";
 
 type Props = Partial<FixedChildProps>;
 
 export class FixedChildNode extends PositionalChildNode<Props> {
-    public override canBeChildOf(parent: Node): boolean {
-        return parent.container instanceof Gtk.Fixed;
-    }
-
     protected override onChildChange(oldChild: Gtk.Widget | null): void {
         super.onChildChange(oldChild);
-        if (this.child) {
+        if (this.childWidget) {
             this.applyTransform();
         }
     }
@@ -29,13 +24,13 @@ export class FixedChildNode extends PositionalChildNode<Props> {
         (parent as Gtk.Fixed).remove(child);
     }
 
-    public override updateProps(oldProps: Props | null, newProps: Props): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 
     protected applyOwnProps(oldProps: Props | null, newProps: Props): void {
-        if (!this.parent || !this.child) {
+        if (!this.parentWidget || !this.childWidget) {
             return;
         }
 
@@ -49,8 +44,8 @@ export class FixedChildNode extends PositionalChildNode<Props> {
     }
 
     private repositionChild(): void {
-        const fixed = this.getTypedParent<Gtk.Fixed>();
-        const child = this.child;
+        const fixed = this.getTypedParentWidget<Gtk.Fixed>();
+        const child = this.childWidget;
 
         if (!child) {
             return;
@@ -65,18 +60,18 @@ export class FixedChildNode extends PositionalChildNode<Props> {
     }
 
     private applyTransform(): void {
-        if (!this.child || !this.props.transform) {
+        if (!this.childWidget || !this.props.transform) {
             return;
         }
 
-        const fixed = this.getTypedParent<Gtk.Fixed>();
+        const fixed = this.getTypedParentWidget<Gtk.Fixed>();
         const layoutManager = fixed.getLayoutManager();
 
         if (!layoutManager) {
             return;
         }
 
-        const layoutChild = layoutManager.getLayoutChild(this.child) as Gtk.FixedLayoutChild;
+        const layoutChild = layoutManager.getLayoutChild(this.childWidget) as Gtk.FixedLayoutChild;
         layoutChild.setTransform(this.props.transform);
     }
 }

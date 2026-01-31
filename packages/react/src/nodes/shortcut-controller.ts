@@ -11,6 +11,7 @@ export class ShortcutControllerNode extends EventControllerNode<Gtk.ShortcutCont
             throw new Error(`ShortcutController only accepts Shortcut children, got '${child.typeName}'`);
         }
 
+        super.appendChild(child);
         this.shortcuts.push(child);
         this.addShortcutToController(child);
     }
@@ -25,6 +26,8 @@ export class ShortcutControllerNode extends EventControllerNode<Gtk.ShortcutCont
                 this.container.removeShortcut(child.shortcut);
             }
         }
+
+        super.removeChild(child);
     }
 
     private addShortcutToController(node: ShortcutNode): void {

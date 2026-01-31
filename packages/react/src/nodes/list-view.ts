@@ -39,14 +39,19 @@ export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListVi
         this.container.setFactory(this.itemRenderer.getFactory());
     }
 
-    public override mount(): void {
-        super.mount();
+    public override finalizeInitialChildren(props: ListViewProps): boolean {
+        super.finalizeInitialChildren(props);
+        return true;
+    }
+
+    public override commitMount(): void {
+        super.commitMount();
         this.container.setModel(this.list.getSelectionModel());
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.itemRenderer.dispose();
-        super.unmount();
+        super.detachDeletedInstance();
     }
 
     public override appendChild(child: Node): void {
@@ -54,6 +59,7 @@ export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListVi
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected x.ListItem`);
         }
 
+        super.appendChild(child);
         this.list.appendChild(child);
     }
 
@@ -62,6 +68,7 @@ export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListVi
             throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected x.ListItem`);
         }
 
+        super.insertBefore(child, before);
         this.list.insertBefore(child, before);
     }
 
@@ -71,10 +78,11 @@ export class ListViewNode extends WidgetNode<Gtk.ListView | Gtk.GridView, ListVi
         }
 
         this.list.removeChild(child);
+        super.removeChild(child);
     }
 
-    public override updateProps(oldProps: ListViewProps | null, newProps: ListViewProps): void {
-        super.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+    protected override applyUpdate(oldProps: ListViewProps | null, newProps: ListViewProps): void {
+        super.applyUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

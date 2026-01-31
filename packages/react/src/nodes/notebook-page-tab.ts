@@ -11,11 +11,7 @@ export class NotebookPageTabNode extends SlotNode<Props> {
     public setPage(notebook: Gtk.Notebook | null, page: Gtk.Widget | null): void {
         this.notebook = notebook;
         this.page = page;
-        this.setParent(notebook);
-    }
-
-    public override updateProps(oldProps: Props | null, newProps: Props): void {
-        super.updateProps(oldProps, newProps);
+        this.setParentWidget(notebook);
     }
 
     private getNotebook(): Gtk.Notebook {
@@ -44,6 +40,6 @@ export class NotebookPageTabNode extends SlotNode<Props> {
             return;
         }
 
-        notebook.setTabLabel(page, this.child);
+        notebook.setTabLabel(page, this.childWidget);
     }
 }

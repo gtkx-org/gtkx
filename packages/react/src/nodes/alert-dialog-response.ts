@@ -1,7 +1,6 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { AlertDialogResponseProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
@@ -10,11 +9,7 @@ export class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProp
     private dialog: Adw.AlertDialog | null = null;
     private responseId: string | null = null;
 
-    public canBeChildOf(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container instanceof Adw.AlertDialog;
-    }
-
-    public attachTo(parent: Node): void {
+    public override onAddedToParent(parent: Node): void {
         if (!(parent instanceof WidgetNode) || !(parent.container instanceof Adw.AlertDialog)) {
             return;
         }
@@ -23,53 +18,36 @@ export class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProp
 
         this.dialog = parent.container;
         this.responseId = this.props.id;
-        const dialog = this.dialog;
-        const id = this.responseId;
-        const label = this.props.label;
-
-        scheduleAfterCommit(() => {
-            if (this.dialog) {
-                dialog.addResponse(id, label);
-                this.applyOptionalProps(null, this.props);
-            }
-        }, CommitPriority.NORMAL);
+        this.dialog.addResponse(this.responseId, this.props.label);
+        this.applyOptionalProps(null, this.props);
     }
 
-    public detachFrom(_parent: Node): void {
+    public override onRemovedFromParent(_parent: Node): void {
         this.removeFromDialog();
     }
 
     private removeFromDialog(): void {
         if (!this.dialog || !this.responseId) return;
 
-        const dialog = this.dialog;
-        const id = this.responseId;
+        this.dialog.removeResponse(this.responseId);
         this.dialog = null;
         this.responseId = null;
-
-        scheduleAfterCommit(() => {
-            dialog.removeResponse(id);
-        }, CommitPriority.HIGH);
     }
 
-    public override updateProps(oldProps: AlertDialogResponseProps | null, newProps: AlertDialogResponseProps): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: AlertDialogResponseProps | null, newProps: AlertDialogResponseProps): void {
+        super.commitUpdate(oldProps, newProps);
 
         if (!this.dialog || !this.responseId) return;
 
         if (hasChanged(oldProps, newProps, "id")) {
             const oldId = this.responseId;
             const newId = newProps.id;
-            const dialog = this.dialog;
             const label = newProps.label;
 
+            this.dialog.removeResponse(oldId);
             this.responseId = newId;
-
-            scheduleAfterCommit(() => {
-                dialog.removeResponse(oldId);
-                dialog.addResponse(newId, label);
-                this.applyOptionalProps(null, newProps);
-            }, CommitPriority.NORMAL);
+            this.dialog.addResponse(newId, label);
+            this.applyOptionalProps(null, newProps);
             return;
         }
 
@@ -91,8 +69,8 @@ export class AlertDialogResponseNode extends VirtualNode<AlertDialogResponseProp
         }
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.removeFromDialog();
-        super.unmount();
+        super.detachDeletedInstance();
     }
 }

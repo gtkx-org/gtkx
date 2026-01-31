@@ -1,7 +1,6 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type { ToggleProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import { hasChanged } from "./internal/utils.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
@@ -10,11 +9,7 @@ export class ToggleNode extends VirtualNode<ToggleProps> {
     private toggleGroup: Adw.ToggleGroup | null = null;
     private toggle: Adw.Toggle | null = null;
 
-    public canBeChildOf(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container instanceof Adw.ToggleGroup;
-    }
-
-    public attachTo(parent: Node): void {
+    public override onAddedToParent(parent: Node): void {
         if (!(parent instanceof WidgetNode) || !(parent.container instanceof Adw.ToggleGroup)) {
             return;
         }
@@ -22,36 +17,25 @@ export class ToggleNode extends VirtualNode<ToggleProps> {
         if (this.toggle) return;
 
         this.toggleGroup = parent.container;
-        const toggleGroup = this.toggleGroup;
         this.toggle = new Adw.Toggle();
-
-        scheduleAfterCommit(() => {
-            const toggle = this.toggle;
-            if (toggle) {
-                this.applyOwnProps(null, this.props);
-                toggleGroup.add(toggle);
-            }
-        }, CommitPriority.NORMAL);
+        this.applyOwnProps(null, this.props);
+        this.toggleGroup.add(this.toggle);
     }
 
-    public detachFrom(_parent: Node): void {
+    public override onRemovedFromParent(_parent: Node): void {
         this.removeFromGroup();
     }
 
     private removeFromGroup(): void {
         if (!this.toggleGroup || !this.toggle) return;
 
-        const toggleGroup = this.toggleGroup;
-        const toggle = this.toggle;
+        this.toggleGroup.remove(this.toggle);
+        this.toggleGroup = null;
         this.toggle = null;
-
-        scheduleAfterCommit(() => {
-            toggleGroup.remove(toggle);
-        }, CommitPriority.HIGH);
     }
 
-    public override updateProps(oldProps: ToggleProps | null, newProps: ToggleProps): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: ToggleProps | null, newProps: ToggleProps): void {
+        super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 
@@ -78,8 +62,8 @@ export class ToggleNode extends VirtualNode<ToggleProps> {
         }
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.removeFromGroup();
-        super.unmount();
+        super.detachDeletedInstance();
     }
 }

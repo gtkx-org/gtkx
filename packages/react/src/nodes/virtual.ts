@@ -11,11 +11,7 @@ export class VirtualNode<P = Props> extends Node<undefined, P> {
         this.props = props;
     }
 
-    public appendChild(_child: Node): void {}
-    public removeChild(_child: Node): void {}
-    public insertBefore(_child: Node, _before: Node): void {}
-
-    public updateProps(_oldProps: P | null, newProps: P): void {
+    public override commitUpdate(_oldProps: P | null, newProps: P): void {
         this.props = newProps;
     }
 }

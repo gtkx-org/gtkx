@@ -21,7 +21,6 @@ import {
 } from "./internal/child-attachment.js";
 import {
     type InsertableWidget,
-    isAttachable,
     isEditable,
     isInsertable,
     isRemovable,
@@ -58,85 +57,65 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         return new WidgetClass(...(args as ConstructorParameters<typeof Gtk.Widget>));
     }
 
-    public appendChild(child: Node): void {
-        if (isAttachable(child) && child.canBeChildOf(this)) {
-            child.attachTo(this);
-            return;
+    public override canAcceptChild(child: Node): boolean {
+        if (child instanceof WidgetNode) {
+            return !(child.container instanceof Gtk.Window);
         }
-
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot append '${child.typeName}' to 'Widget': expected Widget`);
-        }
-
-        if (child.container instanceof Gtk.Window) {
-            throw new Error(`Cannot append 'Window' to '${this.typeName}': windows must be top-level containers`);
-        }
-
-        this.attachChild(child);
+        return true;
     }
 
-    public removeChild(child: Node): void {
-        if (isAttachable(child) && child.canBeChildOf(this)) {
-            child.detachFrom(this);
-            return;
+    public override appendChild(child: Node): void {
+        if (!this.canAcceptChild(child)) {
+            throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}'`);
         }
 
-        if (!(child instanceof WidgetNode)) {
-            throw new Error(`Cannot remove '${child.typeName}' from 'Widget': expected Widget`);
-        }
+        super.appendChild(child);
 
-        if (child.container instanceof Gtk.Window) {
-            throw new Error(`Cannot remove 'Window' from '${this.typeName}': windows must be top-level containers`);
-        }
-
-        this.detachChild(child);
-    }
-
-    public insertBefore(child: Node, before: Node): void {
-        if (isAttachable(child) && child.canBeChildOf(this)) {
-            child.attachTo(this);
-            return;
-        }
-
-        if (!(child instanceof WidgetNode) || !(before instanceof WidgetNode)) {
-            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected Widget`);
-        }
-
-        if (child.container instanceof Gtk.Window) {
-            throw new Error(`Cannot insert 'Window' into '${this.typeName}': windows must be top-level containers`);
-        }
-
-        if (isReorderable(this.container)) {
-            this.insertBeforeReorderable(this.container, child, before);
-        } else if (isInsertable(this.container)) {
-            this.insertBeforeInsertable(this.container, child, before);
-        } else {
-            this.appendChild(child);
+        if (child instanceof WidgetNode) {
+            this.attachChildWidget(child);
         }
     }
 
-    private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {
-        const previousSibling = this.findPreviousSibling(before);
-        const currentParent = child.container.getParent();
-        const isChildOfThisContainer = currentParent && currentParent === container;
+    public override removeChild(child: Node): void {
+        if (child instanceof WidgetNode) {
+            this.detachChildWidget(child);
+        }
 
-        if (isChildOfThisContainer) {
-            container.reorderChildAfter(child.container, previousSibling);
-        } else {
-            this.detachChildFromParent(child);
-            container.insertChildAfter(child.container, previousSibling);
+        super.removeChild(child);
+    }
+
+    public override insertBefore(child: Node, before: Node): void {
+        if (!this.canAcceptChild(child)) {
+            throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}'`);
+        }
+
+        super.insertBefore(child, before);
+
+        if (child instanceof WidgetNode && before instanceof WidgetNode) {
+            if (isReorderable(this.container)) {
+                this.insertBeforeReorderable(this.container, child, before);
+            } else if (isInsertable(this.container)) {
+                this.insertBeforeInsertable(this.container, child, before);
+            } else {
+                this.attachChildWidget(child);
+            }
+        } else if (child instanceof WidgetNode) {
+            this.attachChildWidget(child);
         }
     }
 
-    private insertBeforeInsertable(container: InsertableWidget, child: WidgetNode, before: WidgetNode): void {
-        this.detachChildFromParent(child);
-        const position = this.findInsertPosition(before);
-        container.insert(child.container, position);
+    public override commitUpdate(oldProps: P | null, newProps: P): void {
+        this.signalStore.blockAll();
+        try {
+            this.applyUpdate(oldProps, newProps);
+        } finally {
+            this.signalStore.unblockAll();
+        }
     }
 
-    public updateProps(oldProps: P | null, newProps: P): void {
+    protected applyUpdate(oldProps: P | null, newProps: P): void {
         if (!this.container) {
-            throw new Error(`WidgetNode.updateProps: container is undefined for ${this.typeName}`);
+            throw new Error(`WidgetNode.applyUpdate: container is undefined for ${this.typeName}`);
         }
         this.updateSizeRequest(oldProps, newProps);
         this.updateGrabFocus(oldProps, newProps);
@@ -252,14 +231,14 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         setter.call(this.container, value);
     }
 
-    private detachChildFromParent(child: WidgetNode): void {
+    protected detachChildFromParent(child: WidgetNode): void {
         const currentParent = child.container.getParent();
         if (currentParent !== null && isRemovable(currentParent)) {
             currentParent.remove(child.container);
         }
     }
 
-    private attachChild(child: WidgetNode): void {
+    protected attachChildWidget(child: WidgetNode): void {
         const strategy = getAttachmentStrategy(this.container);
         if (!strategy) {
             throw new Error(
@@ -272,7 +251,7 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
         performAttachment(child.container, strategy);
     }
 
-    private detachChild(child: WidgetNode): void {
+    protected detachChildWidget(child: WidgetNode): void {
         const strategy = getAttachmentStrategy(this.container);
         if (!strategy) {
             throw new Error(
@@ -280,6 +259,25 @@ export class WidgetNode<T extends Gtk.Widget = Gtk.Widget, P extends Props = Pro
             );
         }
         performDetachment(child.container, strategy);
+    }
+
+    private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {
+        const previousSibling = this.findPreviousSibling(before);
+        const currentParent = child.container.getParent();
+        const isChildOfThisContainer = currentParent && currentParent === container;
+
+        if (isChildOfThisContainer) {
+            container.reorderChildAfter(child.container, previousSibling);
+        } else {
+            this.detachChildFromParent(child);
+            container.insertChildAfter(child.container, previousSibling);
+        }
+    }
+
+    private insertBeforeInsertable(container: InsertableWidget, child: WidgetNode, before: WidgetNode): void {
+        this.detachChildFromParent(child);
+        const position = this.findInsertPosition(before);
+        container.insert(child.container, position);
     }
 
     private findPreviousSibling(before: WidgetNode): Gtk.Widget | undefined {

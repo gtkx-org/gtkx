@@ -68,6 +68,7 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
             throw new Error(`TextAnchor can only contain widget children, got '${child.typeName}'`);
         }
 
+        super.appendChild(child);
         this.widgetChild = child;
 
         if (this.textView && this.anchor && child.container) {
@@ -79,13 +80,14 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps> {
         if (child === this.widgetChild) {
             this.widgetChild = null;
         }
+        super.removeChild(child);
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.anchor = null;
         this.widgetChild = null;
         this.buffer = null;
         this.textView = null;
-        super.unmount();
+        super.detachDeletedInstance();
     }
 }

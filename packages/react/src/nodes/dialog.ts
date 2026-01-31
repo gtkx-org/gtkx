@@ -1,17 +1,22 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
+import type { Props } from "../types.js";
 import { WidgetNode } from "./widget.js";
 
 export class DialogNode extends WidgetNode<Adw.Dialog> {
-    public parent: Gtk.Window | null = null;
+    public parentWindow: Gtk.Window | null = null;
 
-    public override mount(): void {
-        this.container.present(this.parent ?? undefined);
-        super.mount();
+    public override finalizeInitialChildren(props: Props): boolean {
+        this.commitUpdate(null, props);
+        return true;
     }
 
-    public override unmount(): void {
+    public override commitMount(): void {
+        this.container.present(this.parentWindow ?? undefined);
+    }
+
+    public override detachDeletedInstance(): void {
         this.container.forceClose();
-        super.unmount();
+        super.detachDeletedInstance();
     }
 }

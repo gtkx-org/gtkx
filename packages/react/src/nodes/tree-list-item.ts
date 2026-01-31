@@ -41,6 +41,7 @@ export class TreeListItemNode extends VirtualNode<Props> {
             return;
         }
 
+        super.appendChild(child);
         child.setStore(this.store);
         child.setParentItemId(this.props.id ?? null);
         this.childNodes.push(child);
@@ -55,6 +56,7 @@ export class TreeListItemNode extends VirtualNode<Props> {
             return;
         }
 
+        super.insertBefore(child, before);
         child.setStore(this.store);
         child.setParentItemId(this.props.id ?? null);
 
@@ -91,10 +93,11 @@ export class TreeListItemNode extends VirtualNode<Props> {
 
         child.setStore(null);
         child.setParentItemId(null);
+        super.removeChild(child);
     }
 
-    public override updateProps(oldProps: Props | null, newProps: Props): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+        super.commitUpdate(oldProps, newProps);
 
         if (!this.store) {
             return;

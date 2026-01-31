@@ -46,14 +46,19 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
         this.container.setFactory(this.itemRenderer.getFactory());
     }
 
-    public override mount(): void {
-        super.mount();
+    public override finalizeInitialChildren(props: TreeListViewProps): boolean {
+        super.finalizeInitialChildren(props);
+        return true;
+    }
+
+    public override commitMount(): void {
+        super.commitMount();
         this.container.setModel(this.treeList.getSelectionModel());
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.itemRenderer.dispose();
-        super.unmount();
+        super.detachDeletedInstance();
     }
 
     public override appendChild(child: Node): void {
@@ -61,6 +66,7 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected x.TreeListItem`);
         }
 
+        super.appendChild(child);
         this.treeList.appendChild(child);
     }
 
@@ -69,6 +75,7 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
             throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected x.TreeListItem`);
         }
 
+        super.insertBefore(child, before);
         this.treeList.insertBefore(child, before);
     }
 
@@ -78,9 +85,10 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
         }
 
         this.treeList.removeChild(child);
+        super.removeChild(child);
     }
 
-    public override updateProps(oldProps: TreeListViewProps | null, newProps: TreeListViewProps): void {
+    protected override applyUpdate(oldProps: TreeListViewProps | null, newProps: TreeListViewProps): void {
         if (!oldProps || oldProps.renderItem !== newProps.renderItem) {
             this.itemRenderer.setRenderFn(newProps.renderItem ?? null);
         }
@@ -90,7 +98,7 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
         }
 
         const previousModel = this.treeList.getSelectionModel();
-        this.treeList.updateProps(
+        this.treeList.commitUpdate(
             oldProps ? filterProps(oldProps, RENDERER_PROP_NAMES) : null,
             filterProps(newProps, RENDERER_PROP_NAMES),
         );
@@ -100,6 +108,6 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
             this.container.setModel(currentModel);
         }
 
-        super.updateProps(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.applyUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
     }
 }

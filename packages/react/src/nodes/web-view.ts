@@ -11,8 +11,8 @@ type WebViewProps = Props & {
 };
 
 export class WebViewNode extends WidgetNode<WebKit.WebView, WebViewProps> {
-    public override updateProps(oldProps: WebViewProps | null, newProps: WebViewProps): void {
-        super.updateProps(
+    protected override applyUpdate(oldProps: WebViewProps | null, newProps: WebViewProps): void {
+        super.applyUpdate(
             oldProps ? (filterProps(oldProps, NON_BLOCKABLE_SIGNALS) as WebViewProps) : null,
             filterProps(newProps, NON_BLOCKABLE_SIGNALS) as WebViewProps,
         );

@@ -1,7 +1,6 @@
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
-import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
 import type { Container } from "../../types.js";
 import { VirtualNode } from "../virtual.js";
 
@@ -17,12 +16,12 @@ export type MenuProps = {
 export class MenuModel extends VirtualNode<MenuProps> {
     private actionMap: Gio.ActionMap | null = null;
     private actionPrefix: string;
-    private parent: Gio.Menu | null = null;
+    private parentMenu: Gio.Menu | null = null;
     private menu: Gio.Menu;
     private type: MenuType;
     private application: Gtk.Application | null = null;
     private action: Gio.SimpleAction | null = null;
-    private children: MenuModel[] = [];
+    private menuChildren: MenuModel[] = [];
 
     constructor(
         type: MenuType,
@@ -43,7 +42,7 @@ export class MenuModel extends VirtualNode<MenuProps> {
         this.actionMap = actionMap;
         this.actionPrefix = prefix;
 
-        for (const child of this.children) {
+        for (const child of this.menuChildren) {
             child.setActionMap(actionMap, prefix);
 
             if (child.type === "item") {
@@ -82,12 +81,12 @@ export class MenuModel extends VirtualNode<MenuProps> {
         return this.props.id;
     }
 
-    private getParent(): Gio.Menu {
-        if (!this.parent) {
+    private getParentMenu(): Gio.Menu {
+        if (!this.parentMenu) {
             throw new Error("Expected parent menu to be set on MenuNode");
         }
 
-        return this.parent;
+        return this.parentMenu;
     }
 
     private getActionMap(): Gio.ActionMap {
@@ -125,19 +124,19 @@ export class MenuModel extends VirtualNode<MenuProps> {
     }
 
     private getPosition(): number {
-        return this.findPositionIn(this.getParent());
+        return this.findPositionIn(this.getParentMenu());
     }
 
-    private findPositionIn(parent: Gio.Menu): number {
-        for (let i = 0; i < parent.getNItems(); i++) {
+    private findPositionIn(parentMenu: Gio.Menu): number {
+        for (let i = 0; i < parentMenu.getNItems(); i++) {
             if (this.type === "item") {
-                const actionName = parent.getItemAttributeValue(i, "action")?.getString();
+                const actionName = parentMenu.getItemAttributeValue(i, "action")?.getString();
 
                 if (actionName === this.getActionName()) {
                     return i;
                 }
             } else {
-                const link = parent.getItemLink(i, this.type);
+                const link = parentMenu.getItemLink(i, this.type);
 
                 if (link && link === this.menu) {
                     return i;
@@ -148,8 +147,8 @@ export class MenuModel extends VirtualNode<MenuProps> {
         return -1;
     }
 
-    private setParent(parent: Gio.Menu): void {
-        this.parent = parent;
+    private setParentMenu(parentMenu: Gio.Menu): void {
+        this.parentMenu = parentMenu;
     }
 
     public getMenu(): Gio.Menu {
@@ -164,19 +163,17 @@ export class MenuModel extends VirtualNode<MenuProps> {
         return this.action;
     }
 
-    public removeFromParent(): void {
-        if (!this.parent) return;
+    public removeFromParentMenu(): void {
+        if (!this.parentMenu) return;
 
-        const parent = this.parent;
-        this.parent = null;
+        const parentMenu = this.parentMenu;
+        this.parentMenu = null;
 
-        scheduleAfterCommit(() => {
-            const position = this.findPositionIn(parent);
+        const position = this.findPositionIn(parentMenu);
 
-            if (position >= 0) {
-                parent.remove(position);
-            }
-        }, CommitPriority.HIGH);
+        if (position >= 0) {
+            parentMenu.remove(position);
+        }
     }
 
     public insertInParentBefore(before: MenuModel): void {
@@ -184,45 +181,41 @@ export class MenuModel extends VirtualNode<MenuProps> {
             this.createAction();
         }
 
-        scheduleAfterCommit(() => {
-            const parent = this.getParent();
-            const beforePosition = before.getPosition();
+        const parentMenu = this.getParentMenu();
+        const beforePosition = before.getPosition();
 
-            switch (this.type) {
-                case "item": {
-                    parent.insert(beforePosition, this.props.label, this.getActionName());
-                    break;
-                }
-                case "section":
-                    parent.insertSection(beforePosition, this.menu, this.props.label);
-                    break;
-                case "submenu":
-                    parent.insertSubmenu(beforePosition, this.menu, this.props.label);
-                    break;
+        switch (this.type) {
+            case "item": {
+                parentMenu.insert(beforePosition, this.props.label, this.getActionName());
+                break;
             }
-        }, CommitPriority.NORMAL);
+            case "section":
+                parentMenu.insertSection(beforePosition, this.menu, this.props.label);
+                break;
+            case "submenu":
+                parentMenu.insertSubmenu(beforePosition, this.menu, this.props.label);
+                break;
+        }
     }
 
-    public appendToParent(): void {
+    public appendToParentMenu(): void {
         if (this.type === "item" && this.actionMap) {
             this.createAction();
         }
 
-        scheduleAfterCommit(() => {
-            const parent = this.getParent();
+        const parentMenu = this.getParentMenu();
 
-            switch (this.type) {
-                case "item":
-                    parent.append(this.props.label, this.getActionName());
-                    break;
-                case "section":
-                    parent.appendSection(this.menu, this.props.label);
-                    break;
-                case "submenu":
-                    parent.appendSubmenu(this.menu, this.props.label);
-                    break;
-            }
-        }, CommitPriority.NORMAL);
+        switch (this.type) {
+            case "item":
+                parentMenu.append(this.props.label, this.getActionName());
+                break;
+            case "section":
+                parentMenu.appendSection(this.menu, this.props.label);
+                break;
+            case "submenu":
+                parentMenu.appendSubmenu(this.menu, this.props.label);
+                break;
+        }
     }
 
     public override appendChild(child: Node): void {
@@ -230,14 +223,14 @@ export class MenuModel extends VirtualNode<MenuProps> {
             return;
         }
 
-        this.children.push(child);
+        this.menuChildren.push(child);
 
         if (this.actionMap) {
             child.setActionMap(this.actionMap, this.actionPrefix);
         }
 
-        child.setParent(this.menu);
-        child.appendToParent();
+        child.setParentMenu(this.menu);
+        child.appendToParentMenu();
     }
 
     public override insertBefore(child: Node, before: Node): void {
@@ -245,19 +238,19 @@ export class MenuModel extends VirtualNode<MenuProps> {
             return;
         }
 
-        const beforeIndex = this.children.indexOf(before);
+        const beforeIndex = this.menuChildren.indexOf(before);
 
         if (beforeIndex >= 0) {
-            this.children.splice(beforeIndex, 0, child);
+            this.menuChildren.splice(beforeIndex, 0, child);
         } else {
-            this.children.push(child);
+            this.menuChildren.push(child);
         }
 
         if (this.actionMap) {
             child.setActionMap(this.actionMap, this.actionPrefix);
         }
 
-        child.setParent(this.menu);
+        child.setParentMenu(this.menu);
         child.insertInParentBefore(before);
     }
 
@@ -266,17 +259,17 @@ export class MenuModel extends VirtualNode<MenuProps> {
             return;
         }
 
-        const index = this.children.indexOf(child);
+        const index = this.menuChildren.indexOf(child);
 
         if (index >= 0) {
-            this.children.splice(index, 1);
+            this.menuChildren.splice(index, 1);
         }
 
-        child.removeFromParent();
+        child.removeFromParentMenu();
     }
 
-    public override updateProps(oldProps: MenuProps | null, newProps: MenuProps): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: MenuProps | null, newProps: MenuProps): void {
+        super.commitUpdate(oldProps, newProps);
 
         if (this.type === "item") {
             this.updateItemProps(oldProps, newProps);
@@ -286,7 +279,7 @@ export class MenuModel extends VirtualNode<MenuProps> {
     }
 
     private updateItemProps(oldProps: MenuProps | null, newProps: MenuProps): void {
-        if (!this.parent || !this.actionMap) {
+        if (!this.parentMenu || !this.actionMap) {
             return;
         }
 
@@ -295,12 +288,12 @@ export class MenuModel extends VirtualNode<MenuProps> {
         }
 
         if (oldProps.id !== newProps.id || oldProps.label !== newProps.label) {
-            const parent = this.parent;
+            const parentMenu = this.parentMenu;
             this.removeAction();
-            this.removeFromParent();
-            this.parent = parent;
+            this.removeFromParentMenu();
+            this.parentMenu = parentMenu;
             this.createAction();
-            this.appendToParent();
+            this.appendToParentMenu();
             return;
         }
 
@@ -316,29 +309,29 @@ export class MenuModel extends VirtualNode<MenuProps> {
     }
 
     private updateContainerProps(oldProps: MenuProps | null, newProps: MenuProps): void {
-        if (!this.parent) {
+        if (!this.parentMenu) {
             return;
         }
 
         if (!oldProps || oldProps.label !== newProps.label) {
-            const parent = this.parent;
-            const position = this.findPositionIn(parent);
+            const parentMenu = this.parentMenu;
+            const position = this.findPositionIn(parentMenu);
 
             if (position >= 0) {
-                parent.remove(position);
+                parentMenu.remove(position);
 
                 if (this.type === "section") {
-                    parent.insertSection(position, this.menu, this.props.label);
+                    parentMenu.insertSection(position, this.menu, this.props.label);
                 } else if (this.type === "submenu") {
-                    parent.insertSubmenu(position, this.menu, this.props.label);
+                    parentMenu.insertSubmenu(position, this.menu, this.props.label);
                 }
             }
         }
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.removeAction();
-        this.removeFromParent();
-        super.unmount();
+        this.removeFromParentMenu();
+        super.detachDeletedInstance();
     }
 }

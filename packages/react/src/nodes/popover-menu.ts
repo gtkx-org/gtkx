@@ -31,6 +31,7 @@ export class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMen
 
     public override appendChild(child: Node): void {
         if (child instanceof MenuNode) {
+            super.appendChild(child);
             this.menu.appendChild(child);
             return;
         }
@@ -45,6 +46,7 @@ export class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMen
 
     public override insertBefore(child: Node, before: Node): void {
         if (child instanceof MenuNode) {
+            super.insertBefore(child, before);
             this.menu.insertBefore(child, before);
             return;
         }
@@ -60,6 +62,7 @@ export class PopoverMenuNode extends WidgetNode<Gtk.PopoverMenu | Gtk.PopoverMen
     public override removeChild(child: Node): void {
         if (child instanceof MenuNode) {
             this.menu.removeChild(child);
+            super.removeChild(child);
             return;
         }
 

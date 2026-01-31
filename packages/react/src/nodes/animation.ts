@@ -3,7 +3,6 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { buildCss, interpolate } from "../animation/css-builder.js";
 import type { AnimatableProperties, AnimationProps, SpringTransition, TimedTransition } from "../animation/types.js";
-import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import type { Container } from "../types.js";
 import { VirtualSingleChildNode } from "./abstract/virtual-single-child.js";
 import { attachChild, detachChild, getAttachmentStrategy } from "./internal/child-attachment.js";
@@ -29,8 +28,8 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
         this.className = `gtkx-anim-${animationCounter++}`;
     }
 
-    public override updateProps(oldProps: AnimationProps | null, newProps: AnimationProps): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: AnimationProps | null, newProps: AnimationProps): void {
+        super.commitUpdate(oldProps, newProps);
 
         if (this.isExiting) {
             return;
@@ -38,11 +37,9 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
 
         if (oldProps && newProps.animate && !this.arePropsEqual(oldProps.animate, newProps.animate)) {
             const target = newProps.animate;
-            scheduleAfterCommit(() => {
-                if (this.child && !this.isExiting) {
-                    this.animateTo(target);
-                }
-            }, CommitPriority.LOW);
+            if (this.childWidget && !this.isExiting) {
+                this.animateTo(target);
+            }
         }
     }
 
@@ -51,81 +48,77 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
             oldChild.removeCssClass(this.className);
         }
 
-        if (oldChild && this.parent && this.isWidgetAttachedTo(oldChild, this.parent)) {
-            const strategy = getAttachmentStrategy(this.parent);
+        if (oldChild && this.parentWidget && this.isWidgetAttachedTo(oldChild, this.parentWidget)) {
+            const strategy = getAttachmentStrategy(this.parentWidget);
             if (strategy) {
                 detachChild(oldChild, strategy);
-            } else if (isRemovable(this.parent)) {
-                this.parent.remove(oldChild);
+            } else if (isRemovable(this.parentWidget)) {
+                this.parentWidget.remove(oldChild);
             }
         }
 
-        if (this.child && this.parent) {
-            const strategy = getAttachmentStrategy(this.parent);
+        if (this.childWidget && this.parentWidget) {
+            const strategy = getAttachmentStrategy(this.parentWidget);
             if (strategy) {
-                attachChild(this.child, strategy);
+                attachChild(this.childWidget, strategy);
             }
 
             this.setupCssProvider();
-            this.child.addCssClass(this.className);
+            this.childWidget.addCssClass(this.className);
 
-            scheduleAfterCommit(() => {
-                if (!this.child) return;
+            const initial = this.props.initial;
+            const animate = this.props.animate;
 
-                const initial = this.props.initial;
-                const animate = this.props.animate;
-
-                if (initial === false || !this.props.animateOnMount) {
-                    if (animate) {
-                        this.currentValues = { ...animate };
-                        this.applyValues(this.currentValues);
-                    }
-                } else {
-                    const initialValues = initial ?? animate ?? {};
-                    this.currentValues = { ...initialValues };
+            if (initial === false || !this.props.animateOnMount) {
+                if (animate) {
+                    this.currentValues = { ...animate };
                     this.applyValues(this.currentValues);
-
-                    if (this.props.animateOnMount && animate) {
-                        this.animateTo(animate);
-                    }
                 }
-            }, CommitPriority.LOW);
+            } else {
+                const initialValues = initial ?? animate ?? {};
+                this.currentValues = { ...initialValues };
+                this.applyValues(this.currentValues);
+
+                if (this.props.animateOnMount && animate) {
+                    this.animateTo(animate);
+                }
+            }
         }
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         if (this.isExiting) {
             return;
         }
 
-        if (this.props.exit && this.child) {
+        if (this.props.exit && this.childWidget) {
             this.isExiting = true;
 
             this.animateTo(this.props.exit, () => {
-                this.detachChildFromParent();
+                this.detachChildFromParentWidget();
                 this.cleanup();
-                super.unmount();
+                super.detachDeletedInstance();
             });
         } else {
-            this.detachChildFromParent();
+            this.detachChildFromParentWidget();
             this.cleanup();
-            super.unmount();
+            super.detachDeletedInstance();
         }
     }
 
-    private detachChildFromParent(): void {
-        if (this.child && this.parent && this.isChildAttachedToParent()) {
-            const strategy = getAttachmentStrategy(this.parent);
+    private detachChildFromParentWidget(): void {
+        if (this.childWidget && this.parentWidget && this.isChildAttachedToParent()) {
+            const strategy = getAttachmentStrategy(this.parentWidget);
             if (strategy) {
-                detachChild(this.child, strategy);
-            } else if (isRemovable(this.parent)) {
-                this.parent.remove(this.child);
+                detachChild(this.childWidget, strategy);
+            } else if (isRemovable(this.parentWidget)) {
+                this.parentWidget.remove(this.childWidget);
             }
         }
     }
 
     private isChildAttachedToParent(): boolean {
-        return this.isWidgetAttachedTo(this.child, this.parent);
+        return this.isWidgetAttachedTo(this.childWidget, this.parentWidget);
     }
 
     private isWidgetAttachedTo(child: Gtk.Widget | null, parent: Gtk.Widget | null): boolean {
@@ -135,7 +128,7 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
     }
 
     private setupCssProvider(): void {
-        if (this.provider || !this.child) return;
+        if (this.provider || !this.childWidget) return;
 
         this.provider = new Gtk.CssProvider();
         this.display = Gdk.DisplayManager.get().getDefaultDisplay();
@@ -159,8 +152,8 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
             Gtk.StyleContext.removeProviderForDisplay(this.display, this.provider);
         }
 
-        if (this.child) {
-            this.child.removeCssClass(this.className);
+        if (this.childWidget) {
+            this.childWidget.removeCssClass(this.className);
         }
 
         this.provider = null;
@@ -168,7 +161,7 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
     }
 
     private animateTo(target: AnimatableProperties, onComplete?: () => void): void {
-        if (!this.child) return;
+        if (!this.childWidget) return;
 
         if (this.currentAnimation) {
             this.currentAnimation.skip();
@@ -186,7 +179,7 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
             this.applyValues(interpolated);
         });
 
-        const animation = this.createAnimation(this.child, callback);
+        const animation = this.createAnimation(this.childWidget, callback);
 
         animation.connect("done", () => {
             this.currentValues = { ...to };
@@ -271,8 +264,8 @@ export class AnimationNode extends VirtualSingleChildNode<AnimationProps> {
             return;
         }
 
-        if (this.child && !this.child.getCssClasses()?.includes(this.className)) {
-            this.child.addCssClass(this.className);
+        if (this.childWidget && !this.childWidget.getCssClasses()?.includes(this.className)) {
+            this.childWidget.addCssClass(this.className);
         }
 
         const css = buildCss(this.className, values);

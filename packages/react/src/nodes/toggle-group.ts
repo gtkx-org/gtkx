@@ -14,8 +14,8 @@ const OWN_PROPS = ["onActiveChanged"] as const;
 export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProps> {
     private notifyHandler: SignalHandler | null = null;
 
-    public override updateProps(oldProps: ToggleGroupProps | null, newProps: ToggleGroupProps): void {
-        super.updateProps(
+    protected override applyUpdate(oldProps: ToggleGroupProps | null, newProps: ToggleGroupProps): void {
+        super.applyUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as ToggleGroupProps) : null,
             filterProps(newProps, OWN_PROPS) as ToggleGroupProps,
         );
@@ -41,11 +41,11 @@ export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, ToggleGroupProp
         }
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         if (this.notifyHandler) {
             this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;
         }
-        super.unmount();
+        super.detachDeletedInstance();
     }
 }

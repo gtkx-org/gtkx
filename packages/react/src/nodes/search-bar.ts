@@ -14,8 +14,8 @@ const OWN_PROPS = ["onSearchModeChanged"] as const;
 export class SearchBarNode extends WidgetNode<Gtk.SearchBar, SearchBarProps> {
     private notifyHandler: SignalHandler | null = null;
 
-    public override updateProps(oldProps: SearchBarProps | null, newProps: SearchBarProps): void {
-        super.updateProps(
+    protected override applyUpdate(oldProps: SearchBarProps | null, newProps: SearchBarProps): void {
+        super.applyUpdate(
             oldProps ? (filterProps(oldProps, OWN_PROPS) as SearchBarProps) : null,
             filterProps(newProps, OWN_PROPS) as SearchBarProps,
         );
@@ -41,11 +41,11 @@ export class SearchBarNode extends WidgetNode<Gtk.SearchBar, SearchBarProps> {
         }
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         if (this.notifyHandler) {
             this.signalStore.set(this, this.container, "notify", undefined);
             this.notifyHandler = null;
         }
-        super.unmount();
+        super.detachDeletedInstance();
     }
 }

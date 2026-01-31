@@ -1,6 +1,5 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
 import { filterProps, hasChanged } from "./internal/utils.js";
 import { WidgetNode } from "./widget.js";
 
@@ -14,20 +13,17 @@ type StackProps = {
 };
 
 export class StackNode extends WidgetNode<StackWidget, StackProps> {
-    public override updateProps(oldProps: StackProps | null, newProps: StackProps): void {
-        super.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+    protected override applyUpdate(oldProps: StackProps | null, newProps: StackProps): void {
+        super.applyUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 
     protected applyOwnProps(oldProps: StackProps | null, newProps: StackProps): void {
         if (newProps.page && this.container.getVisibleChildName() !== newProps.page) {
             const page = newProps.page;
-
-            scheduleAfterCommit(() => {
-                if (this.container.getChildByName(page)) {
-                    this.container.setVisibleChildName(page);
-                }
-            }, CommitPriority.NORMAL);
+            if (this.container.getChildByName(page)) {
+                this.container.setVisibleChildName(page);
+            }
         }
 
         if (hasChanged(oldProps, newProps, "onPageChanged")) {

@@ -19,8 +19,8 @@ type AdjustableProps = Props & {
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
     private adjustment: Gtk.Adjustment | null = null;
 
-    public override updateProps(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
-        super.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+    protected override applyUpdate(oldProps: AdjustableProps | null, newProps: AdjustableProps): void {
+        super.applyUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
     }
 

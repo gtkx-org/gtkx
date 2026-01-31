@@ -1,45 +1,51 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { CommitPriority, scheduleAfterCommit } from "../scheduler.js";
-import type { Attachable } from "./internal/predicates.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
 type Props = Partial<OverlayChildProps>;
 
-export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
-    private parent: Gtk.Overlay | null = null;
-    private children = new Set<Gtk.Widget>();
+export class OverlayChildNode extends VirtualNode<Props> {
+    private parentOverlay: Gtk.Overlay | null = null;
+    private overlayChildren = new Set<Gtk.Widget>();
 
-    public canBeChildOf(parent: Node): boolean {
-        return parent instanceof WidgetNode;
-    }
-
-    public attachTo(parent: Node): void {
+    public override onAddedToParent(parent: Node): void {
         if (parent instanceof WidgetNode) {
-            this.parent = parent.container as Gtk.Overlay;
-        }
-    }
-
-    public detachFrom(_parent: Node): void {}
-
-    public override unmount(): void {
-        if (this.parent && this.children.size > 0) {
-            const parent = this.parent;
-            const children = [...this.children];
-            this.children.clear();
-
-            for (const child of children) {
-                const currentParent = child.getParent();
-                if (currentParent && currentParent === parent) {
-                    parent.removeOverlay(child);
-                }
+            this.parentOverlay = parent.container as Gtk.Overlay;
+            for (const child of this.overlayChildren) {
+                this.attachOverlayChild(child);
             }
         }
+    }
 
-        this.parent = null;
-        super.unmount();
+    public override onRemovedFromParent(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.detachAllOverlayChildren(parent.container as Gtk.Overlay);
+        }
+        this.parentOverlay = null;
+    }
+
+    public override detachDeletedInstance(): void {
+        if (this.parentOverlay) {
+            this.detachAllOverlayChildren(this.parentOverlay);
+        }
+        this.overlayChildren.clear();
+        this.parentOverlay = null;
+        super.detachDeletedInstance();
+    }
+
+    private detachAllOverlayChildren(overlay: Gtk.Overlay): void {
+        for (const child of this.overlayChildren) {
+            const currentParent = child.getParent();
+            if (currentParent && currentParent === overlay) {
+                overlay.removeOverlay(child);
+            }
+        }
+    }
+
+    public override canAcceptChild(child: Node): boolean {
+        return child instanceof WidgetNode;
     }
 
     public override appendChild(child: Node): void {
@@ -48,28 +54,28 @@ export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
         }
 
         const widget = child.container;
-        this.children.add(widget);
+        this.overlayChildren.add(widget);
 
-        scheduleAfterCommit(() => {
-            if (this.parent) {
-                this.attachChild(widget);
-            }
-        }, CommitPriority.NORMAL);
+        super.appendChild(child);
+
+        if (this.parentOverlay) {
+            this.attachOverlayChild(widget);
+        }
     }
 
-    public override insertBefore(child: Node, _before: Node): void {
+    public override insertBefore(child: Node, before: Node): void {
         if (!(child instanceof WidgetNode)) {
             throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected Widget`);
         }
 
         const widget = child.container;
-        this.children.add(widget);
+        this.overlayChildren.add(widget);
 
-        scheduleAfterCommit(() => {
-            if (this.parent) {
-                this.attachChild(widget);
-            }
-        }, CommitPriority.NORMAL);
+        super.insertBefore(child, before);
+
+        if (this.parentOverlay) {
+            this.attachOverlayChild(widget);
+        }
     }
 
     public override removeChild(child: Node): void {
@@ -78,23 +84,23 @@ export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
         }
 
         const widget = child.container;
-        const parent = this.parent;
-        this.children.delete(widget);
+        const parent = this.parentOverlay;
+        this.overlayChildren.delete(widget);
 
-        scheduleAfterCommit(() => {
-            if (parent) {
-                const currentParent = widget.getParent();
-                if (currentParent && currentParent === parent) {
-                    parent.removeOverlay(widget);
-                }
+        if (parent) {
+            const currentParent = widget.getParent();
+            if (currentParent && currentParent === parent) {
+                parent.removeOverlay(widget);
             }
-        }, CommitPriority.HIGH);
+        }
+
+        super.removeChild(child);
     }
 
-    public override updateProps(oldProps: Props | null, newProps: Props): void {
-        super.updateProps(oldProps, newProps);
+    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
+        super.commitUpdate(oldProps, newProps);
 
-        if (!this.parent) {
+        if (!this.parentOverlay) {
             return;
         }
 
@@ -102,8 +108,8 @@ export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
         const clipOverlayChanged = oldProps?.clipOverlay !== newProps.clipOverlay;
 
         if (measureChanged || clipOverlayChanged) {
-            const parent = this.parent;
-            for (const child of this.children) {
+            const parent = this.parentOverlay;
+            for (const child of this.overlayChildren) {
                 if (measureChanged) {
                     parent.setMeasureOverlay(child, newProps.measure ?? false);
                 }
@@ -114,19 +120,19 @@ export class OverlayChildNode extends VirtualNode<Props> implements Attachable {
         }
     }
 
-    private attachChild(widget: Gtk.Widget): void {
-        if (!this.parent) {
+    private attachOverlayChild(widget: Gtk.Widget): void {
+        if (!this.parentOverlay) {
             return;
         }
 
-        this.parent.addOverlay(widget);
+        this.parentOverlay.addOverlay(widget);
 
         if (this.props.measure !== undefined) {
-            this.parent.setMeasureOverlay(widget, this.props.measure);
+            this.parentOverlay.setMeasureOverlay(widget, this.props.measure);
         }
 
         if (this.props.clipOverlay !== undefined) {
-            this.parent.setClipOverlay(widget, this.props.clipOverlay);
+            this.parentOverlay.setClipOverlay(widget, this.props.clipOverlay);
         }
     }
 }

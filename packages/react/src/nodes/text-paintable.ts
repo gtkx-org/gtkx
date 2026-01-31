@@ -38,8 +38,8 @@ export class TextPaintableNode extends VirtualNode<TextPaintableProps> {
         this.buffer.insertPaintable(iter, this.props.paintable);
     }
 
-    public override unmount(): void {
+    public override detachDeletedInstance(): void {
         this.buffer = null;
-        super.unmount();
+        super.detachDeletedInstance();
     }
 }

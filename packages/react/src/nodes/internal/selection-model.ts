@@ -1,6 +1,5 @@
 import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { CommitPriority } from "../../scheduler.js";
 import { DeferredAction } from "./deferred-action.js";
 import type { SignalStore } from "./signal-store.js";
 
@@ -39,7 +38,7 @@ export class SelectionModelManager {
         this.getSelection = getSelection;
         this.resolveSelectionIndices = resolveSelectionIndices;
         this.getItemCount = getItemCount;
-        this.selectionAction = new DeferredAction(() => this.applySelection(), CommitPriority.LOW);
+        this.selectionAction = new DeferredAction(() => this.applySelection());
         this.initSelectionHandler(config.onSelectionChanged);
         this.setSelection(config.selected);
     }

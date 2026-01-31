@@ -1,7 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { Node } from "../../node.js";
-import { CommitPriority, scheduleAfterCommit } from "../../scheduler.js";
-import type { Attachable } from "../internal/predicates.js";
 import { VirtualNode } from "../virtual.js";
 import { WidgetNode } from "../widget.js";
 
@@ -9,40 +7,24 @@ type ChildParentWidget = Gtk.Widget & {
     remove(child: Gtk.Widget): void;
 };
 
-export abstract class VirtualContainerNode<P extends ChildParentWidget = ChildParentWidget>
-    extends VirtualNode
-    implements Attachable
-{
-    protected parent: P | null = null;
+export abstract class VirtualContainerNode<P extends ChildParentWidget = ChildParentWidget> extends VirtualNode {
+    protected parentWidget: P | null = null;
 
-    public setParent(newParent: P | null): void {
-        this.parent = newParent;
+    public setParentWidget(newParent: P | null): void {
+        this.parentWidget = newParent;
     }
 
-    protected getParent(): P {
-        if (!this.parent) {
+    protected getParentWidget(): P {
+        if (!this.parentWidget) {
             throw new Error(`Expected parent widget to be set on ${this.typeName}`);
         }
-        return this.parent;
+        return this.parentWidget;
     }
 
     protected abstract attachChild(parent: P, widget: Gtk.Widget): void;
 
-    public canBeChildOf(parent: Node): boolean {
-        return parent instanceof WidgetNode;
-    }
-
-    public attachTo(parent: Node): void {
-        if (parent instanceof WidgetNode) {
-            this.setParent(parent.container as P);
-        }
-    }
-
-    public detachFrom(_parent: Node): void {}
-
-    public override unmount(): void {
-        this.parent = null;
-        super.unmount();
+    public override canAcceptChild(child: Node): boolean {
+        return child instanceof WidgetNode;
     }
 
     public override appendChild(child: Node): void {
@@ -50,29 +32,23 @@ export abstract class VirtualContainerNode<P extends ChildParentWidget = ChildPa
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}': expected Widget`);
         }
 
-        const widget = child.container;
+        super.appendChild(child);
 
-        scheduleAfterCommit(() => {
-            const parent = this.parent;
-            if (parent) {
-                this.attachChild(parent, widget);
-            }
-        }, CommitPriority.NORMAL);
+        if (this.parentWidget) {
+            this.attachChild(this.parentWidget, child.container);
+        }
     }
 
-    public override insertBefore(child: Node, _before: Node): void {
+    public override insertBefore(child: Node, before: Node): void {
         if (!(child instanceof WidgetNode)) {
             throw new Error(`Cannot insert '${child.typeName}' into '${this.typeName}': expected Widget`);
         }
 
-        const widget = child.container;
+        super.insertBefore(child, before);
 
-        scheduleAfterCommit(() => {
-            const parent = this.parent;
-            if (parent) {
-                this.attachChild(parent, widget);
-            }
-        }, CommitPriority.NORMAL);
+        if (this.parentWidget) {
+            this.attachChild(this.parentWidget, child.container);
+        }
     }
 
     public override removeChild(child: Node): void {
@@ -81,16 +57,52 @@ export abstract class VirtualContainerNode<P extends ChildParentWidget = ChildPa
         }
 
         const widget = child.container;
-        const parent = this.parent;
+        const parentWidget = this.parentWidget;
 
-        scheduleAfterCommit(() => {
-            if (parent) {
-                const currentParent = widget.getParent();
+        if (parentWidget) {
+            const currentParent = widget.getParent();
+            if (currentParent && currentParent === parentWidget) {
+                parentWidget.remove(widget);
+            }
+        }
 
-                if (currentParent && currentParent === parent) {
-                    parent.remove(widget);
+        super.removeChild(child);
+    }
+
+    public override onAddedToParent(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.setParentWidget(parent.container as P);
+            for (const child of this.children) {
+                if (child instanceof WidgetNode && this.parentWidget) {
+                    this.attachChild(this.parentWidget, child.container);
                 }
             }
-        }, CommitPriority.HIGH);
+        }
+    }
+
+    public override onRemovedFromParent(parent: Node): void {
+        if (parent instanceof WidgetNode) {
+            this.detachAllChildren(parent.container as P);
+        }
+        this.setParentWidget(null);
+    }
+
+    public override detachDeletedInstance(): void {
+        if (this.parentWidget) {
+            this.detachAllChildren(this.parentWidget);
+        }
+        this.parentWidget = null;
+        super.detachDeletedInstance();
+    }
+
+    private detachAllChildren(parent: P): void {
+        for (const child of this.children) {
+            if (child instanceof WidgetNode) {
+                const currentParent = child.container.getParent();
+                if (currentParent && currentParent === parent) {
+                    parent.remove(child.container);
+                }
+            }
+        }
     }
 }
