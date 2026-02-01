@@ -115,13 +115,13 @@ export class SourceViewNode extends TextViewNode {
 
         const { onCursorMoved, onHighlightUpdated } = props;
 
-        this.signalStore.set(this, buffer, "cursor-moved", onCursorMoved ?? null);
+        this.signalStore.set(this, buffer, "cursor-moved", onCursorMoved ?? undefined);
 
         this.signalStore.set(
             this,
             buffer,
             "highlight-updated",
-            onHighlightUpdated ? (start: Gtk.TextIter, end: Gtk.TextIter) => onHighlightUpdated(start, end) : null,
+            onHighlightUpdated ? (start: Gtk.TextIter, end: Gtk.TextIter) => onHighlightUpdated(start, end) : undefined,
         );
     }
 }

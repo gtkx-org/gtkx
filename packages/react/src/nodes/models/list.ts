@@ -1,11 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { GtkListViewProps } from "../../jsx.js";
+import type { ListModelProps } from "../../jsx.js";
 import { ListStore } from "../internal/list-store.js";
 import { SelectionModelController } from "../internal/selection-model-controller.js";
 import type { SignalStore } from "../internal/signal-store.js";
 import type { ListItemNode } from "../list-item.js";
-
-export type ListProps = Pick<GtkListViewProps, "selectionMode" | "selected" | "onSelectionChanged">;
 
 type ListModelConfig = {
     owner: object;
@@ -17,7 +15,7 @@ export class ListModel {
     private store: ListStore;
     private selectionManager: SelectionModelController;
 
-    constructor(config: ListModelConfig, props: ListProps = {}) {
+    constructor(config: ListModelConfig, props: ListModelProps = {}) {
         this.config = config;
         this.store = new ListStore();
         this.selectionManager = new SelectionModelController(
@@ -52,7 +50,7 @@ export class ListModel {
         child.setStore(null);
     }
 
-    public updateProps(oldProps: ListProps | null, newProps: ListProps): void {
+    public updateProps(oldProps: ListModelProps | null, newProps: ListModelProps): void {
         this.selectionManager.update(
             oldProps ? { ...this.config, ...oldProps } : null,
             { ...this.config, ...newProps },

@@ -63,7 +63,7 @@ export class ContainerSlotNode extends VirtualNode<ContainerSlotProps, WidgetNod
         const method = parent[methodName as keyof Gtk.Widget];
 
         if (typeof method !== "function") {
-            throw new Error(`ContainerSlot method '${methodName}' not found on '${parent.constructor.name}'`);
+            throw new Error(`Method '${methodName}' not found on '${parent.constructor.name}'`);
         }
 
         (method as (child: Gtk.Widget) => void).call(parent, child);

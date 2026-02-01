@@ -1,19 +1,13 @@
 import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
+import type { MenuModelProps } from "../../jsx.js";
 import type { Node } from "../../node.js";
 import type { Container } from "../../types.js";
 import { VirtualNode } from "../virtual.js";
 
 export type MenuType = "root" | "item" | "section" | "submenu";
 
-export type MenuProps = {
-    id?: string;
-    label?: string;
-    accels?: string | string[];
-    onActivate?: () => void;
-};
-
-export class MenuModel extends VirtualNode<MenuProps, MenuModel, MenuModel> {
+export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel> {
     private actionMap: Gio.ActionMap | null = null;
     private actionPrefix: string;
     private parentMenu: Gio.Menu | null = null;
@@ -24,7 +18,7 @@ export class MenuModel extends VirtualNode<MenuProps, MenuModel, MenuModel> {
 
     constructor(
         type: MenuType,
-        props: MenuProps,
+        props: MenuModelProps,
         rootContainer: Container,
         actionMap?: Gio.ActionMap,
         application?: Gtk.Application,
@@ -248,7 +242,7 @@ export class MenuModel extends VirtualNode<MenuProps, MenuModel, MenuModel> {
         super.removeChild(child);
     }
 
-    public override commitUpdate(oldProps: MenuProps | null, newProps: MenuProps): void {
+    public override commitUpdate(oldProps: MenuModelProps | null, newProps: MenuModelProps): void {
         super.commitUpdate(oldProps, newProps);
 
         if (this.type === "item") {
@@ -258,7 +252,7 @@ export class MenuModel extends VirtualNode<MenuProps, MenuModel, MenuModel> {
         }
     }
 
-    private updateItemProps(oldProps: MenuProps | null, newProps: MenuProps): void {
+    private updateItemProps(oldProps: MenuModelProps | null, newProps: MenuModelProps): void {
         if (!this.parentMenu || !this.actionMap) {
             return;
         }
@@ -288,7 +282,7 @@ export class MenuModel extends VirtualNode<MenuProps, MenuModel, MenuModel> {
         }
     }
 
-    private updateContainerProps(oldProps: MenuProps | null, newProps: MenuProps): void {
+    private updateContainerProps(oldProps: MenuModelProps | null, newProps: MenuModelProps): void {
         if (!this.parentMenu) {
             return;
         }

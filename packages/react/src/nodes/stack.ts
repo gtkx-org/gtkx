@@ -31,7 +31,7 @@ export class StackNode extends WidgetNode<StackWidget, StackProps> {
                     onPageChanged(self.getVisibleChildName(), self);
                 });
             } else {
-                this.signalStore.set(this, this.container, "notify::visible-child-name", null);
+                this.signalStore.set(this, this.container, "notify::visible-child-name", undefined);
             }
         }
     }

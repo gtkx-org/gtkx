@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { MenuModelProps } from "../jsx.js";
 import type { Container } from "../types.js";
-import { MenuModel, type MenuProps, type MenuType } from "./models/menu.js";
+import { MenuModel, type MenuType } from "./models/menu.js";
 
 export class MenuNode extends MenuModel {
     private static getType(typeName: string): MenuType {
@@ -15,7 +16,7 @@ export class MenuNode extends MenuModel {
         throw new Error(`Unable to find menu type '${typeName}'`);
     }
 
-    constructor(typeName: string, props: MenuProps, _container: undefined, rootContainer: Container) {
+    constructor(typeName: string, props: MenuModelProps, _container: undefined, rootContainer: Container) {
         super(
             MenuNode.getType(typeName),
             props,

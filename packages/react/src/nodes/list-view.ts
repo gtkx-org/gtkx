@@ -1,15 +1,15 @@
-import type { GtkListViewProps } from "../jsx.js";
+import type { GtkListViewProps, ListModelProps } from "../jsx.js";
 import type { ListViewWidget } from "../registry.js";
 import type { Container } from "../types.js";
 import { ListItemRenderer } from "./internal/list-item-renderer.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import type { ListItemNode } from "./list-item.js";
-import { ListModel, type ListProps } from "./models/list.js";
+import { ListModel } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["renderItem", "estimatedItemHeight"] as const;
 
-type ListViewProps = Pick<GtkListViewProps, (typeof OWN_PROPS)[number]> & ListProps;
+type ListViewProps = Pick<GtkListViewProps, (typeof OWN_PROPS)[number]> & ListModelProps;
 
 export class ListViewNode extends WidgetNode<ListViewWidget, ListViewProps, ListItemNode> {
     private itemRenderer: ListItemRenderer;

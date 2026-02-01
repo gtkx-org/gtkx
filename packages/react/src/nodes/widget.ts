@@ -118,7 +118,7 @@ export class WidgetNode<
         super.commitUpdate(oldProps, newProps);
 
         if (!this.container) {
-            throw new Error(`WidgetNode.commitUpdate: container is undefined for ${this.typeName}`);
+            throw new Error(`Container is undefined for '${this.typeName}'`);
         }
 
         this.signalStore.blockAll();
@@ -369,7 +369,7 @@ export class WidgetNode<
             beforeChild = beforeChild.getNextSibling();
         }
 
-        throw new Error(`Cannot find 'before' child in container`);
+        throw new Error(`Cannot find 'before' sibling in '${this.typeName}'`);
     }
 
     private findInsertPosition(before: WidgetNode): number {
@@ -384,7 +384,7 @@ export class WidgetNode<
             currentChild = currentChild.getNextSibling();
         }
 
-        throw new Error(`Cannot find 'before' child in container`);
+        throw new Error(`Cannot find 'before' child position in '${this.typeName}'`);
     }
 }
 

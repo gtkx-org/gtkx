@@ -32,13 +32,11 @@ export class FixedChildNode extends VirtualNode<FixedChildProps, WidgetNode<Gtk.
     }
 
     public override removeChild(child: WidgetNode): void {
-        const widget = child.container;
+        if (this.parent) {
+            this.detachWidgetIfAttached(this.parent.container, child.container);
+        }
 
         super.removeChild(child);
-
-        if (this.parent) {
-            this.detachWidgetIfAttached(this.parent.container, widget);
-        }
     }
 
     public override detachDeletedInstance(): void {

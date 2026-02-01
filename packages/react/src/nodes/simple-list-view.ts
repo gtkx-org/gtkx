@@ -6,9 +6,9 @@ import { SimpleListStore } from "./internal/simple-list-store.js";
 import type { SimpleListItemNode } from "./simple-list-item.js";
 import { WidgetNode } from "./widget.js";
 
-const PROP_NAMES = ["selectedId", "onSelectionChanged"] as const;
+const OWN_PROPS = ["selectedId", "onSelectionChanged"] as const;
 
-type SimpleListViewProps = Pick<GtkDropDownProps, (typeof PROP_NAMES)[number]>;
+type SimpleListViewProps = Pick<GtkDropDownProps, (typeof OWN_PROPS)[number]>;
 
 export class SimpleListViewNode extends WidgetNode<SimpleListViewWidget, SimpleListViewProps, SimpleListItemNode> {
     private store = new SimpleListStore();
@@ -48,7 +48,7 @@ export class SimpleListViewNode extends WidgetNode<SimpleListViewWidget, SimpleL
             }
         }
 
-        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
     }
 
     public override appendChild(child: SimpleListItemNode): void {

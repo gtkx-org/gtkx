@@ -33,6 +33,6 @@ export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProp
             this.container.setDrawFunc(this.pendingDrawFunc);
             this.pendingDrawFunc = null;
         }
-        this.signalStore.set(this, this.container, "realize", null);
+        this.signalStore.set(this, this.container, "realize", undefined);
     }
 }

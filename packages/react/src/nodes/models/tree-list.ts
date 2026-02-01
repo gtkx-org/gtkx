@@ -1,16 +1,11 @@
 import type * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { TreeListViewProps } from "../../jsx.js";
+import type { TreeListModelProps } from "../../jsx.js";
 import { SelectionModelController } from "../internal/selection-model-controller.js";
 import type { SignalStore } from "../internal/signal-store.js";
 import { TreeStore } from "../internal/tree-store.js";
 import { createTreeItemData, type TreeListItemNode } from "../tree-list-item.js";
-
-export type TreeListModelProps = Pick<
-    TreeListViewProps,
-    "autoexpand" | "selectionMode" | "selected" | "onSelectionChanged"
->;
 
 type TreeListModelConfig = {
     owner: object;

@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { GtkScaleProps, ScaleMark } from "../jsx.js";
-import type { AdjustableProps } from "./adjustable.js";
+import type { AdjustableProps, GtkScaleProps, ScaleMark } from "../jsx.js";
 import { AdjustableNode } from "./adjustable.js";
 import { shallowArrayEqual } from "./internal/props.js";
 

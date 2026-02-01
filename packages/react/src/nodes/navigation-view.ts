@@ -49,9 +49,9 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
                 this.signalStore.set(this, this.container, "pushed", handleHistoryChanged);
                 this.signalStore.set(this, this.container, "replaced", handleHistoryChanged);
             } else {
-                this.signalStore.set(this, this.container, "popped", null);
-                this.signalStore.set(this, this.container, "pushed", null);
-                this.signalStore.set(this, this.container, "replaced", null);
+                this.signalStore.set(this, this.container, "popped", undefined);
+                this.signalStore.set(this, this.container, "pushed", undefined);
+                this.signalStore.set(this, this.container, "replaced", undefined);
             }
         }
     }

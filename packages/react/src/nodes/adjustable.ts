@@ -1,17 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { GtkRangeProps, GtkScaleButtonProps, GtkSpinButtonProps } from "../jsx.js";
+import type { AdjustableProps } from "../jsx.js";
 import type { AdjustableWidget } from "../registry.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["value", "lower", "upper", "stepIncrement", "pageIncrement", "pageSize", "onValueChanged"] as const;
-
-export type AdjustableProps = Omit<
-    Pick<GtkRangeProps | GtkScaleButtonProps | GtkSpinButtonProps, (typeof OWN_PROPS)[number]>,
-    "onValueChanged"
-> & {
-    onValueChanged?: ((value: number, self: AdjustableWidget) => void) | null;
-};
 
 export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> extends WidgetNode<T, AdjustableProps> {
     private adjustment: Gtk.Adjustment | null = null;
@@ -77,7 +70,7 @@ export class AdjustableNode<T extends AdjustableWidget = AdjustableWidget> exten
                 onValueChanged(self.getValue(), self),
             );
         } else {
-            this.signalStore.set(this, this.container, "value-changed", null);
+            this.signalStore.set(this, this.container, "value-changed", undefined);
         }
     }
 }

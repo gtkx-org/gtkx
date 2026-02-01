@@ -1,6 +1,7 @@
 import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { StackPageProps } from "../jsx.js";
+import { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";
 import { SlotNode } from "./slot.js";
 import type { WidgetNode } from "./widget.js";
@@ -28,6 +29,7 @@ export class StackPageNode extends SlotNode<StackPageProps> {
             this.removePage(childWidget);
         }
         this.page = null;
+        Node.prototype.detachDeletedInstance.call(this);
     }
 
     public override commitUpdate(oldProps: StackPageProps | null, newProps: StackPageProps): void {

@@ -1,17 +1,17 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { TreeListViewProps as JsxTreeListViewProps } from "../jsx.js";
+import type { GtkListViewProps, TreeListModelProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { TreeListItemRenderer } from "./internal/tree-list-item-renderer.js";
-import { TreeListModel, type TreeListModelProps } from "./models/tree-list.js";
+import { TreeListModel } from "./models/tree-list.js";
 import { TreeListItemNode } from "./tree-list-item.js";
 import { WidgetNode } from "./widget.js";
 
-const RENDERER_PROP_NAMES = ["renderItem", "estimatedItemHeight"] as const;
-const PROP_NAMES = [...RENDERER_PROP_NAMES, "autoexpand", "selectionMode", "selected", "onSelectionChanged"] as const;
+const RENDERER_OWN_PROPS = ["renderItem", "estimatedItemHeight"] as const;
+const OWN_PROPS = [...RENDERER_OWN_PROPS, "autoexpand", "selectionMode", "selected", "onSelectionChanged"] as const;
 
-type TreeListViewProps = Pick<JsxTreeListViewProps, (typeof RENDERER_PROP_NAMES)[number]> & TreeListModelProps;
+type TreeListViewProps = Pick<GtkListViewProps, (typeof RENDERER_OWN_PROPS)[number]> & TreeListModelProps;
 
 export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps, TreeListItemNode> {
     private itemRenderer: TreeListItemRenderer;
@@ -89,8 +89,8 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
 
         const previousModel = this.treeList.getSelectionModel();
         this.treeList.updateProps(
-            oldProps ? filterProps(oldProps, RENDERER_PROP_NAMES) : null,
-            filterProps(newProps, RENDERER_PROP_NAMES),
+            oldProps ? filterProps(oldProps, RENDERER_OWN_PROPS) : null,
+            filterProps(newProps, RENDERER_OWN_PROPS),
         );
         const currentModel = this.treeList.getSelectionModel();
 
@@ -98,6 +98,6 @@ export class TreeListViewNode extends WidgetNode<Gtk.ListView, TreeListViewProps
             this.container.setModel(currentModel);
         }
 
-        super.commitUpdate(oldProps ? filterProps(oldProps, PROP_NAMES) : null, filterProps(newProps, PROP_NAMES));
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
     }
 }

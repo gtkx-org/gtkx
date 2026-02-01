@@ -488,22 +488,6 @@ export type ColumnViewColumnProps<T = unknown> = {
 };
 
 /**
- * Props for the root ColumnView component.
- *
- * @typeParam C - String literal type for column IDs
- */
-export type ColumnViewRootProps<C extends string = string> = {
-    /** Currently sorted column ID, or null for no sorting */
-    sortColumn?: C | null;
-    /** Sort direction (ascending or descending) */
-    sortOrder?: Gtk.SortType;
-    /** Callback when sort changes */
-    onSortChanged?: (column: C | null, order: Gtk.SortType) => void;
-    /** Estimated row height in pixels for proper virtualization before content loads */
-    estimatedRowHeight?: number;
-};
-
-/**
  * Props for notebook (tabbed) pages.
  */
 export type NotebookPageProps = VirtualSlotProps & {
@@ -704,9 +688,9 @@ export type TreeListViewProps<T = unknown> = Omit<GtkListViewProps, "renderItem"
  * Props for widgets backed by a GtkAdjustment.
  *
  * Used by GtkRange, GtkScaleButton, GtkSpinButton, and AdwSpinRow
- * to configure the adjustment bounds and increments.
+ * to configure the adjustment bounds, increments, and value change callback.
  */
-export interface AdjustableProps {
+export type AdjustableProps = {
     /** The current value of the adjustable */
     value?: number;
     /** The minimum allowed value */
@@ -719,7 +703,36 @@ export interface AdjustableProps {
     pageIncrement?: number;
     /** The size of the visible portion (for scrollbars) */
     pageSize?: number;
-}
+    /** Callback fired when the adjustable value changes */
+    onValueChanged?: ((value: number, self: Gtk.Range | Gtk.ScaleButton | Gtk.SpinButton | Adw.SpinRow) => void) | null;
+};
+
+/**
+ * Props for list selection behavior.
+ *
+ * Shared across GtkListView, GtkGridView, GtkColumnView, and related list widgets.
+ */
+export type ListModelProps = Pick<GtkListViewProps, "selectionMode" | "selected" | "onSelectionChanged">;
+
+/**
+ * Props for tree list model configuration.
+ *
+ * Used by TreeListView to control auto-expansion and selection.
+ */
+export type TreeListModelProps = Pick<
+    TreeListViewProps,
+    "autoexpand" | "selectionMode" | "selected" | "onSelectionChanged"
+>;
+
+/**
+ * Props for menu model nodes (items, sections, submenus).
+ */
+export type MenuModelProps = {
+    id?: string;
+    label?: string;
+    accels?: string | string[];
+    onActivate?: () => void;
+};
 
 /**
  * GTKX-specific intrinsic elements and components.
@@ -1167,7 +1180,7 @@ declare global {
 }
 
 declare module "./generated/jsx.js" {
-    interface GtkRangeProps extends AdjustableProps {
+    interface GtkRangeProps extends Omit<AdjustableProps, "onValueChanged"> {
         /** Callback fired when the range value changes */
         onValueChanged?: ((value: number, self: Gtk.Range) => void) | null;
     }
@@ -1177,17 +1190,17 @@ declare module "./generated/jsx.js" {
         marks?: Array<{ value: number; position?: Gtk.PositionType; label?: string | null }> | null;
     }
 
-    interface GtkScaleButtonProps extends AdjustableProps {
+    interface GtkScaleButtonProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
         /** Callback fired when the scale button value changes */
         onValueChanged?: ((value: number, self: Gtk.ScaleButton) => void) | null;
     }
 
-    interface GtkSpinButtonProps extends AdjustableProps {
+    interface GtkSpinButtonProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
         /** Callback fired when the spin button value changes */
         onValueChanged?: ((value: number, self: Gtk.SpinButton) => void) | null;
     }
 
-    interface AdwSpinRowProps extends AdjustableProps {
+    interface AdwSpinRowProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
         /** Callback fired when the spin row value changes */
         onValueChanged?: ((value: number, self: Adw.SpinRow) => void) | null;
     }
