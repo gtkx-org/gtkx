@@ -14,7 +14,6 @@
 //! | `read` | Read field from boxed memory |
 //! | `write` | Write field to boxed memory |
 //! | `getNativeId` | Get internal handle ID for managed object |
-//! | `poll` | Process pending JavaScript callbacks |
 //!
 //! ## Architecture
 //!
@@ -60,6 +59,5 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("writePointer", module::write_pointer)?;
     cx.export_function("alloc", module::alloc)?;
     cx.export_function("getNativeId", module::get_native_id)?;
-    cx.export_function("poll", module::poll)?;
     Ok(())
 }
