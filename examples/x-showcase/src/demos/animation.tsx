@@ -39,10 +39,9 @@ const BasicFadeDemo = () => (
                 halign={Gtk.Align.CENTER}
             >
                 <x.Animation
-                    mode="timed"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ duration: 800 }}
+                    transition={{ mode: "timed", duration: 800 }}
                     animateOnMount
                 >
                     <GtkLabel label="I faded in on mount" cssClasses={["title-2"]} />
@@ -90,10 +89,9 @@ const TransformDemo = () => {
                     </GtkBox>
                     <GtkBox halign={Gtk.Align.CENTER} heightRequest={100} valign={Gtk.Align.CENTER}>
                         <x.Animation
-                            mode="timed"
                             initial={false}
                             animate={getAnimateProps()}
-                            transition={{ duration: 400, easing: Adw.Easing.EASE_OUT_CUBIC }}
+                            transition={{ mode: "timed", duration: 400, easing: Adw.Easing.EASE_OUT_CUBIC }}
                         >
                             <GtkFrame widthRequest={80} heightRequest={80}>
                                 <GtkLabel label="Target" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
@@ -114,10 +112,9 @@ const TransformDemo = () => {
 const EasingBox = ({ name, easing, trigger }: { name: string; easing: Adw.Easing; trigger: number }) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} widthRequest={120}>
         <x.Animation
-            mode="timed"
             initial={false}
             animate={{ translateX: trigger % 2 === 0 ? 0 : 60 }}
-            transition={{ duration: 800, easing }}
+            transition={{ mode: "timed", duration: 800, easing }}
         >
             <GtkFrame widthRequest={40} heightRequest={40}>
                 <GtkLabel label="" />
@@ -223,10 +220,9 @@ const SpringDemo = () => {
                     <GtkButton label="Bounce" onClicked={() => setTrigger((t) => t + 1)} halign={Gtk.Align.CENTER} />
                     <GtkBox halign={Gtk.Align.CENTER} heightRequest={80} valign={Gtk.Align.CENTER}>
                         <x.Animation
-                            mode="spring"
                             initial={false}
                             animate={{ translateX: trigger % 2 === 0 ? 0 : 150 }}
-                            transition={{ damping, stiffness, mass }}
+                            transition={{ mode: "spring", damping, stiffness, mass }}
                         >
                             <GtkFrame widthRequest={60} heightRequest={60} cssClasses={["card"]}>
                                 <GtkLabel label="" />
@@ -241,11 +237,10 @@ const SpringDemo = () => {
 
 const ListItem = ({ id, onRemove }: { id: number; onRemove: () => void }) => (
     <x.Animation
-        mode="timed"
         initial={{ opacity: 0, translateX: -20 }}
         animate={{ opacity: 1, translateX: 0 }}
         exit={{ opacity: 0, translateX: 20 }}
-        transition={{ duration: 250 }}
+        transition={{ mode: "timed", duration: 250 }}
         animateOnMount
     >
         <GtkBox
@@ -322,10 +317,9 @@ const RepeatingDemo = () => (
             >
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                     <x.Animation
-                        mode="timed"
                         initial={{ scale: 0.8, opacity: 0.5 }}
                         animate={{ scale: 1.2, opacity: 1 }}
-                        transition={{ duration: 800, repeat: -1, alternate: true, easing: Adw.Easing.EASE_IN_OUT }}
+                        transition={{ mode: "timed", duration: 800, repeat: -1, alternate: true, easing: Adw.Easing.EASE_IN_OUT }}
                         animateOnMount
                     >
                         <GtkFrame widthRequest={60} heightRequest={60} cssClasses={["card"]}>
@@ -336,10 +330,9 @@ const RepeatingDemo = () => (
                 </GtkBox>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                     <x.Animation
-                        mode="timed"
                         initial={{ rotate: 0 }}
                         animate={{ rotate: 360 }}
-                        transition={{ duration: 1500, repeat: -1, easing: Adw.Easing.LINEAR }}
+                        transition={{ mode: "timed", duration: 1500, repeat: -1, easing: Adw.Easing.LINEAR }}
                         animateOnMount
                     >
                         <GtkFrame widthRequest={60} heightRequest={60} cssClasses={["card"]}>
@@ -355,10 +348,9 @@ const RepeatingDemo = () => (
                 </GtkBox>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.CENTER}>
                     <x.Animation
-                        mode="timed"
                         initial={{ translateY: 0 }}
                         animate={{ translateY: -20 }}
-                        transition={{ duration: 600, repeat: -1, alternate: true, easing: Adw.Easing.EASE_IN_OUT_QUAD }}
+                        transition={{ mode: "timed", duration: 600, repeat: -1, alternate: true, easing: Adw.Easing.EASE_IN_OUT_QUAD }}
                         animateOnMount
                     >
                         <GtkFrame widthRequest={60} heightRequest={60} cssClasses={["card"]}>
@@ -393,14 +385,13 @@ const CombinedDemo = () => {
                     />
                     <GtkBox halign={Gtk.Align.CENTER} heightRequest={120} valign={Gtk.Align.CENTER}>
                         <x.Animation
-                            mode="timed"
                             initial={false}
                             animate={
                                 active
                                     ? { opacity: 1, scale: 1.3, rotate: 180, translateY: -20 }
                                     : { opacity: 0.5, scale: 1, rotate: 0, translateY: 0 }
                             }
-                            transition={{ duration: 600, easing: Adw.Easing.EASE_OUT_BACK }}
+                            transition={{ mode: "timed", duration: 600, easing: Adw.Easing.EASE_OUT_BACK }}
                         >
                             <GtkFrame widthRequest={80} heightRequest={80} cssClasses={["card"]}>
                                 <GtkLabel label="Multi" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
@@ -435,14 +426,13 @@ const DragDemo = () => {
                 >
                     <GtkBox halign={Gtk.Align.CENTER} heightRequest={150} valign={Gtk.Align.CENTER}>
                         <x.Animation
-                            mode="spring"
                             initial={false}
                             animate={
                                 isDragging
                                     ? { translateX: offset.x, translateY: offset.y }
                                     : { translateX: 0, translateY: 0 }
                             }
-                            transition={{ damping: 0.7, stiffness: 150, mass: 1 }}
+                            transition={{ mode: "spring", damping: 0.7, stiffness: 150, mass: 1 }}
                         >
                             <GtkFrame widthRequest={100} heightRequest={100} cssClasses={["card"]}>
                                 <GtkGestureDrag
@@ -488,10 +478,9 @@ const PressScaleDemo = () => {
                 >
                     <GtkBox halign={Gtk.Align.CENTER} heightRequest={120} valign={Gtk.Align.CENTER}>
                         <x.Animation
-                            mode="spring"
                             initial={false}
                             animate={isPressed ? { scale: 0.85, opacity: 0.7 } : { scale: 1, opacity: 1 }}
-                            transition={{ damping: 0.6, stiffness: 300, mass: 0.8 }}
+                            transition={{ mode: "spring", damping: 0.6, stiffness: 300, mass: 0.8 }}
                         >
                             <GtkFrame widthRequest={100} heightRequest={100} cssClasses={["card"]}>
                                 <GtkGestureClick
@@ -531,7 +520,6 @@ const LongPressDemo = () => {
                 >
                     <GtkBox halign={Gtk.Align.CENTER} heightRequest={120} valign={Gtk.Align.CENTER}>
                         <x.Animation
-                            mode="spring"
                             initial={false}
                             animate={
                                 triggered
@@ -540,7 +528,7 @@ const LongPressDemo = () => {
                                       ? { scale: 0.95 }
                                       : { scale: 1, rotate: 0 }
                             }
-                            transition={{ damping: 0.5, stiffness: 100, mass: 1 }}
+                            transition={{ mode: "spring", damping: 0.5, stiffness: 100, mass: 1 }}
                             onAnimationComplete={() => {
                                 if (triggered) {
                                     setTimeout(() => setTriggered(false), 500);
@@ -596,7 +584,6 @@ const SwipeCardItem = ({
 
     return (
         <x.Animation
-            mode="spring"
             initial={false}
             animate={
                 isDismissing
@@ -607,7 +594,7 @@ const SwipeCardItem = ({
                       }
                     : { translateX: swipeOffset, rotate: rotation, opacity: 1 }
             }
-            transition={{ damping: 0.8, stiffness: 200, mass: 1 }}
+            transition={{ mode: "spring", damping: 0.8, stiffness: 200, mass: 1 }}
             onAnimationComplete={() => {
                 if (isDismissing && card.direction) {
                     onDismiss(card.id, card.direction);
@@ -716,10 +703,9 @@ const DoubleTapDemo = () => {
                 >
                     <GtkBox halign={Gtk.Align.CENTER} heightRequest={150} valign={Gtk.Align.CENTER}>
                         <x.Animation
-                            mode="spring"
                             initial={false}
                             animate={{ scale }}
-                            transition={{ damping: 0.6, stiffness: 150, mass: 1 }}
+                            transition={{ mode: "spring", damping: 0.6, stiffness: 150, mass: 1 }}
                         >
                             <GtkFrame widthRequest={100} heightRequest={100} cssClasses={["card"]}>
                                 <GtkGestureClick

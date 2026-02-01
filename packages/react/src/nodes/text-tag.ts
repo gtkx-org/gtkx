@@ -207,8 +207,9 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
         for (const prop of Object.keys(STYLE_PROPS) as (keyof TextTagProps)[]) {
             if (hasChanged(oldProps, newProps, prop)) {
                 const value = newProps[prop];
-                if (value !== undefined) {
-                    const setter = this.tag[STYLE_PROPS[prop]!] as (value: unknown) => void;
+                const method = STYLE_PROPS[prop];
+                if (value !== undefined && method) {
+                    const setter = this.tag[method] as (value: unknown) => void;
                     setter.call(this.tag, value);
                 }
             }

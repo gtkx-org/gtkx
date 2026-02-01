@@ -2,9 +2,9 @@ import type { NativeHandle } from "@gtkx/native";
 import { typeFromName, typeName } from "../generated/gobject/functions.js";
 import type { Object as GObject } from "../generated/gobject/object.js";
 import { Value } from "../generated/gobject/value.js";
-import type { NativeClass, NativeObject } from "../native/base.js";
-import { call, read } from "../native/lifecycle.js";
-import { getNativeObject } from "../native/object.js";
+import type { NativeClass, NativeObject } from "../native.js";
+import { call, read } from "../native.js";
+import { getNativeObject } from "../registry.js";
 import { Type } from "./types.js";
 
 declare module "../generated/gobject/value.js" {

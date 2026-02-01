@@ -1,5 +1,5 @@
 import { createRef } from "@gtkx/native";
-import { call } from "../native/lifecycle.js";
+import { call } from "../native.js";
 import { INFO_LOG_LENGTH } from "./constants.js";
 
 const LIB = "libGL.so.1";

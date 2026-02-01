@@ -1,9 +1,6 @@
-export { createRef, type NativeHandle, readPointer, writePointer } from "@gtkx/native";
-export * from "./native/base.js";
-export * from "./native/error.js";
-export * from "./native/events.js";
-export * from "./native/lifecycle.js";
-export * from "./native/object.js";
+export { Arg, createRef, type NativeHandle, Ref, readPointer, Type, writePointer } from "@gtkx/native";
+export * from "./lifecycle.js";
+export * from "./native.js";
 export * from "./registry.js";
 import "./cairo/cairo.js";
 import "./gobject/value.js";

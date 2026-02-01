@@ -74,16 +74,24 @@ const ListViewWeatherDemo = () => {
                 orientation={Gtk.Orientation.HORIZONTAL}
                 showSeparators
                 selectionMode={Gtk.SelectionMode.NONE}
-                renderItem={(item) => (
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                        <GtkLabel label={item?.hour ?? ""} widthChars={5} />
-                        <GtkImage
-                            iconName={item ? WEATHER_ICONS[item.weatherType] : "weather-clear-symbolic"}
-                            iconSize={Gtk.IconSize.LARGE}
-                        />
-                        <GtkLabel label={`${item?.temperature ?? 0}°`} widthChars={4} vexpand valign={Gtk.Align.END} />
-                    </GtkBox>
-                )}
+                renderItem={(_item) => {
+                    const item = _item as WeatherInfo | null;
+                    return (
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                            <GtkLabel label={item?.hour ?? ""} widthChars={5} />
+                            <GtkImage
+                                iconName={item ? WEATHER_ICONS[item.weatherType] : "weather-clear-symbolic"}
+                                iconSize={Gtk.IconSize.LARGE}
+                            />
+                            <GtkLabel
+                                label={`${item?.temperature ?? 0}°`}
+                                widthChars={4}
+                                vexpand
+                                valign={Gtk.Align.END}
+                            />
+                        </GtkBox>
+                    );
+                }}
             >
                 {weatherData.map((info) => (
                     <x.ListItem key={info.id} id={info.id} value={info} />

@@ -175,7 +175,7 @@ describe("render - Adjustment", () => {
             const onValueChanged1 = vi.fn();
             const onValueChanged2 = vi.fn();
 
-            function App({ onValueChanged }: { onValueChanged: (value: number, self: Gtk.Scale) => void }) {
+            function App({ onValueChanged }: { onValueChanged: (value: number, self: Gtk.Range) => void }) {
                 return <GtkScale ref={ref} value={50} lower={0} upper={100} onValueChanged={onValueChanged} />;
             }
 

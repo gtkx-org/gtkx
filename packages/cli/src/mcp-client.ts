@@ -1,5 +1,6 @@
 import * as net from "node:net";
 import { getNativeInterface } from "@gtkx/ffi";
+import * as Gio from "@gtkx/ffi/gio";
 import { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
@@ -15,7 +16,6 @@ import {
     type SerializedWidget,
     widgetNotFoundError,
 } from "@gtkx/mcp";
-import { getApplication } from "@gtkx/react";
 
 const widgetIdMap = new WeakMap<Gtk.Widget, string>();
 let nextWidgetId = 0;
@@ -70,34 +70,19 @@ const formatRole = (role: Gtk.AccessibleRole | undefined): string => {
 };
 
 const getWidgetText = (widget: Gtk.Widget): string | null => {
-    const role = widget.getAccessibleRole();
-    if (role === undefined) return null;
-
-    switch (role) {
-        case Gtk.AccessibleRole.BUTTON:
-        case Gtk.AccessibleRole.LINK:
-        case Gtk.AccessibleRole.TAB:
-            return (widget as Gtk.Button).getLabel?.() ?? (widget as Gtk.MenuButton).getLabel?.() ?? null;
-        case Gtk.AccessibleRole.TOGGLE_BUTTON:
-            return (widget as Gtk.ToggleButton).getLabel?.() ?? null;
-        case Gtk.AccessibleRole.CHECKBOX:
-        case Gtk.AccessibleRole.RADIO:
-            return (widget as Gtk.CheckButton).getLabel?.() ?? null;
-        case Gtk.AccessibleRole.LABEL:
-            return (widget as Gtk.Label).getLabel?.() ?? (widget as Gtk.Inscription).getText?.() ?? null;
-        case Gtk.AccessibleRole.TEXT_BOX:
-        case Gtk.AccessibleRole.SEARCH_BOX:
-        case Gtk.AccessibleRole.SPIN_BUTTON:
-            return getNativeInterface(widget, Gtk.Editable)?.getText() ?? null;
-        case Gtk.AccessibleRole.GROUP:
-            return (widget as Gtk.Frame).getLabel?.() ?? null;
-        case Gtk.AccessibleRole.WINDOW:
-        case Gtk.AccessibleRole.DIALOG:
-        case Gtk.AccessibleRole.ALERT_DIALOG:
-            return (widget as Gtk.Window).getTitle() ?? null;
-        default:
-            return null;
+    if ("getLabel" in widget && typeof widget.getLabel === "function") {
+        return widget.getLabel() ?? null;
     }
+
+    if ("getText" in widget && typeof widget.getText === "function") {
+        return widget.getText() ?? null;
+    }
+
+    if ("getTitle" in widget && typeof widget.getTitle === "function") {
+        return widget.getTitle() ?? null;
+    }
+
+    return getNativeInterface(widget, Gtk.Editable)?.getText() ?? null;
 };
 
 const serializeWidget = (widget: Gtk.Widget): SerializedWidget => {
@@ -351,7 +336,8 @@ class McpClient {
     }
 
     private async executeMethod(method: IpcMethod, params: unknown): Promise<unknown> {
-        const app = getApplication();
+        const app = Gio.Application.getDefault() as Gtk.Application | null;
+
         if (!app) {
             throw new Error("Application not initialized");
         }

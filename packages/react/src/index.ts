@@ -3,7 +3,6 @@ export { createPortal } from "./portal.js";
 export { reconciler } from "./reconciler.js";
 export {
     ApplicationContext,
-    getApplication,
     quit,
     render,
     setHotReloading,

@@ -7,13 +7,7 @@
 
 import type { ImportDeclarationStructure, SourceFile } from "ts-morph";
 import { StructureKind } from "ts-morph";
-import {
-    FFI_IMPORT_LIFECYCLE,
-    FFI_IMPORT_NATIVE_BASE,
-    FFI_IMPORT_NATIVE_ERROR,
-    FFI_IMPORT_NATIVE_OBJECT,
-    FFI_IMPORT_REGISTRY,
-} from "../constants/index.js";
+import { FFI_IMPORT_LIFECYCLE, FFI_IMPORT_NATIVE, FFI_IMPORT_REGISTRY } from "../constants/index.js";
 import type { GenerationContext } from "../generation-context.js";
 import { normalizeClassName, toKebabCase } from "../utils/naming.js";
 
@@ -94,28 +88,11 @@ export class ImportsBuilder {
             });
         }
 
-        if (this.ctx.usesNativeError) {
+        const nativeImports = this.collectNativeModuleImports();
+        if (nativeImports.length > 0) {
             imports.push({
-                moduleSpecifier: FFI_IMPORT_NATIVE_ERROR,
-                namedImports: ["NativeError"],
-            });
-        }
-
-        if (this.ctx.usesGetNativeObject || this.ctx.usesRegisterWrapper) {
-            const namedImports: string[] = [];
-            if (this.ctx.usesGetNativeObject) namedImports.push("getNativeObject");
-            if (this.ctx.usesRegisterWrapper) namedImports.push("registerWrapper");
-            imports.push({
-                moduleSpecifier: FFI_IMPORT_NATIVE_OBJECT,
-                namedImports,
-            });
-        }
-
-        const baseImports = this.collectBaseImports();
-        if (baseImports.length > 0) {
-            imports.push({
-                moduleSpecifier: FFI_IMPORT_NATIVE_BASE,
-                namedImports: baseImports,
+                moduleSpecifier: FFI_IMPORT_NATIVE,
+                namedImports: nativeImports,
             });
         }
 
@@ -221,20 +198,17 @@ export class ImportsBuilder {
 
     private collectLifecycleImports(): string[] {
         const imports: string[] = [];
-        if (this.ctx.usesAlloc) imports.push("alloc");
-        if (this.ctx.usesCall) imports.push("call");
-        if (this.ctx.usesRead) imports.push("read");
-        if (this.ctx.usesReadPointer) imports.push("readPointer");
-        if (this.ctx.usesWrite) imports.push("write");
-        if (this.ctx.usesWritePointer) imports.push("writePointer");
-        return imports;
-    }
-
-    private collectBaseImports(): string[] {
-        const imports: string[] = [];
         if (this.ctx.usesInstantiating) {
             imports.push("isInstantiating", "setInstantiating");
         }
+        return imports;
+    }
+
+    private collectNativeModuleImports(): string[] {
+        const imports: string[] = [];
+        if (this.ctx.usesAlloc) imports.push("alloc");
+        if (this.ctx.usesCall) imports.push("call");
+        if (this.ctx.usesNativeError) imports.push("NativeError");
         if (
             this.ctx.usesInstantiating ||
             this.ctx.usesNativeObject ||
@@ -246,12 +220,18 @@ export class ImportsBuilder {
         if (this.ctx.usesNativeObject) {
             imports.push("NativeObject");
         }
+        if (this.ctx.usesRead) imports.push("read");
+        if (this.ctx.usesReadPointer) imports.push("readPointer");
+        if (this.ctx.usesWrite) imports.push("write");
+        if (this.ctx.usesWritePointer) imports.push("writePointer");
         return imports;
     }
 
     private collectRegistryImports(): string[] {
         const imports: string[] = [];
+        if (this.ctx.usesGetNativeObject) imports.push("getNativeObject");
         if (this.ctx.usesRegisterNativeClass) imports.push("registerNativeClass");
+        if (this.ctx.usesRegisterNativeObject) imports.push("registerNativeObject");
         if (this.ctx.usesGetClassByTypeName) imports.push("getNativeClass");
         return imports;
     }

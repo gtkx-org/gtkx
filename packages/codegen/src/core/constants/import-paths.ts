@@ -5,17 +5,11 @@
  * These paths are relative from the generated namespace directory (e.g., gtk/).
  */
 
-/** Path to lifecycle management module. */
-export const FFI_IMPORT_LIFECYCLE = "../../native/lifecycle.js";
+/** Path to lifecycle module. */
+export const FFI_IMPORT_LIFECYCLE = "../../lifecycle.js";
 
-/** Path to native error wrapper module. */
-export const FFI_IMPORT_NATIVE_ERROR = "../../native/error.js";
+/** Path to native module. */
+export const FFI_IMPORT_NATIVE = "../../native.js";
 
-/** Path to native object utilities module. */
-export const FFI_IMPORT_NATIVE_OBJECT = "../../native/object.js";
-
-/** Path to base classes and utilities module. */
-export const FFI_IMPORT_NATIVE_BASE = "../../native/base.js";
-
-/** Path to class registry module. */
+/** Path to registry module. */
 export const FFI_IMPORT_REGISTRY = "../../registry.js";

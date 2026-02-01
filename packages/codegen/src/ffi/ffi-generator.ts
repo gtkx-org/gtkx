@@ -142,7 +142,7 @@ export class FfiGenerator {
 
                 const hasMethods = record.methods.length > 0;
                 sourceFile.addImportDeclaration({
-                    moduleSpecifier: "../../native/base.js",
+                    moduleSpecifier: "../../native.js",
                     namedImports: hasMethods ? ["NativeObject"] : ["NativeObject", "NativeHandle"],
                 });
 

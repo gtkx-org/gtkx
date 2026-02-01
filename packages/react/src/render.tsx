@@ -55,18 +55,6 @@ let app: Gtk.Application | null = null;
 let isHotReloading = false;
 
 /**
- * Returns the current GTK Application instance.
- *
- * Returns null if no application has been rendered yet.
- * Used by tools that need access to the running application.
- *
- * @returns The current GTK Application or null
- */
-export const getApplication = (): Gtk.Application | null => {
-    return app;
-};
-
-/**
  * Sets the hot reloading state.
  *
  * Used internally by the dev server to prevent quit() from closing

@@ -12,8 +12,8 @@ import type {
 import { FontOptions } from "../generated/cairo/font-options.js";
 import { Pattern } from "../generated/cairo/pattern.js";
 import { Surface } from "../generated/cairo/surface.js";
-import { alloc, call, read } from "../native/lifecycle.js";
-import { getNativeObject } from "../native/object.js";
+import { alloc, call, read } from "../native.js";
+import { getNativeObject } from "../registry.js";
 
 export { Context, Pattern, FontOptions, Surface };
 
