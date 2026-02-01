@@ -179,10 +179,10 @@ const ListBoxControlsDemo = () => {
                                     hexpand
                                 />
                                 <GtkDropDown halign={Gtk.Align.END} valign={Gtk.Align.CENTER}>
-                                    <x.SimpleListItem id="1" value="Choice 1" />
-                                    <x.SimpleListItem id="2" value="Choice 2" />
-                                    <x.SimpleListItem id="3" value="Choice 3" />
-                                    <x.SimpleListItem id="4" value="Choice 4" />
+                                    <x.ListItem id="1" value="Choice 1" />
+                                    <x.ListItem id="2" value="Choice 2" />
+                                    <x.ListItem id="3" value="Choice 3" />
+                                    <x.ListItem id="4" value="Choice 4" />
                                 </GtkDropDown>
                             </GtkBox>
                         </GtkListBoxRow>

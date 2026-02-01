@@ -383,7 +383,7 @@ const FontRenderingDemo = () => {
                         }}
                     >
                         {hintStyleOptions.map((opt) => (
-                            <x.SimpleListItem key={opt.id} id={opt.id} value={opt.label} />
+                            <x.ListItem key={opt.id} id={opt.id} value={opt.label} />
                         ))}
                     </GtkDropDown>
                 </x.GridChild>

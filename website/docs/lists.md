@@ -223,7 +223,7 @@ const FrameworkSelector = () => {
       Framework:
       <GtkDropDown selectedId={selectedId} onSelectionChanged={setSelectedId}>
         {frameworks.map((fw) => (
-          <x.SimpleListItem key={fw.id} id={fw.id} value={fw.name} />
+          <x.ListItem key={fw.id} id={fw.id} value={fw.name} />
         ))}
       </GtkDropDown>
     </GtkBox>

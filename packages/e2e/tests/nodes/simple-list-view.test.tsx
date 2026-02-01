@@ -19,9 +19,9 @@ describe("render - SimpleListView", () => {
 
             await render(
                 <GtkDropDown ref={dropDownRef}>
-                    <x.SimpleListItem id="1" value="Option 1" />
-                    <x.SimpleListItem id="2" value="Option 2" />
-                    <x.SimpleListItem id="3" value="Option 3" />
+                    <x.ListItem id="1" value="Option 1" />
+                    <x.ListItem id="2" value="Option 2" />
+                    <x.ListItem id="3" value="Option 3" />
                 </GtkDropDown>,
             );
 
@@ -34,9 +34,9 @@ describe("render - SimpleListView", () => {
 
             await render(
                 <GtkDropDown ref={dropDownRef} selectedId="2">
-                    <x.SimpleListItem id="1" value="Option 1" />
-                    <x.SimpleListItem id="2" value="Option 2" />
-                    <x.SimpleListItem id="3" value="Option 3" />
+                    <x.ListItem id="1" value="Option 1" />
+                    <x.ListItem id="2" value="Option 2" />
+                    <x.ListItem id="3" value="Option 3" />
                 </GtkDropDown>,
             );
 
@@ -49,8 +49,8 @@ describe("render - SimpleListView", () => {
 
             await render(
                 <GtkDropDown ref={dropDownRef} onSelectionChanged={onSelectionChanged}>
-                    <x.SimpleListItem id="1" value="Option 1" />
-                    <x.SimpleListItem id="2" value="Option 2" />
+                    <x.ListItem id="1" value="Option 1" />
+                    <x.ListItem id="2" value="Option 2" />
                 </GtkDropDown>,
             );
 
@@ -66,7 +66,7 @@ describe("render - SimpleListView", () => {
                 return (
                     <GtkDropDown ref={dropDownRef}>
                         {items.map((item) => (
-                            <x.SimpleListItem key={item.id} id={item.id} value={item.value} />
+                            <x.ListItem key={item.id} id={item.id} value={item.value} />
                         ))}
                     </GtkDropDown>
                 );
@@ -101,7 +101,7 @@ describe("render - SimpleListView", () => {
                 return (
                     <GtkDropDown ref={dropDownRef}>
                         {items.map((item) => (
-                            <x.SimpleListItem key={item.id} id={item.id} value={item.value} />
+                            <x.ListItem key={item.id} id={item.id} value={item.value} />
                         ))}
                     </GtkDropDown>
                 );

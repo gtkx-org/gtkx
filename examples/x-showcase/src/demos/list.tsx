@@ -89,10 +89,7 @@ export const ListDemo = () => {
         >
             <GtkLabel label="List Components" cssClasses={["title-1"]} halign={Gtk.Align.START} />
 
-            <AdwPreferencesGroup
-                title="x.SimpleListItem"
-                description="String-based items for DropDown and simple lists"
-            >
+            <AdwPreferencesGroup title="x.ListItem" description="String-based items for DropDown and simple lists">
                 <GtkFrame marginTop={12}>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
@@ -104,11 +101,11 @@ export const ListDemo = () => {
                     >
                         <GtkLabel label="Select a fruit:" halign={Gtk.Align.START} />
                         <GtkDropDown>
-                            <x.SimpleListItem id="apple" value="Apple" />
-                            <x.SimpleListItem id="banana" value="Banana" />
-                            <x.SimpleListItem id="cherry" value="Cherry" />
-                            <x.SimpleListItem id="date" value="Date" />
-                            <x.SimpleListItem id="elderberry" value="Elderberry" />
+                            <x.ListItem id="apple" value="Apple" />
+                            <x.ListItem id="banana" value="Banana" />
+                            <x.ListItem id="cherry" value="Cherry" />
+                            <x.ListItem id="date" value="Date" />
+                            <x.ListItem id="elderberry" value="Elderberry" />
                         </GtkDropDown>
                     </GtkBox>
                 </GtkFrame>

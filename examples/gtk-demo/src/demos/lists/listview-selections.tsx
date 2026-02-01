@@ -334,7 +334,7 @@ const ListViewSelectionsDemo = () => {
                             <GtkLabel label="Select a fruit:" halign={Gtk.Align.START} />
                             <GtkDropDown selectedId={selectedFruit} onSelectionChanged={setSelectedFruit} hexpand>
                                 {fruits.map((fruit) => (
-                                    <x.SimpleListItem key={fruit.id} id={fruit.id} value={fruit.name} />
+                                    <x.ListItem key={fruit.id} id={fruit.id} value={fruit.name} />
                                 ))}
                             </GtkDropDown>
                         </GtkBox>
@@ -373,7 +373,7 @@ const ListViewSelectionsDemo = () => {
                                 />
                                 <GtkDropDown selectedId={selectedCountry} onSelectionChanged={setSelectedCountry}>
                                     {filteredCountries.map((country) => (
-                                        <x.SimpleListItem
+                                        <x.ListItem
                                             key={country.id}
                                             id={country.id}
                                             value={`${country.name} (${country.code})`}
@@ -411,7 +411,7 @@ const ListViewSelectionsDemo = () => {
                             <GtkLabel label="Navigation:" halign={Gtk.Align.START} />
                             <GtkDropDown selectedId={selectedIcon} onSelectionChanged={setSelectedIcon} hexpand>
                                 {iconOptions.map((option) => (
-                                    <x.SimpleListItem key={option.id} id={option.id} value={option.name} />
+                                    <x.ListItem key={option.id} id={option.id} value={option.name} />
                                 ))}
                             </GtkDropDown>
                         </GtkBox>

@@ -74,7 +74,7 @@ const SizeGroupDemo = () => {
                             onSelectionChanged={setForeground}
                         >
                             {COLOR_OPTIONS.map((option) => (
-                                <x.SimpleListItem key={option} id={option} value={option} />
+                                <x.ListItem key={option} id={option} value={option} />
                             ))}
                         </GtkDropDown>
                     </x.GridChild>
@@ -90,7 +90,7 @@ const SizeGroupDemo = () => {
                             onSelectionChanged={setBackground}
                         >
                             {COLOR_OPTIONS.map((option) => (
-                                <x.SimpleListItem key={option} id={option} value={option} />
+                                <x.ListItem key={option} id={option} value={option} />
                             ))}
                         </GtkDropDown>
                     </x.GridChild>
@@ -110,7 +110,7 @@ const SizeGroupDemo = () => {
                             onSelectionChanged={setDashing}
                         >
                             {DASH_OPTIONS.map((option) => (
-                                <x.SimpleListItem key={option} id={option} value={option} />
+                                <x.ListItem key={option} id={option} value={option} />
                             ))}
                         </GtkDropDown>
                     </x.GridChild>
@@ -126,7 +126,7 @@ const SizeGroupDemo = () => {
                             onSelectionChanged={setLineEnd}
                         >
                             {END_OPTIONS.map((option) => (
-                                <x.SimpleListItem key={option} id={option} value={option} />
+                                <x.ListItem key={option} id={option} value={option} />
                             ))}
                         </GtkDropDown>
                     </x.GridChild>

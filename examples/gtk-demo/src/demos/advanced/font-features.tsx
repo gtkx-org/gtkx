@@ -831,7 +831,7 @@ const FontFeaturesDemo = () => {
                                 }}
                             >
                                 {availableScripts.map((script) => (
-                                    <x.SimpleListItem
+                                    <x.ListItem
                                         key={script.tag}
                                         id={script.tag}
                                         value={`${script.name} (${script.tag})`}
@@ -851,11 +851,7 @@ const FontFeaturesDemo = () => {
                                 }}
                             >
                                 {availableLanguages.map((lang) => (
-                                    <x.SimpleListItem
-                                        key={lang.tag}
-                                        id={lang.tag}
-                                        value={`${lang.name} (${lang.tag})`}
-                                    />
+                                    <x.ListItem key={lang.tag} id={lang.tag} value={`${lang.name} (${lang.tag})`} />
                                 ))}
                             </GtkDropDown>
                         </GtkBox>

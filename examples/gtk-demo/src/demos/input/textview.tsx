@@ -190,9 +190,9 @@ const FormattedTextBuffer = ({ onButtonClick }: { onButtonClick?: () => void }) 
             {" and a menu: "}
             <x.TextAnchor>
                 <GtkDropDown>
-                    <x.SimpleListItem id="1" value="Option 1" />
-                    <x.SimpleListItem id="2" value="Option 2" />
-                    <x.SimpleListItem id="3" value="Option 3" />
+                    <x.ListItem id="1" value="Option 1" />
+                    <x.ListItem id="2" value="Option 2" />
+                    <x.ListItem id="3" value="Option 3" />
                 </GtkDropDown>
             </x.TextAnchor>
             {" and a scale: "}

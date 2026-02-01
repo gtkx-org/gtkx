@@ -384,7 +384,7 @@ const ListViewColorsDemo = () => {
                             tooltipText="Display style"
                         >
                             {DISPLAY_FACTORIES.map((f) => (
-                                <x.SimpleListItem key={f.id} id={f.id} value={f.label} />
+                                <x.ListItem key={f.id} id={f.id} value={f.label} />
                             ))}
                         </GtkDropDown>
                         <GtkDropDown
@@ -393,7 +393,7 @@ const ListViewColorsDemo = () => {
                             tooltipText="Sort order"
                         >
                             {SORT_MODES.map((m) => (
-                                <x.SimpleListItem key={m.id} id={m.id} value={m.label} />
+                                <x.ListItem key={m.id} id={m.id} value={m.label} />
                             ))}
                         </GtkDropDown>
                         <GtkDropDown
@@ -402,7 +402,7 @@ const ListViewColorsDemo = () => {
                             tooltipText="Number of colors"
                         >
                             {COLOR_LIMITS.map((l) => (
-                                <x.SimpleListItem key={l.id} id={l.id} value={l.label} />
+                                <x.ListItem key={l.id} id={l.id} value={l.label} />
                             ))}
                         </GtkDropDown>
                     </x.ContainerSlot>

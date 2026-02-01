@@ -13,15 +13,12 @@ export const createItemData = (props: ListItemProps): TreeItemData => ({
 
 export type ItemStore = { updateItem(id: string, value: unknown): void };
 
-export class ListItemNode<
-    TStore extends ItemStore = TreeStore,
-    TProps extends ListItemProps = ListItemProps,
-> extends VirtualNode<TProps, Node, ListItemNode> {
-    private store: TStore | null = null;
+export class ListItemNode extends VirtualNode<ListItemProps, Node, ListItemNode> {
+    private store: ItemStore | null = null;
     private parentItemId: string | null = null;
 
     public setStore(store: ItemStore | null): void {
-        this.store = store as TStore | null;
+        this.store = store;
         if (store === null || store instanceof TreeStore) {
             for (const child of this.children) {
                 child.setStore(store);
@@ -50,8 +47,8 @@ export class ListItemNode<
         child.setParentItemId(this.props.id);
 
         if (this.store instanceof TreeStore) {
-            child.setStore(this.store as never);
-            this.store.addItem(child.props.id, createItemData(child.props as ListItemProps), this.props.id);
+            this.store.addItem(child.props.id, createItemData(child.props), this.props.id);
+            child.setStore(this.store);
         }
     }
 
@@ -60,13 +57,8 @@ export class ListItemNode<
         child.setParentItemId(this.props.id);
 
         if (this.store instanceof TreeStore) {
-            child.setStore(this.store as never);
-            this.store.insertItemBefore(
-                child.props.id,
-                before.props.id,
-                createItemData(child.props as ListItemProps),
-                this.props.id,
-            );
+            this.store.insertItemBefore(child.props.id, before.props.id, createItemData(child.props), this.props.id);
+            child.setStore(this.store);
         }
     }
 
@@ -80,7 +72,7 @@ export class ListItemNode<
         super.removeChild(child);
     }
 
-    public override commitUpdate(oldProps: TProps | null, newProps: TProps): void {
+    public override commitUpdate(oldProps: ListItemProps | null, newProps: ListItemProps): void {
         super.commitUpdate(oldProps, newProps);
 
         if (!this.store) return;
@@ -90,12 +82,12 @@ export class ListItemNode<
                 !oldProps ||
                 oldProps.id !== newProps.id ||
                 oldProps.value !== newProps.value ||
-                (oldProps as ListItemProps).indentForDepth !== (newProps as ListItemProps).indentForDepth ||
-                (oldProps as ListItemProps).indentForIcon !== (newProps as ListItemProps).indentForIcon ||
-                (oldProps as ListItemProps).hideExpander !== (newProps as ListItemProps).hideExpander;
+                oldProps.indentForDepth !== newProps.indentForDepth ||
+                oldProps.indentForIcon !== newProps.indentForIcon ||
+                oldProps.hideExpander !== newProps.hideExpander;
 
             if (propsChanged) {
-                this.store.updateItem(newProps.id, createItemData(newProps as ListItemProps));
+                this.store.updateItem(newProps.id, createItemData(newProps));
             }
         } else {
             if (hasChanged(oldProps, newProps, "id") || hasChanged(oldProps, newProps, "value")) {

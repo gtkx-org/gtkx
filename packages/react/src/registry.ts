@@ -37,7 +37,6 @@ import { ScrolledWindowNode } from "./nodes/scrolled-window.js";
 import { SearchBarNode } from "./nodes/search-bar.js";
 import { ShortcutNode } from "./nodes/shortcut.js";
 import { ShortcutControllerNode } from "./nodes/shortcut-controller.js";
-import { SimpleListItemNode } from "./nodes/simple-list-item.js";
 import { SimpleListViewNode } from "./nodes/simple-list-view.js";
 import { SlotNode } from "./nodes/slot.js";
 import { SourceViewNode } from "./nodes/source-view.js";
@@ -88,7 +87,7 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["NotebookPageTab", NotebookPageTabNode],
     ["OverlayChild", OverlayChildNode],
     ["Shortcut", ShortcutNode],
-    ["SimpleListItem", SimpleListItemNode],
+
     ["Slot", SlotNode],
     ["StackPage", StackPageNode],
     ["TextAnchor", TextAnchorNode],

@@ -206,7 +206,7 @@ const ClipboardDemo = () => {
             <GtkBox spacing={12}>
                 <GtkDropDown valign={Gtk.Align.CENTER} onSelectionChanged={(id) => setSourceType(id as SourceType)}>
                     {SOURCE_TYPES.map((type) => (
-                        <x.SimpleListItem key={type} id={type} value={type} />
+                        <x.ListItem key={type} id={type} value={type} />
                     ))}
                 </GtkDropDown>
 

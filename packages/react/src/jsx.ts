@@ -394,18 +394,6 @@ export type ListItemProps<T = unknown> = {
 };
 
 /**
- * Props for string-based list items.
- *
- * Use with `SimpleListItem` for simple string lists.
- */
-export type StringListItemProps = {
-    /** Unique identifier for this item */
-    id: string;
-    /** The string value for this item */
-    value: string;
-};
-
-/**
  * Props for positioning children within a GtkGrid.
  *
  * @see {@link GridChild} for usage
@@ -754,8 +742,8 @@ export type AdjustableProps = {
  * </GtkHeaderBar>
  *
  * <GtkDropDown>
- *   <x.SimpleListItem id="opt1" value="Option 1" />
- *   <x.SimpleListItem id="opt2" value="Option 2" />
+ *   <x.ListItem id="opt1" value="Option 1" />
+ *   <x.ListItem id="opt2" value="Option 2" />
  * </GtkDropDown>
  * ```
  */
@@ -865,18 +853,6 @@ export const x = {
      * ```
      */
     ListItem: "ListItem" as const,
-
-    /**
-     * Element type for simple string-based list items.
-     *
-     * @example
-     * ```tsx
-     * <GtkDropDown>
-     *   <x.SimpleListItem id="opt1" value="Option 1" />
-     * </GtkDropDown>
-     * ```
-     */
-    SimpleListItem: "SimpleListItem" as const,
 
     /**
      * Component for defining columns in a ColumnView (table widget).
@@ -1156,7 +1132,7 @@ declare global {
                 TextAnchor: TextAnchorProps;
                 TextPaintable: TextPaintableProps;
                 TextTag: TextTagProps;
-                SimpleListItem: StringListItemProps;
+
                 StackPage: StackPageProps;
                 Toggle: ToggleProps;
                 NavigationPage: NavigationPageProps;

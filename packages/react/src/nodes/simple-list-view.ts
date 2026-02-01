@@ -3,14 +3,14 @@ import type { SimpleListViewWidget } from "../registry.js";
 import type { Container } from "../types.js";
 import { filterProps } from "./internal/props.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";
-import type { SimpleListItemNode } from "./simple-list-item.js";
+import type { ListItemNode } from "./list-item.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["selectedId", "onSelectionChanged"] as const;
 
 type SimpleListViewProps = Pick<GtkDropDownProps, (typeof OWN_PROPS)[number]>;
 
-export class SimpleListViewNode extends WidgetNode<SimpleListViewWidget, SimpleListViewProps, SimpleListItemNode> {
+export class SimpleListViewNode extends WidgetNode<SimpleListViewWidget, SimpleListViewProps, ListItemNode> {
     private store = new SimpleListStore();
 
     constructor(
@@ -51,19 +51,19 @@ export class SimpleListViewNode extends WidgetNode<SimpleListViewWidget, SimpleL
         super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
     }
 
-    public override appendChild(child: SimpleListItemNode): void {
+    public override appendChild(child: ListItemNode): void {
         super.appendChild(child);
         child.setStore(this.store);
-        this.store.addItem(child.props.id, child.props.value);
+        this.store.addItem(child.props.id, child.props.value as string);
     }
 
-    public override insertBefore(child: SimpleListItemNode, before: SimpleListItemNode): void {
+    public override insertBefore(child: ListItemNode, before: ListItemNode): void {
         super.insertBefore(child, before);
         child.setStore(this.store);
-        this.store.insertItemBefore(child.props.id, before.props.id, child.props.value);
+        this.store.insertItemBefore(child.props.id, before.props.id, child.props.value as string);
     }
 
-    public override removeChild(child: SimpleListItemNode): void {
+    public override removeChild(child: ListItemNode): void {
         this.store.removeItem(child.props.id);
         super.removeChild(child);
     }
