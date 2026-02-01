@@ -2,14 +2,6 @@ import type { Easing } from "@gtkx/ffi/adw";
 import type { ReactNode } from "react";
 
 /**
- * The type of animation to use.
- *
- * - `"timed"`: Duration-based animation with easing curves (uses {@link Adw.TimedAnimation})
- * - `"spring"`: Physics-based spring animation (uses {@link Adw.SpringAnimation})
- */
-export type AnimationMode = "timed" | "spring";
-
-/**
  * A numeric value that can be animated.
  */
 export type AnimatableValue = number;
@@ -46,6 +38,8 @@ export type AnimatableProperties = {
  * @see {@link https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.TimedAnimation.html Adw.TimedAnimation}
  */
 export type TimedTransition = {
+    /** Discriminant: duration-based animation with easing curves */
+    mode: "timed";
     /** Animation duration in milliseconds (default: 300) */
     duration?: number;
     /** Easing function for the animation curve (default: EASE_OUT_CUBIC) */
@@ -69,6 +63,8 @@ export type TimedTransition = {
  * @see {@link https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.SpringAnimation.html Adw.SpringAnimation}
  */
 export type SpringTransition = {
+    /** Discriminant: physics-based spring animation */
+    mode: "spring";
     /** Damping ratio controlling oscillation decay (default: 1, critically damped) */
     damping?: number;
     /** Spring stiffness in N/m affecting animation speed (default: 100) */
@@ -84,37 +80,42 @@ export type SpringTransition = {
 };
 
 /**
+ * Discriminated union of all transition configurations.
+ *
+ * The `mode` field determines the animation type:
+ * - `"timed"`: Duration-based animation with easing curves (uses {@link Adw.TimedAnimation})
+ * - `"spring"`: Physics-based spring animation (uses {@link Adw.SpringAnimation})
+ */
+export type AnimationTransition = TimedTransition | SpringTransition;
+
+/**
  * Props for the Animation component.
  *
  * Provides a declarative API for animating widget properties using either
  * timed (duration-based) or spring (physics-based) animations.
  *
- * @typeParam M - The animation mode, either `"timed"` or `"spring"`
- *
  * @example
  * ```tsx
  * <x.Animation
- *   mode="spring"
  *   initial={{ opacity: 0, translateY: -20 }}
  *   animate={{ opacity: 1, translateY: 0 }}
  *   exit={{ opacity: 0, translateY: 20 }}
+ *   transition={{ mode: "spring", damping: 0.8, stiffness: 200 }}
  *   animateOnMount
  * >
  *   <GtkLabel label="Animated content" />
  * </x.Animation>
  * ```
  */
-export type AnimationProps<M extends AnimationMode = AnimationMode> = {
-    /** Animation type: `"timed"` for duration-based or `"spring"` for physics-based */
-    mode: M;
+export type AnimationProps = {
     /** Initial property values before animation starts, or `false` to skip initial state */
     initial?: AnimatableProperties | false;
     /** Target property values to animate towards */
     animate?: AnimatableProperties;
     /** Property values to animate to when the component unmounts */
     exit?: AnimatableProperties;
-    /** Transition configuration (type depends on mode) */
-    transition?: M extends "timed" ? TimedTransition : SpringTransition;
+    /** Transition configuration including animation mode and parameters */
+    transition?: AnimationTransition;
     /** Whether to animate from `initial` to `animate` when first mounted (default: false) */
     animateOnMount?: boolean;
     /** Callback fired when an animation begins */

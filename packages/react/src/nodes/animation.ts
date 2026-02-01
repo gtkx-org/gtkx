@@ -234,7 +234,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         this.currentAnimation = animation;
 
         const transition = this.props.transition;
-        const delay = (transition as TimedTransition | SpringTransition)?.delay ?? 0;
+        const delay = transition?.delay ?? 0;
 
         if (delay > 0) {
             setTimeout(() => {
@@ -248,17 +248,20 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
     }
 
     private createAnimation(widget: Gtk.Widget, target: Adw.CallbackAnimationTarget): Adw.Animation {
-        const mode = this.props.mode;
+        const transition = this.props.transition;
 
-        if (mode === "spring") {
-            return this.createSpringAnimation(widget, target);
+        if (transition?.mode === "spring") {
+            return this.createSpringAnimation(widget, target, transition);
         }
 
-        return this.createTimedAnimation(widget, target);
+        return this.createTimedAnimation(widget, target, transition);
     }
 
-    private createTimedAnimation(widget: Gtk.Widget, target: Adw.CallbackAnimationTarget): Adw.TimedAnimation {
-        const transition = this.props.transition as TimedTransition | undefined;
+    private createTimedAnimation(
+        widget: Gtk.Widget,
+        target: Adw.CallbackAnimationTarget,
+        transition: TimedTransition | undefined,
+    ): Adw.TimedAnimation {
         const duration = transition?.duration ?? DEFAULT_TIMED_DURATION;
 
         const animation = new Adw.TimedAnimation(widget, 0, 1, duration, target);
@@ -282,20 +285,23 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         return animation;
     }
 
-    private createSpringAnimation(widget: Gtk.Widget, target: Adw.CallbackAnimationTarget): Adw.SpringAnimation {
-        const transition = this.props.transition as SpringTransition | undefined;
-        const damping = transition?.damping ?? DEFAULT_SPRING_DAMPING;
-        const mass = transition?.mass ?? DEFAULT_SPRING_MASS;
-        const stiffness = transition?.stiffness ?? DEFAULT_SPRING_STIFFNESS;
+    private createSpringAnimation(
+        widget: Gtk.Widget,
+        target: Adw.CallbackAnimationTarget,
+        transition: SpringTransition,
+    ): Adw.SpringAnimation {
+        const damping = transition.damping ?? DEFAULT_SPRING_DAMPING;
+        const mass = transition.mass ?? DEFAULT_SPRING_MASS;
+        const stiffness = transition.stiffness ?? DEFAULT_SPRING_STIFFNESS;
 
         const springParams = new Adw.SpringParams(damping, mass, stiffness);
         const animation = new Adw.SpringAnimation(widget, 0, 1, springParams, target);
 
-        if (transition?.initialVelocity !== undefined) {
+        if (transition.initialVelocity !== undefined) {
             animation.setInitialVelocity(transition.initialVelocity);
         }
 
-        if (transition?.clamp !== undefined) {
+        if (transition.clamp !== undefined) {
             animation.setClamp(transition.clamp);
         }
 
