@@ -1,12 +1,23 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { buildCss, interpolate } from "../animation/css-builder.js";
-import type { AnimatableProperties, AnimationProps, SpringTransition, TimedTransition } from "../animation/types.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
-import { attachChild, detachChild, getAttachmentStrategy } from "./internal/child-attachment.js";
-import { isRemovable } from "./internal/predicates.js";
+import { buildCss, interpolate } from "./internal/animation/css-builder.js";
+import type {
+    AnimatableProperties,
+    AnimationProps,
+    SpringTransition,
+    TimedTransition,
+} from "./internal/animation/types.js";
+import {
+    attachChild,
+    isAddable,
+    isAppendable,
+    isContentWidget,
+    isRemovable,
+    isSingleChild,
+} from "./internal/predicates.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -111,19 +122,11 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         }
 
         if (oldChild && parentWidget && this.isWidgetAttachedTo(oldChild, parentWidget)) {
-            const strategy = getAttachmentStrategy(parentWidget);
-            if (strategy) {
-                detachChild(oldChild, strategy);
-            } else if (isRemovable(parentWidget)) {
-                parentWidget.remove(oldChild);
-            }
+            detachFromParentWidget(oldChild, parentWidget);
         }
 
         if (childWidget && parentWidget) {
-            const strategy = getAttachmentStrategy(parentWidget);
-            if (strategy) {
-                attachChild(childWidget, strategy);
-            }
+            attachChild(childWidget, parentWidget);
 
             this.setupCssProvider();
             childWidget.addCssClass(this.className);
@@ -153,12 +156,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         const childWidget = this.children[0]?.container ?? null;
 
         if (childWidget && parentWidget && this.isWidgetAttachedTo(childWidget, parentWidget)) {
-            const strategy = getAttachmentStrategy(parentWidget);
-            if (strategy) {
-                detachChild(childWidget, strategy);
-            } else if (isRemovable(parentWidget)) {
-                parentWidget.remove(childWidget);
-            }
+            detachFromParentWidget(childWidget, parentWidget);
         }
     }
 
@@ -334,5 +332,19 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         }
 
         return true;
+    }
+}
+
+function detachFromParentWidget(child: Gtk.Widget, parent: Gtk.Widget): void {
+    if (isAppendable(parent) || isAddable(parent)) {
+        if (isRemovable(parent)) {
+            parent.remove(child);
+        }
+    } else if (isContentWidget(parent)) {
+        parent.setContent(null);
+    } else if (isSingleChild(parent)) {
+        parent.setChild(null);
+    } else if (isRemovable(parent)) {
+        parent.remove(child);
     }
 }

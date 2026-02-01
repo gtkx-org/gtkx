@@ -92,3 +92,33 @@ export const isBufferedType = (type: string): boolean => {
     const containerClass = resolveContainerClass(type);
     return containerClass !== null && isBuffered(containerClass.prototype);
 };
+
+export function attachChild(child: Gtk.Widget, container: Gtk.Widget): void {
+    if (isAppendable(container)) {
+        container.append(child);
+    } else if (isAddable(container)) {
+        container.add(child);
+    } else if (isContentWidget(container)) {
+        container.setContent(child);
+    } else if (isSingleChild(container)) {
+        container.setChild(child);
+    } else {
+        throw new Error(`Cannot attach child to '${container.constructor.name}': container does not support children`);
+    }
+}
+
+export function detachChild(child: Gtk.Widget, container: Gtk.Widget): void {
+    if (isAppendable(container) || isAddable(container)) {
+        if (isRemovable(container)) {
+            container.remove(child);
+        }
+    } else if (isContentWidget(container)) {
+        container.setContent(null);
+    } else if (isSingleChild(container)) {
+        container.setChild(null);
+    } else {
+        throw new Error(
+            `Cannot detach child from '${container.constructor.name}': container does not support child removal`,
+        );
+    }
+}

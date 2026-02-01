@@ -3,7 +3,7 @@ import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
-import type { AnimationProps } from "./animation/types.js";
+import type { AnimationProps } from "./nodes/internal/animation/types.js";
 import type { GtkListViewProps as GeneratedGtkListViewProps, WidgetSlotNames } from "./generated/jsx.js";
 import "./jsx-augmentation.js";
 import type { TreeRenderItemFn } from "./nodes/internal/tree-list-item-renderer.js";
@@ -18,7 +18,7 @@ export type {
     AnimationProps,
     SpringTransition,
     TimedTransition,
-} from "./animation/types.js";
+} from "./nodes/internal/animation/types.js";
 export type { TextAnchorProps } from "./nodes/text-anchor.js";
 export type { TextPaintableProps } from "./nodes/text-paintable.js";
 export type { TextTagProps } from "./nodes/text-tag.js";

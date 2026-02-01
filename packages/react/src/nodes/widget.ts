@@ -15,12 +15,11 @@ import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import {
-    getAttachmentStrategy,
-    attachChild as performAttachment,
-    detachChild as performDetachment,
-} from "./internal/child-attachment.js";
-import {
+    attachChild,
+    detachChild,
     type InsertableWidget,
+    isAddable,
+    isAppendable,
     isEditable,
     isInsertable,
     isRemovable,
@@ -90,13 +89,7 @@ export class WidgetNode<
                     }
                 }
             } else {
-                const strategy = getAttachmentStrategy(this.container);
-                if (!strategy) {
-                    throw new Error(
-                        `Cannot remove '${child.typeName}' from '${this.container.constructor.name}': container does not support child removal`,
-                    );
-                }
-                performDetachment(child.container, strategy);
+                detachChild(child.container, this.container);
             }
         }
 
@@ -187,20 +180,14 @@ export class WidgetNode<
     }
 
     private appendWidgetChild(child: WidgetNode): void {
-        const strategy = getAttachmentStrategy(this.container);
-        if (!strategy) {
-            throw new Error(
-                `Cannot append '${child.typeName}' to '${this.container.constructor.name}': container does not support children`,
-            );
-        }
-        if (strategy.type === "appendable" || strategy.type === "addable") {
+        if (isAppendable(this.container) || isAddable(this.container)) {
             if (this.isChildAutowrapped(child)) {
                 this.detachAutowrappedChild(child);
             } else {
                 detachChildFromParent(child);
             }
         }
-        performAttachment(child.container, strategy);
+        attachChild(child.container, this.container);
     }
 
     private isChildAutowrapped(child: WidgetNode): boolean {
@@ -282,15 +269,12 @@ export class WidgetNode<
             }
         }
 
-        const strategy = getAttachmentStrategy(this.container);
-        if (!strategy) return;
-
         for (const child of widgetChildren) {
-            performDetachment(child.container, strategy);
+            detachChild(child.container, this.container);
         }
 
         for (const child of widgetChildren) {
-            performAttachment(child.container, strategy);
+            attachChild(child.container, this.container);
         }
     }
 

@@ -9,24 +9,32 @@ const xvfb = spawn("Xvfb", [`:${display}`, "-screen", "0", "1024x768x24"], {
     stdio: "ignore",
 });
 
-const xvfbPid = xvfb.pid;
-
 xvfb.unref();
 
+process.env.GDK_BACKEND = "x11";
+process.env.GSK_RENDERER = "cairo";
+process.env.LIBGL_ALWAYS_SOFTWARE = "1";
+process.env.DISPLAY = `:${display}`;
+
 const killXvfb = (): void => {
-    if (xvfbPid !== undefined) {
+    if (xvfb.pid !== undefined) {
         try {
-            process.kill(xvfbPid, "SIGTERM");
+            process.kill(xvfb.pid, "SIGTERM");
         } catch {}
     }
 };
 
 process.on("exit", killXvfb);
 
-process.env.GDK_BACKEND = "x11";
-process.env.GSK_RENDERER = "cairo";
-process.env.LIBGL_ALWAYS_SOFTWARE = "1";
-process.env.DISPLAY = `:${display}`;
+process.on("SIGTERM", () => {
+    killXvfb();
+    process.exit(143);
+});
+
+process.on("SIGINT", () => {
+    killXvfb();
+    process.exit(130);
+});
 
 const waitForDisplay = async (timeout = 5000): Promise<void> => {
     const start = Date.now();
