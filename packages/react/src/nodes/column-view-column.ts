@@ -1,12 +1,21 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ColumnViewColumnProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { ListItemRenderer } from "./internal/list-item-renderer.js";
 import { hasChanged } from "./internal/props.js";
 import type { TreeStore } from "./internal/tree-store.js";
 import { VirtualNode } from "./virtual.js";
+import { WidgetNode } from "./widget.js";
 
-export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps> {
+export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, WidgetNode<Gtk.ColumnView>, never> {
+    public override isValidChild(_child: Node): boolean {
+        return false;
+    }
+
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof WidgetNode && parent.container instanceof Gtk.ColumnView;
+    }
     private column: Gtk.ColumnViewColumn;
     private itemRenderer: ListItemRenderer;
 

@@ -19,6 +19,10 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
         return child instanceof WidgetNode;
     }
 
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof WidgetNode;
+    }
+
     public override setParent(parent: WidgetNode | null): void {
         const previousParent = this.parent;
         if (previousParent !== parent) {

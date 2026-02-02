@@ -3,11 +3,13 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkAboutDialogProps, GtkWindowProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
-import { DialogNode } from "./dialog.js";
+import { AnimationNode } from "./animation.js";
+import type { DialogNode } from "./dialog.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
-import type { SlotNode } from "./slot.js";
+import { NavigationPageNode } from "./navigation-page.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: Required for matching GTK class constructors with varying signatures
@@ -18,7 +20,7 @@ const OWN_PROPS = ["onClose"] as const;
 
 export type WindowProps = Pick<GtkWindowProps, "onClose"> & Pick<GtkAboutDialogProps, "creditSections">;
 
-type WindowChild = WindowNode | DialogNode | MenuNode | SlotNode | WidgetNode;
+type WindowChild = WindowNode | DialogNode | MenuNode | SlotNode | AnimationNode | NavigationPageNode | WidgetNode;
 
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild> {
     private menu: MenuModel;
@@ -61,22 +63,23 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         }
     }
 
+    protected override shouldAttachToParent(): boolean {
+        return false;
+    }
+
     public override isValidChild(child: Node): boolean {
-        if (child.container instanceof Gtk.Window) {
-            return true;
-        }
-        return super.isValidChild(child);
+        return (
+            child instanceof WidgetNode ||
+            child instanceof MenuNode ||
+            child instanceof SlotNode ||
+            child instanceof AnimationNode ||
+            child instanceof NavigationPageNode
+        );
     }
 
     public override appendChild(child: WindowChild): void {
         if (child instanceof WindowNode) {
             child.container.setTransientFor(this.container);
-            super.appendChild(child);
-            return;
-        }
-
-        if (child instanceof DialogNode) {
-            child.setParentWindow(this.container);
             super.appendChild(child);
             return;
         }
@@ -92,12 +95,6 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
     public override removeChild(child: WindowChild): void {
         if (child instanceof WindowNode) {
             child.container.setTransientFor(null);
-            super.removeChild(child);
-            return;
-        }
-
-        if (child instanceof DialogNode) {
-            child.setParentWindow(null);
             super.removeChild(child);
             return;
         }
@@ -122,8 +119,6 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
 
         if (child instanceof WindowNode) {
             child.container.setTransientFor(this.container);
-        } else if (child instanceof DialogNode) {
-            child.setParentWindow(this.container);
         }
 
         super.insertBefore(child, before);

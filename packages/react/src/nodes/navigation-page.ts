@@ -16,6 +16,10 @@ export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetN
         return child instanceof WidgetNode;
     }
 
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof WidgetNode;
+    }
+
     public override setParent(parent: WidgetNode | null): void {
         if (!parent && this.parent && this.wrappedPage) {
             const parentWidget = this.getParentWidget();

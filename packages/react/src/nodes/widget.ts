@@ -47,7 +47,8 @@ export class WidgetNode<
     P extends Props = Props,
     // biome-ignore lint/suspicious/noExplicitAny: Self-referential type bounds require any
     TChild extends Node = any,
-> extends Node<T, P, Node, TChild> {
+    TParent extends Node = Node,
+> extends Node<T, P, TParent, TChild> {
     public static override createContainer(
         props: Props,
         containerClass: typeof Gtk.Widget,
@@ -64,16 +65,20 @@ export class WidgetNode<
         return true;
     }
 
+    protected shouldAttachToParent(): boolean {
+        return true;
+    }
+
     public override appendChild(child: TChild): void {
         super.appendChild(child);
 
-        if (child instanceof WidgetNode) {
+        if (child instanceof WidgetNode && child.shouldAttachToParent()) {
             this.appendWidgetChild(child);
         }
     }
 
     public override removeChild(child: TChild): void {
-        if (child instanceof WidgetNode) {
+        if (child instanceof WidgetNode && child.shouldAttachToParent()) {
             if (this.isChildAutowrapped(child)) {
                 const wrapper = child.container.getParent();
                 if (wrapper && isSingleChild(wrapper)) {
@@ -93,7 +98,7 @@ export class WidgetNode<
     public override insertBefore(child: TChild, before: TChild): void {
         super.insertBefore(child, before);
 
-        if (!(child instanceof WidgetNode)) return;
+        if (!(child instanceof WidgetNode) || !child.shouldAttachToParent()) return;
 
         if (!(before instanceof WidgetNode)) {
             this.appendWidgetChild(child);
@@ -257,7 +262,7 @@ export class WidgetNode<
     private reinsertAllChildren(): void {
         const widgetChildren: WidgetNode[] = [];
         for (const child of this.children) {
-            if (child instanceof WidgetNode) {
+            if (child instanceof WidgetNode && child.shouldAttachToParent()) {
                 widgetChildren.push(child);
             }
         }

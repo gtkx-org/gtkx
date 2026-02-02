@@ -4,7 +4,7 @@ import type { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";
 import { TextAnchorNode } from "./text-anchor.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
-import { TextSegmentNode } from "./text-segment.js";
+import { isTextContentParent, TextSegmentNode } from "./text-segment.js";
 import { VirtualNode } from "./virtual.js";
 
 const STYLE_PROPS: Partial<Record<keyof TextTagProps, keyof Gtk.TextTag>> = {
@@ -48,11 +48,14 @@ const STYLE_PROPS: Partial<Record<keyof TextTagProps, keyof Gtk.TextTag>> = {
     language: "setLanguage",
 };
 
-export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChild> implements TextContentParent {
+type TextTagParent = Node & TextContentParent;
+
+export class TextTagNode
+    extends VirtualNode<TextTagProps, TextTagParent, TextContentChild>
+    implements TextContentParent
+{
     private buffer: Gtk.TextBuffer | null = null;
     private tag: Gtk.TextTag | null = null;
-    private contentChildren: TextContentChild[] = [];
-    private contentParent: TextContentParent | null = null;
 
     private bufferOffset = 0;
 
@@ -68,44 +71,46 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
         return this.isTextContentChild(child);
     }
 
+    public override isValidParent(parent: Node): boolean {
+        return isTextContentParent(parent);
+    }
+
     public override appendChild(child: TextContentChild): void {
+        const index = this.children.length;
         super.appendChild(child);
-        const index = this.contentChildren.length;
-        this.contentChildren.push(child);
-        this.setChildContentParent(child);
 
         if (child instanceof TextTagNode && this.buffer) {
             child.setBuffer(this.buffer);
         }
 
         this.updateChildOffsets(index);
-        this.contentParent?.onChildInserted(child);
+        this.parent?.onChildInserted(child);
     }
 
     public override removeChild(child: TextContentChild): void {
-        const index = this.contentChildren.indexOf(child);
+        const index = this.children.indexOf(child);
         if (index !== -1) {
-            this.contentChildren.splice(index, 1);
+            this.children.splice(index, 1);
+            child.setParent(null);
             this.updateChildOffsets(index);
-            this.contentParent?.onChildRemoved(child);
+            this.parent?.onChildRemoved(child);
+            return;
         }
         super.removeChild(child);
     }
 
     public override insertBefore(child: TextContentChild, before: TextContentChild): void {
-        super.insertBefore(child, before);
-        const beforeIndex = this.contentChildren.indexOf(before);
-        const insertIndex = beforeIndex !== -1 ? beforeIndex : this.contentChildren.length;
+        const beforeIndex = this.children.indexOf(before);
+        const insertIndex = beforeIndex !== -1 ? beforeIndex : this.children.length;
 
-        this.contentChildren.splice(insertIndex, 0, child);
-        this.setChildContentParent(child);
+        super.insertBefore(child, before);
 
         if (child instanceof TextTagNode && this.buffer) {
             child.setBuffer(this.buffer);
         }
 
         this.updateChildOffsets(insertIndex);
-        this.contentParent?.onChildInserted(child);
+        this.parent?.onChildInserted(child);
     }
 
     public override commitUpdate(oldProps: TextTagProps | null, newProps: TextTagProps): void {
@@ -121,12 +126,7 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
         }
         this.tag = null;
         this.buffer = null;
-        this.contentChildren = [];
         super.detachDeletedInstance();
-    }
-
-    public setContentParent(parent: TextContentParent): void {
-        this.contentParent = parent;
     }
 
     public setBuffer(buffer: Gtk.TextBuffer): void {
@@ -134,7 +134,7 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
         this.updateChildOffsets(0);
         this.setupTag();
 
-        for (const child of this.contentChildren) {
+        for (const child of this.children) {
             if (child instanceof TextTagNode) {
                 child.setBuffer(buffer);
             }
@@ -147,7 +147,7 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
 
     public getText(): string {
         let text = "";
-        for (const child of this.contentChildren) {
+        for (const child of this.children) {
             text += child.getText();
         }
         return text;
@@ -155,14 +155,10 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
 
     public getLength(): number {
         let length = 0;
-        for (const child of this.contentChildren) {
+        for (const child of this.children) {
             length += child.getLength();
         }
         return length;
-    }
-
-    public getChildren(): TextContentChild[] {
-        return this.contentChildren;
     }
 
     public reapplyTag(): void {
@@ -172,25 +168,25 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
     }
 
     public onChildInserted(child: TextContentChild): void {
-        const index = this.contentChildren.indexOf(child);
+        const index = this.children.indexOf(child);
         if (index !== -1) {
             this.updateChildOffsets(index);
         }
 
-        this.contentParent?.onChildInserted(child);
+        this.parent?.onChildInserted(child);
     }
 
     public onChildRemoved(child: TextContentChild): void {
-        this.contentParent?.onChildRemoved(child);
+        this.parent?.onChildRemoved(child);
     }
 
     public onChildTextChanged(child: TextSegmentNode, oldLength: number, newLength: number): void {
-        const index = this.contentChildren.indexOf(child);
+        const index = this.children.indexOf(child);
         if (index !== -1) {
             this.updateChildOffsets(index + 1);
         }
 
-        this.contentParent?.onChildTextChanged(child, oldLength, newLength);
+        this.parent?.onChildTextChanged(child, oldLength, newLength);
     }
 
     private setupTag(): void {
@@ -272,12 +268,12 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
         let offset = this.bufferOffset;
 
         for (let i = 0; i < startIndex; i++) {
-            const child = this.contentChildren[i];
+            const child = this.children[i];
             if (child) offset += child.getLength();
         }
 
-        for (let i = startIndex; i < this.contentChildren.length; i++) {
-            const child = this.contentChildren[i];
+        for (let i = startIndex; i < this.children.length; i++) {
+            const child = this.children[i];
             if (child) {
                 child.setBufferOffset(offset);
                 offset += child.getLength();
@@ -287,11 +283,5 @@ export class TextTagNode extends VirtualNode<TextTagProps, Node, TextContentChil
 
     private isTextContentChild(child: Node): child is TextContentChild {
         return child instanceof TextSegmentNode || child instanceof TextTagNode || child instanceof TextAnchorNode;
-    }
-
-    private setChildContentParent(child: TextContentChild): void {
-        if (child instanceof TextSegmentNode || child instanceof TextTagNode) {
-            child.setContentParent(this);
-        }
     }
 }

@@ -1,15 +1,15 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { TextAnchorProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { TEXT_OBJECT_REPLACEMENT } from "./text-content.js";
+import { TEXT_OBJECT_REPLACEMENT, type TextContentParent } from "./text-content.js";
+import { isTextContentParent } from "./text-segment.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node, WidgetNode> {
+export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node & TextContentParent, WidgetNode> {
     private textView: Gtk.TextView | null = null;
     private buffer: Gtk.TextBuffer | null = null;
     private anchor: Gtk.TextChildAnchor | null = null;
-    private widgetChild: WidgetNode | null = null;
 
     private bufferOffset = 0;
 
@@ -23,6 +23,10 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node, WidgetNod
 
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
+    }
+
+    public override isValidParent(parent: Node): boolean {
+        return isTextContentParent(parent);
     }
 
     public getLength(): number {
@@ -47,30 +51,22 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node, WidgetNod
 
         this.anchor = this.buffer.createChildAnchor(iter);
 
-        if (this.widgetChild?.container && this.anchor) {
-            this.textView.addChildAtAnchor(this.widgetChild.container, this.anchor);
+        const widgetChild = this.children[0];
+        if (widgetChild?.container && this.anchor) {
+            this.textView.addChildAtAnchor(widgetChild.container, this.anchor);
         }
     }
 
     public override appendChild(child: WidgetNode): void {
         super.appendChild(child);
-        this.widgetChild = child;
 
         if (this.textView && this.anchor && child.container) {
             this.textView.addChildAtAnchor(child.container, this.anchor);
         }
     }
 
-    public override removeChild(child: WidgetNode): void {
-        if (child === this.widgetChild) {
-            this.widgetChild = null;
-        }
-        super.removeChild(child);
-    }
-
     public override detachDeletedInstance(): void {
         this.anchor = null;
-        this.widgetChild = null;
         this.buffer = null;
         this.textView = null;
         super.detachDeletedInstance();

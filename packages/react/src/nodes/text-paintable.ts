@@ -1,9 +1,18 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { TextPaintableProps } from "../jsx.js";
-import { TEXT_OBJECT_REPLACEMENT } from "./text-content.js";
+import type { Node } from "../node.js";
+import { TEXT_OBJECT_REPLACEMENT, type TextContentParent } from "./text-content.js";
+import { isTextContentParent } from "./text-segment.js";
 import { VirtualNode } from "./virtual.js";
 
-export class TextPaintableNode extends VirtualNode<TextPaintableProps> {
+export class TextPaintableNode extends VirtualNode<TextPaintableProps, Node & TextContentParent, never> {
+    public override isValidChild(_child: Node): boolean {
+        return false;
+    }
+
+    public override isValidParent(parent: Node): boolean {
+        return isTextContentParent(parent);
+    }
     private buffer: Gtk.TextBuffer | null = null;
     private bufferOffset = 0;
 

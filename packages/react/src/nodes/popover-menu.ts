@@ -1,16 +1,21 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { Node } from "../node.js";
 import type { PopoverMenuWidget } from "../registry.js";
 import type { Container, Props } from "../types.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
-import type { SlotNode } from "./slot.js";
+import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
 type PopoverMenuChild = MenuNode | SlotNode | WidgetNode;
 
 export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, PopoverMenuChild> {
     private menu: MenuModel;
+
+    public override isValidChild(child: Node): boolean {
+        return child instanceof MenuNode || child instanceof SlotNode || child instanceof WidgetNode;
+    }
 
     constructor(typeName: string, props: Props, container: PopoverMenuWidget, rootContainer: Container) {
         super(typeName, props, container, rootContainer);

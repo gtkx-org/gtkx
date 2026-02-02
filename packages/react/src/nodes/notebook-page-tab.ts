@@ -1,13 +1,11 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import type { NotebookPageNode } from "./notebook-page.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-export class NotebookPageTabNode extends VirtualNode<SlotProps, Node, WidgetNode> {
-    private notebook: Gtk.Notebook | null = null;
-    private page: Gtk.Widget | null = null;
-
+export class NotebookPageTabNode extends VirtualNode<SlotProps, NotebookPageNode, WidgetNode> {
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
     }
@@ -16,9 +14,12 @@ export class NotebookPageTabNode extends VirtualNode<SlotProps, Node, WidgetNode
         return parent instanceof VirtualNode && parent.typeName === "NotebookPage";
     }
 
-    public setPage(notebook: Gtk.Notebook | null, page: Gtk.Widget | null): void {
-        this.notebook = notebook;
-        this.page = page;
+    private getNotebook(): Gtk.Notebook | null {
+        return this.parent?.parent?.container ?? null;
+    }
+
+    private getPage(): Gtk.Widget | null {
+        return this.parent?.findContentChild()?.container ?? null;
     }
 
     public override appendChild(child: WidgetNode): void {
@@ -37,21 +38,18 @@ export class NotebookPageTabNode extends VirtualNode<SlotProps, Node, WidgetNode
         }
     }
 
-    public override detachDeletedInstance(): void {
-        this.notebook = null;
-        this.page = null;
-        super.detachDeletedInstance();
-    }
-
     private onChildChange(): void {
-        if (!this.notebook || !this.page) {
+        const notebook = this.getNotebook();
+        const page = this.getPage();
+
+        if (!notebook || !page) {
             return;
         }
 
-        if (this.notebook.pageNum(this.page) === -1) {
+        if (notebook.pageNum(page) === -1) {
             return;
         }
 
-        this.notebook.setTabLabel(this.page, this.children[0]?.container ?? null);
+        notebook.setTabLabel(page, this.children[0]?.container ?? null);
     }
 }

@@ -1,9 +1,10 @@
 import type { AdwComboRowProps, GtkDropDownProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import type { DropDownWidget } from "../registry.js";
 import type { Container } from "../types.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { SimpleListStore } from "./internal/simple-list-store.js";
-import type { ListItemNode } from "./list-item.js";
+import { ListItemNode } from "./list-item.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = ["selectedId", "onSelectionChanged"] as const;
@@ -12,6 +13,10 @@ type DropDownProps = Pick<GtkDropDownProps | AdwComboRowProps, (typeof OWN_PROPS
 
 export class DropDownNode extends WidgetNode<DropDownWidget, DropDownProps, ListItemNode> {
     private store = new SimpleListStore();
+
+    public override isValidChild(child: Node): boolean {
+        return child instanceof ListItemNode;
+    }
 
     constructor(typeName: string, props: DropDownProps, container: DropDownWidget, rootContainer: Container) {
         super(typeName, props, container, rootContainer);

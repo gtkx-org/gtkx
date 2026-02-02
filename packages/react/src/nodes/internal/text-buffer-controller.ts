@@ -149,7 +149,6 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
         this.textChildren.push(child);
         child.setBufferOffset(offset);
-        this.setChildParent(child);
 
         if (child instanceof TextSegmentNode) {
             this.insertTextAtOffset(child.getText(), offset);
@@ -199,7 +198,6 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
         this.textChildren.splice(insertIndex, 0, child);
         child.setBufferOffset(offset);
-        this.setChildParent(child);
 
         if (child instanceof TextSegmentNode) {
             this.insertTextAtOffset(child.getText(), offset);
@@ -234,12 +232,6 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
         this.updateChildOffsets(index);
         this.reapplyTagsFromOffset(offset);
-    }
-
-    private setChildParent(child: TextContentChild): void {
-        if (child instanceof TextSegmentNode || child instanceof TextTagNode) {
-            child.setContentParent(this.owner);
-        }
     }
 
     private getTotalLength(): number {
@@ -292,7 +284,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         for (const child of children) {
             if (child instanceof TextTagNode) {
                 child.reapplyTag();
-                this.reapplyAllTagsRecursive(child.getChildren());
+                this.reapplyAllTagsRecursive(child.children);
             }
         }
     }
@@ -302,10 +294,10 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
             if (child instanceof TextTagNode) {
                 if (child.getBufferOffset() >= fromOffset) {
                     child.reapplyTag();
-                    this.reapplyAllTagsRecursive(child.getChildren());
+                    this.reapplyAllTagsRecursive(child.children);
                 } else if (child.getBufferOffset() + child.getLength() > fromOffset) {
                     child.reapplyTag();
-                    this.reapplyAllTagsRecursive(child.getChildren());
+                    this.reapplyAllTagsRecursive(child.children);
                 }
             }
         }

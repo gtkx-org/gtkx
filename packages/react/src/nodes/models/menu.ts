@@ -16,7 +16,6 @@ export type MenuType = "root" | "item" | "section" | "submenu";
 export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel> {
     private actionMap: Gio.ActionMap | null = null;
     private actionPrefix: string;
-    private parentMenu: Gio.Menu | null = null;
     private menu: Gio.Menu;
     private type: MenuType;
     private application: Gtk.Application | null = null;
@@ -39,6 +38,10 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
     public override isValidChild(child: Node): boolean {
         return child instanceof MenuModel;
+    }
+
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof MenuModel;
     }
 
     public setActionMap(actionMap: Gio.ActionMap, prefix: string): void {
@@ -85,11 +88,11 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
     }
 
     private getParentMenu(): Gio.Menu {
-        if (!this.parentMenu) {
+        if (!this.parent) {
             throw new Error("Expected parent menu to be set on MenuNode");
         }
 
-        return this.parentMenu;
+        return this.parent.getMenu();
     }
 
     private getActionMap(): Gio.ActionMap {
@@ -150,10 +153,6 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
         return -1;
     }
 
-    private setParentMenu(parentMenu: Gio.Menu): void {
-        this.parentMenu = parentMenu;
-    }
-
     public getMenu(): Gio.Menu {
         return this.menu;
     }
@@ -167,11 +166,9 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
     }
 
     public removeFromParentMenu(): void {
-        if (!this.parentMenu) return;
+        if (!this.parent) return;
 
-        const parentMenu = this.parentMenu;
-        this.parentMenu = null;
-
+        const parentMenu = this.parent.getMenu();
         const position = this.findPositionIn(parentMenu);
 
         if (position >= 0) {
@@ -228,7 +225,6 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
             child.setActionMap(this.actionMap, this.actionPrefix);
         }
 
-        child.setParentMenu(this.menu);
         child.appendToParentMenu();
     }
 
@@ -239,7 +235,6 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
             child.setActionMap(this.actionMap, this.actionPrefix);
         }
 
-        child.setParentMenu(this.menu);
         child.insertInParentBefore(before);
     }
 
@@ -259,7 +254,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
     }
 
     private updateItemProps(oldProps: MenuModelProps | null, newProps: MenuModelProps): void {
-        if (!this.parentMenu || !this.actionMap) {
+        if (!this.parent || !this.actionMap) {
             return;
         }
 
@@ -268,10 +263,8 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
         }
 
         if (oldProps.id !== newProps.id || oldProps.label !== newProps.label) {
-            const parentMenu = this.parentMenu;
             this.removeAction();
             this.removeFromParentMenu();
-            this.parentMenu = parentMenu;
             this.createAction();
             this.appendToParentMenu();
             return;
@@ -289,12 +282,12 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
     }
 
     private updateContainerProps(oldProps: MenuModelProps | null, newProps: MenuModelProps): void {
-        if (!this.parentMenu) {
+        if (!this.parent) {
             return;
         }
 
         if (!oldProps || oldProps.label !== newProps.label) {
-            const parentMenu = this.parentMenu;
+            const parentMenu = this.parent.getMenu();
             const position = this.findPositionIn(parentMenu);
 
             if (position >= 0) {

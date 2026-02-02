@@ -4,8 +4,8 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-describe("render - SimpleListView", () => {
-    describe("SimpleListViewNode (GtkDropDown)", () => {
+describe("render - DropDown", () => {
+    describe("DropDownNode", () => {
         it("creates DropDown widget", async () => {
             const ref = createRef<Gtk.DropDown>();
 

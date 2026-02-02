@@ -5,8 +5,12 @@ import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-export class ToggleNode extends VirtualNode<ToggleProps, WidgetNode<Adw.ToggleGroup>> {
+export class ToggleNode extends VirtualNode<ToggleProps, WidgetNode<Adw.ToggleGroup>, never> {
     private toggle: Adw.Toggle | null = null;
+
+    public override isValidChild(_child: Node): boolean {
+        return false;
+    }
 
     public override isValidParent(parent: Node): boolean {
         return parent instanceof WidgetNode && parent.container instanceof Adw.ToggleGroup;

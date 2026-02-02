@@ -1,11 +1,12 @@
 import type { TextSegmentProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";
 import type { TextContentParent } from "./text-content.js";
 import { VirtualNode } from "./virtual.js";
 
-export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
-    private contentParent: TextContentParent | null = null;
+type TextSegmentParent = Node & TextContentParent;
 
+export class TextSegmentNode extends VirtualNode<TextSegmentProps, TextSegmentParent, never> {
     private bufferOffset = 0;
 
     public getBufferOffset(): number {
@@ -16,8 +17,12 @@ export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
         this.bufferOffset = offset;
     }
 
-    public setContentParent(parent: TextContentParent): void {
-        this.contentParent = parent;
+    public override isValidChild(_child: Node): boolean {
+        return false;
+    }
+
+    public override isValidParent(parent: Node): boolean {
+        return isTextContentParent(parent);
     }
 
     public getText(): string {
@@ -34,8 +39,17 @@ export class TextSegmentNode extends VirtualNode<TextSegmentProps> {
 
         super.commitUpdate(oldProps, newProps);
 
-        if (hasChanged(oldProps, newProps, "text") && this.contentParent) {
-            this.contentParent.onChildTextChanged(this, oldText.length, newText.length);
+        if (hasChanged(oldProps, newProps, "text") && this.parent) {
+            this.parent.onChildTextChanged(this, oldText.length, newText.length);
         }
     }
+}
+
+export function isTextContentParent(node: Node): node is TextSegmentParent {
+    const candidate = node as unknown as TextContentParent;
+    return (
+        typeof candidate.onChildInserted === "function" &&
+        typeof candidate.onChildRemoved === "function" &&
+        typeof candidate.onChildTextChanged === "function"
+    );
 }

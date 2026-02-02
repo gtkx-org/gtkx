@@ -1,10 +1,14 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkTextViewProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import { filterProps } from "./internal/props.js";
 import { TextBufferController } from "./internal/text-buffer-controller.js";
-import type { SlotNode } from "./slot.js";
+import { SlotNode } from "./slot.js";
+import { TextAnchorNode } from "./text-anchor.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
-import type { TextSegmentNode } from "./text-segment.js";
+import { TextPaintableNode } from "./text-paintable.js";
+import { TextSegmentNode } from "./text-segment.js";
+import { TextTagNode } from "./text-tag.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = [
@@ -21,6 +25,17 @@ type TextViewChild = TextContentChild | SlotNode | WidgetNode;
 
 export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextViewChild> implements TextContentParent {
     protected bufferController: TextBufferController | null = null;
+
+    public override isValidChild(child: Node): boolean {
+        return (
+            child instanceof TextSegmentNode ||
+            child instanceof TextTagNode ||
+            child instanceof TextAnchorNode ||
+            child instanceof TextPaintableNode ||
+            child instanceof SlotNode ||
+            child instanceof WidgetNode
+        );
+    }
 
     protected ensureBufferController(): TextBufferController {
         if (!this.bufferController) {
@@ -42,7 +57,6 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
         const controller = this.ensureBufferController();
         if (controller.isTextContentChild(child)) {
             controller.appendChild(child);
-            return;
         }
         super.appendChild(child);
     }
@@ -51,7 +65,6 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
         const controller = this.ensureBufferController();
         if (controller.isTextContentChild(child)) {
             controller.insertBefore(child, before as TextContentChild);
-            return;
         }
         super.insertBefore(child, before);
     }
@@ -60,7 +73,6 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
         const controller = this.ensureBufferController();
         if (controller.isTextContentChild(child)) {
             controller.removeChild(child);
-            return;
         }
         super.removeChild(child);
     }

@@ -33,6 +33,10 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         return child instanceof WidgetNode;
     }
 
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof WidgetNode;
+    }
+
     public override setParent(parent: WidgetNode | null): void {
         if (!parent && this.parent) {
             this.detachedParentWidget = this.parent.container;

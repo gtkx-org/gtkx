@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkColumnViewProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
 import { filterProps, hasChanged } from "./internal/props.js";
@@ -15,6 +16,10 @@ type ColumnViewChild = ListItemNode | ColumnViewColumnNode;
 export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, ColumnViewChild> {
     private handleSortChange: (() => void) | null = null;
     private list: ListModel;
+
+    public override isValidChild(child: Node): boolean {
+        return child instanceof ListItemNode || child instanceof ColumnViewColumnNode;
+    }
     private columnNodes = new Set<ColumnViewColumnNode>();
     private estimatedRowHeight: number | null = null;
 

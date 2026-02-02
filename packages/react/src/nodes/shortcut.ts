@@ -1,9 +1,18 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ShortcutProps } from "../jsx.js";
+import type { Node } from "../node.js";
+import { EventControllerNode } from "./event-controller.js";
 import { hasChanged } from "./internal/props.js";
 import { VirtualNode } from "./virtual.js";
 
-export class ShortcutNode extends VirtualNode<ShortcutProps> {
+export class ShortcutNode extends VirtualNode<ShortcutProps, EventControllerNode<Gtk.ShortcutController>, never> {
+    public override isValidChild(_child: Node): boolean {
+        return false;
+    }
+
+    public override isValidParent(parent: Node): boolean {
+        return parent instanceof EventControllerNode && parent.container instanceof Gtk.ShortcutController;
+    }
     private shortcut: Gtk.Shortcut | null = null;
     private action: Gtk.CallbackAction | null = null;
 

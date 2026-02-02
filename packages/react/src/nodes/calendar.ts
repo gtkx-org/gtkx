@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkCalendarProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import { filterProps, primitiveArrayEqual } from "./internal/props.js";
 import { WidgetNode } from "./widget.js";
 
@@ -7,7 +8,10 @@ const OWN_PROPS = ["markedDays"] as const;
 
 type CalendarProps = Pick<GtkCalendarProps, (typeof OWN_PROPS)[number]>;
 
-export class CalendarNode extends WidgetNode<Gtk.Calendar, CalendarProps> {
+export class CalendarNode extends WidgetNode<Gtk.Calendar, CalendarProps, never> {
+    public override isValidChild(_child: Node): boolean {
+        return false;
+    }
     private appliedMarks: number[] = [];
 
     public override commitUpdate(oldProps: CalendarProps | null, newProps: CalendarProps): void {

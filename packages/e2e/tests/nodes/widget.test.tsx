@@ -1,20 +1,27 @@
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
+    GtkAboutDialog,
+    GtkApplicationWindow,
     GtkBox,
     GtkButton,
     GtkCheckButton,
     GtkEntry,
     GtkEventControllerKey,
     GtkEventControllerMotion,
+    GtkFlowBox,
     GtkGestureClick,
     GtkImage,
     GtkLabel,
+    GtkListBox,
     GtkSwitch,
 } from "@gtkx/react";
-import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { render as baseRender, screen, userEvent, waitFor } from "@gtkx/testing";
+import type { ReactNode } from "react";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+
+const render = (element: ReactNode) => baseRender(element);
 
 describe("widget - creation", () => {
     describe("basic widgets", () => {
@@ -711,6 +718,311 @@ describe("widget - signals", () => {
             await waitFor(() => {
                 expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec), expect.any(Gtk.Label));
             });
+        });
+    });
+});
+
+describe("widget - child management", () => {
+    describe("GtkBox", () => {
+        it("creates Box widget", async () => {
+            const ref = createRef<Gtk.Box>();
+
+            await render(<GtkBox ref={ref} />);
+
+            expect(ref.current).not.toBeNull();
+        });
+
+        it("appends children", async () => {
+            const boxRef = createRef<Gtk.Box>();
+
+            await render(<GtkBox ref={boxRef}>First Second</GtkBox>);
+
+            expect(boxRef.current?.getFirstChild()).not.toBeNull();
+            expect(boxRef.current?.getLastChild()).not.toBeNull();
+        });
+
+        it("removes children", async () => {
+            const boxRef = createRef<Gtk.Box>();
+
+            function App({ count }: { count: number }) {
+                return (
+                    <GtkBox ref={boxRef}>
+                        {Array.from({ length: count }, (_, i) => (
+                            // biome-ignore lint/suspicious/noArrayIndexKey: Test intentionally uses index keys
+                            <GtkLabel key={`label-${i}`} label={`Label ${i}`} />
+                        ))}
+                    </GtkBox>
+                );
+            }
+
+            await render(<App count={3} />);
+            await render(<App count={1} />);
+
+            expect(boxRef.current?.getFirstChild()).not.toBeNull();
+            const first = boxRef.current?.getFirstChild();
+            const last = boxRef.current?.getLastChild();
+            expect(first && last && first === last).toBe(true);
+        });
+    });
+});
+
+describe("widget - auto-wrapping", () => {
+    describe("GtkListBox", () => {
+        it("creates ListBox widget", async () => {
+            const ref = createRef<Gtk.ListBox>();
+
+            await render(<GtkListBox ref={ref} />);
+
+            expect(ref.current).not.toBeNull();
+        });
+
+        it("wraps children in ListBoxRow", async () => {
+            const listBoxRef = createRef<Gtk.ListBox>();
+            const labelRef = createRef<Gtk.Label>();
+
+            await render(
+                <GtkListBox ref={listBoxRef}>
+                    <GtkLabel ref={labelRef} label="Item 1" />
+                </GtkListBox>,
+            );
+
+            const firstChild = listBoxRef.current?.getFirstChild();
+            expect(firstChild).not.toBeNull();
+            expect(labelRef.current?.getParent()).not.toBe(listBoxRef.current);
+        });
+
+        it("appends multiple children", async () => {
+            const listBoxRef = createRef<Gtk.ListBox>();
+
+            await render(
+                <GtkListBox ref={listBoxRef}>
+                    <GtkLabel label="Item 1" />
+                    <GtkLabel label="Item 2" />
+                    <GtkLabel label="Item 3" />
+                </GtkListBox>,
+            );
+
+            let count = 0;
+            let child = listBoxRef.current?.getFirstChild();
+            while (child) {
+                count++;
+                child = child.getNextSibling();
+            }
+            expect(count).toBe(3);
+        });
+
+        it("removes children", async () => {
+            const listBoxRef = createRef<Gtk.ListBox>();
+
+            function App({ items }: { items: string[] }) {
+                return (
+                    <GtkListBox ref={listBoxRef}>
+                        {items.map((item) => (
+                            <GtkLabel key={item} label={item} />
+                        ))}
+                    </GtkListBox>
+                );
+            }
+
+            await render(<App items={["a", "b", "c"]} />);
+
+            let count = 0;
+            let child = listBoxRef.current?.getFirstChild();
+            while (child) {
+                count++;
+                child = child.getNextSibling();
+            }
+            expect(count).toBe(3);
+
+            await render(<App items={["a", "c"]} />);
+
+            count = 0;
+            child = listBoxRef.current?.getFirstChild();
+            while (child) {
+                count++;
+                child = child.getNextSibling();
+            }
+            expect(count).toBe(2);
+        });
+
+        it("reorders children", async () => {
+            const listBoxRef = createRef<Gtk.ListBox>();
+
+            function App({ items }: { items: string[] }) {
+                return (
+                    <GtkListBox ref={listBoxRef}>
+                        {items.map((item) => (
+                            <GtkLabel key={item} label={item} />
+                        ))}
+                    </GtkListBox>
+                );
+            }
+
+            await render(<App items={["first", "second"]} />);
+            await render(<App items={["second", "first"]} />);
+
+            expect(listBoxRef.current?.getFirstChild()).not.toBeNull();
+        });
+    });
+
+    describe("GtkFlowBox", () => {
+        it("creates FlowBox widget", async () => {
+            const ref = createRef<Gtk.FlowBox>();
+
+            await render(<GtkFlowBox ref={ref} />);
+
+            expect(ref.current).not.toBeNull();
+        });
+
+        it("wraps children in FlowBoxChild", async () => {
+            const flowBoxRef = createRef<Gtk.FlowBox>();
+            const labelRef = createRef<Gtk.Label>();
+
+            await render(
+                <GtkFlowBox ref={flowBoxRef}>
+                    <GtkLabel ref={labelRef} label="Item 1" />
+                </GtkFlowBox>,
+            );
+
+            const firstChild = flowBoxRef.current?.getFirstChild();
+            expect(firstChild).not.toBeNull();
+            expect(labelRef.current?.getParent()).not.toBe(flowBoxRef.current);
+        });
+
+        it("appends multiple children", async () => {
+            const flowBoxRef = createRef<Gtk.FlowBox>();
+
+            await render(
+                <GtkFlowBox ref={flowBoxRef}>
+                    <GtkLabel label="Item 1" />
+                    <GtkLabel label="Item 2" />
+                    <GtkLabel label="Item 3" />
+                </GtkFlowBox>,
+            );
+
+            let count = 0;
+            let child = flowBoxRef.current?.getFirstChild();
+            while (child) {
+                count++;
+                child = child.getNextSibling();
+            }
+            expect(count).toBe(3);
+        });
+
+        it("removes children", async () => {
+            const flowBoxRef = createRef<Gtk.FlowBox>();
+
+            function App({ items }: { items: string[] }) {
+                return (
+                    <GtkFlowBox ref={flowBoxRef}>
+                        {items.map((item) => (
+                            <GtkLabel key={item} label={item} />
+                        ))}
+                    </GtkFlowBox>
+                );
+            }
+
+            await render(<App items={["a", "b", "c"]} />);
+
+            let count = 0;
+            let child = flowBoxRef.current?.getFirstChild();
+            while (child) {
+                count++;
+                child = child.getNextSibling();
+            }
+            expect(count).toBe(3);
+
+            await render(<App items={["a"]} />);
+
+            count = 0;
+            child = flowBoxRef.current?.getFirstChild();
+            while (child) {
+                count++;
+                child = child.getNextSibling();
+            }
+            expect(count).toBe(1);
+        });
+    });
+});
+
+describe("widget - AboutDialog", () => {
+    const renderUnwrapped = (element: ReactNode) => baseRender(element, { wrapper: false });
+
+    describe("creditSections", () => {
+        it("applies credit sections on mount", async () => {
+            const ref = createRef<Gtk.AboutDialog>();
+
+            await renderUnwrapped(
+                <GtkApplicationWindow>
+                    <GtkAboutDialog
+                        ref={ref}
+                        programName="Test App"
+                        creditSections={[
+                            { name: "Contributors", people: ["Alice", "Bob"] },
+                            { name: "Testers", people: ["Charlie"] },
+                        ]}
+                    />
+                </GtkApplicationWindow>,
+            );
+
+            expect(ref.current).not.toBeNull();
+        });
+
+        it("applies empty credit sections array", async () => {
+            const ref = createRef<Gtk.AboutDialog>();
+
+            await renderUnwrapped(
+                <GtkApplicationWindow>
+                    <GtkAboutDialog ref={ref} programName="Test App" creditSections={[]} />
+                </GtkApplicationWindow>,
+            );
+
+            expect(ref.current).not.toBeNull();
+        });
+
+        it("renders without creditSections prop", async () => {
+            const ref = createRef<Gtk.AboutDialog>();
+
+            await renderUnwrapped(
+                <GtkApplicationWindow>
+                    <GtkAboutDialog ref={ref} programName="Test App" />
+                </GtkApplicationWindow>,
+            );
+
+            expect(ref.current).not.toBeNull();
+        });
+    });
+
+    describe("lifecycle", () => {
+        it("presents dialog on mount", async () => {
+            const ref = createRef<Gtk.AboutDialog>();
+
+            await renderUnwrapped(
+                <GtkApplicationWindow>
+                    <GtkAboutDialog ref={ref} programName="Lifecycle Test" />
+                </GtkApplicationWindow>,
+            );
+
+            expect(ref.current?.getVisible()).toBe(true);
+        });
+
+        it("destroys dialog on unmount", async () => {
+            const ref = createRef<Gtk.AboutDialog>();
+
+            function App({ show }: { show: boolean }) {
+                return (
+                    <GtkApplicationWindow>
+                        {show ? <GtkAboutDialog ref={ref} programName="Unmount Test" /> : null}
+                    </GtkApplicationWindow>
+                );
+            }
+
+            await renderUnwrapped(<App show={true} />);
+
+            const handle = ref.current?.handle;
+            expect(handle).toBeDefined();
+
+            await renderUnwrapped(<App show={false} />);
         });
     });
 });

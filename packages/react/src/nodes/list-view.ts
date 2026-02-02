@@ -1,9 +1,10 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkListViewProps } from "../jsx.js";
+import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import { ListItemRenderer } from "./internal/list-item-renderer.js";
 import { filterProps, hasChanged } from "./internal/props.js";
-import type { ListItemNode } from "./list-item.js";
+import { ListItemNode } from "./list-item.js";
 import { ListModel, type ListModelProps } from "./models/list.js";
 import { WidgetNode } from "./widget.js";
 
@@ -15,6 +16,10 @@ type ListViewProps = Pick<GtkListViewProps, (typeof RENDERER_PROPS)[number]> & L
 export class ListViewNode extends WidgetNode<Gtk.ListView, ListViewProps, ListItemNode> {
     private itemRenderer: ListItemRenderer;
     private list: ListModel;
+
+    public override isValidChild(child: Node): boolean {
+        return child instanceof ListItemNode;
+    }
 
     constructor(typeName: string, props: ListViewProps, container: Gtk.ListView, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
