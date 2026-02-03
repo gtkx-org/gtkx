@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/native-linux-arm64",
-    "version": "0.17.3",
+    "version": "0.18.0",
     "description": "Linux arm64 native binary for @gtkx/native",
     "keywords": [
         "gtkx",
