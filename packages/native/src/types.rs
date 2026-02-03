@@ -300,13 +300,7 @@ impl Type {
                 types.push(libffi::Type::pointer());
                 types.push(libffi::Type::pointer());
 
-                if callback_type.kind == CallbackKind::DrawFunc
-                    || callback_type.kind == CallbackKind::ShortcutFunc
-                    || callback_type.kind == CallbackKind::TreeListModelCreateFunc
-                    || callback_type.kind == CallbackKind::TickCallback
-                    || callback_type.kind == CallbackKind::ShapeRendererFunc
-                    || callback_type.kind == CallbackKind::AnimationTargetFunc
-                {
+                if callback_type.kind.has_destroy_notify() {
                     types.push(libffi::Type::pointer());
                 }
             }

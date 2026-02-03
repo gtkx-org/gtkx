@@ -387,6 +387,38 @@ impl CallbackKind {
             }
         }
     }
+
+    pub fn has_destroy_notify(&self) -> bool {
+        matches!(
+            self,
+            CallbackKind::DrawFunc
+                | CallbackKind::ShortcutFunc
+                | CallbackKind::TreeListModelCreateFunc
+                | CallbackKind::TickCallback
+                | CallbackKind::ShapeRendererFunc
+                | CallbackKind::AnimationTargetFunc
+        )
+    }
+
+    fn build_null_ffi_value(&self) -> ffi::FfiValue {
+        if *self == CallbackKind::Closure {
+            return ffi::FfiValue::Storage(FfiStorage::new(
+                std::ptr::null_mut(),
+                FfiStorageKind::Unit,
+            ));
+        }
+
+        ffi::FfiValue::Callback(CallbackValue {
+            callback_fn: std::ptr::null_mut(),
+            closure: FfiStorage::new(std::ptr::null_mut(), FfiStorageKind::Unit),
+            destroy_ptr: if self.has_destroy_notify() {
+                Some(std::ptr::null_mut())
+            } else {
+                None
+            },
+            data_first: *self == CallbackKind::Destroy,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -456,7 +488,7 @@ impl ffi::FfiEncode for CallbackType {
         let callback = match val {
             value::Value::Callback(callback) => callback,
             value::Value::Null | value::Value::Undefined if optional => {
-                return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
+                return Ok(self.kind.build_null_ffi_value());
             }
             _ => bail!("Expected a Callback for callback type, got {:?}", val),
         };
