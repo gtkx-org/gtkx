@@ -79,12 +79,31 @@ const cleanupObjectRegistry = new FinalizationRegistry<number>((pointerId) => {
     objectRegistry.delete(pointerId);
 });
 
+/**
+ * Registers a native object in the identity registry.
+ *
+ * Ensures that the same native pointer always resolves to the same
+ * JavaScript wrapper, preserving object identity (`===`). The reference
+ * is weak, so objects can still be garbage collected.
+ *
+ * @param obj - The native object wrapper to register
+ */
 export function registerNativeObject(obj: NativeObject): void {
     const pointerId = getNativeId(obj.handle);
     objectRegistry.set(pointerId, new WeakRef(obj));
     cleanupObjectRegistry.register(obj, pointerId, obj);
 }
 
+/**
+ * Finds an existing JavaScript wrapper for a native pointer.
+ *
+ * Looks up the identity registry to find a previously registered wrapper
+ * for the given native handle. Returns null if no wrapper exists or if
+ * the wrapper has been garbage collected.
+ *
+ * @param handle - The native handle to look up
+ * @returns The existing wrapper, or null if not found
+ */
 export function findNativeObject(handle: NativeHandle): NativeObject | null {
     const pointerId = getNativeId(handle);
     const ref = objectRegistry.get(pointerId);

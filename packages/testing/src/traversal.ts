@@ -1,5 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 
+/**
+ * Root element for scoping queries.
+ *
+ * When a `Gtk.Application` is provided, queries search across all toplevel
+ * windows. When a `Gtk.Widget` is provided, queries are scoped to that
+ * widget's subtree.
+ */
 export type Container = Gtk.Application | Gtk.Widget;
 
 export const isApplication = (container: Container): container is Gtk.Application =>
