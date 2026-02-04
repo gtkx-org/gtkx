@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/mcp",
-    "version": "0.18.2",
+    "version": "0.18.3",
     "description": "MCP server for AI-powered interaction with GTKX applications",
     "keywords": [
         "gtkx",
@@ -46,7 +46,7 @@
         "test": "vitest run"
     },
     "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.25.3",
+        "@modelcontextprotocol/sdk": "^1.26.0",
         "zod": "^4.3.6"
     }
 }
