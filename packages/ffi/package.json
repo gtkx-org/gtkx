@@ -47,12 +47,6 @@
             "default": "./dist/generated/*/index.js"
         }
     },
-    "sideEffects": [
-        "./dist/index.js",
-        "./dist/gobject/index.js",
-        "./dist/gobject/value.js",
-        "./dist/cairo/cairo.js"
-    ],
     "files": [
         "dist",
         "src"

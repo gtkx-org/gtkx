@@ -113,6 +113,7 @@ export class ClassMetaBuilder {
 
         for (const prop of this.cls.properties) {
             if (!prop.writable) continue;
+            if (prop.name === "child") continue;
 
             if (isWidgetType(prop.type.name, this.repository, this.widgetQualifiedName)) {
                 slots.push(prop.name);

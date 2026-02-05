@@ -181,7 +181,7 @@ describe("ClassMetaBuilder", () => {
                 {
                     properties: [
                         createNormalizedProperty({
-                            name: "child",
+                            name: "content",
                             type: createNormalizedType({ name: qualifiedName("Gtk", "Widget") }),
                             writable: true,
                         }),
@@ -192,7 +192,7 @@ describe("ClassMetaBuilder", () => {
 
             const result = builder.buildCodegenWidgetMeta();
 
-            expect(result?.slots).toContain("child");
+            expect(result?.slots).toContain("content");
         });
 
         it("excludes non-writable widget properties from slots", () => {
