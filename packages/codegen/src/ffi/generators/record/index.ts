@@ -16,7 +16,12 @@ import {
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { boxedSelfType, type FfiTypeDescriptor, SELF_TYPE_GOBJECT } from "../../../core/type-system/ffi-types.js";
+import {
+    boxedSelfType,
+    type FfiTypeDescriptor,
+    fundamentalSelfType,
+    SELF_TYPE_GOBJECT,
+} from "../../../core/type-system/ffi-types.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
@@ -65,7 +70,15 @@ export class RecordGenerator {
 
         methodStructures.push(...this.buildStaticFunctionStructures(record.staticFunctions, recordName, record.name));
 
-        methodStructures.push(...this.buildMethodStructures(record.methods, record.glibTypeName, record.glibGetType));
+        methodStructures.push(
+            ...this.buildMethodStructures(
+                record.methods,
+                record.glibTypeName,
+                record.glibGetType,
+                record.copyFunction,
+                record.freeFunction,
+            ),
+        );
 
         if (methodStructures.length > 0) {
             classDecl.addMethods(methodStructures);
@@ -183,14 +196,28 @@ export class RecordGenerator {
             if (filteredParams.length === 0) {
                 classDecl.addConstructor({
                     docs: buildJsDocStructure(mainConstructor.doc, this.options.namespace),
-                    statements: this.writeConstructorWithCall(mainConstructor, args, glibTypeName, glibGetType),
+                    statements: this.writeConstructorWithCall(
+                        mainConstructor,
+                        args,
+                        glibTypeName,
+                        glibGetType,
+                        record.copyFunction,
+                        record.freeFunction,
+                    ),
                 });
             } else {
                 const params = this.methodBody.buildParameterList(mainConstructor.parameters);
                 classDecl.addConstructor({
                     docs: buildJsDocStructure(mainConstructor.doc, this.options.namespace),
                     parameters: params,
-                    statements: this.writeConstructorWithCall(mainConstructor, args, glibTypeName, glibGetType),
+                    statements: this.writeConstructorWithCall(
+                        mainConstructor,
+                        args,
+                        glibTypeName,
+                        glibGetType,
+                        record.copyFunction,
+                        record.freeFunction,
+                    ),
                 });
             }
 
@@ -202,6 +229,8 @@ export class RecordGenerator {
                             recordName,
                             record.glibTypeName,
                             record.glibGetType,
+                            record.copyFunction,
+                            record.freeFunction,
                         ),
                     );
                 }
@@ -243,6 +272,8 @@ export class RecordGenerator {
         args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
         glibTypeName: string | undefined,
         glibGetType: string | undefined,
+        copyFunction?: string,
+        freeFunction?: string,
     ): WriterFunction {
         const ownership = mainConstructor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
@@ -262,10 +293,16 @@ export class RecordGenerator {
                     }
                 });
                 writer.writeLine("],");
-                const getTypeFnPart = glibGetType ? `, getTypeFn: "${glibGetType}"` : "";
-                writer.writeLine(
-                    `{ type: "boxed", ownership: "${ownership}", innerType: "${glibTypeName}", library: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
-                );
+                if (copyFunction && freeFunction) {
+                    writer.writeLine(
+                        `{ type: "fundamental", ownership: "${ownership}", library: "${this.options.sharedLibrary}", refFn: "${copyFunction}", unrefFn: "${freeFunction}" }`,
+                    );
+                } else {
+                    const getTypeFnPart = glibGetType ? `, getTypeFn: "${glibGetType}"` : "";
+                    writer.writeLine(
+                        `{ type: "boxed", ownership: "${ownership}", innerType: "${glibTypeName}", library: "${this.options.sharedLibrary}"${getTypeFnPart} }`,
+                    );
+                }
             });
             writer.writeLine(") as NativeHandle;");
         };
@@ -284,6 +321,8 @@ export class RecordGenerator {
         recordName: string,
         glibTypeName?: string,
         glibGetType?: string,
+        copyFunction?: string,
+        freeFunction?: string,
     ): MethodDeclarationStructure {
         const methodName = toCamelCase(ctor.name);
         const params = this.methodBody.buildParameterList(ctor.parameters);
@@ -296,7 +335,14 @@ export class RecordGenerator {
             parameters: params,
             returnType: recordName,
             docs: buildJsDocStructure(ctor.doc, this.options.namespace),
-            statements: this.writeStaticFactoryMethodBody(ctor, recordName, glibTypeName, glibGetType),
+            statements: this.writeStaticFactoryMethodBody(
+                ctor,
+                recordName,
+                glibTypeName,
+                glibGetType,
+                copyFunction,
+                freeFunction,
+            ),
         };
     }
 
@@ -305,22 +351,35 @@ export class RecordGenerator {
         recordName: string,
         glibTypeName?: string,
         glibGetType?: string,
+        copyFunction?: string,
+        freeFunction?: string,
     ): WriterFunction {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
         const innerType = glibTypeName ?? recordName;
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
+        const returnTypeDescriptor: FfiTypeDescriptor =
+            copyFunction && freeFunction
+                ? {
+                      type: "fundamental",
+                      ownership,
+                      library: this.options.sharedLibrary,
+                      refFn: copyFunction,
+                      unrefFn: freeFunction,
+                  }
+                : {
+                      type: "boxed",
+                      ownership,
+                      innerType,
+                      library: this.options.sharedLibrary,
+                      ...(glibGetType && { getTypeFn: glibGetType }),
+                  };
+
         return this.methodBody.writeFactoryMethodBody({
             sharedLibrary: this.options.sharedLibrary,
             cIdentifier: ctor.cIdentifier,
             args,
-            returnTypeDescriptor: {
-                type: "boxed",
-                ownership,
-                innerType,
-                library: this.options.sharedLibrary,
-                ...(glibGetType && { getTypeFn: glibGetType }),
-            },
+            returnTypeDescriptor,
             wrapClassName: recordName,
             throws: ctor.throws,
             useClassInWrap: true,
@@ -355,23 +414,40 @@ export class RecordGenerator {
         methods: readonly GirMethod[],
         glibTypeName: string | undefined,
         glibGetType: string | undefined,
+        copyFunction?: string,
+        freeFunction?: string,
     ): MethodDeclarationStructure[] {
         const supportedMethods = filterSupportedMethods(methods, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
         );
-        return supportedMethods.map((method) => this.buildMethodStructure(method, glibTypeName, glibGetType));
+        return supportedMethods.map((method) =>
+            this.buildMethodStructure(method, glibTypeName, glibGetType, copyFunction, freeFunction),
+        );
     }
 
     private buildMethodStructure(
         method: GirMethod,
         className: string | undefined,
         glibGetType: string | undefined,
+        copyFunction?: string,
+        freeFunction?: string,
     ): MethodDeclarationStructure {
         const methodName = toCamelCase(method.name);
         const instanceOwnership = method.instanceParameter?.transferOwnership === "full" ? "full" : "borrowed";
-        const selfTypeDescriptor = className
-            ? boxedSelfType(className, this.options.sharedLibrary, glibGetType, instanceOwnership)
-            : SELF_TYPE_GOBJECT;
+        let selfTypeDescriptor;
+        if (className) {
+            selfTypeDescriptor =
+                copyFunction && freeFunction
+                    ? fundamentalSelfType(
+                          this.options.sharedLibrary,
+                          copyFunction,
+                          freeFunction,
+                          instanceOwnership,
+                      )
+                    : boxedSelfType(className, this.options.sharedLibrary, glibGetType, instanceOwnership);
+        } else {
+            selfTypeDescriptor = SELF_TYPE_GOBJECT;
+        }
 
         return this.methodBody.buildMethodStructure(method, {
             methodName,
