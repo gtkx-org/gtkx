@@ -116,8 +116,8 @@ describe("findByRole", () => {
         it("throws when multiple elements found", async () => {
             const { container } = await render(
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel label="Same" />
-                    <GtkLabel label="Same" />
+                    <GtkButton label="Same" />
+                    <GtkButton label="Same" />
                 </GtkBox>,
             );
             await expect(findByText(container, "Same", { timeout: 100 })).rejects.toThrow(
@@ -192,14 +192,14 @@ describe("findAllByText", () => {
     it("finds all elements with matching text", async () => {
         const { container } = await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkLabel label="Same" />
-                <GtkLabel label="Same" />
-                <GtkLabel label="Different" />
+                <GtkButton label="Same" />
+                <GtkButton label="Same" />
+                <GtkButton label="Different" />
             </GtkBox>,
         );
 
-        const labels = await findAllByText(container, "Same");
-        expect(labels.length).toBe(2);
+        const buttons = await findAllByText(container, "Same");
+        expect(buttons.length).toBe(2);
     });
 });
 

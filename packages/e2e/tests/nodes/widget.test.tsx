@@ -150,16 +150,16 @@ describe("widget - creation", () => {
         it("finds widgets by text content", async () => {
             await render(
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel label="Welcome Message" />
-                    <GtkLabel label="Description Text" />
+                    <GtkButton label="Welcome Message" />
+                    <GtkButton label="Description Text" />
                 </GtkBox>,
             );
 
             const welcome = await screen.findByText("Welcome Message");
             expect(welcome).toBeDefined();
 
-            const allLabels = await screen.findAllByText(/Message|Text/);
-            expect(allLabels).toHaveLength(2);
+            const allButtons = await screen.findAllByText(/Message|Text/);
+            expect(allButtons).toHaveLength(2);
         });
 
         it("uses regex for partial text matching", async () => {

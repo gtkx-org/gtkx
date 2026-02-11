@@ -5,8 +5,15 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 const getLabelTexts = (parent: Gtk.Widget): string[] => {
-    const labels = within(parent).queryAllByRole(Gtk.AccessibleRole.LABEL);
-    return labels.map((l) => (l as Gtk.Label).getLabel() ?? "");
+    const labels: string[] = [];
+    let child = parent.getFirstChild();
+    while (child) {
+        if (child.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
+            labels.push((child as Gtk.Label).getLabel() ?? "");
+        }
+        child = child.getNextSibling();
+    }
+    return labels;
 };
 
 describe("host-config - children", () => {
@@ -80,13 +87,10 @@ describe("host-config - children", () => {
 
             const { rerender } = await render(<App items={["A", "C"]} />);
 
-            await screen.findByText("A");
-            await screen.findByText("C");
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "C"]);
 
             await rerender(<App items={["A", "B", "C"]} />);
 
-            await screen.findByText("B");
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
 
@@ -107,8 +111,6 @@ describe("host-config - children", () => {
 
             await rerender(<App items={["A", "B", "C"]} />);
 
-            const labels = await screen.findAllByText(/A|B|C/);
-            expect(labels).toHaveLength(3);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
     });
@@ -235,12 +237,12 @@ describe("host-config - children", () => {
             await render(
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkBox ref={section1Ref} orientation={Gtk.Orientation.VERTICAL}>
-                        <GtkLabel label="Title" />
-                        <GtkLabel label="Section 1 Content" />
+                        <GtkButton label="Title" />
+                        <GtkButton label="Section 1 Content" />
                     </GtkBox>
                     <GtkBox ref={section2Ref} orientation={Gtk.Orientation.VERTICAL}>
-                        <GtkLabel label="Title" />
-                        <GtkLabel label="Section 2 Content" />
+                        <GtkButton label="Title" />
+                        <GtkButton label="Section 2 Content" />
                     </GtkBox>
                 </GtkBox>,
             );
@@ -316,28 +318,25 @@ describe("host-config - text instances", () => {
     });
 
     it("handles multiple text children", async () => {
+        const boxRef = createRef<Gtk.Box>();
+
         await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
                 {"First"}
                 {"Second"}
                 {"Third"}
             </GtkBox>,
         );
 
-        const allLabels = await screen.findAllByText(/First|Second|Third/);
-        expect(allLabels).toHaveLength(3);
-
-        await screen.findByText("First");
-        await screen.findByText("Second");
-        await screen.findByText("Third");
+        expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["First", "Second", "Third"]);
     });
 
     it("finds text with regex patterns", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                {"Error: File not found"}
-                {"Warning: Low memory"}
-                {"Info: Process complete"}
+                <GtkBox>{"Error: File not found"}</GtkBox>
+                <GtkBox>{"Warning: Low memory"}</GtkBox>
+                <GtkBox>{"Info: Process complete"}</GtkBox>
             </GtkBox>,
         );
 

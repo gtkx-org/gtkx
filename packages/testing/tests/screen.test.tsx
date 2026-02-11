@@ -60,13 +60,13 @@ describe("screen", () => {
     it("finds all elements by text", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkLabel label="Item" />
-                <GtkLabel label="Item" />
+                <GtkButton label="Item" />
+                <GtkButton label="Item" />
             </GtkBox>,
         );
 
-        const labels = await screen.findAllByText("Item");
-        expect(labels.length).toBe(2);
+        const buttons = await screen.findAllByText("Item");
+        expect(buttons.length).toBe(2);
     });
 
     it("finds all elements by label text", async () => {

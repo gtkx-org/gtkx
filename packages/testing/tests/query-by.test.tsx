@@ -72,12 +72,12 @@ describe("queryAllByText", () => {
     it("returns all matching elements", async () => {
         const { container } = await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkLabel label="Same" />
-                <GtkLabel label="Same" />
+                <GtkButton label="Same" />
+                <GtkButton label="Same" />
             </GtkBox>,
         );
-        const labels = queryAllByText(container, "Same");
-        expect(labels.length).toBe(2);
+        const buttons = queryAllByText(container, "Same");
+        expect(buttons.length).toBe(2);
     });
 
     it("returns empty array when none found", async () => {

@@ -4,6 +4,7 @@ import { type Container, findAll, traverse } from "./traversal.js";
 import type { ByRoleOptions, TextMatch, TextMatchOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
 import {
+    getWidgetAccessibleName,
     getWidgetCheckedState,
     getWidgetExpandedState,
     getWidgetPressedState,
@@ -69,7 +70,7 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
     if (!options) return true;
 
     if (options.name !== undefined) {
-        const text = getWidgetText(widget);
+        const text = getWidgetAccessibleName(widget);
         if (!matchText(text, options.name, widget, options)) return false;
     }
 
@@ -206,8 +207,7 @@ export const queryByLabelText = (
  */
 export const queryAllByText = (container: Container, text: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
     return findAll(container, (node) => {
-        const widgetText = getWidgetText(node);
-        return matchText(widgetText, text, node, options);
+        return matchText(getWidgetText(node), text, node, options);
     });
 };
 

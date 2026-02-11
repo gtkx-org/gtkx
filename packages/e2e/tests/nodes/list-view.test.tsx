@@ -2066,8 +2066,7 @@ describe("render - ListView (tree)", () => {
             const selectionModel = ref.current?.getModel() as Gtk.SingleSelection;
             const row = selectionModel.getObject(0) as Gtk.TreeListRow;
 
-            const queryLabels = (text: string) =>
-                screen.queryAllByText(text).filter((w) => w.getAccessibleRole() === Gtk.AccessibleRole.LABEL);
+            const queryLabels = (text: string) => screen.queryAllByText(text);
 
             const assertChildrenVisible = () => {
                 expect(queryLabels("Loading...")).toHaveLength(0);

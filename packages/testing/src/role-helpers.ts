@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { type Container, traverse } from "./traversal.js";
-import { getWidgetText } from "./widget-text.js";
+import { getWidgetAccessibleName } from "./widget-text.js";
 
 /**
  * Information about a widget and its accessible name.
@@ -51,7 +51,7 @@ export const getRoles = (container: Container): Map<string, RoleInfo[]> => {
         if (role === undefined) continue;
 
         const roleName = formatRole(role);
-        const name = getWidgetText(widget);
+        const name = getWidgetAccessibleName(widget);
         const info: RoleInfo = { widget, name };
 
         const existing = roles.get(roleName);

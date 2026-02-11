@@ -40,6 +40,7 @@ export const traverse = function* (container: Container): Generator<Gtk.Widget> 
 export const findAll = (container: Container, predicate: (node: Gtk.Widget) => boolean): Gtk.Widget[] => {
     const results: Gtk.Widget[] = [];
     for (const node of traverse(container)) {
+        if (node.getAccessibleRole?.() === Gtk.AccessibleRole.LABEL) continue;
         if (predicate(node)) {
             results.push(node);
         }

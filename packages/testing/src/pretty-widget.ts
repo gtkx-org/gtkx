@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { formatRole } from "./role-helpers.js";
 import { type Container, isApplication } from "./traversal.js";
-import { getWidgetText } from "./widget-text.js";
+import { getWidgetPropertyText } from "./widget-text.js";
 
 const DEFAULT_MAX_LENGTH = 7000;
 const INDENT = "  ";
@@ -119,7 +119,7 @@ const printWidget = (widget: Gtk.Widget, colors: HighlightColors, depth: number,
     const indent = INDENT.repeat(depth);
     const tagName = formatTagName(widget);
     const attributes = formatAttributes(widget, colors, includeIds);
-    const text = getWidgetText(widget);
+    const text = getWidgetPropertyText(widget);
     const children: string[] = [];
 
     let child = widget.getFirstChild();

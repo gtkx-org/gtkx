@@ -107,7 +107,7 @@ describe("Todo App", () => {
             const deleteButton = await screen.findByTestId(/^delete-/);
             await userEvent.click(deleteButton);
 
-            const emptyMessage = await screen.findByText("No tasks yet");
+            const emptyMessage = await screen.findByText(/No tasks yet/);
             expect(emptyMessage).toBeDefined();
         });
     });

@@ -150,14 +150,16 @@ describe("render - Stack", () => {
 
     describe("visibleChild", () => {
         it("sets visible child by name", async () => {
+            const stackRef = createRef<Gtk.Stack>();
+
             await render(
-                <GtkStack page="page2">
+                <GtkStack ref={stackRef} page="page2">
                     <x.StackPage id="page1">Page 1 Content</x.StackPage>
                     <x.StackPage id="page2">Page 2 Content</x.StackPage>
                 </GtkStack>,
             );
 
-            await screen.findByText("Page 2 Content");
+            expect(stackRef.current?.getVisibleChildName()).toBe("page2");
         });
 
         it("handles pending visible child before pages added", async () => {
@@ -187,10 +189,12 @@ describe("render - Stack", () => {
 
     describe("page navigation with waitFor", () => {
         it("changes visible page with controlled state", async () => {
+            const stackRef = createRef<Gtk.Stack>();
+
             function NavigableStack() {
                 const [page] = useState("page1");
                 return (
-                    <GtkStack page={page}>
+                    <GtkStack ref={stackRef} page={page}>
                         <x.StackPage id="page1">First Page</x.StackPage>
                         <x.StackPage id="page2">Second Page</x.StackPage>
                     </GtkStack>
@@ -199,19 +203,21 @@ describe("render - Stack", () => {
 
             await render(<NavigableStack />);
 
-            await screen.findByText("First Page");
+            expect(stackRef.current?.getVisibleChildName()).toBe("page1");
         });
 
         it("finds content in currently visible page", async () => {
+            const stackRef = createRef<Gtk.Stack>();
+
             await render(
-                <GtkStack page="settings">
+                <GtkStack ref={stackRef} page="settings">
                     <x.StackPage id="home">Welcome Home</x.StackPage>
                     <x.StackPage id="settings">Settings Panel</x.StackPage>
                     <x.StackPage id="about">About This App</x.StackPage>
                 </GtkStack>,
             );
 
-            await screen.findByText("Settings Panel");
+            expect(stackRef.current?.getVisibleChildName()).toBe("settings");
         });
     });
 });

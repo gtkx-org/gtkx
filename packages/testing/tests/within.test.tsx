@@ -118,16 +118,16 @@ describe("within", () => {
         await render(
             <GtkFrame name="container">
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel label="Item" />
-                    <GtkLabel label="Item" />
+                    <GtkButton label="Item" />
+                    <GtkButton label="Item" />
                 </GtkBox>
             </GtkFrame>,
         );
 
         const frame = await screen.findByTestId("container");
         const { findAllByText } = within(frame);
-        const labels = await findAllByText("Item");
-        expect(labels.length).toBe(2);
+        const buttons = await findAllByText("Item");
+        expect(buttons.length).toBe(2);
     });
 
     it("provides findAllByLabelText query", async () => {

@@ -102,17 +102,17 @@ describe("waitForElementToBeRemoved", () => {
             return (
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
-                    {showLabel && "Temporary"}
+                    {showLabel && <GtkButton label="Temporary" />}
                 </GtkBox>
             );
         };
 
         await render(<DynamicComponent />);
 
-        const label = await screen.findByText("Temporary");
+        const tempButton = await screen.findByText("Temporary");
         const removeButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
 
-        const removalPromise = waitForElementToBeRemoved(label);
+        const removalPromise = waitForElementToBeRemoved(tempButton);
         await userEvent.click(removeButton);
 
         await removalPromise;
@@ -124,7 +124,7 @@ describe("waitForElementToBeRemoved", () => {
             return (
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkButton label="Remove" onClicked={() => setShowLabel(false)} />
-                    {showLabel && <GtkLabel label="ToRemove" name="removable" />}
+                    {showLabel && <GtkButton label="ToRemove" name="removable" />}
                 </GtkBox>
             );
         };
@@ -149,11 +149,11 @@ describe("waitForElementToBeRemoved", () => {
     });
 
     it("respects custom timeout", async () => {
-        await render("Permanent");
+        await render(<GtkButton label="Permanent" />);
 
-        const label = await screen.findByText("Permanent");
+        const widget = await screen.findByText("Permanent");
 
-        await expect(waitForElementToBeRemoved(label, { timeout: 100 })).rejects.toThrow("Timed out");
+        await expect(waitForElementToBeRemoved(widget, { timeout: 100 })).rejects.toThrow("Timed out");
     });
 
     describe("error handling", () => {
