@@ -9,7 +9,6 @@
         "packages/cli/src/refresh-runtime.ts": ["exports"],
         "packages/ffi/src/types.ts": ["types"]
     },
-    "ignoreWorkspaces": ["packages/docs"],
     "workspaces": {
         "packages/native": {
             "entry": ["vitest.config.ts", "tests/**/*.test.ts"],
