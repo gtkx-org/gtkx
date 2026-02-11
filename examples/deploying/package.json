@@ -24,7 +24,7 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
-        "@types/react": "^19.2.13",
+        "@types/react": "^19.2.14",
         "esbuild": "^0.27.3",
         "postject": "1.0.0-alpha.6",
         "tsx": "^4.21.0",
