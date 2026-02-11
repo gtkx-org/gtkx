@@ -42,6 +42,11 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
                 onSelectionChanged: props.onSelectionChanged,
             },
         );
+        this.list.getStore().setOnItemUpdated((id) => {
+            for (const column of this.columnNodes) {
+                column.rebindItem(id);
+            }
+        });
     }
 
     public override appendChild(child: ColumnViewChild): void {

@@ -69,6 +69,10 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
         return this.column;
     }
 
+    public rebindItem(id: string): void {
+        this.itemRenderer.rebindItem(id);
+    }
+
     public setStore(model: TreeStore | null): void {
         this.itemRenderer.setStore(model);
     }

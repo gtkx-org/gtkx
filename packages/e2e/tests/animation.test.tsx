@@ -1,5 +1,5 @@
 import * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkLabel, x } from "@gtkx/react";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import React, { createRef } from "react";
@@ -21,7 +21,7 @@ describe("x.Animation", () => {
                 </x.Animation>,
             );
 
-            await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
+            await screen.findByText("Test");
             expect(buttonRef.current).toBeDefined();
         });
 
@@ -34,7 +34,7 @@ describe("x.Animation", () => {
                 </x.Animation>,
             );
 
-            await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
+            await screen.findByText("Test");
             expect(buttonRef.current).toBeDefined();
         });
 
@@ -56,7 +56,7 @@ describe("x.Animation", () => {
                 </x.Animation>,
             );
 
-            await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
+            await screen.findByText("Test");
 
             await waitFor(() => expect(onStart).toHaveBeenCalled(), { timeout: 500 });
 
@@ -140,7 +140,7 @@ describe("x.Animation", () => {
                 </x.Animation>,
             );
 
-            await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Spring" });
+            await screen.findByText("Spring");
 
             await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
         });
@@ -380,7 +380,7 @@ describe("x.Animation", () => {
 
             await render(<BounceDemo />);
 
-            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Bounce" });
+            const button = await screen.findByText("Bounce");
 
             await userEvent.click(button);
 

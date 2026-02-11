@@ -26,8 +26,8 @@ describe("Todo App", () => {
             const addButton = await screen.findByTestId("add-button");
             await addTodo(input, addButton, "Buy groceries");
 
-            const todoText = await screen.findAllByText("Buy groceries");
-            expect(todoText.length).toBeGreaterThan(0);
+            const todoText = await screen.findByText("Buy groceries");
+            expect(todoText).toBeDefined();
         });
 
         it("adds a new todo when pressing Enter", async () => {
@@ -37,8 +37,8 @@ describe("Todo App", () => {
             await userEvent.type(input, "Walk the dog");
             await fireEvent(input, "activate");
 
-            const todoText = await await screen.findAllByText("Walk the dog");
-            expect(todoText.length).toBeGreaterThan(0);
+            const todoText = await screen.findByText("Walk the dog");
+            expect(todoText).toBeDefined();
         });
 
         it("clears input after adding todo", async () => {
@@ -140,9 +140,10 @@ describe("Todo App", () => {
             const filterActive = await screen.findByTestId("filter-active");
             await userEvent.click(filterActive);
 
-            await waitFor(() => {
-                expect(screen.queryAllByText("Active todo").length).toBeGreaterThan(0);
-                expect(screen.queryAllByText("Completed todo")).toHaveLength(0);
+            await waitFor(async () => {
+                const activeTodo = await screen.findByText("Active todo", { timeout: 100 });
+                expect(activeTodo).toBeDefined();
+                await expect(screen.findByText("Completed todo", { timeout: 100 })).rejects.toThrow();
             });
         });
 
@@ -160,9 +161,10 @@ describe("Todo App", () => {
             const filterCompleted = await screen.findByTestId("filter-completed");
             await userEvent.click(filterCompleted);
 
-            await waitFor(() => {
-                expect(screen.queryAllByText("Completed todo").length).toBeGreaterThan(0);
-                expect(screen.queryAllByText("Active todo")).toHaveLength(0);
+            await waitFor(async () => {
+                const completedTodo = await screen.findByText("Completed todo", { timeout: 100 });
+                expect(completedTodo).toBeDefined();
+                await expect(screen.findByText("Active todo", { timeout: 100 })).rejects.toThrow();
             });
         });
     });
@@ -198,9 +200,10 @@ describe("Todo App", () => {
             const clearButton = await screen.findByTestId("clear-completed");
             await userEvent.click(clearButton);
 
-            await waitFor(() => {
-                expect(screen.queryAllByText("Keep this").length).toBeGreaterThan(0);
-                expect(screen.queryAllByText("Delete this")).toHaveLength(0);
+            await waitFor(async () => {
+                const activeTodo = await screen.findByText("Keep this", { timeout: 100 });
+                expect(activeTodo).toBeDefined();
+                await expect(screen.findByText("Delete this", { timeout: 100 })).rejects.toThrow();
             });
         });
     });

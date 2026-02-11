@@ -22,6 +22,13 @@ export class ListItemRenderer extends BaseItemRenderer<TreeStore> {
 
     public setRenderFn(renderFn: RenderItemFn<unknown> | null): void {
         this.renderFn = renderFn;
+        this.rebindAllItems();
+    }
+
+    public rebindAllItems(): void {
+        for (const id of this.boundItems.keys()) {
+            this.rebindItem(id);
+        }
     }
 
     public rebindItem(id: string): void {

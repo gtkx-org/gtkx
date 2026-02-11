@@ -13,6 +13,13 @@ export class GridItemRenderer extends BaseItemRenderer<ListStore> {
 
     public setRenderFn(renderFn: GridRenderItemFn<unknown> | null): void {
         this.renderFn = renderFn;
+        this.rebindAllItems();
+    }
+
+    public rebindAllItems(): void {
+        for (const id of this.boundItems.keys()) {
+            this.rebindItem(id);
+        }
     }
 
     public rebindItem(id: string): void {
