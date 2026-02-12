@@ -13,8 +13,23 @@ export class ShortcutNode extends VirtualNode<ShortcutProps, EventControllerNode
     public override isValidParent(parent: Node): boolean {
         return parent instanceof EventControllerNode && parent.container instanceof Gtk.ShortcutController;
     }
+
     private shortcut: Gtk.Shortcut | null = null;
     private action: Gtk.CallbackAction | null = null;
+
+    public override setParent(parent: EventControllerNode<Gtk.ShortcutController> | null): void {
+        if (!parent && this.parent) {
+            this.removeFromController();
+        }
+
+        super.setParent(parent);
+
+        if (parent && !this.shortcut) {
+            this.createShortcut();
+            const shortcut = this.shortcut;
+            if (shortcut) parent.container.addShortcut(shortcut);
+        }
+    }
 
     public override commitUpdate(oldProps: ShortcutProps | null, newProps: ShortcutProps): void {
         super.commitUpdate(oldProps, newProps);
@@ -22,16 +37,18 @@ export class ShortcutNode extends VirtualNode<ShortcutProps, EventControllerNode
     }
 
     public override detachDeletedInstance(): void {
-        this.shortcut = null;
-        this.action = null;
+        this.removeFromController();
         super.detachDeletedInstance();
     }
 
-    public getShortcut(): Gtk.Shortcut | null {
-        return this.shortcut;
+    private removeFromController(): void {
+        if (!this.parent || !this.shortcut) return;
+        this.parent.container.removeShortcut(this.shortcut);
+        this.shortcut = null;
+        this.action = null;
     }
 
-    public createShortcut(): void {
+    private createShortcut(): void {
         const trigger = this.createTrigger();
         this.action = new Gtk.CallbackAction(() => {
             const result = this.props.onActivate();

@@ -30,6 +30,10 @@ export class EventControllerNode<
         return new (containerClass as any)(...args);
     }
 
+    public override isValidChild(child: Node): boolean {
+        return this.container instanceof Gtk.ShortcutController && child.typeName === "Shortcut";
+    }
+
     public override isValidParent(parent: Node): boolean {
         return parent instanceof WidgetNode;
     }

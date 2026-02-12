@@ -36,7 +36,6 @@ import { ScaleNode } from "./nodes/scale.js";
 import { ScrolledWindowNode } from "./nodes/scrolled-window.js";
 import { SearchBarNode } from "./nodes/search-bar.js";
 import { ShortcutNode } from "./nodes/shortcut.js";
-import { ShortcutControllerNode } from "./nodes/shortcut-controller.js";
 import { SlotNode } from "./nodes/slot.js";
 import { SourceViewNode } from "./nodes/source-view.js";
 import { StackNode } from "./nodes/stack.js";
@@ -85,6 +84,7 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["NotebookPage", NotebookPageNode],
     ["NotebookPageTab", NotebookPageTabNode],
     ["OverlayChild", OverlayChildNode],
+
     ["Shortcut", ShortcutNode],
     ["Slot", SlotNode],
     ["StackPage", StackPageNode],
@@ -94,7 +94,7 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["TextTag", TextTagNode],
     ["Toggle", ToggleNode],
     [Gtk.Application, ApplicationNode],
-    [Gtk.ShortcutController, ShortcutControllerNode],
+
     [Gtk.EventController, EventControllerNode],
     [GtkSource.View, SourceViewNode],
     [Gtk.TextView, TextViewNode],

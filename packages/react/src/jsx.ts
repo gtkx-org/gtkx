@@ -132,15 +132,15 @@ export type AnimationProps = {
 /**
  * Props for the Shortcut virtual element.
  *
- * Defines a keyboard shortcut. Must be a child of `x.ShortcutController`.
+ * Defines a keyboard shortcut. Must be a child of `<GtkShortcutController>`.
  *
  * @example
  * ```tsx
- * <x.ShortcutController>
+ * <GtkShortcutController>
  *     <x.Shortcut trigger="<Control>s" onActivate={save} />
  *     <x.Shortcut trigger={["F5", "<Control>r"]} onActivate={refresh} />
  *     <x.Shortcut trigger="Escape" onActivate={cancel} disabled={!canCancel} />
- * </x.ShortcutController>
+ * </GtkShortcutController>
  * ```
  */
 export type ShortcutProps = {
@@ -359,8 +359,6 @@ export type ContainerSlotNames = {
 
 /**
  * Props for method-based container slot child positioning.
- *
- * @see {@link x.ContainerSlot} for type-safe usage
  */
 export type ContainerSlotProps = {
     /** The method name to call on the parent widget */
@@ -1078,7 +1076,7 @@ export const x = {
     /**
      * A keyboard shortcut definition.
      *
-     * Must be a child of `x.ShortcutController`.
+     * Must be a child of `<GtkShortcutController>`.
      *
      * @example
      * ```tsx

@@ -799,14 +799,14 @@ Text content is provided as direct children. Use `x.TextTag` for formatting and 
 
 ## Keyboard Shortcuts
 
-Attach shortcuts with `x.ShortcutController` and `x.Shortcut`:
+Attach shortcuts with `<GtkShortcutController>` and `x.Shortcut`:
 
 ```tsx
 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} focusable>
-    <x.ShortcutController scope={Gtk.ShortcutScope.LOCAL}>
+    <GtkShortcutController scope={Gtk.ShortcutScope.LOCAL}>
         <x.Shortcut trigger="<Control>equal" onActivate={() => setCount((c) => c + 1)} />
         <x.Shortcut trigger="<Control>minus" onActivate={() => setCount((c) => c - 1)} />
-    </x.ShortcutController>
+    </GtkShortcutController>
     <GtkLabel label={`Count: ${count}`} />
 </GtkBox>
 ```

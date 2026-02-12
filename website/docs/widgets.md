@@ -568,10 +568,10 @@ const CodeEditor = () => {
 
 ## Keyboard Shortcuts
 
-Attach keyboard shortcuts to widgets using `x.ShortcutController` with `x.Shortcut` children:
+Attach keyboard shortcuts to widgets using `<GtkShortcutController>` with `x.Shortcut` children:
 
 ```tsx
-import { x, GtkBox, GtkLabel } from "@gtkx/react";
+import { x, GtkBox, GtkLabel, GtkShortcutController } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { useState } from "react";
 
@@ -581,7 +581,7 @@ const App = () => {
 
   return (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} focusable>
-      <x.ShortcutController scope={Gtk.ShortcutScope.LOCAL}>
+      <GtkShortcutController scope={Gtk.ShortcutScope.LOCAL}>
         <x.Shortcut
           trigger="<Control>equal"
           onActivate={() => setCount((c) => c + 1)}
@@ -594,7 +594,7 @@ const App = () => {
           trigger="<Control>f"
           onActivate={() => setSearchMode((s) => !s)}
         />
-      </x.ShortcutController>
+      </GtkShortcutController>
       <GtkLabel label={`Count: ${count}`} />
       <GtkLabel label={searchMode ? "Search mode ON" : "Search mode OFF"} />
     </GtkBox>
