@@ -183,8 +183,8 @@ importers:
   packages/cli:
     dependencies:
       '@clack/prompts':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.0.1
+        version: 1.0.1
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
@@ -235,8 +235,8 @@ importers:
         specifier: ^2.3.15
         version: 2.3.15
       '@clack/prompts':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.0.1
+        version: 1.0.1
       '@gtkx/gir':
         specifier: workspace:*
         version: link:../gir
@@ -1179,11 +1179,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@clack/core@1.0.0':
-    resolution: {integrity: sha512-Orf9Ltr5NeiEuVJS8Rk2XTw3IxNC2Bic3ash7GgYeA8LJ/zmSNpSQ/m5UAhe03lA6KFgklzZ5KTHs4OAMA/SAQ==}
+  '@clack/core@1.0.1':
+    resolution: {integrity: sha512-WKeyK3NOBwDOzagPR5H08rFk9D/WuN705yEbuZvKqlkmoLM2woKtXb10OO2k1NoSU4SFG947i2/SCYh+2u5e4g==}
 
-  '@clack/prompts@1.0.0':
-    resolution: {integrity: sha512-rWPXg9UaCFqErJVQ+MecOaWsozjaxol4yjnmYcGNipAWzdaWa2x+VJmKfGq7L0APwBohQOYdHC+9RO4qRXej+A==}
+  '@clack/prompts@1.0.1':
+    resolution: {integrity: sha512-/42G73JkuYdyWZ6m8d/CJtBrGl1Hegyc7Fy78m5Ob+jF85TOUmLR5XLce/U3LxYAw0kJ8CT5aI99RIvPHcGp/Q==}
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -7570,14 +7570,14 @@ snapshots:
   '@cargo-messages/win32-x64-msvc@0.1.81':
     optional: true
 
-  '@clack/core@1.0.0':
+  '@clack/core@1.0.1':
     dependencies:
       picocolors: 1.1.1
       sisteransi: 1.0.5
 
-  '@clack/prompts@1.0.0':
+  '@clack/prompts@1.0.1':
     dependencies:
-      '@clack/core': 1.0.0
+      '@clack/core': 1.0.1
       picocolors: 1.1.1
       sisteransi: 1.0.5
 
