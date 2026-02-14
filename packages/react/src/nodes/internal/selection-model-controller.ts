@@ -54,6 +54,10 @@ export class SelectionModelController {
             return this.selectionModel;
         }
 
+        if (this.selectionModel.getModel() !== model) {
+            this.selectionModel.setModel(model);
+        }
+
         if (!oldProps || oldProps.onSelectionChanged !== newProps.onSelectionChanged) {
             this.initSelectionHandler(newProps.onSelectionChanged);
         }

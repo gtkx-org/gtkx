@@ -427,21 +427,21 @@ describe("render - ColumnViewColumn", () => {
                             sortOrder={sortOrder}
                             onSortChanged={handleSortChange}
                         >
-                            <x.ColumnViewColumn<Person>
+                            <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
                                 sortable
-                                renderCell={(item) => <GtkLabel label={item?.name ?? ""} />}
+                                renderCell={(item: Person | null) => <GtkLabel label={item?.name ?? ""} />}
                             >
                                 <ColumnMenu column="name" onSort={handleSortChange} />
                             </x.ColumnViewColumn>
-                            <x.ColumnViewColumn<Person>
+                            <x.ColumnViewColumn
                                 id="role"
                                 title="Role"
                                 fixedWidth={100}
                                 sortable
-                                renderCell={(item) => <GtkLabel label={item?.role ?? ""} />}
+                                renderCell={(item: Person | null) => <GtkLabel label={item?.role ?? ""} />}
                             >
                                 <ColumnMenu column="role" onSort={handleSortChange}>
                                     <x.MenuSection>
@@ -449,12 +449,14 @@ describe("render - ColumnViewColumn", () => {
                                     </x.MenuSection>
                                 </ColumnMenu>
                             </x.ColumnViewColumn>
-                            <x.ColumnViewColumn<Person>
+                            <x.ColumnViewColumn
                                 id="salary"
                                 title="Salary"
                                 fixedWidth={100}
                                 sortable
-                                renderCell={(item) => <GtkLabel label={item?.salary?.toString() ?? ""} />}
+                                renderCell={(item: Person | null) => (
+                                    <GtkLabel label={item?.salary?.toString() ?? ""} />
+                                )}
                             >
                                 <ColumnMenu column="salary" onSort={handleSortChange}>
                                     <x.MenuSection>
@@ -476,16 +478,12 @@ describe("render - ColumnViewColumn", () => {
             const roleCol = getColumn(columnViewRef.current as Gtk.ColumnView, 1);
             const salaryCol = getColumn(columnViewRef.current as Gtk.ColumnView, 2);
 
-            // All three columns should have header menus
             expect(nameCol.getHeaderMenu()).not.toBeNull();
             expect(roleCol.getHeaderMenu()).not.toBeNull();
             expect(salaryCol.getHeaderMenu()).not.toBeNull();
 
-            // Name has 1 section (sort options only)
             expect(nameCol.getHeaderMenu()?.getNItems()).toBe(1);
-            // Role has 2 sections (sort + hide)
             expect(roleCol.getHeaderMenu()?.getNItems()).toBe(2);
-            // Salary has 2 sections (sort + hide)
             expect(salaryCol.getHeaderMenu()?.getNItems()).toBe(2);
         });
 
@@ -529,28 +527,24 @@ describe("render - ColumnViewColumn", () => {
 
             const columnView = columnViewRef.current as Gtk.ColumnView;
 
-            // Activate actions on the first column (name)
             expect(columnView.activateActionVariant("name.sort-asc", null)).toBe(true);
             expect(nameSortAsc).toHaveBeenCalledTimes(1);
 
             expect(columnView.activateActionVariant("name.sort-desc", null)).toBe(true);
             expect(nameSortDesc).toHaveBeenCalledTimes(1);
 
-            // Activate actions on the second column (role)
             expect(columnView.activateActionVariant("role.sort-asc", null)).toBe(true);
             expect(roleSortAsc).toHaveBeenCalledTimes(1);
 
             expect(columnView.activateActionVariant("role.hide", null)).toBe(true);
             expect(roleHide).toHaveBeenCalledTimes(1);
 
-            // Activate actions on the third column (salary)
             expect(columnView.activateActionVariant("salary.sort-asc", null)).toBe(true);
             expect(salarySortAsc).toHaveBeenCalledTimes(1);
 
             expect(columnView.activateActionVariant("salary.hide", null)).toBe(true);
             expect(salaryHide).toHaveBeenCalledTimes(1);
 
-            // Actions should not cross-contaminate between columns
             expect(nameSortAsc).toHaveBeenCalledTimes(1);
             expect(roleSortAsc).toHaveBeenCalledTimes(1);
             expect(salarySortAsc).toHaveBeenCalledTimes(1);
@@ -584,10 +578,9 @@ describe("render - ColumnViewColumn", () => {
             const nameCol = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
             const roleCol = getColumn(columnViewRef.current as Gtk.ColumnView, 1);
 
-            // Walk the Name column's menu model
             const nameMenu = nameCol.getHeaderMenu();
             expect(nameMenu).not.toBeNull();
-            expect(nameMenu?.getNItems()).toBe(1); // 1 section
+            expect(nameMenu?.getNItems()).toBe(1);
 
             const nameSection = nameMenu?.getItemLink(0, "section");
             expect(nameSection).not.toBeNull();
@@ -599,10 +592,9 @@ describe("render - ColumnViewColumn", () => {
             expect(nameSection?.getItemAttributeValue(2, "label")?.getString()).toBe("Clear Sort");
             expect(nameSection?.getItemAttributeValue(2, "action")?.getString()).toBe("name.sort-clear");
 
-            // Walk the Role column's menu model
             const roleMenu = roleCol.getHeaderMenu();
             expect(roleMenu).not.toBeNull();
-            expect(roleMenu?.getNItems()).toBe(2); // 2 sections
+            expect(roleMenu?.getNItems()).toBe(2);
 
             const roleSection1 = roleMenu?.getItemLink(0, "section");
             expect(roleSection1).not.toBeNull();

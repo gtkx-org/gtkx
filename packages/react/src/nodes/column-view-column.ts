@@ -3,7 +3,9 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { ColumnViewColumnProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
+import { GridItemRenderer } from "./internal/grid-item-renderer.js";
 import { ListItemRenderer } from "./internal/list-item-renderer.js";
+import type { ListStore } from "./internal/list-store.js";
 import { hasChanged } from "./internal/props.js";
 import type { TreeStore } from "./internal/tree-store.js";
 import { MenuNode } from "./menu.js";
@@ -20,16 +22,17 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
         return parent instanceof WidgetNode && parent.container instanceof Gtk.ColumnView;
     }
     private column: Gtk.ColumnViewColumn;
-    private itemRenderer: ListItemRenderer;
+    private treeRenderer: ListItemRenderer | null;
+    private flatRenderer: GridItemRenderer | null = null;
     private menu: MenuModel | null = null;
     private actionGroup: Gio.SimpleActionGroup | null = null;
     private columnView: Gtk.ColumnView | null = null;
 
     constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
-        this.itemRenderer = new ListItemRenderer(this.signalStore);
+        this.treeRenderer = new ListItemRenderer(this.signalStore);
         this.column = new Gtk.ColumnViewColumn();
-        this.column.setFactory(this.itemRenderer.getFactory());
+        this.column.setFactory(this.treeRenderer.getFactory());
     }
 
     public override appendChild(child: MenuNode): void {
@@ -61,7 +64,8 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
 
     public override detachDeletedInstance(): void {
         this.cleanupMenu();
-        this.itemRenderer.dispose();
+        this.treeRenderer?.dispose();
+        this.flatRenderer?.dispose();
         super.detachDeletedInstance();
     }
 
@@ -70,15 +74,30 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     }
 
     public rebindItem(id: string): void {
-        this.itemRenderer.rebindItem(id);
+        this.treeRenderer?.rebindItem(id);
+        this.flatRenderer?.rebindItem(id);
     }
 
     public setStore(model: TreeStore | null): void {
-        this.itemRenderer.setStore(model);
+        this.treeRenderer?.setStore(model);
+    }
+
+    public setFlatStore(store: ListStore): void {
+        if (this.treeRenderer) {
+            this.treeRenderer.dispose();
+            this.treeRenderer = null;
+        }
+        if (!this.flatRenderer) {
+            this.flatRenderer = new GridItemRenderer(this.signalStore);
+            this.flatRenderer.setRenderFn(this.props.renderCell);
+            this.column.setFactory(this.flatRenderer.getFactory());
+        }
+        this.flatRenderer.setStore(store);
     }
 
     public setEstimatedRowHeight(height: number | null): void {
-        this.itemRenderer.setEstimatedItemHeight(height);
+        this.treeRenderer?.setEstimatedItemHeight(height);
+        this.flatRenderer?.setEstimatedItemHeight(height);
     }
 
     public attachToColumnView(columnView: Gtk.ColumnView): void {
@@ -125,7 +144,8 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
 
     private applyOwnProps(oldProps: ColumnViewColumnProps | null, newProps: ColumnViewColumnProps): void {
         if (hasChanged(oldProps, newProps, "renderCell")) {
-            this.itemRenderer.setRenderFn(newProps.renderCell);
+            this.treeRenderer?.setRenderFn(newProps.renderCell);
+            this.flatRenderer?.setRenderFn(newProps.renderCell);
         }
 
         if (hasChanged(oldProps, newProps, "title")) {
@@ -155,6 +175,10 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
             if (oldProps && this.menu && this.actionGroup) {
                 this.menu.setActionMap(this.actionGroup, newProps.id);
             }
+        }
+
+        if (hasChanged(oldProps, newProps, "visible")) {
+            this.column.setVisible(newProps.visible ?? true);
         }
 
         if (hasChanged(oldProps, newProps, "sortable")) {

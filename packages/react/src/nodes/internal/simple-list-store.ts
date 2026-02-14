@@ -1,24 +1,43 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import { SectionedListStore } from "./base-sectioned-store.js";
 
-export class SimpleListStore {
-    private ids: string[] = [];
-    private idToIndex = new Map<string, number>();
-    private model = new Gtk.StringList();
-    private pendingBatch: string[] | null = null;
+export class SimpleListStore extends SectionedListStore {
+    private batchMode = false;
 
-    public beginBatch(): void {
-        this.pendingBatch = [];
+    public override beginBatch(): void {
+        this.batchMode = true;
+        super.beginBatch();
     }
 
-    public flushBatch(): void {
-        const batch = this.pendingBatch;
-        this.pendingBatch = null;
-        if (batch && batch.length > 0) {
-            this.model.splice(0, 0, batch);
+    public override flushBatch(): void {
+        this.batchMode = false;
+        super.flushBatch();
+    }
+
+    protected override getInitialPendingBatch(): string[] | null {
+        return this.batchMode ? [] : null;
+    }
+
+    protected override getModelString(_itemId: string, item: unknown): string {
+        return item as string;
+    }
+
+    public getHeaderValueByLabel(label: string): unknown {
+        for (const section of this.sections) {
+            if (section.model.getNItems() > 0) {
+                const firstLabel = section.model.getString(0);
+                if (firstLabel === label) {
+                    return this.headerValues.get(section.id);
+                }
+            }
         }
+        return undefined;
     }
 
     public addItem(id: string, label: string): void {
+        if (this.sectioned) {
+            return;
+        }
+
         this.idToIndex.set(id, this.ids.length);
         this.ids.push(id);
 
@@ -43,16 +62,6 @@ export class SimpleListStore {
         this.model.append(label);
     }
 
-    public removeItem(id: string): void {
-        const index = this.idToIndex.get(id);
-        if (index === undefined) return;
-
-        this.model.remove(index);
-        this.ids.splice(index, 1);
-        this.idToIndex.delete(id);
-        this.rebuildIndices(index);
-    }
-
     public insertItemBefore(id: string, beforeId: string, label: string): void {
         const beforeIndex = this.idToIndex.get(beforeId);
         if (beforeIndex === undefined) {
@@ -64,7 +73,19 @@ export class SimpleListStore {
         }
     }
 
-    public updateItem(id: string, label: string): void {
+    public updateItem(id: string, item: unknown): void {
+        const label = item as string;
+        if (this.sectioned) {
+            const sectionId = this.itemToSection.get(id);
+            if (!sectionId) return;
+            const section = this.sectionById.get(sectionId);
+            if (!section) return;
+            const indexInSection = section.itemIds.indexOf(id);
+            if (indexInSection >= 0) {
+                section.model.splice(indexInSection, 1, [label]);
+            }
+            return;
+        }
         const index = this.idToIndex.get(id);
         if (index === undefined) {
             this.addItem(id, label);
@@ -73,27 +94,18 @@ export class SimpleListStore {
         this.model.splice(index, 1, [label]);
     }
 
-    public getItem(id: string) {
+    public getItem(id: string): string | null {
+        if (this.sectioned) {
+            const sectionId = this.itemToSection.get(id);
+            if (!sectionId) return null;
+            const section = this.sectionById.get(sectionId);
+            if (!section) return null;
+            const indexInSection = section.itemIds.indexOf(id);
+            if (indexInSection < 0) return null;
+            return section.model.getString(indexInSection);
+        }
         const index = this.idToIndex.get(id);
         if (index === undefined) return null;
         return this.model.getString(index);
-    }
-
-    public getIdAtIndex(index: number): string | null {
-        return this.ids[index] ?? null;
-    }
-
-    public getIndexById(id: string): number | null {
-        return this.idToIndex.get(id) ?? null;
-    }
-
-    public getModel(): Gtk.StringList {
-        return this.model;
-    }
-
-    private rebuildIndices(fromIndex: number): void {
-        for (let i = fromIndex; i < this.ids.length; i++) {
-            this.idToIndex.set(this.ids[i] as string, i);
-        }
     }
 }

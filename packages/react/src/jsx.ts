@@ -7,7 +7,14 @@ import type * as GtkSource from "@gtkx/ffi/gtksource";
 import type * as Pango from "@gtkx/ffi/pango";
 import type { ReactElement, ReactNode } from "react";
 import { createElement } from "react";
-import type { WidgetSlotNames } from "./generated/jsx.js";
+import type {
+    AdwComboRowProps as IntrinsicAdwComboRowProps,
+    GtkColumnViewProps as IntrinsicGtkColumnViewProps,
+    GtkDropDownProps as IntrinsicGtkDropDownProps,
+    GtkGridViewProps as IntrinsicGtkGridViewProps,
+    GtkListViewProps as IntrinsicGtkListViewProps,
+    WidgetSlotNames,
+} from "./generated/jsx.js";
 
 /**
  * CSS properties that can be animated on a widget.
@@ -174,6 +181,8 @@ export type ShortcutProps = {
  * ```
  */
 export type TextAnchorProps = {
+    /** Replacement character displayed when the widget is not visible (e.g. in serialized text) */
+    replacementChar?: string;
     /** The widget to embed at this anchor position */
     children?: ReactNode;
 };
@@ -392,6 +401,23 @@ export type ListItemProps<T = unknown> = {
 };
 
 /**
+ * Props for section headers in a GtkListView, GtkGridView, or GtkColumnView.
+ *
+ * Wraps ListItems to group them into sections. When used with `renderHeader`,
+ * the view displays a header at the top of each section.
+ *
+ * @typeParam T - The type of data associated with this section header
+ */
+export type ListSectionProps<T = unknown> = {
+    /** Unique identifier for this section */
+    id: string;
+    /** The data value passed to `renderHeader` for this section */
+    value: T;
+    /** ListItem children belonging to this section */
+    children?: ReactNode;
+};
+
+/**
  * Props for positioning children within a GtkGrid.
  *
  * @see {@link GridChild} for usage
@@ -445,6 +471,8 @@ export type ColumnViewColumnProps<T = unknown> = {
     id: string;
     /** Whether clicking the header sorts by this column */
     sortable?: boolean;
+    /** Whether this column is visible */
+    visible?: boolean;
     /** Function to render the cell content for each row */
     renderCell: (item: T | null) => ReactNode;
     /** Menu items for the column header context menu */
@@ -668,28 +696,32 @@ type BaseListViewProps = {
     selectionMode?: Gtk.SelectionMode | null;
 };
 
-export type ListViewProps = BaseListViewProps & {
+export type ListViewProps<T = unknown> = BaseListViewProps & {
     /** Function to render each list item. The `row` parameter provides tree state for hierarchical lists. */
-    // biome-ignore lint/suspicious/noExplicitAny: contravariant parameter requires any for typed callbacks
-    renderItem: (item: any, row?: Gtk.TreeListRow | null) => ReactNode;
+    renderItem: (item: T | null, row?: Gtk.TreeListRow | null) => ReactNode;
     /** Whether to automatically expand new tree rows (default: false) */
     autoexpand?: boolean;
+    /** Function to render section headers when using ListSection children */
+    renderHeader?: ((item: T | null) => ReactNode) | null;
 };
 
-export type GridViewProps = BaseListViewProps & {
+export type GridViewProps<T = unknown> = BaseListViewProps & {
     /** Function to render each grid item */
-    // biome-ignore lint/suspicious/noExplicitAny: contravariant parameter requires any for typed callbacks
-    renderItem: (item: any) => ReactNode;
+    renderItem: (item: T | null) => ReactNode;
 };
 
 /**
  * Props shared by single-selection dropdown widgets (GtkDropDown, AdwComboRow).
  */
-export type DropDownProps = {
+export type DropDownProps<T = unknown> = {
     /** ID of the currently selected item */
     selectedId?: string | null;
     /** Callback fired when the selected item changes */
     onSelectionChanged?: ((id: string) => void) | null;
+    /** Function to render each item in the popup list. When provided, overrides the default text rendering. */
+    renderItem?: ((item: T | null) => ReactNode) | null;
+    /** Function to render section headers when using ListSection children */
+    renderHeader?: ((item: T | null) => ReactNode) | null;
 };
 
 /**
@@ -852,7 +884,32 @@ export const x = {
      * </GtkListView>
      * ```
      */
-    ListItem: "ListItem" as const,
+    ListItem<T = unknown>(props: ListItemProps<T>): ReactElement {
+        return createElement("ListItem", props, props.children);
+    },
+
+    /**
+     * Component for defining section headers in list/grid views.
+     *
+     * Wraps ListItems to group them into sections with headers.
+     * Requires `renderHeader` on the parent view to render the header content.
+     *
+     * @example
+     * ```tsx
+     * <GtkGridView
+     *   renderItem={(item) => <GtkLabel label={item.name} />}
+     *   renderHeader={(header) => <GtkLabel label={header.title} />}
+     * >
+     *   <x.ListSection id="section1" value={{ title: "Section 1" }}>
+     *     <x.ListItem id="a" value={{ name: "Item A" }} />
+     *     <x.ListItem id="b" value={{ name: "Item B" }} />
+     *   </x.ListSection>
+     * </GtkGridView>
+     * ```
+     */
+    ListSection<T = unknown>(props: ListSectionProps<T>): ReactElement {
+        return createElement("ListSection", props, props.children);
+    },
 
     /**
      * Component for defining columns in a ColumnView (table widget).
@@ -1123,6 +1180,7 @@ declare global {
                 FixedChild: FixedChildProps;
                 GridChild: GridChildProps;
                 ListItem: ListItemProps;
+                ListSection: ListSectionProps;
                 MenuItem: MenuItemProps;
                 MenuSection: MenuSectionProps;
                 MenuSubmenu: MenuSubmenuProps;
@@ -1142,7 +1200,61 @@ declare global {
     }
 }
 
+export type AccessibleProps = {
+    accessibleAutocomplete?: Gtk.AccessibleAutocomplete;
+    accessibleDescription?: string;
+    accessibleHasPopup?: boolean;
+    accessibleKeyShortcuts?: string;
+    accessibleLabel?: string;
+    accessibleLevel?: number;
+    accessibleModal?: boolean;
+    accessibleMultiLine?: boolean;
+    accessibleMultiSelectable?: boolean;
+    accessibleOrientation?: Gtk.Orientation;
+    accessiblePlaceholder?: string;
+    accessibleReadOnly?: boolean;
+    accessibleRequired?: boolean;
+    accessibleRoleDescription?: string;
+    accessibleSort?: Gtk.AccessibleSort;
+    accessibleValueMax?: number;
+    accessibleValueMin?: number;
+    accessibleValueNow?: number;
+    accessibleValueText?: string;
+    accessibleHelpText?: string;
+
+    accessibleBusy?: boolean;
+    accessibleChecked?: Gtk.AccessibleTristate;
+    accessibleDisabled?: boolean;
+    accessibleExpanded?: boolean;
+    accessibleHidden?: boolean;
+    accessibleInvalid?: Gtk.AccessibleInvalidState;
+    accessiblePressed?: Gtk.AccessibleTristate;
+    accessibleSelected?: boolean;
+    accessibleVisited?: boolean;
+
+    accessibleActiveDescendant?: Gtk.Widget;
+    accessibleColCount?: number;
+    accessibleColIndex?: number;
+    accessibleColIndexText?: string;
+    accessibleColSpan?: number;
+    accessibleControls?: Gtk.Widget[];
+    accessibleDescribedBy?: Gtk.Widget[];
+    accessibleDetails?: Gtk.Widget[];
+    accessibleErrorMessage?: Gtk.Widget[];
+    accessibleFlowTo?: Gtk.Widget[];
+    accessibleLabelledBy?: Gtk.Widget[];
+    accessibleOwns?: Gtk.Widget[];
+    accessiblePosInSet?: number;
+    accessibleRowCount?: number;
+    accessibleRowIndex?: number;
+    accessibleRowIndexText?: string;
+    accessibleRowSpan?: number;
+    accessibleSetSize?: number;
+};
+
 declare module "./generated/jsx.js" {
+    interface WidgetProps extends AccessibleProps {}
+
     interface GtkRangeProps extends Omit<AdjustableProps, "onValueChanged"> {
         /** Callback fired when the range value changes */
         onValueChanged?: ((value: number, self: Gtk.Range) => void) | null;
@@ -1216,6 +1328,8 @@ declare module "./generated/jsx.js" {
         onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null;
         /** Estimated row height in pixels for virtualization */
         estimatedRowHeight?: number | null;
+        /** Function to render section headers when using ListSection children */
+        renderHeader?: ((item: unknown) => ReactNode) | null;
     }
 
     interface GtkDropDownProps extends DropDownProps {}
@@ -1259,6 +1373,10 @@ declare module "./generated/jsx.js" {
     interface GtkFontDialogButtonProps extends DialogButtonProps {
         /** Callback fired when the selected font changes */
         onFontDescChanged?: ((fontDesc: Pango.FontDescription) => void) | null;
+        /** Filter to restrict which fonts are shown in the dialog */
+        filter?: Gtk.Filter | null;
+        /** Custom font map to select fonts from */
+        fontMap?: Pango.FontMap | null;
     }
 
     interface GtkAboutDialogProps {
@@ -1289,6 +1407,39 @@ declare module "./generated/jsx.js" {
         /** GType values for accepted drop content types */
         types?: number[];
     }
+}
+
+export function GtkListView<T = unknown>(
+    props: Omit<IntrinsicGtkListViewProps, keyof ListViewProps> & ListViewProps<T> & { children?: ReactNode },
+): ReactElement {
+    return createElement("GtkListView", props);
+}
+
+export function GtkGridView<T = unknown>(
+    props: Omit<IntrinsicGtkGridViewProps, keyof GridViewProps> & GridViewProps<T> & { children?: ReactNode },
+): ReactElement {
+    return createElement("GtkGridView", props);
+}
+
+export function GtkDropDown<T = unknown>(
+    props: Omit<IntrinsicGtkDropDownProps, keyof DropDownProps> & DropDownProps<T> & { children?: ReactNode },
+): ReactElement {
+    return createElement("GtkDropDown", props);
+}
+
+export function AdwComboRow<T = unknown>(
+    props: Omit<IntrinsicAdwComboRowProps, keyof DropDownProps> & DropDownProps<T> & { children?: ReactNode },
+): ReactElement {
+    return createElement("AdwComboRow", props);
+}
+
+export function GtkColumnView<T = unknown>(
+    props: Omit<IntrinsicGtkColumnViewProps, "renderHeader"> & {
+        renderHeader?: ((item: T | null) => ReactNode) | null;
+        children?: ReactNode;
+    },
+): ReactElement {
+    return createElement("GtkColumnView", props);
 }
 
 export * from "./generated/jsx.js";

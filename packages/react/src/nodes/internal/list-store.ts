@@ -1,29 +1,29 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import { SectionedListStore } from "./base-sectioned-store.js";
 
 type ItemUpdatedCallback = (id: string) => void;
 
-export class ListStore {
-    private model = new Gtk.StringList();
-    private ids: string[] = [];
-    private idToIndex = new Map<string, number>();
+export class ListStore extends SectionedListStore {
     private items = new Map<string, unknown>();
     private onItemUpdated: ItemUpdatedCallback | null = null;
-    private pendingBatch: string[] | null = null;
 
     public setOnItemUpdated(callback: ItemUpdatedCallback | null): void {
         this.onItemUpdated = callback;
     }
 
-    public beginBatch(): void {
-        this.pendingBatch = [];
+    protected override getInitialPendingBatch(): string[] | null {
+        return null;
     }
 
-    public flushBatch(): void {
-        const batch = this.pendingBatch;
-        this.pendingBatch = null;
-        if (batch && batch.length > 0) {
-            this.model.splice(0, 0, batch);
-        }
+    protected override getModelString(itemId: string, _item: unknown): string {
+        return itemId;
+    }
+
+    protected override onItemAdded(itemId: string, item: unknown): void {
+        this.items.set(itemId, item);
+    }
+
+    protected override onItemRemoved(itemId: string): void {
+        this.items.delete(itemId);
     }
 
     public addItem(id: string, item: unknown): void {
@@ -44,17 +44,6 @@ export class ListStore {
         } else {
             this.model.append(id);
         }
-    }
-
-    public removeItem(id: string): void {
-        const index = this.idToIndex.get(id);
-        if (index === undefined) return;
-
-        this.model.remove(index);
-        this.ids.splice(index, 1);
-        this.idToIndex.delete(id);
-        this.rebuildIndices(index);
-        this.items.delete(id);
     }
 
     public insertItemBefore(id: string, beforeId: string, item: unknown): void {
@@ -93,13 +82,23 @@ export class ListStore {
         return this.items.get(id);
     }
 
-    public getModel(): Gtk.StringList {
+    public getHeaderValue(itemId: string): unknown {
+        const sectionId = this.itemToSection.get(itemId);
+        if (sectionId) {
+            return this.headerValues.get(sectionId);
+        }
+        return undefined;
+    }
+
+    public getHeaderValueById(sectionId: string): unknown {
+        return this.headerValues.get(sectionId);
+    }
+
+    public getStringList(): import("@gtkx/ffi/gtk").StringList {
         return this.model;
     }
 
-    private rebuildIndices(fromIndex: number): void {
-        for (let i = fromIndex; i < this.ids.length; i++) {
-            this.idToIndex.set(this.ids[i] as string, i);
-        }
+    public getNItems(): number {
+        return this.ids.length;
     }
 }

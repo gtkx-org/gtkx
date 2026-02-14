@@ -23,6 +23,7 @@ import { GridChildNode } from "./nodes/grid-child.js";
 import { GridViewNode } from "./nodes/grid-view.js";
 import { LevelBarNode } from "./nodes/level-bar.js";
 import { ListItemNode } from "./nodes/list-item.js";
+import { ListSectionNode } from "./nodes/list-section.js";
 import { ListViewNode } from "./nodes/list-view.js";
 import { MenuNode } from "./nodes/menu.js";
 import { NavigationPageNode } from "./nodes/navigation-page.js";
@@ -79,6 +80,7 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["FixedChild", FixedChildNode],
     ["GridChild", GridChildNode],
     ["ListItem", ListItemNode],
+    ["ListSection", ListSectionNode],
     [["MenuItem", "MenuSection", "MenuSubmenu"], MenuNode],
     ["NavigationPage", NavigationPageNode],
     ["NotebookPage", NotebookPageNode],

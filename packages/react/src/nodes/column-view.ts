@@ -5,24 +5,34 @@ import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
+import type { HeaderItemRenderer } from "./internal/header-item-renderer.js";
+import { updateHeaderRenderer } from "./internal/header-renderer-manager.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { ListItemNode } from "./list-item.js";
+import { ListSectionNode } from "./list-section.js";
 import { ListModel, type ListModelProps } from "./models/list.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-const OWN_PROPS = ["sortColumn", "sortOrder", "onSortChanged", "estimatedRowHeight"] as const;
+const OWN_PROPS = ["sortColumn", "sortOrder", "onSortChanged", "estimatedRowHeight", "renderHeader"] as const;
 
 type ColumnViewProps = Pick<GtkColumnViewProps, (typeof OWN_PROPS)[number]> & ListModelProps;
-type ColumnViewChild = ListItemNode | ColumnViewColumnNode | EventControllerNode | SlotNode | ContainerSlotNode;
+type ColumnViewChild =
+    | ListItemNode
+    | ListSectionNode
+    | ColumnViewColumnNode
+    | EventControllerNode
+    | SlotNode
+    | ContainerSlotNode;
 
 export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, ColumnViewChild> {
-    private handleSortChange: (() => void) | null = null;
     private list: ListModel;
+    private headerRenderer: HeaderItemRenderer | null = null;
 
     public override isValidChild(child: Node): boolean {
         return (
             child instanceof ListItemNode ||
+            child instanceof ListSectionNode ||
             child instanceof ColumnViewColumnNode ||
             child instanceof EventControllerNode ||
             child instanceof SlotNode ||
@@ -34,6 +44,9 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
 
     constructor(typeName: string, props: ColumnViewProps, container: Gtk.ColumnView, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
+
+        const flat = props.renderHeader != null;
+
         this.list = new ListModel(
             { owner: this, signalStore: this.signalStore },
             {
@@ -41,8 +54,9 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
                 selected: props.selected,
                 onSelectionChanged: props.onSelectionChanged,
             },
+            flat,
         );
-        this.list.getStore().setOnItemUpdated((id) => {
+        this.list.setOnItemUpdated((id) => {
             for (const column of this.columnNodes) {
                 column.rebindItem(id);
             }
@@ -52,7 +66,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
     public override appendChild(child: ColumnViewChild): void {
         super.appendChild(child);
 
-        if (child instanceof ListItemNode) {
+        if (child instanceof ListItemNode || child instanceof ListSectionNode) {
             this.list.appendChild(child);
             return;
         }
@@ -65,7 +79,11 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             this.container.removeColumn(existingColumn);
         }
 
-        child.setStore(this.list.getStore());
+        if (this.list.isFlatMode()) {
+            child.setFlatStore(this.list.getFlatStore());
+        } else {
+            child.setStore(this.list.getStore());
+        }
         child.setEstimatedRowHeight(this.estimatedRowHeight);
         this.container.appendColumn(child.getColumn());
         child.attachToColumnView(this.container);
@@ -75,8 +93,8 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
     public override insertBefore(child: ColumnViewChild, before: ColumnViewChild): void {
         super.insertBefore(child, before);
 
-        if (child instanceof ListItemNode) {
-            if (before instanceof ListItemNode) {
+        if (child instanceof ListItemNode || child instanceof ListSectionNode) {
+            if (before instanceof ListItemNode || before instanceof ListSectionNode) {
                 this.list.insertBefore(child, before);
             }
             return;
@@ -90,7 +108,11 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             this.container.removeColumn(existingColumn);
         }
 
-        child.setStore(this.list.getStore());
+        if (this.list.isFlatMode()) {
+            child.setFlatStore(this.list.getFlatStore());
+        } else {
+            child.setStore(this.list.getStore());
+        }
         child.setEstimatedRowHeight(this.estimatedRowHeight);
 
         if (before instanceof ColumnViewColumnNode) {
@@ -105,7 +127,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
     }
 
     public override removeChild(child: ColumnViewChild): void {
-        if (child instanceof ListItemNode) {
+        if (child instanceof ListItemNode || child instanceof ListSectionNode) {
             this.list.removeChild(child);
             super.removeChild(child);
             return;
@@ -135,7 +157,14 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
     public override commitUpdate(oldProps: ColumnViewProps | null, newProps: ColumnViewProps): void {
         super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.applyOwnProps(oldProps, newProps);
+
+        const previousModel = this.list.getSelectionModel();
         this.list.updateProps(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
+        const currentModel = this.list.getSelectionModel();
+
+        if (previousModel !== currentModel) {
+            this.container.setModel(currentModel);
+        }
     }
 
     public override commitMount(): void {
@@ -146,6 +175,7 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
 
     public override detachDeletedInstance(): void {
         this.columnNodes.clear();
+        this.headerRenderer?.dispose();
         super.detachDeletedInstance();
     }
 
@@ -155,11 +185,13 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             const onSortChanged = newProps.onSortChanged;
 
             if (sorter instanceof Gtk.ColumnViewSorter) {
-                this.handleSortChange = () => {
-                    onSortChanged?.(sorter.getPrimarySortColumn()?.getId() ?? null, sorter.getPrimarySortOrder());
-                };
+                const handleSortChange = onSortChanged
+                    ? () => {
+                          onSortChanged(sorter.getPrimarySortColumn()?.getId() ?? null, sorter.getPrimarySortOrder());
+                      }
+                    : undefined;
 
-                this.signalStore.set(this, sorter, "changed", this.handleSortChange);
+                this.signalStore.set(this, sorter, "changed", handleSortChange);
             }
         }
 
@@ -179,6 +211,19 @@ export class ColumnViewNode extends WidgetNode<Gtk.ColumnView, ColumnViewProps, 
             for (const column of this.columnNodes) {
                 column.setEstimatedRowHeight(this.estimatedRowHeight);
             }
+        }
+
+        if (hasChanged(oldProps, newProps, "renderHeader")) {
+            this.headerRenderer = updateHeaderRenderer(
+                this.headerRenderer,
+                {
+                    signalStore: this.signalStore,
+                    isEnabled: () => this.list.isFlatMode(),
+                    resolveItem: (id) => this.list.getFlatStore().getHeaderValue(id),
+                    setFactory: (factory) => this.container.setHeaderFactory(factory),
+                },
+                newProps.renderHeader,
+            );
         }
     }
 
