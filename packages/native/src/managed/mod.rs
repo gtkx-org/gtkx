@@ -88,7 +88,10 @@ impl NativeHandle {
 
 impl Finalize for NativeHandle {
     fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {
-        gtk_dispatch::GtkDispatcher::global().schedule(move || {
+        if gtk_dispatch::GtkDispatcher::global().is_stopped() {
+            return;
+        }
+        glib::idle_add_once(move || {
             let removed = GtkThreadState::with(|state| state.handle_map.remove(&self.0));
             drop(removed);
         });

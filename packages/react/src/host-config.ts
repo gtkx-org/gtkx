@@ -1,3 +1,4 @@
+import { beginBatch, endBatch } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
@@ -135,9 +136,12 @@ export function createHostConfig(): HostConfig {
             parent.insertBefore(child, beforeChild);
         },
         prepareForCommit: () => {
+            beginBatch();
             return null;
         },
-        resetAfterCommit: () => {},
+        resetAfterCommit: () => {
+            endBatch();
+        },
         commitTextUpdate: (textInstance, oldText, newText) => {
             if (textInstance.typeName === "TextSegment") {
                 textInstance.commitUpdate({ text: oldText }, { text: newText });

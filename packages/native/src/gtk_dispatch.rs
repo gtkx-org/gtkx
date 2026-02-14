@@ -11,6 +11,18 @@
 //! - [`GtkDispatcher::dispatch_pending`]: Manually execute all queued tasks immediately.
 //!   Used during blocking FFI calls to prevent deadlocks.
 //!
+//! ## Batch Mode
+//!
+//! During React's commit phase, [`GtkDispatcher::begin_batch`] puts the dispatcher into
+//! batch mode. A single GTK-thread task enters a tight loop that processes all incoming
+//! FFI calls via [`GtkDispatcher::dispatch_pending`] without returning to the GLib main
+//! loop. This prevents the frame clock from firing between individual mutations, ensuring
+//! a single atomic repaint after [`GtkDispatcher::end_batch`] is called.
+//!
+//! Batches use a depth counter to handle nesting: if a GTK signal fires during the batch
+//! and triggers a JS callback that causes another React commit, the inner begin/end batch
+//! calls are no-ops. Only the outermost [`GtkDispatcher::end_batch`] exits the loop.
+//!
 //! ## JS Wait Tracking
 //!
 //! When JavaScript is blocking waiting for a GTK operation to complete,
@@ -43,11 +55,15 @@ type Task = Box<dyn FnOnce() + Send + 'static>;
 
 pub struct GtkDispatcher {
     queue: Mutex<VecDeque<Task>>,
+    callback_queue: Mutex<VecDeque<Task>>,
     dispatch_scheduled: AtomicBool,
     started: AtomicBool,
     stopped: AtomicBool,
     js_wait_depth: AtomicUsize,
     callback_depth: AtomicUsize,
+    batch_depth: AtomicUsize,
+    batch_loop_active: AtomicBool,
+    pub batch_wake: WaitSignal,
     pub wake: WaitSignal,
 }
 
@@ -61,17 +77,24 @@ impl GtkDispatcher {
     fn new() -> Self {
         Self {
             queue: Mutex::new(VecDeque::new()),
+            callback_queue: Mutex::new(VecDeque::new()),
             dispatch_scheduled: AtomicBool::new(false),
             started: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
             js_wait_depth: AtomicUsize::new(0),
             callback_depth: AtomicUsize::new(0),
+            batch_depth: AtomicUsize::new(0),
+            batch_loop_active: AtomicBool::new(false),
+            batch_wake: WaitSignal::new(),
             wake: WaitSignal::new(),
         }
     }
 
     fn push_task(&self, task: Task) {
         self.queue.lock().unwrap().push_back(task);
+        if self.batch_loop_active.load(Ordering::Acquire) {
+            self.batch_wake.notify();
+        }
         js_dispatch::JsDispatcher::global().wake.notify();
     }
 
@@ -81,6 +104,19 @@ impl GtkDispatcher {
 
     fn is_queue_empty(&self) -> bool {
         self.queue.lock().unwrap().is_empty()
+    }
+
+    fn push_callback_task(&self, task: Task) {
+        self.callback_queue.lock().unwrap().push_back(task);
+        js_dispatch::JsDispatcher::global().wake.notify();
+    }
+
+    pub fn dispatch_callback_pending(&self) {
+        let tasks: Vec<Task> = self.callback_queue.lock().unwrap().drain(..).collect();
+        for task in tasks {
+            task();
+        }
+        self.wake.notify();
     }
 
     pub fn run_on_gtk_thread<F, T>(&self, task: F) -> mpsc::Receiver<T>
@@ -188,6 +224,29 @@ impl GtkDispatcher {
         }
     }
 
+    pub fn begin_batch(&self) -> bool {
+        self.batch_depth.fetch_add(1, Ordering::AcqRel) == 0
+    }
+
+    pub fn end_batch(&self) {
+        if self.batch_depth.fetch_sub(1, Ordering::AcqRel) == 1 {
+            self.batch_wake.notify();
+        }
+    }
+
+    pub fn run_batch_loop(&self) {
+        self.batch_loop_active.store(true, Ordering::Release);
+        loop {
+            self.dispatch_pending();
+            if self.batch_depth.load(Ordering::Acquire) == 0 {
+                break;
+            }
+            self.batch_wake.wait();
+        }
+        self.dispatch_pending();
+        self.batch_loop_active.store(false, Ordering::Release);
+    }
+
     pub fn schedule<F>(&self, task: F)
     where
         F: FnOnce() + Send + 'static,
@@ -196,7 +255,18 @@ impl GtkDispatcher {
             return;
         }
 
+        if js_dispatch::JsDispatcher::global().is_executing_callback()
+            && self.is_in_callback()
+        {
+            self.push_callback_task(Box::new(task));
+            return;
+        }
+
         self.push_task(Box::new(task));
+
+        if self.batch_loop_active.load(Ordering::Acquire) {
+            return;
+        }
 
         if self
             .dispatch_scheduled

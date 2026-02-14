@@ -3,6 +3,7 @@
 //! This module contains all the functions exported to JavaScript via Neon.
 
 mod alloc;
+mod batch;
 mod call;
 mod field;
 mod object;
@@ -10,6 +11,7 @@ mod start;
 mod stop;
 
 pub use alloc::alloc;
+pub use batch::{begin_batch, end_batch};
 pub use call::call;
 pub use field::{read, read_pointer, write, write_pointer};
 pub use object::get_native_id;

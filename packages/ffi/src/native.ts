@@ -1,7 +1,9 @@
 import {
     type Arg,
     alloc as nativeAlloc,
+    beginBatch as nativeBeginBatch,
     call as nativeCall,
+    endBatch as nativeEndBatch,
     read as nativeRead,
     readPointer as nativeReadPointer,
     write as nativeWrite,
@@ -200,4 +202,13 @@ export const writePointer = (
 ): void => {
     ensureIsStarted("attempted writePointer");
     nativeWritePointer(destHandle, ptrOffset, elementOffset, sourceHandle, size);
+};
+
+export const beginBatch = (): void => {
+    ensureIsStarted("attempted beginBatch");
+    nativeBeginBatch();
+};
+
+export const endBatch = (): void => {
+    nativeEndBatch();
 };
