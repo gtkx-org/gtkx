@@ -9,6 +9,7 @@
     },
     "scripts": {
         "build": "gtkx build",
+        "typecheck": "tsc -b --noEmit",
         "dev": "gtkx dev src/dev.tsx",
         "start": "node dist/bundle.js",
         "bundle": "gtkx build --asset-base ../share/gtkx-example && tsx scripts/bundle.ts",

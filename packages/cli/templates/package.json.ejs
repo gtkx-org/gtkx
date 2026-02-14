@@ -6,6 +6,7 @@
     "scripts": {
         "dev": "gtkx dev src/dev.tsx",
         "build": "gtkx build",
+        "typecheck": "tsc --noEmit",
         "start": "node dist/bundle.js"<% if (testing === 'vitest') { %>,
         "test": "vitest"<% } %>
     },
