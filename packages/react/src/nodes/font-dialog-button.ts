@@ -10,6 +10,8 @@ const OWN_PROPS = [
     "title",
     "modal",
     "language",
+    "filter",
+    "fontMap",
     "useFont",
     "useSize",
     "level",
@@ -59,6 +61,14 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
 
         if (hasChanged(oldProps, newProps, "language") && newProps.language) {
             this.dialog.setLanguage(newProps.language);
+        }
+
+        if (hasChanged(oldProps, newProps, "filter")) {
+            this.dialog.setFilter(newProps.filter);
+        }
+
+        if (hasChanged(oldProps, newProps, "fontMap")) {
+            this.dialog.setFontMap(newProps.fontMap);
         }
 
         if (hasChanged(oldProps, newProps, "useFont")) {

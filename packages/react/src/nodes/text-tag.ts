@@ -4,6 +4,7 @@ import type { Node } from "../node.js";
 import { hasChanged } from "./internal/props.js";
 import { TextAnchorNode } from "./text-anchor.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
+import { TextPaintableNode } from "./text-paintable.js";
 import { isTextContentParent, TextSegmentNode } from "./text-segment.js";
 import { VirtualNode } from "./virtual.js";
 
@@ -282,6 +283,11 @@ export class TextTagNode
     }
 
     private isTextContentChild(child: Node): child is TextContentChild {
-        return child instanceof TextSegmentNode || child instanceof TextTagNode || child instanceof TextAnchorNode;
+        return (
+            child instanceof TextSegmentNode ||
+            child instanceof TextTagNode ||
+            child instanceof TextAnchorNode ||
+            child instanceof TextPaintableNode
+        );
     }
 }

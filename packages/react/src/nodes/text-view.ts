@@ -52,6 +52,11 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
         return new TextBufferController(this, this.container, () => new Gtk.TextBuffer());
     }
 
+    public override finalizeInitialChildren(props: TextViewProps): boolean {
+        this.bufferController?.finalizeInitialMount();
+        return super.finalizeInitialChildren(props);
+    }
+
     public override commitUpdate(oldProps: TextViewProps | null, newProps: TextViewProps): void {
         super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
         this.ensureBufferController().applyOwnProps(oldProps, newProps);

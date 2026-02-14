@@ -12,9 +12,11 @@ import {
 } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { CONSTRUCTOR_PROPS } from "../generated/internal.js";
-import { resolvePropMeta, resolveSignal } from "../metadata.js";
+import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
+import { applyAccessibleProps, isAccessibleProp } from "./internal/accessible.js";
+import { createContainerWithConstructOnly } from "./internal/construct.js";
 import {
     type InsertableWidget,
     isAddable,
@@ -30,7 +32,7 @@ import { filterProps } from "./internal/props.js";
 import type { SignalHandler } from "./internal/signal-store.js";
 import { attachChild, detachChild } from "./internal/widget.js";
 
-const EXCLUDED_PROPS = ["children", "widthRequest", "heightRequest", "grabFocus"];
+const EXCLUDED_PROPS = ["children"];
 
 function findProperty(obj: NativeObject, key: string): GObject.ParamSpec | null {
     const propertyName = key.replace(/([A-Z])/g, "-$1").toLowerCase();
@@ -58,7 +60,11 @@ export class WidgetNode<
         const typeName = WidgetClass.glibTypeName;
         const args = (CONSTRUCTOR_PROPS[typeName] ?? []).map((name) => props[name]);
 
-        return new WidgetClass(...(args as ConstructorParameters<typeof Gtk.Widget>));
+        return createContainerWithConstructOnly(
+            WidgetClass,
+            props,
+            () => new WidgetClass(...(args as ConstructorParameters<typeof Gtk.Widget>)),
+        );
     }
 
     public override isValidChild(_child: Node): boolean {
@@ -125,8 +131,7 @@ export class WidgetNode<
 
         this.signalStore.blockAll();
         try {
-            this.updateSizeRequest(oldProps, newProps);
-            this.updateGrabFocus(oldProps, newProps);
+            applyAccessibleProps(this.container, oldProps, newProps);
 
             const propNames = new Set([
                 ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
@@ -137,6 +142,9 @@ export class WidgetNode<
             const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
 
             for (const name of propNames) {
+                if (isAccessibleProp(name)) continue;
+                if (isConstructOnlyProp(this.container, name)) continue;
+
                 const oldValue = oldProps?.[name];
                 const newValue = newProps[name];
 
@@ -273,26 +281,6 @@ export class WidgetNode<
 
         for (const child of widgetChildren) {
             attachChild(child.container, this.container);
-        }
-    }
-
-    private updateSizeRequest(oldProps: P | null, newProps: P): void {
-        const oldWidth = oldProps?.widthRequest as number | undefined;
-        const oldHeight = oldProps?.heightRequest as number | undefined;
-        const newWidth = newProps.widthRequest as number | undefined;
-        const newHeight = newProps.heightRequest as number | undefined;
-
-        if (oldWidth !== newWidth || oldHeight !== newHeight) {
-            this.container.setSizeRequest(newWidth ?? -1, newHeight ?? -1);
-        }
-    }
-
-    private updateGrabFocus(oldProps: P | null, newProps: P): void {
-        const oldGrabFocus = oldProps?.grabFocus as boolean | undefined;
-        const newGrabFocus = newProps.grabFocus as boolean | undefined;
-
-        if (!oldGrabFocus && newGrabFocus) {
-            this.container.grabFocus();
         }
     }
 
