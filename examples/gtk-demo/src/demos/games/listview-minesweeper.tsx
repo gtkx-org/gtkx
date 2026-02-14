@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkGridView, GtkImage, GtkLabel, x } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkGridView, GtkHeaderBar, GtkImage, GtkLabel, x } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
@@ -86,6 +86,16 @@ const ListViewMinesweeperDemo = () => {
         return newBoard;
     }, []);
 
+    const playSound = useCallback((win: boolean) => {
+        const dataDirs = (process.env.XDG_DATA_DIRS ?? "/usr/local/share:/usr/share").split(":");
+        const dataDir = dataDirs[0] ?? "/usr/share";
+        const sound = win ? "complete.oga" : "suspend-error.oga";
+        const path = `${dataDir}/sounds/freedesktop/stereo/${sound}`;
+        const stream = Gtk.MediaFile.newForFilename(path);
+        stream.setVolume(1.0);
+        stream.play();
+    }, []);
+
     const handleCellClick = useCallback(
         (index: number) => {
             if (gameState !== "playing") return;
@@ -99,16 +109,17 @@ const ListViewMinesweeperDemo = () => {
             const clickedCell = newBoard[index];
             if (clickedCell?.isMine) {
                 setGameState("lost");
-                setBoard(newBoard.map((c) => (c.isMine ? { ...c, isRevealed: true } : c)));
+                playSound(false);
                 return;
             }
 
             const unrevealedSafeCells = newBoard.filter((c) => !c.isRevealed && !c.isMine).length;
             if (unrevealedSafeCells === 0) {
                 setGameState("won");
+                playSound(true);
             }
         },
-        [board, gameState, revealCell],
+        [board, gameState, revealCell, playSound],
     );
 
     const resetGame = useCallback(() => {
@@ -124,12 +135,17 @@ const ListViewMinesweeperDemo = () => {
     };
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <GtkBox spacing={12} halign={Gtk.Align.CENTER}>
-                <GtkButton label="New Game" onClicked={resetGame} />
-                {gameState === "won" && <GtkImage iconName="trophy-gold" />}
-            </GtkBox>
-
+        <>
+            <x.Slot for="GtkWindow" id="titlebar">
+                <GtkHeaderBar>
+                    <x.Slot for={GtkHeaderBar} id="titleWidget">
+                        {gameState === "won" ? <GtkImage iconName="trophy-gold" /> : null}
+                    </x.Slot>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                        <GtkButton label="New Game" onClicked={resetGame} />
+                    </x.ContainerSlot>
+                </GtkHeaderBar>
+            </x.Slot>
             <GtkBox halign={Gtk.Align.CENTER}>
                 <GtkGridView
                     estimatedItemHeight={32}
@@ -137,7 +153,7 @@ const ListViewMinesweeperDemo = () => {
                     maxColumns={GRID_SIZE}
                     singleClickActivate
                     onActivate={(position) => handleCellClick(position)}
-                    renderItem={(item) => (
+                    renderItem={(item: Cell | null) => (
                         <GtkLabel
                             label={getCellDisplay(item ?? defaultCell)}
                             halign={Gtk.Align.CENTER}
@@ -152,7 +168,7 @@ const ListViewMinesweeperDemo = () => {
                     ))}
                 </GtkGridView>
             </GtkBox>
-        </GtkBox>
+        </>
     );
 };
 

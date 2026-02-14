@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton } from "@gtkx/react";
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./constraints.tsx?raw";
 
@@ -10,7 +10,7 @@ const ConstraintsDemo = () => {
     const button2Ref = useRef<Gtk.Button | null>(null);
     const button3Ref = useRef<Gtk.Button | null>(null);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!containerRef.current || !button1Ref.current || !button2Ref.current || !button3Ref.current) return;
 
         const layout = new Gtk.ConstraintLayout();
@@ -234,4 +234,5 @@ export const constraintsDemo: Demo = {
     keywords: ["constraint", "layout", "GtkConstraintLayout", "GtkConstraint", "guide", "GtkLayoutManager"],
     component: ConstraintsDemo,
     sourceCode,
+    defaultWidth: 260,
 };

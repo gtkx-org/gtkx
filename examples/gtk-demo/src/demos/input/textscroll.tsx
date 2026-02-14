@@ -18,7 +18,7 @@ const AutoScrollTextView = ({ scrollToEnd }: { scrollToEnd: boolean }) => {
         const markName = scrollToEnd ? "end" : "scroll";
         const endIter = new Gtk.TextIter();
         buffer.getEndIter(endIter);
-        buffer.createMark(endIter, !scrollToEnd, markName);
+        buffer.createMark(endIter, scrollToEnd, markName);
 
         const timeoutId = setInterval(
             () => {
@@ -35,10 +35,10 @@ const AutoScrollTextView = ({ scrollToEnd }: { scrollToEnd: boolean }) => {
                 const mark = buffer.getMark(markName);
                 if (mark) {
                     if (!scrollToEnd) {
-                        const scrollIter = new Gtk.TextIter();
-                        buffer.getEndIter(scrollIter);
-                        scrollIter.setLineOffset(0);
-                        buffer.moveMark(mark, scrollIter);
+                        const endIter2 = new Gtk.TextIter();
+                        buffer.getEndIter(endIter2);
+                        endIter2.setLineOffset(0);
+                        buffer.moveMark(mark, endIter2);
                     }
                     textView.scrollMarkOnscreen(mark);
                 }
@@ -79,4 +79,6 @@ export const textscrollDemo: Demo = {
     keywords: ["scroll", "textview", "GtkTextMark", "GtkScrolledWindow", "automatic"],
     component: TextScrollDemo,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 400,
 };

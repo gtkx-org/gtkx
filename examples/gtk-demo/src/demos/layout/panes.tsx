@@ -70,4 +70,6 @@ export const panesDemo: Demo = {
     keywords: ["paned", "GtkPaned"],
     component: PanesDemo,
     sourceCode,
+    defaultWidth: 330,
+    defaultHeight: 250,
 };

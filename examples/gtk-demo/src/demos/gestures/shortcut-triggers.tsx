@@ -28,4 +28,5 @@ export const shortcutTriggersDemo: Demo = {
     keywords: ["shortcut", "trigger", "keyboard", "accelerator", "GtkShortcutController", "keybinding"],
     component: ShortcutTriggersDemo,
     sourceCode,
+    defaultWidth: 200,
 };

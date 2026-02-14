@@ -1,9 +1,10 @@
 import type { Context } from "@gtkx/ffi/cairo";
 import type * as Gdk from "@gtkx/ffi/gdk";
 import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Pango from "@gtkx/ffi/pango";
 import { GtkBox, GtkDrawingArea, GtkHeaderBar, GtkLabel, x } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./frames.tsx?raw";
 
 interface Color {
@@ -26,24 +27,41 @@ const lerpColor = (c1: Color, c2: Color, t: number): Color => ({
 
 const TIME_SPAN_US = 3_000_000;
 
-const FramesDemo = () => {
+const FramesDemo = ({ window }: DemoProps) => {
     const drawingRef = useRef<Gtk.DrawingArea>(null);
     const [fps, setFps] = useState(0);
+
+    useEffect(() => {
+        const win = window.current;
+        if (win) {
+            win.setDefaultSize(600, 400);
+        }
+    }, [window]);
+
+    const fpsAttrs = useMemo(() => {
+        const attrs = new Pango.AttrList();
+        attrs.insert(Pango.attrFontFeaturesNew("tnum=1"));
+        return attrs;
+    }, []);
     const tickIdRef = useRef<number | null>(null);
     const fpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const color1Ref = useRef<Color>(randomColor());
-    const color2Ref = useRef<Color>(randomColor());
+    const color1Ref = useRef<Color>({ r: 0, g: 0, b: 0 });
+    const color2Ref = useRef<Color>({ r: 0, g: 0, b: 0 });
     const time2Ref = useRef<number>(0);
+    const nowRef = useRef<number>(0);
 
     const draw = useCallback((cr: Context, width: number, height: number) => {
-        const t = 1 - time2Ref.current / TIME_SPAN_US;
+        const t = 1 - (time2Ref.current - nowRef.current) / TIME_SPAN_US;
         const color = lerpColor(color1Ref.current, color2Ref.current, Math.max(0, Math.min(1, t)));
-        cr.setSourceRgb(color.r, color.g, color.b).rectangle(0, 0, width, height).fill();
+        cr.setSourceRgb(color.r, color.g, color.b);
+        cr.rectangle(0, 0, width, height);
+        cr.fill();
     }, []);
 
     const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
         const now = frameClock.getFrameTime();
+        nowRef.current = now;
 
         if (time2Ref.current === 0) {
             time2Ref.current = now + TIME_SPAN_US;
@@ -89,7 +107,7 @@ const FramesDemo = () => {
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
                     <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
-                        <GtkLabel label={`${fps.toFixed(2)} fps`} />
+                        <GtkLabel label={`${fps.toFixed(2)} fps`} attributes={fpsAttrs} />
                     </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
@@ -108,4 +126,6 @@ export const framesDemo: Demo = {
     keywords: ["benchmark", "frames", "fps", "performance", "GdkFrameClock"],
     component: FramesDemo,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 400,
 };

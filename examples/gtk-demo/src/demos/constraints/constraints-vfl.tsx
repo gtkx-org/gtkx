@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton } from "@gtkx/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./constraints-vfl.tsx?raw";
 
@@ -46,7 +46,7 @@ const ConstraintsVflDemo = () => {
         }
     }, []);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         applyConstraints();
     }, [applyConstraints]);
 
@@ -67,4 +67,5 @@ export const constraintsVflDemo: Demo = {
     keywords: ["constraint", "VFL", "visual format language", "GtkConstraintLayout", "layout"],
     component: ConstraintsVflDemo,
     sourceCode,
+    defaultWidth: 260,
 };

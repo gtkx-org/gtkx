@@ -1,7 +1,7 @@
 import { createRef } from "@gtkx/ffi";
 import type { Context } from "@gtkx/ffi/cairo";
-import { Pattern } from "@gtkx/ffi/cairo";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import { LinearPattern } from "@gtkx/ffi/cairo";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkDrawingArea, GtkGestureLongPress, GtkGestureRotate, GtkGestureSwipe, GtkGestureZoom } from "@gtkx/react";
 import { useCallback, useRef } from "react";
 import type { Demo } from "../types.js";
@@ -41,7 +41,7 @@ const GesturesDemo = () => {
         queueDraw();
     }, [queueDraw]);
 
-    const handleLongPressCancelled = useCallback(() => {
+    const handleLongPressEnd = useCallback(() => {
         gestureStateRef.current.longPressed = false;
         queueDraw();
     }, [queueDraw]);
@@ -91,15 +91,13 @@ const GesturesDemo = () => {
             cr.rotate(angle);
             cr.scale(scale, scale);
 
-            const pattern = Pattern.createLinear(-rectSize / 2, 0, rectSize / 2, 0);
+            const pattern = new LinearPattern(-rectSize / 2, 0, rectSize, 0);
             pattern.addColorStopRgb(0, 0, 0, 1);
             pattern.addColorStopRgb(1, 1, 0, 0);
             cr.setSource(pattern);
 
             cr.rectangle(-rectSize / 2, -rectSize / 2, rectSize, rectSize);
-            cr.fillPreserve();
-            cr.setSourceRgb(0, 0, 0);
-            cr.stroke();
+            cr.fill();
 
             cr.restore();
         }
@@ -108,22 +106,36 @@ const GesturesDemo = () => {
             cr.save();
             cr.arc(width / 2, height / 2, 50, 0, 2 * Math.PI);
             cr.setSourceRgba(0, 1, 0, 0.5);
-            cr.fill();
+            cr.stroke();
             cr.restore();
         }
     }, []);
 
     return (
         <GtkDrawingArea ref={drawingAreaRef} contentWidth={400} contentHeight={400} onDraw={drawFunc}>
-            <GtkGestureSwipe onSwipe={handleSwipe} />
-            <GtkGestureLongPress onPressed={handleLongPressPressed} onCancelled={handleLongPressCancelled} />
+            <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handleSwipe} />
+            <GtkGestureSwipe
+                propagationPhase={Gtk.PropagationPhase.BUBBLE}
+                nPoints={3}
+                onBegin={(_sequence, self) => {
+                    if (_sequence !== null) self.setState(Gtk.EventSequenceState.DENIED);
+                }}
+                onSwipe={handleSwipe}
+            />
+            <GtkGestureLongPress
+                propagationPhase={Gtk.PropagationPhase.BUBBLE}
+                onPressed={handleLongPressPressed}
+                onEnd={handleLongPressEnd}
+            />
             <GtkGestureRotate
+                propagationPhase={Gtk.PropagationPhase.BUBBLE}
                 ref={(g: Gtk.GestureRotate | null) => {
                     rotateRef.current = g;
                 }}
                 onAngleChanged={handleRotateChanged}
             />
             <GtkGestureZoom
+                propagationPhase={Gtk.PropagationPhase.BUBBLE}
                 ref={(g: Gtk.GestureZoom | null) => {
                     zoomRef.current = g;
                 }}
@@ -156,4 +168,6 @@ export const gesturesDemo: Demo = {
     ],
     component: GesturesDemo,
     sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 400,
 };

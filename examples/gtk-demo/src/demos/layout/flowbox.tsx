@@ -1,6 +1,8 @@
-import { css } from "@gtkx/css";
+import type { Context } from "@gtkx/ffi/cairo";
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, GtkDrawingArea, GtkFlowBox, GtkScrolledWindow } from "@gtkx/react";
+import { useMemo } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./flowbox.tsx?raw";
 
@@ -672,29 +674,47 @@ const COLORS = [
     "YellowGreen",
 ];
 
-const colorStyles = new Map(
-    COLORS.map((color) => [
-        color,
-        css`
-            & {
-                background-color: ${color};
+let parsedColors: Map<string, Gdk.RGBA> | undefined;
+function getParsedColors() {
+    if (!parsedColors) {
+        parsedColors = new Map<string, Gdk.RGBA>();
+        for (const name of COLORS) {
+            const rgba = new Gdk.RGBA();
+            if (rgba.parse(name)) {
+                parsedColors.set(name, rgba);
             }
-        `,
-    ]),
-);
+        }
+    }
+    return parsedColors;
+}
+
+function drawColor(cr: Context, _width: number, _height: number, rgba: Gdk.RGBA): void {
+    cr.setSourceRgba(rgba.getRed(), rgba.getGreen(), rgba.getBlue(), rgba.getAlpha());
+    cr.paint();
+}
 
 const FlowBoxDemo = () => {
+    const colorItems = useMemo(
+        () =>
+            COLORS.map((color) => {
+                const rgba = getParsedColors().get(color);
+                return { color, rgba };
+            }),
+        [],
+    );
+
     return (
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
             <GtkFlowBox maxChildrenPerLine={30} selectionMode={Gtk.SelectionMode.NONE} valign={Gtk.Align.START}>
-                {COLORS.map((color) => {
-                    const style = colorStyles.get(color);
-                    return (
-                        <GtkButton key={color} tooltipText={color}>
-                            <GtkDrawingArea contentWidth={24} contentHeight={24} cssClasses={style ? [style] : []} />
-                        </GtkButton>
-                    );
-                })}
+                {colorItems.map(({ color, rgba }) => (
+                    <GtkButton key={color}>
+                        <GtkDrawingArea
+                            contentWidth={24}
+                            contentHeight={24}
+                            onDraw={rgba ? (cr, w, h) => drawColor(cr, w, h, rgba) : undefined}
+                        />
+                    </GtkButton>
+                ))}
             </GtkFlowBox>
         </GtkScrolledWindow>
     );
@@ -708,4 +728,6 @@ export const flowboxDemo: Demo = {
     keywords: ["flowbox", "GtkFlowBox", "grid", "wrap", "responsive"],
     component: FlowBoxDemo,
     sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 600,
 };

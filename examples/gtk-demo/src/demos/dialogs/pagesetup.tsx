@@ -1,10 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pagesetup.tsx?raw";
 
-const PageSetupDemo = ({ window }: DemoProps) => {
+const PageSetupDemo = ({ window, onClose }: DemoProps) => {
     const dialogRef = useRef<Gtk.PageSetupUnixDialog | null>(null);
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
 
     const showDialog = useCallback(() => {
         if (dialogRef.current) {
@@ -23,12 +25,13 @@ const PageSetupDemo = ({ window }: DemoProps) => {
         dialog.connect("response", () => {
             dialog.destroy();
             dialogRef.current = null;
+            onCloseRef.current?.();
         });
 
         dialog.setVisible(true);
     }, [window]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         showDialog();
         return () => {
             if (dialogRef.current) {
@@ -48,4 +51,5 @@ export const pageSetupDemo: Demo = {
     keywords: ["page", "setup", "paper", "size", "orientation", "GtkPageSetup", "GtkPageSetupUnixDialog", "print"],
     component: PageSetupDemo,
     sourceCode,
+    dialogOnly: true,
 };

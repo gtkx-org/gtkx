@@ -11,17 +11,8 @@ interface AppItem {
     appInfo: Gio.AppInfo;
     id: string;
     name: string;
-    iconName: string;
+    icon: Gio.Icon | null;
 }
-
-const getIconName = (icon: Gio.Icon | null): string => {
-    if (!icon) return "application-x-executable-symbolic";
-    if (icon instanceof Gio.ThemedIcon) {
-        const names = icon.getNames();
-        return names[0] ?? "application-x-executable-symbolic";
-    }
-    return "application-x-executable-symbolic";
-};
 
 const ListViewApplauncherDemo = () => {
     const [apps, setApps] = useState<AppItem[]>([]);
@@ -32,7 +23,7 @@ const ListViewApplauncherDemo = () => {
             appInfo: app,
             id: app.getId() ?? crypto.randomUUID(),
             name: app.getDisplayName(),
-            iconName: getIconName(app.getIcon()),
+            icon: app.getIcon(),
         }));
         setApps(appItems);
     }, []);
@@ -49,7 +40,10 @@ const ListViewApplauncherDemo = () => {
             try {
                 app.appInfo.launch(null, context);
             } catch (error) {
-                console.error("Could not launch", app.name, error);
+                const dialog = new Gtk.AlertDialog();
+                dialog.setMessage(`Could not launch ${app.name}`);
+                dialog.setDetail(error instanceof Error ? error.message : String(error));
+                dialog.show(null);
             }
         },
         [apps],
@@ -59,14 +53,16 @@ const ListViewApplauncherDemo = () => {
         <GtkScrolledWindow vexpand hexpand>
             <GtkListView
                 estimatedItemHeight={48}
+                selectionMode={Gtk.SelectionMode.SINGLE}
                 onActivate={handleActivate}
-                renderItem={(item) => (
+                renderItem={(item: AppItem | null) => (
                     <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
                         <GtkImage
-                            iconName={item?.iconName ?? "application-x-executable-symbolic"}
+                            {...(item?.icon ? { gicon: item.icon } : { iconName: "application-x-executable" })}
                             iconSize={Gtk.IconSize.LARGE}
+                            accessibleLabel="App icon"
                         />
-                        <GtkLabel label={item?.name ?? ""} />
+                        <GtkLabel label={item?.name ?? ""} accessibleLabel={item?.name ?? ""} />
                     </GtkBox>
                 )}
             >
@@ -86,4 +82,6 @@ export const listviewApplauncherDemo: Demo = {
     keywords: ["listview", "launcher", "apps", "icons", "GtkListView", "GAppInfo", "GListModel"],
     component: ListViewApplauncherDemo,
     sourceCode,
+    defaultWidth: 640,
+    defaultHeight: 320,
 };

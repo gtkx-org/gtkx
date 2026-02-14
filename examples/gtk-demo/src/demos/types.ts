@@ -13,6 +13,9 @@ export type Demo = {
     keywords: string[];
     component?: ComponentType<DemoProps>;
     sourceCode?: string;
+    defaultWidth?: number;
+    defaultHeight?: number;
+    dialogOnly?: boolean;
 };
 
 export type TreeItem =

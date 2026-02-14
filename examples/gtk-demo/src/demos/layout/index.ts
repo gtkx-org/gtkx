@@ -1,5 +1,4 @@
 import type { Demo } from "../types.js";
-import { aspectFrameDemo } from "./aspect-frame.js";
 import { fixedDemo } from "./fixed.js";
 import { fixed2Demo } from "./fixed2.js";
 import { flowboxDemo } from "./flowbox.js";
@@ -10,7 +9,6 @@ import { panesDemo } from "./panes.js";
 import { sizegroupDemo } from "./sizegroup.js";
 
 export const layoutDemos: Demo[] = [
-    aspectFrameDemo,
     panesDemo,
     fixedDemo,
     fixed2Demo,

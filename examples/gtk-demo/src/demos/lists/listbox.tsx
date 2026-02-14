@@ -1,19 +1,26 @@
-import { css } from "@gtkx/css";
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
+import * as Pango from "@gtkx/ffi/pango";
 import {
     GtkBox,
     GtkButton,
+    GtkGrid,
     GtkImage,
     GtkLabel,
     GtkLinkButton,
     GtkListBox,
     GtkListBoxRow,
+    GtkMenuButton,
+    GtkPicture,
     GtkRevealer,
     GtkScrolledWindow,
+    x,
 } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import appleRedPath from "../css/apple-red.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox.tsx?raw";
+import messagesRaw from "./messages.txt?raw";
 
 interface Message {
     id: number;
@@ -27,197 +34,237 @@ interface Message {
     nReshares: number;
 }
 
-const MESSAGES: Message[] = [
-    {
-        id: 1,
-        senderName: "GTK and friends",
-        senderNick: "@GTKtoolkit",
-        message: "New features of GtkInspector available in the latest release!",
-        time: Date.now() / 1000 - 3600 * 2,
-        replyTo: 0,
-        resentBy: null,
-        nFavorites: 2,
-        nReshares: 3,
-    },
-    {
-        id: 2,
-        senderName: "Emmanuele Bassi",
-        senderNick: "@ebassi",
-        message: "OpenGL integration lands in GTK — great progress on the rendering front.",
-        time: Date.now() / 1000 - 3600 * 24,
-        replyTo: 0,
-        resentBy: "GTKtoolkit",
-        nFavorites: 0,
-        nReshares: 9,
-    },
-    {
-        id: 3,
-        senderName: "Matthew Waters",
-        senderNick: "@ystreet00",
-        message: "GTK + GStreamer integration using the new OpenGL support is looking great!",
-        time: Date.now() / 1000 - 3600 * 48,
-        replyTo: 0,
-        resentBy: "GTKtoolkit",
-        nFavorites: 0,
-        nReshares: 13,
-    },
-    {
-        id: 4,
-        senderName: "Allan Day",
-        senderNick: "@allanday",
-        message: "New Human Interface Guidelines coming for GNOME and GTK.",
-        time: Date.now() / 1000 - 3600 * 72,
-        replyTo: 0,
-        resentBy: "GTKtoolkit",
-        nFavorites: 0,
-        nReshares: 12,
-    },
-    {
-        id: 5,
-        senderName: "GTK and friends",
-        senderNick: "@GTKtoolkit",
-        message: "GTK 4 released! Major improvements in rendering, input handling, and accessibility.",
-        time: Date.now() / 1000 - 3600 * 96,
-        replyTo: 0,
-        resentBy: null,
-        nFavorites: 5,
-        nReshares: 8,
-    },
-];
+function parseMessages(raw: string): Message[] {
+    const lines = raw.split("\n").filter((line) => line.length > 0);
+    return lines.map((line) => {
+        const parts = line.split("|");
+        return {
+            id: parseInt(parts[0] ?? "0", 10),
+            senderName: parts[1] ?? "",
+            senderNick: parts[2] ?? "",
+            message: parts[3] ?? "",
+            time: parseInt(parts[4] ?? "0", 10),
+            replyTo: parseInt(parts[5] ?? "0", 10),
+            resentBy: parts[6] && parts[6].length > 0 ? parts[6] : null,
+            nFavorites: parseInt(parts[7] ?? "0", 10),
+            nReshares: parseInt(parts[8] ?? "0", 10),
+        };
+    });
+}
 
-const extraButtonsStyle = css`
-    opacity: 0;
-    transition: opacity 200ms ease;
-`;
+const ALL_MESSAGES = parseMessages(messagesRaw);
 
-const extraButtonsVisibleStyle = css`
-    opacity: 1;
-`;
+let appleRedTexture: Gdk.Texture | undefined;
+function getAppleRedTexture() {
+    if (!appleRedTexture) {
+        appleRedTexture = Gdk.Texture.newFromFilename(appleRedPath);
+    }
+    return appleRedTexture;
+}
+
+let boldAttrs: Pango.AttrList | undefined;
+function getBoldAttrs() {
+    if (!boldAttrs) {
+        boldAttrs = new Pango.AttrList();
+        boldAttrs.insert(Pango.attrWeightNew(Pango.Weight.BOLD));
+    }
+    return boldAttrs;
+}
 
 function formatShortTime(timestamp: number): string {
-    const now = Date.now() / 1000;
-    const diff = now - timestamp;
-    if (diff < 60) return `${Math.floor(diff)}s`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-    return `${Math.floor(diff / 86400)}d`;
+    const date = new Date(timestamp * 1000);
+    const day = String(date.getDate()).padStart(2, " ");
+    const month = date.toLocaleString("en-US", { month: "short" });
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day} ${month} ${year}`;
 }
 
 function formatDetailedTime(timestamp: number): string {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleString();
+    const time = date.toLocaleTimeString();
+    const day = String(date.getDate()).padStart(2, " ");
+    const month = date.toLocaleString("en-US", { month: "short" });
+    const year = date.getFullYear();
+    return `${time} - ${day} ${month} ${year}`;
 }
 
 interface MessageRowProps {
     message: Message;
+    expanded: boolean;
+    onToggleExpand: (id: number) => void;
     onFavorite: (id: number) => void;
     onReshare: (id: number) => void;
 }
 
-const MessageRow = ({ message, onFavorite, onReshare }: MessageRowProps) => {
-    const [expanded, setExpanded] = useState(false);
-    const [hovered, setHovered] = useState(false);
+const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }: MessageRowProps) => {
+    const extraButtonsRef = useRef<Gtk.Box>(null);
 
-    const handleExpand = useCallback(() => {
-        setExpanded((prev) => !prev);
+    const handleStateFlagsChanged = useCallback((_previousFlags: number, self: Gtk.Widget) => {
+        const flags = self.getStateFlags();
+        const visible = (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0;
+        extraButtonsRef.current?.setVisible(visible);
     }, []);
 
-    const isGtk = message.senderNick === "@GTKtoolkit";
-
     return (
-        <GtkListBoxRow
-            onStateFlagsChanged={(flags) => {
-                const isHovered = (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0;
-                setHovered(isHovered);
-            }}
-        >
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} marginTop={8} marginBottom={8}>
-                <GtkBox>
-                    <GtkImage
-                        iconName={isGtk ? "org.gtk.Demo4" : "avatar-default-symbolic"}
-                        pixelSize={32}
-                        marginTop={8}
-                        marginBottom={8}
-                        marginStart={8}
-                        marginEnd={8}
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.START}
-                    />
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand>
-                        <GtkBox hexpand>
-                            <GtkButton hasFrame={false} valign={Gtk.Align.BASELINE}>
-                                <GtkLabel
-                                    label={message.senderName}
-                                    valign={Gtk.Align.BASELINE}
-                                    cssClasses={["heading"]}
-                                />
-                            </GtkButton>
+        <GtkListBoxRow onStateFlagsChanged={handleStateFlagsChanged}>
+            <GtkGrid hexpand>
+                <x.GridChild column={0} row={0} rowSpan={5}>
+                    {message.senderNick === "GTKtoolkit" ? (
+                        <GtkImage
+                            iconName="org.gtk.Demo4"
+                            widthRequest={32}
+                            heightRequest={32}
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.START}
+                            marginTop={8}
+                            marginBottom={8}
+                            marginStart={8}
+                            marginEnd={8}
+                            iconSize={Gtk.IconSize.LARGE}
+                        />
+                    ) : (
+                        <GtkPicture
+                            paintable={getAppleRedTexture()}
+                            widthRequest={32}
+                            heightRequest={32}
+                            halign={Gtk.Align.CENTER}
+                            valign={Gtk.Align.START}
+                            marginTop={8}
+                            marginBottom={8}
+                            marginStart={8}
+                            marginEnd={8}
+                            canShrink
+                        />
+                    )}
+                </x.GridChild>
+
+                <x.GridChild column={1} row={0}>
+                    <GtkBox hexpand baselinePosition={Gtk.BaselinePosition.TOP}>
+                        <GtkButton receivesDefault hasFrame={false} valign={Gtk.Align.BASELINE}>
                             <GtkLabel
-                                label={message.senderNick}
+                                label={message.senderName}
                                 valign={Gtk.Align.BASELINE}
-                                cssClasses={["dim-label"]}
+                                attributes={getBoldAttrs()}
                             />
-                            <GtkLabel
-                                label={formatShortTime(message.time)}
-                                hexpand
-                                xalign={1}
-                                valign={Gtk.Align.BASELINE}
-                                cssClasses={["dim-label"]}
-                            />
-                        </GtkBox>
-
-                        <GtkLabel label={message.message} wrap halign={Gtk.Align.START} xalign={0} yalign={0} />
-
-                        {message.resentBy && (
-                            <GtkBox spacing={4}>
-                                <GtkImage iconName="media-playlist-repeat-symbolic" />
-                                <GtkLabel label="Resent by" />
-                                <GtkLinkButton label={message.resentBy} uri="https://www.gtk.org" hasFrame={false} />
-                            </GtkBox>
-                        )}
-
-                        <GtkBox spacing={6}>
-                            <GtkButton label={expanded ? "Hide" : "Expand"} hasFrame={false} onClicked={handleExpand} />
-                            <GtkBox
-                                spacing={6}
-                                cssClasses={[extraButtonsStyle, hovered ? extraButtonsVisibleStyle : ""]}
-                            >
-                                <GtkButton label="Reply" hasFrame={false} />
-                                <GtkButton label="Reshare" hasFrame={false} onClicked={() => onReshare(message.id)} />
-                                <GtkButton label="Favorite" hasFrame={false} onClicked={() => onFavorite(message.id)} />
-                                <GtkButton label="More..." hasFrame={false} />
-                            </GtkBox>
-                        </GtkBox>
-
-                        <GtkRevealer revealChild={expanded}>
-                            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                                <GtkBox spacing={8} marginTop={2} marginBottom={2}>
-                                    {message.nReshares > 0 && (
-                                        <GtkLabel useMarkup label={`<b>${message.nReshares}</b>\nReshares`} />
-                                    )}
-                                    {message.nFavorites > 0 && (
-                                        <GtkLabel useMarkup label={`<b>${message.nFavorites}</b>\nFavorites`} />
-                                    )}
-                                </GtkBox>
-                                <GtkBox>
-                                    <GtkLabel label={formatDetailedTime(message.time)} cssClasses={["dim-label"]} />
-                                    <GtkButton label="Details" hasFrame={false} cssClasses={["dim-label"]} />
-                                </GtkBox>
-                            </GtkBox>
-                        </GtkRevealer>
+                        </GtkButton>
+                        <GtkLabel label={message.senderNick} valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]} />
+                        <GtkLabel
+                            label={formatShortTime(message.time)}
+                            hexpand
+                            xalign={1}
+                            valign={Gtk.Align.BASELINE}
+                            cssClasses={["dim-label"]}
+                        />
                     </GtkBox>
-                </GtkBox>
-            </GtkBox>
+                </x.GridChild>
+
+                <x.GridChild column={1} row={1}>
+                    <GtkLabel
+                        label={message.message}
+                        halign={Gtk.Align.START}
+                        valign={Gtk.Align.START}
+                        xalign={0}
+                        yalign={0}
+                        wrap
+                    />
+                </x.GridChild>
+
+                <x.GridChild column={1} row={2}>
+                    <GtkBox visible={message.resentBy !== null}>
+                        <GtkImage iconName="media-playlist-repeat" />
+                        <GtkLabel label="Resent by" />
+                        <GtkLinkButton
+                            label={message.resentBy ?? ""}
+                            receivesDefault
+                            hasFrame={false}
+                            uri="http://www.gtk.org"
+                        />
+                    </GtkBox>
+                </x.GridChild>
+
+                <x.GridChild column={1} row={3}>
+                    <GtkBox spacing={6}>
+                        <GtkButton
+                            label={expanded ? "Hide" : "Expand"}
+                            receivesDefault
+                            hasFrame={false}
+                            onClicked={() => onToggleExpand(message.id)}
+                        />
+                        <GtkBox ref={extraButtonsRef} spacing={6} visible={false}>
+                            <GtkButton label="Reply" receivesDefault hasFrame={false} />
+                            <GtkButton
+                                label="Reshare"
+                                receivesDefault
+                                hasFrame={false}
+                                onClicked={() => onReshare(message.id)}
+                            />
+                            <GtkButton
+                                label="Favorite"
+                                receivesDefault
+                                hasFrame={false}
+                                onClicked={() => onFavorite(message.id)}
+                            />
+                            <GtkMenuButton receivesDefault hasFrame={false} label="More...">
+                                <x.MenuSection>
+                                    <x.MenuItem id="email-msg" label="Email message" onActivate={() => {}} />
+                                    <x.MenuItem id="embed-msg" label="Embed message" onActivate={() => {}} />
+                                </x.MenuSection>
+                            </GtkMenuButton>
+                        </GtkBox>
+                    </GtkBox>
+                </x.GridChild>
+
+                <x.GridChild column={1} row={4}>
+                    <GtkRevealer revealChild={expanded}>
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                            <GtkBox marginTop={2} marginBottom={2} spacing={8}>
+                                <GtkLabel
+                                    visible={message.nReshares !== 0}
+                                    useMarkup
+                                    label={`<b>${message.nReshares}</b>\nReshares`}
+                                />
+                                <GtkLabel
+                                    visible={message.nFavorites !== 0}
+                                    useMarkup
+                                    label={`<b>${message.nFavorites}</b>\nFavorites`}
+                                />
+                            </GtkBox>
+                            <GtkBox>
+                                <GtkLabel label={formatDetailedTime(message.time)} cssClasses={["dim-label"]} />
+                                <GtkButton
+                                    label="Details"
+                                    receivesDefault
+                                    hasFrame={false}
+                                    cssClasses={["dim-label"]}
+                                />
+                            </GtkBox>
+                        </GtkBox>
+                    </GtkRevealer>
+                </x.GridChild>
+            </GtkGrid>
         </GtkListBoxRow>
     );
 };
 
 const ListBoxDemo = () => {
-    const [messages, setMessages] = useState(MESSAGES);
+    const [messages, setMessages] = useState(ALL_MESSAGES);
+    const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
     const sortedMessages = useMemo(() => {
         return [...messages].sort((a, b) => b.time - a.time);
     }, [messages]);
+
+    const handleToggleExpand = useCallback((id: number) => {
+        setExpandedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    }, []);
 
     const handleFavorite = useCallback((id: number) => {
         setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, nFavorites: m.nFavorites + 1 } : m)));
@@ -227,7 +274,16 @@ const ListBoxDemo = () => {
         setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, nReshares: m.nReshares + 1 } : m)));
     }, []);
 
-    const handleRowActivated = useCallback((_row: Gtk.ListBoxRow) => {}, []);
+    const handleRowActivated = useCallback(
+        (row: Gtk.ListBoxRow) => {
+            const index = row.getIndex();
+            const msg = sortedMessages[index];
+            if (msg) {
+                handleToggleExpand(msg.id);
+            }
+        },
+        [sortedMessages, handleToggleExpand],
+    );
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -242,6 +298,8 @@ const ListBoxDemo = () => {
                         <MessageRow
                             key={message.id}
                             message={message}
+                            expanded={expandedIds.has(message.id)}
+                            onToggleExpand={handleToggleExpand}
                             onFavorite={handleFavorite}
                             onReshare={handleReshare}
                         />
@@ -260,4 +318,6 @@ export const listboxDemo: Demo = {
     keywords: ["listbox", "list", "rows", "selection", "GtkListBox", "GtkListBoxRow", "messages", "social"],
     component: ListBoxDemo,
     sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 600,
 };

@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow, x } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo } from "../types.js";
+import rawWeatherData from "./listview_weather.txt?raw";
 import sourceCode from "./listview-weather.tsx?raw";
 
 type WeatherType = "clear" | "few-clouds" | "fog" | "overcast" | "showers-scattered" | "showers" | "snow" | "storm";
@@ -24,48 +25,93 @@ const WEATHER_ICONS: Record<WeatherType, string> = {
     storm: "weather-storm-symbolic",
 };
 
-const WEATHER_TYPES: WeatherType[] = [
-    "clear",
-    "few-clouds",
-    "fog",
-    "overcast",
-    "showers-scattered",
-    "showers",
-    "snow",
-    "storm",
-];
+const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+const ONE_HOUR_MS = 60 * 60 * 1000;
 
-const generateWeatherData = (count: number): WeatherInfo[] => {
+const parseWeatherType = (clouds: string, precip: string, fallback: WeatherType): WeatherType => {
+    if (precip.includes("SN")) return "snow";
+    if (precip.includes("TS")) return "storm";
+    if (precip.includes("DZ")) return "showers-scattered";
+    if (precip.includes("SH") || precip.includes("RA")) return "showers";
+    if (precip.includes("FG")) return "fog";
+
+    if (clouds === "M" || clouds === "") return fallback;
+
+    if (clouds.includes("OVC")) return "overcast";
+    if (clouds.includes("BKN")) return "few-clouds";
+    if (clouds.includes("SCT")) return "few-clouds";
+    if (clouds.includes("VV")) return "fog";
+
+    return "clear";
+};
+
+const parseTimestamp = (dateStr: string): number => {
+    const withSeconds = `${dateStr}:00`;
+    return new Date(`${withSeconds.replace(" ", "T")}Z`).getTime();
+};
+
+const formatHour = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const hours = date.getUTCHours().toString().padStart(2, "0");
+    const minutes = date.getUTCMinutes().toString().padStart(2, "0");
+    return `${hours}:${minutes}`;
+};
+
+const parseTemperature = (s: string, fallback: number): number => {
+    const value = Number.parseFloat(s);
+    if (Number.isNaN(value)) return fallback;
+    return value;
+};
+
+const parseWeatherData = (): WeatherInfo[] => {
     const data: WeatherInfo[] = [];
-    const startDate = new Date(2011, 0, 1, 0, 0, 0);
+    const lines = rawWeatherData.split("\n");
 
-    let currentTemp = 5;
+    let currentTimestamp = Date.UTC(2011, 0, 1, 0, 0, 0);
+    let currentTemp = 0;
     let currentWeather: WeatherType = "clear";
+    let idx = 0;
 
-    for (let i = 0; i < count; i++) {
-        const date = new Date(startDate.getTime() + i * 60 * 60 * 1000);
-        const hour = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    data.push({
+        id: `weather-${idx++}`,
+        hour: formatHour(currentTimestamp),
+        temperature: currentTemp,
+        weatherType: currentWeather,
+    });
 
-        currentTemp += (Math.random() - 0.5) * 2;
-        currentTemp = Math.max(-10, Math.min(35, currentTemp));
+    for (const line of lines) {
+        if (line.trim() === "") continue;
 
-        if (Math.random() < 0.05) {
-            currentWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)] ?? "clear";
+        const fields = line.split(",");
+        if (fields.length < 4) continue;
+
+        const dateMs = parseTimestamp(fields[0] ?? "");
+
+        while (dateMs - currentTimestamp > THIRTY_MINUTES_MS) {
+            currentTimestamp += ONE_HOUR_MS;
+            data.push({
+                id: `weather-${idx++}`,
+                hour: formatHour(currentTimestamp),
+                temperature: currentTemp,
+                weatherType: currentWeather,
+            });
         }
 
-        data.push({
-            id: `weather-${i}`,
-            hour,
-            temperature: Math.round(currentTemp),
-            weatherType: currentWeather,
-        });
+        currentTemp = parseTemperature(fields[1] ?? "", currentTemp);
+        currentWeather = parseWeatherType(fields[2] ?? "", fields[3] ?? "", currentWeather);
+
+        const last = data[data.length - 1];
+        if (last) {
+            last.temperature = currentTemp;
+            last.weatherType = currentWeather;
+        }
     }
 
     return data;
 };
 
 const ListViewWeatherDemo = () => {
-    const weatherData = useMemo(() => generateWeatherData(70000), []);
+    const weatherData = useMemo(() => parseWeatherData(), []);
 
     return (
         <GtkScrolledWindow vexpand hexpand>
@@ -74,8 +120,7 @@ const ListViewWeatherDemo = () => {
                 orientation={Gtk.Orientation.HORIZONTAL}
                 showSeparators
                 selectionMode={Gtk.SelectionMode.NONE}
-                renderItem={(_item) => {
-                    const item = _item as WeatherInfo | null;
+                renderItem={(item: WeatherInfo | null) => {
                     return (
                         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                             <GtkLabel label={item?.hour ?? ""} widthChars={5} />
@@ -84,7 +129,7 @@ const ListViewWeatherDemo = () => {
                                 iconSize={Gtk.IconSize.LARGE}
                             />
                             <GtkLabel
-                                label={`${item?.temperature ?? 0}°`}
+                                label={`${Math.round(item?.temperature ?? 0)}°`}
                                 widthChars={4}
                                 vexpand
                                 valign={Gtk.Align.END}
@@ -109,4 +154,6 @@ export const listviewWeatherDemo: Demo = {
     keywords: ["listview", "weather", "horizontal", "GtkListView", "separators", "70000"],
     component: ListViewWeatherDemo,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 400,
 };

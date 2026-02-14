@@ -1,34 +1,41 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkScrolledWindow, GtkStack, GtkStackSwitcher, GtkTextView, x } from "@gtkx/react";
-import { useEffect, useRef, useState } from "react";
+import { GtkCheckButton, GtkHeaderBar, GtkScrolledWindow, GtkStack, GtkTextView, x } from "@gtkx/react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./markup.tsx?raw";
+import markupContent from "./markup.txt?raw";
 
-const SAMPLE_MARKUP = `<big>Welcome to <b>Pango Markup</b></big>
-
-This demonstrates how <span foreground="red">Pango markup</span> can be used to style text.
-
-<b>Bold</b>, <i>italic</i>, <u>underline</u>, and <s>strikethrough</s> are easy.
-
-You can use <tt>monospace</tt> for code, <span rise="-4096" size="small">subscripts</span> and <span rise="4096" size="small">superscripts</span>.
-
-<span foreground="#3584e4" size="large">Colors and sizes</span> work too.
-
-<span background="yellow" foreground="black"> Highlighting </span> is also possible.
-
-<span font_family="serif">Different</span> <span font_family="sans">font</span> <span font_family="monospace">families</span>
-
-See <span foreground="#3584e4"><u>docs.gtk.org/Pango/pango_markup.html</u></span> for more.`;
+const SAMPLE_MARKUP = markupContent;
 
 const MarkupDemo = () => {
     const formattedViewRef = useRef<Gtk.TextView | null>(null);
     const sourceViewRef = useRef<Gtk.TextView | null>(null);
-    const [stack, setStack] = useState<Gtk.Stack | null>(null);
+    const [showSource, setShowSource] = useState(false);
+    const markupRef = useRef(SAMPLE_MARKUP);
 
-    useEffect(() => {
+    const applyMarkup = useCallback(() => {
         const formattedView = formattedViewRef.current;
-        const sourceView = sourceViewRef.current;
+        if (!formattedView) return;
 
+        const buffer = formattedView.getBuffer();
+        if (!buffer) return;
+
+        buffer.beginIrreversibleAction();
+
+        const startIter = new Gtk.TextIter();
+        const endIter = new Gtk.TextIter();
+        buffer.getStartIter(startIter);
+        buffer.getEndIter(endIter);
+        buffer.delete(startIter, endIter);
+
+        buffer.getStartIter(startIter);
+        buffer.insertMarkup(startIter, markupRef.current, -1);
+
+        buffer.endIrreversibleAction();
+    }, []);
+
+    useLayoutEffect(() => {
+        const sourceView = sourceViewRef.current;
         if (sourceView) {
             const buffer = sourceView.getBuffer();
             if (buffer) {
@@ -36,57 +43,83 @@ const MarkupDemo = () => {
             }
         }
 
-        if (formattedView) {
-            const buffer = formattedView.getBuffer();
-            if (buffer) {
-                const startIter = new Gtk.TextIter();
-                buffer.getStartIter(startIter);
-                buffer.insertMarkup(startIter, SAMPLE_MARKUP, -1);
+        applyMarkup();
+    }, [applyMarkup]);
+
+    const handleSourceToggle = useCallback(
+        (active: boolean) => {
+            if (!active && showSource) {
+                const sourceView = sourceViewRef.current;
+                if (sourceView) {
+                    const buffer = sourceView.getBuffer();
+                    if (buffer) {
+                        const startIter = new Gtk.TextIter();
+                        const endIter = new Gtk.TextIter();
+                        buffer.getStartIter(startIter);
+                        buffer.getEndIter(endIter);
+                        markupRef.current = buffer.getText(startIter, endIter, false);
+                    }
+                }
+                applyMarkup();
             }
-        }
-    }, []);
+            setShowSource(active);
+        },
+        [showSource, applyMarkup],
+    );
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-            <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} marginTop={12} marginBottom={12} />
-            <GtkStack ref={setStack} vexpand hexpand transitionType={Gtk.StackTransitionType.CROSSFADE}>
+        <>
+            <x.Slot for="GtkWindow" id="titlebar">
+                <GtkHeaderBar>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                        <GtkCheckButton
+                            label="Source"
+                            active={showSource}
+                            valign={Gtk.Align.CENTER}
+                            onToggled={(btn) => handleSourceToggle(btn.getActive())}
+                        />
+                    </x.ContainerSlot>
+                </GtkHeaderBar>
+            </x.Slot>
+            <GtkStack
+                page={showSource ? "source" : "formatted"}
+                vexpand
+                hexpand
+                transitionType={Gtk.StackTransitionType.NONE}
+            >
                 <x.StackPage id="formatted" title="Formatted">
-                    <GtkScrolledWindow vexpand hexpand>
+                    <GtkScrolledWindow
+                        vexpand
+                        hexpand
+                        hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                    >
                         <GtkTextView
                             ref={formattedViewRef}
                             editable={false}
-                            cursorVisible={false}
-                            wrapMode={Gtk.WrapMode.WORD}
-                            topMargin={12}
-                            bottomMargin={12}
-                            leftMargin={12}
-                            rightMargin={12}
+                            wrapMode={Gtk.WrapMode.WORD_CHAR}
+                            leftMargin={10}
+                            rightMargin={10}
                         />
                     </GtkScrolledWindow>
                 </x.StackPage>
                 <x.StackPage id="source" title="Source">
-                    <GtkScrolledWindow vexpand hexpand>
+                    <GtkScrolledWindow
+                        vexpand
+                        hexpand
+                        hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                    >
                         <GtkTextView
                             ref={sourceViewRef}
-                            editable={false}
-                            cursorVisible={false}
                             wrapMode={Gtk.WrapMode.WORD}
-                            monospace
-                            topMargin={12}
-                            bottomMargin={12}
-                            leftMargin={12}
-                            rightMargin={12}
+                            leftMargin={10}
+                            rightMargin={10}
                         />
                     </GtkScrolledWindow>
                 </x.StackPage>
             </GtkStack>
-            <GtkLabel
-                label="Use the tabs above to switch between formatted view and source markup"
-                cssClasses={["dim-label"]}
-                marginTop={12}
-                marginBottom={12}
-            />
-        </GtkBox>
+        </>
     );
 };
 
@@ -97,4 +130,6 @@ export const markupDemo: Demo = {
     keywords: ["pango", "markup", "text", "formatting", "rich text", "html", "label", "styled"],
     component: MarkupDemo,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 680,
 };

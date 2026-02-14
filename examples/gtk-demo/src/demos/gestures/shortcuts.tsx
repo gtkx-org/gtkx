@@ -1,334 +1,402 @@
-import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkImage, GtkLabel, GtkMenuButton, x } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
+import { useCallback } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./shortcuts.tsx?raw";
 
-interface ShortcutDef {
-    title: string;
-    accelerator: string;
+function shortcut(title: string, accelerator: string): Gtk.ShortcutsShortcut {
+    const s = new Gtk.ShortcutsShortcut();
+    s.setTitle(title);
+    s.setAccelerator(accelerator);
+    return s;
 }
 
-interface ShortcutSectionDef {
-    title: string | null;
-    shortcuts: ShortcutDef[];
+function gesture(title: string, type: Gtk.ShortcutType): Gtk.ShortcutsShortcut {
+    const s = new Gtk.ShortcutsShortcut();
+    s.setTitle(title);
+    s.setShortcutType(type);
+    return s;
 }
 
-const shortcutSections: ShortcutSectionDef[] = [
-    {
-        title: "General",
-        shortcuts: [
-            { title: "Help", accelerator: "F1" },
-            { title: "Preferences", accelerator: "<Control>comma" },
-            { title: "Keyboard Shortcuts", accelerator: "<Control>question" },
-            { title: "Quit", accelerator: "<Control>q" },
-        ],
-    },
-    {
-        title: "File",
-        shortcuts: [
-            { title: "New", accelerator: "<Control>n" },
-            { title: "Open", accelerator: "<Control>o" },
-            { title: "Save", accelerator: "<Control>s" },
-            { title: "Save As", accelerator: "<Control><Shift>s" },
-            { title: "Close", accelerator: "<Control>w" },
-        ],
-    },
-    {
-        title: "Edit",
-        shortcuts: [
-            { title: "Undo", accelerator: "<Control>z" },
-            { title: "Redo", accelerator: "<Control><Shift>z" },
-            { title: "Cut", accelerator: "<Control>x" },
-            { title: "Copy", accelerator: "<Control>c" },
-            { title: "Paste", accelerator: "<Control>v" },
-            { title: "Select All", accelerator: "<Control>a" },
-        ],
-    },
-    {
-        title: "View",
-        shortcuts: [
-            { title: "Zoom In", accelerator: "<Control>plus" },
-            { title: "Zoom Out", accelerator: "<Control>minus" },
-            { title: "Reset Zoom", accelerator: "<Control>0" },
-            { title: "Full Screen", accelerator: "F11" },
-        ],
-    },
-    {
-        title: "Search",
-        shortcuts: [
-            { title: "Find", accelerator: "<Control>f" },
-            { title: "Find and Replace", accelerator: "<Control>h" },
-            { title: "Find Next", accelerator: "<Control>g" },
-            { title: "Find Previous", accelerator: "<Control><Shift>g" },
-        ],
-    },
-    {
-        title: "Navigation",
-        shortcuts: [
-            { title: "Go to Line", accelerator: "<Control>l" },
-            { title: "Go to Definition", accelerator: "F12" },
-            { title: "Go to File", accelerator: "<Control>p" },
-            { title: "Go to Symbol", accelerator: "<Control><Shift>o" },
-        ],
-    },
-];
+function dirShortcut(title: string, accelerator: string, direction: Gtk.TextDirection): Gtk.ShortcutsShortcut {
+    const s = new Gtk.ShortcutsShortcut();
+    s.setTitle(title);
+    s.setAccelerator(accelerator);
+    s.setDirection(direction);
+    return s;
+}
+
+function group(title: string, shortcuts: Gtk.ShortcutsShortcut[], view?: string): Gtk.ShortcutsGroup {
+    const g = new Gtk.ShortcutsGroup();
+    g.setTitle(title);
+    if (view) {
+        g.setView(view);
+    }
+    for (const s of shortcuts) {
+        g.addShortcut(s);
+    }
+    return g;
+}
+
+function createGeditWindow(): Gtk.ShortcutsWindow {
+    const win = new Gtk.ShortcutsWindow();
+
+    const section = new Gtk.ShortcutsSection();
+    section.setSectionName("shortcuts");
+    section.setMaxHeight(12);
+
+    section.addGroup(
+        group("Touchpad gestures", [
+            gesture("Switch to the next document", Gtk.ShortcutType.GESTURE_TWO_FINGER_SWIPE_RIGHT),
+            gesture("Switch to the previous document", Gtk.ShortcutType.GESTURE_TWO_FINGER_SWIPE_LEFT),
+        ]),
+    );
+
+    section.addGroup(
+        group("Documents", [
+            shortcut("Create new document", "<Control>n"),
+            shortcut("Open a document", "<Control>o"),
+            shortcut("Save the document", "<Control>s"),
+            shortcut("Close the document", "<Control>w"),
+            shortcut("Switch to the next document", "<Control><Alt>Page_Down"),
+            shortcut("Switch to the previous document", "<Control><Alt>Page_Up"),
+        ]),
+    );
+
+    section.addGroup(
+        group("Find and Replace", [
+            shortcut("Find", "<Control>f"),
+            shortcut("Find the next match", "<Control>g"),
+            shortcut("Find the previous match", "<Control><Shift>g"),
+            shortcut("Find and Replace", "<Control>h"),
+            shortcut("Clear highlight", "<Control><Shift>k"),
+            shortcut("Go to line", "<Control>i"),
+        ]),
+    );
+
+    section.addGroup(group("Tools", [shortcut("Check spelling", "<Shift>F7")]));
+
+    section.addGroup(
+        group("Miscellaneous", [
+            shortcut("Fullscreen on / off", "F11"),
+            shortcut("Print the document", "<Control>p"),
+            shortcut("Toggle insert / overwrite", "Insert"),
+        ]),
+    );
+
+    win.addSection(section);
+    return win;
+}
+
+function createClocksWindow(): Gtk.ShortcutsWindow {
+    const win = new Gtk.ShortcutsWindow();
+
+    const section = new Gtk.ShortcutsSection();
+    section.setSectionName("shortcuts");
+    section.setMaxHeight(10);
+
+    section.addGroup(
+        group("General", [
+            shortcut("Go to the next section", "<Control>Page_Down"),
+            shortcut("Go to the previous section", "<Control>Page_Up"),
+            shortcut("Quit", "<Alt>q"),
+            dirShortcut("Forward", "<Alt>Right", Gtk.TextDirection.LTR),
+            dirShortcut("Back", "<Control>Left", Gtk.TextDirection.LTR),
+            dirShortcut("Forward", "<Alt>Left", Gtk.TextDirection.RTL),
+            dirShortcut("Back", "<Control>Right", Gtk.TextDirection.RTL),
+        ]),
+    );
+
+    section.addGroup(
+        group(
+            "World Clocks",
+            [shortcut("Add a world clock", "<Control>n"), shortcut("Select world clocks", "<Control>s")],
+            "world",
+        ),
+    );
+
+    section.addGroup(
+        group("Alarm", [shortcut("Add an alarm", "<Control>n"), shortcut("Select alarms", "<Control>s")], "alarm"),
+    );
+
+    section.addGroup(
+        group(
+            "Stopwatch",
+            [shortcut("Start / Stop / Continue", "Return space"), shortcut("Lap", "l"), shortcut("Reset", "Delete")],
+            "stopwatch",
+        ),
+    );
+
+    section.addGroup(
+        group("Timer", [shortcut("Start / Stop / Pause", "Return space"), shortcut("Reset", "Delete")], "timer"),
+    );
+
+    win.addSection(section);
+    return win;
+}
+
+function createBoxesWindow(): Gtk.ShortcutsWindow {
+    const win = new Gtk.ShortcutsWindow();
+
+    const section = new Gtk.ShortcutsSection();
+    section.setSectionName("shortcuts");
+    section.setMaxHeight(12);
+
+    section.addGroup(
+        group(
+            "Overview",
+            [
+                shortcut("Help", "F1"),
+                shortcut("Create a new box", "<Control>n"),
+                shortcut("Search", "<Control>f"),
+                shortcut("Keyboard shortcuts", "<Control>k"),
+                shortcut("Close Window/Quit Boxes", "<Control>q"),
+            ],
+            "overview",
+        ),
+    );
+
+    section.addGroup(
+        group(
+            "Box Creation and Properties",
+            [
+                dirShortcut("Switch to the next page", "<Alt>Right", Gtk.TextDirection.LTR),
+                dirShortcut("Switch to the previous page", "<Alt>Left", Gtk.TextDirection.LTR),
+                dirShortcut("Switch to the next page", "<Alt>Left", Gtk.TextDirection.RTL),
+                dirShortcut("Switch to the previous page", "<Alt>Right", Gtk.TextDirection.RTL),
+            ],
+            "wizard",
+        ),
+    );
+
+    section.addGroup(
+        group(
+            "Box Display",
+            [
+                shortcut("Grab/Ungrab keyboard", "Control_L&Alt_L"),
+                dirShortcut("Back to overview", "<Alt>Left", Gtk.TextDirection.LTR),
+                dirShortcut("Back to overview", "<Alt>Right", Gtk.TextDirection.RTL),
+                shortcut("Close window/Quit Boxes", "<Control>q"),
+                shortcut("Fullscreen/Restore from fullscreen", "F11"),
+            ],
+            "display",
+        ),
+    );
+
+    win.addSection(section);
+    return win;
+}
+
+function createBuilderWindow(): Gtk.ShortcutsWindow {
+    const win = new Gtk.ShortcutsWindow();
+
+    const editorSection = new Gtk.ShortcutsSection();
+    editorSection.setSectionName("editor");
+    editorSection.setTitle("Editor Shortcuts");
+
+    editorSection.addGroup(
+        group("General", [
+            shortcut("Global Search", "<Control>period"),
+            shortcut("Preferences", "<Control>comma"),
+            shortcut("Command Bar", "<Control>Return"),
+            shortcut("Terminal", "<Control><Shift>t"),
+            shortcut("Keyboard Shortcuts", "<Control><Shift>question"),
+        ]),
+    );
+
+    editorSection.addGroup(
+        group("Panels", [
+            shortcut("Toggle left panel", "F9"),
+            shortcut("Toggle right panel", "<Shift>F9"),
+            shortcut("Toggle bottom panel", "<Control>F9"),
+        ]),
+    );
+
+    editorSection.addGroup(
+        group("Touchpad gestures", [
+            gesture("Switch to the next document", Gtk.ShortcutType.GESTURE_TWO_FINGER_SWIPE_RIGHT),
+            gesture("Switch to the previous document", Gtk.ShortcutType.GESTURE_TWO_FINGER_SWIPE_LEFT),
+        ]),
+    );
+
+    editorSection.addGroup(
+        group("Files", [
+            shortcut("Create new document", "<Control>n"),
+            shortcut("Open a document", "<Control>o"),
+            shortcut("Save the document", "<Control>s"),
+            shortcut("Close the document", "<Control>w"),
+            shortcut("Switch to the next document", "<Control><Alt>Page_Down"),
+            shortcut("Switch to the previous document", "<Control><Alt>Page_Up"),
+        ]),
+    );
+
+    editorSection.addGroup(
+        group("Find and replace", [
+            shortcut("Find", "<Control>f"),
+            shortcut("Find the next match", "<Control>g"),
+            shortcut("Find the previous match", "<Control><Shift>g"),
+            shortcut("Find and Replace", "<Control>h"),
+            shortcut("Clear highlight", "<Control><Shift>k"),
+        ]),
+    );
+
+    editorSection.addGroup(
+        group("Copy and Paste", [
+            shortcut("Copy selected text to clipboard", "<Control>c"),
+            shortcut("Cut selected text to clipboard", "<Control>x"),
+            shortcut("Paste text from clipboard", "<Control>v"),
+        ]),
+    );
+
+    editorSection.addGroup(
+        group("Undo and Redo", [
+            shortcut("Undo previous command", "<Control>z"),
+            shortcut("Redo previous command", "<Control><Shift>z"),
+        ]),
+    );
+
+    editorSection.addGroup(
+        group("Editing", [
+            shortcut("Increment number at cursor", "<Control><Shift>a"),
+            shortcut("Decrement number at cursor", "<Control><Shift>x"),
+            shortcut("Join selected lines", "<Control>j"),
+            shortcut("Show completion window", "<Control>space"),
+            shortcut("Toggle overwrite", "Insert"),
+            shortcut("Reindent line", "<Control><Alt>i"),
+        ]),
+    );
+
+    editorSection.addGroup(
+        group("Navigation", [
+            shortcut("Move to next error in file", "<Alt>n"),
+            shortcut("Move to previous error in file", "<Alt>p"),
+            shortcut("Move to previous edit location", "<Shift><Alt>Left"),
+            shortcut("Move to next edit location", "<Shift><Alt>Right"),
+            shortcut("Jump to definition of symbol", "<Alt>period"),
+            shortcut("Move sectionport up within the file", "<Alt><Shift>Up"),
+            shortcut("Move sectionport down within the file", "<Alt><Shift>Down"),
+            shortcut("Move sectionport to end of file", "<Alt><Shift>End"),
+            shortcut("Move sectionport to beginning of file", "<Alt><Shift>Home"),
+            shortcut("Move to matching bracket", "<Control>percent"),
+        ]),
+    );
+
+    editorSection.addGroup(
+        group("Selections", [shortcut("Select all", "<Control>a"), shortcut("Unselect all", "<Control>backslash")]),
+    );
+
+    win.addSection(editorSection);
+
+    const terminalSection = new Gtk.ShortcutsSection();
+    terminalSection.setSectionName("terminal");
+    terminalSection.setTitle("Terminal Shortcuts");
+    terminalSection.setMaxHeight(16);
+
+    terminalSection.addGroup(
+        group("General", [
+            shortcut("Global Search", "<Control>period"),
+            shortcut("Preferences", "<Control>comma"),
+            shortcut("Command Bar", "<Control>Return"),
+            shortcut("Terminal", "<Control><Shift>t"),
+            shortcut("Keyboard Shortcuts", "<Control><Shift>question"),
+        ]),
+    );
+
+    terminalSection.addGroup(
+        group("Copy and Paste", [
+            shortcut("Copy selected text to clipboard", "<Control><Shift>c"),
+            shortcut("Paste text from clipboard", "<Control><Shift>v"),
+        ]),
+    );
+
+    terminalSection.addGroup(group("Switching", [shortcut("Switch to n-th tab", "<Alt>1...9")]));
+
+    terminalSection.addGroup(
+        group("'Special' combinations", [
+            shortcut("You want tea ?", "t+t"),
+            shortcut("Shift Control", "<Shift><Control>"),
+            shortcut("Control Control", "<Control>&<Control>"),
+            shortcut("Left and right control", "Control_L&Control_R"),
+        ]),
+    );
+
+    terminalSection.addGroup(
+        group("All gestures", [
+            gesture("A stock pinch gesture", Gtk.ShortcutType.GESTURE_PINCH),
+            gesture("A stock stretch gesture", Gtk.ShortcutType.GESTURE_STRETCH),
+            gesture("A stock rotation gesture", Gtk.ShortcutType.GESTURE_ROTATE_CLOCKWISE),
+            gesture("A stock rotation gesture", Gtk.ShortcutType.GESTURE_ROTATE_COUNTERCLOCKWISE),
+            gesture("A stock swipe gesture", Gtk.ShortcutType.GESTURE_TWO_FINGER_SWIPE_LEFT),
+            gesture("A stock swipe gesture", Gtk.ShortcutType.GESTURE_TWO_FINGER_SWIPE_RIGHT),
+            gesture("A stock swipe gesture", Gtk.ShortcutType.GESTURE_SWIPE_LEFT),
+            gesture("A stock swipe gesture", Gtk.ShortcutType.GESTURE_SWIPE_RIGHT),
+        ]),
+    );
+
+    win.addSection(terminalSection);
+    return win;
+}
+
+function showShortcutsWindow(parent: Gtk.Window, builder: () => Gtk.ShortcutsWindow, viewName?: string) {
+    const win = builder();
+    win.setTransientFor(parent);
+    if (viewName) {
+        win.setViewName(viewName);
+    }
+    win.present();
+}
 
 const ShortcutsDemo = ({ window }: DemoProps) => {
-    const [menuActionTriggered, setMenuActionTriggered] = useState<string | null>(null);
-
-    const handleMenuAction = (action: string) => {
-        setMenuActionTriggered(action);
-        setTimeout(() => setMenuActionTriggered(null), 2000);
-    };
-
-    const createShortcutsDialog = useCallback(() => {
-        const dialog = new Adw.ShortcutsDialog();
-
-        for (const sectionDef of shortcutSections) {
-            const section = new Adw.ShortcutsSection(sectionDef.title);
-
-            for (const shortcutDef of sectionDef.shortcuts) {
-                const item = new Adw.ShortcutsItem(shortcutDef.title, shortcutDef.accelerator);
-                section.add(item);
+    const show = useCallback(
+        (builder: () => Gtk.ShortcutsWindow, viewName?: string) => {
+            const parent = window.current;
+            if (parent) {
+                showShortcutsWindow(parent, builder, viewName);
             }
-
-            dialog.add(section);
-        }
-
-        return dialog;
-    }, []);
-
-    const handleOpenShortcuts = useCallback(() => {
-        const dialog = createShortcutsDialog();
-        dialog.present(window.current);
-    }, [window, createShortcutsDialog]);
+        },
+        [window],
+    );
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-            <GtkLabel label="Keyboard Shortcuts" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+            <GtkLabel label="Shortcuts Window" cssClasses={["title-2"]} halign={Gtk.Align.START} />
             <GtkLabel
-                label="AdwShortcutsDialog displays application keyboard shortcuts in a structured, searchable dialog. Press the button below or use Ctrl+? to open the shortcuts dialog."
+                label="GtkShortcutsWindow shows the keyboard shortcuts and gestures of an application. Shortcuts can be grouped, filtered by view, and support gestures and direction variants."
                 wrap
                 halign={Gtk.Align.START}
                 cssClasses={["dim-label"]}
             />
 
-            <GtkFrame label="Shortcuts Dialog">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="AdwShortcutsDialog organizes shortcuts into titled sections. Each section contains a list of shortcuts with their accelerators. The dialog can be presented as a floating window or bottom sheet depending on screen size."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+                <GtkLabel label="Gedit" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkButton label="Gedit Shortcuts" halign={Gtk.Align.START} onClicked={() => show(createGeditWindow)} />
+            </GtkBox>
 
-                    <GtkButton onClicked={handleOpenShortcuts} halign={Gtk.Align.START}>
-                        <GtkBox spacing={8}>
-                            <GtkImage iconName="preferences-desktop-keyboard-shortcuts-symbolic" />
-                            <GtkLabel label="Open Keyboard Shortcuts" />
-                        </GtkBox>
-                    </GtkButton>
-
-                    <GtkLabel
-                        label="The shortcuts dialog includes 6 sections covering general, file, edit, view, search, and navigation shortcuts. Sections are searchable within the dialog."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label", "caption"]}
-                    />
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+                <GtkLabel label="Clocks" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox spacing={6}>
+                    <GtkButton label="All Views" onClicked={() => show(createClocksWindow)} />
+                    <GtkButton label="Stopwatch View" onClicked={() => show(createClocksWindow, "stopwatch")} />
                 </GtkBox>
-            </GtkFrame>
+            </GtkBox>
 
-            <GtkFrame label="Menu with Accelerators">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Menu items can have keyboard accelerators displayed next to them. These accelerators activate the menu action directly."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox spacing={12}>
-                        <GtkMenuButton label="File Menu" iconName="open-menu-symbolic">
-                            <x.MenuSection>
-                                <x.MenuItem
-                                    id="new"
-                                    label="New"
-                                    onActivate={() => handleMenuAction("New file")}
-                                    accels="<Control>n"
-                                />
-                                <x.MenuItem
-                                    id="open"
-                                    label="Open"
-                                    onActivate={() => handleMenuAction("Open file")}
-                                    accels="<Control>o"
-                                />
-                                <x.MenuItem
-                                    id="save"
-                                    label="Save"
-                                    onActivate={() => handleMenuAction("Save file")}
-                                    accels="<Control>s"
-                                />
-                                <x.MenuItem
-                                    id="save-as"
-                                    label="Save As..."
-                                    onActivate={() => handleMenuAction("Save As...")}
-                                    accels="<Control><Shift>s"
-                                />
-                            </x.MenuSection>
-                            <x.MenuSection>
-                                <x.MenuItem
-                                    id="close"
-                                    label="Close"
-                                    onActivate={() => handleMenuAction("Close")}
-                                    accels="<Control>w"
-                                />
-                            </x.MenuSection>
-                        </GtkMenuButton>
-
-                        <GtkMenuButton label="Edit Menu" iconName="edit-symbolic">
-                            <x.MenuSection>
-                                <x.MenuItem
-                                    id="undo"
-                                    label="Undo"
-                                    onActivate={() => handleMenuAction("Undo")}
-                                    accels="<Control>z"
-                                />
-                                <x.MenuItem
-                                    id="redo"
-                                    label="Redo"
-                                    onActivate={() => handleMenuAction("Redo")}
-                                    accels="<Control><Shift>z"
-                                />
-                            </x.MenuSection>
-                            <x.MenuSection>
-                                <x.MenuItem
-                                    id="cut"
-                                    label="Cut"
-                                    onActivate={() => handleMenuAction("Cut")}
-                                    accels="<Control>x"
-                                />
-                                <x.MenuItem
-                                    id="copy"
-                                    label="Copy"
-                                    onActivate={() => handleMenuAction("Copy")}
-                                    accels="<Control>c"
-                                />
-                                <x.MenuItem
-                                    id="paste"
-                                    label="Paste"
-                                    onActivate={() => handleMenuAction("Paste")}
-                                    accels="<Control>v"
-                                />
-                            </x.MenuSection>
-                            <x.MenuSection>
-                                <x.MenuItem
-                                    id="select-all"
-                                    label="Select All"
-                                    onActivate={() => handleMenuAction("Select All")}
-                                    accels="<Control>a"
-                                />
-                            </x.MenuSection>
-                        </GtkMenuButton>
-                    </GtkBox>
-
-                    {menuActionTriggered && (
-                        <GtkLabel
-                            label={`Action triggered: ${menuActionTriggered}`}
-                            cssClasses={["dim-label"]}
-                            halign={Gtk.Align.START}
-                        />
-                    )}
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+                <GtkLabel label="Boxes" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkBox spacing={6}>
+                    <GtkButton label="All Views" onClicked={() => show(createBoxesWindow)} />
+                    <GtkButton label="Wizard View" onClicked={() => show(createBoxesWindow, "wizard")} />
+                    <GtkButton label="Display View" onClicked={() => show(createBoxesWindow, "display")} />
                 </GtkBox>
-            </GtkFrame>
+            </GtkBox>
 
-            <GtkFrame label="Accelerator Syntax">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="GTK uses a string format to define keyboard accelerators. Modifiers are wrapped in angle brackets."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="<Control>s" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Ctrl+S" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="<Control><Shift>s" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Ctrl+Shift+S" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="<Alt>F4" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Alt+F4" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="<Primary>q" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="Platform primary key (Ctrl/Cmd)" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                        <GtkBox spacing={12}>
-                            <GtkLabel label="F5" widthChars={20} xalign={0} cssClasses={["monospace"]} />
-                            <GtkLabel label="F5 (no modifier)" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                    </GtkBox>
-                </GtkBox>
-            </GtkFrame>
-
-            <GtkFrame label="Button Mnemonics">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkLabel
-                        label="Buttons can have mnemonics - underlined letters activated with Alt. Use an underscore before the mnemonic character in the label."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox spacing={12}>
-                        <GtkButton label="_Save" useUnderline onClicked={() => handleMenuAction("Save (Alt+S)")} />
-                        <GtkButton label="_Open" useUnderline onClicked={() => handleMenuAction("Open (Alt+O)")} />
-                        <GtkButton label="_Quit" useUnderline onClicked={() => handleMenuAction("Quit (Alt+Q)")} />
-                    </GtkBox>
-
-                    <GtkLabel
-                        label="Press Alt to see the underlines, then press the letter to activate."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label", "caption"]}
-                    />
-                </GtkBox>
-            </GtkFrame>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+                <GtkLabel label="Builder" cssClasses={["heading"]} halign={Gtk.Align.START} />
+                <GtkButton
+                    label="Builder Shortcuts"
+                    halign={Gtk.Align.START}
+                    onClicked={() => show(createBuilderWindow)}
+                />
+            </GtkBox>
         </GtkBox>
     );
 };
@@ -336,20 +404,20 @@ const ShortcutsDemo = ({ window }: DemoProps) => {
 export const shortcutsDemo: Demo = {
     id: "shortcuts",
     title: "Shortcuts Window",
-    description: "AdwShortcutsDialog displays application keyboard shortcuts in a structured, searchable dialog",
+    description: "GtkShortcutsWindow shows keyboard shortcuts and gestures in a structured, searchable window",
     keywords: [
         "keyboard",
         "shortcut",
         "accelerator",
-        "mnemonic",
+        "gesture",
         "hotkey",
         "keybinding",
-        "AdwShortcutsDialog",
-        "AdwShortcutsSection",
-        "AdwShortcutsItem",
+        "GtkShortcutsWindow",
+        "GtkShortcutsSection",
+        "GtkShortcutsGroup",
+        "GtkShortcutsShortcut",
         "key",
         "binding",
-        "adwaita",
     ],
     component: ShortcutsDemo,
     sourceCode,

@@ -42,6 +42,7 @@ const OverlayDemo = () => {
                     halign={Gtk.Align.CENTER}
                     valign={Gtk.Align.START}
                     canTarget={false}
+                    spacing={10}
                 >
                     <GtkLabel
                         label="<span foreground='blue' weight='ultrabold' font='40'>Numbers</span>"
@@ -53,7 +54,12 @@ const OverlayDemo = () => {
                 </GtkBox>
             </x.OverlayChild>
             <x.OverlayChild>
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    halign={Gtk.Align.CENTER}
+                    valign={Gtk.Align.CENTER}
+                    spacing={10}
+                >
                     <GtkEntry
                         text={value}
                         placeholderText="Your Lucky Number"
@@ -75,4 +81,6 @@ export const overlayDemo: Demo = {
     keywords: ["overlay", "GtkOverlay", "layer", "stack"],
     component: OverlayDemo,
     sourceCode,
+    defaultWidth: 500,
+    defaultHeight: 510,
 };

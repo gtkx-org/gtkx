@@ -30,13 +30,7 @@ const SidebarDemo = () => {
                 {pages.map((title, index) => (
                     <x.StackPage key={title} id={title} title={title}>
                         {index === 0 ? (
-                            <GtkImage
-                                iconName="org.gtk.Demo4"
-                                pixelSize={256}
-                                marginTop={20}
-                                marginBottom={20}
-                                cssClasses={["icon-dropshadow"]}
-                            />
+                            <GtkImage iconName="org.gtk.Demo4" pixelSize={256} cssClasses={["icon-dropshadow"]} />
                         ) : (
                             <GtkLabel label={title} />
                         )}

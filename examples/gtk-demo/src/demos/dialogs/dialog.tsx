@@ -1,4 +1,3 @@
-import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     AdwAlertDialog,
@@ -11,7 +10,7 @@ import {
     GtkSeparator,
     x,
 } from "@gtkx/react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./dialog.tsx?raw";
 
@@ -23,18 +22,29 @@ const DialogDemo = ({ window }: DemoProps) => {
     const [showMessageDialog, setShowMessageDialog] = useState(false);
     const [showInteractiveDialog, setShowInteractiveDialog] = useState(false);
 
-    const dialogEntry1Ref = useRef<Gtk.Entry>(null);
-    const dialogEntry2Ref = useRef<Gtk.Entry>(null);
+    const [entry1Widget, setEntry1Widget] = useState<Gtk.Entry | null>(null);
+    const [entry2Widget, setEntry2Widget] = useState<Gtk.Entry | null>(null);
+    const [dialogEntry1Widget, setDialogEntry1Widget] = useState<Gtk.Entry | null>(null);
+    const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
+
+    const [dialogEntry1Text, setDialogEntry1Text] = useState("");
+    const [dialogEntry2Text, setDialogEntry2Text] = useState("");
 
     const handleMessageDialogOpen = () => {
         setClickCount((c) => c + 1);
         setShowMessageDialog(true);
     };
 
+    const handleOpenInteractiveDialog = () => {
+        setDialogEntry1Text(entry1);
+        setDialogEntry2Text(entry2);
+        setShowInteractiveDialog(true);
+    };
+
     const handleInteractiveDialogResponse = (response: string) => {
         if (response === "ok") {
-            setEntry1(dialogEntry1Ref.current?.getText() ?? "");
-            setEntry2(dialogEntry2Ref.current?.getText() ?? "");
+            setEntry1(dialogEntry1Text);
+            setEntry2(dialogEntry2Text);
         }
         setShowInteractiveDialog(false);
     };
@@ -55,19 +65,19 @@ const DialogDemo = ({ window }: DemoProps) => {
             <GtkSeparator orientation={Gtk.Orientation.HORIZONTAL} />
 
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                <GtkButton label="_Interactive Dialog" useUnderline onClicked={() => setShowInteractiveDialog(true)} />
+                <GtkButton label="_Interactive Dialog" useUnderline onClicked={handleOpenInteractiveDialog} />
                 <GtkGrid rowSpacing={4} columnSpacing={4}>
                     <x.GridChild column={0} row={0}>
-                        <GtkLabel label="_Entry 1" useUnderline />
+                        <GtkLabel label="_Entry 1" useUnderline mnemonicWidget={entry1Widget} />
                     </x.GridChild>
                     <x.GridChild column={1} row={0}>
-                        <GtkEntry text={entry1} onChanged={(e) => setEntry1(e.getText())} />
+                        <GtkEntry ref={setEntry1Widget} text={entry1} onChanged={(e) => setEntry1(e.getText())} />
                     </x.GridChild>
                     <x.GridChild column={0} row={1}>
-                        <GtkLabel label="E_ntry 2" useUnderline />
+                        <GtkLabel label="E_ntry 2" useUnderline mnemonicWidget={entry2Widget} />
                     </x.GridChild>
                     <x.GridChild column={1} row={1}>
-                        <GtkEntry text={entry2} onChanged={(e) => setEntry2(e.getText())} />
+                        <GtkEntry ref={setEntry2Widget} text={entry2} onChanged={(e) => setEntry2(e.getText())} />
                     </x.GridChild>
                 </GtkGrid>
             </GtkBox>
@@ -76,12 +86,17 @@ const DialogDemo = ({ window }: DemoProps) => {
                 window.current &&
                 createPortal(
                     <AdwAlertDialog
-                        heading="Information"
-                        body={`This message box has been popped up ${clickCount} time${clickCount === 1 ? "" : "s"}.`}
+                        heading="Test message"
+                        body={
+                            clickCount === 1
+                                ? "This message box has been popped up 1 time."
+                                : `This message box has been popped up ${clickCount} times.`
+                        }
                         defaultResponse="ok"
-                        closeResponse="ok"
+                        closeResponse="cancel"
                         onResponse={() => setShowMessageDialog(false)}
                     >
+                        <x.AlertDialogResponse id="cancel" label="_Cancel" />
                         <x.AlertDialogResponse id="ok" label="_OK" />
                     </AdwAlertDialog>,
                     window.current,
@@ -106,21 +121,29 @@ const DialogDemo = ({ window }: DemoProps) => {
                                 valign={Gtk.Align.CENTER}
                             >
                                 <x.GridChild column={0} row={0}>
-                                    <GtkLabel label="_Entry 1" useUnderline />
+                                    <GtkLabel label="_Entry 1" useUnderline mnemonicWidget={dialogEntry1Widget} />
                                 </x.GridChild>
                                 <x.GridChild column={1} row={0}>
-                                    <GtkEntry ref={dialogEntry1Ref} text={entry1} />
+                                    <GtkEntry
+                                        ref={setDialogEntry1Widget}
+                                        text={dialogEntry1Text}
+                                        onChanged={(e) => setDialogEntry1Text(e.getText())}
+                                    />
                                 </x.GridChild>
                                 <x.GridChild column={0} row={1}>
-                                    <GtkLabel label="E_ntry 2" useUnderline />
+                                    <GtkLabel label="E_ntry 2" useUnderline mnemonicWidget={dialogEntry2Widget} />
                                 </x.GridChild>
                                 <x.GridChild column={1} row={1}>
-                                    <GtkEntry ref={dialogEntry2Ref} text={entry2} />
+                                    <GtkEntry
+                                        ref={setDialogEntry2Widget}
+                                        text={dialogEntry2Text}
+                                        onChanged={(e) => setDialogEntry2Text(e.getText())}
+                                    />
                                 </x.GridChild>
                             </GtkGrid>
                         </x.Slot>
                         <x.AlertDialogResponse id="cancel" label="_Cancel" />
-                        <x.AlertDialogResponse id="ok" label="_OK" appearance={Adw.ResponseAppearance.SUGGESTED} />
+                        <x.AlertDialogResponse id="ok" label="_OK" />
                     </AdwAlertDialog>,
                     window.current,
                 )}

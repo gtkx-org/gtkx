@@ -1,5 +1,5 @@
+import { spawn } from "node:child_process";
 import * as Gdk from "@gtkx/ffi/gdk";
-import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import {
@@ -38,7 +38,7 @@ const HypertextDemo = () => {
     }, []);
 
     const sayWord = useCallback((word: string): void => {
-        GLib.spawnCommandLineAsync(`espeak-ng "${word}"`);
+        spawn("espeak-ng", [word], { stdio: "ignore" });
     }, []);
 
     const { content, linkInfos } = useMemo((): { content: ReactNode; linkInfos: LinkInfo[] } => {
@@ -70,7 +70,7 @@ const HypertextDemo = () => {
                 <x.TextTag
                     key="link-hypertext"
                     id="link-hypertext"
-                    foreground="#1c71d8"
+                    foreground="blue"
                     underline={Pango.Underline.SINGLE}
                 >
                     hypertext
@@ -83,7 +83,7 @@ const HypertextDemo = () => {
 
             trackLink("tags", "tags", 2);
             nodes.push(
-                <x.TextTag key="link-tags" id="link-tags" foreground="#1c71d8" underline={Pango.Underline.SINGLE}>
+                <x.TextTag key="link-tags" id="link-tags" foreground="blue" underline={Pango.Underline.SINGLE}>
                     tags
                 </x.TextTag>,
             );
@@ -103,7 +103,7 @@ const HypertextDemo = () => {
             trackPlaceholder();
             nodes.push(
                 <x.TextAnchor key="levelbar">
-                    <GtkLevelBar value={0.5} minValue={0} maxValue={1} widthRequest={100} />
+                    <GtkLevelBar value={50} minValue={0} maxValue={100} widthRequest={100} />
                 </x.TextAnchor>,
             );
 
@@ -113,8 +113,8 @@ const HypertextDemo = () => {
 
             trackPlaceholder();
             nodes.push(
-                <x.TextAnchor key="ghost-label">
-                    <GtkLabel label="ghost" cssClasses={["dim-label"]} />
+                <x.TextAnchor key="ghost-anchor" replacementChar="👻">
+                    <GtkLabel label="ghost" />
                 </x.TextAnchor>,
             );
 
@@ -129,54 +129,36 @@ const HypertextDemo = () => {
             const nodes: ReactNode[] = [];
 
             trackText("tag");
+            trackText(" /");
+            trackText("tag");
+            trackText("/ ");
+            trackPlaceholder();
             nodes.push(
                 <x.TextTag key="nobreaks" id="nobreaks" allowBreaks={false}>
                     <x.TextTag key="title" id="title" weight={Pango.Weight.BOLD} scale={1.44}>
                         tag
                     </x.TextTag>
+                    {" /"}
+                    <x.TextTag key="phonetic" id="phonetic" family="monospace">
+                        tag
+                    </x.TextTag>
+                    {"/ "}
+                    <x.TextAnchor key="speaker">
+                        <GtkImage iconName="audio-volume-high-symbolic" cursor={new Gdk.Cursor("pointer")}>
+                            <GtkGestureClick onPressed={() => sayWord("tag")} />
+                        </GtkImage>
+                    </x.TextAnchor>
                 </x.TextTag>,
-            );
-
-            const slash1 = " /";
-            trackText(slash1);
-            nodes.push(
-                <x.TextTag key="nobreaks2" id="nobreaks2" allowBreaks={false}>
-                    {slash1}
-                </x.TextTag>,
-            );
-
-            trackText("tag");
-            nodes.push(
-                <x.TextTag key="phonetic" id="phonetic" family="monospace">
-                    tag
-                </x.TextTag>,
-            );
-
-            const slash2 = "/ ";
-            trackText(slash2);
-            nodes.push(
-                <x.TextTag key="nobreaks3" id="nobreaks3" allowBreaks={false}>
-                    {slash2}
-                </x.TextTag>,
-            );
-
-            trackPlaceholder();
-            nodes.push(
-                <x.TextAnchor key="speaker">
-                    <GtkImage iconName="audio-volume-high-symbolic" cursor={new Gdk.Cursor("pointer")}>
-                        <GtkGestureClick onPressed={() => sayWord("tag")} />
-                    </GtkImage>
-                </x.TextAnchor>,
             );
 
             const definition =
-                '\n\nAn attribute that can be applied to some range of text. For example, a tag might be called "bold" and make the text inside the tag bold.\n\nHowever, the tag concept is more general than that; tags don\'t have to affect appearance. They can instead affect the behavior of mouse and key presses, "lock" a range of text so the user can\'t edit it, or countless other things.\n\n';
+                '\n\nAn attribute that can be applied to some range of text. For example, a tag might be called "bold" and make the text inside the tag bold.\n\nHowever, the tag concept is more general than that; tags don\'t have to affect appearance. They can instead affect the behavior of mouse and key presses, "lock" a range of text so the user can\'t edit it, or countless other things.\n';
             trackText(definition);
             nodes.push(definition);
 
             trackLink("goback", "Go back", 1);
             nodes.push(
-                <x.TextTag key="link-goback" id="link-goback" foreground="#1c71d8" underline={Pango.Underline.SINGLE}>
+                <x.TextTag key="link-goback" id="link-goback" foreground="blue" underline={Pango.Underline.SINGLE}>
                     Go back
                 </x.TextTag>,
             );
@@ -188,54 +170,36 @@ const HypertextDemo = () => {
             const nodes: ReactNode[] = [];
 
             trackText("hypertext");
+            trackText(" /");
+            trackText("ˈhaɪ pərˌtɛkst");
+            trackText("/ ");
+            trackPlaceholder();
             nodes.push(
                 <x.TextTag key="nobreaks" id="nobreaks" allowBreaks={false}>
                     <x.TextTag key="title" id="title" weight={Pango.Weight.BOLD} scale={1.44}>
                         hypertext
                     </x.TextTag>
+                    {" /"}
+                    <x.TextTag key="phonetic" id="phonetic" family="monospace">
+                        ˈhaɪ pərˌtɛkst
+                    </x.TextTag>
+                    {"/ "}
+                    <x.TextAnchor key="speaker">
+                        <GtkImage iconName="audio-volume-high-symbolic" cursor={new Gdk.Cursor("pointer")}>
+                            <GtkGestureClick onPressed={() => sayWord("hypertext")} />
+                        </GtkImage>
+                    </x.TextAnchor>
                 </x.TextTag>,
-            );
-
-            const slash1 = " /";
-            trackText(slash1);
-            nodes.push(
-                <x.TextTag key="nobreaks2" id="nobreaks2" allowBreaks={false}>
-                    {slash1}
-                </x.TextTag>,
-            );
-
-            trackText("ˈhaɪ pərˌtɛkst");
-            nodes.push(
-                <x.TextTag key="phonetic" id="phonetic" family="monospace">
-                    ˈhaɪ pərˌtɛkst
-                </x.TextTag>,
-            );
-
-            const slash2 = "/ ";
-            trackText(slash2);
-            nodes.push(
-                <x.TextTag key="nobreaks3" id="nobreaks3" allowBreaks={false}>
-                    {slash2}
-                </x.TextTag>,
-            );
-
-            trackPlaceholder();
-            nodes.push(
-                <x.TextAnchor key="speaker">
-                    <GtkImage iconName="audio-volume-high-symbolic" cursor={new Gdk.Cursor("pointer")}>
-                        <GtkGestureClick onPressed={() => sayWord("hypertext")} />
-                    </GtkImage>
-                </x.TextAnchor>,
             );
 
             const definition =
-                "\n\nMachine-readable text that is not sequential but is organized so that related items of information are connected.\n\n";
+                "\n\nMachine-readable text that is not sequential but is organized so that related items of information are connected.\n";
             trackText(definition);
             nodes.push(definition);
 
             trackLink("goback", "Go back", 1);
             nodes.push(
-                <x.TextTag key="link-goback" id="link-goback" foreground="#1c71d8" underline={Pango.Underline.SINGLE}>
+                <x.TextTag key="link-goback" id="link-goback" foreground="blue" underline={Pango.Underline.SINGLE}>
                     Go back
                 </x.TextTag>,
             );
@@ -281,6 +245,8 @@ const HypertextDemo = () => {
         [findLinkAtOffset],
     );
 
+    const hoveringRef = useRef(false);
+
     const handleMotion = useCallback(
         (motionX: number, motionY: number) => {
             const textView = textViewRef.current;
@@ -289,15 +255,17 @@ const HypertextDemo = () => {
             const iter = new Gtk.TextIter();
             const result = textView.getIterAtPosition(iter, motionX, motionY);
             if (!result) {
-                textView.setCursor(new Gdk.Cursor("text"));
+                if (hoveringRef.current) {
+                    textView.setCursor(new Gdk.Cursor("text"));
+                    hoveringRef.current = false;
+                }
                 return;
             }
 
-            const targetPage = findLinkAtOffset(iter.getOffset());
-            if (targetPage !== null) {
-                textView.setCursor(new Gdk.Cursor("pointer"));
-            } else {
-                textView.setCursor(new Gdk.Cursor("text"));
+            const overLink = findLinkAtOffset(iter.getOffset()) !== null;
+            if (overLink !== hoveringRef.current) {
+                hoveringRef.current = overLink;
+                textView.setCursor(new Gdk.Cursor(overLink ? "pointer" : "text"));
             }
         },
         [findLinkAtOffset],
@@ -333,11 +301,11 @@ const HypertextDemo = () => {
                 leftMargin={20}
                 rightMargin={20}
                 pixelsBelowLines={10}
-                editable={false}
+                enableUndo
                 canFocus
                 focusable
             >
-                <GtkGestureClick onPressed={handleClick} />
+                <GtkGestureClick button={1} onReleased={handleClick} />
                 <GtkEventControllerMotion onMotion={handleMotion} />
                 <GtkEventControllerKey onKeyPressed={handleKeyPress} />
                 {content}
@@ -365,4 +333,6 @@ export const hypertextDemo: Demo = {
     ],
     component: HypertextDemo,
     sourceCode,
+    defaultWidth: 330,
+    defaultHeight: 330,
 };

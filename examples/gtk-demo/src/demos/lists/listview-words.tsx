@@ -1,71 +1,123 @@
-import { createRef } from "@gtkx/ffi";
-import * as Gio from "@gtkx/ffi/gio";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkListView, GtkProgressBar, GtkScrolledWindow, GtkSearchEntry, x } from "@gtkx/react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import {
+    GtkBox,
+    GtkButton,
+    GtkHeaderBar,
+    GtkInscription,
+    GtkLabel,
+    GtkListView,
+    GtkOverlay,
+    GtkProgressBar,
+    GtkScrolledWindow,
+    GtkSearchEntry,
+    x,
+} from "@gtkx/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./listview-words.tsx?raw";
 
 const DICT_FILE = "/usr/share/dict/words";
-const FILTER_DELAY_MS = 150;
 
-const ListViewWordsDemo = () => {
+const LOREM_IPSUM =
+    "lorem ipsum dolor sit amet consectetur adipisci elit sed eiusmod tempor incidunt labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquid ex ea commodi consequat";
+
+const FILTER_CHUNK_SIZE = 50000;
+
+const ListViewWordsDemo = ({ window }: DemoProps) => {
     const [words, setWords] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchText, setSearchText] = useState("");
-    const [deferredSearch, setDeferredSearch] = useState("");
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [filteredWords, setFilteredWords] = useState<string[]>([]);
+    const [filterProgress, setFilterProgress] = useState(1);
+    const filterRef = useRef<{ cancelled: boolean }>({ cancelled: false });
 
-    useEffect(() => {
-        const loadWords = () => {
-            try {
-                const file = Gio.fileNewForPath(DICT_FILE);
-                const contentsRef = createRef<number[]>([]);
-                const lengthRef = createRef(0);
-                const success = file.loadContents(contentsRef, null, lengthRef);
-                if (success && lengthRef.value > 0) {
-                    const text = new TextDecoder().decode(new Uint8Array(contentsRef.value));
-                    const wordList = text
-                        .split("\n")
-                        .map((w) => w.trim())
-                        .filter((w) => w.length > 0);
-                    setWords(wordList);
-                } else {
-                    throw new Error("Failed to load file");
-                }
-            } catch {
-                setWords([
-                    "Unable to load dictionary",
-                    "The file /usr/share/dict/words was not found",
-                    "Install a dictionary package (e.g., words or wamerican)",
-                ]);
-            }
-            setLoading(false);
-        };
-        loadWords();
+    const loadFile = useCallback(async (filePath: string) => {
+        setLoading(true);
+        try {
+            const text = await readFile(filePath, "utf-8");
+            const wordList = text
+                .split("\n")
+                .map((w) => w.trim())
+                .filter((w) => w.length > 0);
+            setWords(wordList);
+            setFilteredWords(wordList);
+        } catch {
+            const fallback = LOREM_IPSUM.split(" ");
+            setWords(fallback);
+            setFilteredWords(fallback);
+        }
+        setLoading(false);
     }, []);
 
     useEffect(() => {
-        if (debounceRef.current) {
-            clearTimeout(debounceRef.current);
+        if (existsSync(DICT_FILE)) {
+            void loadFile(DICT_FILE);
+        } else {
+            const fallback = LOREM_IPSUM.split(" ");
+            setWords(fallback);
+            setFilteredWords(fallback);
+            setLoading(false);
         }
-        debounceRef.current = setTimeout(() => {
-            setDeferredSearch(searchText);
-        }, FILTER_DELAY_MS);
-        return () => {
-            if (debounceRef.current) {
-                clearTimeout(debounceRef.current);
+    }, [loadFile]);
+
+    const handleOpen = useCallback(async () => {
+        const dialog = new Gtk.FileDialog();
+        dialog.setTitle("Open file");
+        try {
+            const file = await dialog.openAsync(window.current);
+            const path = file.getPath();
+            if (path) {
+                await loadFile(path);
+            }
+        } catch {}
+    }, [window, loadFile]);
+
+    useEffect(() => {
+        filterRef.current.cancelled = true;
+        const ctx = { cancelled: false };
+        filterRef.current = ctx;
+
+        if (searchText === "") {
+            setFilteredWords(words);
+            setFilterProgress(1);
+            return;
+        }
+
+        const lower = searchText.toLowerCase();
+        const result: string[] = [];
+        let offset = 0;
+
+        setFilterProgress(0);
+
+        const filterStep = () => {
+            if (ctx.cancelled) return;
+
+            const end = Math.min(offset + FILTER_CHUNK_SIZE, words.length);
+            for (let i = offset; i < end; i++) {
+                const w = words[i];
+                if (w?.toLowerCase().includes(lower)) {
+                    result.push(w);
+                }
+            }
+            offset = end;
+
+            const progress = words.length > 0 ? offset / words.length : 1;
+            setFilterProgress(progress);
+            setFilteredWords([...result]);
+
+            if (offset < words.length) {
+                setTimeout(filterStep, 0);
             }
         };
-    }, [searchText]);
 
-    const filteredWords = useMemo(() => {
-        if (deferredSearch === "") {
-            return words;
-        }
-        const lower = deferredSearch.toLowerCase();
-        return words.filter((word) => word.toLowerCase().includes(lower));
-    }, [words, deferredSearch]);
+        setTimeout(filterStep, 0);
+
+        return () => {
+            ctx.cancelled = true;
+        };
+    }, [words, searchText]);
 
     const handleSearchChanged = (entry: Gtk.SearchEntry) => {
         setSearchText(entry.getText());
@@ -87,45 +139,70 @@ const ListViewWordsDemo = () => {
     }
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-            <GtkBox hexpand marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
-                <GtkSearchEntry
-                    text={searchText}
-                    placeholderText="Search words..."
-                    onSearchChanged={handleSearchChanged}
+        <>
+            <x.Slot for="GtkWindow" id="titlebar">
+                <GtkHeaderBar>
+                    <x.ContainerSlot for={GtkHeaderBar} id="packStart">
+                        <GtkButton label="_Open" useUnderline onClicked={() => void handleOpen()} />
+                    </x.ContainerSlot>
+                    <x.Slot for={GtkHeaderBar} id="titleWidget">
+                        <GtkLabel label={`${filteredWords.length.toLocaleString()} lines`} />
+                    </x.Slot>
+                </GtkHeaderBar>
+            </x.Slot>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
                     hexpand
-                />
-            </GtkBox>
-
-            <GtkLabel
-                label={`${filteredWords.length.toLocaleString()} words ${deferredSearch ? `matching "${deferredSearch}"` : ""}`}
-                cssClasses={["dim-label"]}
-                halign={Gtk.Align.START}
-                marginStart={12}
-                marginBottom={8}
-            />
-
-            <GtkScrolledWindow vexpand hexpand>
-                <GtkListView
-                    vexpand
-                    hexpand
-                    estimatedItemHeight={32}
-                    renderItem={(word) => (
-                        <GtkLabel
-                            label={word ?? ""}
-                            halign={Gtk.Align.START}
-                            marginStart={12}
-                            marginTop={6}
-                            marginBottom={6}
-                        />
-                    )}
+                    marginStart={12}
+                    marginEnd={12}
+                    marginTop={12}
+                    marginBottom={12}
+                    spacing={4}
                 >
-                    {filteredWords.map((word) => (
-                        <x.ListItem key={word} id={word} value={word} />
-                    ))}
-                </GtkListView>
-            </GtkScrolledWindow>
-        </GtkBox>
+                    <GtkSearchEntry
+                        text={searchText}
+                        placeholderText="Search words..."
+                        onSearchChanged={handleSearchChanged}
+                        hexpand
+                    />
+                </GtkBox>
+
+                <GtkOverlay vexpand hexpand>
+                    <GtkScrolledWindow vexpand hexpand>
+                        <GtkListView
+                            vexpand
+                            hexpand
+                            estimatedItemHeight={32}
+                            renderItem={(word: string | null) => (
+                                <GtkInscription
+                                    text={word ?? ""}
+                                    xalign={0}
+                                    natChars={20}
+                                    textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
+                                    marginStart={12}
+                                    marginTop={6}
+                                    marginBottom={6}
+                                />
+                            )}
+                        >
+                            {filteredWords.map((word) => (
+                                <x.ListItem key={word} id={word} value={word} />
+                            ))}
+                        </GtkListView>
+                    </GtkScrolledWindow>
+                    {filterProgress < 1 && (
+                        <x.OverlayChild>
+                            <GtkProgressBar
+                                fraction={filterProgress}
+                                halign={Gtk.Align.FILL}
+                                valign={Gtk.Align.START}
+                            />
+                        </x.OverlayChild>
+                    )}
+                </GtkOverlay>
+            </GtkBox>
+        </>
     );
 };
 
@@ -137,4 +214,6 @@ export const listviewWordsDemo: Demo = {
     keywords: ["listview", "words", "dictionary", "GtkListView", "search", "filter", "incremental"],
     component: ListViewWordsDemo,
     sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 600,
 };

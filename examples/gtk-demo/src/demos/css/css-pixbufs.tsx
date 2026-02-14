@@ -1,233 +1,103 @@
-import { injectGlobal } from "@gtkx/css";
-import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { useMemo } from "react";
+import type { Demo, DemoProps } from "../types.js";
+import appleRedPath from "./apple-red.png";
+import backgroundPath from "./background.jpg";
 import sourceCode from "./css-pixbufs.tsx?raw";
+import cssviewCssPath from "./cssview.css";
+import gnomeAppletsPath from "./gnome-applets.png";
+import gnomeCalendarPath from "./gnome-calendar.png";
+import gnomeFootPath from "./gnome-foot.png";
+import gnomeGimpPath from "./gnome-gimp.png";
+import gnomeGmushPath from "./gnome-gmush.png";
+import gnomeGsamePath from "./gnome-gsame.png";
+import gnuKeysPath from "./gnu-keys.png";
+import resetCssPath from "./reset.css";
+import { useCssEditor } from "./use-css-editor.js";
 
-injectGlobal`
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+const DEFAULT_CSS = `@import url("file://${resetCssPath}");
+@import url("file://${cssviewCssPath}");
+
+@keyframes move-the-image {
+0% { background-position: 50.00% 75.00%, 67.68% 67.68%, 75.00% 50.00%, 67.68% 32.32%, 50.00% 25.00%, 32.32% 32.32%, 25.00% 50.00%, 32.32% 67.68%, 0% 0%; }
+3.125% { background-position: 55.19% 76.11%, 72.14% 64.79%, 76.11% 44.81%, 64.79% 27.86%, 44.81% 23.89%, 27.86% 35.21%, 23.89% 55.19%, 35.21% 72.14%, 0% 0%; }
+6.25% { background-position: 60.79% 76.04%, 76.04% 60.79%, 76.04% 39.21%, 60.79% 23.96%, 39.21% 23.96%, 23.96% 39.21%, 23.96% 60.79%, 39.21% 76.04%, 0% 0%; }
+9.375% { background-position: 66.46% 74.64%, 79.06% 55.78%, 74.64% 33.54%, 55.78% 20.94%, 33.54% 25.36%, 20.94% 44.22%, 25.36% 66.46%, 44.22% 79.06%, 0% 0%; }
+12.5% { background-position: 71.84% 71.84%, 80.89% 50.00%, 71.84% 28.16%, 50.00% 19.11%, 28.16% 28.16%, 19.11% 50.00%, 28.16% 71.84%, 50.00% 80.89%, 0% 0%; }
+15.625% { background-position: 76.55% 67.74%, 81.32% 43.77%, 67.74% 23.45%, 43.77% 18.68%, 23.45% 32.26%, 18.68% 56.23%, 32.26% 76.55%, 56.23% 81.32%, 0% 0%; }
+18.75% { background-position: 80.21% 62.51%, 80.21% 37.49%, 62.51% 19.79%, 37.49% 19.79%, 19.79% 37.49%, 19.79% 62.51%, 37.49% 80.21%, 62.51% 80.21%, 0% 0%; }
+21.875% { background-position: 82.54% 56.47%, 77.58% 31.57%, 56.47% 17.46%, 31.57% 22.42%, 17.46% 43.53%, 22.42% 68.43%, 43.53% 82.54%, 68.43% 77.58%, 0% 0%; }
+25% { background-position: 83.33% 50.00%, 73.57% 26.43%, 50.00% 16.67%, 26.43% 26.43%, 16.67% 50.00%, 26.43% 73.57%, 50.00% 83.33%, 73.57% 73.57%, 0% 0%; }
+28.125% { background-position: 82.54% 43.53%, 68.43% 22.42%, 43.53% 17.46%, 22.42% 31.57%, 17.46% 56.47%, 31.57% 77.58%, 56.47% 82.54%, 77.58% 68.43%, 0% 0%; }
+31.25% { background-position: 80.21% 37.49%, 62.51% 19.79%, 37.49% 19.79%, 19.79% 37.49%, 19.79% 62.51%, 37.49% 80.21%, 62.51% 80.21%, 80.21% 62.51%, 0% 0%; }
+34.375% { background-position: 76.55% 32.26%, 56.23% 18.68%, 32.26% 23.45%, 18.68% 43.77%, 23.45% 67.74%, 43.77% 81.32%, 67.74% 76.55%, 81.32% 56.23%, 0% 0%; }
+37.5% { background-position: 71.84% 28.16%, 50.00% 19.11%, 28.16% 28.16%, 19.11% 50.00%, 28.16% 71.84%, 50.00% 80.89%, 71.84% 71.84%, 80.89% 50.00%, 0% 0%; }
+40.625% { background-position: 66.46% 25.36%, 44.22% 20.94%, 25.36% 33.54%, 20.94% 55.78%, 33.54% 74.64%, 55.78% 79.06%, 74.64% 66.46%, 79.06% 44.22%, 0% 0%; }
+43.75% { background-position: 60.79% 23.96%, 39.21% 23.96%, 23.96% 39.21%, 23.96% 60.79%, 39.21% 76.04%, 60.79% 76.04%, 76.04% 60.79%, 76.04% 39.21%, 0% 0%; }
+46.875% { background-position: 55.19% 23.89%, 35.21% 27.86%, 23.89% 44.81%, 27.86% 64.79%, 44.81% 76.11%, 64.79% 72.14%, 76.11% 55.19%, 72.14% 35.21%, 0% 0%; }
+50% { background-position: 50.00% 25.00%, 32.32% 32.32%, 25.00% 50.00%, 32.32% 67.68%, 50.00% 75.00%, 67.68% 67.68%, 75.00% 50.00%, 67.68% 32.32%, 0% 0%; }
+53.125% { background-position: 45.44% 27.07%, 30.57% 37.01%, 27.07% 54.56%, 37.01% 69.43%, 54.56% 72.93%, 69.43% 62.99%, 72.93% 45.44%, 62.99% 30.57%, 0% 0%; }
+56.25% { background-position: 41.65% 29.85%, 29.85% 41.65%, 29.85% 58.35%, 41.65% 70.15%, 58.35% 70.15%, 70.15% 58.35%, 70.15% 41.65%, 58.35% 29.85%, 0% 0%; }
+59.375% { background-position: 38.68% 33.06%, 30.02% 46.03%, 33.06% 61.32%, 46.03% 69.98%, 61.32% 66.94%, 69.98% 53.97%, 66.94% 38.68%, 53.97% 30.02%, 0% 0%; }
+62.5% { background-position: 36.49% 36.49%, 30.89% 50.00%, 36.49% 63.51%, 50.00% 69.11%, 63.51% 63.51%, 69.11% 50.00%, 63.51% 36.49%, 50.00% 30.89%, 0% 0%; }
+65.625% { background-position: 34.97% 39.96%, 32.28% 53.53%, 39.96% 65.03%, 53.53% 67.72%, 65.03% 60.04%, 67.72% 46.47%, 60.04% 34.97%, 46.47% 32.28%, 0% 0%; }
+68.75% { background-position: 34.02% 43.38%, 34.02% 56.62%, 43.38% 65.98%, 56.62% 65.98%, 65.98% 56.62%, 65.98% 43.38%, 56.62% 34.02%, 43.38% 34.02%, 0% 0%; }
+71.875% { background-position: 33.50% 46.72%, 36.01% 59.35%, 46.72% 66.50%, 59.35% 63.99%, 66.50% 53.28%, 63.99% 40.65%, 53.28% 33.50%, 40.65% 36.01%, 0% 0%; }
+75% { background-position: 33.33% 50.00%, 38.21% 61.79%, 50.00% 66.67%, 61.79% 61.79%, 66.67% 50.00%, 61.79% 38.21%, 50.00% 33.33%, 38.21% 38.21%, 0% 0%; }
+78.125% { background-position: 33.50% 53.28%, 40.65% 63.99%, 53.28% 66.50%, 63.99% 59.35%, 66.50% 46.72%, 59.35% 36.01%, 46.72% 33.50%, 36.01% 40.65%, 0% 0%; }
+81.25% { background-position: 34.02% 56.62%, 43.38% 65.98%, 56.62% 65.98%, 65.98% 56.62%, 65.98% 43.38%, 56.62% 34.02%, 43.38% 34.02%, 34.02% 43.38%, 0% 0%; }
+84.375% { background-position: 34.97% 60.04%, 46.47% 67.72%, 60.04% 65.03%, 67.72% 53.53%, 65.03% 39.96%, 53.53% 32.28%, 39.96% 34.97%, 32.28% 46.47%, 0% 0%; }
+87.5% { background-position: 36.49% 63.51%, 50.00% 69.11%, 63.51% 63.51%, 69.11% 50.00%, 63.51% 36.49%, 50.00% 30.89%, 36.49% 36.49%, 30.89% 50.00%, 0% 0%; }
+90.625% { background-position: 38.68% 66.94%, 53.97% 69.98%, 66.94% 61.32%, 69.98% 46.03%, 61.32% 33.06%, 46.03% 30.02%, 33.06% 38.68%, 30.02% 53.97%, 0% 0%; }
+93.75% { background-position: 41.65% 70.15%, 58.35% 70.15%, 70.15% 58.35%, 70.15% 41.65%, 58.35% 29.85%, 41.65% 29.85%, 29.85% 41.65%, 29.85% 58.35%, 0% 0%; }
+96.875% { background-position: 45.44% 72.93%, 62.99% 69.43%, 72.93% 54.56%, 69.43% 37.01%, 54.56% 27.07%, 37.01% 30.57%, 27.07% 45.44%, 30.57% 62.99%, 0% 0%; }
+100% { background-position: 50.00% 75.00%, 67.68% 67.68%, 75.00% 50.00%, 67.68% 32.32%, 50.00% 25.00%, 32.32% 32.32%, 25.00% 50.00%, 32.32% 67.68%, 0% 0%; }
 }
 
-@keyframes rotate-hue {
-  0% { filter: hue-rotate(0deg); }
-  100% { filter: hue-rotate(360deg); }
+@keyframes size-the-image {
+    0% { background-size: 96px, 12px, 96px, 12px, 96px, 12px, 96px, 12px, auto; }
+    100% { background-size: 12px, 96px, 12px, 96px, 12px, 96px, 12px, 96px, auto; }
 }
 
-@keyframes pulse-scale {
-  0%, 100% { -gtk-icon-transform: scale(1); }
-  50% { -gtk-icon-transform: scale(1.1); }
+window.demo {
+    background-image: url("file://${appleRedPath}"),
+                      url("file://${gnomeAppletsPath}"),
+                      url("file://${gnomeCalendarPath}"),
+                      url("file://${gnomeFootPath}"),
+                      url("file://${gnomeGmushPath}"),
+                      url("file://${gnomeGimpPath}"),
+                      url("file://${gnomeGsamePath}"),
+                      url("file://${gnuKeysPath}"),
+                      url("file://${backgroundPath}");
+    background-position: 50.00% 75.00%, 67.68% 67.68%, 75.00% 50.00%, 67.68% 32.32%, 50.00% 25.00%, 32.32% 32.32%, 25.00% 50.00%, 32.32% 67.68%, 0% 0%;
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, repeat;
+    animation: move-the-image infinite linear 3s, size-the-image infinite alternate ease-in-out 0.75s;
 }
 
-@keyframes float {
-  0%, 100% { margin-top: 0px; }
-  50% { margin-top: -10px; }
+window.demo .view, scrollbar, separator {
+  color: black;
+  background-color: rgba(255,255,255,0.5);
 }
-`;
 
-const PRESETS: Record<string, string> = {
-    "Gradient Shift": `/* Animated gradient background */
-.animated-bg {
-  background: linear-gradient(
-    270deg,
-    #ff6b6b,
-    #feca57,
-    #48dbfb,
-    #ff9ff3,
-    #54a0ff
-  );
-  background-size: 400% 400%;
-  animation: gradient-shift 8s ease infinite;
-  min-height: 200px;
-  border-radius: 12px;
-}`,
-    "Hue Rotation": `/* Rotating hue filter on gradient */
-.animated-bg {
-  background: linear-gradient(
-    135deg,
-    #667eea 0%,
-    #764ba2 50%,
-    #f093fb 100%
-  );
-  animation: rotate-hue 5s linear infinite;
-  min-height: 200px;
-  border-radius: 12px;
-}`,
-    "Pulsing Icon": `/* Icon with scale animation */
-.animated-bg {
-  background-image: -gtk-icontheme("starred-symbolic");
-  background-size: 64px 64px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-color: alpha(@accent_bg_color, 0.1);
-  animation: pulse-scale 1.5s ease-in-out infinite;
-  min-height: 200px;
-  border-radius: 12px;
-}`,
-    "Floating Icons": `/* Tiled icons with floating animation */
-.animated-bg {
-  background-image: -gtk-icontheme("emblem-favorite-symbolic");
-  background-size: 32px 32px;
-  background-repeat: repeat;
-  background-color: @theme_bg_color;
-  animation: float 2s ease-in-out infinite;
-  min-height: 200px;
-  border-radius: 12px;
-  opacity: 0.6;
-}`,
-    "Rainbow Waves": `/* Multiple animated gradients */
-.animated-bg {
-  background:
-    linear-gradient(45deg, transparent 45%, rgba(255,0,0,0.2) 50%, transparent 55%),
-    linear-gradient(135deg, transparent 45%, rgba(0,255,0,0.2) 50%, transparent 55%),
-    linear-gradient(225deg, transparent 45%, rgba(0,0,255,0.2) 50%, transparent 55%),
-    linear-gradient(315deg, transparent 45%, rgba(255,255,0,0.2) 50%, transparent 55%),
-    @theme_bg_color;
-  background-size: 200% 200%;
-  animation: gradient-shift 4s linear infinite;
-  min-height: 200px;
-  border-radius: 12px;
-}`,
-    "Morphing Gradient": `/* Smooth color morphing */
-.animated-bg {
-  background: linear-gradient(
-    90deg,
-    #12c2e9,
-    #c471ed,
-    #f64f59
-  );
-  background-size: 200% 100%;
-  animation: gradient-shift 6s ease infinite;
-  min-height: 200px;
-  border-radius: 12px;
-}`,
-};
+window.demo .view:selected {
+  background-color: rgba(127,127,255,0.5);
+}`;
 
-const DEFAULT_CSS = PRESETS["Gradient Shift"] ?? "";
+const WINDOW_CLASSES = ["demo"];
 
-const CssPixbufsDemo = () => {
-    const textViewRef = useRef<Gtk.TextView | null>(null);
-    const providerRef = useRef<Gtk.CssProvider | null>(null);
-    const [cssText, setCssText] = useState(DEFAULT_CSS);
-    const [hasError, setHasError] = useState(false);
-
-    const applyCss = useCallback(() => {
-        const display = Gdk.Display.getDefault();
-        if (!display) return;
-
-        if (providerRef.current) {
-            Gtk.StyleContext.removeProviderForDisplay(display, providerRef.current);
-        }
-
-        const provider = new Gtk.CssProvider();
-        providerRef.current = provider;
-
-        try {
-            provider.loadFromString(cssText);
-            setHasError(false);
-        } catch {
-            setHasError(true);
-        }
-
-        Gtk.StyleContext.addProviderForDisplay(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
-    }, [cssText]);
-
-    useEffect(() => {
-        applyCss();
-        return () => {
-            const display = Gdk.Display.getDefault();
-            if (display && providerRef.current) {
-                Gtk.StyleContext.removeProviderForDisplay(display, providerRef.current);
-            }
-        };
-    }, [applyCss]);
-
-    const handleBufferChanged = useCallback((buffer: Gtk.TextBuffer) => {
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-        buffer.getStartIter(startIter);
-        buffer.getEndIter(endIter);
-        setCssText(buffer.getText(startIter, endIter, true));
-    }, []);
-
-    const handlePreset = useCallback((presetName: string) => {
-        const preset = PRESETS[presetName];
-        if (preset) {
-            setCssText(preset);
-        }
-    }, []);
+const CssPixbufsDemo = ({ window }: DemoProps) => {
+    const windowClasses = useMemo(() => WINDOW_CLASSES, []);
+    const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
 
     return (
-        <GtkPaned
-            orientation={Gtk.Orientation.VERTICAL}
-            shrinkStartChild={false}
-            shrinkEndChild={false}
-            vexpand
-            hexpand
-        >
+        <GtkPaned orientation={Gtk.Orientation.VERTICAL}>
             <x.Slot for={GtkPaned} id="startChild">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginStart={12}
-                    marginEnd={12}
-                    marginBottom={12}
-                >
-                    <GtkLabel label="Animated Backgrounds" cssClasses={["title-3"]} halign={Gtk.Align.START} />
-                    <GtkLabel
-                        label="GTK CSS supports @keyframes animations for continuous motion effects. Animate gradients, icons, filters, and transforms. Edit the CSS below to experiment."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox cssClasses={["animated-bg"]} hexpand vexpand>
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                            hexpand
-                            vexpand
-                        >
-                            <GtkLabel label="Live Preview" cssClasses={["title-3"]} />
-                            <GtkLabel label="Watch the animation" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                    </GtkBox>
-
-                    <GtkBox spacing={4} halign={Gtk.Align.CENTER}>
-                        {Object.keys(PRESETS).map((name) => (
-                            <GtkButton
-                                key={name}
-                                label={name}
-                                cssClasses={["flat"]}
-                                onClicked={() => handlePreset(name)}
-                            />
-                        ))}
-                    </GtkBox>
-
-                    {hasError && <GtkLabel label="CSS has errors" cssClasses={["error"]} halign={Gtk.Align.START} />}
-                </GtkBox>
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} />
             </x.Slot>
             <x.Slot for={GtkPaned} id="endChild">
-                <GtkScrolledWindow vexpand hexpand>
-                    <GtkTextView
-                        ref={textViewRef}
-                        monospace
-                        wrapMode={Gtk.WrapMode.WORD_CHAR}
-                        topMargin={8}
-                        bottomMargin={8}
-                        leftMargin={8}
-                        rightMargin={8}
-                        onBufferChanged={handleBufferChanged}
-                    >
-                        {cssText}
-                    </GtkTextView>
+                <GtkScrolledWindow>
+                    <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
                 </GtkScrolledWindow>
             </x.Slot>
         </GtkPaned>
@@ -242,4 +112,6 @@ export const cssPixbufsDemo: Demo = {
     keywords: ["css", "animation", "keyframes", "gradient", "icon", "pixbuf", "background", "live", "editing"],
     component: CssPixbufsDemo,
     sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 300,
 };

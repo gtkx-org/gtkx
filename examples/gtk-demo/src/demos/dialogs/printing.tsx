@@ -9,7 +9,7 @@ const HEADER_HEIGHT = (10 * 72) / 25.4;
 const HEADER_GAP = (3 * 72) / 25.4;
 const FONT_SIZE = 12.0;
 
-const PrintingDemo = ({ window }: DemoProps) => {
+const PrintingDemo = ({ window, onClose }: DemoProps) => {
     useEffect(() => {
         const lines = sourceCode.split("\n");
         const numLines = lines.length;
@@ -37,28 +37,41 @@ const PrintingDemo = ({ window }: DemoProps) => {
             const cr = context.getCairoContext();
             const width = context.getWidth();
 
-            cr.rectangle(0, 0, width, HEADER_HEIGHT).setSourceRgb(0.8, 0.8, 0.8).fillPreserve();
-            cr.setSourceRgb(0, 0, 0).setLineWidth(1).stroke();
+            cr.rectangle(0, 0, width, HEADER_HEIGHT);
+            cr.setSourceRgb(0.8, 0.8, 0.8);
+            cr.fillPreserve();
+            cr.setSourceRgb(0, 0, 0);
+            cr.setLineWidth(1);
+            cr.stroke();
 
-            const headerLayout = PangoCairo.createLayout(cr);
+            const headerLayout = context.createPangoLayout();
             headerLayout.setFontDescription(Pango.FontDescription.fromString("sans 14"));
             headerLayout.setText("printing.tsx", -1);
 
             const logicalRect = new Pango.Rectangle();
             headerLayout.getPixelExtents(undefined, logicalRect);
-            const textWidth = logicalRect.getWidth();
-            const textHeight = logicalRect.getHeight();
+            let textWidth = logicalRect.getWidth();
+            let textHeight = logicalRect.getHeight();
+
+            if (textWidth > width) {
+                headerLayout.setWidth(Math.floor(width));
+                headerLayout.setEllipsize(Pango.EllipsizeMode.START);
+                headerLayout.getPixelExtents(undefined, logicalRect);
+                textWidth = logicalRect.getWidth();
+                textHeight = logicalRect.getHeight();
+            }
 
             cr.moveTo((width - textWidth) / 2, (HEADER_HEIGHT - textHeight) / 2);
             PangoCairo.showLayout(cr, headerLayout);
 
             const pageStr = `${pageNr + 1}/${numPages}`;
             headerLayout.setText(pageStr, -1);
+            headerLayout.setWidth(-1);
             headerLayout.getPixelExtents(undefined, logicalRect);
             cr.moveTo(width - logicalRect.getWidth() - 4, (HEADER_HEIGHT - logicalRect.getHeight()) / 2);
             PangoCairo.showLayout(cr, headerLayout);
 
-            const bodyLayout = PangoCairo.createLayout(cr);
+            const bodyLayout = context.createPangoLayout();
             const bodyDesc = Pango.FontDescription.fromString("monospace");
             bodyDesc.setSize(FONT_SIZE * Pango.SCALE);
             bodyLayout.setFontDescription(bodyDesc);
@@ -80,7 +93,9 @@ const PrintingDemo = ({ window }: DemoProps) => {
             dialog.setMessage(`${error}`);
             dialog.show(window.current);
         }
-    }, [window]);
+
+        onClose?.();
+    }, [window, onClose]);
 
     return null;
 };
@@ -92,4 +107,5 @@ export const printingDemo: Demo = {
     keywords: ["print", "printing", "dialog", "GtkPrintOperation"],
     component: PrintingDemo,
     sourceCode,
+    dialogOnly: true,
 };

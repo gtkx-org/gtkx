@@ -1,199 +1,189 @@
-import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkPaned, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import {
+    GtkBox,
+    GtkButton,
+    GtkDrawingArea,
+    GtkOverlay,
+    GtkPaned,
+    GtkScrolledWindow,
+    GtkTextView,
+    x,
+} from "@gtkx/react";
+import { useMemo } from "react";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./css-multiplebgs.tsx?raw";
+import cssviewCssPath from "./cssview.css";
+import resetCssPath from "./reset.css";
+import { useCssEditor } from "./use-css-editor.js";
 
-const PRESETS: Record<string, string> = {
-    "Gradient Stack": `/* Layered linear gradients from corners */
-.multi-bg-demo {
-  background:
-    linear-gradient(135deg, rgba(255,0,0,0.3) 0%, transparent 50%),
-    linear-gradient(225deg, rgba(0,255,0,0.3) 0%, transparent 50%),
-    linear-gradient(315deg, rgba(0,0,255,0.3) 0%, transparent 50%),
-    linear-gradient(45deg, rgba(255,255,0,0.3) 0%, transparent 50%),
-    @theme_bg_color;
-  min-height: 200px;
-  border-radius: 12px;
-}`,
-    "Radial Layers": `/* Overlapping radial gradients */
-.multi-bg-demo {
-  background:
-    radial-gradient(circle at 20% 30%, rgba(255,0,128,0.5) 0%, transparent 35%),
-    radial-gradient(circle at 80% 70%, rgba(0,200,255,0.5) 0%, transparent 35%),
-    radial-gradient(circle at 50% 50%, rgba(255,200,0,0.4) 0%, transparent 50%),
-    @theme_bg_color;
-  min-height: 200px;
-  border-radius: 12px;
-}`,
-    "Striped Pattern": `/* Repeating diagonal stripes */
-.multi-bg-demo {
-  background:
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 10px,
-      rgba(0,0,0,0.08) 10px,
-      rgba(0,0,0,0.08) 20px
-    ),
-    repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 10px,
-      rgba(0,0,0,0.08) 10px,
-      rgba(0,0,0,0.08) 20px
-    ),
-    linear-gradient(180deg, @accent_bg_color, shade(@accent_bg_color, 0.8));
-  min-height: 200px;
-  border-radius: 12px;
-}`,
-    Spotlight: `/* Top spotlight effect */
-.multi-bg-demo {
-  background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,255,255,0.4) 0%, transparent 70%),
-    linear-gradient(180deg, shade(@accent_bg_color, 1.3), shade(@accent_bg_color, 0.6));
-  min-height: 200px;
-  border-radius: 12px;
-}`,
-    "Mesh Gradient": `/* Multi-point mesh gradient */
-.multi-bg-demo {
-  background:
-    radial-gradient(at 0% 0%, #ff6b6b 0%, transparent 50%),
-    radial-gradient(at 100% 0%, #4ecdc4 0%, transparent 50%),
-    radial-gradient(at 100% 100%, #45b7d1 0%, transparent 50%),
-    radial-gradient(at 0% 100%, #96ceb4 0%, transparent 50%),
-    #2c3e50;
-  min-height: 200px;
-  border-radius: 12px;
-}`,
-};
+const DEFAULT_CSS = `/* You can edit the text in this window to change the
+ * appearance of this Window.
+ * Be careful, if you screw it up, nothing might be visible
+ * anymore. :)
+ */
 
-const DEFAULT_CSS = PRESETS["Gradient Stack"] ?? "";
+/* This CSS resets all properties to their defaults values
+ *    and overrides all user settings and the theme in use */
+@import url("file://${resetCssPath}");
+@import url("file://${cssviewCssPath}");
 
-const CssMultiplebgsDemo = () => {
-    const textViewRef = useRef<Gtk.TextView | null>(null);
-    const providerRef = useRef<Gtk.CssProvider | null>(null);
-    const [cssText, setCssText] = useState(DEFAULT_CSS);
-    const [hasError, setHasError] = useState(false);
+#canvas {
+    transition-property: background-color, background-image;
+    transition-duration: 0.5s;
 
-    const applyCss = useCallback(() => {
-        const display = Gdk.Display.getDefault();
-        if (!display) return;
+    background-color: #4870bc;
+}
 
-        if (providerRef.current) {
-            Gtk.StyleContext.removeProviderForDisplay(display, providerRef.current);
-        }
+/* The gradients below are adapted versions of Lea Verou's CSS3 patterns,
+ * licensed under the MIT license:
+ * Copyright (c) 2011 Lea Verou, http://lea.verou.me/
+ *
+ * See https://github.com/LeaVerou/CSS3-Patterns-Gallery
+ */
 
-        const provider = new Gtk.CssProvider();
-        providerRef.current = provider;
+/**********
+ * Bricks *
+ **********/
+/*
+@define-color brick_hi #d42;
+@define-color brick_lo #b42;
+@define-color brick_hi_backdrop #888;
+@define-color brick_lo_backdrop #999;
 
-        try {
-            provider.loadFromString(cssText);
-            setHasError(false);
-        } catch {
-            setHasError(true);
-        }
+#canvas {
+    background-color: #999;
+    background-image: linear-gradient(205deg, @brick_lo, @brick_lo 23px, transparent 23px),
+                      linear-gradient(25deg, @brick_hi, @brick_hi 23px, transparent 23px),
+                      linear-gradient(205deg, @brick_lo, @brick_lo 23px, transparent 23px),
+                      linear-gradient(25deg, @brick_hi, @brick_hi 23px, transparent 23px);
+    background-size: 58px 58px;
+    background-position: 0px 6px, 4px 31px, 29px 35px, 34px 2px;
+}
 
-        Gtk.StyleContext.addProviderForDisplay(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
-    }, [cssText]);
+#canvas:backdrop {
+    background-color: #444;
+    background-image: linear-gradient(205deg, @brick_lo_backdrop, @brick_lo_backdrop 23px, transparent 23px),
+                      linear-gradient(25deg, @brick_hi_backdrop, @brick_hi_backdrop 23px, transparent 23px),
+                      linear-gradient(205deg, @brick_lo_backdrop, @brick_lo_backdrop 23px, transparent 23px),
+                      linear-gradient(25deg, @brick_hi_backdrop, @brick_hi_backdrop 23px, transparent 23px);
+    background-size: 58px 58px;
+    background-position: 0px 6px, 4px 31px, 29px 35px, 34px 2px;
+}
+*/
 
-    useEffect(() => {
-        applyCss();
-        return () => {
-            const display = Gdk.Display.getDefault();
-            if (display && providerRef.current) {
-                Gtk.StyleContext.removeProviderForDisplay(display, providerRef.current);
-            }
-        };
-    }, [applyCss]);
+/*
+#bricks-button {
+    background-color: #eef;
+    background-image: -gtk-scaled(url('resource:///css_multiplebgs/brick.png'),url('resource:///css_multiplebgs/brick2.png'));
+    background-repeat: no-repeat;
+    background-position: center;
+}
 
-    const handleBufferChanged = useCallback((buffer: Gtk.TextBuffer) => {
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-        buffer.getStartIter(startIter);
-        buffer.getEndIter(endIter);
-        setCssText(buffer.getText(startIter, endIter, true));
-    }, []);
+*/
+/**********
+ * Tartan *
+ **********/
+/*
+@define-color tartan_bg #662e2c;
+@define-color tartan_bg_backdrop #333;
 
-    const handlePreset = useCallback((presetName: string) => {
-        const preset = PRESETS[presetName];
-        if (preset) {
-            setCssText(preset);
-        }
-    }, []);
+#canvas {
+    background-color: @tartan_bg;
+    background-image: repeating-linear-gradient(transparent, transparent 50px, rgba(0,0,0,.4) 50px,
+                                                rgba(0,0,0,.4) 53px, transparent 53px, transparent 63px,
+                                                rgba(0,0,0,.4) 63px, rgba(0,0,0,.4) 66px, transparent 66px,
+                                                transparent 116px, rgba(0,0,0,.5) 116px, rgba(0,0,0,.5) 166px,
+                                                rgba(255,255,255,.2) 166px, rgba(255,255,255,.2) 169px, rgba(0,0,0,.5) 169px,
+                                                rgba(0,0,0,.5) 179px, rgba(255,255,255,.2) 179px, rgba(255,255,255,.2) 182px,
+                                                rgba(0,0,0,.5) 182px, rgba(0,0,0,.5) 232px, transparent 232px),
+                      repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(0,0,0,.4) 50px, rgba(0,0,0,.4) 53px,
+                                                transparent 53px, transparent 63px, rgba(0,0,0,.4) 63px, rgba(0,0,0,.4) 66px,
+                                                transparent 66px, transparent 116px, rgba(0,0,0,.5) 116px, rgba(0,0,0,.5) 166px,
+                                                rgba(255,255,255,.2) 166px, rgba(255,255,255,.2) 169px, rgba(0,0,0,.5) 169px,
+                                                rgba(0,0,0,.5) 179px, rgba(255,255,255,.2) 179px, rgba(255,255,255,.2) 182px,
+                                                rgba(0,0,0,.5) 182px, rgba(0,0,0,.5) 232px, transparent 232px),
+                      repeating-linear-gradient(-55deg, transparent, transparent 1px, rgba(0,0,0,.2) 1px, rgba(0,0,0,.2) 4px,
+                                                transparent 4px, transparent 19px, rgba(0,0,0,.2) 19px,
+                                                rgba(0,0,0,.2) 24px, transparent 24px, transparent 51px, rgba(0,0,0,.2) 51px,
+                                                rgba(0,0,0,.2) 54px, transparent 54px, transparent 74px);
+}
+
+#canvas:backdrop {
+    background-color: @tartan_bg_backdrop;
+}
+*/
+
+/***********
+ * Stripes *
+ ***********/
+
+/*
+@define-color base_bg #4870bc;
+@define-color backdrop_bg #555;
+
+#canvas {
+  background-color: @base_bg;
+  background-image: linear-gradient(to left, transparent, rgba(255,255,255,.07) 50%, transparent 50%),
+                    linear-gradient(to left, transparent, rgba(255,255,255,.13) 50%, transparent 50%),
+                    linear-gradient(to left, transparent, transparent 50%, rgba(255,255,255,.17) 50%),
+                    linear-gradient(to left, transparent, transparent 50%, rgba(255,255,255,.19) 50%);
+  background-size: 29px, 59px, 73px, 109px;
+}
+
+#canvas:backdrop {
+  background-color: @backdrop_bg;
+}
+*/
+
+/***************
+ * Lined Paper *
+ ***************/
+/*
+#canvas {
+    background-color: #fff;
+    background-image: linear-gradient(90deg, transparent 79px, alpha(#f98195, 0.40) 79px, #f98195 80px, alpha(#f98195, 0.40) 81px, transparent 81px),
+                      linear-gradient(alpha(#77c5cf, 0.60), alpha(#77c5cf, 0.60) 1px, transparent 1px);
+    background-size: 100% 36px;
+}
+
+#canvas:backdrop {
+    background-color: #f1f2f4;
+    background-image: linear-gradient(90deg, transparent 79px, alpha(#999, 0.40) 79px, #999 80px, alpha(#999, 0.40) 81px, transparent 81px),
+                      linear-gradient(alpha(#bbb, 0.60), alpha(#bbb, 0.60) 1px, transparent 1px);
+}
+*/`;
+
+const WINDOW_CLASSES = ["demo"];
+
+const CssMultiplebgsDemo = ({ window }: DemoProps) => {
+    const windowClasses = useMemo(() => WINDOW_CLASSES, []);
+    const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
 
     return (
-        <GtkPaned
-            orientation={Gtk.Orientation.VERTICAL}
-            shrinkStartChild={false}
-            shrinkEndChild={false}
-            vexpand
-            hexpand
-        >
-            <x.Slot for={GtkPaned} id="startChild">
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={12}
-                    marginStart={12}
-                    marginEnd={12}
-                    marginBottom={12}
-                >
-                    <GtkLabel label="Multiple Backgrounds" cssClasses={["title-3"]} halign={Gtk.Align.START} />
-                    <GtkLabel
-                        label="CSS allows stacking multiple background layers. Each layer can be a gradient, image, or color. The first layer appears on top. Edit the CSS below to experiment."
-                        wrap
-                        halign={Gtk.Align.START}
-                        cssClasses={["dim-label"]}
-                    />
-
-                    <GtkBox cssClasses={["multi-bg-demo"]} hexpand vexpand>
-                        <GtkBox
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                            hexpand
-                            vexpand
-                        >
-                            <GtkLabel label="Live Preview" cssClasses={["title-3"]} />
-                            <GtkLabel label="Edit CSS below to see changes" cssClasses={["dim-label"]} />
-                        </GtkBox>
-                    </GtkBox>
-
-                    <GtkBox spacing={8} halign={Gtk.Align.CENTER}>
-                        <GtkLabel label="Presets:" cssClasses={["dim-label"]} />
-                        {Object.keys(PRESETS).map((name) => (
-                            <GtkButton
-                                key={name}
-                                label={name}
-                                cssClasses={["flat"]}
-                                onClicked={() => handlePreset(name)}
-                            />
-                        ))}
-                    </GtkBox>
-
-                    {hasError && <GtkLabel label="CSS has errors" cssClasses={["error"]} halign={Gtk.Align.START} />}
-                </GtkBox>
-            </x.Slot>
-            <x.Slot for={GtkPaned} id="endChild">
-                <GtkScrolledWindow vexpand hexpand>
-                    <GtkTextView
-                        ref={textViewRef}
-                        monospace
-                        wrapMode={Gtk.WrapMode.WORD_CHAR}
-                        topMargin={8}
-                        bottomMargin={8}
-                        leftMargin={8}
-                        rightMargin={8}
-                        onBufferChanged={handleBufferChanged}
-                    >
-                        {cssText}
-                    </GtkTextView>
-                </GtkScrolledWindow>
-            </x.Slot>
-        </GtkPaned>
+        <GtkOverlay>
+            <GtkDrawingArea name="canvas" hexpand vexpand />
+            <x.OverlayChild>
+                <GtkButton
+                    name="bricks-button"
+                    halign={Gtk.Align.CENTER}
+                    valign={Gtk.Align.CENTER}
+                    widthRequest={250}
+                    heightRequest={84}
+                />
+            </x.OverlayChild>
+            <x.OverlayChild>
+                <GtkPaned orientation={Gtk.Orientation.VERTICAL}>
+                    <x.Slot for={GtkPaned} id="startChild">
+                        <GtkBox />
+                    </x.Slot>
+                    <x.Slot for={GtkPaned} id="endChild">
+                        <GtkScrolledWindow>
+                            <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
+                        </GtkScrolledWindow>
+                    </x.Slot>
+                </GtkPaned>
+            </x.OverlayChild>
+        </GtkOverlay>
     );
 };
 
@@ -205,4 +195,6 @@ export const cssMultiplebgsDemo: Demo = {
     keywords: ["css", "background", "gradient", "layers", "multiple", "radial", "linear", "live", "editing"],
     component: CssMultiplebgsDemo,
     sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 300,
 };

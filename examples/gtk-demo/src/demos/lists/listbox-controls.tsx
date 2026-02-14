@@ -15,7 +15,7 @@ import {
     GtkViewport,
     x,
 } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox-controls.tsx?raw";
 
@@ -27,6 +27,16 @@ const ListBoxControlsDemo = () => {
     const switchRef = useRef<Gtk.Switch | null>(null);
     const checkRef = useRef<Gtk.CheckButton | null>(null);
     const imageRef = useRef<Gtk.Image | null>(null);
+    const labelRefs = useRef<(Gtk.Label | null)[]>([]);
+
+    useEffect(() => {
+        const sizeGroup = new Gtk.SizeGroup(Gtk.SizeGroupMode.HORIZONTAL);
+        for (const label of labelRefs.current) {
+            if (label) {
+                sizeGroup.addWidget(label);
+            }
+        }
+    }, []);
 
     const handleRowActivated = useCallback((row: Gtk.ListBoxRow) => {
         const sw = switchRef.current;
@@ -62,7 +72,12 @@ const ListBoxControlsDemo = () => {
                         <GtkListBoxRow selectable={false}>
                             <GtkBox>
                                 <GtkLabel
-                                    label="Switch"
+                                    ref={(r) => {
+                                        labelRefs.current[0] = r;
+                                    }}
+                                    label="_Switch"
+                                    useUnderline
+                                    mnemonicWidget={switchRef.current}
                                     xalign={0}
                                     halign={Gtk.Align.START}
                                     valign={Gtk.Align.CENTER}
@@ -84,7 +99,12 @@ const ListBoxControlsDemo = () => {
                         <GtkListBoxRow selectable={false}>
                             <GtkBox>
                                 <GtkLabel
-                                    label="Check"
+                                    ref={(r) => {
+                                        labelRefs.current[1] = r;
+                                    }}
+                                    label="_Check"
+                                    useUnderline
+                                    mnemonicWidget={checkRef.current}
                                     xalign={0}
                                     halign={Gtk.Align.START}
                                     valign={Gtk.Align.CENTER}
@@ -105,7 +125,12 @@ const ListBoxControlsDemo = () => {
                         <GtkListBoxRow selectable={false}>
                             <GtkBox>
                                 <GtkLabel
-                                    label="Click here!"
+                                    ref={(r) => {
+                                        labelRefs.current[2] = r;
+                                    }}
+                                    label="_Click here!"
+                                    useUnderline
+                                    mnemonicWidget={imageRef.current}
                                     xalign={0}
                                     halign={Gtk.Align.START}
                                     valign={Gtk.Align.CENTER}
@@ -119,6 +144,7 @@ const ListBoxControlsDemo = () => {
                                     marginStart={10}
                                     marginEnd={10}
                                     opacity={imageOpacity}
+                                    accessibleRole={Gtk.AccessibleRole.STATUS}
                                 />
                             </GtkBox>
                         </GtkListBoxRow>
@@ -130,7 +156,11 @@ const ListBoxControlsDemo = () => {
                         <GtkListBoxRow selectable={false} activatable={false}>
                             <GtkBox>
                                 <GtkLabel
-                                    label="Scale"
+                                    ref={(r) => {
+                                        labelRefs.current[3] = r;
+                                    }}
+                                    label="_Scale"
+                                    useUnderline
                                     xalign={0}
                                     halign={Gtk.Align.START}
                                     valign={Gtk.Align.CENTER}
@@ -152,7 +182,11 @@ const ListBoxControlsDemo = () => {
                         <GtkListBoxRow selectable={false} activatable={false}>
                             <GtkBox>
                                 <GtkLabel
-                                    label="Spinbutton"
+                                    ref={(r) => {
+                                        labelRefs.current[4] = r;
+                                    }}
+                                    label="S_pinbutton"
+                                    useUnderline
                                     xalign={0}
                                     halign={Gtk.Align.START}
                                     valign={Gtk.Align.CENTER}
@@ -172,7 +206,11 @@ const ListBoxControlsDemo = () => {
                         <GtkListBoxRow selectable={false} activatable={false}>
                             <GtkBox>
                                 <GtkLabel
-                                    label="Dropdown"
+                                    ref={(r) => {
+                                        labelRefs.current[5] = r;
+                                    }}
+                                    label="_Dropdown"
+                                    useUnderline
                                     xalign={0}
                                     halign={Gtk.Align.START}
                                     valign={Gtk.Align.CENTER}
@@ -190,7 +228,11 @@ const ListBoxControlsDemo = () => {
                         <GtkListBoxRow selectable={false} activatable={false}>
                             <GtkBox>
                                 <GtkLabel
-                                    label="Entry"
+                                    ref={(r) => {
+                                        labelRefs.current[6] = r;
+                                    }}
+                                    label="_Entry"
+                                    useUnderline
                                     xalign={0}
                                     halign={Gtk.Align.START}
                                     valign={Gtk.Align.CENTER}
@@ -218,4 +260,5 @@ export const listboxControlsDemo: Demo = {
     keywords: ["listbox", "controls", "switch", "check", "scale", "spinbutton", "dropdown", "entry", "rich-list"],
     component: ListBoxControlsDemo,
     sourceCode,
+    defaultHeight: 400,
 };

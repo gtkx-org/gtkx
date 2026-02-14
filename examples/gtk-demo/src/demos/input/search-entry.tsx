@@ -1,26 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkHeaderBar, GtkLabel, GtkSearchBar, GtkSearchEntry, GtkToggleButton, x } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import { useCallback, useState } from "react";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./search-entry.tsx?raw";
 
-const SearchEntryDemo = () => {
+const SearchEntryDemo = ({ window }: DemoProps) => {
     const [searchText, setSearchText] = useState("");
     const [searchMode, setSearchMode] = useState(false);
-    const searchBarRef = useRef<Gtk.SearchBar | null>(null);
-
-    useEffect(() => {
-        const searchBar = searchBarRef.current;
-        if (!searchBar) return;
-
-        const root = searchBar.getRoot();
-        if (root) {
-            const widget = root as unknown as Gtk.Widget;
-            if (widget) {
-                searchBar.setKeyCaptureWidget(widget);
-            }
-        }
-    }, []);
 
     const handleToggleButtonClicked = useCallback((btn: Gtk.ToggleButton) => {
         setSearchMode(btn.getActive());
@@ -41,9 +27,9 @@ const SearchEntryDemo = () => {
             </x.Slot>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
                 <GtkSearchBar
-                    ref={searchBarRef}
                     searchModeEnabled={searchMode}
                     showCloseButton={false}
+                    keyCaptureWidget={window.current}
                     onSearchModeChanged={setSearchMode}
                 >
                     <GtkSearchEntry

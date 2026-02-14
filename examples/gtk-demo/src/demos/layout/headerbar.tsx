@@ -14,14 +14,14 @@ const HeaderBarDemo = () => {
                         </GtkBox>
                     </x.ContainerSlot>
                     <x.ContainerSlot for={GtkHeaderBar} id="packStart">
-                        <GtkSwitch />
+                        <GtkSwitch accessibleLabel="Change something" />
                     </x.ContainerSlot>
                     <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkButton iconName="mail-send-receive-symbolic" tooltipText="Check out" />
                     </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
-            <GtkTextView hexpand vexpand />
+            <GtkTextView accessibleLabel="Content" />
         </>
     );
 };
@@ -34,4 +34,6 @@ export const headerbarDemo: Demo = {
     keywords: ["headerbar", "GtkHeaderBar", "GtkWindowHandle", "GtkWindowControls", "titlebar"],
     component: HeaderBarDemo,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 400,
 };

@@ -1,7 +1,7 @@
 import { createRef } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton } from "@gtkx/react";
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./constraints-interactive.tsx?raw";
 
@@ -14,7 +14,7 @@ const ConstraintsInteractiveDemo = () => {
     const constraintRef = useRef<Gtk.Constraint | null>(null);
     const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!containerRef.current || !button1Ref.current || !button2Ref.current || !button3Ref.current) return;
 
         const layout = new Gtk.ConstraintLayout();
@@ -166,11 +166,12 @@ const ConstraintsInteractiveDemo = () => {
         );
 
         const drag = new Gtk.GestureDrag();
-        drag.connect("drag-update", (_gesture: Gtk.GestureDrag, offsetX: number) => {
+        drag.connect("drag-update", (_gesture: Gtk.GestureDrag, offsetX: number, _offsetY: number) => {
             if (!layoutRef.current || !guideRef.current) return;
 
             const startXRef = createRef(0);
-            const success = drag.getStartPoint(startXRef);
+            const startYRef = createRef(0);
+            const success = drag.getStartPoint(startXRef, startYRef);
             if (!success) return;
 
             const startX = startXRef.value;
@@ -209,4 +210,5 @@ export const constraintsInteractiveDemo: Demo = {
     keywords: ["constraint", "interactive", "drag", "GtkConstraintLayout", "GtkLayoutManager"],
     component: ConstraintsInteractiveDemo,
     sourceCode,
+    defaultWidth: 260,
 };

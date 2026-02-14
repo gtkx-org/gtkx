@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkGrid, GtkImage, GtkRevealer, x } from "@gtkx/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./revealer.tsx?raw";
 
@@ -23,48 +23,40 @@ const revealerConfigs: RevealerConfig[] = [
 ];
 
 const TRANSITION_DURATION = 2000;
-const STEP_DELAY = 200;
 
 /**
  * Revealer demo matching the official GTK gtk-demo.
- * Shows 9 icons in a grid that reveal sequentially with different transitions.
- * Animation cycles: reveal one-by-one, then hide one-by-one.
+ * Shows 9 icons in a grid that reveal sequentially (690ms apart),
+ * then each independently oscillates via the child-revealed signal.
  */
 const RevealerDemo = () => {
     const [revealed, setRevealed] = useState<boolean[]>(new Array(9).fill(false));
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const indexRef = useRef(0);
-    const revealingRef = useRef(true);
+    const activatedRef = useRef<boolean[]>(new Array(9).fill(false));
 
     useEffect(() => {
-        const step = () => {
-            const isRevealing = revealingRef.current;
-            const index = indexRef.current;
-
+        let count = 0;
+        const timer = setInterval(() => {
+            const idx = count;
+            activatedRef.current[idx] = true;
             setRevealed((prev) => {
                 const next = [...prev];
-                next[index] = isRevealing;
+                next[idx] = true;
                 return next;
             });
+            count++;
+            if (count >= 9) clearInterval(timer);
+        }, 690);
 
-            indexRef.current++;
+        return () => clearInterval(timer);
+    }, []);
 
-            if (indexRef.current >= 9) {
-                indexRef.current = 0;
-                revealingRef.current = !revealingRef.current;
-                timeoutRef.current = setTimeout(step, TRANSITION_DURATION + 1000);
-            } else {
-                timeoutRef.current = setTimeout(step, STEP_DELAY);
-            }
-        };
-
-        timeoutRef.current = setTimeout(step, 500);
-
-        return () => {
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-            }
-        };
+    const handleChildRevealed = useCallback((index: number) => {
+        if (!activatedRef.current[index]) return;
+        setRevealed((prev) => {
+            const next = [...prev];
+            next[index] = !next[index];
+            return next;
+        });
     }, []);
 
     return (
@@ -75,6 +67,12 @@ const RevealerDemo = () => {
                         transitionDuration={TRANSITION_DURATION}
                         transitionType={config.transition}
                         revealChild={revealed[index]}
+                        onNotify={(pspec, self) => {
+                            if (pspec.getName() === "child-revealed") {
+                                if (!self.getMapped()) return;
+                                handleChildRevealed(index);
+                            }
+                        }}
                     >
                         <GtkImage iconName="face-cool-symbolic" iconSize={Gtk.IconSize.LARGE} />
                     </GtkRevealer>
@@ -91,4 +89,6 @@ export const revealerDemo: Demo = {
     keywords: ["revealer", "GtkRevealer"],
     component: RevealerDemo,
     sourceCode,
+    defaultWidth: 300,
+    defaultHeight: 300,
 };

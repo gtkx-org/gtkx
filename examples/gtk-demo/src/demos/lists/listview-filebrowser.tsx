@@ -1,5 +1,6 @@
+import { homedir } from "node:os";
+import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/ffi/gio";
-import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
@@ -8,43 +9,46 @@ import {
     GtkHeaderBar,
     GtkImage,
     GtkLabel,
+    GtkListView,
     GtkScrolledWindow,
-    GtkToggleButton,
     x,
 } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-filebrowser.tsx?raw";
 
+function formatSize(bytes: number): string {
+    if (bytes < 1000) return `${bytes} bytes`;
+    if (bytes < 1000_000) return `${(bytes / 1000).toFixed(1)} kB`;
+    if (bytes < 1000_000_000) return `${(bytes / 1000_000).toFixed(1)} MB`;
+    return `${(bytes / 1000_000_000).toFixed(1)} GB`;
+}
+
 interface FileItem {
     name: string;
     displayName: string;
     isDirectory: boolean;
     size: number;
-    iconName: string;
+    icon: Gio.Icon | null;
     contentType: string | null;
 }
 
 type ViewMode = "list" | "grid" | "paged";
 
+interface ViewModeItem {
+    id: ViewMode;
+    icon: string;
+    label: string;
+}
+
+const VIEW_MODES: ViewModeItem[] = [
+    { id: "list", icon: "view-list-symbolic", label: "List" },
+    { id: "grid", icon: "view-grid-symbolic", label: "Grid" },
+    { id: "paged", icon: "view-paged-symbolic", label: "Paged" },
+];
+
 const ATTRIBUTES =
     "standard::name,standard::display-name,standard::type,standard::size,standard::icon,standard::content-type";
-
-const formatSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-};
-
-const getIconName = (icon: Gio.Icon | null): string => {
-    if (!icon) return "text-x-generic-symbolic";
-    if (icon instanceof Gio.ThemedIcon) {
-        const names = icon.getNames();
-        return names[0] ?? "text-x-generic-symbolic";
-    }
-    return "text-x-generic-symbolic";
-};
 
 const ListItem = ({ item, mode }: { item: FileItem | null; mode: ViewMode }) => {
     if (!item) return null;
@@ -52,7 +56,7 @@ const ListItem = ({ item, mode }: { item: FileItem | null; mode: ViewMode }) => 
     if (mode === "grid") {
         return (
             <GtkBox orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER}>
-                <GtkImage iconName={item.iconName} iconSize={Gtk.IconSize.LARGE} />
+                <GtkImage gicon={item.icon ?? undefined} iconSize={Gtk.IconSize.LARGE} />
                 <GtkLabel
                     label={item.displayName}
                     wrap
@@ -69,7 +73,7 @@ const ListItem = ({ item, mode }: { item: FileItem | null; mode: ViewMode }) => 
     if (mode === "paged") {
         return (
             <GtkBox>
-                <GtkImage iconName={item.iconName} iconSize={Gtk.IconSize.LARGE} />
+                <GtkImage gicon={item.icon ?? undefined} iconSize={Gtk.IconSize.LARGE} />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                     <GtkLabel label={item.displayName} halign={Gtk.Align.START} />
                     <GtkLabel
@@ -85,14 +89,14 @@ const ListItem = ({ item, mode }: { item: FileItem | null; mode: ViewMode }) => 
 
     return (
         <GtkBox>
-            <GtkImage iconName={item.iconName} />
+            <GtkImage gicon={item.icon ?? undefined} />
             <GtkLabel label={item.displayName} halign={Gtk.Align.START} />
         </GtkBox>
     );
 };
 
 const ListViewFilebrowserDemo = () => {
-    const [currentPath, setCurrentPath] = useState(() => GLib.getCurrentDir() ?? GLib.getHomeDir() ?? "/");
+    const [currentPath, setCurrentPath] = useState(() => process.cwd() ?? homedir() ?? "/");
     const [files, setFiles] = useState<FileItem[]>([]);
     const [viewMode, setViewMode] = useState<ViewMode>("list");
 
@@ -117,16 +121,11 @@ const ListViewFilebrowserDemo = () => {
                         displayName: obj.getDisplayName(),
                         isDirectory: obj.getFileType() === Gio.FileType.DIRECTORY,
                         size: obj.getSize(),
-                        iconName: getIconName(obj.getIcon()),
+                        icon: obj.getIcon(),
                         contentType: obj.getContentType(),
                     });
                 }
             }
-
-            items.sort((a, b) => {
-                if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
-                return a.displayName.localeCompare(b.displayName);
-            });
 
             setFiles(items);
         };
@@ -148,8 +147,12 @@ const ListViewFilebrowserDemo = () => {
             if (!item) return;
 
             if (item.isDirectory) {
-                const newPath = currentPath === "/" ? `/${item.name}` : `${currentPath}/${item.name}`;
-                setCurrentPath(newPath);
+                const parent = Gio.fileNewForPath(currentPath);
+                const child = parent.getChild(item.name);
+                const childPath = child.getPath();
+                if (childPath) {
+                    setCurrentPath(childPath);
+                }
             }
         },
         [files, currentPath],
@@ -163,26 +166,31 @@ const ListViewFilebrowserDemo = () => {
                         <GtkButton iconName="go-up-symbolic" onClicked={navigateUp} />
                     </x.ContainerSlot>
                     <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
-                        <GtkBox cssClasses={["linked"]}>
-                            <GtkToggleButton
-                                iconName="view-list-symbolic"
-                                tooltipText="List"
-                                active={viewMode === "list"}
-                                onToggled={() => setViewMode("list")}
-                            />
-                            <GtkToggleButton
-                                iconName="view-grid-symbolic"
-                                tooltipText="Grid"
-                                active={viewMode === "grid"}
-                                onToggled={() => setViewMode("grid")}
-                            />
-                            <GtkToggleButton
-                                iconName="view-paged-symbolic"
-                                tooltipText="Paged"
-                                active={viewMode === "paged"}
-                                onToggled={() => setViewMode("paged")}
-                            />
-                        </GtkBox>
+                        <GtkListView
+                            orientation={Gtk.Orientation.HORIZONTAL}
+                            cssClasses={[
+                                css`
+                                border: 1px solid gray;
+                                & > row { padding: 5px; }
+                                & row:selected { background: gray; }
+                            `,
+                                "linked",
+                                "viewswitcher",
+                            ]}
+                            valign={Gtk.Align.CENTER}
+                            selected={[viewMode]}
+                            onSelectionChanged={(ids) => {
+                                const id = ids[0] as ViewMode | undefined;
+                                if (id) setViewMode(id);
+                            }}
+                            renderItem={(item: ViewModeItem | null) =>
+                                item ? <GtkImage iconName={item.icon} tooltipText={item.label} /> : null
+                            }
+                        >
+                            {VIEW_MODES.map((mode) => (
+                                <x.ListItem key={mode.id} id={mode.id} value={mode} />
+                            ))}
+                        </GtkListView>
                     </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
@@ -193,7 +201,7 @@ const ListViewFilebrowserDemo = () => {
                     maxColumns={15}
                     orientation={viewMode === "grid" ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL}
                     onActivate={handleActivate}
-                    renderItem={(item) => <ListItem item={item} mode={viewMode} />}
+                    renderItem={(item: FileItem | null) => <ListItem item={item} mode={viewMode} />}
                 >
                     {files.map((file) => (
                         <x.ListItem key={file.name} id={file.name} value={file} />
@@ -212,4 +220,6 @@ export const listviewFilebrowserDemo: Demo = {
     keywords: ["listview", "gridview", "files", "browser", "GtkGridView", "GtkDirectoryList", "views"],
     component: ListViewFilebrowserDemo,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 400,
 };

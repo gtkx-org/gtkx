@@ -20,12 +20,12 @@ const SpinnerDemo = () => {
             marginStart={5}
             marginEnd={5}
         >
-            <GtkBox spacing={5}>
+            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={5}>
                 <GtkSpinner spinning={spinning} />
                 <GtkEntry />
             </GtkBox>
 
-            <GtkBox spacing={5} sensitive={false}>
+            <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={5} sensitive={false}>
                 <GtkSpinner spinning={spinning} />
                 <GtkEntry />
             </GtkBox>

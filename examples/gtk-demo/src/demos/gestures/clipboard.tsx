@@ -1,15 +1,18 @@
 import { getNativeInterface } from "@gtkx/ffi";
+import type { Context } from "@gtkx/ffi/cairo";
 import * as Gdk from "@gtkx/ffi/gdk";
-import type * as Gio from "@gtkx/ffi/gio";
+import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
     GtkButton,
     GtkColorDialogButton,
+    GtkDragSource,
+    GtkDrawingArea,
     GtkDropDown,
+    GtkDropTarget,
     GtkEntry,
-    GtkImage,
     GtkLabel,
     GtkPicture,
     GtkSeparator,
@@ -17,11 +20,14 @@ import {
     GtkToggleButton,
     x,
 } from "@gtkx/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import gtkLogoSvgPath from "../drawing/gtk-logo.svg";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
+import floppyBuddyPath from "./floppybuddy.gif";
+import portlandRosePath from "./portland-rose.jpg";
 
-type SourceType = "Text" | "Color" | "Image" | "File";
+type SourceType = "Text" | "Color" | "Image" | "File" | "Folder";
 type PastedContentType = "" | "Text" | "Color" | "Image" | "File";
 
 interface PastedContent {
@@ -56,7 +62,13 @@ const getGFileType = () => {
     return gFileTypeCache;
 };
 
-const SOURCE_TYPES: SourceType[] = ["Text", "Color", "Image", "File"];
+const SOURCE_TYPES: SourceType[] = ["Text", "Color", "Image", "File", "Folder"];
+
+function drawColorSwatch(cr: Context, width: number, height: number, rgba: Gdk.RGBA): void {
+    cr.setSourceRgba(rgba.getRed(), rgba.getGreen(), rgba.getBlue(), rgba.getAlpha());
+    cr.rectangle(0, 0, width, height);
+    cr.fill();
+}
 
 const ClipboardDemo = ({ window }: DemoProps) => {
     const [sourceType, setSourceType] = useState<SourceType>("Text");
@@ -68,6 +80,10 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const [sourceFile, setSourceFile] = useState<Gio.File | null>(null);
     const [pastedContent, setPastedContent] = useState<PastedContent>({ type: "" });
     const [canPaste, setCanPaste] = useState(false);
+
+    const portlandRoseTexture = useMemo(() => Gdk.Texture.newFromFilename(portlandRosePath), []);
+    const floppyBuddyTexture = useMemo(() => Gdk.Texture.newFromFilename(floppyBuddyPath), []);
+    const gtkLogoSvgTexture = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoSvgPath), []);
     const [canCopy, setCanCopy] = useState(true);
 
     const getClipboard = useCallback(() => {
@@ -105,12 +121,41 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     useEffect(() => {
         if (sourceType === "Text") {
             setCanCopy(sourceText.length > 0);
-        } else if (sourceType === "File") {
+        } else if (sourceType === "File" || sourceType === "Folder") {
             setCanCopy(sourceFile !== null);
         } else {
             setCanCopy(true);
         }
     }, [sourceType, sourceText, sourceFile]);
+
+    const createTextDragProvider = useCallback(() => {
+        return Gdk.ContentProvider.newForValue(GObject.Value.newFromString(sourceText));
+    }, [sourceText]);
+
+    const createColorDragProvider = useCallback(() => {
+        return Gdk.ContentProvider.newForValue(GObject.Value.newFromBoxed(sourceColor));
+    }, [sourceColor]);
+
+    const createImageDragProvider = useCallback(() => {
+        const paths = [portlandRosePath, floppyBuddyPath, gtkLogoSvgPath];
+        const path = paths[selectedImage] ?? portlandRosePath;
+        try {
+            const texture = Gdk.Texture.newFromFilename(path);
+            const value = new GObject.Value();
+            value.init(GObject.typeFromName("GdkPaintable"));
+            value.setObject(texture);
+            return Gdk.ContentProvider.newForValue(value);
+        } catch {
+            return null;
+        }
+    }, [selectedImage]);
+
+    const createFileDragProvider = useCallback(() => {
+        if (sourceFile) {
+            return Gdk.ContentProvider.newForValue(GObject.Value.newFromObject(sourceFile));
+        }
+        return null;
+    }, [sourceFile]);
 
     const handleCopy = useCallback(() => {
         const clipboard = getClipboard();
@@ -123,25 +168,16 @@ const ClipboardDemo = ({ window }: DemoProps) => {
             const value = GObject.Value.newFromBoxed(sourceColor);
             clipboard.setValue(value);
         } else if (sourceType === "Image") {
-            const iconNames = ["weather-clear-symbolic", "media-floppy-symbolic", "applications-games-symbolic"];
-            const display = Gdk.Display.getDefault();
-            if (display) {
-                const iconTheme = Gtk.IconTheme.getForDisplay(display);
-                const paintable = iconTheme.lookupIcon(
-                    iconNames[selectedImage] ?? "weather-clear-symbolic",
-                    64,
-                    1,
-                    Gtk.TextDirection.NONE,
-                    0,
-                );
-                if (paintable) {
-                    const value = new GObject.Value();
-                    value.init(GObject.typeFromName("GdkPaintable"));
-                    value.setObject(paintable);
-                    clipboard.setValue(value);
-                }
-            }
-        } else if (sourceType === "File" && sourceFile) {
+            const paths = [portlandRosePath, floppyBuddyPath, gtkLogoSvgPath];
+            const path = paths[selectedImage] ?? portlandRosePath;
+            try {
+                const texture = Gdk.Texture.newFromFilename(path);
+                const value = new GObject.Value();
+                value.init(GObject.typeFromName("GdkPaintable"));
+                value.setObject(texture);
+                clipboard.setValue(value);
+            } catch {}
+        } else if ((sourceType === "File" || sourceType === "Folder") && sourceFile) {
             const value = GObject.Value.newFromObject(sourceFile);
             clipboard.setValue(value);
         }
@@ -154,19 +190,13 @@ const ClipboardDemo = ({ window }: DemoProps) => {
         const formats = clipboard.getFormats();
 
         try {
-            if (formats.containGtype(getGdkRgbaType())) {
-                const value = await clipboard.readValueAsync(getGdkRgbaType(), 0);
-                const rgba = value.getBoxed(Gdk.RGBA);
-                if (rgba) {
-                    setPastedContent({
-                        type: "Color",
-                        color: new Gdk.RGBA({
-                            red: rgba.getRed(),
-                            green: rgba.getGreen(),
-                            blue: rgba.getBlue(),
-                            alpha: rgba.getAlpha(),
-                        }),
-                    });
+            if (formats.containMimeType("image/png")) {
+                const texture = await clipboard.readTextureAsync();
+                if (texture) {
+                    const paintable = getNativeInterface(texture, Gdk.Paintable);
+                    if (paintable) {
+                        setPastedContent({ type: "Image", paintable });
+                    }
                     return;
                 }
             }
@@ -183,13 +213,19 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                 }
             }
 
-            if (formats.containMimeType("image/png")) {
-                const texture = await clipboard.readTextureAsync();
-                if (texture) {
-                    const paintable = getNativeInterface(texture, Gdk.Paintable);
-                    if (paintable) {
-                        setPastedContent({ type: "Image", paintable });
-                    }
+            if (formats.containGtype(getGdkRgbaType())) {
+                const value = await clipboard.readValueAsync(getGdkRgbaType(), 0);
+                const rgba = value.getBoxed(Gdk.RGBA);
+                if (rgba) {
+                    setPastedContent({
+                        type: "Color",
+                        color: new Gdk.RGBA({
+                            red: rgba.getRed(),
+                            green: rgba.getGreen(),
+                            blue: rgba.getBlue(),
+                            alpha: rgba.getAlpha(),
+                        }),
+                    });
                     return;
                 }
             }
@@ -222,6 +258,48 @@ const ClipboardDemo = ({ window }: DemoProps) => {
         } catch {}
     }, [window]);
 
+    const handleFolderSelect = useCallback(async () => {
+        const dialog = new Gtk.FileDialog();
+        try {
+            const file = await dialog.selectFolderAsync(window.current);
+            setSourceFile(file);
+        } catch {}
+    }, [window]);
+
+    const handleDrop = useCallback((value: GObject.Value) => {
+        const obj = value.getObject();
+        if (obj) {
+            const paintable = getNativeInterface(obj, Gdk.Paintable);
+            if (paintable) {
+                setPastedContent({ type: "Image", paintable });
+                return true;
+            }
+            if (obj instanceof Gio.File) {
+                setPastedContent({ type: "File", filePath: obj.getPath() ?? obj.getUri() });
+                return true;
+            }
+        }
+        const rgba = value.getBoxed(Gdk.RGBA);
+        if (rgba) {
+            setPastedContent({
+                type: "Color",
+                color: new Gdk.RGBA({
+                    red: rgba.getRed(),
+                    green: rgba.getGreen(),
+                    blue: rgba.getBlue(),
+                    alpha: rgba.getAlpha(),
+                }),
+            });
+            return true;
+        }
+        const text = value.getString();
+        if (text) {
+            setPastedContent({ type: "Text", text });
+            return true;
+        }
+        return false;
+    }, []);
+
     return (
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
@@ -233,7 +311,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
         >
             <GtkLabel
                 label={
-                    '"Copy" will copy the selected data to the clipboard, "Paste" will show the current clipboard contents.'
+                    '"Copy" will copy the selected data the clipboard, "Paste" will show the current clipboard contents. You can also drag the data to the bottom.'
                 }
                 wrap
                 maxWidthChars={40}
@@ -251,13 +329,17 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                         <GtkEntry
                             text={sourceText}
                             valign={Gtk.Align.CENTER}
+                            accessibleLabel="Text to copy"
                             onChanged={(entry) => setSourceText(entry.getText())}
-                        />
+                        >
+                            <GtkDragSource onPrepare={createTextDragProvider} actions={Gdk.DragAction.COPY} />
+                        </GtkEntry>
                     </x.StackPage>
                     <x.StackPage id="Color">
                         <GtkColorDialogButton
                             rgba={sourceColor}
                             valign={Gtk.Align.CENTER}
+                            accessibleLabel="Color to copy"
                             onRgbaChanged={(rgba) =>
                                 setSourceColor(
                                     new Gdk.RGBA({
@@ -268,42 +350,92 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                                     }),
                                 )
                             }
-                        />
+                        >
+                            <GtkDragSource onPrepare={createColorDragProvider} actions={Gdk.DragAction.COPY} />
+                        </GtkColorDialogButton>
                     </x.StackPage>
                     <x.StackPage id="Image">
                         <GtkBox valign={Gtk.Align.CENTER} cssClasses={["linked"]}>
                             <GtkToggleButton
+                                accessibleLabel="Portland Rose"
                                 active={selectedImage === 0}
                                 onToggled={(btn) => {
                                     if (btn.getActive()) setSelectedImage(0);
                                 }}
                             >
-                                <GtkImage iconName="weather-clear-symbolic" pixelSize={48} />
+                                <GtkPicture
+                                    paintable={portlandRoseTexture}
+                                    canShrink
+                                    widthRequest={48}
+                                    heightRequest={48}
+                                />
+                                <GtkDragSource onPrepare={createImageDragProvider} actions={Gdk.DragAction.COPY} />
                             </GtkToggleButton>
                             <GtkToggleButton
+                                accessibleLabel="Floppy Buddy"
                                 active={selectedImage === 1}
                                 onToggled={(btn) => {
                                     if (btn.getActive()) setSelectedImage(1);
                                 }}
                             >
-                                <GtkImage iconName="media-floppy-symbolic" pixelSize={48} />
+                                <GtkPicture
+                                    paintable={floppyBuddyTexture}
+                                    canShrink
+                                    widthRequest={48}
+                                    heightRequest={48}
+                                />
+                                <GtkDragSource onPrepare={createImageDragProvider} actions={Gdk.DragAction.COPY} />
                             </GtkToggleButton>
                             <GtkToggleButton
+                                accessibleLabel="GTK Logo"
                                 active={selectedImage === 2}
                                 onToggled={(btn) => {
                                     if (btn.getActive()) setSelectedImage(2);
                                 }}
                             >
-                                <GtkImage iconName="applications-games-symbolic" pixelSize={48} />
+                                <GtkPicture
+                                    paintable={gtkLogoSvgTexture}
+                                    canShrink
+                                    widthRequest={48}
+                                    heightRequest={48}
+                                />
+                                <GtkDragSource onPrepare={createImageDragProvider} actions={Gdk.DragAction.COPY} />
                             </GtkToggleButton>
                         </GtkBox>
                     </x.StackPage>
                     <x.StackPage id="File">
-                        <GtkButton valign={Gtk.Align.CENTER} onClicked={() => void handleFileSelect()}>
+                        <GtkButton
+                            valign={Gtk.Align.CENTER}
+                            accessibleLabel="Select file"
+                            onClicked={() => void handleFileSelect()}
+                        >
                             <GtkLabel
-                                label={sourceFile ? (sourceFile.getPath() ?? "—") : "—"}
+                                label={sourceFile ? (sourceFile.getPath() ?? "\u2014") : "\u2014"}
                                 xalign={0}
                                 ellipsize={1}
+                            />
+                            <GtkDragSource
+                                onPrepare={createFileDragProvider}
+                                actions={Gdk.DragAction.COPY}
+                                propagationPhase={Gtk.PropagationPhase.CAPTURE}
+                            />
+                        </GtkButton>
+                    </x.StackPage>
+                    <x.StackPage id="Folder">
+                        <GtkButton
+                            valign={Gtk.Align.CENTER}
+                            accessibleLabel="Select folder"
+                            onClicked={() => void handleFolderSelect()}
+                        >
+                            <GtkLabel
+                                label={sourceFile ? (sourceFile.getPath() ?? "\u2014") : "\u2014"}
+                                xalign={0}
+                                ellipsize={1}
+                            />
+                            <GtkDragSource
+                                onPrepare={createFileDragProvider}
+                                actions={Gdk.DragAction.COPY}
+                                propagationPhase={Gtk.PropagationPhase.CAPTURE}
                             />
                         </GtkButton>
                     </x.StackPage>
@@ -321,6 +453,11 @@ const ClipboardDemo = ({ window }: DemoProps) => {
             <GtkSeparator />
 
             <GtkBox spacing={12}>
+                <GtkDropTarget
+                    types={[getGdkPaintableType(), getGFileType(), getGdkRgbaType(), GObject.Type.STRING]}
+                    actions={Gdk.DragAction.COPY}
+                    onDrop={(value: GObject.Value) => handleDrop(value)}
+                />
                 <GtkButton
                     label="_Paste"
                     useUnderline
@@ -339,25 +476,35 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                             halign={Gtk.Align.END}
                             valign={Gtk.Align.CENTER}
                             xalign={0}
-                            ellipsize={2}
+                            ellipsize={3}
                         />
                     </x.StackPage>
                     <x.StackPage id="Image">
-                        <GtkPicture
-                            paintable={pastedContent.paintable}
-                            halign={Gtk.Align.END}
-                            valign={Gtk.Align.CENTER}
-                            canShrink
-                            widthRequest={64}
-                            heightRequest={64}
-                        />
+                        {pastedContent.paintable ? (
+                            <GtkPicture
+                                paintable={pastedContent.paintable}
+                                halign={Gtk.Align.END}
+                                valign={Gtk.Align.CENTER}
+                                canShrink
+                                widthRequest={64}
+                                heightRequest={64}
+                            />
+                        ) : (
+                            <GtkLabel label="" />
+                        )}
                     </x.StackPage>
                     <x.StackPage id="Color">
-                        <GtkColorDialogButton
-                            rgba={pastedContent.color ?? new Gdk.RGBA({ red: 1, green: 1, blue: 1, alpha: 1 })}
+                        <GtkDrawingArea
+                            contentWidth={32}
+                            contentHeight={32}
                             halign={Gtk.Align.END}
                             valign={Gtk.Align.CENTER}
-                            sensitive={false}
+                            onDraw={(cr, w, h) => {
+                                const c = pastedContent.color;
+                                if (c) {
+                                    drawColorSwatch(cr, w, h, c);
+                                }
+                            }}
                         />
                     </x.StackPage>
                     <x.StackPage id="File">

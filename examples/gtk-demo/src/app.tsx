@@ -69,14 +69,20 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const app = useApplication();
     const activeWindow = app.getActiveWindow();
     const windowRef = useRef<Gtk.Window>(null);
+    const activeWindowRef = useRef<Gtk.Window | null>(null);
+    activeWindowRef.current = activeWindow;
 
     if (!currentDemo?.component || !activeWindow) return null;
 
     const DemoComponent = currentDemo.component;
     const { displayTitle } = parseTitle(currentDemo.title);
 
+    if (currentDemo.dialogOnly) {
+        return <DemoComponent onClose={onClose} window={activeWindowRef} />;
+    }
+
     return createPortal(
-        <GtkWindow ref={windowRef} title={displayTitle} defaultWidth={800} defaultHeight={600} onClose={onClose}>
+        <GtkWindow ref={windowRef} title={displayTitle} defaultWidth={currentDemo.defaultWidth ?? -1} defaultHeight={currentDemo.defaultHeight ?? -1} onClose={onClose}>
             <DemoComponent onClose={onClose} window={windowRef} />
         </GtkWindow>,
         activeWindow,

@@ -1,9 +1,9 @@
 import type * as Gdk from "@gtkx/ffi/gdk";
 import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/react";
 import { useCallback, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./glarea.tsx?raw";
 
 const VERTEX_SHADER = `#version 300 es
@@ -129,16 +129,21 @@ const initGL = (): GLState => {
     return { program, vao, vbo, mvpLocation, initialized: true };
 };
 
-const GLAreaDemo = () => {
+const GLAreaDemo = ({ window }: DemoProps) => {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
     const [rotationX, setRotationX] = useState(0);
     const [rotationY, setRotationY] = useState(0);
     const [rotationZ, setRotationZ] = useState(0);
-    const [error, setError] = useState<string | null>(null);
 
     const handleUnrealize = useCallback((_self: Gtk.Widget) => {
-        glStateRef.current = null;
+        const state = glStateRef.current;
+        if (state) {
+            gl.deleteBuffer(state.vbo);
+            gl.deleteVertexArray(state.vao);
+            gl.deleteProgram(state.program);
+            glStateRef.current = null;
+        }
     }, []);
 
     const handleRender = useCallback(
@@ -146,14 +151,12 @@ const GLAreaDemo = () => {
             if (!glStateRef.current) {
                 const glError = self.getError();
                 if (glError) {
-                    setError(`GL context error: ${glError.getMessage()}`);
                     return true;
                 }
 
                 try {
                     glStateRef.current = initGL();
-                } catch (error) {
-                    setError(`GL initialization error: ${error}`);
+                } catch {
                     return true;
                 }
             }
@@ -162,8 +165,7 @@ const GLAreaDemo = () => {
             const mvp = createRotationMatrix(rotationX, rotationY, rotationZ);
 
             gl.clearColor(0.5, 0.5, 0.5, 1.0);
-            gl.clearDepth(1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.clear(gl.COLOR_BUFFER_BIT);
 
             // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
             gl.useProgram(state.program);
@@ -175,6 +177,7 @@ const GLAreaDemo = () => {
 
             // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
             gl.useProgram(0);
+            gl.flush();
 
             return true;
         },
@@ -202,25 +205,13 @@ const GLAreaDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-            {error && (
-                <GtkFrame>
-                    <GtkLabel
-                        label={error}
-                        cssClasses={["error"]}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    />
-                </GtkFrame>
-            )}
-
             <GtkGLArea
                 ref={glAreaRef}
                 useEs
-                hasDepthBuffer
                 vexpand
                 hexpand
+                widthRequest={100}
+                heightRequest={200}
                 onUnrealize={handleUnrealize}
                 onRender={handleRender}
                 onResize={handleResize}
@@ -238,14 +229,12 @@ const GLAreaDemo = () => {
                     <GtkLabel label="X axis" widthRequest={60} halign={Gtk.Align.START} />
                     <GtkScale
                         hexpand
-                        drawValue
-                        valuePos={Gtk.PositionType.RIGHT}
-                        digits={0}
+                        drawValue={false}
                         value={0}
                         lower={0}
                         upper={360}
                         stepIncrement={1}
-                        pageIncrement={10}
+                        pageIncrement={12}
                         onValueChanged={handleXChange}
                     />
                 </GtkBox>
@@ -253,14 +242,12 @@ const GLAreaDemo = () => {
                     <GtkLabel label="Y axis" widthRequest={60} halign={Gtk.Align.START} />
                     <GtkScale
                         hexpand
-                        drawValue
-                        valuePos={Gtk.PositionType.RIGHT}
-                        digits={0}
+                        drawValue={false}
                         value={0}
                         lower={0}
                         upper={360}
                         stepIncrement={1}
-                        pageIncrement={10}
+                        pageIncrement={12}
                         onValueChanged={handleYChange}
                     />
                 </GtkBox>
@@ -268,17 +255,16 @@ const GLAreaDemo = () => {
                     <GtkLabel label="Z axis" widthRequest={60} halign={Gtk.Align.START} />
                     <GtkScale
                         hexpand
-                        drawValue
-                        valuePos={Gtk.PositionType.RIGHT}
-                        digits={0}
+                        drawValue={false}
                         value={0}
                         lower={0}
                         upper={360}
                         stepIncrement={1}
-                        pageIncrement={10}
+                        pageIncrement={12}
                         onValueChanged={handleZChange}
                     />
                 </GtkBox>
+                <GtkButton label="Quit" hexpand onClicked={() => window.current?.destroy()} />
             </GtkBox>
         </GtkBox>
     );
@@ -292,4 +278,6 @@ export const glareaDemo: Demo = {
     keywords: ["opengl", "gl", "glarea", "GtkGLArea", "3d", "graphics", "shader", "triangle", "rendering", "rotation"],
     component: GLAreaDemo,
     sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 600,
 };

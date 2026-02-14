@@ -1,9 +1,11 @@
-import { type Context, Pattern } from "@gtkx/ffi/cairo";
+import { createRef } from "@gtkx/ffi";
+import type { Context } from "@gtkx/ffi/cairo";
+import { LinearPattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkBox, GtkDrawingArea, GtkLabel } from "@gtkx/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./rotated-text.tsx?raw";
 
@@ -53,7 +55,7 @@ const createFancyAttrListForLayout = (layout: Pango.Layout): Pango.AttrList => {
         const codepoint = TEXT.codePointAt(i);
 
         if (codepoint === HEART_CODEPOINT) {
-            const attr = Pango.attrShapeNew(inkRect, logicalRect);
+            const attr = Pango.attrShapeNewWithData(inkRect, logicalRect, codepoint);
             attr.setStartIndex(byteIndex);
             attr.setEndIndex(byteIndex + 3);
             attrs.insert(attr);
@@ -72,6 +74,7 @@ const createFancyAttrListForLayout = (layout: Pango.Layout): Pango.AttrList => {
 
 const RotatedTextDemo = () => {
     const labelRef = useRef<Gtk.Label | null>(null);
+    const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
     const shapeRendererSetup = useRef(false);
 
     const fancyShapeRenderer = useCallback((cr: Context, attr: Pango.AttrShape, doPath: boolean) => {
@@ -81,7 +84,10 @@ const RotatedTextDemo = () => {
         }
 
         cr.scale(attr.getInkRect().getWidth() / Pango.SCALE, attr.getInkRect().getHeight() / Pango.SCALE);
-        drawHeart(cr, doPath);
+
+        if (attr.getData() === HEART_CODEPOINT) {
+            drawHeart(cr, doPath);
+        }
     }, []);
 
     const drawFunc = useCallback(
@@ -91,12 +97,13 @@ const RotatedTextDemo = () => {
             cr.translate(deviceRadius + (width - 2 * deviceRadius) / 2, deviceRadius + (height - 2 * deviceRadius) / 2);
             cr.scale(deviceRadius / RADIUS, deviceRadius / RADIUS);
 
-            const gradient = Pattern.createLinear(-RADIUS, -RADIUS, RADIUS, RADIUS);
+            const gradient = new LinearPattern(-RADIUS, -RADIUS, RADIUS, RADIUS);
             gradient.addColorStopRgb(0, 0.5, 0.0, 0.0);
             gradient.addColorStopRgb(1, 0.0, 0.0, 0.5);
             cr.setSource(gradient);
 
-            const context = PangoCairo.createContext(cr);
+            const context = drawingAreaRef.current?.createPangoContext();
+            if (!context) return;
             PangoCairo.contextSetShapeRenderer(context, fancyShapeRenderer);
 
             const layout = new Pango.Layout(context);
@@ -110,9 +117,10 @@ const RotatedTextDemo = () => {
             for (let i = 0; i < N_WORDS; i++) {
                 PangoCairo.updateLayout(cr, layout);
 
-                const logicalRect = new Pango.Rectangle();
-                layout.getPixelExtents(undefined, logicalRect);
-                const layoutWidth = logicalRect.getWidth();
+                const widthRef = createRef(0);
+                const heightRef = createRef(0);
+                layout.getPixelSize(widthRef, heightRef);
+                const layoutWidth = widthRef.value;
 
                 cr.moveTo(-layoutWidth / 2, -RADIUS * 0.9);
                 PangoCairo.showLayout(cr, layout);
@@ -123,7 +131,7 @@ const RotatedTextDemo = () => {
         [fancyShapeRenderer],
     );
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const label = labelRef.current;
         if (!label || shapeRendererSetup.current) return;
 
@@ -138,20 +146,9 @@ const RotatedTextDemo = () => {
     }, [fancyShapeRenderer]);
 
     return (
-        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} homogeneous>
-            <GtkDrawingArea
-                cssClasses={["view"]}
-                contentWidth={2 * RADIUS}
-                contentHeight={2 * RADIUS}
-                onDraw={drawFunc}
-            />
-            <GtkLabel
-                ref={labelRef}
-                label={TEXT}
-                cssClasses={["view"]}
-                halign={Gtk.Align.CENTER}
-                valign={Gtk.Align.CENTER}
-            />
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} homogeneous spacing={0}>
+            <GtkDrawingArea ref={drawingAreaRef} onDraw={drawFunc} cssClasses={["view"]} />
+            <GtkLabel ref={labelRef} label={TEXT} />
         </GtkBox>
     );
 };
@@ -163,4 +160,6 @@ export const rotatedTextDemo: Demo = {
     keywords: ["text", "rotate", "transform", "cairo", "pango", "drawing", "graphics", "heart", "shape"],
     component: RotatedTextDemo,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 300,
 };

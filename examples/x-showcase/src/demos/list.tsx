@@ -144,7 +144,7 @@ export const ListDemo = () => {
                     <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <GtkListView
                             estimatedItemHeight={48}
-                            renderItem={(item) => (
+                            renderItem={(item: FileItem | null) => (
                                 <GtkBox spacing={12} marginTop={8} marginBottom={8} marginStart={8} marginEnd={8}>
                                     <GtkLabel label={item?.isFolder ? "folder-symbolic" : "text-x-generic-symbolic"} />
                                     <GtkLabel label={item?.name ?? ""} hexpand halign={Gtk.Align.START} />
@@ -164,7 +164,7 @@ export const ListDemo = () => {
                     <GtkScrolledWindow heightRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                         <GtkGridView
                             estimatedItemHeight={80}
-                            renderItem={(item) => (
+                            renderItem={(item: FileItem | null) => (
                                 <GtkBox
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={6}
@@ -199,7 +199,7 @@ export const ListDemo = () => {
                         <GtkListView
                             estimatedItemHeight={32}
                             autoexpand
-                            renderItem={(item) => (
+                            renderItem={(item: { name: string } | null) => (
                                 <GtkLabel
                                     label={item?.name ?? ""}
                                     halign={Gtk.Align.START}
@@ -244,12 +244,12 @@ export const ListDemo = () => {
                             sortOrder={sortOrder}
                             onSortChanged={handleSortChange}
                         >
-                            <x.ColumnViewColumn<Person>
+                            <x.ColumnViewColumn
                                 id="name"
                                 title="Name"
                                 expand
                                 sortable
-                                renderCell={(item) => (
+                                renderCell={(item: Person | null) => (
                                     <GtkLabel
                                         label={item?.name ?? ""}
                                         halign={Gtk.Align.START}
@@ -263,12 +263,12 @@ export const ListDemo = () => {
                                 <ColumnMenu column="name" onSort={handleSortChange} />
                             </x.ColumnViewColumn>
                             {!hiddenColumns.has("role") && (
-                                <x.ColumnViewColumn<Person>
+                                <x.ColumnViewColumn
                                     id="role"
                                     title="Role"
                                     fixedWidth={100}
                                     sortable
-                                    renderCell={(item) => (
+                                    renderCell={(item: Person | null) => (
                                         <GtkLabel
                                             label={item?.role ?? ""}
                                             halign={Gtk.Align.START}
@@ -291,12 +291,12 @@ export const ListDemo = () => {
                                 </x.ColumnViewColumn>
                             )}
                             {!hiddenColumns.has("salary") && (
-                                <x.ColumnViewColumn<Person>
+                                <x.ColumnViewColumn
                                     id="salary"
                                     title="Salary"
                                     fixedWidth={100}
                                     sortable
-                                    renderCell={(item) => (
+                                    renderCell={(item: Person | null) => (
                                         <GtkLabel
                                             label={item ? `$${item.salary.toLocaleString()}` : ""}
                                             halign={Gtk.Align.END}

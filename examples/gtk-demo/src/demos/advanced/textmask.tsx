@@ -1,16 +1,23 @@
-import { type Context, Pattern } from "@gtkx/ffi/cairo";
+import type { Context } from "@gtkx/ffi/cairo";
+import { LinearPattern } from "@gtkx/ffi/cairo";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import { GtkDrawingArea } from "@gtkx/react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textmask.tsx?raw";
 
 const TextmaskDemo = () => {
+    const drawingAreaRef = useRef<Gtk.DrawingArea>(null);
+
     const drawFunc = useCallback((cr: Context, width: number, height: number) => {
         cr.save();
 
-        const layout = PangoCairo.createLayout(cr);
+        const widget = drawingAreaRef.current;
+        if (!widget) return;
+
+        const layout = widget.createPangoLayout("");
         const fontDesc = Pango.FontDescription.fromString("sans bold 34");
         layout.setFontDescription(fontDesc);
         layout.setText("Pango power!\nPango power!\nPango power!", -1);
@@ -18,7 +25,7 @@ const TextmaskDemo = () => {
         cr.moveTo(30, 20);
         PangoCairo.layoutPath(cr, layout);
 
-        const pattern = Pattern.createLinear(0, 0, width, height);
+        const pattern = new LinearPattern(0, 0, width, height);
         pattern.addColorStopRgb(0.0, 1.0, 0.0, 0.0);
         pattern.addColorStopRgb(0.2, 1.0, 0.0, 0.0);
         pattern.addColorStopRgb(0.3, 1.0, 1.0, 0.0);
@@ -38,7 +45,7 @@ const TextmaskDemo = () => {
         cr.restore();
     }, []);
 
-    return <GtkDrawingArea onDraw={drawFunc} widthRequest={400} heightRequest={240} />;
+    return <GtkDrawingArea ref={drawingAreaRef} onDraw={drawFunc} widthRequest={400} heightRequest={240} />;
 };
 
 export const textmaskDemo: Demo = {
@@ -48,4 +55,6 @@ export const textmaskDemo: Demo = {
     keywords: ["text", "mask", "clip", "gradient", "cairo", "pango"],
     component: TextmaskDemo,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 400,
 };

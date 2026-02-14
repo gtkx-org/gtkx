@@ -15,7 +15,6 @@ const ScaleDemo = () => {
                     drawValue={false}
                     hexpand
                     value={2}
-                    lower={0}
                     upper={4}
                     stepIncrement={0.1}
                     pageIncrement={1}
@@ -31,7 +30,6 @@ const ScaleDemo = () => {
                     drawValue={false}
                     hexpand
                     value={2}
-                    lower={0}
                     upper={4}
                     stepIncrement={0.1}
                     pageIncrement={1}
@@ -55,7 +53,6 @@ const ScaleDemo = () => {
                     drawValue={false}
                     hexpand
                     value={2}
-                    lower={0}
                     upper={4}
                     stepIncrement={0.1}
                     pageIncrement={1}

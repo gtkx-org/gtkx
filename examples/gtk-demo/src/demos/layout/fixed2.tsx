@@ -7,9 +7,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
 
-const CONTAINER_WIDTH = 400;
-const CONTAINER_HEIGHT = 300;
-
 const Fixed2Demo = () => {
     const startTimeRef = useRef<number | null>(null);
     const [transform, setTransform] = useState<Gsk.Transform | undefined>(undefined);
@@ -30,9 +27,11 @@ const Fixed2Demo = () => {
 
         const labelWidth = labelRef.current?.getAllocatedWidth() ?? 50;
         const labelHeight = labelRef.current?.getAllocatedHeight() ?? 20;
+        const containerWidth = fixedRef.current?.getAllocatedWidth() ?? 400;
+        const containerHeight = fixedRef.current?.getAllocatedHeight() ?? 300;
 
         const centerPoint = new Graphene.Point();
-        centerPoint.init(CONTAINER_WIDTH / 2, CONTAINER_HEIGHT / 2);
+        centerPoint.init(containerWidth / 2, containerHeight / 2);
 
         const offsetPoint = new Graphene.Point();
         offsetPoint.init(-labelWidth / 2, -labelHeight / 2);
@@ -72,12 +71,7 @@ const Fixed2Demo = () => {
 
     return (
         <GtkScrolledWindow hexpand vexpand>
-            <GtkFixed
-                ref={handleFixedRef}
-                widthRequest={CONTAINER_WIDTH}
-                heightRequest={CONTAINER_HEIGHT}
-                overflow={Gtk.Overflow.VISIBLE}
-            >
+            <GtkFixed ref={handleFixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
                 <x.FixedChild x={0} y={0} transform={transform}>
                     <GtkLabel ref={handleLabelRef} label="All fixed?" />
                 </x.FixedChild>
@@ -93,4 +87,6 @@ export const fixed2Demo: Demo = {
     keywords: ["fixed", "transform", "GskTransform", "GdkFrameClock", "addTickCallback", "animation"],
     component: Fixed2Demo,
     sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 300,
 };

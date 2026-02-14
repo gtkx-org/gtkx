@@ -1,4 +1,4 @@
-import { injectGlobal } from "@gtkx/css";
+import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkGrid,
@@ -11,9 +11,12 @@ import {
     GtkStackSwitcher,
     x,
 } from "@gtkx/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
+import blendsPath from "./blends.png";
+import cmyPath from "./cmy.jpg";
 import sourceCode from "./css-blendmodes.tsx?raw";
+import duckyPath from "./ducky.png";
 
 const BLEND_MODES = [
     { name: "Color", id: "color" },
@@ -34,83 +37,91 @@ const BLEND_MODES = [
     { name: "Soft Light", id: "soft-light" },
 ];
 
-const createBlendCss = (blendMode: string) => `
-image.color1 {
-    background: linear-gradient(to right, red 0%, yellow 50%, green 100%);
-    min-width: 200px;
-    min-height: 200px;
-}
+function createBlendCss(blendMode: string) {
+    return css`
+        & image.duck {
+            background-image: url("file://${duckyPath}");
+            background-size: cover;
+            min-width: 200px;
+            min-height: 200px;
+        }
 
-image.color2 {
-    background: linear-gradient(to bottom, blue 0%, magenta 50%, cyan 100%);
-    min-width: 200px;
-    min-height: 200px;
-}
+        & image.gradient {
+            background-image: linear-gradient(to right, red 0%, green 50%, blue 100%);
+            min-width: 200px;
+            min-height: 200px;
+        }
 
-image.blend0 {
-    background: linear-gradient(to right, red 0%, yellow 50%, green 100%),
-                linear-gradient(to bottom, blue 0%, magenta 50%, cyan 100%);
-    background-blend-mode: ${blendMode};
-    min-width: 200px;
-    min-height: 200px;
-}
+        & image.red {
+            background: url("file://${blendsPath}") top center;
+            min-width: 200px;
+            min-height: 200px;
+        }
 
-image.red {
-    background: red;
-    min-width: 200px;
-    min-height: 200px;
-}
+        & image.blue {
+            background: url("file://${blendsPath}") bottom center;
+            min-width: 200px;
+            min-height: 200px;
+        }
 
-image.blue {
-    background: blue;
-    min-width: 200px;
-    min-height: 200px;
-}
+        & image.cyan {
+            background: url("file://${cmyPath}") top center;
+            min-width: 200px;
+            min-height: 200px;
+        }
 
-image.blend1 {
-    background: linear-gradient(red, red), linear-gradient(blue, blue);
-    background-blend-mode: ${blendMode};
-    min-width: 200px;
-    min-height: 200px;
-}
+        & image.magenta {
+            background: url("file://${cmyPath}") center center;
+            min-width: 200px;
+            min-height: 200px;
+        }
 
-image.cyan {
-    background: cyan;
-    min-width: 200px;
-    min-height: 200px;
-}
+        & image.yellow {
+            background: url("file://${cmyPath}") bottom center;
+            min-width: 200px;
+            min-height: 200px;
+        }
 
-image.magenta {
-    background: magenta;
-    min-width: 200px;
-    min-height: 200px;
-}
+        & image.blend0 {
+            background-image: url("file://${duckyPath}"),
+                              linear-gradient(to right, red 0%, green 50%, blue 100%);
+            background-size: cover;
+            background-blend-mode: ${blendMode};
+            min-width: 200px;
+            min-height: 200px;
+        }
 
-image.yellow {
-    background: yellow;
-    min-width: 200px;
-    min-height: 200px;
-}
+        & image.blend1 {
+            background: url("file://${blendsPath}") top center,
+                        url("file://${blendsPath}") bottom center;
+            background-blend-mode: ${blendMode};
+            min-width: 200px;
+            min-height: 200px;
+        }
 
-image.blend2 {
-    background: linear-gradient(cyan, cyan), linear-gradient(magenta, magenta), linear-gradient(yellow, yellow);
-    background-blend-mode: ${blendMode};
-    min-width: 200px;
-    min-height: 200px;
+        & image.blend2 {
+            background: url("file://${cmyPath}") top center,
+                        url("file://${cmyPath}") center center,
+                        url("file://${cmyPath}") bottom center;
+            background-blend-mode: ${blendMode};
+            min-width: 200px;
+            min-height: 200px;
+        }
+    `;
 }
-`;
-
-injectGlobal`${createBlendCss("normal")}`;
 
 const CssBlendmodesDemo = () => {
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
     const [listbox, setListbox] = useState<Gtk.ListBox | null>(null);
+    const [blendMode, setBlendMode] = useState("normal");
+
+    const blendCss = useMemo(() => createBlendCss(blendMode), [blendMode]);
 
     const handleRowActivated = useCallback((row: Gtk.ListBoxRow) => {
         const index = row.getIndex();
         const mode = BLEND_MODES[index];
         if (mode) {
-            injectGlobal`${createBlendCss(mode.id)}`;
+            setBlendMode(mode.id);
         }
     }, []);
 
@@ -120,12 +131,21 @@ const CssBlendmodesDemo = () => {
             const row = listbox.getRowAtIndex(normalIndex);
             if (row) {
                 listbox.selectRow(row);
+                row.grabFocus();
             }
         }
     }, [listbox]);
 
     return (
-        <GtkGrid marginStart={12} marginEnd={12} marginTop={12} marginBottom={12} rowSpacing={12} columnSpacing={12}>
+        <GtkGrid
+            cssClasses={[blendCss]}
+            marginStart={12}
+            marginEnd={12}
+            marginTop={12}
+            marginBottom={12}
+            rowSpacing={12}
+            columnSpacing={12}
+        >
             <x.GridChild column={0} row={0}>
                 <GtkLabel label="Blend mode:" xalign={0} cssClasses={["dim-label"]} />
             </x.GridChild>
@@ -155,7 +175,7 @@ const CssBlendmodesDemo = () => {
                     vhomogeneous={false}
                     transitionType={Gtk.StackTransitionType.CROSSFADE}
                 >
-                    <x.StackPage id="page0" title="Gradients">
+                    <x.StackPage id="page0" title="Ducky">
                         <GtkGrid
                             halign={Gtk.Align.CENTER}
                             valign={Gtk.Align.CENTER}
@@ -164,16 +184,16 @@ const CssBlendmodesDemo = () => {
                             columnSpacing={12}
                         >
                             <x.GridChild column={0} row={0}>
-                                <GtkLabel label="Gradient 1" />
+                                <GtkLabel label="Duck" />
                             </x.GridChild>
                             <x.GridChild column={1} row={0}>
-                                <GtkLabel label="Gradient 2" />
+                                <GtkLabel label="Background" />
                             </x.GridChild>
                             <x.GridChild column={0} row={1}>
-                                <GtkImage cssClasses={["color1"]} />
+                                <GtkImage cssClasses={["duck"]} />
                             </x.GridChild>
                             <x.GridChild column={1} row={1}>
-                                <GtkImage cssClasses={["color2"]} />
+                                <GtkImage cssClasses={["gradient"]} />
                             </x.GridChild>
                             <x.GridChild column={0} row={2} columnSpan={2}>
                                 <GtkLabel label="Blended picture" />
@@ -213,7 +233,7 @@ const CssBlendmodesDemo = () => {
                         </GtkGrid>
                     </x.StackPage>
 
-                    <x.StackPage id="page2" title="CMY">
+                    <x.StackPage id="page2" title="CMYK">
                         <GtkGrid
                             halign={Gtk.Align.CENTER}
                             valign={Gtk.Align.CENTER}
@@ -238,7 +258,7 @@ const CssBlendmodesDemo = () => {
                                 <GtkLabel label="Yellow" xalign={0} cssClasses={["dim-label"]} />
                             </x.GridChild>
                             <x.GridChild column={1} row={2}>
-                                <GtkLabel label="Blended picture" xalign={0} cssClasses={["heading"]} />
+                                <GtkLabel label="&lt;b&gt;Blended picture&lt;/b&gt;" useMarkup xalign={0} />
                             </x.GridChild>
                             <x.GridChild column={0} row={3}>
                                 <GtkImage cssClasses={["yellow"]} />
@@ -261,4 +281,6 @@ export const cssBlendmodesDemo: Demo = {
     keywords: ["css", "blend", "mode", "multiply", "screen", "overlay", "compositing"],
     component: CssBlendmodesDemo,
     sourceCode,
+    defaultWidth: 400,
+    defaultHeight: 300,
 };

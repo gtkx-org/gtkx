@@ -139,4 +139,6 @@ export const fixedDemo: Demo = {
     keywords: ["fixed", "GtkFixed", "GtkLayoutManager", "cube", "transform", "3D"],
     component: FixedDemo,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 400,
 };

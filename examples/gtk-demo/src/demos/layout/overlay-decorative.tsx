@@ -7,8 +7,6 @@ import decor1Path from "./decor1.png";
 import decor2Path from "./decor2.png";
 import sourceCode from "./overlay-decorative.tsx?raw";
 
-const DIARY_TEXT = " diary...";
-
 const OverlayDecorativeDemo = () => {
     const [margin, setMargin] = useState(100);
 
@@ -20,14 +18,18 @@ const OverlayDecorativeDemo = () => {
             <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
                 <GtkTextView hexpand vexpand leftMargin={Math.round(margin)}>
                     <x.TextTag id="top-margin" pixelsAboveLines={Math.round(margin)}>
-                        Dear
+                        {"Dear"}
                     </x.TextTag>
-                    {DIARY_TEXT}
+                    {" diary..."}
                 </GtkTextView>
             </GtkScrolledWindow>
             <x.OverlayChild>
                 <GtkPicture paintable={decor1} halign={Gtk.Align.START} valign={Gtk.Align.START} canTarget={false} />
+            </x.OverlayChild>
+            <x.OverlayChild>
                 <GtkPicture paintable={decor2} halign={Gtk.Align.END} valign={Gtk.Align.END} canTarget={false} />
+            </x.OverlayChild>
+            <x.OverlayChild>
                 <GtkScale
                     orientation={Gtk.Orientation.HORIZONTAL}
                     drawValue={false}
@@ -57,4 +59,6 @@ export const overlayDecorativeDemo: Demo = {
     keywords: ["overlay", "badge", "ribbon", "watermark", "notification", "decorative", "layer", "GtkOverlay"],
     component: OverlayDecorativeDemo,
     sourceCode,
+    defaultWidth: 500,
+    defaultHeight: 510,
 };

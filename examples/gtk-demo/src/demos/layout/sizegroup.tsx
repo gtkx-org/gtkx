@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkCheckButton, GtkDropDown, GtkFrame, GtkGrid, GtkLabel, x } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./sizegroup.tsx?raw";
 
@@ -19,16 +19,26 @@ const SizeGroupDemo = () => {
     const dropdown2Ref = useRef<Gtk.DropDown | null>(null);
     const dropdown3Ref = useRef<Gtk.DropDown | null>(null);
     const dropdown4Ref = useRef<Gtk.DropDown | null>(null);
+    const label1Ref = useRef<Gtk.Label | null>(null);
+    const label2Ref = useRef<Gtk.Label | null>(null);
+    const label3Ref = useRef<Gtk.Label | null>(null);
+    const label4Ref = useRef<Gtk.Label | null>(null);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const sizeGroup = new Gtk.SizeGroup(Gtk.SizeGroupMode.HORIZONTAL);
         sizeGroupRef.current = sizeGroup;
 
         const dropdowns = [dropdown1Ref, dropdown2Ref, dropdown3Ref, dropdown4Ref];
+        const labels = [label1Ref, label2Ref, label3Ref, label4Ref];
 
-        for (const ref of dropdowns) {
-            if (ref.current) {
-                sizeGroup.addWidget(ref.current);
+        for (let i = 0; i < dropdowns.length; i++) {
+            const dropdown = dropdowns[i]?.current;
+            const label = labels[i]?.current;
+            if (dropdown) {
+                sizeGroup.addWidget(dropdown);
+            }
+            if (label && dropdown) {
+                label.setMnemonicWidget(dropdown);
             }
         }
 
@@ -37,7 +47,7 @@ const SizeGroupDemo = () => {
         };
     }, []);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const sizeGroup = sizeGroupRef.current;
         if (!sizeGroup) return;
 
@@ -64,12 +74,13 @@ const SizeGroupDemo = () => {
             <GtkFrame label="Color Options">
                 <GtkGrid rowSpacing={5} columnSpacing={10} marginStart={5} marginEnd={5} marginTop={5} marginBottom={5}>
                     <x.GridChild column={0} row={0}>
-                        <GtkLabel label="_Foreground" useUnderline halign={Gtk.Align.START} hexpand />
+                        <GtkLabel ref={label1Ref} label="_Foreground" useUnderline halign={Gtk.Align.START} hexpand />
                     </x.GridChild>
                     <x.GridChild column={1} row={0}>
                         <GtkDropDown
                             ref={dropdown1Ref}
                             halign={Gtk.Align.END}
+                            valign={Gtk.Align.BASELINE_FILL}
                             selectedId={foreground}
                             onSelectionChanged={setForeground}
                         >
@@ -80,12 +91,13 @@ const SizeGroupDemo = () => {
                     </x.GridChild>
 
                     <x.GridChild column={0} row={1}>
-                        <GtkLabel label="_Background" useUnderline halign={Gtk.Align.START} hexpand />
+                        <GtkLabel ref={label2Ref} label="_Background" useUnderline halign={Gtk.Align.START} hexpand />
                     </x.GridChild>
                     <x.GridChild column={1} row={1}>
                         <GtkDropDown
                             ref={dropdown2Ref}
                             halign={Gtk.Align.END}
+                            valign={Gtk.Align.BASELINE_FILL}
                             selectedId={background}
                             onSelectionChanged={setBackground}
                         >
@@ -100,12 +112,13 @@ const SizeGroupDemo = () => {
             <GtkFrame label="Line Options">
                 <GtkGrid rowSpacing={5} columnSpacing={10} marginStart={5} marginEnd={5} marginTop={5} marginBottom={5}>
                     <x.GridChild column={0} row={0}>
-                        <GtkLabel label="_Dashing" useUnderline halign={Gtk.Align.START} hexpand />
+                        <GtkLabel ref={label3Ref} label="_Dashing" useUnderline halign={Gtk.Align.START} hexpand />
                     </x.GridChild>
                     <x.GridChild column={1} row={0}>
                         <GtkDropDown
                             ref={dropdown3Ref}
                             halign={Gtk.Align.END}
+                            valign={Gtk.Align.BASELINE_FILL}
                             selectedId={dashing}
                             onSelectionChanged={setDashing}
                         >
@@ -116,12 +129,13 @@ const SizeGroupDemo = () => {
                     </x.GridChild>
 
                     <x.GridChild column={0} row={1}>
-                        <GtkLabel label="_Line ends" useUnderline halign={Gtk.Align.START} hexpand />
+                        <GtkLabel ref={label4Ref} label="_Line ends" useUnderline halign={Gtk.Align.START} hexpand />
                     </x.GridChild>
                     <x.GridChild column={1} row={1}>
                         <GtkDropDown
                             ref={dropdown4Ref}
                             halign={Gtk.Align.END}
+                            valign={Gtk.Align.BASELINE_FILL}
                             selectedId={lineEnd}
                             onSelectionChanged={setLineEnd}
                         >

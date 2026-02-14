@@ -1,369 +1,405 @@
+import { readFileSync } from "node:fs";
+import { css } from "@gtkx/css";
+import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    GtkBox,
-    GtkColumnView,
-    GtkFrame,
-    GtkLabel,
-    GtkListView,
-    GtkScrolledWindow,
-    GtkSearchEntry,
-    x,
-} from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { GtkBox, GtkColumnView, GtkInscription, GtkLabel, GtkScrolledWindow, x } from "@gtkx/react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-ucd.tsx?raw";
+import ucdDataPath from "./ucdnames.data";
 
-interface UnicodeChar {
-    id: string;
+interface UcdEntry {
     codepoint: number;
-    char: string;
     name: string;
-    category: string;
-    generalCategory: string;
-    breakType: string;
-    block: string;
+    char: string;
+    codepointStr: string;
 }
 
-const unicodeBlocks: { name: string; start: number; end: number }[] = [
-    { name: "Basic Latin", start: 0x0020, end: 0x007f },
-    { name: "Latin-1 Supplement", start: 0x00a0, end: 0x00ff },
-    { name: "Latin Extended-A", start: 0x0100, end: 0x017f },
-    { name: "Greek and Coptic", start: 0x0370, end: 0x03ff },
-    { name: "Cyrillic", start: 0x0400, end: 0x04ff },
-    { name: "General Punctuation", start: 0x2000, end: 0x206f },
-    { name: "Currency Symbols", start: 0x20a0, end: 0x20cf },
-    { name: "Letterlike Symbols", start: 0x2100, end: 0x214f },
-    { name: "Number Forms", start: 0x2150, end: 0x218f },
-    { name: "Arrows", start: 0x2190, end: 0x21ff },
-    { name: "Mathematical Operators", start: 0x2200, end: 0x22ff },
-    { name: "Miscellaneous Technical", start: 0x2300, end: 0x23ff },
-    { name: "Box Drawing", start: 0x2500, end: 0x257f },
-    { name: "Block Elements", start: 0x2580, end: 0x259f },
-    { name: "Geometric Shapes", start: 0x25a0, end: 0x25ff },
-    { name: "Miscellaneous Symbols", start: 0x2600, end: 0x26ff },
-    { name: "Dingbats", start: 0x2700, end: 0x27bf },
+const UNICODE_TYPE_NAMES = [
+    "Other, Control",
+    "Other, Format",
+    "Other, Not Assigned",
+    "Other, Private Use",
+    "Other, Surrogate",
+    "Letter, Lowercase",
+    "Letter, Modifier",
+    "Letter, Other",
+    "Letter, Titlecase",
+    "Letter, Uppercase",
+    "Mark, Spacing",
+    "Mark, Enclosing",
+    "Mark, Nonspacing",
+    "Number, Decimal Digit",
+    "Number, Letter",
+    "Number, Other",
+    "Punctuation, Connector",
+    "Punctuation, Dash",
+    "Punctuation, Close",
+    "Punctuation, Final quote",
+    "Punctuation, Initial quote",
+    "Punctuation, Other",
+    "Punctuation, Open",
+    "Symbol, Currency",
+    "Symbol, Modifier",
+    "Symbol, Math",
+    "Symbol, Other",
+    "Separator, Line",
+    "Separator, Paragraph",
+    "Separator, Space",
 ];
 
-function getGeneralCategory(cp: number): string {
-    if (cp >= 0x41 && cp <= 0x5a) return "Lu";
-    if (cp >= 0x61 && cp <= 0x7a) return "Ll";
-    if (cp >= 0x30 && cp <= 0x39) return "Nd";
-    if (cp === 0x20) return "Zs";
-    if (cp >= 0x21 && cp <= 0x2f) return "Po";
-    if (cp >= 0x3a && cp <= 0x40) return "Po";
-    if (cp >= 0x5b && cp <= 0x60) return "Ps";
-    if (cp >= 0x7b && cp <= 0x7e) return "Pe";
-    if (cp >= 0x2000 && cp <= 0x200a) return "Zs";
-    if (cp >= 0x2190 && cp <= 0x21ff) return "Sm";
-    if (cp >= 0x2200 && cp <= 0x22ff) return "Sm";
-    if (cp >= 0x2500 && cp <= 0x257f) return "So";
-    if (cp >= 0x2600 && cp <= 0x26ff) return "So";
-    return "Lo";
-}
+const BREAK_TYPE_NAMES = [
+    "Mandatory Break",
+    "Carriage Return",
+    "Line Feed",
+    "Attached Characters and Combining Marks",
+    "Surrogates",
+    "Zero Width Space",
+    "Inseparable",
+    'Non-breaking ("Glue")',
+    "Contingent Break Opportunity",
+    "Space",
+    "Break Opportunity After",
+    "Break Opportunity Before",
+    "Break Opportunity Before and After",
+    "Hyphen",
+    "Nonstarter",
+    "Opening Punctuation",
+    "Closing Punctuation",
+    "Ambiguous Quotation",
+    "Exclamation/Interrogation",
+    "Ideographic",
+    "Numeric",
+    "Infix Separator (Numeric)",
+    "Symbols Allowing Break After",
+    "Ordinary Alphabetic and Symbol Characters",
+    "Prefix (Numeric)",
+    "Postfix (Numeric)",
+    "Complex Content Dependent (South East Asian)",
+    "Ambiguous (Alphabetic or Ideographic)",
+    "Unknown",
+    "Next Line",
+    "Word Joiner",
+    "Hangul L Jamo",
+    "Hangul V Jamo",
+    "Hangul T Jamo",
+    "Hangul LV Syllable",
+    "Hangul LVT Syllable",
+    "Closing Parenthesis",
+    "Conditional Japanese Starter",
+    "Hebrew Letter",
+    "Regional Indicator",
+    "Emoji Base",
+    "Emoji Modifier",
+    "Zero Width Joiner",
+];
 
-function getBreakType(cp: number): string {
-    if (cp === 0x20) return "SP";
-    if (cp >= 0x30 && cp <= 0x39) return "NU";
-    if ((cp >= 0x41 && cp <= 0x5a) || (cp >= 0x61 && cp <= 0x7a)) return "AL";
-    if (cp >= 0x2000 && cp <= 0x200a) return "BA";
-    if (cp >= 0x2028 && cp <= 0x2029) return "BK";
-    if (cp === 0x2d || cp === 0x2010 || cp === 0x2011) return "HY";
-    if (cp >= 0x21 && cp <= 0x2f) return "EX";
-    return "XX";
-}
-
-const generateBlockChars = (block: { name: string; start: number; end: number }): UnicodeChar[] => {
-    const chars: UnicodeChar[] = [];
-    for (let cp = block.start; cp <= block.end; cp++) {
-        try {
-            const char = String.fromCodePoint(cp);
-            if (cp < 0x0020 || (cp >= 0x007f && cp < 0x00a0)) continue;
-            const generalCategory = getGeneralCategory(cp);
-            chars.push({
-                id: `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`,
-                codepoint: cp,
-                char,
-                name: `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`,
-                category: generalCategory.startsWith("L")
-                    ? "Letter"
-                    : generalCategory.startsWith("N")
-                      ? "Number"
-                      : generalCategory.startsWith("P")
-                        ? "Punctuation"
-                        : generalCategory.startsWith("S")
-                          ? "Symbol"
-                          : generalCategory.startsWith("Z")
-                            ? "Separator"
-                            : "Other",
-                generalCategory,
-                breakType: getBreakType(cp),
-                block: block.name,
-            });
-        } catch {}
-    }
-    return chars;
+const COMBINING_CLASS_NAMES: Record<number, string> = {
+    0: "Not Reordered",
+    1: "Overlay",
+    7: "Nukta",
+    8: "Kana Voicing",
+    9: "Virama",
+    10: "CCC10 (Hebrew)",
+    11: "CCC11 (Hebrew)",
+    12: "CCC12 (Hebrew)",
+    13: "CCC13 (Hebrew)",
+    14: "CCC14 (Hebrew)",
+    15: "CCC15 (Hebrew)",
+    16: "CCC16 (Hebrew)",
+    17: "CCC17 (Hebrew)",
+    18: "CCC18 (Hebrew)",
+    19: "CCC19 (Hebrew)",
+    20: "CCC20 (Hebrew)",
+    21: "CCC21 (Hebrew)",
+    22: "CCC22 (Hebrew)",
+    23: "CCC23 (Hebrew)",
+    24: "CCC24 (Hebrew)",
+    25: "CCC25 (Hebrew)",
+    26: "CCC26 (Hebrew)",
+    27: "CCC27 (Arabic)",
+    28: "CCC28 (Arabic)",
+    29: "CCC29 (Arabic)",
+    30: "CCC30 (Arabic)",
+    31: "CCC31 (Arabic)",
+    32: "CCC32 (Arabic)",
+    33: "CCC33 (Arabic)",
+    34: "CCC34 (Arabic)",
+    35: "CCC35 (Arabic)",
+    36: "CCC36 (Syriac)",
+    84: "CCC84 (Telugu)",
+    85: "CCC85 (Telugu)",
+    103: "CCC103 (Thai)",
+    107: "CCC107 (Thai)",
+    118: "CCC118 (Lao)",
+    122: "CCC122 (Lao)",
+    129: "CCC129 (Tibetan)",
+    130: "CCC130 (Tibetan)",
+    133: "CCC133 (Tibetan)",
+    200: "Attached Below Left",
+    202: "Attached Below",
+    214: "Attached Above",
+    216: "Attached Above Right",
+    218: "Below Left",
+    220: "Below",
+    222: "Below Right",
+    224: "Left",
+    226: "Right",
+    228: "Above Left",
+    230: "Above",
+    232: "Above Right",
+    233: "Double Below",
+    234: "Double Above",
+    240: "Iota Subscript",
+    255: "Invalid",
 };
 
+let scriptNameCache: Map<number, string> | null = null;
+
+function getScriptName(value: number): string {
+    if (!scriptNameCache) {
+        scriptNameCache = new Map<number, string>();
+        for (const [key, val] of Object.entries(GLib.UnicodeScript)) {
+            if (typeof val === "number") {
+                scriptNameCache.set(
+                    val,
+                    key
+                        .split("_")
+                        .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+                        .join(" "),
+                );
+            }
+        }
+    }
+    return scriptNameCache.get(value) ?? String(value);
+}
+
+function parseUcdData(): UcdEntry[] {
+    const buffer = readFileSync(ucdDataPath);
+    const entries: UcdEntry[] = [];
+    let offset = 0;
+    let lastCp = -1;
+
+    while (offset + 4 <= buffer.length) {
+        const cp = buffer.readUInt32LE(offset);
+        if (cp > 0x10ffff || cp < lastCp) {
+            break;
+        }
+
+        offset += 4;
+
+        let end = offset;
+        while (end < buffer.length && buffer[end] !== 0) {
+            end++;
+        }
+        if (end >= buffer.length) {
+            break;
+        }
+
+        const name = buffer.subarray(offset, end).toString("utf-8");
+        offset = end + 1;
+        const padding = (4 - (offset % 4)) % 4;
+        offset += padding;
+
+        lastCp = cp;
+
+        if (cp === 0) {
+            continue;
+        }
+
+        const char = String.fromCodePoint(cp);
+        const hex = cp.toString(16).padStart(4, "0");
+
+        entries.push({
+            codepoint: cp,
+            name,
+            char,
+            codepointStr: `0x${hex}`,
+        });
+    }
+
+    return entries;
+}
+
+const characters = parseUcdData();
+
+interface UcdSection {
+    script: string;
+    entries: UcdEntry[];
+}
+
+function groupByScript(entries: UcdEntry[]): UcdSection[] {
+    const sorted = [...entries].sort((a, b) => {
+        const sa = GLib.unicharGetScript(a.codepoint);
+        const sb = GLib.unicharGetScript(b.codepoint);
+        if (sa !== sb) return sa - sb;
+        return a.codepoint - b.codepoint;
+    });
+
+    const sections: UcdSection[] = [];
+    let currentScript = "";
+    let currentEntries: UcdEntry[] = [];
+
+    for (const entry of sorted) {
+        const script = getScriptName(GLib.unicharGetScript(entry.codepoint));
+        if (script !== currentScript) {
+            if (currentEntries.length > 0) {
+                sections.push({ script: currentScript, entries: currentEntries });
+            }
+            currentScript = script;
+            currentEntries = [entry];
+        } else {
+            currentEntries.push(entry);
+        }
+    }
+    if (currentEntries.length > 0) {
+        sections.push({ script: currentScript, entries: currentEntries });
+    }
+
+    return sections;
+}
+
+let cachedData: { sections: UcdSection[]; flat: UcdEntry[] } | undefined;
+
+function getCharacterData() {
+    if (!cachedData) {
+        const sections = groupByScript(characters);
+        cachedData = { sections, flat: sections.flatMap((s) => s.entries) };
+    }
+    return cachedData;
+}
+
 const ListViewUcdDemo = () => {
-    const [selectedBlock, setSelectedBlock] = useState(unicodeBlocks[0]?.name ?? "Basic Latin");
-    const [searchText, setSearchText] = useState("");
-    const [selectedChar, setSelectedChar] = useState<UnicodeChar | null>(null);
-
-    const characters = useMemo(() => {
-        const block = unicodeBlocks.find((b) => b.name === selectedBlock);
-        if (!block) return [];
-        return generateBlockChars(block);
-    }, [selectedBlock]);
-
-    const filteredCharacters = useMemo(() => {
-        if (searchText === "") return characters;
-        const search = searchText.toLowerCase();
-        return characters.filter(
-            (c) =>
-                c.char.includes(searchText) ||
-                c.id.toLowerCase().includes(search) ||
-                c.name.toLowerCase().includes(search),
-        );
-    }, [characters, searchText]);
+    const [selectedChar, setSelectedChar] = useState("");
+    const { sections: characterSections, flat: flatSorted } = getCharacterData();
 
     const handleActivate = (position: number) => {
-        const char = filteredCharacters[position];
-        if (char) {
-            setSelectedChar(char);
+        const entry = flatSorted[position];
+        if (entry) {
+            setSelectedChar(entry.char);
         }
     };
 
-    const formatCodepoint = (cp: number): string => {
-        return `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`;
-    };
-
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={24}
-            marginStart={20}
-            marginEnd={20}
-            marginTop={20}
-            marginBottom={20}
-        >
-            <GtkLabel label="Unicode Character Database" cssClasses={["title-2"]} halign={Gtk.Align.START} />
-
-            <GtkLabel
-                label="Browse Unicode characters by block using a ColumnView with multiple property columns including general category and line break type."
-                wrap
-                halign={Gtk.Align.START}
-                cssClasses={["dim-label"]}
-            />
-
-            <GtkBox spacing={16}>
-                <GtkFrame label="Unicode Blocks">
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={8}
-                        marginTop={8}
-                        marginBottom={8}
-                        marginStart={8}
-                        marginEnd={8}
-                        widthRequest={200}
-                    >
-                        <GtkScrolledWindow heightRequest={450} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                            <GtkListView
-                                estimatedItemHeight={40}
-                                showSeparators
-                                onActivate={(position) => {
-                                    const block = unicodeBlocks[position];
-                                    if (block) {
-                                        setSelectedBlock(block.name);
-                                    }
-                                }}
-                                renderItem={(item) => (
-                                    <GtkLabel
-                                        label={item?.name ?? ""}
-                                        halign={Gtk.Align.START}
-                                        marginTop={8}
-                                        marginBottom={8}
-                                        marginStart={12}
-                                        marginEnd={12}
-                                        cssClasses={item?.name === selectedBlock ? ["heading"] : []}
-                                    />
-                                )}
-                            >
-                                {unicodeBlocks.map((block) => (
-                                    <x.ListItem key={block.name} id={block.name} value={{ name: block.name }} />
-                                ))}
-                            </GtkListView>
-                        </GtkScrolledWindow>
-                    </GtkBox>
-                </GtkFrame>
-
-                <GtkFrame label={selectedBlock} hexpand>
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={12}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    >
-                        <GtkBox spacing={8}>
-                            <GtkSearchEntry
-                                text={searchText}
-                                placeholderText="Search characters..."
-                                onSearchChanged={(entry) => setSearchText(entry.getText())}
-                                hexpand
-                            />
-                        </GtkBox>
-
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
+            <GtkScrolledWindow propagateNaturalWidth vexpand>
+                <GtkColumnView
+                    showColumnSeparators
+                    estimatedRowHeight={32}
+                    onActivate={handleActivate}
+                    renderHeader={(script: string | null) => (
                         <GtkLabel
-                            label={`${filteredCharacters.length} characters`}
-                            cssClasses={["dim-label"]}
+                            label={script ?? ""}
                             halign={Gtk.Align.START}
+                            cssClasses={["heading"]}
+                            marginTop={20}
+                            marginBottom={10}
+                            marginStart={10}
+                            marginEnd={20}
                         />
-
-                        <GtkScrolledWindow heightRequest={350}>
-                            <GtkColumnView estimatedRowHeight={40} onActivate={handleActivate}>
-                                <x.ColumnViewColumn<UnicodeChar>
-                                    id="char"
-                                    title="Char"
-                                    renderCell={(item) => (
-                                        <GtkLabel
-                                            label={item?.char ?? ""}
-                                            cssClasses={["title-3"]}
-                                            marginTop={6}
-                                            marginBottom={6}
-                                            marginStart={8}
-                                        />
-                                    )}
-                                />
-                                <x.ColumnViewColumn<UnicodeChar>
-                                    id="codepoint"
-                                    title="Codepoint"
-                                    fixedWidth={90}
-                                    renderCell={(item) => (
-                                        <GtkLabel
-                                            label={item?.id ?? ""}
-                                            cssClasses={["monospace"]}
-                                            halign={Gtk.Align.START}
-                                            marginTop={6}
-                                            marginBottom={6}
-                                            marginStart={8}
-                                        />
-                                    )}
-                                />
-                                <x.ColumnViewColumn<UnicodeChar>
-                                    id="category"
-                                    title="Category"
-                                    fixedWidth={100}
-                                    renderCell={(item) => (
-                                        <GtkLabel
-                                            label={item?.category ?? ""}
-                                            halign={Gtk.Align.START}
-                                            marginTop={6}
-                                            marginBottom={6}
-                                            marginStart={8}
-                                        />
-                                    )}
-                                />
-                                <x.ColumnViewColumn<UnicodeChar>
-                                    id="generalCategory"
-                                    title="GC"
-                                    fixedWidth={50}
-                                    renderCell={(item) => (
-                                        <GtkLabel
-                                            label={item?.generalCategory ?? ""}
-                                            cssClasses={["monospace", "dim-label"]}
-                                            halign={Gtk.Align.START}
-                                            marginTop={6}
-                                            marginBottom={6}
-                                            marginStart={8}
-                                        />
-                                    )}
-                                />
-                                <x.ColumnViewColumn<UnicodeChar>
-                                    id="breakType"
-                                    title="Break"
-                                    fixedWidth={60}
-                                    renderCell={(item) => (
-                                        <GtkLabel
-                                            label={item?.breakType ?? ""}
-                                            cssClasses={["monospace", "dim-label"]}
-                                            halign={Gtk.Align.START}
-                                            marginTop={6}
-                                            marginBottom={6}
-                                            marginStart={8}
-                                        />
-                                    )}
-                                />
-                                <x.ColumnViewColumn<UnicodeChar>
-                                    id="decimal"
-                                    title="Decimal"
-                                    expand
-                                    renderCell={(item) => (
-                                        <GtkLabel
-                                            label={item ? String(item.codepoint) : ""}
-                                            cssClasses={["monospace", "dim-label"]}
-                                            halign={Gtk.Align.END}
-                                            marginTop={6}
-                                            marginBottom={6}
-                                            marginEnd={8}
-                                        />
-                                    )}
-                                />
-                                {filteredCharacters.map((char) => (
-                                    <x.ListItem key={char.id} id={char.id} value={char} />
-                                ))}
-                            </GtkColumnView>
-                        </GtkScrolledWindow>
-
-                        {selectedChar && (
-                            <GtkBox spacing={24} cssClasses={["card"]} marginTop={8}>
-                                <GtkLabel
-                                    label={selectedChar.char}
-                                    cssClasses={["title-1"]}
-                                    marginStart={24}
-                                    marginTop={16}
-                                    marginBottom={16}
-                                />
-                                <GtkBox
-                                    orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={4}
-                                    valign={Gtk.Align.CENTER}
-                                    hexpand
-                                >
-                                    <GtkLabel
-                                        label={formatCodepoint(selectedChar.codepoint)}
-                                        cssClasses={["heading", "monospace"]}
-                                        halign={Gtk.Align.START}
-                                    />
-                                    <GtkLabel
-                                        label={`Block: ${selectedChar.block}`}
-                                        cssClasses={["dim-label"]}
-                                        halign={Gtk.Align.START}
-                                    />
-                                    <GtkLabel
-                                        label={`Category: ${selectedChar.category} (${selectedChar.generalCategory})`}
-                                        cssClasses={["dim-label", "caption"]}
-                                        halign={Gtk.Align.START}
-                                    />
-                                </GtkBox>
-                                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} valign={Gtk.Align.CENTER}>
-                                    <GtkLabel label="HTML Entity" cssClasses={["dim-label", "caption"]} />
-                                    <GtkLabel label={`&#${selectedChar.codepoint};`} cssClasses={["monospace"]} />
-                                </GtkBox>
-                                <GtkBox
-                                    orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={4}
-                                    valign={Gtk.Align.CENTER}
-                                    marginEnd={16}
-                                >
-                                    <GtkLabel label="Break Type" cssClasses={["dim-label", "caption"]} />
-                                    <GtkLabel label={selectedChar.breakType} cssClasses={["monospace"]} />
-                                </GtkBox>
-                            </GtkBox>
+                    )}
+                >
+                    <x.ColumnViewColumn
+                        id="codepoint"
+                        title="Codepoint"
+                        sortable
+                        renderCell={(item: UcdEntry | null) => (
+                            <GtkInscription
+                                text={item?.codepointStr ?? ""}
+                                cssClasses={["monospace"]}
+                                marginTop={4}
+                                marginBottom={4}
+                            />
                         )}
-                    </GtkBox>
-                </GtkFrame>
-            </GtkBox>
+                    />
+                    <x.ColumnViewColumn
+                        id="char"
+                        title="Char"
+                        renderCell={(item: UcdEntry | null) => (
+                            <GtkInscription
+                                text={item && GLib.unicharIsprint(item.codepoint) ? item.char : ""}
+                                marginTop={4}
+                                marginBottom={4}
+                            />
+                        )}
+                    />
+                    <x.ColumnViewColumn
+                        id="name"
+                        title="Name"
+                        resizable
+                        renderCell={(item: UcdEntry | null) => (
+                            <GtkInscription
+                                text={item?.name ?? ""}
+                                xalign={0}
+                                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
+                                natChars={20}
+                                marginTop={4}
+                                marginBottom={4}
+                            />
+                        )}
+                    />
+                    <x.ColumnViewColumn
+                        id="type"
+                        title="Type"
+                        resizable
+                        renderCell={(item: UcdEntry | null) => (
+                            <GtkInscription
+                                text={item ? (UNICODE_TYPE_NAMES[GLib.unicharType(item.codepoint)] ?? "Unknown") : ""}
+                                cssClasses={["dim-label"]}
+                                xalign={0}
+                                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
+                                marginTop={4}
+                                marginBottom={4}
+                            />
+                        )}
+                    />
+                    <x.ColumnViewColumn
+                        id="break-type"
+                        title="Break Type"
+                        resizable
+                        renderCell={(item: UcdEntry | null) => (
+                            <GtkInscription
+                                text={
+                                    item ? (BREAK_TYPE_NAMES[GLib.unicharBreakType(item.codepoint)] ?? "Unknown") : ""
+                                }
+                                cssClasses={["dim-label"]}
+                                xalign={0}
+                                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
+                                marginTop={4}
+                                marginBottom={4}
+                            />
+                        )}
+                    />
+                    <x.ColumnViewColumn
+                        id="combining-class"
+                        title="Combining Class"
+                        resizable
+                        renderCell={(item: UcdEntry | null) => (
+                            <GtkInscription
+                                text={
+                                    item
+                                        ? (COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.codepoint)] ??
+                                          "Unknown")
+                                        : ""
+                                }
+                                cssClasses={["dim-label"]}
+                                xalign={0}
+                                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
+                                marginTop={4}
+                                marginBottom={4}
+                            />
+                        )}
+                    />
+                    {characterSections.map((section) => (
+                        <x.ListSection key={section.script} id={section.script} value={section.script}>
+                            {section.entries.map((entry) => (
+                                <x.ListItem key={entry.codepointStr} id={entry.codepointStr} value={entry} />
+                            ))}
+                        </x.ListSection>
+                    ))}
+                </GtkColumnView>
+            </GtkScrolledWindow>
+            <GtkLabel label={selectedChar} cssClasses={[css`font-size: 80px;`]} hexpand widthChars={2} />
         </GtkBox>
     );
 };
@@ -375,4 +411,6 @@ export const listviewUcdDemo: Demo = {
     keywords: ["listview", "unicode", "characters", "GtkListView", "GtkGridView", "ucd", "codepoint"],
     component: ListViewUcdDemo,
     sourceCode,
+    defaultWidth: 800,
+    defaultHeight: 400,
 };

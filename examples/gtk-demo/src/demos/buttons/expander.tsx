@@ -1,7 +1,8 @@
 import * as Gdk from "@gtkx/ffi/gdk";
+import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useCallback, useEffect, useRef } from "react";
+import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView, x } from "@gtkx/react";
+import { useCallback, useMemo, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
 import gtkLogoCursorPath from "./gtk_logo_cursor.png";
@@ -11,52 +12,19 @@ A second paragraph will contain even more innuendo, just to make you scroll down
 Do it already!`;
 
 const ExpanderDemo = () => {
-    const textViewRef = useRef<Gtk.TextView | null>(null);
+    const texture = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoCursorPath), []);
     const expanderRef = useRef<Gtk.Expander | null>(null);
 
-    const handleActivate = useCallback((expander: Gtk.Expander) => {
-        const root = expander.getRoot();
-        if (!root) return;
-
-        (root as Gtk.Window).setResizable(expander.getExpanded());
-    }, []);
-
-    useEffect(() => {
-        const textView = textViewRef.current;
-        if (!textView) return;
-
-        const buffer = textView.getBuffer();
-        if (!buffer) return;
-
-        buffer.setText(DETAILS_TEXT, -1);
-
-        const texture = Gdk.Texture.newFromFilename(gtkLogoCursorPath);
-
-        const endIter = new Gtk.TextIter();
-        buffer.getEndIter(endIter);
-        buffer.insertPaintable(endIter, texture);
-
-        const startIter = new Gtk.TextIter();
-        buffer.getEndIter(startIter);
-        startIter.backwardChar();
-
-        buffer.getEndIter(endIter);
-
-        const tag = new Gtk.TextTag(null);
-        tag.setPixelsAboveLines(200);
-        tag.setJustification(Gtk.Justification.RIGHT);
-        buffer.getTagTable().add(tag);
-        buffer.applyTag(tag, startIter, endIter);
-    }, []);
-
-    useEffect(() => {
+    const handleExpandedNotify = useCallback((pspec: GObject.ParamSpec) => {
+        if (pspec.getName() !== "expanded") return;
         const expander = expanderRef.current;
         if (!expander) return;
 
         const root = expander.getRoot();
         if (!root) return;
 
-        (root as Gtk.Window).setResizable(expander.getExpanded());
+        const win = root instanceof Gtk.Window ? root : null;
+        if (win) win.setResizable(expander.getExpanded());
     }, []);
 
     return (
@@ -71,7 +39,7 @@ const ExpanderDemo = () => {
             <GtkLabel label="<big><b>Something went wrong</b></big>" useMarkup />
             <GtkLabel label="Here are some more details but not the full story" wrap={false} vexpand={false} />
 
-            <GtkExpander ref={expanderRef} label="Details:" vexpand onActivate={handleActivate}>
+            <GtkExpander label="Details:" vexpand ref={expanderRef} onNotify={handleExpandedNotify}>
                 <GtkScrolledWindow
                     minContentHeight={100}
                     hasFrame
@@ -81,7 +49,6 @@ const ExpanderDemo = () => {
                     vexpand
                 >
                     <GtkTextView
-                        ref={textViewRef}
                         editable={false}
                         cursorVisible={false}
                         wrapMode={Gtk.WrapMode.WORD}
@@ -91,7 +58,12 @@ const ExpanderDemo = () => {
                         rightMargin={10}
                         topMargin={10}
                         bottomMargin={10}
-                    />
+                    >
+                        {DETAILS_TEXT}
+                        <x.TextTag id="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
+                            <x.TextPaintable paintable={texture} />
+                        </x.TextTag>
+                    </GtkTextView>
                 </GtkScrolledWindow>
             </GtkExpander>
         </GtkBox>

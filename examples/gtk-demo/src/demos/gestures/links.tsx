@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import * as Pango from "@gtkx/ffi/pango";
 import { GtkLabel } from "@gtkx/react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./links.tsx?raw";
@@ -31,7 +32,7 @@ const LinksDemo = ({ window }: DemoProps) => {
             useMarkup
             maxWidthChars={40}
             wrap
-            wrapMode={2}
+            wrapMode={Pango.WrapMode.WORD}
             marginStart={20}
             marginEnd={20}
             marginTop={20}

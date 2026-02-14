@@ -1,67 +1,62 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkEntry, GtkGrid, GtkLabel, GtkScale, GtkSwitch, x } from "@gtkx/react";
+import { GtkEntry, GtkGrid, GtkLabel, GtkScale, GtkShortcutController, GtkSwitch, x } from "@gtkx/react";
 import { useCallback, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./errorstates.tsx?raw";
 
 const ErrorstatesDemo = () => {
-    const [details, setDetails] = useState("");
-    const [moreDetails, setMoreDetails] = useState("");
-    const [level, setLevel] = useState(50);
-    const [modeActive, setModeActive] = useState(false);
     const [showError, setShowError] = useState(false);
     const [moreDetailsError, setMoreDetailsError] = useState(false);
+    const [errorLabel, setErrorLabel] = useState<Gtk.Label | null>(null);
 
-    const handleDetailsChange = useCallback(
-        (entry: Gtk.Entry) => {
-            const text = entry.getText();
-            setDetails(text);
-            if (text.length > 0 && moreDetails.length === 0) {
-                setMoreDetailsError(true);
-            } else {
-                setMoreDetailsError(false);
-            }
-        },
-        [moreDetails],
-    );
+    const [detailsEntry, setDetailsEntry] = useState<Gtk.Entry | null>(null);
+    const [moreDetailsEntry, setMoreDetailsEntry] = useState<Gtk.Entry | null>(null);
+    const [levelScale, setLevelScale] = useState<Gtk.Scale | null>(null);
+    const [modeSwitch, setModeSwitch] = useState<Gtk.Switch | null>(null);
 
-    const handleMoreDetailsChange = useCallback(
-        (entry: Gtk.Entry) => {
-            const text = entry.getText();
-            setMoreDetails(text);
-            if (details.length > 0 && text.length === 0) {
-                setMoreDetailsError(true);
-            } else {
-                setMoreDetailsError(false);
-            }
-        },
-        [details],
-    );
+    const validateMoreDetails = useCallback(() => {
+        const detailsText = detailsEntry?.getText() ?? "";
+        const moreDetailsText = moreDetailsEntry?.getText() ?? "";
+        setMoreDetailsError(moreDetailsText.length > 0 && detailsText.length === 0);
+    }, [detailsEntry, moreDetailsEntry]);
+
+    const handleDetailsChange = useCallback(() => {
+        validateMoreDetails();
+    }, [validateMoreDetails]);
+
+    const handleMoreDetailsChange = useCallback(() => {
+        validateMoreDetails();
+    }, [validateMoreDetails]);
 
     const handleLevelChange = useCallback(
-        (value: number) => {
-            setLevel(value);
-            if (modeActive && value > 50) {
+        (_value: number, _self: Gtk.Range) => {
+            if (!modeSwitch || !levelScale) return;
+
+            const active = modeSwitch.getActive();
+            const state = modeSwitch.getState();
+            const value = levelScale.getValue();
+
+            if (active && !state && value > 50) {
                 setShowError(false);
-            } else if (modeActive && value <= 50) {
-                setModeActive(false);
+                modeSwitch.setState(true);
+            } else if (state && value <= 50) {
+                modeSwitch.setState(false);
             }
         },
-        [modeActive],
+        [modeSwitch, levelScale],
     );
 
     const handleModeStateSet = useCallback(
-        (state: boolean) => {
-            if (!state || level > 50) {
+        (state: boolean, sw: Gtk.Switch) => {
+            if (!state || (levelScale && levelScale.getValue() > 50)) {
                 setShowError(false);
-                setModeActive(state);
-                return false;
+                sw.setState(state);
             } else {
                 setShowError(true);
-                return true;
             }
+            return true;
         },
-        [level],
+        [levelScale],
     );
 
     return (
@@ -73,10 +68,11 @@ const ErrorstatesDemo = () => {
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.BASELINE}
                     cssClasses={["dim-label"]}
+                    mnemonicWidget={detailsEntry}
                 />
             </x.GridChild>
             <x.GridChild column={1} row={0} columnSpan={2}>
-                <GtkEntry valign={Gtk.Align.BASELINE} onChanged={handleDetailsChange} />
+                <GtkEntry ref={setDetailsEntry} valign={Gtk.Align.BASELINE} onChanged={handleDetailsChange} />
             </x.GridChild>
 
             <x.GridChild column={0} row={1}>
@@ -86,13 +82,18 @@ const ErrorstatesDemo = () => {
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.BASELINE}
                     cssClasses={["dim-label"]}
+                    mnemonicWidget={moreDetailsEntry}
                 />
             </x.GridChild>
             <x.GridChild column={1} row={1} columnSpan={2}>
                 <GtkEntry
+                    ref={setMoreDetailsEntry}
                     valign={Gtk.Align.BASELINE}
                     cssClasses={moreDetailsError ? ["error"] : []}
                     tooltipText={moreDetailsError ? "Must have details first" : ""}
+                    accessibleInvalid={
+                        moreDetailsError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE
+                    }
                     onChanged={handleMoreDetailsChange}
                 />
             </x.GridChild>
@@ -104,14 +105,16 @@ const ErrorstatesDemo = () => {
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.BASELINE}
                     cssClasses={["dim-label"]}
+                    mnemonicWidget={levelScale}
                 />
             </x.GridChild>
             <x.GridChild column={1} row={2} columnSpan={2}>
                 <GtkScale
+                    ref={setLevelScale}
                     orientation={Gtk.Orientation.HORIZONTAL}
                     valign={Gtk.Align.BASELINE}
                     drawValue={false}
-                    value={level}
+                    value={50}
                     lower={0}
                     upper={100}
                     stepIncrement={1}
@@ -127,19 +130,28 @@ const ErrorstatesDemo = () => {
                     halign={Gtk.Align.END}
                     valign={Gtk.Align.BASELINE}
                     cssClasses={["dim-label"]}
+                    mnemonicWidget={modeSwitch}
                 />
             </x.GridChild>
             <x.GridChild column={1} row={3}>
                 <GtkSwitch
+                    ref={setModeSwitch}
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.BASELINE}
-                    active={modeActive}
+                    accessibleKeyShortcuts="Control+M"
+                    accessibleInvalid={showError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE}
+                    accessibleErrorMessage={showError && errorLabel ? [errorLabel] : undefined}
                     onStateSet={handleModeStateSet}
-                />
+                >
+                    <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
+                        <x.Shortcut trigger="<Control>m" onActivate={() => modeSwitch?.activate()} />
+                    </GtkShortcutController>
+                </GtkSwitch>
             </x.GridChild>
             <x.GridChild column={2} row={3}>
                 {showError && (
                     <GtkLabel
+                        ref={setErrorLabel}
                         label="Level too low"
                         halign={Gtk.Align.START}
                         valign={Gtk.Align.BASELINE}
