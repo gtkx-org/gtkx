@@ -239,16 +239,10 @@ export class MethodBodyWriter {
 
                 const innerFfi = mapped.ffi.innerType;
 
-                if (
-                    innerFfi.type === "boxed" ||
-                    innerFfi.type === "gobject" ||
-                    innerFfi.type === "fundamental"
-                ) {
+                if (innerFfi.type === "boxed" || innerFfi.type === "gobject" || innerFfi.type === "fundamental") {
                     const isBoxed = innerFfi.type === "boxed";
                     const isInterface = mapped.kind === "interface";
-                    const boxedTypeName = isBoxed
-                        ? (innerFfi as { innerType?: string }).innerType
-                        : undefined;
+                    const boxedTypeName = isBoxed ? (innerFfi as { innerType?: string }).innerType : undefined;
                     return {
                         paramName: this.toJsParamName(param),
                         innerType: mapped.innerTsType,

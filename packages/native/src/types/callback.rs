@@ -136,7 +136,7 @@ impl ClosureContext {
                                     gval.to_glib_none().0 as *const _,
                                 )
                             };
-                            Some((ptr as *mut c_void, *ref_type.inner_type.clone()))
+                            Some((ptr, *ref_type.inner_type.clone()))
                         } else {
                             None
                         }
@@ -151,10 +151,10 @@ impl ClosureContext {
                     |result| match result {
                         Ok(value::Value::Array(arr)) => {
                             for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
-                                if let Some(val) = arr.get(i + 1) {
-                                    if !ptr.is_null() {
-                                        write_ref_value_to_ptr(*ptr, val, inner_type);
-                                    }
+                                if let Some(val) = arr.get(i + 1)
+                                    && !ptr.is_null()
+                                {
+                                    write_ref_value_to_ptr(*ptr, val, inner_type);
                                 }
                             }
                             let return_val =

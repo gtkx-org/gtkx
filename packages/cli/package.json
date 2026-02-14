@@ -45,7 +45,8 @@
         "./refresh-runtime": {
             "types": "./dist/refresh-runtime.d.ts",
             "default": "./dist/refresh-runtime.js"
-        }
+        },
+        "./env": "./env.d.ts"
     },
     "bin": {
         "gtkx": "bin/gtkx.js"
@@ -54,6 +55,7 @@
     "files": [
         "bin",
         "dist",
+        "env.d.ts",
         "src",
         "templates"
     ],

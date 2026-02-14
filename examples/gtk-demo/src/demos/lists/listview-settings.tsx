@@ -8,6 +8,7 @@ import {
     GtkEditableLabel,
     GtkHeaderBar,
     GtkLabel,
+    GtkListView,
     GtkPaned,
     GtkScrolledWindow,
     GtkSearchBar,
@@ -29,43 +30,66 @@ interface KeyInfo {
     description: string;
 }
 
-interface SchemaGroup {
-    prefix: string;
-    schemas: { id: string; shortName: string }[];
+interface SchemaTreeNode {
+    nodeId: string;
+    schemaId: string;
+    children: SchemaTreeNode[];
 }
 
-function loadSchemaList(): string[] {
+let nodeIdCounter = 0;
+const settingsMap = new Map<string, Gio.Settings>();
+const schemaIdByNode = new Map<string, string>();
+
+function buildNodeFromSettings(settings: Gio.Settings, schemaId: string): SchemaTreeNode {
+    const nodeId = `n${nodeIdCounter++}`;
+    settingsMap.set(nodeId, settings);
+    schemaIdByNode.set(nodeId, schemaId);
+
+    let childNames: string[];
+    try {
+        childNames = settings.listChildren().sort();
+    } catch {
+        childNames = [];
+    }
+
+    const children: SchemaTreeNode[] = [];
+    for (const name of childNames) {
+        try {
+            const child = settings.getChild(name);
+            children.push(buildNodeFromSettings(child, `${schemaId}.${name}`));
+        } catch {}
+    }
+
+    return { nodeId, schemaId, children };
+}
+
+function loadSchemaTree(): SchemaTreeNode[] {
     const source = Gio.SettingsSchemaSource.getDefault();
     if (!source) return [];
 
     const nonRelocatable = createRef<string[]>([]);
     const relocatable = createRef<string[]>([]);
     source.listSchemas(true, nonRelocatable, relocatable);
-    return nonRelocatable.value.sort();
+
+    return nonRelocatable.value.sort().map((id) => {
+        const settings = new Gio.Settings(id);
+        return buildNodeFromSettings(settings, id);
+    });
 }
 
-function groupSchemas(schemaIds: string[]): SchemaGroup[] {
-    const groups = new Map<string, { id: string; shortName: string }[]>();
-
-    for (const id of schemaIds) {
-        const parts = id.split(".");
-        const shortName = parts[parts.length - 1] ?? id;
-        const prefix = parts.slice(0, -1).join(".");
-
-        const existing = groups.get(prefix);
-        if (existing) existing.push({ id, shortName });
-        else groups.set(prefix, [{ id, shortName }]);
+let cachedSchemaTree: SchemaTreeNode[] | undefined;
+function getSchemaTree() {
+    if (!cachedSchemaTree) {
+        cachedSchemaTree = loadSchemaTree();
     }
-
-    return [...groups.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([prefix, schemas]) => ({
-            prefix,
-            schemas: schemas.sort((a, b) => a.shortName.localeCompare(b.shortName)),
-        }));
+    return cachedSchemaTree;
 }
 
-function loadKeysForSchema(schemaId: string): KeyInfo[] {
+function loadKeysForNode(nodeId: string): KeyInfo[] {
+    const settings = settingsMap.get(nodeId);
+    const schemaId = schemaIdByNode.get(nodeId);
+    if (!settings || !schemaId) return [];
+
     const source = Gio.SettingsSchemaSource.getDefault();
     if (!source) return [];
 
@@ -73,7 +97,6 @@ function loadKeysForSchema(schemaId: string): KeyInfo[] {
     if (!schema) return [];
 
     const keys = schema.listKeys();
-    const settings = new Gio.Settings(schemaId);
     const result: KeyInfo[] = [];
 
     for (const keyName of keys) {
@@ -106,98 +129,34 @@ function loadKeysForSchema(schemaId: string): KeyInfo[] {
     return result;
 }
 
-let allSchemas: string[] | undefined;
-let allSchemaSet: Set<string> | undefined;
-let schemaGroups: ReturnType<typeof groupSchemas> | undefined;
-
-function getAllSchemas() {
-    if (!allSchemas) {
-        allSchemas = loadSchemaList();
+function renderSchemaNode(node: SchemaTreeNode): ReactNode {
+    if (node.children.length === 0) {
+        return <x.ListItem key={node.nodeId} id={node.nodeId} value={node.schemaId} hideExpander />;
     }
-    return allSchemas;
-}
-
-function getAllSchemaSet() {
-    if (!allSchemaSet) {
-        allSchemaSet = new Set(getAllSchemas());
-    }
-    return allSchemaSet;
-}
-
-function getSchemaGroups() {
-    if (!schemaGroups) {
-        schemaGroups = groupSchemas(getAllSchemas());
-    }
-    return schemaGroups;
-}
-
-let childSchemaCache: Map<string, { id: string; shortName: string }[]> | undefined;
-
-function getChildSchemas(schemaId: string): { id: string; shortName: string }[] {
-    if (!childSchemaCache) {
-        childSchemaCache = new Map();
-        const source = Gio.SettingsSchemaSource.getDefault();
-        if (source) {
-            for (const id of getAllSchemas()) {
-                const schema = source.lookup(id, true);
-                if (!schema) continue;
-                const childNames = schema.listChildren();
-                if (childNames.length > 0) {
-                    const children = childNames
-                        .map((name) => {
-                            const childId = `${id}.${name}`;
-                            return getAllSchemaSet().has(childId) ? { id: childId, shortName: name } : null;
-                        })
-                        .filter((c): c is { id: string; shortName: string } => c !== null)
-                        .sort((a, b) => a.shortName.localeCompare(b.shortName));
-                    if (children.length > 0) {
-                        childSchemaCache.set(id, children);
-                    }
-                }
-            }
-        }
-    }
-    return childSchemaCache.get(schemaId) ?? [];
-}
-
-function renderSchemaChildren(schemaId: string): ReactNode {
-    const children = getChildSchemas(schemaId);
-    if (children.length === 0) return null;
-    return children.map((child) => {
-        const grandChildren = getChildSchemas(child.id);
-        if (grandChildren.length === 0) {
-            return <x.ListItem key={child.id} id={child.id} value={child.shortName} hideExpander />;
-        }
-        return (
-            <x.ListItem key={child.id} id={child.id} value={child.shortName}>
-                {renderSchemaChildren(child.id)}
-            </x.ListItem>
-        );
-    });
+    return (
+        <x.ListItem key={node.nodeId} id={node.nodeId} value={node.schemaId}>
+            {node.children.map(renderSchemaNode)}
+        </x.ListItem>
+    );
 }
 
 const ListViewSettingsDemo = () => {
-    const [selectedSchemaId, setSelectedSchemaId] = useState<string | null>(null);
+    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [keyInfos, setKeyInfos] = useState<KeyInfo[]>([]);
     const [keySearchActive, setKeySearchActive] = useState(false);
     const [keySearchText, setKeySearchText] = useState("");
 
     const handleSchemaSelected = useCallback((ids: string[]) => {
-        const id = ids[0];
-        if (!id || !getAllSchemaSet().has(id)) return;
-        setSelectedSchemaId(id);
-        setKeyInfos(loadKeysForSchema(id));
+        const nodeId = ids[0];
+        if (!nodeId) return;
+        setSelectedNodeId(nodeId);
+        setKeyInfos(loadKeysForNode(nodeId));
     }, []);
 
     const filteredKeyInfos = useMemo(() => {
         if (!keySearchText) return keyInfos;
         const lower = keySearchText.toLowerCase();
-        return keyInfos.filter(
-            (k) =>
-                k.name.toLowerCase().includes(lower) ||
-                k.summary.toLowerCase().includes(lower) ||
-                k.description.toLowerCase().includes(lower),
-        );
+        return keyInfos.filter((k) => k.name.toLowerCase().includes(lower));
     }, [keyInfos, keySearchText]);
 
     const handleKeySearchChanged = useCallback((entry: Gtk.SearchEntry) => {
@@ -265,11 +224,15 @@ const ListViewSettingsDemo = () => {
 
     const handleValueEdit = useCallback(
         (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => {
-            if (!selectedSchemaId) return;
+            if (!selectedNodeId) return;
+            const settings = settingsMap.get(selectedNodeId);
+            const schemaId = schemaIdByNode.get(selectedNodeId);
+            if (!settings || !schemaId) return;
+
             try {
                 const source = Gio.SettingsSchemaSource.getDefault();
                 if (!source) return;
-                const schema = source.lookup(selectedSchemaId, true);
+                const schema = source.lookup(schemaId, true);
                 if (!schema) return;
 
                 const variantType = new GLib.VariantType(keyInfo.type);
@@ -280,7 +243,6 @@ const ListViewSettingsDemo = () => {
                         widget.errorBell();
                         return;
                     }
-                    const settings = new Gio.Settings(selectedSchemaId);
                     settings.setValue(keyInfo.name, variant);
                     setKeyInfos((prev) =>
                         prev.map((k) => (k.name === keyInfo.name ? { ...k, value: variant.print(false) } : k)),
@@ -290,90 +252,48 @@ const ListViewSettingsDemo = () => {
                 widget.errorBell();
             }
         },
-        [selectedSchemaId],
+        [selectedNodeId],
     );
 
     return (
         <>
             <x.Slot for="GtkWindow" id="titlebar">
                 <GtkHeaderBar>
-                    <x.Slot for={GtkHeaderBar} id="titleWidget">
-                        <GtkLabel label="Settings" ellipsize={3} />
-                    </x.Slot>
                     <x.ContainerSlot for={GtkHeaderBar} id="packEnd">
                         <GtkToggleButton
                             iconName="system-search-symbolic"
                             active={keySearchActive}
                             onToggled={(btn) => {
-                                const active = btn.getActive();
-                                setKeySearchActive(active);
-                                if (!active) setKeySearchText("");
+                                setKeySearchActive(btn.getActive());
+                                setKeySearchText("");
                             }}
                         />
                     </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
-            <GtkPaned position={300} hexpand vexpand shrinkStartChild={false} shrinkEndChild={false}>
+            <GtkPaned position={300} hexpand vexpand>
                 <x.Slot for={GtkPaned} id="startChild">
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} widthRequest={200}>
-                        <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                            <GtkColumnView
-                                showColumnSeparators={false}
-                                showRowSeparators={false}
-                                estimatedRowHeight={28}
-                                selectionMode={Gtk.SelectionMode.BROWSE}
-                                onSelectionChanged={handleSchemaSelected}
-                                cssClasses={["navigation-sidebar"]}
-                            >
-                                <x.ColumnViewColumn
-                                    id="schema-id"
-                                    title="Schema"
-                                    renderCell={(value: string | null) => (
-                                        <GtkLabel
-                                            label={value ?? ""}
-                                            halign={Gtk.Align.START}
-                                            ellipsize={3}
-                                            marginTop={2}
-                                            marginBottom={2}
-                                            marginStart={4}
-                                            cssClasses={["monospace", "caption"]}
-                                        />
-                                    )}
-                                />
-                                {getSchemaGroups().map((group) => (
-                                    <x.ListItem key={group.prefix} id={group.prefix} value={group.prefix}>
-                                        {group.schemas.map((s) => {
-                                            const children = renderSchemaChildren(s.id);
-                                            if (children) {
-                                                return (
-                                                    <x.ListItem key={s.id} id={s.id} value={s.shortName}>
-                                                        {children}
-                                                    </x.ListItem>
-                                                );
-                                            }
-                                            return <x.ListItem key={s.id} id={s.id} value={s.shortName} hideExpander />;
-                                        })}
-                                    </x.ListItem>
-                                ))}
-                            </GtkColumnView>
-                        </GtkScrolledWindow>
-                    </GtkBox>
+                    <GtkScrolledWindow>
+                        <GtkListView
+                            tabBehavior={Gtk.ListTabBehavior.ITEM}
+                            selectionMode={Gtk.SelectionMode.BROWSE}
+                            onSelectionChanged={handleSchemaSelected}
+                            cssClasses={["navigation-sidebar"]}
+                            renderItem={(schemaId: string | null) => <GtkLabel label={schemaId ?? ""} xalign={0} />}
+                        >
+                            {getSchemaTree().map(renderSchemaNode)}
+                        </GtkListView>
+                    </GtkScrolledWindow>
                 </x.Slot>
                 <x.Slot for={GtkPaned} id="endChild">
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand vexpand>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                         <GtkSearchBar searchModeEnabled={keySearchActive}>
-                            <GtkSearchEntry
-                                placeholderText="Search keys..."
-                                onSearchChanged={handleKeySearchChanged}
-                                onStopSearch={handleStopSearch}
-                            />
+                            <GtkSearchEntry onSearchChanged={handleKeySearchChanged} onStopSearch={handleStopSearch} />
                         </GtkSearchBar>
-                        <GtkScrolledWindow vexpand hexpand>
+                        <GtkScrolledWindow hexpand vexpand>
                             <GtkColumnView
                                 ref={columnViewRef}
-                                showColumnSeparators
-                                showRowSeparators
-                                estimatedRowHeight={32}
+                                tabBehavior={Gtk.ListTabBehavior.CELL}
                                 cssClasses={["data-table"]}
                             >
                                 <x.ColumnViewColumn
@@ -381,15 +301,7 @@ const ListViewSettingsDemo = () => {
                                     title="Name"
                                     sortable
                                     renderCell={(item: KeyInfo | null) => (
-                                        <GtkLabel
-                                            label={item?.name ?? ""}
-                                            halign={Gtk.Align.START}
-                                            ellipsize={3}
-                                            marginTop={4}
-                                            marginBottom={4}
-                                            marginStart={4}
-                                            cssClasses={["monospace"]}
-                                        />
+                                        <GtkLabel label={item?.name ?? ""} xalign={0} />
                                     )}
                                 />
                                 <x.ColumnViewColumn
@@ -402,9 +314,6 @@ const ListViewSettingsDemo = () => {
                                             onChanged={(label: Gtk.EditableLabel) => {
                                                 if (item) handleValueEdit(item, label.getText(), label);
                                             }}
-                                            cssClasses={["monospace"]}
-                                            marginTop={2}
-                                            marginBottom={2}
                                         />
                                     )}
                                 />
@@ -414,13 +323,7 @@ const ListViewSettingsDemo = () => {
                                     resizable
                                     sortable
                                     renderCell={(item: KeyInfo | null) => (
-                                        <GtkLabel
-                                            label={item?.type ?? ""}
-                                            halign={Gtk.Align.START}
-                                            marginTop={4}
-                                            marginBottom={4}
-                                            cssClasses={["dim-label", "caption", "monospace"]}
-                                        />
+                                        <GtkLabel label={item?.type ?? ""} xalign={0} />
                                     )}
                                 />
                                 <x.ColumnViewColumn
@@ -429,14 +332,7 @@ const ListViewSettingsDemo = () => {
                                     resizable
                                     expand
                                     renderCell={(item: KeyInfo | null) => (
-                                        <GtkLabel
-                                            label={item?.defaultValue ?? ""}
-                                            halign={Gtk.Align.START}
-                                            ellipsize={3}
-                                            marginTop={4}
-                                            marginBottom={4}
-                                            cssClasses={["dim-label", "monospace"]}
-                                        />
+                                        <GtkLabel label={item?.defaultValue ?? ""} xalign={0} />
                                     )}
                                 />
                                 <x.ColumnViewColumn
@@ -446,13 +342,7 @@ const ListViewSettingsDemo = () => {
                                     visible={false}
                                     expand
                                     renderCell={(item: KeyInfo | null) => (
-                                        <GtkLabel
-                                            label={item?.summary ?? ""}
-                                            halign={Gtk.Align.START}
-                                            wrap
-                                            marginTop={4}
-                                            marginBottom={4}
-                                        />
+                                        <GtkLabel label={item?.summary ?? ""} xalign={0} wrap />
                                     )}
                                 />
                                 <x.ColumnViewColumn
@@ -462,14 +352,7 @@ const ListViewSettingsDemo = () => {
                                     visible={false}
                                     expand
                                     renderCell={(item: KeyInfo | null) => (
-                                        <GtkLabel
-                                            label={item?.description ?? ""}
-                                            halign={Gtk.Align.START}
-                                            ellipsize={3}
-                                            marginTop={4}
-                                            marginBottom={4}
-                                            wrap
-                                        />
+                                        <GtkLabel label={item?.description ?? ""} xalign={0} wrap />
                                     )}
                                 />
                                 {filteredKeyInfos.map((k) => (

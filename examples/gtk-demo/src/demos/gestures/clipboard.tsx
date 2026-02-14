@@ -13,8 +13,8 @@ import {
     GtkDropDown,
     GtkDropTarget,
     GtkEntry,
+    GtkImage,
     GtkLabel,
-    GtkPicture,
     GtkSeparator,
     GtkStack,
     GtkToggleButton,
@@ -324,7 +324,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                     ))}
                 </GtkDropDown>
 
-                <GtkStack page={sourceType} vexpand hexpand>
+                <GtkStack page={sourceType} vexpand>
                     <x.StackPage id="Text">
                         <GtkEntry
                             text={sourceText}
@@ -363,12 +363,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                                     if (btn.getActive()) setSelectedImage(0);
                                 }}
                             >
-                                <GtkPicture
-                                    paintable={portlandRoseTexture}
-                                    canShrink
-                                    widthRequest={48}
-                                    heightRequest={48}
-                                />
+                                <GtkImage paintable={portlandRoseTexture} pixelSize={48} />
                                 <GtkDragSource onPrepare={createImageDragProvider} actions={Gdk.DragAction.COPY} />
                             </GtkToggleButton>
                             <GtkToggleButton
@@ -378,12 +373,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                                     if (btn.getActive()) setSelectedImage(1);
                                 }}
                             >
-                                <GtkPicture
-                                    paintable={floppyBuddyTexture}
-                                    canShrink
-                                    widthRequest={48}
-                                    heightRequest={48}
-                                />
+                                <GtkImage paintable={floppyBuddyTexture} pixelSize={48} />
                                 <GtkDragSource onPrepare={createImageDragProvider} actions={Gdk.DragAction.COPY} />
                             </GtkToggleButton>
                             <GtkToggleButton
@@ -393,12 +383,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                                     if (btn.getActive()) setSelectedImage(2);
                                 }}
                             >
-                                <GtkPicture
-                                    paintable={gtkLogoSvgTexture}
-                                    canShrink
-                                    widthRequest={48}
-                                    heightRequest={48}
-                                />
+                                <GtkImage paintable={gtkLogoSvgTexture} pixelSize={48} />
                                 <GtkDragSource onPrepare={createImageDragProvider} actions={Gdk.DragAction.COPY} />
                             </GtkToggleButton>
                         </GtkBox>
@@ -466,7 +451,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                     onClicked={() => void handlePaste()}
                 />
                 <GtkLabel label={pastedContent.type} xalign={0} />
-                <GtkStack page={pastedContent.type} halign={Gtk.Align.END} valign={Gtk.Align.CENTER} hexpand>
+                <GtkStack page={pastedContent.type} halign={Gtk.Align.END} valign={Gtk.Align.CENTER}>
                     <x.StackPage id="">
                         <GtkLabel label="" />
                     </x.StackPage>
@@ -481,13 +466,11 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                     </x.StackPage>
                     <x.StackPage id="Image">
                         {pastedContent.paintable ? (
-                            <GtkPicture
+                            <GtkImage
                                 paintable={pastedContent.paintable}
                                 halign={Gtk.Align.END}
                                 valign={Gtk.Align.CENTER}
-                                canShrink
-                                widthRequest={64}
-                                heightRequest={64}
+                                pixelSize={48}
                             />
                         ) : (
                             <GtkLabel label="" />

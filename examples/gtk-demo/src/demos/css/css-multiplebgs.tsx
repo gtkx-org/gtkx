@@ -12,8 +12,8 @@ import {
 import { useMemo } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./css-multiplebgs.tsx?raw";
-import cssviewCssPath from "./cssview.css";
-import resetCssPath from "./reset.css";
+import cssviewCssPath from "./cssview.css?url";
+import resetCssPath from "./reset.css?url";
 import { useCssEditor } from "./use-css-editor.js";
 
 const DEFAULT_CSS = `/* You can edit the text in this window to change the

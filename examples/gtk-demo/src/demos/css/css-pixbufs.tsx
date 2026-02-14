@@ -5,7 +5,7 @@ import type { Demo, DemoProps } from "../types.js";
 import appleRedPath from "./apple-red.png";
 import backgroundPath from "./background.jpg";
 import sourceCode from "./css-pixbufs.tsx?raw";
-import cssviewCssPath from "./cssview.css";
+import cssviewCssPath from "./cssview.css?url";
 import gnomeAppletsPath from "./gnome-applets.png";
 import gnomeCalendarPath from "./gnome-calendar.png";
 import gnomeFootPath from "./gnome-foot.png";
@@ -13,7 +13,7 @@ import gnomeGimpPath from "./gnome-gimp.png";
 import gnomeGmushPath from "./gnome-gmush.png";
 import gnomeGsamePath from "./gnome-gsame.png";
 import gnuKeysPath from "./gnu-keys.png";
-import resetCssPath from "./reset.css";
+import resetCssPath from "./reset.css?url";
 import { useCssEditor } from "./use-css-editor.js";
 
 const DEFAULT_CSS = `@import url("file://${resetCssPath}");

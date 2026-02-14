@@ -1,4 +1,4 @@
-import { SectionedListStore } from "./base-sectioned-store.js";
+import { SectionedListStore } from "./sectioned-list-store.js";
 
 type ItemUpdatedCallback = (id: string) => void;
 

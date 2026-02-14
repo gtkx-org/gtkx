@@ -106,10 +106,8 @@ function getAllSchemaKeys() {
     return allSchemaKeys;
 }
 
-type TreeValue = { type: "schema"; schemaId: string } | { type: "key"; key: KeyItem };
-
 function getSearchString(key: KeyItem): string {
-    return `${key.name} ${key.summary} ${key.description} ${key.schemaId}`.toLowerCase();
+    return `${key.name} ${key.summary} ${key.schemaId}`.toLowerCase();
 }
 
 const ListViewSettings2Demo = () => {
@@ -180,43 +178,34 @@ const ListViewSettings2Demo = () => {
                         <GtkToggleButton
                             iconName="system-search-symbolic"
                             active={searchMode}
-                            onToggled={(btn) => setSearchMode(btn.getActive())}
+                            onToggled={(btn) => {
+                                setSearchMode(btn.getActive());
+                                setSearchText("");
+                            }}
                         />
                     </x.ContainerSlot>
                 </GtkHeaderBar>
             </x.Slot>
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkSearchBar searchModeEnabled={searchMode}>
-                    <GtkSearchEntry hexpand onSearchChanged={handleSearchChanged} onStopSearch={handleStopSearch} />
+                    <GtkSearchEntry onSearchChanged={handleSearchChanged} onStopSearch={handleStopSearch} />
                 </GtkSearchBar>
-                <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                <GtkScrolledWindow>
                     <GtkListView
+                        vexpand
                         cssClasses={["rich-list"]}
-                        renderItem={(item: TreeValue | null) => {
-                            if (!item) return <GtkLabel label="" />;
-                            if (item.type === "schema") {
-                                return (
-                                    <GtkLabel
-                                        label={item.schemaId}
-                                        halign={Gtk.Align.START}
-                                        cssClasses={["heading"]}
-                                        ellipsize={3}
-                                    />
-                                );
-                            }
-                            const key = item.key;
+                        renderItem={(key: KeyItem | null) => {
+                            if (!key) return <GtkLabel label="" />;
                             return (
-                                <GtkBox spacing={10}>
-                                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
-                                        <GtkLabel label={key.name} halign={Gtk.Align.START} />
-                                        {key.summary ? (
-                                            <GtkLabel
-                                                label={key.summary}
-                                                halign={Gtk.Align.START}
-                                                cssClasses={["dim-label"]}
-                                                ellipsize={3}
-                                            />
-                                        ) : null}
+                                <GtkBox>
+                                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                                        <GtkLabel label={key.name} xalign={0} />
+                                        <GtkLabel
+                                            label={key.summary}
+                                            cssClasses={["dim-label"]}
+                                            xalign={0}
+                                            ellipsize={3}
+                                        />
                                     </GtkBox>
                                     <GtkEntry
                                         text={keysState.current.get(key.id) ?? key.value}
@@ -227,22 +216,14 @@ const ListViewSettings2Demo = () => {
                                 </GtkBox>
                             );
                         }}
+                        renderHeader={(schemaId: string | null) => <GtkLabel label={schemaId ?? ""} xalign={0} />}
                     >
                         {filteredSchemaKeys.map((schema) => (
-                            <x.ListItem
-                                key={schema.schemaId}
-                                id={schema.schemaId}
-                                value={{ type: "schema", schemaId: schema.schemaId } satisfies TreeValue}
-                            >
+                            <x.ListSection key={schema.schemaId} id={schema.schemaId} value={schema.schemaId}>
                                 {schema.keys.map((key) => (
-                                    <x.ListItem
-                                        key={key.id}
-                                        id={key.id}
-                                        value={{ type: "key", key } satisfies TreeValue}
-                                        hideExpander
-                                    />
+                                    <x.ListItem key={key.id} id={key.id} value={key} />
                                 ))}
-                            </x.ListItem>
+                            </x.ListSection>
                         ))}
                     </GtkListView>
                 </GtkScrolledWindow>

@@ -2,7 +2,7 @@ import { GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./css-basics.tsx?raw";
-import resetCssPath from "./reset.css";
+import resetCssPath from "./reset.css?url";
 import { useCssEditor } from "./use-css-editor.js";
 
 const DEFAULT_CSS = `@import url("file://${resetCssPath}");

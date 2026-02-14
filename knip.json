@@ -18,13 +18,13 @@
         "examples/deploying": {
             "project": ["src/**/*", "scripts/**/*"],
             "ignoreDependencies": ["postject", "vite"],
-            "ignore": ["vendor/**", "src/vite-env.d.ts"],
+            "ignore": ["vendor/**", "src/gtkx-env.d.ts"],
             "entry": ["src/app.tsx", "src/index.tsx", "src/dev.tsx"]
         },
         "examples/gtk-demo": {
             "project": ["src/**/*"],
             "entry": ["src/app.tsx", "src/index.tsx", "src/dev.tsx"],
-            "ignore": ["src/vite-env.d.ts"],
+            "ignore": ["src/gtkx-env.d.ts"],
             "ignoreDependencies": ["vite"]
         },
         "website": {
@@ -39,7 +39,7 @@
         "examples/*": {
             "project": ["src/**/*"],
             "entry": ["src/app.tsx", "src/dev.tsx", "src/index.tsx"],
-            "ignore": ["src/vite-env.d.ts"],
+            "ignore": ["src/gtkx-env.d.ts"],
             "ignoreDependencies": ["vite"]
         },
         "packages/cli": {

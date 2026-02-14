@@ -255,9 +255,7 @@ impl GtkDispatcher {
             return;
         }
 
-        if js_dispatch::JsDispatcher::global().is_executing_callback()
-            && self.is_in_callback()
-        {
+        if js_dispatch::JsDispatcher::global().is_executing_callback() && self.is_in_callback() {
             self.push_callback_task(Box::new(task));
             return;
         }

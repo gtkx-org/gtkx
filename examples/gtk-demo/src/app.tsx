@@ -82,7 +82,13 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     }
 
     return createPortal(
-        <GtkWindow ref={windowRef} title={displayTitle} defaultWidth={currentDemo.defaultWidth ?? -1} defaultHeight={currentDemo.defaultHeight ?? -1} onClose={onClose}>
+        <GtkWindow
+            ref={windowRef}
+            title={displayTitle}
+            defaultWidth={currentDemo.defaultWidth ?? -1}
+            defaultHeight={currentDemo.defaultHeight ?? -1}
+            onClose={onClose}
+        >
             <DemoComponent onClose={onClose} window={windowRef} />
         </GtkWindow>,
         activeWindow,

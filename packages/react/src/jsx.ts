@@ -696,13 +696,13 @@ type BaseListViewProps = {
     selectionMode?: Gtk.SelectionMode | null;
 };
 
-export type ListViewProps<T = unknown> = BaseListViewProps & {
+export type ListViewProps<T = unknown, S = unknown> = BaseListViewProps & {
     /** Function to render each list item. The `row` parameter provides tree state for hierarchical lists. */
     renderItem: (item: T | null, row?: Gtk.TreeListRow | null) => ReactNode;
     /** Whether to automatically expand new tree rows (default: false) */
     autoexpand?: boolean;
     /** Function to render section headers when using ListSection children */
-    renderHeader?: ((item: T | null) => ReactNode) | null;
+    renderHeader?: ((item: S | null) => ReactNode) | null;
 };
 
 export type GridViewProps<T = unknown> = BaseListViewProps & {
@@ -713,7 +713,7 @@ export type GridViewProps<T = unknown> = BaseListViewProps & {
 /**
  * Props shared by single-selection dropdown widgets (GtkDropDown, AdwComboRow).
  */
-export type DropDownProps<T = unknown> = {
+export type DropDownProps<T = unknown, S = unknown> = {
     /** ID of the currently selected item */
     selectedId?: string | null;
     /** Callback fired when the selected item changes */
@@ -721,7 +721,7 @@ export type DropDownProps<T = unknown> = {
     /** Function to render each item in the popup list. When provided, overrides the default text rendering. */
     renderItem?: ((item: T | null) => ReactNode) | null;
     /** Function to render section headers when using ListSection children */
-    renderHeader?: ((item: T | null) => ReactNode) | null;
+    renderHeader?: ((item: S | null) => ReactNode) | null;
 };
 
 /**
@@ -1409,8 +1409,8 @@ declare module "./generated/jsx.js" {
     }
 }
 
-export function GtkListView<T = unknown>(
-    props: Omit<IntrinsicGtkListViewProps, keyof ListViewProps> & ListViewProps<T> & { children?: ReactNode },
+export function GtkListView<T = unknown, S = unknown>(
+    props: Omit<IntrinsicGtkListViewProps, keyof ListViewProps> & ListViewProps<T, S> & { children?: ReactNode },
 ): ReactElement {
     return createElement("GtkListView", props);
 }
@@ -1421,14 +1421,14 @@ export function GtkGridView<T = unknown>(
     return createElement("GtkGridView", props);
 }
 
-export function GtkDropDown<T = unknown>(
-    props: Omit<IntrinsicGtkDropDownProps, keyof DropDownProps> & DropDownProps<T> & { children?: ReactNode },
+export function GtkDropDown<T = unknown, S = unknown>(
+    props: Omit<IntrinsicGtkDropDownProps, keyof DropDownProps> & DropDownProps<T, S> & { children?: ReactNode },
 ): ReactElement {
     return createElement("GtkDropDown", props);
 }
 
-export function AdwComboRow<T = unknown>(
-    props: Omit<IntrinsicAdwComboRowProps, keyof DropDownProps> & DropDownProps<T> & { children?: ReactNode },
+export function AdwComboRow<T = unknown, S = unknown>(
+    props: Omit<IntrinsicAdwComboRowProps, keyof DropDownProps> & DropDownProps<T, S> & { children?: ReactNode },
 ): ReactElement {
     return createElement("AdwComboRow", props);
 }

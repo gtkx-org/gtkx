@@ -1497,7 +1497,7 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView
+                    <GtkListView<TreeItem>
                         ref={ref}
                         renderItem={(item) => {
                             renderedItems.push(item ? { id: item.id, name: item.name } : null);
@@ -1584,7 +1584,7 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView
+                    <GtkListView<TreeItem>
                         ref={ref}
                         autoexpand
                         renderItem={(item) => {
@@ -1715,7 +1715,7 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView
+                    <GtkListView<TreeItem>
                         ref={ref}
                         renderItem={(item) => {
                             renderedItems.push(item ? { id: item.id, name: item.name } : null);
@@ -1797,7 +1797,7 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView
+                    <GtkListView<TreeItem>
                         ref={ref}
                         renderItem={(item) => {
                             renderedItems.push(item ? { id: item.id, name: item.name } : null);
@@ -1921,7 +1921,7 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView
+                    <GtkListView<TreeItem>
                         ref={ref}
                         renderItem={(item) => {
                             renderedItems.push(item ? { id: item.id, name: item.name } : null);
@@ -2037,7 +2037,7 @@ describe("render - ListView (tree)", () => {
 
             await render(
                 <ScrollWrapper>
-                    <GtkListView
+                    <GtkListView<TreeItem>
                         ref={ref}
                         estimatedItemHeight={48}
                         renderItem={(item) => {

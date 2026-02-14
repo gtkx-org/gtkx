@@ -519,9 +519,7 @@ export class RecordGenerator {
                                 this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
                                 writer.writeLine(`, ${offset});`);
                                 writer.writeLine("if (ptr === null) return null;");
-                                writer.writeLine(
-                                    `return getNativeObject(ptr as NativeHandle, ${typeMapping.ts});`,
-                                );
+                                writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${typeMapping.ts});`);
                             } else {
                                 writer.write("return read(this.handle, ");
                                 this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);

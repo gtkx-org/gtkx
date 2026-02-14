@@ -543,12 +543,7 @@ const FontRenderingDemo = () => {
 
                 <GtkSeparator />
                 <GtkScrolledWindow hexpand vexpand>
-                    <GtkDrawingArea
-                        onDraw={drawFunc}
-                        vexpand
-                        hexpand
-                        accessibleLabel="Font rendering example"
-                    />
+                    <GtkDrawingArea onDraw={drawFunc} vexpand hexpand accessibleLabel="Font rendering example" />
                 </GtkScrolledWindow>
             </GtkBox>
         </>

@@ -196,7 +196,7 @@ const scaffoldProject = (projectPath: string, resolved: ResolvedOptions): void =
     writeFileSync(join(projectPath, "src", "app.tsx"), renderFile("src/app.tsx.ejs", context));
     writeFileSync(join(projectPath, "src", "dev.tsx"), renderFile("src/dev.tsx.ejs", context));
     writeFileSync(join(projectPath, "src", "index.tsx"), renderFile("src/index.tsx.ejs", context));
-    writeFileSync(join(projectPath, "src", "vite-env.d.ts"), renderFile("src/vite-env.d.ts.ejs", context));
+    writeFileSync(join(projectPath, "src", "gtkx-env.d.ts"), renderFile("src/gtkx-env.d.ts.ejs", context));
     writeFileSync(join(projectPath, ".gitignore"), renderFile("gitignore.ejs", context));
 
     if (claudeSkills) {

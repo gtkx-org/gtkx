@@ -55,10 +55,9 @@ export class ConstructorAnalyzer {
             if (param.name === APPLICATION_PARAM_NAME) continue;
 
             const propName = snakeToKebab(param.name);
+            const matchesProperty = propertyNames.has(propName) || propertyNames.has(param.name);
 
-            if (!propertyNames.has(propName) && !propertyNames.has(param.name)) {
-                continue;
-            }
+            if (!matchesProperty) continue;
 
             params.push({
                 name: propName,

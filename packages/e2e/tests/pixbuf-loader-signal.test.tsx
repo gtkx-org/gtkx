@@ -5,13 +5,11 @@ import * as GdkPixbuf from "@gtkx/ffi/gdkpixbuf";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkPicture, GtkWindow } from "@gtkx/react";
 import { render, tick, waitFor } from "@gtkx/testing";
-import React, { createRef, useEffect, useLayoutEffect, useState } from "react";
+import type React from "react";
+import { createRef, useEffect, useLayoutEffect, useState } from "react";
 import { describe, expect, it } from "vitest";
 
-const alphatestPngPath = resolve(
-    import.meta.dirname,
-    "../../../examples/gtk-demo/src/demos/drawing/alphatest.png",
-);
+const alphatestPngPath = resolve(import.meta.dirname, "../../../examples/gtk-demo/src/demos/drawing/alphatest.png");
 
 describe("PixbufLoader signals", () => {
     it("area-prepared fires after writing all data and closing", async () => {
@@ -70,7 +68,9 @@ describe("PixbufLoader signals", () => {
                 const win = windowRef.current;
                 if (win) setPaintable(new Gtk.WidgetPaintable(win));
             }, [windowRef]);
-            return <GtkPicture ref={effectRef} paintable={paintable} widthRequest={100} heightRequest={100} canShrink />;
+            return (
+                <GtkPicture ref={effectRef} paintable={paintable} widthRequest={100} heightRequest={100} canShrink />
+            );
         };
 
         const LayoutInner = ({ windowRef }: { windowRef: React.RefObject<Gtk.Window | null> }) => {
@@ -79,7 +79,9 @@ describe("PixbufLoader signals", () => {
                 const win = windowRef.current;
                 if (win) setPaintable(new Gtk.WidgetPaintable(win));
             }, [windowRef]);
-            return <GtkPicture ref={layoutRef} paintable={paintable} widthRequest={100} heightRequest={100} canShrink />;
+            return (
+                <GtkPicture ref={layoutRef} paintable={paintable} widthRequest={100} heightRequest={100} canShrink />
+            );
         };
 
         const windowRef1 = createRef<Gtk.Window>();
@@ -96,9 +98,12 @@ describe("PixbufLoader signals", () => {
             </GtkBox>,
         );
 
-        await waitFor(() => {
-            expect(effectRef.current?.getPaintable()).not.toBeNull();
-        }, { timeout: 3000 });
+        await waitFor(
+            () => {
+                expect(effectRef.current?.getPaintable()).not.toBeNull();
+            },
+            { timeout: 3000 },
+        );
 
         expect(layoutRef.current?.getPaintable()).toBeNull();
     });

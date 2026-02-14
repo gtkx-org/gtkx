@@ -9,7 +9,11 @@ use neon::prelude::*;
 use crate::arg::Arg;
 use crate::ffi::{FfiStorage, FfiStorageKind};
 use crate::managed::{Boxed, Fundamental, NativeValue};
-use crate::{ffi, types::{ArrayKind, Type}, value};
+use crate::{
+    ffi,
+    types::{ArrayKind, Type},
+    value,
+};
 
 #[derive(Debug, Clone)]
 pub struct RefType {
@@ -242,11 +246,10 @@ impl ffi::FfiDecode for RefType {
             if matches!(storage.kind(), FfiStorageKind::PtrStorage(_))
                 && array_type.ownership.is_full()
             {
-                let freed_by_decode = matches!(
-                    array_type.kind,
-                    ArrayKind::GList | ArrayKind::GSList
-                ) || (array_type.kind == ArrayKind::Array
-                    && matches!(&*array_type.item_type, Type::String(_)));
+                let freed_by_decode =
+                    matches!(array_type.kind, ArrayKind::GList | ArrayKind::GSList)
+                        || (array_type.kind == ArrayKind::Array
+                            && matches!(&*array_type.item_type, Type::String(_)));
 
                 if !freed_by_decode {
                     unsafe { glib::ffi::g_free(actual_ptr) };

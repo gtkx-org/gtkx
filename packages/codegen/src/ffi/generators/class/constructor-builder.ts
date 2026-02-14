@@ -215,24 +215,44 @@ export class ConstructorBuilder {
         const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
         const hasUncovered = uncoveredConstructOnlyProps && uncoveredConstructOnlyProps.length > 0;
 
-        let ctorParamProperties: Array<{ girName: string; ffiType: FfiTypeDescriptor; valueExpr: string }> | undefined;
-        if (hasUncovered) {
-            this.ctx.usesArg = true;
-            const propertyNames = new Set(this.cls.getAllProperties().map((p) => p.name));
-            ctorParamProperties = [];
-            for (let i = 0; i < ctor.parameters.length; i++) {
-                const param = ctor.parameters[i];
-                const arg = args[i];
-                if (!param || !arg) continue;
-                const propName = snakeToKebab(param.name);
-                if (propertyNames.has(propName)) {
-                    ctorParamProperties.push({
-                        girName: propName,
-                        ffiType: arg.type,
-                        valueExpr: arg.value,
-                    });
+        const propertyNames = new Set(this.cls.getAllProperties().map((p) => p.name));
+        for (const ifaceQName of this.cls.getAllImplementedInterfaces()) {
+            const iface = this.repository.resolveInterface(ifaceQName);
+            if (iface) {
+                for (const prop of iface.properties) {
+                    propertyNames.add(prop.name);
                 }
             }
+        }
+
+        const ctorParamProperties: Array<{ girName: string; ffiType: FfiTypeDescriptor; valueExpr: string }> = [];
+        const nonPropertyNonOptionalValues: string[] = [];
+
+        for (let i = 0; i < ctor.parameters.length; i++) {
+            const param = ctor.parameters[i];
+            const arg = args[i];
+            if (!param || !arg) continue;
+            const propName = snakeToKebab(param.name);
+            if (propertyNames.has(propName)) {
+                ctorParamProperties.push({
+                    girName: propName,
+                    ffiType: arg.type,
+                    valueExpr: arg.value,
+                });
+            } else if (!arg.optional) {
+                nonPropertyNonOptionalValues.push(arg.value);
+            }
+        }
+
+        if (hasUncovered) {
+            this.ctx.usesArg = true;
+        }
+
+        const glibGetType = this.cls.glibGetType;
+        const needsFallback = nonPropertyNonOptionalValues.length > 0 && glibGetType !== undefined;
+
+        if (needsFallback && ctorParamProperties.length > 0) {
+            this.ctx.usesArg = true;
         }
 
         return (writer) => {
@@ -245,23 +265,40 @@ export class ConstructorBuilder {
                 writer.writeLine("super();");
                 writer.writeLine("setInstantiating(false);");
 
-                if (hasUncovered && ctorParamProperties && uncoveredConstructOnlyProps) {
+                if (hasUncovered && uncoveredConstructOnlyProps) {
                     const condition = uncoveredConstructOnlyProps
                         .map((p) => `${p.paramName} !== undefined`)
                         .join(" || ");
-                    const resolvedCtorProps = ctorParamProperties;
                     const resolvedUncovered = uncoveredConstructOnlyProps;
                     writer.writeLine(`if (${condition}) {`);
                     writer.indent(() => {
-                        this.writeGObjectNewBranchCall(writer, resolvedCtorProps, resolvedUncovered);
+                        this.writeGObjectNewBranchCall(writer, ctorParamProperties, resolvedUncovered);
                     });
                     writer.writeLine("} else {");
                     writer.indent(() => {
-                        this.writeCConstructorCall(writer, ctor.cIdentifier, args, ownership);
+                        this.writeCConstructorCallWithFallback(
+                            writer,
+                            ctor.cIdentifier,
+                            args,
+                            ownership,
+                            needsFallback,
+                            glibGetType,
+                            nonPropertyNonOptionalValues,
+                            ctorParamProperties,
+                        );
                     });
                     writer.writeLine("}");
                 } else {
-                    this.writeCConstructorCall(writer, ctor.cIdentifier, args, ownership);
+                    this.writeCConstructorCallWithFallback(
+                        writer,
+                        ctor.cIdentifier,
+                        args,
+                        ownership,
+                        needsFallback,
+                        glibGetType,
+                        nonPropertyNonOptionalValues,
+                        ctorParamProperties,
+                    );
                 }
 
                 writer.writeLine("registerNativeObject(this);");
@@ -273,6 +310,42 @@ export class ConstructorBuilder {
             });
             writer.writeLine("}");
         };
+    }
+
+    private writeCConstructorCallWithFallback(
+        writer: CodeBlockWriter,
+        cIdentifier: string,
+        args: Array<{ type: FfiTypeDescriptor; value: string; optional?: boolean }>,
+        ownership: string,
+        needsFallback: boolean,
+        glibGetType: string | undefined,
+        nonPropertyNonOptionalValues: string[],
+        ctorParamProperties: Array<{ girName: string; ffiType: FfiTypeDescriptor; valueExpr: string }>,
+    ): void {
+        if (!needsFallback || !glibGetType) {
+            this.writeCConstructorCall(writer, cIdentifier, args, ownership);
+            return;
+        }
+
+        const condition = nonPropertyNonOptionalValues.map((v) => `${v} !== undefined`).join(" && ");
+        writer.writeLine(`if (${condition}) {`);
+        writer.indent(() => {
+            this.writeCConstructorCall(writer, cIdentifier, args, ownership);
+        });
+        writer.writeLine("} else {");
+        writer.indent(() => {
+            this.writeGObjectNewCall(
+                writer,
+                glibGetType,
+                ctorParamProperties.map((p) => ({
+                    girName: p.girName,
+                    ffiType: p.ffiType,
+                    valueExpr: p.valueExpr,
+                    guardExpr: p.valueExpr,
+                })),
+            );
+        });
+        writer.writeLine("}");
     }
 
     private writeCConstructorCall(
