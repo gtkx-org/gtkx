@@ -41,6 +41,6 @@
         "test": "vitest run"
     },
     "dependencies": {
-        "fast-xml-parser": "^5.3.5"
+        "fast-xml-parser": "^5.3.6"
     }
 }
