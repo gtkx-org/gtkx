@@ -15,6 +15,7 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
     parent: TParent | null = null;
     children: TChild[] = [];
     private childIndices = new Map<TChild, number>();
+    private childrenDirty = false;
 
     constructor(typeName: string, props: TProps, container: TContainer, rootContainer: Container) {
         this.typeName = typeName;
@@ -44,6 +45,7 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
     }
 
     public appendChild(child: TChild): void {
+        if (this.childrenDirty) this.flushChildRemovals();
         if (!this.isValidChild(child)) {
             throw new Error(`Cannot append '${child.typeName}' to '${this.typeName}'`);
         }
@@ -53,16 +55,18 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
     }
 
     public removeChild(child: TChild): void {
-        const index = this.childIndices.get(child);
-        if (index !== undefined) {
-            child.setParent(null);
-            this.children.splice(index, 1);
-            this.childIndices.delete(child);
-            this.rebuildChildIndices(index);
+        if (!this.childIndices.has(child)) return;
+        child.setParent(null);
+        this.childIndices.delete(child);
+        if (!this.childrenDirty) {
+            this.childrenDirty = true;
+            queueMicrotask(() => this.flushChildRemovals());
         }
     }
 
     public insertBefore(child: TChild, before: TChild): void {
+        if (this.childrenDirty) this.flushChildRemovals();
+
         const beforeIndex = this.childIndices.get(before);
         if (beforeIndex === undefined) {
             throw new Error(`Cannot find 'before' child '${before.typeName}' in '${this.typeName}'`);
@@ -84,6 +88,16 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
         this.children.splice(beforeIndex, 0, child);
         this.rebuildChildIndices(beforeIndex);
         child.setParent(this);
+    }
+
+    private flushChildRemovals(): void {
+        if (!this.childrenDirty) return;
+        this.childrenDirty = false;
+        this.children = this.children.filter((c) => this.childIndices.has(c));
+        this.childIndices.clear();
+        for (let i = 0; i < this.children.length; i++) {
+            this.childIndices.set(this.children[i] as TChild, i);
+        }
     }
 
     private rebuildChildIndices(fromIndex: number): void {

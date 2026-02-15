@@ -1,11 +1,11 @@
 import {
     type Arg,
     alloc as nativeAlloc,
-    beginBatch as nativeBeginBatch,
     call as nativeCall,
-    endBatch as nativeEndBatch,
+    freeze as nativeFreeze,
     read as nativeRead,
     readPointer as nativeReadPointer,
+    unfreeze as nativeUnfreeze,
     write as nativeWrite,
     writePointer as nativeWritePointer,
     type Type,
@@ -204,11 +204,11 @@ export const writePointer = (
     nativeWritePointer(destHandle, ptrOffset, elementOffset, sourceHandle, size);
 };
 
-export const beginBatch = (): void => {
-    ensureIsStarted("attempted beginBatch");
-    nativeBeginBatch();
+export const freeze = (): void => {
+    ensureIsStarted("attempted freeze");
+    nativeFreeze();
 };
 
-export const endBatch = (): void => {
-    nativeEndBatch();
+export const unfreeze = (): void => {
+    nativeUnfreeze();
 };

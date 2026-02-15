@@ -1,4 +1,4 @@
-import { beginBatch, endBatch } from "@gtkx/ffi";
+import { freeze, unfreeze } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
@@ -156,11 +156,11 @@ export function createHostConfig(): HostConfig {
             parent.insertBefore(child, beforeChild);
         },
         prepareForCommit: () => {
-            beginBatch();
+            freeze();
             return null;
         },
         resetAfterCommit: () => {
-            endBatch();
+            unfreeze();
         },
         commitTextUpdate: (textInstance, oldText, newText) => {
             textInstance.signalStore.blockAll();
@@ -194,7 +194,9 @@ export function createHostConfig(): HostConfig {
         afterActiveInstanceBlur: () => {},
         prepareScopeUpdate: () => {},
         getInstanceFromScope: () => null,
-        detachDeletedInstance: (instance) => instance.detachDeletedInstance(),
+        detachDeletedInstance: (instance) => {
+            instance.detachDeletedInstance();
+        },
         resetFormInstance: () => {},
         requestPostPaintCallback: () => {},
         shouldAttemptEagerTransition: () => false,

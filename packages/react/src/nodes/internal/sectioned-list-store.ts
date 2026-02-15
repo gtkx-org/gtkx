@@ -14,6 +14,8 @@ export abstract class SectionedListStore {
     protected idToIndex = new Map<string, number>();
     protected model = new Gtk.StringList();
     protected pendingBatch: string[] | null = null;
+    private pendingRemovals: Set<string> | null = null;
+    private flushScheduled = false;
 
     protected sectioned = false;
     protected sections: SectionData[] = [];
@@ -117,14 +119,61 @@ export abstract class SectionedListStore {
             return;
         }
 
-        const index = this.idToIndex.get(id);
-        if (index === undefined) return;
+        if (!this.idToIndex.has(id)) return;
 
-        this.model.remove(index);
-        this.ids.splice(index, 1);
-        this.idToIndex.delete(id);
-        this.rebuildIndices(index);
+        if (!this.pendingRemovals) {
+            this.pendingRemovals = new Set();
+            if (!this.flushScheduled) {
+                this.flushScheduled = true;
+                queueMicrotask(() => this.flushRemovals());
+            }
+        }
+        this.pendingRemovals.add(id);
         this.onItemRemoved(id);
+    }
+
+    public flushRemovals(): void {
+        this.flushScheduled = false;
+        const removals = this.pendingRemovals;
+        if (!removals || removals.size === 0) {
+            this.pendingRemovals = null;
+            return;
+        }
+        this.pendingRemovals = null;
+
+        const indices: number[] = [];
+        for (const id of removals) {
+            const index = this.idToIndex.get(id);
+            if (index !== undefined) {
+                indices.push(index);
+                this.idToIndex.delete(id);
+            }
+        }
+
+        if (indices.length === 0) return;
+
+        indices.sort((a, b) => a - b);
+
+        let i = indices.length - 1;
+        while (i >= 0) {
+            let rangeStart = indices[i] ?? 0;
+            const rangeEnd = rangeStart;
+
+            while (i > 0) {
+                const prev = indices[i - 1];
+                if (prev !== rangeStart - 1) break;
+                i--;
+                rangeStart = prev ?? 0;
+            }
+
+            const count = rangeEnd - rangeStart + 1;
+            this.model.splice(rangeStart, count);
+            this.ids.splice(rangeStart, count);
+
+            i--;
+        }
+
+        this.rebuildIndices(0);
     }
 
     public addItemToSection(sectionId: string, itemId: string, item: unknown): void {
@@ -202,10 +251,12 @@ export abstract class SectionedListStore {
     }
 
     public getIdAtIndex(index: number): string | null {
+        this.flushRemovals();
         return this.ids[index] ?? null;
     }
 
     public getIndexById(id: string): number | null {
+        this.flushRemovals();
         return this.idToIndex.get(id) ?? null;
     }
 

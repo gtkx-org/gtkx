@@ -27,6 +27,7 @@ export class ListStore extends SectionedListStore {
     }
 
     public addItem(id: string, item: unknown): void {
+        this.flushRemovals();
         this.items.set(id, item);
 
         const existingIndex = this.idToIndex.get(id);
@@ -47,6 +48,7 @@ export class ListStore extends SectionedListStore {
     }
 
     public insertItemBefore(id: string, beforeId: string, item: unknown): void {
+        this.flushRemovals();
         this.items.set(id, item);
 
         const existingIndex = this.idToIndex.get(id);
@@ -99,6 +101,7 @@ export class ListStore extends SectionedListStore {
     }
 
     public getNItems(): number {
+        this.flushRemovals();
         return this.ids.length;
     }
 }

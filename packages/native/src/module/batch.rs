@@ -4,14 +4,14 @@ use neon::prelude::*;
 
 use crate::gtk_dispatch;
 
-pub fn begin_batch(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+pub fn freeze(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let dispatcher = gtk_dispatch::GtkDispatcher::global();
 
     if !dispatcher.is_started() {
         return cx.throw_error("GTK application has not been started. Call start() first.");
     }
 
-    let is_outermost = dispatcher.begin_batch();
+    let is_outermost = dispatcher.freeze();
 
     if is_outermost {
         let (tx, rx) = mpsc::channel::<()>();
@@ -32,7 +32,7 @@ pub fn begin_batch(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-pub fn end_batch(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    gtk_dispatch::GtkDispatcher::global().end_batch();
+pub fn unfreeze(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    gtk_dispatch::GtkDispatcher::global().unfreeze();
     Ok(cx.undefined())
 }

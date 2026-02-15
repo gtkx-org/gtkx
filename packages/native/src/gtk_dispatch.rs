@@ -11,17 +11,18 @@
 //! - [`GtkDispatcher::dispatch_pending`]: Manually execute all queued tasks immediately.
 //!   Used during blocking FFI calls to prevent deadlocks.
 //!
-//! ## Batch Mode
+//! ## Freeze Mode
 //!
-//! During React's commit phase, [`GtkDispatcher::begin_batch`] puts the dispatcher into
-//! batch mode. A single GTK-thread task enters a tight loop that processes all incoming
+//! During React's commit phase, [`GtkDispatcher::freeze`] puts the dispatcher into
+//! freeze mode. A single GTK-thread task enters a tight loop that processes all incoming
 //! FFI calls via [`GtkDispatcher::dispatch_pending`] without returning to the GLib main
 //! loop. This prevents the frame clock from firing between individual mutations, ensuring
-//! a single atomic repaint after [`GtkDispatcher::end_batch`] is called.
+//! a single atomic repaint after [`GtkDispatcher::unfreeze`] is called.
 //!
-//! Batches use a depth counter to handle nesting: if a GTK signal fires during the batch
-//! and triggers a JS callback that causes another React commit, the inner begin/end batch
-//! calls are no-ops. Only the outermost [`GtkDispatcher::end_batch`] exits the loop.
+//! Freeze calls use a depth counter to handle nesting: if a GTK signal fires during the
+//! freeze and triggers a JS callback that causes another React commit, the inner
+//! freeze/unfreeze calls are no-ops. Only the outermost [`GtkDispatcher::unfreeze`] exits
+//! the loop.
 //!
 //! ## JS Wait Tracking
 //!
@@ -224,11 +225,11 @@ impl GtkDispatcher {
         }
     }
 
-    pub fn begin_batch(&self) -> bool {
+    pub fn freeze(&self) -> bool {
         self.batch_depth.fetch_add(1, Ordering::AcqRel) == 0
     }
 
-    pub fn end_batch(&self) {
+    pub fn unfreeze(&self) {
         if self.batch_depth.fetch_sub(1, Ordering::AcqRel) == 1 {
             self.batch_wake.notify();
         }

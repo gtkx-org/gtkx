@@ -34,6 +34,7 @@ export class SimpleListStore extends SectionedListStore {
     }
 
     public addItem(id: string, label: string): void {
+        this.flushRemovals();
         if (this.sectioned) {
             return;
         }
@@ -49,6 +50,7 @@ export class SimpleListStore extends SectionedListStore {
     }
 
     public appendItem(id: string, label: string): void {
+        this.flushRemovals();
         const existingIndex = this.idToIndex.get(id);
 
         if (existingIndex !== undefined) {
@@ -63,6 +65,7 @@ export class SimpleListStore extends SectionedListStore {
     }
 
     public insertItemBefore(id: string, beforeId: string, label: string): void {
+        this.flushRemovals();
         const beforeIndex = this.idToIndex.get(beforeId);
         if (beforeIndex === undefined) {
             this.addItem(id, label);
@@ -74,6 +77,7 @@ export class SimpleListStore extends SectionedListStore {
     }
 
     public updateItem(id: string, item: unknown): void {
+        this.flushRemovals();
         const label = item as string;
         if (this.sectioned) {
             const sectionId = this.itemToSection.get(id);
@@ -95,6 +99,7 @@ export class SimpleListStore extends SectionedListStore {
     }
 
     public getItem(id: string): string | null {
+        this.flushRemovals();
         if (this.sectioned) {
             const sectionId = this.itemToSection.get(id);
             if (!sectionId) return null;

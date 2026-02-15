@@ -174,12 +174,12 @@ export function writePointer(
     native.writePointer(destHandle, ptrOffset, elementOffset, sourceHandle, size);
 }
 
-export function beginBatch(): void {
-    native.beginBatch();
+export function freeze(): void {
+    native.freeze();
 }
 
-export function endBatch(): void {
-    native.endBatch();
+export function unfreeze(): void {
+    native.unfreeze();
 }
 
 export type { NativeHandle, Ref, Arg, Type, CallbackType };

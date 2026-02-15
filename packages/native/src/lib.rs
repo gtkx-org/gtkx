@@ -14,8 +14,8 @@
 //! | `read` | Read field from boxed memory |
 //! | `write` | Write field to boxed memory |
 //! | `getNativeId` | Get internal handle ID for managed object |
-//! | `beginBatch` | Start batching GTK mutations (prevents intermediate repaints) |
-//! | `endBatch` | End batching and allow a single repaint |
+//! | `freeze` | Freeze tick callbacks during React commit (prevents intermediate repaints) |
+//! | `unfreeze` | Unfreeze tick callbacks and allow a single repaint |
 //!
 //! ## Architecture
 //!
@@ -62,7 +62,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("writePointer", module::write_pointer)?;
     cx.export_function("alloc", module::alloc)?;
     cx.export_function("getNativeId", module::get_native_id)?;
-    cx.export_function("beginBatch", module::begin_batch)?;
-    cx.export_function("endBatch", module::end_batch)?;
+    cx.export_function("freeze", module::freeze)?;
+    cx.export_function("unfreeze", module::unfreeze)?;
     Ok(())
 }

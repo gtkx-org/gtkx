@@ -19,6 +19,8 @@ export class TreeStore {
     private items = new Map<string, TreeItemData>();
     private onItemUpdated: TreeItemUpdatedCallback | null = null;
     private pendingBatch: string[] | null = null;
+    private pendingRemovals: Set<string> | null = null;
+    private flushScheduled = false;
 
     public setOnItemUpdated(callback: TreeItemUpdatedCallback | null): void {
         this.onItemUpdated = callback;
@@ -46,6 +48,7 @@ export class TreeStore {
     }
 
     public addItem(id: string, data: TreeItemData, parentId?: string): void {
+        if (parentId === undefined) this.flushRemovals();
         this.items.set(id, data);
 
         if (parentId === undefined) {
@@ -104,15 +107,7 @@ export class TreeStore {
         this.childIdToIndex.delete(id);
         this.childModels.delete(id);
 
-        if (parentId === undefined) {
-            const index = this.rootIdToIndex.get(id);
-            if (index !== undefined) {
-                this.rootIds.splice(index, 1);
-                this.rootIdToIndex.delete(id);
-                this.rebuildRootIndices(index);
-                this.rootModel.remove(index);
-            }
-        } else {
+        if (parentId !== undefined) {
             const siblings = this.children.get(parentId);
             const indexMap = this.childIdToIndex.get(parentId);
             if (siblings && indexMap) {
@@ -131,10 +126,67 @@ export class TreeStore {
                     this.childIdToIndex.delete(parentId);
                 }
             }
+            return;
         }
+
+        if (!this.rootIdToIndex.has(id)) return;
+
+        if (!this.pendingRemovals) {
+            this.pendingRemovals = new Set();
+            if (!this.flushScheduled) {
+                this.flushScheduled = true;
+                queueMicrotask(() => this.flushRemovals());
+            }
+        }
+        this.pendingRemovals.add(id);
+    }
+
+    public flushRemovals(): void {
+        this.flushScheduled = false;
+        const removals = this.pendingRemovals;
+        if (!removals || removals.size === 0) {
+            this.pendingRemovals = null;
+            return;
+        }
+        this.pendingRemovals = null;
+
+        const indices: number[] = [];
+        for (const id of removals) {
+            const index = this.rootIdToIndex.get(id);
+            if (index !== undefined) {
+                indices.push(index);
+                this.rootIdToIndex.delete(id);
+            }
+        }
+
+        if (indices.length === 0) return;
+
+        indices.sort((a, b) => a - b);
+
+        let i = indices.length - 1;
+        while (i >= 0) {
+            let rangeStart = indices[i] ?? 0;
+            const rangeEnd = rangeStart;
+
+            while (i > 0) {
+                const prev = indices[i - 1];
+                if (prev !== rangeStart - 1) break;
+                i--;
+                rangeStart = prev ?? 0;
+            }
+
+            const count = rangeEnd - rangeStart + 1;
+            this.rootModel.splice(rangeStart, count);
+            this.rootIds.splice(rangeStart, count);
+
+            i--;
+        }
+
+        this.rebuildRootIndices(0);
     }
 
     public insertItemBefore(id: string, beforeId: string, data: TreeItemData, parentId?: string): void {
+        if (parentId === undefined) this.flushRemovals();
         this.items.set(id, data);
 
         if (parentId === undefined) {
