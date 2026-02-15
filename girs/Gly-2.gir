@@ -1,0 +1,2178 @@
+<?xml version="1.0"?>
+<!-- This file was automatically generated from C sources - DO NOT EDIT!
+To affect the contents of this file, edit the original C definitions,
+and/or use gtk-doc annotations.  -->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:doc="http://www.gtk.org/introspection/doc/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <include name="Gio" version="2.0"/>
+  <package name="glycin-2"/>
+  <c:include name="glycin.h"/>
+  <doc:format name="unknown"/>
+  <namespace name="Gly"
+             version="2"
+             shared-library="libglycin-2.so.0"
+             c:identifier-prefixes="Gly"
+             c:symbol-prefixes="gly">
+    <record name="Cicp"
+            c:type="GlyCicp"
+            copy-function="gly_cicp_copy"
+            free-function="gly_cicp_free"
+            version="2.0"
+            glib:type-name="GlyCicp"
+            glib:get-type="gly_cicp_get_type"
+            c:symbol-prefix="cicp">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="746">See ITU-T H.273</doc>
+      <source-position filename="libglycin/include/glycin.h" line="759"/>
+      <field name="color_primaries" writable="1">
+        <type name="guint8" c:type="uint8_t"/>
+      </field>
+      <field name="transfer_characteristics" writable="1">
+        <type name="guint8" c:type="uint8_t"/>
+      </field>
+      <field name="matrix_coefficients" writable="1">
+        <type name="guint8" c:type="uint8_t"/>
+      </field>
+      <field name="video_full_range_flag" writable="1">
+        <type name="guint8" c:type="uint8_t"/>
+      </field>
+      <method name="copy" c:identifier="gly_cicp_copy">
+        <source-position filename="libglycin/include/glycin.h" line="764"/>
+        <return-value transfer-ownership="full">
+          <type name="Cicp" c:type="GlyCicp*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="cicp" transfer-ownership="none">
+            <type name="Cicp" c:type="GlyCicp*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="free" c:identifier="gly_cicp_free">
+        <source-position filename="libglycin/include/glycin.h" line="765"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="cicp" transfer-ownership="none">
+            <type name="Cicp" c:type="GlyCicp*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </record>
+    <class name="Creator"
+           c:symbol-prefix="creator"
+           c:type="GlyCreator"
+           version="2.0"
+           parent="GObject.Object"
+           glib:type-name="GlyCreator"
+           glib:get-type="gly_creator_get_type"
+           glib:type-struct="CreatorClass">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="876">Image creator
+
+```c
+#include &lt;glycin.h&gt;
+
+GlyCreator *creator = gly_creator_new("image/jpeg", NULL);
+
+if (!creator)
+  return;
+
+// Create frame with a single red pixel
+guint8 data[] = {255, 0, 0};
+gsize length = sizeof(data);
+GBytes *texture = g_bytes_new(data, length);
+GlyNewFrame *new_frame = gly_creator_add_frame(creator, 1, 1, GLY_MEMORY_R8G8B8, texture);
+
+// Create JPEG
+GlyEncodedImage *encoded_image = gly_creator_create(creator, NULL);
+
+if (encoded_image)
+{
+  GBytes *binary_data = gly_encoded_image_get_data(encoded_image);
+  if (binary_data)
+  {
+    // Write image to file
+    GFile *file = g_file_new_for_path("test.jpg");
+    g_file_replace_contents(
+        file,
+        g_bytes_get_data(binary_data, NULL),
+        g_bytes_get_size(binary_data),
+        NULL,
+        FALSE,
+        G_FILE_CREATE_NONE,
+        NULL,
+        NULL,
+        NULL);
+  }
+}
+```</doc>
+      <source-position filename="libglycin/include/glycin.h" line="922"/>
+      <constructor name="new"
+                   c:identifier="gly_creator_new"
+                   version="2.0"
+                   throws="1">
+        <source-position filename="libglycin/include/glycin.h" line="933"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="929">a new [class@Creator]</doc>
+          <type name="Creator" c:type="GlyCreator*"/>
+        </return-value>
+        <parameters>
+          <parameter name="mime_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="926">A null-terminated string.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="add_frame"
+              c:identifier="gly_creator_add_frame"
+              version="2.0"
+              throws="1">
+        <source-position filename="libglycin/include/glycin.h" line="949"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="945">a new [class@NewFrame]</doc>
+          <type name="NewFrame" c:type="GlyNewFrame*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="creator" transfer-ownership="none">
+            <type name="Creator" c:type="GlyCreator*"/>
+          </instance-parameter>
+          <parameter name="width" transfer-ownership="none">
+            <type name="guint32" c:type="uint32_t"/>
+          </parameter>
+          <parameter name="height" transfer-ownership="none">
+            <type name="guint32" c:type="uint32_t"/>
+          </parameter>
+          <parameter name="memory_format" transfer-ownership="none">
+            <type name="MemoryFormat" c:type="GlyMemoryFormat"/>
+          </parameter>
+          <parameter name="texture" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="942">Texture data</doc>
+            <type name="GLib.Bytes" c:type="GBytes*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="add_frame_with_stride"
+              c:identifier="gly_creator_add_frame_with_stride"
+              version="2.0"
+              throws="1">
+        <source-position filename="libglycin/include/glycin.h" line="970"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="966">a new [class@NewFrame]</doc>
+          <type name="NewFrame" c:type="GlyNewFrame*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="creator" transfer-ownership="none">
+            <type name="Creator" c:type="GlyCreator*"/>
+          </instance-parameter>
+          <parameter name="width" transfer-ownership="none">
+            <type name="guint32" c:type="uint32_t"/>
+          </parameter>
+          <parameter name="height" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="960">@stride</doc>
+            <type name="guint32" c:type="uint32_t"/>
+          </parameter>
+          <parameter name="stride" transfer-ownership="none">
+            <type name="guint32" c:type="uint32_t"/>
+          </parameter>
+          <parameter name="memory_format" transfer-ownership="none">
+            <type name="MemoryFormat" c:type="GlyMemoryFormat"/>
+          </parameter>
+          <parameter name="texture" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="963">Texture data</doc>
+            <type name="GLib.Bytes" c:type="GBytes*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="add_metadata_key_value"
+              c:identifier="gly_creator_add_metadata_key_value"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="1023">Add metadata that are stored as key-value pairs.
+A prominent example are PNG's `tEXt` chunks.
+
+If an entry with `key` already exists, it will be replaced.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="1038"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="1034">`TRUE` if format supports key-value storage.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="creator" transfer-ownership="none">
+            <type name="Creator" c:type="GlyCreator*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="1026">A null-terminated string.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="1027">A null-terminated string.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="create"
+              c:identifier="gly_creator_create"
+              version="2.0"
+              throws="1"
+              glib:async-func="create_async">
+        <source-position filename="libglycin/include/glycin.h" line="988"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="984">The encoded image.</doc>
+          <type name="EncodedImage" c:type="GlyEncodedImage*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Creator" c:type="GlyCreator*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="create_async"
+              c:identifier="gly_creator_create_async"
+              version="2.0"
+              glib:finish-func="create_finish"
+              glib:sync-func="create">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="991">Asynchronous version of [method@Creator.create].</doc>
+        <source-position filename="libglycin/include/glycin.h" line="1002"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="creator" transfer-ownership="none">
+            <type name="Creator" c:type="GlyCreator*"/>
+          </instance-parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="994">A [class@Gio.Cancellable] to cancel the operation</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="2">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="995">A callback to call when the operation is complete</doc>
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="996">Data to pass to @callback</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="create_finish"
+              c:identifier="gly_creator_create_finish"
+              version="2.0"
+              throws="1">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="1007">Finishes the [method@Creator.create_async] call.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="1019"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="1015">Encoded image.</doc>
+          <type name="EncodedImage" c:type="GlyEncodedImage*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="creator" transfer-ownership="none">
+            <type name="Creator" c:type="GlyCreator*"/>
+          </instance-parameter>
+          <parameter name="result" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="1010">A `GAsyncResult`</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_encoding_compression"
+              c:identifier="gly_creator_set_encoding_compression"
+              version="2.0">
+        <source-position filename="libglycin/include/glycin.h" line="1063"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="1059">`TRUE` if the format supports compression setting.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="creator" transfer-ownership="none">
+            <type name="Creator" c:type="GlyCreator*"/>
+          </instance-parameter>
+          <parameter name="compression" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="1057">Value between 0 and 100</doc>
+            <type name="guint8" c:type="uint8_t"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_encoding_quality"
+              c:identifier="gly_creator_set_encoding_quality"
+              version="2.0">
+        <source-position filename="libglycin/include/glycin.h" line="1051"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="1047">`TRUE` if format supports a quality setting.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="creator" transfer-ownership="none">
+            <type name="Creator" c:type="GlyCreator*"/>
+          </instance-parameter>
+          <parameter name="quality" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="1045">Value between 0 and 100</doc>
+            <type name="guint8" c:type="uint8_t"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_sandbox_selector"
+              c:identifier="gly_creator_set_sandbox_selector"
+              glib:set-property="sandbox-selector"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="1066">Selects which sandbox mechanism should be used. The default without calling this function is [enum@SandboxSelector]`.AUTO`.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="1075"/>
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="creator" transfer-ownership="none">
+            <type name="Creator" c:type="GlyCreator*"/>
+          </instance-parameter>
+          <parameter name="sandbox_selector" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="1069">Method by which the sandbox mechanism is selected</doc>
+            <type name="SandboxSelector" c:type="GlySandboxSelector"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="mime-type"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="sandbox-selector"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_sandbox_selector"
+                default-value="Auto">
+        <type name="SandboxSelector"/>
+      </property>
+    </class>
+    <record name="CreatorClass"
+            c:type="GlyCreatorClass"
+            glib:is-gtype-struct-for="Creator">
+      <source-position filename="libglycin/include/glycin.h" line="922"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="EncodedImage"
+           c:symbol-prefix="encoded_image"
+           c:type="GlyEncodedImage"
+           version="2.0"
+           parent="GObject.Object"
+           glib:type-name="GlyEncodedImage"
+           glib:get-type="gly_encoded_image_get_type"
+           glib:type-struct="EncodedImageClass">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="857">Encoded image</doc>
+      <source-position filename="libglycin/include/glycin.h" line="865"/>
+      <method name="get_data"
+              c:identifier="gly_encoded_image_get_data"
+              glib:get-property="data"
+              version="2.0">
+        <source-position filename="libglycin/include/glycin.h" line="874"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="870">The encoded image data</doc>
+          <type name="GLib.Bytes" c:type="GBytes*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="encoded_image" transfer-ownership="none">
+            <type name="EncodedImage" c:type="GlyEncodedImage*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <property name="data" transfer-ownership="none" getter="get_data">
+        <type name="GLib.Bytes"/>
+      </property>
+    </class>
+    <record name="EncodedImageClass"
+            c:type="GlyEncodedImageClass"
+            glib:is-gtype-struct-for="EncodedImage">
+      <source-position filename="libglycin/include/glycin.h" line="865"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="Frame"
+           c:symbol-prefix="frame"
+           c:type="GlyFrame"
+           version="2.0"
+           parent="GObject.Object"
+           glib:type-name="GlyFrame"
+           glib:get-type="gly_frame_get_type"
+           glib:type-struct="FrameClass">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="66">A frame of an image often being the complete image.</doc>
+      <source-position filename="libglycin/include/glycin.h" line="74"/>
+      <method name="get_buf_bytes"
+              c:identifier="gly_frame_get_buf_bytes"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="722">Image data arranged according to [method@Frame.get_memory_format]</doc>
+        <source-position filename="libglycin/include/glycin.h" line="732"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="728">Image data</doc>
+          <type name="GLib.Bytes" c:type="GBytes*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="frame" transfer-ownership="none">
+            <type name="Frame" c:type="GlyFrame*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_color_cicp"
+              c:identifier="gly_frame_get_color_cicp"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="769">Returns the CICP (coding-independent code point) for the frames texture.
+This value is `NULL` if no CICP is used.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="780"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="776">CICP</doc>
+          <type name="Cicp" c:type="GlyCicp*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="frame" transfer-ownership="none">
+            <type name="Frame" c:type="GlyFrame*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_delay"
+              c:identifier="gly_frame_get_delay"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="672">Duration to show frame for animations.
+
+If the value is zero, the image is not animated.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="684"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="680">Duration in microseconds.</doc>
+          <type name="gint64" c:type="int64_t"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="frame" transfer-ownership="none">
+            <type name="Frame" c:type="GlyFrame*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_height"
+              c:identifier="gly_frame_get_height"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="698">Height for image data in pixels</doc>
+        <source-position filename="libglycin/include/glycin.h" line="708"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="704">Height in pixels</doc>
+          <type name="guint32" c:type="uint32_t"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="frame" transfer-ownership="none">
+            <type name="Frame" c:type="GlyFrame*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_memory_format"
+              c:identifier="gly_frame_get_memory_format"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="734">Format of the image data in [method@Gly.Frame.get_buf_bytes]</doc>
+        <source-position filename="libglycin/include/glycin.h" line="744"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="740">Format of image data</doc>
+          <type name="MemoryFormat" c:type="GlyMemoryFormat"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="frame" transfer-ownership="none">
+            <type name="Frame" c:type="GlyFrame*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_stride"
+              c:identifier="gly_frame_get_stride"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="710">Width of a row for image data in bytes</doc>
+        <source-position filename="libglycin/include/glycin.h" line="720"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="716">Row stride in bytes</doc>
+          <type name="guint32" c:type="uint32_t"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="frame" transfer-ownership="none">
+            <type name="Frame" c:type="GlyFrame*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_width"
+              c:identifier="gly_frame_get_width"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="686">Width for image data in pixels</doc>
+        <source-position filename="libglycin/include/glycin.h" line="696"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="692">Width in pixels</doc>
+          <type name="guint32" c:type="uint32_t"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="frame" transfer-ownership="none">
+            <type name="Frame" c:type="GlyFrame*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </class>
+    <record name="FrameClass"
+            c:type="GlyFrameClass"
+            glib:is-gtype-struct-for="Frame">
+      <source-position filename="libglycin/include/glycin.h" line="74"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="FrameRequest"
+           c:symbol-prefix="frame_request"
+           c:type="GlyFrameRequest"
+           version="2.0"
+           parent="GObject.Object"
+           glib:type-name="GlyFrameRequest"
+           glib:get-type="gly_frame_request_get_type"
+           glib:type-struct="FrameRequestClass">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="51">Defines which parts of an image to load.
+
+::: warning
+    Loaders can and frequently will ignore instructions set in
+    `GlyFrameRequest`. The reason is that for most loaders
+    many instructions don't have a meaningful interpretation.</doc>
+      <source-position filename="libglycin/include/glycin.h" line="64"/>
+      <constructor name="new"
+                   c:identifier="gly_frame_request_new"
+                   version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="350">Creates a new frame request.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="359"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="355">a new [class@FrameRequest]</doc>
+          <type name="FrameRequest" c:type="GlyFrameRequest*"/>
+        </return-value>
+      </constructor>
+      <method name="set_loop_animation"
+              c:identifier="gly_frame_request_set_loop_animation"
+              glib:set-property="loop-animation"
+              version="2.0.1">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="382">Controls if first frame is returned after last frame
+
+By default, this option is set to `TRUE`, returning the first frame, if
+the previously requested frame was the last frame.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="394"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="frame_request" transfer-ownership="none">
+            <type name="FrameRequest" c:type="GlyFrameRequest*"/>
+          </instance-parameter>
+          <parameter name="loop_animation" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_scale"
+              c:identifier="gly_frame_request_set_scale"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="361">Set maximum dimensions for the frame. The texture will be scaled
+to be within the maximum dimensions while keeping its aspect ratio.
+This option is especially useful to SVGs which will be rendered at
+the respective size.
+
+::: warning
+    Most loaders will ignore this option. Currently, only the SVG
+    loader is known to obay it.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="378"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="frame_request" transfer-ownership="none">
+            <type name="FrameRequest" c:type="GlyFrameRequest*"/>
+          </instance-parameter>
+          <parameter name="width" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="364">Maximum width</doc>
+            <type name="guint32" c:type="uint32_t"/>
+          </parameter>
+          <parameter name="height" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="365">Maximum height</doc>
+            <type name="guint32" c:type="uint32_t"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="loop-animation"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_loop_animation"
+                default-value="FALSE">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="scale-height"
+                transfer-ownership="none"
+                default-value="0">
+        <type name="guint" c:type="guint"/>
+      </property>
+      <property name="scale-width" transfer-ownership="none" default-value="0">
+        <type name="guint" c:type="guint"/>
+      </property>
+    </class>
+    <record name="FrameRequestClass"
+            c:type="GlyFrameRequestClass"
+            glib:is-gtype-struct-for="FrameRequest">
+      <source-position filename="libglycin/include/glycin.h" line="64"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="Image"
+           c:symbol-prefix="image"
+           c:type="GlyImage"
+           version="2.0"
+           parent="GObject.Object"
+           glib:type-name="GlyImage"
+           glib:get-type="gly_image_get_type"
+           glib:type-struct="ImageClass">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="41">Image handle containing metadata and allowing frame requests.</doc>
+      <source-position filename="libglycin/include/glycin.h" line="49"/>
+      <method name="get_height"
+              c:identifier="gly_image_get_height"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="524">See [method@Image.get_width]</doc>
+        <source-position filename="libglycin/include/glycin.h" line="534"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="530">height</doc>
+          <type name="guint32" c:type="uint32_t"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_metadata_key_value"
+              c:identifier="gly_image_get_metadata_key_value"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="536">Get metadata that are stored as key-value pairs.
+A prominent example are PNG's `tEXt` and `zTXt` chunks.
+
+::: note
+    In contrast to gdk-pixbuf's *option* feature, the
+    keys do not carry prefixes like `tEXt::` or `zTXt::`.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="554"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="549">The UTF-8 encoded value associated with `key`.</doc>
+          <type name="utf8" c:type="gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="539">A null-terminated string.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_metadata_keys"
+              c:identifier="gly_image_get_metadata_keys"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="557">Get the list of available keys for [method@Image.get_metadata_key_value].</doc>
+        <source-position filename="libglycin/include/glycin.h" line="567"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="563">List of existing keys.</doc>
+          <array c:type="GStrv">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_mime_type"
+              c:identifier="gly_image_get_mime_type"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="496">Returns detected MIME type of the file</doc>
+        <source-position filename="libglycin/include/glycin.h" line="506"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="502">MIME type</doc>
+          <type name="utf8" c:type="const char*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_specific_frame"
+              c:identifier="gly_image_get_specific_frame"
+              version="2.0"
+              throws="1"
+              glib:async-func="get_specific_frame_async">
+        <source-position filename="libglycin/include/glycin.h" line="458"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="454">Loaded frame.</doc>
+          <type name="Frame" c:type="GlyFrame*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+          <parameter name="frame_request" transfer-ownership="none">
+            <type name="FrameRequest" c:type="GlyFrameRequest*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_specific_frame_async"
+              c:identifier="gly_image_get_specific_frame_async"
+              version="2.0"
+              glib:finish-func="get_specific_frame_finish"
+              glib:sync-func="get_specific_frame">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="462">Asynchronous version of [method@Image.get_specific_frame].</doc>
+        <source-position filename="libglycin/include/glycin.h" line="474"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+          <parameter name="frame_request" transfer-ownership="none">
+            <type name="FrameRequest" c:type="GlyFrameRequest*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="466">A [class@Gio.Cancellable] to cancel the operation</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="3">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="467">A callback to call when the operation is complete</doc>
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="468">Data to pass to @callback</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_specific_frame_finish"
+              c:identifier="gly_image_get_specific_frame_finish"
+              version="2.0"
+              throws="1">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="480">Finishes the [method@Image.get_specific_frame_async] call.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="492"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="488">Loaded frame.</doc>
+          <type name="Frame" c:type="GlyFrame*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+          <parameter name="result" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="483">a `GAsyncResult`</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_transformation_orientation"
+              c:identifier="gly_image_get_transformation_orientation"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="569">Get the image orientation
+
+The image orientation is given in Exif format. The function is
+guaranteed to only return values from 1 to 8.
+
+If [method@Loader.set_apply_transformations] is set to `FALSE`,
+the orientation has to be corrected manually to dispaly the image
+correctly.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="584"/>
+        <return-value transfer-ownership="none">
+          <type name="guint16" c:type="uint16_t"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_width"
+              c:identifier="gly_image_get_width"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="508">Early width information.
+
+This information is often correct. However, it should only be used for
+an early rendering estimates. For everything else, the specific frame
+information should be used. See [method@Frame.get_width].</doc>
+        <source-position filename="libglycin/include/glycin.h" line="522"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="518">Width</doc>
+          <type name="guint32" c:type="uint32_t"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="next_frame"
+              c:identifier="gly_image_next_frame"
+              version="2.0"
+              throws="1"
+              glib:async-func="next_frame_async">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="399">Synchronously loads texture and information of the next frame.
+
+For single still images, this can only be called once.
+For animated images, this function will loop to the first frame, when the last frame is reached.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="413"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="409">a new [class@Frame] on success, or `NULL` with @error filled in</doc>
+          <type name="Frame" c:type="GlyFrame*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="next_frame_async"
+              c:identifier="gly_image_next_frame_async"
+              version="2.0"
+              glib:finish-func="next_frame_finish"
+              glib:sync-func="next_frame">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="416">Asynchronous version of [method@Image.next_frame].</doc>
+        <source-position filename="libglycin/include/glycin.h" line="427"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="419">A [class@Gio.Cancellable] to cancel the operation</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="2">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="420">A callback to call when the operation is complete</doc>
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="421">Data to pass to @callback</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="next_frame_finish"
+              c:identifier="gly_image_next_frame_finish"
+              version="2.0"
+              throws="1">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="432">Finishes the [method@Image.next_frame_async] call.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="444"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="440">Loaded frame.</doc>
+          <type name="Frame" c:type="GlyFrame*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="image" transfer-ownership="none">
+            <type name="Image" c:type="GlyImage*"/>
+          </instance-parameter>
+          <parameter name="result" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="435">a `GAsyncResult`</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <record name="ImageClass"
+            c:type="GlyImageClass"
+            glib:is-gtype-struct-for="Image">
+      <source-position filename="libglycin/include/glycin.h" line="49"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="Loader"
+           c:symbol-prefix="loader"
+           c:type="GlyLoader"
+           version="2.0"
+           parent="GObject.Object"
+           glib:type-name="GlyLoader"
+           glib:get-type="gly_loader_get_type"
+           glib:type-struct="LoaderClass">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="9">[class@Loader] prepares loading an image.
+
+The following example shows how to obtain a `Gdk.Texture`. It uses
+[GlyGtk4](https://gnome.pages.gitlab.gnome.org/glycin/libglycin-gtk4)
+for this.
+
+```c
+#include &lt;glycin-gtk4.h&gt;
+
+file = g_file_new_for_path ("test.png");
+loader = gly_loader_new (file);
+image = gly_loader_load (loader, NULL);
+if (image)
+  {
+    frame = gly_image_next_frame (image, NULL);
+    if (frame)
+      {
+        texture = gly_gtk_frame_get_texture (frame);
+        g_print ("Image height: %d\n", gdk_texture_get_height (texture));
+        image_widget = gtk_image_new_from_paintable (GDK_PAINTABLE (texture));
+      }
+  }
+```</doc>
+      <source-position filename="libglycin/include/glycin.h" line="39"/>
+      <constructor name="new" c:identifier="gly_loader_new" version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="174">Creates a new loader for a file.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="184"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="180">a new [class@Loader]</doc>
+          <type name="Loader" c:type="GlyLoader*"/>
+        </return-value>
+        <parameters>
+          <parameter name="file" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="176">A file from which to load the image data</doc>
+            <type name="Gio.File" c:type="GFile*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_for_bytes"
+                   c:identifier="gly_loader_new_for_bytes"
+                   version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="198">Creates a new loader for bytes.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="208"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="204">a new [class@Loader]</doc>
+          <type name="Loader" c:type="GlyLoader*"/>
+        </return-value>
+        <parameters>
+          <parameter name="bytes" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="200">Data from which to load the image</doc>
+            <type name="GLib.Bytes" c:type="GBytes*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_for_stream"
+                   c:identifier="gly_loader_new_for_stream"
+                   version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="186">Creates a new loader for a stream.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="196"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="192">a new [class@Loader]</doc>
+          <type name="Loader" c:type="GlyLoader*"/>
+        </return-value>
+        <parameters>
+          <parameter name="stream" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="188">A stream from which to load the image data</doc>
+            <type name="Gio.InputStream" c:type="GInputStream*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <function name="get_mime_types"
+                c:identifier="gly_loader_get_mime_types"
+                version="2.0"
+                glib:async-func="get_mime_types_async">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="210">Returns a list of MIME types currently supported for loading images.
+
+This list is generated from the config on first use of a loader or
+call of this function and cached afterwards. Hence, the first call
+can be blocking.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="223"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="219">List of supported MIME types</doc>
+          <array c:type="GStrv">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+      </function>
+      <function name="get_mime_types_async"
+                c:identifier="gly_loader_get_mime_types_async"
+                version="2.0"
+                glib:finish-func="get_mime_types_finish"
+                glib:sync-func="get_mime_types">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="228">Async variant of [func@Loader.get_mime_types]</doc>
+        <source-position filename="libglycin/include/glycin.h" line="238"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="2">
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="232">user data to pass to @callback</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="get_mime_types_finish"
+                c:identifier="gly_loader_get_mime_types_finish"
+                version="2.0"
+                throws="1">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="243">Finishes the [func@Loader.get_mime_types_async] call.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="254"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="250">Mime types.</doc>
+          <array c:type="GStrv">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <parameter name="result" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="245">A `GAsyncResult`</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </function>
+      <method name="load"
+              c:identifier="gly_loader_load"
+              version="2.0"
+              throws="1"
+              glib:async-func="load_async">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="302">Synchronously loads an image and returns an [class@Image] when successful.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="313"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="309">a new [class@Image] on success, or `NULL` with @error filled in</doc>
+          <type name="Image" c:type="GlyImage*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="loader" transfer-ownership="none">
+            <type name="Loader" c:type="GlyLoader*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="load_async"
+              c:identifier="gly_loader_load_async"
+              version="2.0"
+              glib:finish-func="load_finish"
+              glib:sync-func="load">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="316">Asynchronous version of [method@Loader.load].</doc>
+        <source-position filename="libglycin/include/glycin.h" line="327"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="loader" transfer-ownership="none">
+            <type name="Loader" c:type="GlyLoader*"/>
+          </instance-parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="319">A [class@Gio.Cancellable] to cancel the operation</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="2">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="320">A callback to call when the operation is complete</doc>
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="321">Data to pass to @callback</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="load_finish"
+              c:identifier="gly_loader_load_finish"
+              version="2.0"
+              throws="1">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="332">Finishes the [method@Loader.load_async] call.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="344"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="340">Loaded image.</doc>
+          <type name="Image" c:type="GlyImage*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="loader" transfer-ownership="none">
+            <type name="Loader" c:type="GlyLoader*"/>
+          </instance-parameter>
+          <parameter name="result" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="335">A `GAsyncResult`</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_accepted_memory_formats"
+              c:identifier="gly_loader_set_accepted_memory_formats"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="270">Sets which memory formats can be returned by the loader
+
+If the memory format doesn't match one of the selected formats, the
+format will be transformed into the best suitable format selected.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="282"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="loader" transfer-ownership="none">
+            <type name="Loader" c:type="GlyLoader*"/>
+          </instance-parameter>
+          <parameter name="memory_format_selection" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="273">Accepted memory formats</doc>
+            <type name="MemoryFormatSelection"
+                  c:type="GlyMemoryFormatSelection"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_apply_transformations"
+              c:identifier="gly_loader_set_apply_transformations"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="285">Set whether to apply transformations to texture
+
+When enabled, transformations like image orientation are applied to the
+texture data.
+
+This option is enabled by default.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="299"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="loader" transfer-ownership="none">
+            <type name="Loader" c:type="GlyLoader*"/>
+          </instance-parameter>
+          <parameter name="apply_transformations" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_sandbox_selector"
+              c:identifier="gly_loader_set_sandbox_selector"
+              glib:set-property="sandbox-selector"
+              version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="258">Selects which sandbox mechanism should be used. The default without calling this function is [enum@SandboxSelector]`.AUTO`.</doc>
+        <source-position filename="libglycin/include/glycin.h" line="267"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="loader" transfer-ownership="none">
+            <type name="Loader" c:type="GlyLoader*"/>
+          </instance-parameter>
+          <parameter name="sandbox_selector" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="261">Method by which the sandbox mechanism is selected</doc>
+            <type name="SandboxSelector" c:type="GlySandboxSelector"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="apply-transformation"
+                writable="1"
+                transfer-ownership="none"
+                default-value="FALSE">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="bytes"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none">
+        <type name="GLib.Bytes"/>
+      </property>
+      <property name="cancellable" writable="1" transfer-ownership="none">
+        <type name="Gio.Cancellable"/>
+      </property>
+      <property name="file"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none">
+        <type name="Gio.File"/>
+      </property>
+      <property name="memory-format-selection"
+                writable="1"
+                transfer-ownership="none"
+                default-value="0">
+        <type name="MemoryFormatSelection"/>
+      </property>
+      <property name="sandbox-selector"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_sandbox_selector"
+                default-value="Auto">
+        <type name="SandboxSelector"/>
+      </property>
+      <property name="stream"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none">
+        <type name="Gio.InputStream"/>
+      </property>
+    </class>
+    <record name="LoaderClass"
+            c:type="GlyLoaderClass"
+            glib:is-gtype-struct-for="Loader">
+      <source-position filename="libglycin/include/glycin.h" line="39"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <enumeration name="LoaderError"
+                 version="2.0"
+                 glib:type-name="GlyLoaderError"
+                 glib:get-type="gly_loader_error_get_type"
+                 c:type="GlyLoaderError"
+                 glib:error-domain="gly-loader-error">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="784">Errors that can appear while loading images.</doc>
+      <member name="failed"
+              value="0"
+              c:identifier="GLY_LOADER_ERROR_FAILED"
+              version="2.0"
+              glib:nick="failed"
+              glib:name="Failed">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="796">Generic type for all other errors.</doc>
+      </member>
+      <member name="unknown_image_format"
+              value="1"
+              c:identifier="GLY_LOADER_ERROR_UNKNOWN_IMAGE_FORMAT"
+              version="2.0"
+              glib:nick="unknown-image-format"
+              glib:name="UnknownImageFormat">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="804">Unknown image format.</doc>
+      </member>
+      <member name="no_more_frames"
+              value="2"
+              c:identifier="GLY_LOADER_ERROR_NO_MORE_FRAMES"
+              version="2.0.1"
+              glib:nick="no-more-frames"
+              glib:name="NoMoreFrames">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="812">Reached last frame in an animation with [method@FrameRequest.set_loop_animation] to `FALSE`.</doc>
+      </member>
+      <function name="quark" c:identifier="gly_loader_error_quark">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="822">Error quark for [error@GlyLoaderError]</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="827">The error domain</doc>
+          <type name="GLib.Quark" c:type="GQuark"/>
+        </return-value>
+      </function>
+    </enumeration>
+    <callback name="LoaderGetMimeTypesDoneFunc"
+              c:type="GlyLoaderGetMimeTypesDoneFunc">
+      <source-position filename="libglycin/include/glycin.h" line="225"/>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="mime_types" transfer-ownership="none">
+          <array c:type="GStrv">
+            <type name="utf8"/>
+          </array>
+        </parameter>
+        <parameter name="data"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </callback>
+    <enumeration name="MemoryFormat"
+                 version="2.0"
+                 glib:type-name="GlyMemoryFormat"
+                 glib:get-type="gly_memory_format_get_type"
+                 c:type="GlyMemoryFormat">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="588">Memory format</doc>
+      <member name="b8g8r8a8_premultiplied"
+              value="0"
+              c:identifier="GLY_MEMORY_B8G8R8A8_PREMULTIPLIED"
+              glib:nick="b8g8r8a8-premultiplied"
+              glib:name="B8g8r8a8Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="590">8-bit RGRA premultiplied</doc>
+      </member>
+      <member name="a8r8g8b8_premultiplied"
+              value="1"
+              c:identifier="GLY_MEMORY_A8R8G8B8_PREMULTIPLIED"
+              glib:nick="a8r8g8b8-premultiplied"
+              glib:name="A8r8g8b8Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="591">8-bit ARGB premultiplied</doc>
+      </member>
+      <member name="r8g8b8a8_premultiplied"
+              value="2"
+              c:identifier="GLY_MEMORY_R8G8B8A8_PREMULTIPLIED"
+              glib:nick="r8g8b8a8-premultiplied"
+              glib:name="R8g8b8a8Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="592">8-bit RGBA premultiplied</doc>
+      </member>
+      <member name="b8g8r8a8"
+              value="3"
+              c:identifier="GLY_MEMORY_B8G8R8A8"
+              glib:nick="b8g8r8a8"
+              glib:name="B8g8r8a8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="593">8-bit RGBA</doc>
+      </member>
+      <member name="a8r8g8b8"
+              value="4"
+              c:identifier="GLY_MEMORY_A8R8G8B8"
+              glib:nick="a8r8g8b8"
+              glib:name="A8r8g8b8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="594">8-bit AGBR</doc>
+      </member>
+      <member name="r8g8b8a8"
+              value="5"
+              c:identifier="GLY_MEMORY_R8G8B8A8"
+              glib:nick="r8g8b8a8"
+              glib:name="R8g8b8a8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="595">8-bit RGBA</doc>
+      </member>
+      <member name="a8b8g8r8"
+              value="6"
+              c:identifier="GLY_MEMORY_A8B8G8R8"
+              glib:nick="a8b8g8r8"
+              glib:name="A8b8g8r8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="596">8-bit ABGR</doc>
+      </member>
+      <member name="r8g8b8"
+              value="7"
+              c:identifier="GLY_MEMORY_R8G8B8"
+              glib:nick="r8g8b8"
+              glib:name="R8g8b8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="597">8-bit RGB</doc>
+      </member>
+      <member name="b8g8r8"
+              value="8"
+              c:identifier="GLY_MEMORY_B8G8R8"
+              glib:nick="b8g8r8"
+              glib:name="B8g8r8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="598">8-bit BGR</doc>
+      </member>
+      <member name="r16g16b16"
+              value="9"
+              c:identifier="GLY_MEMORY_R16G16B16"
+              glib:nick="r16g16b16"
+              glib:name="R16g16b16">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="599">16-bit RGB</doc>
+      </member>
+      <member name="r16g16b16a16_premultiplied"
+              value="10"
+              c:identifier="GLY_MEMORY_R16G16B16A16_PREMULTIPLIED"
+              glib:nick="r16g16b16a16-premultiplied"
+              glib:name="R16g16b16a16Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="600">16-bit RGBA premultiplied</doc>
+      </member>
+      <member name="r16g16b16a16"
+              value="11"
+              c:identifier="GLY_MEMORY_R16G16B16A16"
+              glib:nick="r16g16b16a16"
+              glib:name="R16g16b16a16">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="601">16-bit RGBA</doc>
+      </member>
+      <member name="r16g16b16_float"
+              value="12"
+              c:identifier="GLY_MEMORY_R16G16B16_FLOAT"
+              glib:nick="r16g16b16-float"
+              glib:name="R16g16b16Float">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="602">16-bit float RGB</doc>
+      </member>
+      <member name="r16g16b16a16_float"
+              value="13"
+              c:identifier="GLY_MEMORY_R16G16B16A16_FLOAT"
+              glib:nick="r16g16b16a16-float"
+              glib:name="R16g16b16a16Float">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="603">16-bit float RGBA</doc>
+      </member>
+      <member name="r32g32b32_float"
+              value="14"
+              c:identifier="GLY_MEMORY_R32G32B32_FLOAT"
+              glib:nick="r32g32b32-float"
+              glib:name="R32g32b32Float">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="604">32-bit float RGB</doc>
+      </member>
+      <member name="r32g32b32a32_float_premultiplied"
+              value="15"
+              c:identifier="GLY_MEMORY_R32G32B32A32_FLOAT_PREMULTIPLIED"
+              glib:nick="r32g32b32a32-float-premultiplied"
+              glib:name="R32g32b32a32FloatPremultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="605">32-bit float RGBA premultiplied</doc>
+      </member>
+      <member name="r32g32b32a32_float"
+              value="16"
+              c:identifier="GLY_MEMORY_R32G32B32A32_FLOAT"
+              glib:nick="r32g32b32a32-float"
+              glib:name="R32g32b32a32Float">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="606">16-bit float RGBA</doc>
+      </member>
+      <member name="g8a8_premultiplied"
+              value="17"
+              c:identifier="GLY_MEMORY_G8A8_PREMULTIPLIED"
+              glib:nick="g8a8-premultiplied"
+              glib:name="G8a8Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="607">8-bit gray with alpha premultiplied</doc>
+      </member>
+      <member name="g8a8"
+              value="18"
+              c:identifier="GLY_MEMORY_G8A8"
+              glib:nick="g8a8"
+              glib:name="G8a8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="608">8-bit gray with alpha</doc>
+      </member>
+      <member name="g8"
+              value="19"
+              c:identifier="GLY_MEMORY_G8"
+              glib:nick="g8"
+              glib:name="G8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="609">8-bit gray</doc>
+      </member>
+      <member name="g16a16_premultiplied"
+              value="20"
+              c:identifier="GLY_MEMORY_G16A16_PREMULTIPLIED"
+              glib:nick="g16a16-premultiplied"
+              glib:name="G16a16Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="610">16-bit gray with alpha premultiplied</doc>
+      </member>
+      <member name="g16a16"
+              value="21"
+              c:identifier="GLY_MEMORY_G16A16"
+              glib:nick="g16a16"
+              glib:name="G16a16">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="611">16-bit gray with alpha</doc>
+      </member>
+      <member name="g16"
+              value="22"
+              c:identifier="GLY_MEMORY_G16"
+              glib:nick="g16"
+              glib:name="G16">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="612">16-bit gray</doc>
+      </member>
+      <function name="has_alpha"
+                c:identifier="gly_memory_format_has_alpha"
+                version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="647">Whether a memory format has an alpha channel</doc>
+        <source-position filename="libglycin/include/glycin.h" line="657"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="653">Returns `TRUE` if the memory format has an alpha channel</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <parameter name="memory_format" transfer-ownership="none">
+            <type name="MemoryFormat" c:type="GlyMemoryFormat"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="is_premultiplied"
+                c:identifier="gly_memory_format_is_premultiplied"
+                version="2.0">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="659">Whether a memory format has an alpha channel and the color values are
+premultiplied with the alpha value</doc>
+        <source-position filename="libglycin/include/glycin.h" line="670"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="666">Returns `TRUE` if color channels are premultiplied</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <parameter name="memory_format" transfer-ownership="none">
+            <type name="MemoryFormat" c:type="GlyMemoryFormat"/>
+          </parameter>
+        </parameters>
+      </function>
+    </enumeration>
+    <bitfield name="MemoryFormatSelection"
+              version="2.0"
+              glib:type-name="GlyMemoryFormatSelection"
+              glib:get-type="gly_memory_format_selection_get_type"
+              c:type="GlyMemoryFormatSelection">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="113">Memory format selection</doc>
+      <member name="b8g8r8a8_premultiplied"
+              value="1"
+              c:identifier="GLY_MEMORY_SELECTION_B8G8R8A8_PREMULTIPLIED"
+              glib:nick="b8g8r8a8-premultiplied"
+              glib:name="B8g8r8a8Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="115">8-bit RGRA premultiplied</doc>
+      </member>
+      <member name="a8r8g8b8_premultiplied"
+              value="2"
+              c:identifier="GLY_MEMORY_SELECTION_A8R8G8B8_PREMULTIPLIED"
+              glib:nick="a8r8g8b8-premultiplied"
+              glib:name="A8r8g8b8Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="116">8-bit ARGB premultiplied</doc>
+      </member>
+      <member name="r8g8b8a8_premultiplied"
+              value="4"
+              c:identifier="GLY_MEMORY_SELECTION_R8G8B8A8_PREMULTIPLIED"
+              glib:nick="r8g8b8a8-premultiplied"
+              glib:name="R8g8b8a8Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="117">8-bit RGBA premultiplied</doc>
+      </member>
+      <member name="b8g8r8a8"
+              value="8"
+              c:identifier="GLY_MEMORY_SELECTION_B8G8R8A8"
+              glib:nick="b8g8r8a8"
+              glib:name="B8g8r8a8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="118">8-bit RGBA</doc>
+      </member>
+      <member name="a8r8g8b8"
+              value="16"
+              c:identifier="GLY_MEMORY_SELECTION_A8R8G8B8"
+              glib:nick="a8r8g8b8"
+              glib:name="A8r8g8b8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="119">8-bit AGBR</doc>
+      </member>
+      <member name="r8g8b8a8"
+              value="32"
+              c:identifier="GLY_MEMORY_SELECTION_R8G8B8A8"
+              glib:nick="r8g8b8a8"
+              glib:name="R8g8b8a8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="120">8-bit RGBA</doc>
+      </member>
+      <member name="a8b8g8r8"
+              value="64"
+              c:identifier="GLY_MEMORY_SELECTION_A8B8G8R8"
+              glib:nick="a8b8g8r8"
+              glib:name="A8b8g8r8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="121">8-bit ABGR</doc>
+      </member>
+      <member name="r8g8b8"
+              value="128"
+              c:identifier="GLY_MEMORY_SELECTION_R8G8B8"
+              glib:nick="r8g8b8"
+              glib:name="R8g8b8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="122">8-bit RGB</doc>
+      </member>
+      <member name="b8g8r8"
+              value="256"
+              c:identifier="GLY_MEMORY_SELECTION_B8G8R8"
+              glib:nick="b8g8r8"
+              glib:name="B8g8r8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="123">8-bit BGR</doc>
+      </member>
+      <member name="r16g16b16"
+              value="512"
+              c:identifier="GLY_MEMORY_SELECTION_R16G16B16"
+              glib:nick="r16g16b16"
+              glib:name="R16g16b16">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="124">16-bit RGB</doc>
+      </member>
+      <member name="r16g16b16a16_premultiplied"
+              value="1024"
+              c:identifier="GLY_MEMORY_SELECTION_R16G16B16A16_PREMULTIPLIED"
+              glib:nick="r16g16b16a16-premultiplied"
+              glib:name="R16g16b16a16Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="125">16-bit RGBA premultiplied</doc>
+      </member>
+      <member name="r16g16b16a16"
+              value="2048"
+              c:identifier="GLY_MEMORY_SELECTION_R16G16B16A16"
+              glib:nick="r16g16b16a16"
+              glib:name="R16g16b16a16">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="126">16-bit RGBA</doc>
+      </member>
+      <member name="r16g16b16_float"
+              value="4096"
+              c:identifier="GLY_MEMORY_SELECTION_R16G16B16_FLOAT"
+              glib:nick="r16g16b16-float"
+              glib:name="R16g16b16Float">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="127">16-bit float RGB</doc>
+      </member>
+      <member name="r16g16b16a16_float"
+              value="8192"
+              c:identifier="GLY_MEMORY_SELECTION_R16G16B16A16_FLOAT"
+              glib:nick="r16g16b16a16-float"
+              glib:name="R16g16b16a16Float">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="128">16-bit float RGBA</doc>
+      </member>
+      <member name="r32g32b32_float"
+              value="16384"
+              c:identifier="GLY_MEMORY_SELECTION_R32G32B32_FLOAT"
+              glib:nick="r32g32b32-float"
+              glib:name="R32g32b32Float">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="129">32-bit float RGB</doc>
+      </member>
+      <member name="r32g32b32a32_float_premultiplied"
+              value="32768"
+              c:identifier="GLY_MEMORY_SELECTION_R32G32B32A32_FLOAT_PREMULTIPLIED"
+              glib:nick="r32g32b32a32-float-premultiplied"
+              glib:name="R32g32b32a32FloatPremultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="130">32-bit float RGBA premultiplied</doc>
+      </member>
+      <member name="r32g32b32a32_float"
+              value="65536"
+              c:identifier="GLY_MEMORY_SELECTION_R32G32B32A32_FLOAT"
+              glib:nick="r32g32b32a32-float"
+              glib:name="R32g32b32a32Float">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="131">16-bit float RGBA</doc>
+      </member>
+      <member name="g8a8_premultiplied"
+              value="131072"
+              c:identifier="GLY_MEMORY_SELECTION_G8A8_PREMULTIPLIED"
+              glib:nick="g8a8-premultiplied"
+              glib:name="G8a8Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="132">8-bit gray with alpha premultiplied</doc>
+      </member>
+      <member name="g8a8"
+              value="262144"
+              c:identifier="GLY_MEMORY_SELECTION_G8A8"
+              glib:nick="g8a8"
+              glib:name="G8a8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="133">8-bit gray with alpha</doc>
+      </member>
+      <member name="g8"
+              value="524288"
+              c:identifier="GLY_MEMORY_SELECTION_G8"
+              glib:nick="g8"
+              glib:name="G8">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="134">8-bit gray</doc>
+      </member>
+      <member name="g16a16_premultiplied"
+              value="1048576"
+              c:identifier="GLY_MEMORY_SELECTION_G16A16_PREMULTIPLIED"
+              glib:nick="g16a16-premultiplied"
+              glib:name="G16a16Premultiplied">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="135">16-bit gray with alpha premultiplied</doc>
+      </member>
+      <member name="g16a16"
+              value="2097152"
+              c:identifier="GLY_MEMORY_SELECTION_G16A16"
+              glib:nick="g16a16"
+              glib:name="G16a16">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="136">16-bit gray with alpha</doc>
+      </member>
+      <member name="g16"
+              value="4194304"
+              c:identifier="GLY_MEMORY_SELECTION_G16"
+              glib:nick="g16"
+              glib:name="G16">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="137">16-bit gray</doc>
+      </member>
+    </bitfield>
+    <class name="NewFrame"
+           c:symbol-prefix="new_frame"
+           c:type="GlyNewFrame"
+           version="2.0"
+           parent="GObject.Object"
+           glib:type-name="GlyNewFrame"
+           glib:get-type="gly_new_frame_get_type"
+           glib:type-struct="NewFrameClass">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="836">New frame</doc>
+      <source-position filename="libglycin/include/glycin.h" line="844"/>
+      <method name="set_color_icc_profile"
+              c:identifier="gly_new_frame_set_color_icc_profile"
+              version="2.0">
+        <source-position filename="libglycin/include/glycin.h" line="855"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="libglycin/include/glycin.h"
+               line="851">`TRUE` if format supports ICC color profiles.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="new_frame" transfer-ownership="none">
+            <type name="NewFrame" c:type="GlyNewFrame*"/>
+          </instance-parameter>
+          <parameter name="icc_profile" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="libglycin/include/glycin.h"
+                 line="849">ICC profile</doc>
+            <type name="GLib.Bytes" c:type="GBytes*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <record name="NewFrameClass"
+            c:type="GlyNewFrameClass"
+            glib:is-gtype-struct-for="NewFrame">
+      <source-position filename="libglycin/include/glycin.h" line="844"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <enumeration name="SandboxSelector"
+                 version="2.0"
+                 glib:type-name="GlySandboxSelector"
+                 glib:get-type="gly_sandbox_selector_get_type"
+                 c:type="GlySandboxSelector">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="78">Sandbox mechanisms
+
+::: warning
+    Using @GLY_SANDBOX_SELECTOR_NOT_SANDBOXED will disable an important security layer that sandboxes loaders. It is only intended for testing and development purposes.</doc>
+      <member name="auto"
+              value="0"
+              c:identifier="GLY_SANDBOX_SELECTOR_AUTO"
+              glib:nick="auto"
+              glib:name="Auto">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="80">This mode selects `bwrap` outside of Flatpaks and usually
+ `flatpak-spawn` inside of Flatpaks. The sandbox is disabled
+ automatically inside of Flatpak development environments.
+ Inside of Flatpaks, `flatpak-spawn` is used to create the sandbox. This
+ mechanism starts an installed Flatpak with the same app id. For
+ development, Flatpak are usually not installed and the sandbox can
+ therefore not be used. If the sandbox has been started via
+ `flatpak-builder --run` (i.e. without installed Flatpak) and the app id
+ ends with `Devel`, the sandbox is disabled.</doc>
+      </member>
+      <member name="bwrap"
+              value="1"
+              c:identifier="GLY_SANDBOX_SELECTOR_BWRAP"
+              glib:nick="bwrap"
+              glib:name="Bwrap">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="90">bwrap</doc>
+      </member>
+      <member name="flatpak_spawn"
+              value="2"
+              c:identifier="GLY_SANDBOX_SELECTOR_FLATPAK_SPAWN"
+              glib:nick="flatpak-spawn"
+              glib:name="FlatpakSpawn">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="91">flatpak-spawn</doc>
+      </member>
+      <member name="not_sandboxed"
+              value="3"
+              c:identifier="GLY_SANDBOX_SELECTOR_NOT_SANDBOXED"
+              glib:nick="not-sandboxed"
+              glib:name="NotSandboxed">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="92">Disable sandbox. Unsafe, only use for testing and development.</doc>
+      </member>
+    </enumeration>
+    <function name="loader_error_quark"
+              c:identifier="gly_loader_error_quark"
+              moved-to="LoaderError.quark">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="822">Error quark for [error@GlyLoaderError]</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="827">The error domain</doc>
+        <type name="GLib.Quark" c:type="GQuark"/>
+      </return-value>
+    </function>
+    <function name="memory_format_has_alpha"
+              c:identifier="gly_memory_format_has_alpha"
+              moved-to="MemoryFormat.has_alpha"
+              version="2.0">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="647">Whether a memory format has an alpha channel</doc>
+      <source-position filename="libglycin/include/glycin.h" line="657"/>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="653">Returns `TRUE` if the memory format has an alpha channel</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="memory_format" transfer-ownership="none">
+          <type name="MemoryFormat" c:type="GlyMemoryFormat"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="memory_format_is_premultiplied"
+              c:identifier="gly_memory_format_is_premultiplied"
+              moved-to="MemoryFormat.is_premultiplied"
+              version="2.0">
+      <doc xml:space="preserve"
+           filename="libglycin/include/glycin.h"
+           line="659">Whether a memory format has an alpha channel and the color values are
+premultiplied with the alpha value</doc>
+      <source-position filename="libglycin/include/glycin.h" line="670"/>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="libglycin/include/glycin.h"
+             line="666">Returns `TRUE` if color channels are premultiplied</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="memory_format" transfer-ownership="none">
+          <type name="MemoryFormat" c:type="GlyMemoryFormat"/>
+        </parameter>
+      </parameters>
+    </function>
+  </namespace>
+</repository>

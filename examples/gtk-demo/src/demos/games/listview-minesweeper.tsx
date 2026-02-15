@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkGridView, GtkHeaderBar, GtkImage, GtkLabel, x } from "@gtkx/react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
 
@@ -76,6 +76,7 @@ const defaultCell: Cell = {
 const ListViewMinesweeperDemo = () => {
     const [board, setBoard] = useState<Cell[]>(createBoard);
     const [gameState, setGameState] = useState<GameState>("playing");
+    const soundStreamRef = useRef<Gtk.MediaFile | null>(null);
 
     const revealCell = useCallback((index: number, currentBoard: Cell[]): Cell[] => {
         const cell = currentBoard[index];
@@ -94,6 +95,7 @@ const ListViewMinesweeperDemo = () => {
         const stream = Gtk.MediaFile.newForFilename(path);
         stream.setVolume(1.0);
         stream.play();
+        soundStreamRef.current = stream;
     }, []);
 
     const handleCellClick = useCallback(

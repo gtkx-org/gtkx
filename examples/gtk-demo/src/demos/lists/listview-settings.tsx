@@ -279,6 +279,7 @@ const ListViewSettingsDemo = () => {
                             selectionMode={Gtk.SelectionMode.BROWSE}
                             onSelectionChanged={handleSchemaSelected}
                             cssClasses={["navigation-sidebar"]}
+                            autoexpand
                             renderItem={(schemaId: string | null) => <GtkLabel label={schemaId ?? ""} xalign={0} />}
                         >
                             {getSchemaTree().map(renderSchemaNode)}

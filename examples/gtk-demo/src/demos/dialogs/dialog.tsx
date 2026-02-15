@@ -87,11 +87,7 @@ const DialogDemo = ({ window }: DemoProps) => {
                 createPortal(
                     <AdwAlertDialog
                         heading="Test message"
-                        body={
-                            clickCount === 1
-                                ? "This message box has been popped up 1 time."
-                                : `This message box has been popped up ${clickCount} times.`
-                        }
+                        body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
                         defaultResponse="ok"
                         closeResponse="cancel"
                         onResponse={() => setShowMessageDialog(false)}

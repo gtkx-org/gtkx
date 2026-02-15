@@ -8,12 +8,12 @@ import {
     GtkButton,
     GtkCheckButton,
     GtkDropDown,
+    GtkEntry,
     GtkImage,
     GtkLabel,
     GtkMenuButton,
     GtkPopover,
     GtkScrolledWindow,
-    GtkSearchEntry,
     GtkSeparator,
     GtkSpinButton,
     x,
@@ -146,19 +146,19 @@ const SuggestionEntry = ({ words, placeholder }: { words: string[]; placeholder:
     const hasSuggestions = suggestions.length > 0;
 
     return (
-        <GtkBox spacing={8}>
-            <GtkSearchEntry
+        <GtkBox cssClasses={["linked"]}>
+            <GtkEntry
                 text={text}
                 hexpand
                 placeholderText={placeholder}
-                onSearchChanged={(entry) => setText(entry.getText())}
+                onChanged={(entry) => setText(entry.getText())}
             />
-            <GtkMenuButton iconName="view-more-symbolic" sensitive={hasSuggestions} active={hasSuggestions}>
+            <GtkMenuButton iconName="pan-down-symbolic" sensitive={hasSuggestions}>
                 <x.Slot for={GtkMenuButton} id="popover">
                     <GtkPopover hasArrow={false} position={Gtk.PositionType.BOTTOM}>
                         <GtkScrolledWindow
-                            heightRequest={200}
-                            widthRequest={300}
+                            maxContentHeight={400}
+                            propagateNaturalHeight
                             hscrollbarPolicy={Gtk.PolicyType.NEVER}
                         >
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
@@ -188,7 +188,7 @@ const TimesDropDown = () => {
         <GtkDropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
-            renderItem={(label: string | null) => (
+            renderListItem={(label: string | null) => (
                 <GtkBox spacing={10}>
                     <GtkLabel label={label ?? ""} xalign={0} hexpand />
                     <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1.0 : 0.0} />
@@ -210,7 +210,7 @@ const TimesSectionedDropDown = () => {
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
             enableSearch
-            renderItem={(label: string | null) => (
+            renderListItem={(label: string | null) => (
                 <GtkBox spacing={10}>
                     <GtkLabel label={label ?? ""} xalign={0} hexpand />
                     <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1.0 : 0.0} />
@@ -255,6 +255,18 @@ const DevicesDropDown = () => {
                 return (
                     <GtkBox spacing={10}>
                         <GtkImage iconName={device.icon} />
+                        <GtkLabel label={device.title} xalign={0} hexpand />
+                    </GtkBox>
+                );
+            }}
+            renderListItem={(label: string | null) => {
+                const device = devices.find((d) => d.id === label);
+                if (!device) {
+                    return <GtkLabel label={label ?? ""} />;
+                }
+                return (
+                    <GtkBox spacing={10}>
+                        <GtkImage iconName={device.icon} />
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2}>
                             <GtkLabel label={device.title} xalign={0} />
                             <GtkLabel label={device.description} xalign={0} cssClasses={["dim-label"]} />
@@ -277,74 +289,61 @@ interface DirEntry {
     icon: string;
 }
 
+function loadDirectoryEntries(): DirEntry[] {
+    const cwd = process.cwd();
+    try {
+        const entries = readdirSync(cwd);
+        const results: DirEntry[] = [];
+        for (const name of entries) {
+            let isDir = false;
+            try {
+                isDir = statSync(`${cwd}/${name}`).isDirectory();
+            } catch {}
+            results.push({
+                path: name,
+                name,
+                icon: isDir ? "folder-symbolic" : "text-x-generic-symbolic",
+            });
+        }
+        return results.sort((a, b) => a.name.localeCompare(b.name));
+    } catch {
+        return [];
+    }
+}
+
+let directoryEntries: DirEntry[] | undefined;
+function getDirectoryEntries() {
+    if (!directoryEntries) {
+        directoryEntries = loadDirectoryEntries();
+    }
+    return directoryEntries;
+}
+
 const DirectorySuggestionEntry = () => {
     const [text, setText] = useState("");
-
-    const suggestions = useMemo((): DirEntry[] => {
-        if (!text || !text.startsWith("/")) return [];
-
-        const lastSlash = text.lastIndexOf("/");
-        const dir = text.slice(0, lastSlash + 1);
-        const prefix = text.slice(lastSlash + 1).toLowerCase();
-
-        try {
-            const entries = readdirSync(dir);
-            const results: DirEntry[] = [];
-            for (const name of entries) {
-                if (prefix && !name.toLowerCase().startsWith(prefix)) continue;
-                let isDir = false;
-                try {
-                    isDir = statSync(dir + name).isDirectory();
-                } catch {}
-                results.push({
-                    path: dir + name + (isDir ? "/" : ""),
-                    name,
-                    icon: isDir ? "folder-symbolic" : "text-x-generic-symbolic",
-                });
-                if (results.length >= 10) break;
-            }
-            return results.sort((a, b) => a.name.localeCompare(b.name));
-        } catch {
-            return [];
-        }
-    }, [text]);
-
-    const hasSuggestions = suggestions.length > 0;
+    const entries = getDirectoryEntries();
 
     return (
-        <GtkBox spacing={8}>
-            <GtkSearchEntry
-                text={text}
-                hexpand
-                placeholderText="Directory path\u2026"
-                onSearchChanged={(entry) => setText(entry.getText())}
-            />
-            <GtkMenuButton iconName="view-more-symbolic" sensitive={hasSuggestions} active={hasSuggestions}>
+        <GtkBox cssClasses={["linked"]}>
+            <GtkEntry text={text} hexpand onChanged={(entry) => setText(entry.getText())} />
+            <GtkMenuButton iconName="pan-down-symbolic" tooltipText="Show suggestions">
                 <x.Slot for={GtkMenuButton} id="popover">
                     <GtkPopover hasArrow={false} position={Gtk.PositionType.BOTTOM}>
                         <GtkScrolledWindow
-                            heightRequest={200}
-                            widthRequest={300}
+                            maxContentHeight={400}
+                            propagateNaturalHeight
                             hscrollbarPolicy={Gtk.PolicyType.NEVER}
                         >
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                                {suggestions.map((entry) => (
+                                {entries.map((entry) => (
                                     <GtkButton
                                         key={entry.path}
                                         cssClasses={["flat"]}
-                                        onClicked={() => setText(entry.path)}
+                                        onClicked={() => setText(entry.name)}
                                     >
                                         <GtkBox spacing={8}>
                                             <GtkImage iconName={entry.icon} />
-                                            <GtkLabel
-                                                label={highlightMatch(
-                                                    entry.name,
-                                                    text.slice(text.lastIndexOf("/") + 1),
-                                                )}
-                                                useMarkup
-                                                halign={Gtk.Align.START}
-                                                hexpand
-                                            />
+                                            <GtkLabel label={entry.name} halign={Gtk.Align.START} hexpand />
                                         </GtkBox>
                                     </GtkButton>
                                 ))}
@@ -415,11 +414,11 @@ const ListViewSelectionsDemo = () => {
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={10}>
                 <GtkLabel label="Suggestions" cssClasses={["title-4"]} />
 
-                <SuggestionEntry words={suggestionWords} placeholder="Words with T or G\u2026" />
-
-                <SuggestionEntry words={destinationWords} placeholder="Destination" />
+                <SuggestionEntry words={suggestionWords} placeholder="Words with T or G…" />
 
                 <DirectorySuggestionEntry />
+
+                <SuggestionEntry words={destinationWords} placeholder="Destination" />
             </GtkBox>
         </GtkBox>
     );

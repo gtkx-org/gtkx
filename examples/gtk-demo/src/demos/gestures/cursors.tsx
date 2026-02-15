@@ -1,7 +1,7 @@
 import { css } from "@gtkx/css";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkLabel, GtkListBox, GtkListBoxRow, GtkPicture, GtkScrolledWindow } from "@gtkx/react";
+import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react";
 import { useMemo } from "react";
 import type { Demo } from "../types.js";
 import aliasPath from "./cursors/alias_cursor.png";
@@ -105,7 +105,7 @@ function getCursorTexture(info: CursorInfo): Gdk.Texture {
 
 const CursorPreview = ({ info }: { info: CursorInfo }) => {
     const texture = useMemo(() => getCursorTexture(info), [info]);
-    return <GtkPicture paintable={texture} canShrink widthRequest={24} heightRequest={24} />;
+    return <GtkImage paintable={texture} />;
 };
 
 const CursorRow = ({ info }: { info: CursorInfo }) => {
@@ -135,48 +135,38 @@ const CursorRow = ({ info }: { info: CursorInfo }) => {
     }, [info]);
 
     return (
-        <GtkListBoxRow>
-            <GtkBox spacing={10}>
+        <GtkListBoxRow activatable={false}>
+            <GtkBox spacing={10} marginStart={10} marginEnd={10} marginTop={10} marginBottom={10}>
                 <CursorPreview info={info} />
-                <GtkBox spacing={4}>
-                    <GtkFrame>
-                        <GtkBox
-                            cssClasses={[cursorbgStyle]}
-                            widthRequest={32}
-                            heightRequest={32}
-                            cursor={cursors[0]}
-                            tooltipText={`The '${info.name}' cursor`}
-                        />
-                    </GtkFrame>
-                    <GtkFrame>
-                        <GtkBox
-                            cssClasses={[cursorbgStyle]}
-                            widthRequest={32}
-                            heightRequest={32}
-                            cursor={cursors[1]}
-                            tooltipText={`The '${info.name}' cursor from a texture`}
-                        />
-                    </GtkFrame>
-                    <GtkFrame>
-                        <GtkBox
-                            cssClasses={[cursorbgStyle]}
-                            widthRequest={32}
-                            heightRequest={32}
-                            cursor={cursors[2]}
-                            tooltipText={`The '${info.name}' named cursor falling back to a texture cursor`}
-                        />
-                    </GtkFrame>
-                    <GtkFrame>
-                        <GtkBox
-                            cssClasses={[cursorbgStyle]}
-                            widthRequest={32}
-                            heightRequest={32}
-                            cursor={cursors[3]}
-                            tooltipText={`The '${info.name}' texture cursor falling back to a named cursor`}
-                        />
-                    </GtkFrame>
-                </GtkBox>
                 <GtkLabel label={info.name} hexpand xalign={0} />
+                <GtkFrame
+                    widthRequest={32}
+                    heightRequest={32}
+                    cssClasses={[cursorbgStyle]}
+                    cursor={cursors[0]}
+                    tooltipText={`The '${info.name}' named cursor`}
+                />
+                <GtkFrame
+                    widthRequest={32}
+                    heightRequest={32}
+                    cssClasses={[cursorbgStyle]}
+                    cursor={cursors[1]}
+                    tooltipText={`The '${info.name}' image cursor`}
+                />
+                <GtkFrame
+                    widthRequest={32}
+                    heightRequest={32}
+                    cssClasses={[cursorbgStyle]}
+                    cursor={cursors[2]}
+                    tooltipText={`The '${info.name}' named cursor falling back to an image cursor`}
+                />
+                <GtkFrame
+                    widthRequest={32}
+                    heightRequest={32}
+                    cssClasses={[cursorbgStyle]}
+                    cursor={cursors[3]}
+                    tooltipText={`The '${info.name}' image cursor falling back to a named cursor`}
+                />
             </GtkBox>
         </GtkListBoxRow>
     );

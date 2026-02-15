@@ -129,59 +129,54 @@ export class WidgetNode<
             throw new Error(`Container is undefined for '${this.typeName}'`);
         }
 
-        this.signalStore.blockAll();
-        try {
-            applyAccessibleProps(this.container, oldProps, newProps);
+        applyAccessibleProps(this.container, oldProps, newProps);
 
-            const propNames = new Set([
-                ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
-                ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
-            ]);
+        const propNames = new Set([
+            ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
+            ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
+        ]);
 
-            const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
-            const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
+        const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
+        const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
 
-            for (const name of propNames) {
-                if (isAccessibleProp(name)) continue;
-                if (isConstructOnlyProp(this.container, name)) continue;
+        for (const name of propNames) {
+            if (isAccessibleProp(name)) continue;
+            if (isConstructOnlyProp(this.container, name)) continue;
 
-                const oldValue = oldProps?.[name];
-                const newValue = newProps[name];
+            const oldValue = oldProps?.[name];
+            const newValue = newProps[name];
 
-                if (oldValue === newValue) continue;
+            if (oldValue === newValue) continue;
 
-                const signalName = resolveSignal(this.container, name);
+            const signalName = resolveSignal(this.container, name);
 
-                if (signalName) {
-                    pendingSignals.push({ name, newValue });
-                } else if (newValue !== undefined) {
-                    pendingProperties.push({ name, oldValue, newValue });
-                } else if (oldValue !== undefined) {
-                    const defaultValue = this.getPropertyDefaultValue(name);
-                    if (defaultValue !== undefined) {
-                        pendingProperties.push({ name, oldValue, newValue: defaultValue });
-                    }
+            if (signalName) {
+                pendingSignals.push({ name, newValue });
+            } else if (newValue !== undefined) {
+                pendingProperties.push({ name, oldValue, newValue });
+            } else if (oldValue !== undefined) {
+                const defaultValue = this.getPropertyDefaultValue(name);
+                if (defaultValue !== undefined) {
+                    pendingProperties.push({ name, oldValue, newValue: defaultValue });
+                }
+            }
+        }
+
+        for (const { name, newValue } of pendingSignals) {
+            const signalName = resolveSignal(this.container, name);
+            if (!signalName) continue;
+            const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
+            this.signalStore.set(this, this.container, signalName, handler);
+        }
+
+        for (const { name, oldValue, newValue } of pendingProperties) {
+            if (name === "text" && oldValue !== undefined && isEditable(this.container)) {
+                if (oldValue !== this.container.getText()) {
+                    continue;
                 }
             }
 
-            for (const { name, newValue } of pendingSignals) {
-                const signalName = resolveSignal(this.container, name);
-                if (!signalName) continue;
-                const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-                this.signalStore.set(this, this.container, signalName, handler);
-            }
-
-            for (const { name, oldValue, newValue } of pendingProperties) {
-                if (name === "text" && oldValue !== undefined && isEditable(this.container)) {
-                    if (oldValue !== this.container.getText()) {
-                        continue;
-                    }
-                }
-
-                this.setProperty(name, newValue);
-            }
-        } finally {
-            this.signalStore.unblockAll();
+            this.setProperty(name, newValue);
         }
     }
 

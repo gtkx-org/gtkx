@@ -18,7 +18,7 @@ import { ListSectionNode } from "./list-section.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-const OWN_PROPS = ["selectedId", "onSelectionChanged", "renderItem", "renderHeader"] as const;
+const OWN_PROPS = ["selectedId", "onSelectionChanged", "renderItem", "renderListItem", "renderHeader"] as const;
 
 type DropDownProps = Pick<GtkDropDownProps | AdwComboRowProps, (typeof OWN_PROPS)[number]>;
 
@@ -26,15 +26,22 @@ type DropDownChild = ListItemNode | ListSectionNode | EventControllerNode | Slot
 
 type RenderItemFn = (item: string | null) => ReactNode;
 
+interface FactoryState {
+    factory: Gtk.SignalListItemFactory;
+    fiberRoots: Map<object, Reconciler.FiberRoot>;
+    tornDown: Set<object>;
+    boundLabels: Map<string, object>;
+}
+
 export class DropDownNode extends WidgetNode<DropDownWidget, DropDownProps, DropDownChild> {
     private store = new SimpleListStore();
     private initialSelectedId: string | null | undefined;
 
-    private listFactory: Gtk.SignalListItemFactory | null = null;
-    private listFiberRoots = new Map<object, Reconciler.FiberRoot>();
-    private listTornDown = new Set<object>();
-    private boundLabels = new Map<string, object>();
+    private itemState: FactoryState | null = null;
     private renderItemFn: RenderItemFn | null = null;
+
+    private listItemState: FactoryState | null = null;
+    private renderListItemFn: RenderItemFn | null = null;
 
     private headerRenderer: HeaderItemRenderer | null = null;
 
@@ -113,7 +120,10 @@ export class DropDownNode extends WidgetNode<DropDownWidget, DropDownProps, Drop
     }
 
     public override detachDeletedInstance(): void {
-        this.disposeListFactory();
+        this.disposeFactory(this.itemState);
+        this.itemState = null;
+        this.disposeFactory(this.listItemState);
+        this.listItemState = null;
         this.headerRenderer?.dispose();
         super.detachDeletedInstance();
     }
@@ -145,15 +155,37 @@ export class DropDownNode extends WidgetNode<DropDownWidget, DropDownProps, Drop
 
         if (hasChanged(oldProps, newProps, "renderItem")) {
             if (newProps.renderItem) {
-                if (!this.listFactory) {
-                    this.setupListFactory();
+                if (!this.itemState) {
+                    this.itemState = this.createFactory(
+                        () => this.renderItemFn,
+                        (f) => this.container.setFactory(f),
+                    );
                 }
                 this.renderItemFn = newProps.renderItem;
-                this.rebindAllListItems();
-            } else if (this.listFactory) {
-                this.disposeListFactory();
-                this.container.setListFactory(null);
+                this.rebindAll(this.itemState, this.renderItemFn);
+            } else if (this.itemState) {
+                this.disposeFactory(this.itemState);
+                this.itemState = null;
+                this.container.setFactory(null);
                 this.renderItemFn = null;
+            }
+        }
+
+        if (hasChanged(oldProps, newProps, "renderListItem")) {
+            if (newProps.renderListItem) {
+                if (!this.listItemState) {
+                    this.listItemState = this.createFactory(
+                        () => this.renderListItemFn,
+                        (f) => this.container.setListFactory(f),
+                    );
+                }
+                this.renderListItemFn = newProps.renderListItem;
+                this.rebindAll(this.listItemState, this.renderListItemFn);
+            } else if (this.listItemState) {
+                this.disposeFactory(this.listItemState);
+                this.listItemState = null;
+                this.container.setListFactory(null);
+                this.renderListItemFn = null;
             }
         }
 
@@ -171,76 +203,82 @@ export class DropDownNode extends WidgetNode<DropDownWidget, DropDownProps, Drop
         }
     }
 
-    private setupListFactory(): void {
-        const factory = new Gtk.SignalListItemFactory();
+    private createFactory(
+        getRenderFn: () => RenderItemFn | null,
+        applyFactory: (factory: Gtk.SignalListItemFactory) => void,
+    ): FactoryState {
+        const state: FactoryState = {
+            factory: new Gtk.SignalListItemFactory(),
+            fiberRoots: new Map(),
+            tornDown: new Set(),
+            boundLabels: new Map(),
+        };
 
-        this.signalStore.set(this, factory, "setup", (listItem: Gtk.ListItem) => {
+        this.signalStore.set(this, state.factory, "setup", (listItem: Gtk.ListItem) => {
             const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL);
             box.setValign(Gtk.Align.CENTER);
             listItem.setChild(box);
             const fiberRoot = createFiberRoot(box);
-            this.listFiberRoots.set(listItem, fiberRoot);
-            const element = this.renderItemFn?.(null);
+            state.fiberRoots.set(listItem, fiberRoot);
+            const element = getRenderFn()?.(null);
             reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
         });
 
-        this.signalStore.set(this, factory, "bind", (listItem: Gtk.ListItem) => {
-            const fiberRoot = this.listFiberRoots.get(listItem);
+        this.signalStore.set(this, state.factory, "bind", (listItem: Gtk.ListItem) => {
+            const fiberRoot = state.fiberRoots.get(listItem);
             if (!fiberRoot) return;
             const stringObject = listItem.getItem();
             const label = stringObject instanceof Gtk.StringObject ? stringObject.getString() : null;
-            if (label !== null) this.boundLabels.set(label, listItem);
-            const element = this.renderItemFn?.(label);
+            if (label !== null) state.boundLabels.set(label, listItem);
+            const element = getRenderFn()?.(label);
             reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
         });
 
-        this.signalStore.set(this, factory, "unbind", (listItem: Gtk.ListItem) => {
+        this.signalStore.set(this, state.factory, "unbind", (listItem: Gtk.ListItem) => {
             const stringObject = listItem.getItem();
             if (stringObject instanceof Gtk.StringObject) {
-                this.boundLabels.delete(stringObject.getString());
+                state.boundLabels.delete(stringObject.getString());
             }
         });
 
-        this.signalStore.set(this, factory, "teardown", (listItem: Gtk.ListItem) => {
-            const fiberRoot = this.listFiberRoots.get(listItem);
+        this.signalStore.set(this, state.factory, "teardown", (listItem: Gtk.ListItem) => {
+            const fiberRoot = state.fiberRoots.get(listItem);
             if (fiberRoot) {
-                this.listTornDown.add(listItem);
+                state.tornDown.add(listItem);
                 reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
                 queueMicrotask(() => {
-                    this.listFiberRoots.delete(listItem);
-                    this.listTornDown.delete(listItem);
+                    state.fiberRoots.delete(listItem);
+                    state.tornDown.delete(listItem);
                 });
             }
         });
 
-        this.listFactory = factory;
-        this.container.setListFactory(factory);
+        applyFactory(state.factory);
+        return state;
     }
 
-    private rebindAllListItems(): void {
-        for (const [label, listItem] of this.boundLabels) {
-            const fiberRoot = this.listFiberRoots.get(listItem);
+    private rebindAll(state: FactoryState, renderFn: RenderItemFn): void {
+        for (const [label, listItem] of state.boundLabels) {
+            const fiberRoot = state.fiberRoots.get(listItem);
             if (!fiberRoot) continue;
-            const element = this.renderItemFn?.(label);
+            const element = renderFn(label);
             reconciler.getInstance().updateContainer(element, fiberRoot, null, () => {});
         }
     }
 
-    private disposeListFactory(): void {
-        if (this.listFactory) {
-            this.signalStore.set(this, this.listFactory, "setup", undefined);
-            this.signalStore.set(this, this.listFactory, "bind", undefined);
-            this.signalStore.set(this, this.listFactory, "unbind", undefined);
-            this.signalStore.set(this, this.listFactory, "teardown", undefined);
-            this.listFactory = null;
-        }
-        for (const [listItem, fiberRoot] of this.listFiberRoots) {
-            if (!this.listTornDown.has(listItem)) {
+    private disposeFactory(state: FactoryState | null): void {
+        if (!state) return;
+        this.signalStore.set(this, state.factory, "setup", undefined);
+        this.signalStore.set(this, state.factory, "bind", undefined);
+        this.signalStore.set(this, state.factory, "unbind", undefined);
+        this.signalStore.set(this, state.factory, "teardown", undefined);
+        for (const [listItem, fiberRoot] of state.fiberRoots) {
+            if (!state.tornDown.has(listItem)) {
                 reconciler.getInstance().updateContainer(null, fiberRoot, null, () => {});
             }
         }
-        this.listFiberRoots.clear();
-        this.listTornDown.clear();
-        this.boundLabels.clear();
+        state.fiberRoots.clear();
+        state.tornDown.clear();
+        state.boundLabels.clear();
     }
 }

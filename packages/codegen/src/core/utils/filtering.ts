@@ -33,6 +33,7 @@ export function filterSupportedMethods<T extends MethodLike>(
 ): T[] {
     const seen = new Set<string>();
     return methods.filter((method) => {
+        if (method.name === "") return false;
         if (method.shadowedBy) return false;
         if (isMethodDuplicate(method.name, method.cIdentifier, seen)) return false;
         if (hasUnsupportedCallbacks(method.parameters)) return false;

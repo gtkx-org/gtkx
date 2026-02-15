@@ -22,6 +22,7 @@
 //! - `Boolean`
 
 use std::ffi::{CStr, c_char, c_void};
+use std::sync::mpsc;
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::FromGlibPtrNone as _};
@@ -150,11 +151,16 @@ impl ReadRequest {
 pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
     let request = ReadRequest::from_js(&mut cx)?;
 
-    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(move || request.execute());
+    let (tx, rx) = mpsc::channel::<anyhow::Result<Value>>();
 
-    let value = rx
-        .recv()
-        .or_else(|err| cx.throw_error(format!("Error receiving read result: {err}")))?
+    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
+    gtk_dispatch::GtkDispatcher::global().schedule(move || {
+        let _ = tx.send(request.execute());
+    });
+
+    let value = gtk_dispatch::GtkDispatcher::global()
+        .wait_for_gtk_result(&mut cx, &rx)
+        .or_else(|err| cx.throw_error(err.to_string()))?
         .or_else(|err| cx.throw_error(format!("Error during read: {err}")))?;
 
     value.to_js_value(&mut cx)
@@ -209,10 +215,16 @@ impl WriteRequest {
 pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let request = WriteRequest::from_js(&mut cx)?;
 
-    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(move || request.execute());
+    let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
 
-    rx.recv()
-        .or_else(|err| cx.throw_error(format!("Error receiving write result: {err}")))?
+    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
+    gtk_dispatch::GtkDispatcher::global().schedule(move || {
+        let _ = tx.send(request.execute());
+    });
+
+    gtk_dispatch::GtkDispatcher::global()
+        .wait_for_gtk_result(&mut cx, &rx)
+        .or_else(|err| cx.throw_error(err.to_string()))?
         .or_else(|err| cx.throw_error(format!("Error during write: {err}")))?;
 
     Ok(cx.undefined())
@@ -258,11 +270,16 @@ impl ReadPointerRequest {
 pub fn read_pointer(mut cx: FunctionContext) -> JsResult<JsValue> {
     let request = ReadPointerRequest::from_js(&mut cx)?;
 
-    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(move || request.execute());
+    let (tx, rx) = mpsc::channel::<anyhow::Result<NativeHandle>>();
 
-    let handle = rx
-        .recv()
-        .or_else(|err| cx.throw_error(format!("Error receiving read_pointer result: {err}")))?
+    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
+    gtk_dispatch::GtkDispatcher::global().schedule(move || {
+        let _ = tx.send(request.execute());
+    });
+
+    let handle = gtk_dispatch::GtkDispatcher::global()
+        .wait_for_gtk_result(&mut cx, &rx)
+        .or_else(|err| cx.throw_error(err.to_string()))?
         .or_else(|err| cx.throw_error(format!("Error during read_pointer: {err}")))?;
 
     Ok(cx.boxed(handle).upcast())
@@ -318,10 +335,16 @@ impl WritePointerRequest {
 pub fn write_pointer(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let request = WritePointerRequest::from_js(&mut cx)?;
 
-    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(move || request.execute());
+    let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
 
-    rx.recv()
-        .or_else(|err| cx.throw_error(format!("Error receiving write_pointer result: {err}")))?
+    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
+    gtk_dispatch::GtkDispatcher::global().schedule(move || {
+        let _ = tx.send(request.execute());
+    });
+
+    gtk_dispatch::GtkDispatcher::global()
+        .wait_for_gtk_result(&mut cx, &rx)
+        .or_else(|err| cx.throw_error(err.to_string()))?
         .or_else(|err| cx.throw_error(format!("Error during write_pointer: {err}")))?;
 
     Ok(cx.undefined())

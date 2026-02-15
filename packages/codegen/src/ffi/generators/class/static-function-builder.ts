@@ -10,8 +10,20 @@ import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
 import { filterSupportedFunctions } from "../../../core/utils/filtering.js";
-import { normalizeClassName } from "../../../core/utils/naming.js";
+import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../../../core/writers/index.js";
+
+function collectParentStaticFunctionNames(cls: GirClass): Set<string> {
+    const names = new Set<string>();
+    let current = cls.getParent();
+    while (current) {
+        for (const func of current.staticFunctions) {
+            names.add(toValidIdentifier(toCamelCase(func.name)));
+        }
+        current = current.getParent();
+    }
+    return names;
+}
 
 /**
  * Builds static function code for a class.
@@ -19,6 +31,7 @@ import { createMethodBodyWriter, type MethodBodyWriter, type Writers } from "../
 export class StaticFunctionBuilder {
     private readonly className: string;
     private readonly methodBody: MethodBodyWriter;
+    private readonly parentStaticFunctionNames: Set<string>;
 
     constructor(
         private readonly cls: GirClass,
@@ -29,27 +42,17 @@ export class StaticFunctionBuilder {
     ) {
         this.className = normalizeClassName(cls.name);
         this.methodBody = createMethodBodyWriter(ffiMapper, ctx, writers);
+        this.parentStaticFunctionNames = collectParentStaticFunctionNames(cls);
     }
 
-    /**
-     * Builds method structures for all static functions.
-     * Returns structures for batch adding by ClassGenerator.
-     *
-     * @returns Array of method declaration structures
-     *
-     * @example
-     * ```typescript
-     * const builder = new StaticFunctionBuilder(cls, ffiMapper, ctx, builders, options);
-     * const structures = builder.buildStructures();
-     * classDecl.addMethods(structures);
-     * ```
-     */
     buildStructures(): MethodDeclarationStructure[] {
         const supportedFunctions = filterSupportedFunctions(this.cls.staticFunctions, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
         );
 
-        return supportedFunctions.map((func) => this.buildStaticFunctionStructure(func));
+        return supportedFunctions
+            .filter((func) => !this.parentStaticFunctionNames.has(toValidIdentifier(toCamelCase(func.name))))
+            .map((func) => this.buildStaticFunctionStructure(func));
     }
 
     private buildStaticFunctionStructure(func: GirFunction): MethodDeclarationStructure {

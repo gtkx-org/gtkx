@@ -718,8 +718,10 @@ export type DropDownProps<T = unknown, S = unknown> = {
     selectedId?: string | null;
     /** Callback fired when the selected item changes */
     onSelectionChanged?: ((id: string) => void) | null;
-    /** Function to render each item in the popup list. When provided, overrides the default text rendering. */
+    /** Function to render each item. Sets the primary factory, used for both button and popup list unless overridden by renderListItem. */
     renderItem?: ((item: T | null) => ReactNode) | null;
+    /** Function to render items in the popup list only, overriding renderItem for the list. */
+    renderListItem?: ((item: T | null) => ReactNode) | null;
     /** Function to render section headers when using ListSection children */
     renderHeader?: ((item: S | null) => ReactNode) | null;
 };

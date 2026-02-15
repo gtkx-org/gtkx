@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
@@ -25,16 +25,28 @@ const LOREM_IPSUM =
 
 const FILTER_CHUNK_SIZE = 50000;
 
+function loadInitialWords(): string[] {
+    if (existsSync(DICT_FILE)) {
+        try {
+            return readFileSync(DICT_FILE, "utf-8")
+                .split("\n")
+                .map((w) => w.trim())
+                .filter((w) => w.length > 0);
+        } catch {}
+    }
+    return LOREM_IPSUM.split(" ");
+}
+
+const initialWords = loadInitialWords();
+
 const ListViewWordsDemo = ({ window }: DemoProps) => {
-    const [words, setWords] = useState<string[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [words, setWords] = useState(initialWords);
     const [searchText, setSearchText] = useState("");
-    const [filteredWords, setFilteredWords] = useState<string[]>([]);
+    const [filteredWords, setFilteredWords] = useState(initialWords);
     const [filterProgress, setFilterProgress] = useState(1);
     const filterRef = useRef<{ cancelled: boolean }>({ cancelled: false });
 
     const loadFile = useCallback(async (filePath: string) => {
-        setLoading(true);
         try {
             const text = await readFile(filePath, "utf-8");
             const wordList = text
@@ -43,24 +55,9 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
                 .filter((w) => w.length > 0);
             setWords(wordList);
             setFilteredWords(wordList);
-        } catch {
-            const fallback = LOREM_IPSUM.split(" ");
-            setWords(fallback);
-            setFilteredWords(fallback);
-        }
-        setLoading(false);
+            setSearchText("");
+        } catch {}
     }, []);
-
-    useEffect(() => {
-        if (existsSync(DICT_FILE)) {
-            void loadFile(DICT_FILE);
-        } else {
-            const fallback = LOREM_IPSUM.split(" ");
-            setWords(fallback);
-            setFilteredWords(fallback);
-            setLoading(false);
-        }
-    }, [loadFile]);
 
     const handleOpen = useCallback(async () => {
         const dialog = new Gtk.FileDialog();
@@ -123,21 +120,6 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
         setSearchText(entry.getText());
     };
 
-    if (loading) {
-        return (
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={12}
-                halign={Gtk.Align.CENTER}
-                valign={Gtk.Align.CENTER}
-                vexpand
-            >
-                <GtkLabel label="Loading dictionary..." />
-                <GtkProgressBar widthRequest={200} pulseStep={0.1} />
-            </GtkBox>
-        );
-    }
-
     return (
         <>
             <x.Slot for="GtkWindow" id="titlebar">
@@ -151,22 +133,12 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
                 </GtkHeaderBar>
             </x.Slot>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
+                <GtkSearchEntry
+                    text={searchText}
+                    placeholderText="Search words..."
+                    onSearchChanged={handleSearchChanged}
                     hexpand
-                    marginStart={12}
-                    marginEnd={12}
-                    marginTop={12}
-                    marginBottom={12}
-                    spacing={4}
-                >
-                    <GtkSearchEntry
-                        text={searchText}
-                        placeholderText="Search words..."
-                        onSearchChanged={handleSearchChanged}
-                        hexpand
-                    />
-                </GtkBox>
+                />
 
                 <GtkOverlay vexpand hexpand>
                     <GtkScrolledWindow vexpand hexpand>
@@ -174,15 +146,13 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
                             vexpand
                             hexpand
                             estimatedItemHeight={32}
+                            selectionMode={Gtk.SelectionMode.NONE}
                             renderItem={(word: string | null) => (
                                 <GtkInscription
                                     text={word ?? ""}
                                     xalign={0}
                                     natChars={20}
                                     textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                                    marginStart={12}
-                                    marginTop={6}
-                                    marginBottom={6}
                                 />
                             )}
                         >
@@ -197,6 +167,7 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
                                 fraction={filterProgress}
                                 halign={Gtk.Align.FILL}
                                 valign={Gtk.Align.START}
+                                hexpand
                             />
                         </x.OverlayChild>
                     )}

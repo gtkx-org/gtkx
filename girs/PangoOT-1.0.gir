@@ -1,0 +1,1526 @@
+<?xml version="1.0"?>
+<!-- This file was automatically generated from C sources - DO NOT EDIT!
+To affect the contents of this file, edit the original C definitions,
+and/or use gtk-doc annotations.  -->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:doc="http://www.gtk.org/introspection/doc/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="PangoFc" version="1.0"/>
+  <include name="freetype2" version="2.0"/>
+  <package name="pangoot"/>
+  <c:include name="pango/pango-ot.h"/>
+  <doc:format name="gi-docgen"/>
+  <namespace name="PangoOT"
+             version="1.0"
+             shared-library="libpangoft2-1.0.so.0"
+             c:identifier-prefixes="PangoOT"
+             c:symbol-prefixes="pango_ot">
+    <alias name="Tag" c:type="PangoOTTag">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="40">The `PangoOTTag` typedef is used to represent TrueType and OpenType
+four letter tags inside Pango. Use PANGO_OT_TAG_MAKE()
+or PANGO_OT_TAG_MAKE_FROM_STRING() macros to create PangoOTTags manually.</doc>
+      <source-position filename="pango/pango-ot.h" line="47"/>
+      <type name="guint32" c:type="guint32"/>
+    </alias>
+    <constant name="ALL_GLYPHS"
+              value="65535"
+              c:type="PANGO_OT_ALL_GLYPHS"
+              version="1.16">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="97">This is used as the property bit in pango_ot_ruleset_add_feature() when a
+feature should be applied to all glyphs.</doc>
+      <source-position filename="pango/pango-ot.h" line="142"/>
+      <type name="guint" c:type="guint"/>
+    </constant>
+    <record name="Buffer"
+            c:type="PangoOTBuffer"
+            opaque="1"
+            glib:type-name="PangoOTBuffer"
+            glib:get-type="pango_ot_buffer_get_type"
+            c:symbol-prefix="buffer">
+      <source-position filename="pango/pango-ot.h" line="76"/>
+      <constructor name="new" c:identifier="pango_ot_buffer_new" version="1.4">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-buffer.c"
+             line="40">Creates a new `PangoOTBuffer` for the given OpenType font.</doc>
+        <source-position filename="pango/pango-ot.h" line="323"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-buffer.c"
+               line="46">the newly allocated `PangoOTBuffer`, which should
+  be freed with [method@PangoOT.Buffer.destroy].</doc>
+          <type name="Buffer" c:type="PangoOTBuffer*"/>
+        </return-value>
+        <parameters>
+          <parameter name="font" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="42">a `PangoFcFont`</doc>
+            <type name="PangoFc.Font" c:type="PangoFcFont*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="add_glyph"
+              c:identifier="pango_ot_buffer_add_glyph"
+              version="1.4">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-buffer.c"
+             line="90">Appends a glyph to a `PangoOTBuffer`, with @properties identifying which
+features should be applied on this glyph.
+
+See [method@PangoOT.Ruleset.add_feature].</doc>
+        <source-position filename="pango/pango-ot.h" line="332"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="buffer" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="92">a `PangoOTBuffer`</doc>
+            <type name="Buffer" c:type="PangoOTBuffer*"/>
+          </instance-parameter>
+          <parameter name="glyph" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="93">the glyph index to add, like a `PangoGlyph`</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+          <parameter name="properties" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="94">the glyph properties</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+          <parameter name="cluster" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="95">the cluster that this glyph belongs to</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="clear" c:identifier="pango_ot_buffer_clear" version="1.4">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-buffer.c"
+             line="76">Empties a `PangoOTBuffer`, make it ready to add glyphs to.</doc>
+        <source-position filename="pango/pango-ot.h" line="327"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="buffer" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="78">a `PangoOTBuffer`</doc>
+            <type name="Buffer" c:type="PangoOTBuffer*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="destroy"
+              c:identifier="pango_ot_buffer_destroy"
+              version="1.4">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-buffer.c"
+             line="61">Destroys a `PangoOTBuffer` and free all associated memory.</doc>
+        <source-position filename="pango/pango-ot.h" line="325"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="buffer" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="63">a `PangoOTBuffer`</doc>
+            <type name="Buffer" c:type="PangoOTBuffer*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_glyphs"
+              c:identifier="pango_ot_buffer_get_glyphs"
+              version="1.4">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-buffer.c"
+             line="152">Gets the glyph array contained in a `PangoOTBuffer`.
+
+The glyphs are owned by the buffer and should not be freed,
+and are only valid as long as buffer is not modified.</doc>
+        <source-position filename="pango/pango-ot.h" line="337"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="buffer" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="154">a `PangoOTBuffer`</doc>
+            <type name="Buffer" c:type="const PangoOTBuffer*"/>
+          </instance-parameter>
+          <parameter name="glyphs"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="155">location to
+  store the array of glyphs</doc>
+            <array length="1" zero-terminated="0" c:type="PangoOTGlyph**">
+              <type name="Glyph" c:type="PangoOTGlyph*"/>
+            </array>
+          </parameter>
+          <parameter name="n_glyphs"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="157">location to store the number of glyphs</doc>
+            <type name="gint" c:type="int*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="output"
+              c:identifier="pango_ot_buffer_output"
+              version="1.4">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-buffer.c"
+             line="178">Exports the glyphs in a `PangoOTBuffer` into a `PangoGlyphString`.
+
+This is typically used after the OpenType layout processing
+is over, to convert the resulting glyphs into a generic Pango
+glyph string.</doc>
+        <source-position filename="pango/pango-ot.h" line="341"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="buffer" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="180">a `PangoOTBuffer`</doc>
+            <type name="Buffer" c:type="const PangoOTBuffer*"/>
+          </instance-parameter>
+          <parameter name="glyphs" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="181">a `PangoGlyphString`</doc>
+            <type name="Pango.GlyphString" c:type="PangoGlyphString*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_rtl"
+              c:identifier="pango_ot_buffer_set_rtl"
+              version="1.4">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-buffer.c"
+             line="113">Sets whether glyphs will be rendered right-to-left.
+
+This setting is needed for proper horizontal positioning
+of right-to-left scripts.</doc>
+        <source-position filename="pango/pango-ot.h" line="329"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="buffer" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="115">a `PangoOTBuffer`</doc>
+            <type name="Buffer" c:type="PangoOTBuffer*"/>
+          </instance-parameter>
+          <parameter name="rtl" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="116">%TRUE for right-to-left text</doc>
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_zero_width_marks"
+              c:identifier="pango_ot_buffer_set_zero_width_marks"
+              version="1.6">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-buffer.c"
+             line="132">Sets whether characters with a mark class should be forced to zero width.
+
+This setting is needed for proper positioning of Arabic accents,
+but will produce incorrect results with standard OpenType Indic
+fonts.</doc>
+        <source-position filename="pango/pango-ot.h" line="345"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="buffer" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="134">a `PangoOTBuffer`</doc>
+            <type name="Buffer" c:type="PangoOTBuffer*"/>
+          </instance-parameter>
+          <parameter name="zero_width_marks" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-buffer.c"
+                 line="135">%TRUE if characters with a mark class should
+  be forced to zero width</doc>
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+    </record>
+    <constant name="DEFAULT_LANGUAGE"
+              value="65535"
+              c:type="PANGO_OT_DEFAULT_LANGUAGE"
+              version="1.16">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="127">This is used as the language index in pango_ot_info_find_feature() when
+the default language system of the script is desired.
+
+It is also returned by pango_ot_info_find_language() if the requested language
+is not found, or the requested language tag was PANGO_OT_TAG_DEFAULT_LANGUAGE.
+The end result is that one can always call pango_ot_tag_from_language()
+followed by pango_ot_info_find_language() and pass the result to
+pango_ot_info_find_feature() without having to worry about falling back to
+default language system explicitly.</doc>
+      <source-position filename="pango/pango-ot.h" line="145"/>
+      <type name="guint" c:type="guint"/>
+    </constant>
+    <record name="FeatureMap" c:type="PangoOTFeatureMap" version="1.18">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="196">The `PangoOTFeatureMap` typedef is used to represent an OpenType
+feature with the property bit associated with it.  The feature tag is
+represented as a char array instead of a `PangoOTTag` for convenience.</doc>
+      <source-position filename="pango/pango-ot.h" line="212"/>
+      <field name="feature_name" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="198">feature tag in represented as four-letter ASCII string.</doc>
+        <array zero-terminated="0" fixed-size="5">
+          <type name="gchar" c:type="char"/>
+        </array>
+      </field>
+      <field name="property_bit" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="199">the property bit to use for this feature.  See
+pango_ot_ruleset_add_feature() for details.</doc>
+        <type name="gulong" c:type="gulong"/>
+      </field>
+    </record>
+    <record name="Glyph" c:type="PangoOTGlyph">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="171">The `PangoOTGlyph` structure represents a single glyph together with
+information used for OpenType layout processing of the glyph.
+It contains the following fields.</doc>
+      <source-position filename="pango/pango-ot.h" line="194"/>
+      <field name="glyph" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="173">the glyph itself.</doc>
+        <type name="guint32" c:type="guint32"/>
+      </field>
+      <field name="properties" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="174">the properties value, identifying which features should be
+applied on this glyph.  See pango_ot_ruleset_add_feature().</doc>
+        <type name="guint" c:type="guint"/>
+      </field>
+      <field name="cluster" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="176">the cluster that this glyph belongs to.</doc>
+        <type name="guint" c:type="guint"/>
+      </field>
+      <field name="component" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="177">a component value, set by the OpenType layout engine.</doc>
+        <type name="gushort" c:type="gushort"/>
+      </field>
+      <field name="ligID" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="178">a ligature index value, set by the OpenType layout engine.</doc>
+        <type name="gushort" c:type="gushort"/>
+      </field>
+      <field name="internal" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="179">for Pango internal use</doc>
+        <type name="guint" c:type="guint"/>
+      </field>
+    </record>
+    <function-macro name="INFO"
+                    c:identifier="PANGO_OT_INFO"
+                    introspectable="0">
+      <source-position filename="pango/pango-ot.h" line="249"/>
+      <parameters>
+        <parameter name="object">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="IS_INFO"
+                    c:identifier="PANGO_OT_IS_INFO"
+                    introspectable="0">
+      <source-position filename="pango/pango-ot.h" line="250"/>
+      <parameters>
+        <parameter name="object">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="IS_RULESET"
+                    c:identifier="PANGO_OT_IS_RULESET"
+                    introspectable="0">
+      <source-position filename="pango/pango-ot.h" line="263"/>
+      <parameters>
+        <parameter name="object">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <class name="Info"
+           c:symbol-prefix="info"
+           c:type="PangoOTInfo"
+           parent="GObject.Object"
+           glib:type-name="PangoOTInfo"
+           glib:get-type="pango_ot_info_get_type">
+      <function name="get" c:identifier="pango_ot_info_get" version="1.2">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-info.c"
+             line="65">Returns the `PangoOTInfo` structure for the given FreeType font face.</doc>
+        <source-position filename="pango/pango-ot.h" line="275"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-info.c"
+               line="71">the `PangoOTInfo` for @face.
+  This object will have the same lifetime as @face.</doc>
+          <type name="Info" c:type="PangoOTInfo*"/>
+        </return-value>
+        <parameters>
+          <parameter name="face" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="67">a `FT_Face`</doc>
+            <type name="freetype2.Face" c:type="FT_Face"/>
+          </parameter>
+        </parameters>
+      </function>
+      <method name="find_feature" c:identifier="pango_ot_info_find_feature">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-info.c"
+             line="195">Finds the index of a feature.
+
+If the feature is not found, sets @feature_index to PANGO_OT_NO_FEATURE,
+which is safe to pass to [method@PangoOT.Ruleset.add_feature] and similar
+functions.
+
+In the future, this may set @feature_index to an special value that if
+used in [method@PangoOT.Ruleset.add_feature] will ask Pango to synthesize
+the requested feature based on Unicode properties and data. However, this
+function will still return %FALSE in those cases. So, users may want to
+ignore the return value of this function in certain cases.</doc>
+        <source-position filename="pango/pango-ot.h" line="291"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-info.c"
+               line="218">%TRUE if the feature was found</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="info" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="197">a `PangoOTInfo`</doc>
+            <type name="Info" c:type="PangoOTInfo*"/>
+          </instance-parameter>
+          <parameter name="table_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="198">the table type to obtain information about</doc>
+            <type name="TableType" c:type="PangoOTTableType"/>
+          </parameter>
+          <parameter name="feature_tag" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="199">the tag of the feature to find</doc>
+            <type name="Tag" c:type="PangoOTTag"/>
+          </parameter>
+          <parameter name="script_index" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="200">the index of the script</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+          <parameter name="language_index" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="201">the index of the language whose features are searched,
+  or %PANGO_OT_DEFAULT_LANGUAGE to use the default language of the script</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+          <parameter name="feature_index"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="203">location to store the index of
+  the feature</doc>
+            <type name="guint" c:type="guint*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="find_language" c:identifier="pango_ot_info_find_language">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-info.c"
+             line="144">Finds the index of a language and its required feature index.
+
+If the language is not found, sets @language_index to %PANGO_OT_DEFAULT_LANGUAGE
+and the required feature of the default language system is returned in
+required_feature_index. For best compatibility with some fonts, also
+searches the language system tag 'dflt' before falling back to the default
+language system, but that is transparent to the user. The user can simply
+ignore the return value of this function to automatically fall back to the
+default language system.</doc>
+        <source-position filename="pango/pango-ot.h" line="284"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-info.c"
+               line="164">%TRUE if the language was found</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="info" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="146">a `PangoOTInfo`</doc>
+            <type name="Info" c:type="PangoOTInfo*"/>
+          </instance-parameter>
+          <parameter name="table_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="147">the table type to obtain information about</doc>
+            <type name="TableType" c:type="PangoOTTableType"/>
+          </parameter>
+          <parameter name="script_index" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="148">the index of the script whose languages are searched</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+          <parameter name="language_tag" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="149">the tag of the language to find</doc>
+            <type name="Tag" c:type="PangoOTTag"/>
+          </parameter>
+          <parameter name="language_index"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="150">location to store the index of the language</doc>
+            <type name="guint" c:type="guint*"/>
+          </parameter>
+          <parameter name="required_feature_index"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="151">location to store the
+  required feature index of the language</doc>
+            <type name="guint" c:type="guint*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="find_script" c:identifier="pango_ot_info_find_script">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-info.c"
+             line="111">Finds the index of a script.
+
+If not found, tries to find the 'DFLT' and then 'dflt' scripts and
+return the index of that in @script_index. If none of those is found
+either, %PANGO_OT_NO_SCRIPT is placed in @script_index.
+
+All other functions taking an input script_index parameter know
+how to handle %PANGO_OT_NO_SCRIPT, so one can ignore the return
+value of this function completely and proceed, to enjoy the automatic
+fallback to the 'DFLT'/'dflt' script.</doc>
+        <source-position filename="pango/pango-ot.h" line="278"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-info.c"
+               line="129">%TRUE if the script was found</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="info" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="113">a `PangoOTInfo`</doc>
+            <type name="Info" c:type="PangoOTInfo*"/>
+          </instance-parameter>
+          <parameter name="table_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="114">the table type to obtain information about</doc>
+            <type name="TableType" c:type="PangoOTTableType"/>
+          </parameter>
+          <parameter name="script_tag" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="115">the tag of the script to find</doc>
+            <type name="Tag" c:type="PangoOTTag"/>
+          </parameter>
+          <parameter name="script_index"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="116">location to store the index of the script</doc>
+            <type name="guint" c:type="guint*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="list_features" c:identifier="pango_ot_info_list_features">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-info.c"
+             line="293">Obtains the list of features for the given language of the given script.</doc>
+        <source-position filename="pango/pango-ot.h" line="307"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-info.c"
+               line="305">a newly-allocated zero-terminated
+  array containing the tags of the available features</doc>
+          <type name="Tag" c:type="PangoOTTag*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="info" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="295">a `PangoOTInfo`</doc>
+            <type name="Info" c:type="PangoOTInfo*"/>
+          </instance-parameter>
+          <parameter name="table_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="296">the table type to obtain information about</doc>
+            <type name="TableType" c:type="PangoOTTableType"/>
+          </parameter>
+          <parameter name="tag" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="297">unused parameter</doc>
+            <type name="Tag" c:type="PangoOTTag"/>
+          </parameter>
+          <parameter name="script_index" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="298">the index of the script to obtain information about</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+          <parameter name="language_index" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="299">the index of the language to list features for, or
+  %PANGO_OT_DEFAULT_LANGUAGE, to list features for the default
+  language of the script</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="list_languages"
+              c:identifier="pango_ot_info_list_languages">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-info.c"
+             line="263">Obtains the list of available languages for a given script.</doc>
+        <source-position filename="pango/pango-ot.h" line="302"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-info.c"
+               line="272">a newly-allocated zero-terminated
+  array containing the tags of the available languages</doc>
+          <type name="Tag" c:type="PangoOTTag*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="info" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="265">a `PangoOTInfo`</doc>
+            <type name="Info" c:type="PangoOTInfo*"/>
+          </instance-parameter>
+          <parameter name="table_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="266">the table type to obtain information about</doc>
+            <type name="TableType" c:type="PangoOTTableType"/>
+          </parameter>
+          <parameter name="script_index" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="267">the index of the script to list languages for</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+          <parameter name="language_tag" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="268">unused parameter</doc>
+            <type name="Tag" c:type="PangoOTTag"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="list_scripts" c:identifier="pango_ot_info_list_scripts">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-info.c"
+             line="237">Obtains the list of available scripts.</doc>
+        <source-position filename="pango/pango-ot.h" line="299"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-info.c"
+               line="244">a newly-allocated zero-terminated
+  array containing the tags of the available scripts</doc>
+          <type name="Tag" c:type="PangoOTTag*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="info" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="239">a `PangoOTInfo`</doc>
+            <type name="Info" c:type="PangoOTInfo*"/>
+          </instance-parameter>
+          <parameter name="table_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-info.c"
+                 line="240">the table type to obtain information about</doc>
+            <type name="TableType" c:type="PangoOTTableType"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <constant name="NO_FEATURE"
+              value="65535"
+              c:type="PANGO_OT_NO_FEATURE"
+              version="1.18">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="105">This is used as a feature index that represent no feature, that is, should be
+skipped.  It may be returned as feature index by pango_ot_info_find_feature()
+if the feature is not found, and pango_ot_ruleset_add_feature() function
+automatically skips this value, so no special handling is required by the user.</doc>
+      <source-position filename="pango/pango-ot.h" line="143"/>
+      <type name="guint" c:type="guint"/>
+    </constant>
+    <constant name="NO_SCRIPT"
+              value="65535"
+              c:type="PANGO_OT_NO_SCRIPT"
+              version="1.18">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="115">This is used as a script index that represent no script, that is, when the
+requested script was not found, and a default ('DFLT') script was not found
+either.  It may be returned as script index by pango_ot_info_find_script()
+if the script or a default script are not found, all other functions
+taking a script index essentially return if the input script index is
+this value, so no special handling is required by the user.</doc>
+      <source-position filename="pango/pango-ot.h" line="144"/>
+      <type name="guint" c:type="guint"/>
+    </constant>
+    <function-macro name="RULESET"
+                    c:identifier="PANGO_OT_RULESET"
+                    introspectable="0">
+      <source-position filename="pango/pango-ot.h" line="262"/>
+      <parameters>
+        <parameter name="object">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <class name="Ruleset"
+           c:symbol-prefix="ruleset"
+           c:type="PangoOTRuleset"
+           parent="GObject.Object"
+           glib:type-name="PangoOTRuleset"
+           glib:get-type="pango_ot_ruleset_get_type">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot-ruleset.c"
+           line="28">The `PangoOTRuleset` structure holds a set of features selected
+from the tables in an OpenType font.
+
+A feature is an operation such as adjusting glyph positioning
+that should be applied to a text feature such as a certain
+type of accent.
+
+A `PangoOTRuleset` is created with [ctor@PangoOT.Ruleset.new],
+features are added to it with [method@PangoOT.Ruleset.add_feature],
+then it is applied to a `PangoGlyphString` with
+[method@PangoOT.Ruleset.position].</doc>
+      <constructor name="new" c:identifier="pango_ot_ruleset_new">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="96">Creates a new `PangoOTRuleset` for the given OpenType info.</doc>
+        <source-position filename="pango/pango-ot.h" line="352"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-ruleset.c"
+               line="102">the newly allocated `PangoOTRuleset`</doc>
+          <type name="Ruleset" c:type="PangoOTRuleset*"/>
+        </return-value>
+        <parameters>
+          <parameter name="info" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="98">a `PangoOTInfo`</doc>
+            <type name="Info" c:type="PangoOTInfo*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_for"
+                   c:identifier="pango_ot_ruleset_new_for"
+                   version="1.18">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="110">Creates a new `PangoOTRuleset` for the given OpenType info, script, and
+language.
+
+This function is part of a convenience scheme that highly simplifies
+using a `PangoOTRuleset` to represent features for a specific pair of script
+and language.  So one can use this function passing in the script and
+language of interest, and later try to add features to the ruleset by just
+specifying the feature name or tag, without having to deal with finding
+script, language, or feature indices manually.
+
+In addition to what [ctor@PangoOT.Ruleset.new] does, this function will:
+
+* Find the `PangoOTTag` script and language tags associated with
+  @script and @language using [func@PangoOT.tag_from_script] and
+  [func@PangoOT.tag_from_language],
+
+* For each of table types %PANGO_OT_TABLE_GSUB and %PANGO_OT_TABLE_GPOS,
+  find the script index of the script tag found and the language
+  system index of the language tag found in that script system, using
+  [method@PangoOT.Info.find_script] and [method@PangoOT.Info.find_language],
+
+* For found language-systems, if they have required feature index,
+  add that feature to the ruleset using [method@PangoOT.Ruleset.add_feature],
+
+* Remember found script and language indices for both table types,
+  and use them in future [method@PangoOT.Ruleset.maybe_add_feature] and
+  [method@PangoOT.Ruleset.maybe_add_features].
+
+Because of the way return values of [method@PangoOT.Info.find_script] and
+[method@PangoOT.Info.find_language] are ignored, this function automatically
+finds and uses the 'DFLT' script and the default language-system.</doc>
+        <source-position filename="pango/pango-ot.h" line="354"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-ruleset.c"
+               line="148">the newly allocated `PangoOTRuleset`</doc>
+          <type name="Ruleset" c:type="PangoOTRuleset*"/>
+        </return-value>
+        <parameters>
+          <parameter name="info" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="112">a `PangoOTInfo`</doc>
+            <type name="Info" c:type="PangoOTInfo*"/>
+          </parameter>
+          <parameter name="script" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="113">a `PangoScript`</doc>
+            <type name="Pango.Script" c:type="PangoScript"/>
+          </parameter>
+          <parameter name="language" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="114">a `PangoLanguage`</doc>
+            <type name="Pango.Language" c:type="PangoLanguage*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_from_description"
+                   c:identifier="pango_ot_ruleset_new_from_description"
+                   version="1.18">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="160">Creates a new `PangoOTRuleset` for the given OpenType info and
+matching the given ruleset description.
+
+This is a convenience function that calls [ctor@PangoOT.Ruleset.new_for]
+and adds the static GSUB/GPOS features to the resulting ruleset,
+followed by adding other features to both GSUB and GPOS.
+
+The static feature map members of @desc should be alive as
+long as @info is.</doc>
+        <source-position filename="pango/pango-ot.h" line="358"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-ruleset.c"
+               line="175">the newly allocated `PangoOTRuleset`</doc>
+          <type name="Ruleset" c:type="PangoOTRuleset*"/>
+        </return-value>
+        <parameters>
+          <parameter name="info" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="162">a `PangoOTInfo`</doc>
+            <type name="Info" c:type="PangoOTInfo*"/>
+          </parameter>
+          <parameter name="desc" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="163">a `PangoOTRulesetDescription`</doc>
+            <type name="RulesetDescription"
+                  c:type="const PangoOTRulesetDescription*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <function name="get_for_description"
+                c:identifier="pango_ot_ruleset_get_for_description"
+                version="1.18">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="64">Returns a ruleset for the given OpenType info and ruleset
+description.
+
+Rulesets are created on demand using
+[ctor@PangoOT.Ruleset.new_from_description].
+The returned ruleset should not be modified or destroyed.
+
+The static feature map members of @desc should be alive as
+long as @info is.</doc>
+        <source-position filename="pango/pango-ot.h" line="349"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-ruleset.c"
+               line="79">the `PangoOTRuleset` for @desc. This object will have
+  the same lifetime as @info.</doc>
+          <type name="Ruleset" c:type="const PangoOTRuleset*"/>
+        </return-value>
+        <parameters>
+          <parameter name="info" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="66">a `PangoOTInfo`</doc>
+            <type name="Info" c:type="PangoOTInfo*"/>
+          </parameter>
+          <parameter name="desc" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="67">a `PangoOTRulesetDescription`</doc>
+            <type name="RulesetDescription"
+                  c:type="const PangoOTRulesetDescription*"/>
+          </parameter>
+        </parameters>
+      </function>
+      <method name="add_feature" c:identifier="pango_ot_ruleset_add_feature">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="186">Adds a feature to the ruleset.</doc>
+        <source-position filename="pango/pango-ot.h" line="361"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="ruleset" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="188">a `PangoOTRuleset`</doc>
+            <type name="Ruleset" c:type="PangoOTRuleset*"/>
+          </instance-parameter>
+          <parameter name="table_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="189">the table type to add a feature to</doc>
+            <type name="TableType" c:type="PangoOTTableType"/>
+          </parameter>
+          <parameter name="feature_index" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="190">the index of the feature to add</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+          <parameter name="property_bit" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="191">the property bit to use for this feature. Used to
+  identify the glyphs that this feature should be applied to, or
+  %PANGO_OT_ALL_GLYPHS if it should be applied to all glyphs.</doc>
+            <type name="gulong" c:type="gulong"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_feature_count"
+              c:identifier="pango_ot_ruleset_get_feature_count"
+              version="1.18">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="262">Gets the number of GSUB and GPOS features in the ruleset.</doc>
+        <source-position filename="pango/pango-ot.h" line="376"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-ruleset.c"
+               line="270">Total number of features in the @ruleset</doc>
+          <type name="guint" c:type="guint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="ruleset" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="264">a `PangoOTRuleset`</doc>
+            <type name="Ruleset" c:type="const PangoOTRuleset*"/>
+          </instance-parameter>
+          <parameter name="n_gsub_features"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="265">location to store number of GSUB features</doc>
+            <type name="guint" c:type="guint*"/>
+          </parameter>
+          <parameter name="n_gpos_features"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="266">location to store number of GPOS features</doc>
+            <type name="guint" c:type="guint*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="maybe_add_feature"
+              c:identifier="pango_ot_ruleset_maybe_add_feature"
+              version="1.18">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="205">This is a convenience function that first tries to find the feature
+using [method@PangoOT.Info.find_feature] and the ruleset script and
+language passed to [ctor@PangoOT.Ruleset.new_for] and if the feature
+is found, adds it to the ruleset.
+
+If @ruleset was not created using [ctor@PangoOT.Ruleset.new_for],
+this function does nothing.</doc>
+        <source-position filename="pango/pango-ot.h" line="366"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-ruleset.c"
+               line="222">%TRUE if the feature was found and added to ruleset,
+  %FALSE otherwise</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="ruleset" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="207">a `PangoOTRuleset`</doc>
+            <type name="Ruleset" c:type="PangoOTRuleset*"/>
+          </instance-parameter>
+          <parameter name="table_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="208">the table type to add a feature to</doc>
+            <type name="TableType" c:type="PangoOTTableType"/>
+          </parameter>
+          <parameter name="feature_tag" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="209">the tag of the feature to add</doc>
+            <type name="Tag" c:type="PangoOTTag"/>
+          </parameter>
+          <parameter name="property_bit" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="210">the property bit to use for this feature. Used to
+  identify the glyphs that this feature should be applied to, or
+  %PANGO_OT_ALL_GLYPHS if it should be applied to all glyphs.</doc>
+            <type name="gulong" c:type="gulong"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="maybe_add_features"
+              c:identifier="pango_ot_ruleset_maybe_add_features"
+              version="1.18">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="236">This is a convenience function that for each feature in the feature map
+array @features converts the feature name to a `PangoOTTag` feature tag
+using PANGO_OT_TAG_MAKE() and calls [method@PangoOT.Ruleset.maybe_add_feature]
+on it.</doc>
+        <source-position filename="pango/pango-ot.h" line="371"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-ruleset.c"
+               line="248">The number of features in @features that were found
+  and added to @ruleset</doc>
+          <type name="guint" c:type="guint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="ruleset" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="238">a `PangoOTRuleset`</doc>
+            <type name="Ruleset" c:type="PangoOTRuleset*"/>
+          </instance-parameter>
+          <parameter name="table_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="239">the table type to add features to</doc>
+            <type name="TableType" c:type="PangoOTTableType"/>
+          </parameter>
+          <parameter name="features" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="240">array of feature name and property bits to add</doc>
+            <type name="FeatureMap" c:type="const PangoOTFeatureMap*"/>
+          </parameter>
+          <parameter name="n_features" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="241">number of feature records in @features array</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="position"
+              c:identifier="pango_ot_ruleset_position"
+              version="1.4">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="298">Performs the OpenType GPOS positioning on @buffer using
+the features in @ruleset.</doc>
+        <source-position filename="pango/pango-ot.h" line="385"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="ruleset" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="300">a `PangoOTRuleset`</doc>
+            <type name="Ruleset" c:type="const PangoOTRuleset*"/>
+          </instance-parameter>
+          <parameter name="buffer" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="301">a `PangoOTBuffer`</doc>
+            <type name="Buffer" c:type="PangoOTBuffer*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="substitute"
+              c:identifier="pango_ot_ruleset_substitute"
+              version="1.4">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="282">Performs the OpenType GSUB substitution on @buffer using
+the features in @ruleset.</doc>
+        <source-position filename="pango/pango-ot.h" line="381"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="ruleset" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="284">a `PangoOTRuleset`</doc>
+            <type name="Ruleset" c:type="const PangoOTRuleset*"/>
+          </instance-parameter>
+          <parameter name="buffer" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="285">a `PangoOTBuffer`</doc>
+            <type name="Buffer" c:type="PangoOTBuffer*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <record name="RulesetDescription"
+            c:type="PangoOTRulesetDescription"
+            version="1.18"
+            glib:type-name="PangoOTRulesetDescription"
+            glib:get-type="pango_ot_ruleset_description_get_type"
+            c:symbol-prefix="ruleset_description">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="214">The `PangoOTRuleset` structure holds all the information needed
+to build a complete `PangoOTRuleset` from an OpenType font.
+The main use of this struct is to act as the key for a per-font
+hash of rulesets.  The user populates a ruleset description and
+gets the ruleset using pango_ot_ruleset_get_for_description()
+or create a new one using pango_ot_ruleset_new_from_description().</doc>
+      <source-position filename="pango/pango-ot.h" line="245"/>
+      <field name="script" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="216">a `PangoScript`</doc>
+        <type name="Pango.Script" c:type="PangoScript"/>
+      </field>
+      <field name="language" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="217">a `PangoLanguage`</doc>
+        <type name="Pango.Language" c:type="PangoLanguage*"/>
+      </field>
+      <field name="static_gsub_features" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="218">static map of GSUB features</doc>
+        <type name="FeatureMap" c:type="const PangoOTFeatureMap*"/>
+      </field>
+      <field name="n_static_gsub_features" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="219">length of @static_gsub_features, or 0.</doc>
+        <type name="guint" c:type="guint"/>
+      </field>
+      <field name="static_gpos_features" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="220">static map of GPOS features</doc>
+        <type name="FeatureMap" c:type="const PangoOTFeatureMap*"/>
+      </field>
+      <field name="n_static_gpos_features" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="221">length of @static_gpos_features, or 0.</doc>
+        <type name="guint" c:type="guint"/>
+      </field>
+      <field name="other_features" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="222">map of extra features to add to both
+  GSUB and GPOS. Unlike the static maps, this pointer need not
+  live beyond the life of function calls taking this struct.</doc>
+        <type name="FeatureMap" c:type="const PangoOTFeatureMap*"/>
+      </field>
+      <field name="n_other_features" writable="1">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="225">length of @other_features, or 0.</doc>
+        <type name="guint" c:type="guint"/>
+      </field>
+      <method name="copy"
+              c:identifier="pango_ot_ruleset_description_copy"
+              version="1.18">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="366">Creates a copy of @desc, which should be freed with
+[method@PangoOT.RulesetDescription.free].
+
+Primarily used internally by [func@PangoOT.Ruleset.get_for_description]
+to cache rulesets for ruleset descriptions.</doc>
+        <source-position filename="pango/pango-ot.h" line="417"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-ruleset.c"
+               line="376">the newly allocated `PangoOTRulesetDescription`</doc>
+          <type name="RulesetDescription" c:type="PangoOTRulesetDescription*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="desc" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="368">ruleset description to copy</doc>
+            <type name="RulesetDescription"
+                  c:type="const PangoOTRulesetDescription*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="equal"
+              c:identifier="pango_ot_ruleset_description_equal"
+              version="1.18">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="334">Compares two ruleset descriptions for equality.
+
+Two ruleset descriptions are considered equal if the rulesets
+they describe are provably identical. This means that their
+script, language, and all feature sets should be equal.
+
+For static feature sets, the array addresses are compared directly,
+while for other features, the list of features is compared one by
+one.(Two ruleset descriptions may result in identical rulesets
+being created, but still compare %FALSE.)</doc>
+        <source-position filename="pango/pango-ot.h" line="413"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-ruleset.c"
+               line="350">%TRUE if two ruleset descriptions are identical,
+  %FALSE otherwise</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="desc1" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="336">a ruleset description</doc>
+            <type name="RulesetDescription"
+                  c:type="const PangoOTRulesetDescription*"/>
+          </instance-parameter>
+          <parameter name="desc2" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="337">a ruleset description</doc>
+            <type name="RulesetDescription"
+                  c:type="const PangoOTRulesetDescription*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="free"
+              c:identifier="pango_ot_ruleset_description_free"
+              version="1.18">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="394">Frees a ruleset description allocated by
+pango_ot_ruleset_description_copy().</doc>
+        <source-position filename="pango/pango-ot.h" line="420"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="desc" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="396">an allocated `PangoOTRulesetDescription`</doc>
+            <type name="RulesetDescription"
+                  c:type="PangoOTRulesetDescription*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="hash"
+              c:identifier="pango_ot_ruleset_description_hash"
+              version="1.18">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-ruleset.c"
+             line="317">Computes a hash of a `PangoOTRulesetDescription` structure suitable
+to be used, for example, as an argument to g_hash_table_new().</doc>
+        <source-position filename="pango/pango-ot.h" line="410"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-ruleset.c"
+               line="324">the hash value</doc>
+          <type name="guint" c:type="guint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="desc" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="pango/pango-ot-ruleset.c"
+                 line="319">a ruleset description</doc>
+            <type name="RulesetDescription"
+                  c:type="const PangoOTRulesetDescription*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </record>
+    <function-macro name="TAG_MAKE"
+                    c:identifier="PANGO_OT_TAG_MAKE"
+                    introspectable="0">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="49">Creates a `PangoOTTag` from four characters.  This is similar and
+compatible with the FT_MAKE_TAG() macro from FreeType.</doc>
+      <source-position filename="pango/pango-ot.h" line="69"/>
+      <parameters>
+        <parameter name="c1">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot.h"
+               line="51">First character.</doc>
+        </parameter>
+        <parameter name="c2">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot.h"
+               line="52">Second character.</doc>
+        </parameter>
+        <parameter name="c3">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot.h"
+               line="53">Third character.</doc>
+        </parameter>
+        <parameter name="c4">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot.h"
+               line="54">Fourth character.</doc>
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="TAG_MAKE_FROM_STRING"
+                    c:identifier="PANGO_OT_TAG_MAKE_FROM_STRING"
+                    introspectable="0">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="59">Creates a `PangoOTTag` from a string. The string should be at least
+four characters long (pad with space characters if needed), and need
+not be nul-terminated.  This is a convenience wrapper around
+PANGO_OT_TAG_MAKE(), but cannot be used in certain situations, for
+example, as a switch expression, as it dereferences pointers.</doc>
+      <source-position filename="pango/pango-ot.h" line="70"/>
+      <parameters>
+        <parameter name="s">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot.h"
+               line="61">The string representation of the tag.</doc>
+        </parameter>
+      </parameters>
+    </function-macro>
+    <enumeration name="TableType" c:type="PangoOTTableType">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot.h"
+           line="82">The PangoOTTableType enumeration values are used to
+identify the various OpenType tables in the
+pango_ot_info_… functions.</doc>
+      <source-position filename="pango/pango-ot.h" line="95"/>
+      <member name="gsub" value="0" c:identifier="PANGO_OT_TABLE_GSUB">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="84">The GSUB table.</doc>
+      </member>
+      <member name="gpos" value="1" c:identifier="PANGO_OT_TABLE_GPOS">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot.h"
+             line="85">The GPOS table.</doc>
+      </member>
+    </enumeration>
+    <function name="tag_from_language"
+              c:identifier="pango_ot_tag_from_language"
+              version="1.18">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot-tag.c"
+           line="91">Finds the OpenType language-system tag best describing @language.</doc>
+      <source-position filename="pango/pango-ot.h" line="398"/>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-tag.c"
+             line="97">`PangoOTTag` best matching @language or
+%PANGO_OT_TAG_DEFAULT_LANGUAGE if none found or if @language
+is %NULL.</doc>
+        <type name="Tag" c:type="PangoOTTag"/>
+      </return-value>
+      <parameters>
+        <parameter name="language"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-tag.c"
+               line="93">A `PangoLanguage`</doc>
+          <type name="Pango.Language" c:type="PangoLanguage*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="tag_from_script"
+              c:identifier="pango_ot_tag_from_script"
+              version="1.18">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot-tag.c"
+           line="26">Finds the OpenType script tag corresponding to @script.
+
+The %PANGO_SCRIPT_COMMON, %PANGO_SCRIPT_INHERITED, and
+%PANGO_SCRIPT_UNKNOWN scripts are mapped to the OpenType
+'DFLT' script tag that is also defined as
+%PANGO_OT_TAG_DEFAULT_SCRIPT.
+
+Note that multiple `PangoScript` values may map to the same
+OpenType script tag.  In particular, %PANGO_SCRIPT_HIRAGANA
+and %PANGO_SCRIPT_KATAKANA both map to the OT tag 'kana'.</doc>
+      <source-position filename="pango/pango-ot.h" line="392"/>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-tag.c"
+             line="41">`PangoOTTag` corresponding to @script or
+%PANGO_OT_TAG_DEFAULT_SCRIPT if none found.</doc>
+        <type name="Tag" c:type="PangoOTTag"/>
+      </return-value>
+      <parameters>
+        <parameter name="script" transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-tag.c"
+               line="28">A `PangoScript`</doc>
+          <type name="Pango.Script" c:type="PangoScript"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="tag_to_language"
+              c:identifier="pango_ot_tag_to_language"
+              version="1.18">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot-tag.c"
+           line="120">Finds a `PangoLanguage` corresponding to @language_tag.</doc>
+      <source-position filename="pango/pango-ot.h" line="395"/>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-tag.c"
+             line="126">`PangoLanguage` best matching @language_tag or
+`PangoLanguage` corresponding to the string "xx" if none found.</doc>
+        <type name="Pango.Language" c:type="PangoLanguage*"/>
+      </return-value>
+      <parameters>
+        <parameter name="language_tag" transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-tag.c"
+               line="122">A `PangoOTTag` OpenType language-system tag</doc>
+          <type name="Tag" c:type="PangoOTTag"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="tag_to_script"
+              c:identifier="pango_ot_tag_to_script"
+              version="1.18">
+      <doc xml:space="preserve"
+           filename="pango/pango-ot-tag.c"
+           line="63">Finds the `PangoScript` corresponding to @script_tag.
+
+The 'DFLT' script tag is mapped to %PANGO_SCRIPT_COMMON.
+
+Note that an OpenType script tag may correspond to multiple
+`PangoScript` values.  In such cases, the `PangoScript` value
+with the smallest value is returned.
+In particular, %PANGO_SCRIPT_HIRAGANA
+and %PANGO_SCRIPT_KATAKANA both map to the OT tag 'kana'.
+This function will return %PANGO_SCRIPT_HIRAGANA for
+'kana'.</doc>
+      <source-position filename="pango/pango-ot.h" line="389"/>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="pango/pango-ot-tag.c"
+             line="79">`PangoScript` corresponding to @script_tag or
+%PANGO_SCRIPT_UNKNOWN if none found.</doc>
+        <type name="Pango.Script" c:type="PangoScript"/>
+      </return-value>
+      <parameters>
+        <parameter name="script_tag" transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="pango/pango-ot-tag.c"
+               line="65">A `PangoOTTag` OpenType script tag</doc>
+          <type name="Tag" c:type="PangoOTTag"/>
+        </parameter>
+      </parameters>
+    </function>
+  </namespace>
+</repository>

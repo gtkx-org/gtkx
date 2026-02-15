@@ -62,6 +62,8 @@ Run codegen with: `turbo codegen`
 
 ## Testing
 
+**CRITICAL:** NEVER run `npx tsc` directly — it does not work with project references. Always use `turbo` to run typecheck and other build commands.
+
 **IMPORTANT:** Do NOT run `turbo test` at the root level - it will run recursively and cause issues. Instead:
 
 - Run all tests: `pnpm test` (at root level)

@@ -3,7 +3,7 @@ import * as GdkPixbuf from "@gtkx/ffi/gdkpixbuf";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkToggleButton, GtkVideo } from "@gtkx/react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import floppybuddyGifPath from "../gestures/floppybuddy.gif";
 import gtkLogoWebmPath from "../media/gtk-logo.webm";
 import type { Demo, DemoProps } from "../types.js";
@@ -28,6 +28,7 @@ const ImagesDemo = ({ window }: DemoProps) => {
     const [progressiveTexture, setProgressiveTexture] = useState<Gdk.Texture | null>(null);
     const [insensitive, setInsensitive] = useState(false);
     const progressiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const videoFile = useMemo(() => Gio.fileNewForPath(gtkLogoWebmPath), []);
 
     useLayoutEffect(() => {
         try {
@@ -136,13 +137,7 @@ const ImagesDemo = ({ window }: DemoProps) => {
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <GtkLabel label="Video" cssClasses={["heading"]} />
                     <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkVideo
-                            autoplay
-                            loop
-                            widthRequest={200}
-                            heightRequest={150}
-                            file={Gio.fileNewForPath(gtkLogoWebmPath)}
-                        />
+                        <GtkVideo autoplay loop widthRequest={200} heightRequest={150} file={videoFile} />
                     </GtkFrame>
                 </GtkBox>
 

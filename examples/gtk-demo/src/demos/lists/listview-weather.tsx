@@ -122,12 +122,13 @@ const ListViewWeatherDemo = () => {
                 selectionMode={Gtk.SelectionMode.NONE}
                 renderItem={(item: WeatherInfo | null) => {
                     return (
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                            <GtkLabel label={item?.hour ?? ""} widthChars={5} />
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
                             <GtkImage
                                 iconName={item ? WEATHER_ICONS[item.weatherType] : "weather-clear-symbolic"}
                                 iconSize={Gtk.IconSize.LARGE}
+                                valign={Gtk.Align.START}
                             />
+                            <GtkLabel label={item?.hour ?? ""} widthChars={5} valign={Gtk.Align.START} />
                             <GtkLabel
                                 label={`${Math.round(item?.temperature ?? 0)}°`}
                                 widthChars={4}

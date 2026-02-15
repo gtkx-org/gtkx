@@ -1,0 +1,2305 @@
+<?xml version="1.0"?>
+<!-- This file was automatically generated from C sources - DO NOT EDIT!
+To affect the contents of this file, edit the original C definitions,
+and/or use gtk-doc annotations.  -->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:doc="http://www.gtk.org/introspection/doc/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <package name="gudev-1.0"/>
+  <c:include name="gudev/gudev.h"/>
+  <doc:format name="unknown"/>
+  <namespace name="GUdev"
+             version="1.0"
+             shared-library="libgudev-1.0.so.0"
+             c:identifier-prefixes="GUdev"
+             c:symbol-prefixes="g_udev">
+    <alias name="DeviceNumber" c:type="GUdevDeviceNumber">
+      <doc xml:space="preserve"
+           filename="gudev/gudevtypes.h"
+           line="23">Corresponds to the standard #dev_t type as defined by POSIX (Until
+bug 584517 is resolved this work-around is needed).</doc>
+      <source-position filename="gudev/gudevtypes.h" line="30"/>
+      <type name="guint64" c:type="guint64"/>
+    </alias>
+    <function-macro name="CLIENT"
+                    c:identifier="G_UDEV_CLIENT"
+                    introspectable="0">
+      <source-position filename="gudev/gudevclient.h" line="19"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="CLIENT_CLASS"
+                    c:identifier="G_UDEV_CLIENT_CLASS"
+                    introspectable="0">
+      <source-position filename="gudev/gudevclient.h" line="20"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="CLIENT_GET_CLASS"
+                    c:identifier="G_UDEV_CLIENT_GET_CLASS"
+                    introspectable="0">
+      <source-position filename="gudev/gudevclient.h" line="23"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <class name="Client"
+           c:symbol-prefix="client"
+           c:type="GUdevClient"
+           parent="GObject.Object"
+           glib:type-name="GUdevClient"
+           glib:get-type="g_udev_client_get_type"
+           glib:type-struct="ClientClass">
+      <doc xml:space="preserve"
+           filename="gudev/gudevclient.c"
+           line="19">#GUdevClient is used to query information about devices on a Linux
+system from the Linux kernel and the udev device
+manager.
+
+Device information is retrieved from the kernel (through the
+&lt;literal&gt;sysfs&lt;/literal&gt; filesystem) and the udev daemon (through a
+&lt;literal&gt;tmpfs&lt;/literal&gt; filesystem) and presented through
+#GUdevDevice objects. This means that no blocking IO ever happens
+(in both cases, we are essentially just reading data from kernel
+memory) and as such there are no asynchronous versions of the
+provided methods.
+
+To get #GUdevDevice objects, use
+g_udev_client_query_by_subsystem(),
+g_udev_client_query_by_device_number(),
+g_udev_client_query_by_device_file(),
+g_udev_client_query_by_sysfs_path(),
+g_udev_client_query_by_subsystem_and_name()
+or the #GUdevEnumerator type.
+
+To listen to uevents, connect to the #GUdevClient::uevent signal.</doc>
+      <source-position filename="gudev/gudevclient.h" line="71"/>
+      <constructor name="new" c:identifier="g_udev_client_new">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.c"
+             line="307">Constructs a #GUdevClient object that can be used to query
+information about devices. Connect to the #GUdevClient::uevent
+signal to listen for uevents. Note that signals are emitted in the
+&lt;link linkend="g-main-context-push-thread-default"&gt;thread-default main loop&lt;/link&gt;
+of the thread that you call this constructor from.</doc>
+        <source-position filename="gudev/gudevclient.h" line="74"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="gudev/gudevclient.c"
+               line="317">A new #GUdevClient object. Free with g_object_unref().</doc>
+          <type name="Client" c:type="GUdevClient*"/>
+        </return-value>
+        <parameters>
+          <parameter name="subsystems"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="309">A %NULL terminated string array of subsystems to listen for uevents on, %NULL to not listen on uevents at all, or an empty array to listen to uevents on all subsystems. See the documentation for the #GUdevClient:subsystems property for details on this parameter.</doc>
+            <array c:type="const gchar* const*">
+              <type name="utf8"/>
+            </array>
+          </parameter>
+        </parameters>
+      </constructor>
+      <virtual-method name="uevent">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.h"
+             line="48">Signal class handler for the #GUdevClient::uevent signal.</doc>
+        <source-position filename="gudev/gudevclient.h" line="57"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="client" transfer-ownership="none">
+            <type name="Client" c:type="GUdevClient*"/>
+          </instance-parameter>
+          <parameter name="action" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="device" transfer-ownership="none">
+            <type name="Device" c:type="GUdevDevice*"/>
+          </parameter>
+        </parameters>
+      </virtual-method>
+      <method name="query_by_device_file"
+              c:identifier="g_udev_client_query_by_device_file">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.c"
+             line="414">Looks up a device for a device file.</doc>
+        <source-position filename="gudev/gudevclient.h" line="80"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevclient.c"
+               line="421">A #GUdevDevice object or %NULL
+if the device was not found. Free with g_object_unref().</doc>
+          <type name="Device" c:type="GUdevDevice*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="client" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="416">A #GUdevClient.</doc>
+            <type name="Client" c:type="GUdevClient*"/>
+          </instance-parameter>
+          <parameter name="device_file" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="417">A device file.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="query_by_device_number"
+              c:identifier="g_udev_client_query_by_device_number">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.c"
+             line="380">Looks up a device for a type and device number.</doc>
+        <source-position filename="gudev/gudevclient.h" line="77"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevclient.c"
+               line="388">A #GUdevDevice object or %NULL
+if the device was not found. Free with g_object_unref().</doc>
+          <type name="Device" c:type="GUdevDevice*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="client" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="382">A #GUdevClient.</doc>
+            <type name="Client" c:type="GUdevClient*"/>
+          </instance-parameter>
+          <parameter name="type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="383">A value from the #GUdevDeviceType enumeration.</doc>
+            <type name="DeviceType" c:type="GUdevDeviceType"/>
+          </parameter>
+          <parameter name="number" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="384">A device number.</doc>
+            <type name="DeviceNumber" c:type="GUdevDeviceNumber"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="query_by_subsystem"
+              c:identifier="g_udev_client_query_by_subsystem">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.c"
+             line="325">Gets all devices belonging to @subsystem.</doc>
+        <source-position filename="gudev/gudevclient.h" line="75"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevclient.c"
+               line="332">A
+list of #GUdevDevice objects. The caller should free the result by
+using g_object_unref() on each element in the list and then
+g_list_free() on the list.</doc>
+          <type name="GLib.List" c:type="GList*">
+            <type name="Device"/>
+          </type>
+        </return-value>
+        <parameters>
+          <instance-parameter name="client" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="327">A #GUdevClient.</doc>
+            <type name="Client" c:type="GUdevClient*"/>
+          </instance-parameter>
+          <parameter name="subsystem"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="328">The subsystem to get devices for or %NULL to get all devices.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="query_by_subsystem_and_name"
+              c:identifier="g_udev_client_query_by_subsystem_and_name">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.c"
+             line="483">Looks up a device for a subsystem and name.</doc>
+        <source-position filename="gudev/gudevclient.h" line="84"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevclient.c"
+               line="491">A #GUdevDevice object or %NULL
+if the device was not found. Free with g_object_unref().</doc>
+          <type name="Device" c:type="GUdevDevice*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="client" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="485">A #GUdevClient.</doc>
+            <type name="Client" c:type="GUdevClient*"/>
+          </instance-parameter>
+          <parameter name="subsystem" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="486">A subsystem name.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="487">The name of the device.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="query_by_sysfs_path"
+              c:identifier="g_udev_client_query_by_sysfs_path">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.c"
+             line="451">Looks up a device for a sysfs path.</doc>
+        <source-position filename="gudev/gudevclient.h" line="82"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevclient.c"
+               line="458">A #GUdevDevice object or %NULL
+if the device was not found. Free with g_object_unref().</doc>
+          <type name="Device" c:type="GUdevDevice*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="client" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="453">A #GUdevClient.</doc>
+            <type name="Client" c:type="GUdevClient*"/>
+          </instance-parameter>
+          <parameter name="sysfs_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="454">A sysfs path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="subsystems"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.c"
+             line="245">The subsystems to listen for uevents on.
+
+To listen for only a specific DEVTYPE for a given SUBSYSTEM, use
+"subsystem/devtype". For example, to only listen for uevents
+where SUBSYSTEM is usb and DEVTYPE is usb_interface, use
+"usb/usb_interface".
+
+If this property is %NULL, then no events will be reported. If
+it's the empty array, events from all subsystems will be
+reported.</doc>
+        <array>
+          <type name="utf8"/>
+        </array>
+      </property>
+      <field name="parent">
+        <type name="GObject.Object" c:type="GObject"/>
+      </field>
+      <field name="priv" readable="0" private="1">
+        <type name="ClientPrivate" c:type="GUdevClientPrivate*"/>
+      </field>
+      <glib:signal name="uevent" when="last">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.c"
+             line="268">Emitted when @client receives an uevent.
+
+Note that while you'll have access to all the device's properties and attributes
+for the majority of actions, only the sysfs path will be available when the device
+is removed.
+
+Also note that the action is an arbitrary string, controlled by device drivers. Other
+values than those listed is possible, but unlikely.
+
+This signal is emitted in the
+&lt;link linkend="g-main-context-push-thread-default"&gt;thread-default main loop&lt;/link&gt;
+of the thread that @client was created in.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="action" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="271">The action for the uevent e.g. "add", "remove", "change", "move",
+         "online" or "offline"</doc>
+            <type name="utf8" c:type="gchar*"/>
+          </parameter>
+          <parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevclient.c"
+                 line="273">Details about the #GUdevDevice the event is for.</doc>
+            <type name="Device"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <record name="ClientClass"
+            c:type="GUdevClientClass"
+            glib:is-gtype-struct-for="Client">
+      <doc xml:space="preserve"
+           filename="gudev/gudevclient.h"
+           line="45">Class structure for #GUdevClient.</doc>
+      <source-position filename="gudev/gudevclient.h" line="71"/>
+      <field name="parent_class">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.h"
+             line="47">Parent class.</doc>
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+      <field name="uevent">
+        <doc xml:space="preserve"
+             filename="gudev/gudevclient.h"
+             line="48">Signal class handler for the #GUdevClient::uevent signal.</doc>
+        <callback name="uevent">
+          <source-position filename="gudev/gudevclient.h" line="57"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+          <parameters>
+            <parameter name="client" transfer-ownership="none">
+              <type name="Client" c:type="GUdevClient*"/>
+            </parameter>
+            <parameter name="action" transfer-ownership="none">
+              <type name="utf8" c:type="const gchar*"/>
+            </parameter>
+            <parameter name="device" transfer-ownership="none">
+              <type name="Device" c:type="GUdevDevice*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="reserved1">
+        <callback name="reserved1">
+          <source-position filename="gudev/gudevclient.h" line="63"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved2">
+        <callback name="reserved2">
+          <source-position filename="gudev/gudevclient.h" line="64"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved3">
+        <callback name="reserved3">
+          <source-position filename="gudev/gudevclient.h" line="65"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved4">
+        <callback name="reserved4">
+          <source-position filename="gudev/gudevclient.h" line="66"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved5">
+        <callback name="reserved5">
+          <source-position filename="gudev/gudevclient.h" line="67"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved6">
+        <callback name="reserved6">
+          <source-position filename="gudev/gudevclient.h" line="68"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved7">
+        <callback name="reserved7">
+          <source-position filename="gudev/gudevclient.h" line="69"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved8">
+        <callback name="reserved8">
+          <source-position filename="gudev/gudevclient.h" line="70"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+    </record>
+    <record name="ClientPrivate"
+            c:type="GUdevClientPrivate"
+            disguised="1"
+            opaque="1">
+      <source-position filename="gudev/gudevclient.h" line="30"/>
+    </record>
+    <function-macro name="DEVICE"
+                    c:identifier="G_UDEV_DEVICE"
+                    introspectable="0">
+      <source-position filename="gudev/gudevdevice.h" line="19"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DEVICE_CLASS"
+                    c:identifier="G_UDEV_DEVICE_CLASS"
+                    introspectable="0">
+      <source-position filename="gudev/gudevdevice.h" line="20"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DEVICE_GET_CLASS"
+                    c:identifier="G_UDEV_DEVICE_GET_CLASS"
+                    introspectable="0">
+      <source-position filename="gudev/gudevdevice.h" line="23"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <class name="Device"
+           c:symbol-prefix="device"
+           c:type="GUdevDevice"
+           parent="GObject.Object"
+           glib:type-name="GUdevDevice"
+           glib:get-type="g_udev_device_get_type"
+           glib:type-struct="DeviceClass">
+      <doc xml:space="preserve"
+           filename="gudev/gudevdevice.c"
+           line="18">The #GUdevDevice class is used to get information about a specific
+device. Note that you cannot instantiate a #GUdevDevice object
+yourself. Instead you must use #GUdevClient to obtain #GUdevDevice
+objects.
+
+To get basic information about a device, use
+g_udev_device_get_subsystem(), g_udev_device_get_devtype(),
+g_udev_device_get_name(), g_udev_device_get_number(),
+g_udev_device_get_sysfs_path(), g_udev_device_get_driver(),
+g_udev_device_get_action(), g_udev_device_get_seqnum(),
+g_udev_device_get_device_type(), g_udev_device_get_device_number(),
+g_udev_device_get_device_file(),
+g_udev_device_get_device_file_symlinks().
+
+To navigate the device tree, use g_udev_device_get_parent() and
+g_udev_device_get_parent_with_subsystem().
+
+To access udev properties for the device, use
+g_udev_device_get_property_keys(),
+g_udev_device_has_property(),
+g_udev_device_get_property(),
+g_udev_device_get_property_as_int(),
+g_udev_device_get_property_as_uint64(),
+g_udev_device_get_property_as_double(),
+g_udev_device_get_property_as_boolean() and
+g_udev_device_get_property_as_strv().
+
+To access sysfs attributes for the device, use
+g_udev_device_get_sysfs_attr_keys(),
+g_udev_device_has_sysfs_attr(),
+g_udev_device_get_sysfs_attr(),
+g_udev_device_get_sysfs_attr_as_int(),
+g_udev_device_get_sysfs_attr_as_uint64(),
+g_udev_device_get_sysfs_attr_as_double(),
+g_udev_device_get_sysfs_attr_as_boolean() and
+g_udev_device_get_sysfs_attr_as_strv().
+
+Note that all getters on #GUdevDevice are non-reffing – returned
+values are owned by the object, should not be freed and are only
+valid as long as the object is alive.
+
+By design, #GUdevDevice will not react to changes for a device – it
+only contains a snapshot of information when the #GUdevDevice
+object was created. To work with changes, you typically connect to
+the #GUdevClient::uevent signal on a #GUdevClient and get a new
+#GUdevDevice whenever an event happens.</doc>
+      <source-position filename="gudev/gudevdevice.h" line="65"/>
+      <method name="get_action" c:identifier="g_udev_device_get_action">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="259">Gets the most recent action (e.g. "add", "remove", "change", etc.) for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="76"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="265">An action string.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="261">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_current_tags"
+              c:identifier="g_udev_device_get_current_tags"
+              version="238">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1228">Gets all current tags for @device.
+
+https://www.freedesktop.org/software/systemd/man/udev_device_has_current_tag.html</doc>
+        <source-position filename="gudev/gudevdevice.h" line="118"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1236">A %NULL terminated string array of current tags. This array is owned by @device and should not be freed by the caller.</doc>
+          <array c:type="const gchar* const*">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1230">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_device_file"
+              c:identifier="g_udev_device_get_device_file">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="341">Gets the device file for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="80"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="347">The device file for @device or %NULL if no
+device file exists.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="343">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_device_file_symlinks"
+              c:identifier="g_udev_device_get_device_file_symlinks">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="357">Gets a list of symlinks (in &lt;literal&gt;/dev&lt;/literal&gt;) that points to
+the device file for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="81"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="364">A %NULL terminated string array of symlinks. This array is owned by @device and should not be freed by the caller.</doc>
+          <array c:type="const gchar* const*">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="359">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_device_number"
+              c:identifier="g_udev_device_get_device_number">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="326">Gets the device number, if any, for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="79"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="332">The device number for @device or 0 if unknown.</doc>
+          <type name="DeviceNumber" c:type="GUdevDeviceNumber"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="328">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_device_type"
+              c:identifier="g_udev_device_get_device_type">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="289">Gets the type of the device file, if any, for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="78"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="295">The device number for @device or #G_UDEV_DEVICE_TYPE_NONE if the device does not have a device file.</doc>
+          <type name="DeviceType" c:type="GUdevDeviceType"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="291">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_devtype" c:identifier="g_udev_device_get_devtype">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="183">Gets the device type for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="71"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="189">The devtype for @device.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="185">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_driver" c:identifier="g_udev_device_get_driver">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="243">Gets the name of the driver used for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="75"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="249">The name of the driver for @device or %NULL if
+unknown.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="245">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_is_initialized"
+              c:identifier="g_udev_device_get_is_initialized"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1248">Gets whether @device has been initialized.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="68"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1254">Whether @device has been initialized.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1250">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_name" c:identifier="g_udev_device_get_name">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="198">Gets the name of @device, e.g. "sda3".</doc>
+        <source-position filename="gudev/gudevdevice.h" line="72"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="204">The name of @device.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="200">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_number" c:identifier="g_udev_device_get_number">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="213">Gets the number of @device, e.g. "3" if g_udev_device_get_name() returns "sda3".</doc>
+        <source-position filename="gudev/gudevdevice.h" line="73"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="219">The number of @device.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="215">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_parent" c:identifier="g_udev_device_get_parent">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="391">Gets the immediate parent of @device, if any.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="82"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="397">A #GUdevDevice or %NULL if
+@device has no parent. Free with g_object_unref().</doc>
+          <type name="Device" c:type="GUdevDevice*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="393">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_parent_with_subsystem"
+              c:identifier="g_udev_device_get_parent_with_subsystem">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="420">Walks up the chain of parents of @device and returns the first
+device encountered where @subsystem and @devtype matches, if any.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="83"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="429">A #GUdevDevice or %NULL if
+@device has no parent with @subsystem and @devtype. Free with
+g_object_unref().</doc>
+          <type name="Device" c:type="GUdevDevice*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="422">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="subsystem" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="423">The subsystem of the parent to get.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="devtype"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="424">The devtype of the parent to get or %NULL.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_property" c:identifier="g_udev_device_get_property">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="510">Look up the value for @key on @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="89"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="517">The value for @key or %NULL if @key doesn't
+exist on @device. Do not free this string, it is owned by @device.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="512">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="513">Name of property.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_property_as_boolean"
+              c:identifier="g_udev_device_get_property_as_boolean">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="622">Look up the value for @key on @device and convert it to an
+boolean. This is done by doing a case-insensitive string comparison
+on the string value against "1" and "true".</doc>
+        <source-position filename="gudev/gudevdevice.h" line="97"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="631">The value for @key or %FALSE if @key doesn't exist or
+isn't a #gboolean.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="624">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="625">Name of property.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_property_as_double"
+              c:identifier="g_udev_device_get_property_as_double">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="591">Look up the value for @key on @device and convert it to a double
+precision floating point number using g_ascii_strtod().</doc>
+        <source-position filename="gudev/gudevdevice.h" line="95"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="599">The value for @key or 0.0 if @key doesn't exist or isn't a
+#gdouble.</doc>
+          <type name="gdouble" c:type="gdouble"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="593">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="594">Name of property.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_property_as_int"
+              c:identifier="g_udev_device_get_property_as_int">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="529">Look up the value for @key on @device and convert it to an integer
+using strtol().</doc>
+        <source-position filename="gudev/gudevdevice.h" line="91"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="537">The value for @key or 0 if @key doesn't exist or
+isn't an integer.</doc>
+          <type name="gint" c:type="gint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="531">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="532">Name of property.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_property_as_strv"
+              c:identifier="g_udev_device_get_property_as_strv">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="679">Look up the value for @key on @device and return the result of
+splitting it into non-empty tokens split at white space (only space
+(' '), form-feed ('\f'), newline ('\n'), carriage return ('\r'),
+horizontal tab ('\t'), and vertical tab ('\v') are considered; the
+locale is not taken into account).</doc>
+        <source-position filename="gudev/gudevdevice.h" line="99"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="690">
+The value of @key on @device split into tokens or %NULL if @key
+doesn't exist. This array is owned by @device and should not be
+freed by the caller.</doc>
+          <array c:type="const gchar* const*">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="681">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="682">Name of property.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_property_as_uint64"
+              c:identifier="g_udev_device_get_property_as_uint64">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="560">Look up the value for @key on @device and convert it to an unsigned
+64-bit integer using g_ascii_strtoull().</doc>
+        <source-position filename="gudev/gudevdevice.h" line="93"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="568">The value  for @key or 0 if @key doesn't  exist or isn't a
+#guint64.</doc>
+          <type name="guint64" c:type="guint64"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="562">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="563">Name of property.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_property_keys"
+              c:identifier="g_udev_device_get_property_keys">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="460">Gets all keys for properties on @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="86"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="466">A %NULL terminated string array of property keys. This array is owned by @device and should not be freed by the caller.</doc>
+          <array c:type="const gchar* const*">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="462">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_seqnum" c:identifier="g_udev_device_get_seqnum">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="274">Gets the most recent sequence number for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="77"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="280">A sequence number.</doc>
+          <type name="guint64" c:type="guint64"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="276">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_subsystem" c:identifier="g_udev_device_get_subsystem">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="168">Gets the subsystem for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="70"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="174">The subsystem for @device.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="170">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr"
+              c:identifier="g_udev_device_get_sysfs_attr">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="784">Look up the sysfs attribute with @name on @device. The retrieved value
+is cached in the device. Repeated calls will return the same value and
+not open the attribute again, unless updated through one of the
+"uncached" functions.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="105"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="794">The value of the sysfs attribute or %NULL if
+there is no such attribute. Do not free this string, it is owned by
+@device.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="786">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="787">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_as_boolean"
+              c:identifier="g_udev_device_get_sysfs_attr_as_boolean">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="917">Look up the sysfs attribute with @name on @device and convert it to an
+boolean. This is done by doing a case-insensitive string comparison
+on the string value against "1", "true", "Y" and "y". The retrieved value is
+cached in the device. Repeated calls will return the same value and
+not open the attribute again, unless updated through one of the
+"uncached" functions.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="113"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="929">The value of the sysfs attribute or %FALSE if there is no such
+attribute.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="919">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="920">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_as_boolean_uncached"
+              c:identifier="g_udev_device_get_sysfs_attr_as_boolean_uncached"
+              version="234">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1147">Look up the sysfs attribute with @name on @device and convert it to an
+boolean. This is done by doing a case-insensitive string comparison
+on the string value against "1", "true", "Y" and "y". This function does
+blocking I/O, and updates the sysfs attributes cache.
+
+Before version 238 the uncached getters would not strip trailing newlines.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="130"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1159">The value of the sysfs attribute or %FALSE if there is no such
+attribute.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1149">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1150">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_as_double"
+              c:identifier="g_udev_device_get_sysfs_attr_as_double">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="873">Look up the sysfs attribute with @name on @device and convert it to a double
+precision floating point number using g_ascii_strtod(). The retrieved value is cached
+in the device. Repeated calls will return the same value and not open the
+attribute again, unless updated through one of the "uncached" functions.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="111"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="883">The value of the sysfs attribute or 0.0 if there is no such
+attribute.</doc>
+          <type name="gdouble" c:type="gdouble"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="875">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="876">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_as_double_uncached"
+              c:identifier="g_udev_device_get_sysfs_attr_as_double_uncached"
+              version="234">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1120">Look up the sysfs attribute with @name on @device and convert it to a double
+precision floating point number using g_ascii_strtod(). This function does blocking
+I/O, and updates the sysfs attributes cache.
+
+Before version 238 the uncached getters would not strip trailing newlines.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="128"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1131">The value of the sysfs attribute or 0.0 if there is no such
+attribute.</doc>
+          <type name="gdouble" c:type="gdouble"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1122">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1123">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_as_int"
+              c:identifier="g_udev_device_get_sysfs_attr_as_int">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="807">Look up the sysfs attribute with @name on @device and convert it to an integer
+using strtol(). The retrieved value is cached in the device. Repeated calls
+will return the same value and not open the attribute again, unless updated
+through one of the "uncached" functions.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="107"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="817">The value of the sysfs attribute or 0 if there is no such
+attribute.</doc>
+          <type name="gint" c:type="gint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="809">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="810">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_as_int_uncached"
+              c:identifier="g_udev_device_get_sysfs_attr_as_int_uncached"
+              version="234">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1066">Look up the sysfs attribute with @name on @device and convert it to an integer
+using strtol(). This function does blocking I/O, and updates the sysfs
+attributes cache.
+
+Before version 238 the uncached getters would not strip trailing newlines.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="124"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1077">The value of the sysfs attribute or 0 if there is no such
+attribute.</doc>
+          <type name="gint" c:type="gint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1068">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1069">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_as_strv"
+              c:identifier="g_udev_device_get_sysfs_attr_as_strv">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="961">Look up the sysfs attribute with @name on @device and return the result of
+splitting it into non-empty tokens split at white space (only space (' '),
+form-feed ('\f'), newline ('\n'), carriage return ('\r'), horizontal
+tab ('\t'), and vertical tab ('\v') are considered; the locale is
+not taken into account).
+
+The retrieved value is cached in the device. Repeated calls will return
+the same value and not open the attribute again, unless updated through
+one of the "uncached" functions.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="115"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="976">
+The value of the sysfs attribute split into tokens or %NULL if
+there is no such attribute. This array is owned by @device and
+should not be freed by the caller.</doc>
+          <array c:type="const gchar* const*">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="963">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="964">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_as_strv_uncached"
+              c:identifier="g_udev_device_get_sysfs_attr_as_strv_uncached"
+              version="234">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1175">Look up the sysfs attribute with @name on @device and return the result of
+splitting it into non-empty tokens split at white space (only space (' '),
+form-feed ('\f'), newline ('\n'), carriage return ('\r'), horizontal
+tab ('\t'), and vertical tab ('\v') are considered; the locale is
+not taken into account).
+
+This function does blocking I/O, and updates the sysfs attributes cache.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="132"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1188">
+The value of the sysfs attribute split into tokens or %NULL if
+there is no such attribute. This array is owned by @device and
+should not be freed by the caller.
+
+Before version 238 the uncached getters would not strip trailing newlines.</doc>
+          <array c:type="const gchar* const*">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1177">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1178">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_as_uint64"
+              c:identifier="g_udev_device_get_sysfs_attr_as_uint64">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="840">Look up the sysfs attribute with @name on @device and convert it to an unsigned
+64-bit integer using g_ascii_strtoull(). The retrieved value is cached in the
+device. Repeated calls will return the same value and not open the attribute
+again, unless updated through one of the "uncached" functions.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="109"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="850">The value of the sysfs attribute or 0 if there is no such
+attribute.</doc>
+          <type name="guint64" c:type="guint64"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="842">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="843">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_as_uint64_uncached"
+              c:identifier="g_udev_device_get_sysfs_attr_as_uint64_uncached"
+              version="234">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1093">Look up the sysfs attribute with @name on @device and convert it to an unsigned
+64-bit integer using g_ascii_strtoull(). This function does blocking I/O, and
+updates the sysfs attributes cache.
+
+Before version 238 the uncached getters would not strip trailing newlines.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="126"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1104">The value of the sysfs attribute or 0 if there is no such
+attribute.</doc>
+          <type name="guint64" c:type="guint64"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1095">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1096">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_keys"
+              c:identifier="g_udev_device_get_sysfs_attr_keys">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="731">Gets all keys for sysfs attributes on @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="102"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="737">A %NULL terminated string array of sysfs attribute keys. This array is owned by @device and should not be freed by the caller.</doc>
+          <array c:type="const gchar* const*">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="733">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_attr_uncached"
+              c:identifier="g_udev_device_get_sysfs_attr_uncached"
+              version="234">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1039">Look up the sysfs attribute with @name on @device. This function does
+blocking I/O, and updates the sysfs attributes cache.
+
+Before version 238 the uncached getters would not strip trailing newlines.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="122"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1049">The value of the sysfs attribute or %NULL if
+there is no such attribute. Do not free this string, it is owned by
+@device.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1041">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1042">Name of the sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_sysfs_path"
+              c:identifier="g_udev_device_get_sysfs_path">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="228">Gets the sysfs path for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="74"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="234">The sysfs path for @device.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="230">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_tags"
+              c:identifier="g_udev_device_get_tags"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1210">Gets all tags for @device.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="117"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1216">A %NULL terminated string array of tags. This array is owned by @device and should not be freed by the caller.</doc>
+          <array c:type="const gchar* const*">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1212">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_usec_since_initialized"
+              c:identifier="g_udev_device_get_usec_since_initialized"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1265">Gets number of micro-seconds since @device was initialized.
+
+This only works for devices with properties in the udev
+database. All other devices return 0.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="69"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1274">Number of micro-seconds since @device was initialized or 0 if unknown.</doc>
+          <type name="guint64" c:type="guint64"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1267">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="has_property" c:identifier="g_udev_device_has_property">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="492">Check if a the property with the given key exists.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="87"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="499">%TRUE only if the value for @key exist.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="494">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="495">Name of property.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="has_sysfs_attr"
+              c:identifier="g_udev_device_has_sysfs_attr">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="762">Check if a the sysfs attribute with the given key exists. The
+retrieved value is cached in the device. Repeated calls will
+return the same result and not check for the presence of the
+attribute again, unless updated through one of the "uncached"
+functions.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="103"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="773">%TRUE only if the value for @key exist.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="764">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="765">Name of sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="has_sysfs_attr_uncached"
+              c:identifier="g_udev_device_has_sysfs_attr_uncached"
+              version="234">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.c"
+             line="1015">Check if a the sysfs attribute with the given key exists. The
+retrieved value is cached in the device. Repeated calls will
+return the same result and not check for the presence of the
+attribute again, unless updated through one of the "uncached"
+functions.</doc>
+        <source-position filename="gudev/gudevdevice.h" line="120"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevdevice.c"
+               line="1026">%TRUE only if the value for @key exist.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="device" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1017">A #GUdevDevice.</doc>
+            <type name="Device" c:type="GUdevDevice*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevdevice.c"
+                 line="1018">Name of sysfs attribute.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <field name="parent">
+        <type name="GObject.Object" c:type="GObject"/>
+      </field>
+      <field name="priv" readable="0" private="1">
+        <type name="DevicePrivate" c:type="GUdevDevicePrivate*"/>
+      </field>
+    </class>
+    <record name="DeviceClass"
+            c:type="GUdevDeviceClass"
+            glib:is-gtype-struct-for="Device">
+      <doc xml:space="preserve"
+           filename="gudev/gudevdevice.h"
+           line="45">Class structure for #GUdevDevice.</doc>
+      <source-position filename="gudev/gudevdevice.h" line="65"/>
+      <field name="parent_class">
+        <doc xml:space="preserve"
+             filename="gudev/gudevdevice.h"
+             line="47">Parent class.</doc>
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+      <field name="reserved1">
+        <callback name="reserved1">
+          <source-position filename="gudev/gudevdevice.h" line="57"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved2">
+        <callback name="reserved2">
+          <source-position filename="gudev/gudevdevice.h" line="58"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved3">
+        <callback name="reserved3">
+          <source-position filename="gudev/gudevdevice.h" line="59"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved4">
+        <callback name="reserved4">
+          <source-position filename="gudev/gudevdevice.h" line="60"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved5">
+        <callback name="reserved5">
+          <source-position filename="gudev/gudevdevice.h" line="61"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved6">
+        <callback name="reserved6">
+          <source-position filename="gudev/gudevdevice.h" line="62"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved7">
+        <callback name="reserved7">
+          <source-position filename="gudev/gudevdevice.h" line="63"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved8">
+        <callback name="reserved8">
+          <source-position filename="gudev/gudevdevice.h" line="64"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+    </record>
+    <record name="DevicePrivate"
+            c:type="GUdevDevicePrivate"
+            disguised="1"
+            opaque="1">
+      <source-position filename="gudev/gudevdevice.h" line="30"/>
+    </record>
+    <enumeration name="DeviceType"
+                 glib:type-name="GUdevDeviceType"
+                 glib:get-type="g_udev_device_type_get_type"
+                 c:type="GUdevDeviceType">
+      <doc xml:space="preserve"
+           filename="gudev/gudevenums.h"
+           line="18">Enumeration used to specify a the type of a device.</doc>
+      <member name="none"
+              value="0"
+              c:identifier="G_UDEV_DEVICE_TYPE_NONE"
+              glib:nick="none"
+              glib:name="G_UDEV_DEVICE_TYPE_NONE">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenums.h"
+             line="20">Device does not have a device file.</doc>
+      </member>
+      <member name="block"
+              value="98"
+              c:identifier="G_UDEV_DEVICE_TYPE_BLOCK"
+              glib:nick="block"
+              glib:name="G_UDEV_DEVICE_TYPE_BLOCK">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenums.h"
+             line="21">Device is a block device.</doc>
+      </member>
+      <member name="char"
+              value="99"
+              c:identifier="G_UDEV_DEVICE_TYPE_CHAR"
+              glib:nick="char"
+              glib:name="G_UDEV_DEVICE_TYPE_CHAR">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenums.h"
+             line="22">Device is a character device.</doc>
+      </member>
+    </enumeration>
+    <function-macro name="ENUMERATOR"
+                    c:identifier="G_UDEV_ENUMERATOR"
+                    introspectable="0">
+      <source-position filename="gudev/gudevenumerator.h" line="19"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="ENUMERATOR_CLASS"
+                    c:identifier="G_UDEV_ENUMERATOR_CLASS"
+                    introspectable="0">
+      <source-position filename="gudev/gudevenumerator.h" line="20"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="ENUMERATOR_GET_CLASS"
+                    c:identifier="G_UDEV_ENUMERATOR_GET_CLASS"
+                    introspectable="0">
+      <source-position filename="gudev/gudevenumerator.h" line="23"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <class name="Enumerator"
+           c:symbol-prefix="enumerator"
+           c:type="GUdevEnumerator"
+           version="165"
+           parent="GObject.Object"
+           glib:type-name="GUdevEnumerator"
+           glib:get-type="g_udev_enumerator_get_type"
+           glib:type-struct="EnumeratorClass">
+      <doc xml:space="preserve"
+           filename="gudev/gudevenumerator.c"
+           line="19">#GUdevEnumerator is used to lookup and sort devices.</doc>
+      <source-position filename="gudev/gudevenumerator.h" line="69"/>
+      <constructor name="new"
+                   c:identifier="g_udev_enumerator_new"
+                   version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="153">Constructs a #GUdevEnumerator object that can be used to enumerate
+and sort devices. Use the add_match_*() and add_nomatch_*() methods
+and execute the query to get a list of devices with
+g_udev_enumerator_execute().</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="72"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="162">A new #GUdevEnumerator object. Free with g_object_unref().</doc>
+          <type name="Enumerator" c:type="GUdevEnumerator*"/>
+        </return-value>
+        <parameters>
+          <parameter name="client" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="155">A #GUdevClient to enumerate devices from.</doc>
+            <type name="Client" c:type="GUdevClient*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="add_match_is_initialized"
+              c:identifier="g_udev_enumerator_add_match_is_initialized"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="351">All returned devices will be initialized.</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="90"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="357">The passed in @enumerator.</doc>
+          <type name="Enumerator" c:type="GUdevEnumerator*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="enumerator" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="353">A #GUdevEnumerator.</doc>
+            <type name="Enumerator" c:type="GUdevEnumerator*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="add_match_name"
+              c:identifier="g_udev_enumerator_add_match_name"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="288">All returned devices will match the given @name.</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="86"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="295">The passed in @enumerator.</doc>
+          <type name="Enumerator" c:type="GUdevEnumerator*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="enumerator" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="290">A #GUdevEnumerator.</doc>
+            <type name="Enumerator" c:type="GUdevEnumerator*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="291">Wildcard filter for kernel name e.g. "sda*".</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="add_match_property"
+              c:identifier="g_udev_enumerator_add_match_property"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="264">All returned devices will have a property matching the given @name and @value.</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="83"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="272">The passed in @enumerator.</doc>
+          <type name="Enumerator" c:type="GUdevEnumerator*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="enumerator" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="266">A #GUdevEnumerator.</doc>
+            <type name="Enumerator" c:type="GUdevEnumerator*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="267">Wildcard filter for property name.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="268">Wildcard filter for property value.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="add_match_subsystem"
+              c:identifier="g_udev_enumerator_add_match_subsystem"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="174">All returned devices will match the given @subsystem.</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="73"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="181">The passed in @enumerator.</doc>
+          <type name="Enumerator" c:type="GUdevEnumerator*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="enumerator" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="176">A #GUdevEnumerator.</doc>
+            <type name="Enumerator" c:type="GUdevEnumerator*"/>
+          </instance-parameter>
+          <parameter name="subsystem" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="177">Wildcard for subsystem name e.g. 'scsi' or 'a*'.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="add_match_sysfs_attr"
+              c:identifier="g_udev_enumerator_add_match_sysfs_attr"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="216">All returned devices will have a sysfs attribute matching the given @name and @value.</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="77"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="224">The passed in @enumerator.</doc>
+          <type name="Enumerator" c:type="GUdevEnumerator*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="enumerator" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="218">A #GUdevEnumerator.</doc>
+            <type name="Enumerator" c:type="GUdevEnumerator*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="219">Wildcard filter for sysfs attribute key.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="220">Wildcard filter for sysfs attribute value.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="add_match_tag"
+              c:identifier="g_udev_enumerator_add_match_tag"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="330">All returned devices will match the given @tag.</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="88"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="337">The passed in @enumerator.</doc>
+          <type name="Enumerator" c:type="GUdevEnumerator*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="enumerator" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="332">A #GUdevEnumerator.</doc>
+            <type name="Enumerator" c:type="GUdevEnumerator*"/>
+          </instance-parameter>
+          <parameter name="tag" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="333">A udev tag e.g. "udev-acl".</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="add_nomatch_subsystem"
+              c:identifier="g_udev_enumerator_add_nomatch_subsystem"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="195">All returned devices will not match the given @subsystem.</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="75"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="202">The passed in @enumerator.</doc>
+          <type name="Enumerator" c:type="GUdevEnumerator*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="enumerator" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="197">A #GUdevEnumerator.</doc>
+            <type name="Enumerator" c:type="GUdevEnumerator*"/>
+          </instance-parameter>
+          <parameter name="subsystem" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="198">Wildcard for subsystem name e.g. 'scsi' or 'a*'.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="add_nomatch_sysfs_attr"
+              c:identifier="g_udev_enumerator_add_nomatch_sysfs_attr"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="240">All returned devices will not have a sysfs attribute matching the given @name and @value.</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="80"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="248">The passed in @enumerator.</doc>
+          <type name="Enumerator" c:type="GUdevEnumerator*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="enumerator" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="242">A #GUdevEnumerator.</doc>
+            <type name="Enumerator" c:type="GUdevEnumerator*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="243">Wildcard filter for sysfs attribute key.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="244">Wildcard filter for sysfs attribute value.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="add_sysfs_path"
+              c:identifier="g_udev_enumerator_add_sysfs_path"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="309">Add a device to the list of devices, to retrieve it back sorted in dependency order.</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="91"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="316">The passed in @enumerator.</doc>
+          <type name="Enumerator" c:type="GUdevEnumerator*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="enumerator" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="311">A #GUdevEnumerator.</doc>
+            <type name="Enumerator" c:type="GUdevEnumerator*"/>
+          </instance-parameter>
+          <parameter name="sysfs_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="312">A sysfs path, e.g. "/sys/devices/pci0000:00/0000:00:1f.2/host0/target0:0:0/0:0:0:0/block/sda"</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="execute"
+              c:identifier="g_udev_enumerator_execute"
+              version="165">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="369">Executes the query in @enumerator.</doc>
+        <source-position filename="gudev/gudevenumerator.h" line="93"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="gudev/gudevenumerator.c"
+               line="375">A list of #GUdevDevice objects. The caller should free the result by using g_object_unref() on each element in the list and then g_list_free() on the list.</doc>
+          <type name="GLib.List" c:type="GList*">
+            <type name="Device"/>
+          </type>
+        </return-value>
+        <parameters>
+          <instance-parameter name="enumerator" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="gudev/gudevenumerator.c"
+                 line="371">A #GUdevEnumerator.</doc>
+            <type name="Enumerator" c:type="GUdevEnumerator*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <property name="client"
+                version="165"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.c"
+             line="130">The #GUdevClient to enumerate devices from.</doc>
+        <type name="Client"/>
+      </property>
+      <field name="parent">
+        <type name="GObject.Object" c:type="GObject"/>
+      </field>
+      <field name="priv" readable="0" private="1">
+        <type name="EnumeratorPrivate" c:type="GUdevEnumeratorPrivate*"/>
+      </field>
+    </class>
+    <record name="EnumeratorClass"
+            c:type="GUdevEnumeratorClass"
+            glib:is-gtype-struct-for="Enumerator"
+            version="165">
+      <doc xml:space="preserve"
+           filename="gudev/gudevenumerator.h"
+           line="47">Class structure for #GUdevEnumerator.</doc>
+      <source-position filename="gudev/gudevenumerator.h" line="69"/>
+      <field name="parent_class">
+        <doc xml:space="preserve"
+             filename="gudev/gudevenumerator.h"
+             line="49">Parent class.</doc>
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+      <field name="reserved1">
+        <callback name="reserved1">
+          <source-position filename="gudev/gudevenumerator.h" line="61"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved2">
+        <callback name="reserved2">
+          <source-position filename="gudev/gudevenumerator.h" line="62"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved3">
+        <callback name="reserved3">
+          <source-position filename="gudev/gudevenumerator.h" line="63"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved4">
+        <callback name="reserved4">
+          <source-position filename="gudev/gudevenumerator.h" line="64"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved5">
+        <callback name="reserved5">
+          <source-position filename="gudev/gudevenumerator.h" line="65"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved6">
+        <callback name="reserved6">
+          <source-position filename="gudev/gudevenumerator.h" line="66"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved7">
+        <callback name="reserved7">
+          <source-position filename="gudev/gudevenumerator.h" line="67"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+      <field name="reserved8">
+        <callback name="reserved8">
+          <source-position filename="gudev/gudevenumerator.h" line="68"/>
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+        </callback>
+      </field>
+    </record>
+    <record name="EnumeratorPrivate"
+            c:type="GUdevEnumeratorPrivate"
+            disguised="1"
+            opaque="1">
+      <source-position filename="gudev/gudevenumerator.h" line="30"/>
+    </record>
+    <function-macro name="IS_CLIENT"
+                    c:identifier="G_UDEV_IS_CLIENT"
+                    introspectable="0">
+      <source-position filename="gudev/gudevclient.h" line="21"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="IS_CLIENT_CLASS"
+                    c:identifier="G_UDEV_IS_CLIENT_CLASS"
+                    introspectable="0">
+      <source-position filename="gudev/gudevclient.h" line="22"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="IS_DEVICE"
+                    c:identifier="G_UDEV_IS_DEVICE"
+                    introspectable="0">
+      <source-position filename="gudev/gudevdevice.h" line="21"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="IS_DEVICE_CLASS"
+                    c:identifier="G_UDEV_IS_DEVICE_CLASS"
+                    introspectable="0">
+      <source-position filename="gudev/gudevdevice.h" line="22"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="IS_ENUMERATOR"
+                    c:identifier="G_UDEV_IS_ENUMERATOR"
+                    introspectable="0">
+      <source-position filename="gudev/gudevenumerator.h" line="21"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="IS_ENUMERATOR_CLASS"
+                    c:identifier="G_UDEV_IS_ENUMERATOR_CLASS"
+                    introspectable="0">
+      <source-position filename="gudev/gudevenumerator.h" line="22"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+  </namespace>
+</repository>

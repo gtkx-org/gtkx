@@ -54,7 +54,6 @@ export abstract class BaseItemRenderer<TStore = unknown> {
 
     protected createBox(): Gtk.Box {
         const box = new Gtk.Box(Gtk.Orientation.HORIZONTAL);
-        box.setValign(Gtk.Align.CENTER);
 
         if (this.estimatedItemHeight !== null) {
             box.setSizeRequest(-1, this.estimatedItemHeight);

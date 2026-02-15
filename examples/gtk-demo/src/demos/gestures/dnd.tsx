@@ -14,6 +14,7 @@ import {
     GtkGestureClick,
     GtkGestureRotate,
     GtkImage,
+    GtkLabel,
     GtkPopover,
     GtkScale,
     GtkScrolledWindow,
@@ -25,11 +26,8 @@ import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
 
 const itemStyle = css`
-    min-width: 60px;
-    min-height: 60px;
-    border-radius: 8px;
-    font-size: 18px;
-    font-weight: bold;
+    padding: 10px;
+    margin: 1px;
 `;
 
 const defaultItemStyle = "frame";
@@ -96,7 +94,7 @@ const SWATCH_COLORS = [
     "coral",
 ];
 
-const ITEM_SIZE = 60;
+const ITEM_SIZE = 40;
 
 type ItemStyle = { type: "default" } | { type: "rgba"; cssColor: string } | { type: "cssClass"; className: string };
 
@@ -130,13 +128,13 @@ interface EditState {
 
 let nextId = 5;
 
-function createRotationTransform(angle: number): Gsk.Transform | undefined {
+function createRotationTransform(halfW: number, halfH: number, angle: number): Gsk.Transform | undefined {
     if (angle === 0) return undefined;
 
     const center = new Graphene.Point();
-    center.init(ITEM_SIZE / 2, ITEM_SIZE / 2);
+    center.init(halfW, halfH);
     const offset = new Graphene.Point();
-    offset.init(-ITEM_SIZE / 2, -ITEM_SIZE / 2);
+    offset.init(-halfW, -halfH);
 
     let t: Gsk.Transform | undefined = new Gsk.Transform();
     t = t.translate(center) ?? undefined;
@@ -175,27 +173,39 @@ function CssPatternSwatch({ cssClass }: { cssClass: string }) {
     );
 }
 
-function getItemStyleClass(style: ItemStyle): string {
+const coloredItemStyle = css`
+    &, &:hover, &:active {
+        color: black;
+    }
+`;
+
+function getItemStyleClass(style: ItemStyle): string[] {
     if (style.type === "default") {
-        return defaultItemStyle;
+        return [defaultItemStyle];
     }
     if (style.type === "cssClass") {
-        return style.className;
+        return [style.className, coloredItemStyle];
     }
-    return css`
-        &, &:hover, &:active {
-            background-color: ${style.cssColor};
-            background-image: none;
-        }
-    `;
+    return [
+        css`
+            &, &:hover, &:active {
+                background-color: ${style.cssColor};
+                background-image: none;
+                color: black;
+            }
+        `,
+    ];
 }
 
 function themeIsDark(): boolean {
+    const envTheme = process.env.GTK_THEME;
+    if (envTheme != null) {
+        return envTheme.endsWith(":dark") || envTheme.endsWith("-dark");
+    }
     const settings = Gtk.Settings.getDefault();
     if (!settings) return false;
-    if (settings.getGtkApplicationPreferDarkTheme()) return true;
     const themeName = settings.getGtkThemeName() ?? "";
-    return themeName.endsWith("-dark") || themeName.endsWith(":dark") || themeName.endsWith("-Dark");
+    return themeName.endsWith("-dark") || themeName.endsWith(":dark");
 }
 
 function initialItemStyle(): ItemStyle {
@@ -225,8 +235,28 @@ const DndDemo = ({ window }: DemoProps) => {
     const [trashHovering, setTrashHovering] = useState(false);
 
     const contextMenuRef = useRef<Gtk.Popover | null>(null);
-    const buttonRefs = useRef<Map<string, Gtk.Button>>(new Map());
+    const entryRef = useRef<Gtk.Entry | null>(null);
+    const buttonRefs = useRef<Map<string, Gtk.Widget>>(new Map());
+    const itemHalves = useRef<Map<string, { halfW: number; halfH: number }>>(new Map());
+    const itemRadii = useRef<Map<string, number>>(new Map());
     const dragHotspotRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+    useEffect(() => {
+        for (const item of items) {
+            const button = buttonRefs.current.get(item.id);
+            if (button) {
+                const bounds = new Graphene.Rect();
+                bounds.init(0, 0, 0, 0);
+                if (button.computeBounds(button, bounds)) {
+                    const halfW = bounds.getWidth() / 2;
+                    const halfH = bounds.getHeight() / 2;
+                    const r = Math.sqrt(halfW * halfW + halfH * halfH);
+                    itemHalves.current.set(item.id, { halfW, halfH });
+                    itemRadii.current.set(item.id, r);
+                }
+            }
+        }
+    }, [items]);
 
     const createContentProvider = useCallback((itemId: string) => {
         return Gdk.ContentProvider.newForValue(GObject.Value.newFromString(itemId));
@@ -235,18 +265,8 @@ const DndDemo = ({ window }: DemoProps) => {
     const handleCanvasDrop = useCallback((value: GObject.Value, x: number, y: number) => {
         const itemId = value.getString();
         if (itemId) {
-            const { x: hx, y: hy } = dragHotspotRef.current;
-            setItems((prev) =>
-                prev.map((item) => {
-                    if (item.id !== itemId) return item;
-                    const rad = ((item.angle + item.angleDelta) * Math.PI) / 180;
-                    const cx = ITEM_SIZE / 2;
-                    const cy = ITEM_SIZE / 2;
-                    const rx = cx + (hx - cx) * Math.cos(rad) - (hy - cy) * Math.sin(rad);
-                    const ry = cy + (hx - cx) * Math.sin(rad) + (hy - cy) * Math.cos(rad);
-                    return { ...item, x: x - rx, y: y - ry };
-                }),
-            );
+            const r = itemRadii.current.get(itemId) ?? 0;
+            setItems((prev) => prev.map((item) => (item.id !== itemId ? item : { ...item, x: x - r, y: y - r })));
         }
         return true;
     }, []);
@@ -262,13 +282,11 @@ const DndDemo = ({ window }: DemoProps) => {
 
     const handleContextMenu = useCallback(
         (clickX: number, clickY: number) => {
-            const hitItem = items.find(
-                (item) =>
-                    clickX >= item.x &&
-                    clickX <= item.x + ITEM_SIZE &&
-                    clickY >= item.y &&
-                    clickY <= item.y + ITEM_SIZE,
-            );
+            const hitItem = items.find((item) => {
+                const r = itemRadii.current.get(item.id) ?? ITEM_SIZE;
+                const size = 2 * r;
+                return clickX >= item.x && clickX <= item.x + size && clickY >= item.y && clickY <= item.y + size;
+            });
             setContextMenu({ x: clickX, y: clickY, itemId: hitItem?.id ?? null });
             setTimeout(() => contextMenuRef.current?.popup(), 0);
         },
@@ -285,9 +303,9 @@ const DndDemo = ({ window }: DemoProps) => {
             {
                 id,
                 label,
-                style: { type: "default" },
-                x: contextMenu.x - ITEM_SIZE / 2,
-                y: contextMenu.y - ITEM_SIZE / 2,
+                style: initialItemStyle(),
+                x: contextMenu.x,
+                y: contextMenu.y,
                 angle: 0,
                 angleDelta: 0,
             },
@@ -395,6 +413,14 @@ const DndDemo = ({ window }: DemoProps) => {
         [editState, items],
     );
 
+    useEffect(() => {
+        const entry = entryRef.current;
+        if (entry && editState) {
+            entry.grabFocusWithoutSelecting();
+            entry.setPosition(-1);
+        }
+    }, [editState]);
+
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkFixed hexpand vexpand cssClasses={[css`min-height: 400px;`]}>
@@ -420,9 +446,13 @@ const DndDemo = ({ window }: DemoProps) => {
                         key={item.id}
                         x={item.x}
                         y={item.y}
-                        transform={createRotationTransform(item.angle + item.angleDelta)}
+                        transform={createRotationTransform(
+                            itemHalves.current.get(item.id)?.halfW ?? ITEM_SIZE / 2,
+                            itemHalves.current.get(item.id)?.halfH ?? ITEM_SIZE / 2,
+                            item.angle + item.angleDelta,
+                        )}
                     >
-                        <GtkButton
+                        <GtkLabel
                             ref={(ref) => {
                                 if (ref) buttonRefs.current.set(item.id, ref);
                                 else buttonRefs.current.delete(item.id);
@@ -430,10 +460,16 @@ const DndDemo = ({ window }: DemoProps) => {
                             label={item.label}
                             cssClasses={cx(
                                 itemStyle,
-                                getItemStyleClass(item.style),
+                                ...getItemStyleClass(item.style),
                                 isDragging === item.id && css`opacity: 0.3;`,
                             )}
                         >
+                            <GtkGestureClick
+                                onReleased={() => {
+                                    bringToFront(item.id);
+                                    toggleEditing(item.id);
+                                }}
+                            />
                             <GtkDragSource
                                 onPrepare={(x: number, y: number) => {
                                     dragHotspotRef.current = { x, y };
@@ -457,13 +493,7 @@ const DndDemo = ({ window }: DemoProps) => {
                                 onAngleChanged={handleRotateAngleChanged(item.id)}
                                 onEnd={() => handleRotateEnd(item.id)}
                             />
-                            <GtkGestureClick
-                                onReleased={() => {
-                                    bringToFront(item.id);
-                                    toggleEditing(item.id);
-                                }}
-                            />
-                        </GtkButton>
+                        </GtkLabel>
                     </x.FixedChild>
                 ))}
 
@@ -507,22 +537,11 @@ const DndDemo = ({ window }: DemoProps) => {
                 {editingItem && (
                     <x.FixedChild
                         x={editingItem.x}
-                        y={
-                            editingItem.y +
-                            ITEM_SIZE / 2 +
-                            (ITEM_SIZE / 2) *
-                                (Math.abs(Math.cos(((editingItem.angle + editingItem.angleDelta) * Math.PI) / 180)) +
-                                    Math.abs(
-                                        Math.sin(((editingItem.angle + editingItem.angleDelta) * Math.PI) / 180),
-                                    )) +
-                            10
-                        }
+                        y={editingItem.y + 2 * (itemHalves.current.get(editingItem.id)?.halfH ?? ITEM_SIZE / 2)}
                     >
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                             <GtkEntry
-                                ref={(entry: Gtk.Entry | null) => {
-                                    if (entry) entry.grabFocus();
-                                }}
+                                ref={entryRef}
                                 text={editingItem.label}
                                 onChanged={(entry) => updateItemLabel(editingItem.id, entry.getText())}
                                 widthChars={12}

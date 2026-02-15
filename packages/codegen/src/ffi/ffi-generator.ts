@@ -6,7 +6,7 @@ import { CodegenProject } from "../core/project.js";
 import { FfiMapper } from "../core/type-system/ffi-mapper.js";
 import { boxedSelfType, isPrimitiveFieldType } from "../core/type-system/ffi-types.js";
 import { filterSupportedMethods } from "../core/utils/filtering.js";
-import { normalizeClassName, toCamelCase, toKebabCase, toPascalCase } from "../core/utils/naming.js";
+import { normalizeClassName, toCamelCase, toKebabCase, toPascalCase, toValidIdentifier } from "../core/utils/naming.js";
 import { parseParentReference } from "../core/utils/parent-reference.js";
 import { ImportsBuilder } from "../core/writers/imports-builder.js";
 import { createMethodBodyWriter, createWriters } from "../core/writers/index.js";
@@ -184,7 +184,7 @@ export class FfiGenerator {
 
                         const methodStructures: MethodDeclarationStructure[] = [];
                         for (const method of supportedMethods) {
-                            const methodName = toCamelCase(method.name);
+                            const methodName = toValidIdentifier(toCamelCase(method.name));
                             const instanceOwnership =
                                 method.instanceParameter?.transferOwnership === "full" ? "full" : "borrowed";
                             const selfTypeDescriptor = boxedSelfType(
@@ -385,8 +385,6 @@ export class FfiGenerator {
 
         const coreTypeStructs = ["TypeClass", "TypeInterface", "EnumClass", "FlagsClass", "ObjectClass", "AttrClass"];
         if (coreTypeStructs.includes(record.name)) return true;
-
-        if (record.isGtypeStruct()) return false;
 
         return true;
     }

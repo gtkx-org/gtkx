@@ -62,6 +62,10 @@ export class GirRepository {
      */
     loadFromXml(xml: string): void {
         const raw = this.parser.parse(xml);
+        const existing = this.rawNamespaces.get(raw.name);
+        if (existing && this.compareVersions(existing.version, raw.version) >= 0) {
+            return;
+        }
         this.rawNamespaces.set(raw.name, raw);
         this.resolved = false;
     }
@@ -394,6 +398,17 @@ export class GirRepository {
         }
 
         return results;
+    }
+
+    private compareVersions(a: string, b: string): number {
+        const partsA = a.split(".").map(Number);
+        const partsB = b.split(".").map(Number);
+        const len = Math.max(partsA.length, partsB.length);
+        for (let i = 0; i < len; i++) {
+            const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
+            if (diff !== 0) return diff;
+        }
+        return 0;
     }
 
     private ensureResolved(): void {

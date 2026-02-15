@@ -94,22 +94,42 @@ export function createHostConfig(): HostConfig {
             if (hostContext.insideTextBuffer) {
                 const props = { text };
                 const node = createNode("TextSegment", props, undefined, rootContainer);
-                node.commitUpdate(null, props);
+                node.signalStore.blockAll();
+                try {
+                    node.commitUpdate(null, props);
+                } finally {
+                    node.signalStore.unblockAll();
+                }
                 return node;
             }
             const props = { label: text };
             const node = createNode("GtkLabel", props, undefined, rootContainer);
-            node.commitUpdate(null, props);
+            node.signalStore.blockAll();
+            try {
+                node.commitUpdate(null, props);
+            } finally {
+                node.signalStore.unblockAll();
+            }
             return node;
         },
         appendInitialChild: (parent, child) => {
             parent.appendInitialChild(child);
         },
         finalizeInitialChildren: (instance, _type, props) => {
-            return instance.finalizeInitialChildren(props);
+            instance.signalStore.blockAll();
+            try {
+                return instance.finalizeInitialChildren(props);
+            } finally {
+                instance.signalStore.unblockAll();
+            }
         },
         commitUpdate: (instance, _type, oldProps, newProps) => {
-            instance.commitUpdate(oldProps, newProps);
+            instance.signalStore.blockAll();
+            try {
+                instance.commitUpdate(oldProps, newProps);
+            } finally {
+                instance.signalStore.unblockAll();
+            }
         },
         commitMount: (instance) => {
             instance.commitMount();
@@ -143,10 +163,15 @@ export function createHostConfig(): HostConfig {
             endBatch();
         },
         commitTextUpdate: (textInstance, oldText, newText) => {
-            if (textInstance.typeName === "TextSegment") {
-                textInstance.commitUpdate({ text: oldText }, { text: newText });
-            } else {
-                textInstance.commitUpdate({ label: oldText }, { label: newText });
+            textInstance.signalStore.blockAll();
+            try {
+                if (textInstance.typeName === "TextSegment") {
+                    textInstance.commitUpdate({ text: oldText }, { text: newText });
+                } else {
+                    textInstance.commitUpdate({ label: oldText }, { label: newText });
+                }
+            } finally {
+                textInstance.signalStore.unblockAll();
             }
         },
         clearContainer: () => {},

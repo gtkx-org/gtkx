@@ -63,10 +63,6 @@ const FramesDemo = ({ window }: DemoProps) => {
         const now = frameClock.getFrameTime();
         nowRef.current = now;
 
-        if (time2Ref.current === 0) {
-            time2Ref.current = now + TIME_SPAN_US;
-        }
-
         if (now >= time2Ref.current) {
             time2Ref.current = now + TIME_SPAN_US;
             color1Ref.current = color2Ref.current;

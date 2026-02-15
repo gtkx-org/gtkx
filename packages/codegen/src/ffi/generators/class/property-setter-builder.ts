@@ -7,7 +7,7 @@
  * These setters use g_object_set_property with properly typed GValues.
  */
 
-import type { GirClass, GirProperty, GirRepository } from "@gtkx/gir";
+import type { GirClass, GirProperty, GirRepository, QualifiedName } from "@gtkx/gir";
 import type { MethodDeclarationStructure, WriterFunction } from "ts-morph";
 import { StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
@@ -17,6 +17,7 @@ import { getSyntheticSetterPrimitiveInfo } from "../../../core/type-system/ffi-t
 import {
     collectDirectMembers,
     collectOwnAndInterfaceMethodNames,
+    collectParentMethodNames,
     collectParentPropertyNames,
 } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
@@ -33,6 +34,9 @@ export class PropertySetterBuilder {
         private readonly options: FfiGeneratorOptions,
     ) {
         this.existingMethodNames = collectOwnAndInterfaceMethodNames(cls, repository, toCamelCase);
+        for (const name of collectParentMethodNames(cls, repository)) {
+            this.existingMethodNames.add(toCamelCase(name));
+        }
     }
 
     buildStructures(): MethodDeclarationStructure[] {
@@ -111,6 +115,9 @@ export class PropertySetterBuilder {
         }
 
         if (typeMapping.kind === "class") {
+            if (this.isFundamentalClass(typeName)) {
+                return null;
+            }
             return { staticConstructor: "newFromObject", isClass: true };
         }
 
@@ -119,6 +126,12 @@ export class PropertySetterBuilder {
         }
 
         return null;
+    }
+
+    private isFundamentalClass(typeName: string): boolean {
+        const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
+        const cls = this.repository.resolveClass(qualifiedName as QualifiedName);
+        return cls?.fundamental ?? false;
     }
 
     private writeSetterBody(propertyName: string, setterInfo: GValueSetterInfo): WriterFunction {

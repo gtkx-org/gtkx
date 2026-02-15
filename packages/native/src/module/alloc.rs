@@ -11,6 +11,8 @@
 //! - **Plain structs** (without type_name): Memory is allocated with `g_malloc0`
 //!   and freed with `g_free` on drop.
 
+use std::sync::mpsc;
+
 use gtk4::glib::ffi::g_malloc0;
 use neon::prelude::*;
 
@@ -74,11 +76,16 @@ impl AllocRequest {
 pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
     let request = AllocRequest::from_js(&mut cx)?;
 
-    let rx = gtk_dispatch::GtkDispatcher::global().run_on_gtk_thread(move || request.execute());
+    let (tx, rx) = mpsc::channel::<anyhow::Result<NativeHandle>>();
 
-    let handle = rx
-        .recv()
-        .or_else(|err| cx.throw_error(format!("Error receiving alloc result: {err}")))?
+    gtk_dispatch::GtkDispatcher::global().enter_js_wait();
+    gtk_dispatch::GtkDispatcher::global().schedule(move || {
+        let _ = tx.send(request.execute());
+    });
+
+    let handle = gtk_dispatch::GtkDispatcher::global()
+        .wait_for_gtk_result(&mut cx, &rx)
+        .or_else(|err| cx.throw_error(err.to_string()))?
         .or_else(|err| cx.throw_error(format!("Error during alloc: {err}")))?;
 
     Ok(cx.boxed(handle).upcast())

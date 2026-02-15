@@ -1,4 +1,4 @@
-import type { GirClass, GirProperty, GirRepository } from "@gtkx/gir";
+import type { GirClass, GirProperty, GirRepository, QualifiedName } from "@gtkx/gir";
 import type { MethodDeclarationStructure, WriterFunction } from "ts-morph";
 import { StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
@@ -8,6 +8,7 @@ import { getSyntheticGetterPrimitiveInfo } from "../../../core/type-system/ffi-t
 import {
     collectDirectMembers,
     collectOwnAndInterfaceMethodNames,
+    collectParentMethodNames,
     collectParentPropertyNames,
 } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
@@ -24,6 +25,9 @@ export class PropertyGetterBuilder {
         private readonly options: FfiGeneratorOptions,
     ) {
         this.existingMethodNames = collectOwnAndInterfaceMethodNames(cls, repository, toCamelCase);
+        for (const name of collectParentMethodNames(cls, repository)) {
+            this.existingMethodNames.add(toCamelCase(name));
+        }
     }
 
     buildStructures(): MethodDeclarationStructure[] {
@@ -102,6 +106,9 @@ export class PropertyGetterBuilder {
         }
 
         if (typeMapping.kind === "class") {
+            if (this.isFundamentalClass(typeName)) {
+                return null;
+            }
             return { getMethod: "getObject", isClass: true };
         }
 
@@ -110,6 +117,12 @@ export class PropertyGetterBuilder {
         }
 
         return null;
+    }
+
+    private isFundamentalClass(typeName: string): boolean {
+        const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
+        const cls = this.repository.resolveClass(qualifiedName as QualifiedName);
+        return cls?.fundamental ?? false;
     }
 
     private writeGetterBody(propertyName: string, getterInfo: GValueGetterInfo, returnType: string): WriterFunction {

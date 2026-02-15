@@ -43,19 +43,27 @@ export class EnumGenerator {
     private buildEnumStructure(enumeration: GirEnumeration): EnumDeclarationStructure {
         const enumName = toPascalCase(enumeration.name);
 
-        const members = enumeration.members.map((member) => {
-            let memberName = toConstantCase(member.name);
-            if (/^\d/.test(memberName)) {
-                memberName = `_${memberName}`;
-            }
+        const seenNames = new Set<string>();
+        const members = enumeration.members
+            .map((member) => {
+                let memberName = toConstantCase(member.name);
+                if (/^\d/.test(memberName)) {
+                    memberName = `_${memberName}`;
+                }
 
-            return {
-                kind: StructureKind.EnumMember as const,
-                name: memberName,
-                value: Number(member.value),
-                docs: buildJsDocStructure(member.doc, this.options.namespace),
-            };
-        });
+                if (seenNames.has(memberName)) {
+                    return null;
+                }
+                seenNames.add(memberName);
+
+                return {
+                    kind: StructureKind.EnumMember as const,
+                    name: memberName,
+                    value: Number(member.value),
+                    docs: buildJsDocStructure(member.doc, this.options.namespace),
+                };
+            })
+            .filter(<T>(m: T | null): m is T => m !== null);
 
         return {
             kind: StructureKind.Enum,

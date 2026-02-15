@@ -1,0 +1,3824 @@
+<?xml version="1.0"?>
+<!-- This file was automatically generated from C sources - DO NOT EDIT!
+To affect the contents of this file, edit the original C definitions,
+and/or use gtk-doc annotations.  -->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:doc="http://www.gtk.org/introspection/doc/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="Gio" version="2.0"/>
+  <c:include name="cloudproviders/cloudproviders.h"/>
+  <doc:format name="unknown"/>
+  <namespace name="CloudProviders"
+             version="0.3"
+             shared-library="libcloudproviders.so.0"
+             c:identifier-prefixes="CloudProviders"
+             c:symbol-prefixes="cloud_providers">
+    <constant name="ACCOUNT_DBUS_IFACE"
+              value="org.freedesktop.CloudProviders.Account"
+              c:type="CLOUD_PROVIDERS_ACCOUNT_DBUS_IFACE">
+      <source-position filename="src/cloudprovidersaccount.h" line="27"/>
+      <type name="utf8" c:type="gchar*"/>
+    </constant>
+    <class name="Account"
+           c:symbol-prefix="account"
+           c:type="CloudProvidersAccount"
+           parent="GObject.Object"
+           glib:type-name="CloudProvidersAccount"
+           glib:get-type="cloud_providers_account_get_type"
+           glib:type-struct="AccountClass">
+      <doc xml:space="preserve"
+           filename="src/cloudprovidersaccount.c"
+           line="43">#CloudProvidersAccount is the basic object used to construct the integrator UI
+and actions that a provider will present to the user, from the client side.
+Integrators of the cloud providers can use this object to poll the
+#CloudProvidersProvider menus, status and actions.</doc>
+      <source-position filename="src/cloudprovidersaccount.h" line="46"/>
+      <constructor name="new" c:identifier="cloud_providers_account_new">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccount.c"
+             line="246">A #CloudProvidersAccount object are used to fetch details about cloud providers from DBus.
+Object are usually fetched from cloud_providers_provider_get_accounts() as a list.</doc>
+        <source-position filename="src/cloudprovidersaccount.h" line="53"/>
+        <return-value transfer-ownership="full">
+          <type name="Account" c:type="CloudProvidersAccount*"/>
+        </return-value>
+        <parameters>
+          <parameter name="proxy" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccount.c"
+                 line="248">DBus proxy</doc>
+            <type name="Gio.DBusProxy" c:type="GDBusProxy*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="get_action_group"
+              c:identifier="cloud_providers_account_get_action_group"
+              glib:get-property="action-group">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccount.c"
+             line="448">Get the action group exported in addition to the #GMenuModel from
+cloud_providers_account_get_menu_model()</doc>
+        <source-position filename="src/cloudprovidersaccount.h" line="60"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudprovidersaccount.c"
+               line="455">The action group exported by the cloud provider account</doc>
+          <type name="Gio.ActionGroup" c:type="GActionGroup*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccount.c"
+                 line="450">A cloud provider account</doc>
+            <type name="Account" c:type="CloudProvidersAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_icon"
+              c:identifier="cloud_providers_account_get_icon"
+              glib:get-property="icon">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccount.c"
+             line="416">Get the icon of the account</doc>
+        <source-position filename="src/cloudprovidersaccount.h" line="58"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudprovidersaccount.c"
+               line="422">The icon of the cloud provider account</doc>
+          <type name="Gio.Icon" c:type="GIcon*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccount.c"
+                 line="418">A cloud provider account</doc>
+            <type name="Account" c:type="CloudProvidersAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_menu_model"
+              c:identifier="cloud_providers_account_get_menu_model"
+              glib:get-property="menu-model">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccount.c"
+             line="432">Get the menu model exported for the account</doc>
+        <source-position filename="src/cloudprovidersaccount.h" line="59"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudprovidersaccount.c"
+               line="438">The menu model exported by the cloud provider account</doc>
+          <type name="Gio.MenuModel" c:type="GMenuModel*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccount.c"
+                 line="434">A cloud provider account</doc>
+            <type name="Account" c:type="CloudProvidersAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_name"
+              c:identifier="cloud_providers_account_get_name"
+              glib:get-property="name">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccount.c"
+             line="368">Get the name of the account</doc>
+        <source-position filename="src/cloudprovidersaccount.h" line="55"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudprovidersaccount.c"
+               line="374">The name of the cloud provider account</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccount.c"
+                 line="370">A cloud provider account</doc>
+            <type name="Account" c:type="CloudProvidersAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_path"
+              c:identifier="cloud_providers_account_get_path"
+              glib:get-property="path">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccount.c"
+             line="465">Get the directory path of the account</doc>
+        <source-position filename="src/cloudprovidersaccount.h" line="61"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudprovidersaccount.c"
+               line="471">The directory path of the cloud provider account</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccount.c"
+                 line="467">A cloud provider account</doc>
+            <type name="Account" c:type="CloudProvidersAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_status"
+              c:identifier="cloud_providers_account_get_status">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccount.c"
+             line="384">Get the status of the account</doc>
+        <source-position filename="src/cloudprovidersaccount.h" line="56"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudprovidersaccount.c"
+               line="390">The status of the cloud provider account</doc>
+          <type name="AccountStatus" c:type="CloudProvidersAccountStatus"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccount.c"
+                 line="386">A cloud provider account</doc>
+            <type name="Account" c:type="CloudProvidersAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_status_details"
+              c:identifier="cloud_providers_account_get_status_details"
+              glib:get-property="status-details">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccount.c"
+             line="400">Get the status details of the account</doc>
+        <source-position filename="src/cloudprovidersaccount.h" line="57"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudprovidersaccount.c"
+               line="406">The status detail description of the cloud provider account</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccount.c"
+                 line="402">A cloud provider account</doc>
+            <type name="Account" c:type="CloudProvidersAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <property name="action-group"
+                transfer-ownership="none"
+                getter="get_action_group">
+        <type name="Gio.ActionGroup"/>
+      </property>
+      <property name="icon" transfer-ownership="none" getter="get_icon">
+        <type name="Gio.Icon"/>
+      </property>
+      <property name="menu-model"
+                transfer-ownership="none"
+                getter="get_menu_model">
+        <type name="Gio.MenuModel"/>
+      </property>
+      <property name="name"
+                transfer-ownership="none"
+                getter="get_name"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="path"
+                transfer-ownership="none"
+                getter="get_path"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="status"
+                introspectable="0"
+                transfer-ownership="none"
+                default-value="CLOUD_PROVIDERS_ACCOUNT_STATUS_INVALID">
+        <type/>
+      </property>
+      <property name="status-details"
+                transfer-ownership="none"
+                getter="get_status_details"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+    <record name="AccountClass"
+            c:type="CloudProvidersAccountClass"
+            glib:is-gtype-struct-for="Account">
+      <source-position filename="src/cloudprovidersaccount.h" line="46"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="AccountExporter"
+           c:symbol-prefix="account_exporter"
+           c:type="CloudProvidersAccountExporter"
+           parent="GObject.Object"
+           glib:type-name="CloudProvidersAccountExporter"
+           glib:get-type="cloud_providers_account_exporter_get_type"
+           glib:type-struct="AccountExporterClass">
+      <source-position filename="src/cloudprovidersaccountexporter.h"
+                       line="28"/>
+      <constructor name="new"
+                   c:identifier="cloud_providers_account_exporter_new">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccountexporter.c"
+             line="146">Create a new #CloudProvidersAccountExporter object</doc>
+        <source-position filename="src/cloudprovidersaccountexporter.h"
+                         line="38"/>
+        <return-value transfer-ownership="full">
+          <type name="AccountExporter"
+                c:type="CloudProvidersAccountExporter*"/>
+        </return-value>
+        <parameters>
+          <parameter name="provider" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccountexporter.c"
+                 line="148">The provider to which it will be associated.</doc>
+            <type name="ProviderExporter"
+                  c:type="CloudProvidersProviderExporter*"/>
+          </parameter>
+          <parameter name="bus_name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccountexporter.c"
+                 line="149">A unique name for the account
+              must be a valid DBus object name</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_action_group"
+              c:identifier="cloud_providers_account_exporter_set_action_group"
+              glib:set-property="action-group">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccountexporter.c"
+             line="383">In order for a menu exported with cloud_providers_account_exporter_export_menu to receive events
+that will eventually call your callbacks, it needs the corresponding GActionGroup.
+Use this function to export it.</doc>
+        <source-position filename="src/cloudprovidersaccountexporter.h"
+                         line="62"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccountexporter.c"
+                 line="385">The cloud provider</doc>
+            <type name="AccountExporter"
+                  c:type="CloudProvidersAccountExporter*"/>
+          </instance-parameter>
+          <parameter name="action_group" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccountexporter.c"
+                 line="386">The GActionGroup to be used by the menu exported by cloud_providers_account_exporter_export_menu</doc>
+            <type name="Gio.ActionGroup" c:type="GActionGroup*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_icon"
+              c:identifier="cloud_providers_account_exporter_set_icon"
+              glib:set-property="icon">
+        <source-position filename="src/cloudprovidersaccountexporter.h"
+                         line="54"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="AccountExporter"
+                  c:type="CloudProvidersAccountExporter*"/>
+          </instance-parameter>
+          <parameter name="icon" transfer-ownership="none">
+            <type name="Gio.Icon" c:type="GIcon*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_menu_model"
+              c:identifier="cloud_providers_account_exporter_set_menu_model"
+              glib:set-property="menu-model">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersaccountexporter.c"
+             line="361">One of the benefits of the integration is to display a menu with available
+options for an account. Use this function to export a GMenuModel menu to be
+displayed by the chosen integration by the desktop environment or application.</doc>
+        <source-position filename="src/cloudprovidersaccountexporter.h"
+                         line="58"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccountexporter.c"
+                 line="363">The account</doc>
+            <type name="AccountExporter"
+                  c:type="CloudProvidersAccountExporter*"/>
+          </instance-parameter>
+          <parameter name="menu_model" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersaccountexporter.c"
+                 line="364">The menu model to export</doc>
+            <type name="Gio.MenuModel" c:type="GMenuModel*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_name"
+              c:identifier="cloud_providers_account_exporter_set_name"
+              glib:set-property="name">
+        <source-position filename="src/cloudprovidersaccountexporter.h"
+                         line="42"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="AccountExporter"
+                  c:type="CloudProvidersAccountExporter*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_path"
+              c:identifier="cloud_providers_account_exporter_set_path"
+              glib:set-property="path">
+        <source-position filename="src/cloudprovidersaccountexporter.h"
+                         line="66"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="AccountExporter"
+                  c:type="CloudProvidersAccountExporter*"/>
+          </instance-parameter>
+          <parameter name="path" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_status"
+              c:identifier="cloud_providers_account_exporter_set_status">
+        <source-position filename="src/cloudprovidersaccountexporter.h"
+                         line="46"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="AccountExporter"
+                  c:type="CloudProvidersAccountExporter*"/>
+          </instance-parameter>
+          <parameter name="status" transfer-ownership="none">
+            <type name="AccountStatus" c:type="CloudProvidersAccountStatus"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_status_details"
+              c:identifier="cloud_providers_account_exporter_set_status_details"
+              glib:set-property="status-details">
+        <source-position filename="src/cloudprovidersaccountexporter.h"
+                         line="50"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="AccountExporter"
+                  c:type="CloudProvidersAccountExporter*"/>
+          </instance-parameter>
+          <parameter name="status_details" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="action-group"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_action_group">
+        <type name="Gio.ActionGroup"/>
+      </property>
+      <property name="bus-name"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="icon"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_icon">
+        <type name="Gio.Icon"/>
+      </property>
+      <property name="menu-model"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_menu_model">
+        <type name="Gio.MenuModel"/>
+      </property>
+      <property name="name"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_name"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="path"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_path"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="provider"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none">
+        <type name="ProviderExporter"/>
+      </property>
+      <property name="status"
+                introspectable="0"
+                writable="1"
+                transfer-ownership="none"
+                default-value="CLOUD_PROVIDERS_ACCOUNT_STATUS_INVALID">
+        <type/>
+      </property>
+      <property name="status-details"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_status_details"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+    <record name="AccountExporterClass"
+            c:type="CloudProvidersAccountExporterClass"
+            glib:is-gtype-struct-for="AccountExporter">
+      <source-position filename="src/cloudprovidersaccountexporter.h"
+                       line="28"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <enumeration name="AccountStatus" c:type="CloudProvidersAccountStatus">
+      <source-position filename="src/cloudprovidersaccount.h" line="43"/>
+      <member name="invalid"
+              value="0"
+              c:identifier="CLOUD_PROVIDERS_ACCOUNT_STATUS_INVALID">
+      </member>
+      <member name="idle"
+              value="1"
+              c:identifier="CLOUD_PROVIDERS_ACCOUNT_STATUS_IDLE">
+      </member>
+      <member name="syncing"
+              value="2"
+              c:identifier="CLOUD_PROVIDERS_ACCOUNT_STATUS_SYNCING">
+      </member>
+      <member name="error"
+              value="3"
+              c:identifier="CLOUD_PROVIDERS_ACCOUNT_STATUS_ERROR">
+      </member>
+    </enumeration>
+    <docsection name="CloudProvidersDbusAccount">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="1260">This section contains code for working with the &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt; D-Bus interface in C.</doc>
+    </docsection>
+    <docsection name="CloudProvidersDbusObject">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="2727">This section contains the #CloudProvidersDbusObject, #CloudProvidersDbusObjectProxy, and #CloudProvidersDbusObjectSkeleton types which make it easier to work with objects implementing generated types for D-Bus interfaces.</doc>
+    </docsection>
+    <docsection name="CloudProvidersDbusObjectManagerClient">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="3124">This section contains a #GDBusObjectManagerClient that uses cloud_providers_dbus_object_manager_client_get_proxy_type() as the #GDBusProxyTypeFunc.</doc>
+    </docsection>
+    <docsection name="CloudProvidersDbusProvider">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="205">This section contains code for working with the &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt; D-Bus interface in C.</doc>
+    </docsection>
+    <class name="Collector"
+           c:symbol-prefix="collector"
+           c:type="CloudProvidersCollector"
+           parent="GObject.Object"
+           glib:type-name="CloudProvidersCollector"
+           glib:get-type="cloud_providers_collector_get_type"
+           glib:type-struct="CollectorClass">
+      <doc xml:space="preserve"
+           filename="src/cloudproviderscollector.c"
+           line="44">#CloudProvidersCollector is a singleton to track all the changes in all providers.
+Using a #CloudProvidersCollector you can implement integration for all of them at once
+and represent them in the UI, track new providers added or removed and their
+status.</doc>
+      <source-position filename="src/cloudproviderscollector.h" line="28"/>
+      <function name="dup_singleton"
+                c:identifier="cloud_providers_collector_dup_singleton">
+        <doc xml:space="preserve"
+             filename="src/cloudproviderscollector.c"
+             line="390">Main object to track changes in all providers.</doc>
+        <source-position filename="src/cloudproviderscollector.h" line="35"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviderscollector.c"
+               line="394">A manager singleton</doc>
+          <type name="Collector" c:type="CloudProvidersCollector*"/>
+        </return-value>
+      </function>
+      <method name="get_providers"
+              c:identifier="cloud_providers_collector_get_providers">
+        <source-position filename="src/cloudproviderscollector.h" line="37"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviderscollector.c"
+               line="154">A GList* of #CloudProvidersProvider objects.</doc>
+          <type name="GLib.List" c:type="GList*">
+            <type name="Provider"/>
+          </type>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviderscollector.c"
+                 line="153">A CloudProvidersCollector</doc>
+            <type name="Collector" c:type="CloudProvidersCollector*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="update" c:identifier="cloud_providers_collector_update">
+        <source-position filename="src/cloudproviderscollector.h" line="36"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Collector" c:type="CloudProvidersCollector*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <glib:signal name="providers-changed" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <record name="CollectorClass"
+            c:type="CloudProvidersCollectorClass"
+            glib:is-gtype-struct-for="Collector">
+      <source-position filename="src/cloudproviderscollector.h" line="28"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <function-macro name="DBUS_ACCOUNT"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_ACCOUNT"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="161"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_ACCOUNT_GET_IFACE"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_ACCOUNT_GET_IFACE"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="163"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_ACCOUNT_PROXY"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_ACCOUNT_PROXY"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="219"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_ACCOUNT_PROXY_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_ACCOUNT_PROXY_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="220"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_ACCOUNT_PROXY_GET_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_ACCOUNT_PROXY_GET_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="221"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_ACCOUNT_SKELETON"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_ACCOUNT_SKELETON"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="289"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_ACCOUNT_SKELETON_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_ACCOUNT_SKELETON_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="290"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_ACCOUNT_SKELETON_GET_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_ACCOUNT_SKELETON_GET_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="291"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_ACCOUNT"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_ACCOUNT"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="162"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_ACCOUNT_PROXY"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_ACCOUNT_PROXY"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="222"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_ACCOUNT_PROXY_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_ACCOUNT_PROXY_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="223"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_ACCOUNT_SKELETON"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_ACCOUNT_SKELETON"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="292"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_ACCOUNT_SKELETON_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_ACCOUNT_SKELETON_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="293"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_OBJECT"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_OBJECT"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="324"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_OBJECT_MANAGER_CLIENT"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_OBJECT_MANAGER_CLIENT"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="417"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_OBJECT_MANAGER_CLIENT_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_OBJECT_MANAGER_CLIENT_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="418"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_OBJECT_PROXY"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_OBJECT_PROXY"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="351"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_OBJECT_PROXY_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_OBJECT_PROXY_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="352"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_OBJECT_SKELETON"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_OBJECT_SKELETON"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="382"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_OBJECT_SKELETON_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_OBJECT_SKELETON_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="383"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_PROVIDER"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_PROVIDER"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="22"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_PROVIDER_PROXY"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_PROVIDER_PROXY"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="59"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_PROVIDER_PROXY_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_PROVIDER_PROXY_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="60"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_PROVIDER_SKELETON"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_PROVIDER_SKELETON"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="129"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_IS_PROVIDER_SKELETON_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_IS_PROVIDER_SKELETON_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="130"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="323"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT_GET_IFACE"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT_GET_IFACE"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="325"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT_MANAGER_CLIENT"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT_MANAGER_CLIENT"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="414"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT_MANAGER_CLIENT_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT_MANAGER_CLIENT_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="415"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT_MANAGER_CLIENT_GET_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT_MANAGER_CLIENT_GET_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="416"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT_PROXY"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT_PROXY"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="348"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT_PROXY_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT_PROXY_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="349"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT_PROXY_GET_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT_PROXY_GET_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="350"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT_SKELETON"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT_SKELETON"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="379"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT_SKELETON_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT_SKELETON_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="380"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_OBJECT_SKELETON_GET_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_OBJECT_SKELETON_GET_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="381"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_PROVIDER"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_PROVIDER"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="21"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_PROVIDER_GET_IFACE"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_PROVIDER_GET_IFACE"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="23"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_PROVIDER_PROXY"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_PROVIDER_PROXY"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="56"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_PROVIDER_PROXY_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_PROVIDER_PROXY_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="57"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_PROVIDER_PROXY_GET_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_PROVIDER_PROXY_GET_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="58"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_PROVIDER_SKELETON"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_PROVIDER_SKELETON"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="126"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_PROVIDER_SKELETON_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_PROVIDER_SKELETON_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="127"/>
+      <parameters>
+        <parameter name="k">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="DBUS_PROVIDER_SKELETON_GET_CLASS"
+                    c:identifier="CLOUD_PROVIDERS_DBUS_PROVIDER_SKELETON_GET_CLASS"
+                    introspectable="0">
+      <source-position filename="src/cloudproviders-generated.h" line="128"/>
+      <parameters>
+        <parameter name="o">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <interface name="DbusAccount"
+               c:symbol-prefix="dbus_account"
+               c:type="CloudProvidersDbusAccount"
+               glib:type-name="CloudProvidersDbusAccount"
+               glib:get-type="cloud_providers_dbus_account_get_type"
+               glib:type-struct="DbusAccountIface">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="1400">Abstract interface type for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt;.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="183"/>
+      <function name="interface_info"
+                c:identifier="cloud_providers_dbus_account_interface_info">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1364">Gets a machine-readable description of the &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt; D-Bus interface.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="191"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1369">A #GDBusInterfaceInfo. Do not free.</doc>
+          <type name="Gio.DBusInterfaceInfo" c:type="GDBusInterfaceInfo*"/>
+        </return-value>
+      </function>
+      <function name="override_properties"
+                c:identifier="cloud_providers_dbus_account_override_properties">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1377">Overrides all #GObject properties in the #CloudProvidersDbusAccount interface for a concrete class.
+The properties are overridden in the order they are defined.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="192"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1385">The last property id.</doc>
+          <type name="guint" c:type="guint"/>
+        </return-value>
+        <parameters>
+          <parameter name="klass" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1379">The class structure for a #GObject derived class.</doc>
+            <type name="GObject.ObjectClass" c:type="GObjectClass*"/>
+          </parameter>
+          <parameter name="property_id_begin" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1380">The property id to assign to the first overridden property.</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </function>
+      <virtual-method name="get_icon" invoker="get_icon" introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1578">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Icon"&gt;"Icon"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.
+
+The returned value is only valid until the property changes so on the client-side it is only safe to use this function on the thread where @object was constructed. Use cloud_providers_dbus_account_dup_icon() if on another thread.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="173"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1588">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1580">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </virtual-method>
+      <virtual-method name="get_name" invoker="get_name" introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1472">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Name"&gt;"Name"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.
+
+The returned value is only valid until the property changes so on the client-side it is only safe to use this function on the thread where @object was constructed. Use cloud_providers_dbus_account_dup_name() if on another thread.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="175"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1482">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1474">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </virtual-method>
+      <virtual-method name="get_path" invoker="get_path" introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1525">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Path"&gt;"Path"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.
+
+The returned value is only valid until the property changes so on the client-side it is only safe to use this function on the thread where @object was constructed. Use cloud_providers_dbus_account_dup_path() if on another thread.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="177"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1535">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1527">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </virtual-method>
+      <virtual-method name="get_status"
+                      invoker="get_status"
+                      introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1631">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Status"&gt;"Status"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="179"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1639">The property value.</doc>
+          <type name="gint" c:type="gint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1633">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </virtual-method>
+      <virtual-method name="get_status_details"
+                      invoker="get_status_details"
+                      introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1664">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.StatusDetails"&gt;"StatusDetails"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.
+
+The returned value is only valid until the property changes so on the client-side it is only safe to use this function on the thread where @object was constructed. Use cloud_providers_dbus_account_dup_status_details() if on another thread.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="181"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1674">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1666">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </virtual-method>
+      <method name="dup_icon"
+              c:identifier="cloud_providers_dbus_account_dup_icon"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1598">Gets a copy of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Icon"&gt;"Icon"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="205"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1606">The property value or %NULL if the property is not set. The returned value should be freed with g_free().</doc>
+          <type name="utf8" c:type="gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1600">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="dup_name"
+              c:identifier="cloud_providers_dbus_account_dup_name"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1492">Gets a copy of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Name"&gt;"Name"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="197"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1500">The property value or %NULL if the property is not set. The returned value should be freed with g_free().</doc>
+          <type name="utf8" c:type="gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1494">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="dup_path"
+              c:identifier="cloud_providers_dbus_account_dup_path"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1545">Gets a copy of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Path"&gt;"Path"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="201"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1553">The property value or %NULL if the property is not set. The returned value should be freed with g_free().</doc>
+          <type name="utf8" c:type="gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1547">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="dup_status_details"
+              c:identifier="cloud_providers_dbus_account_dup_status_details"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1684">Gets a copy of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.StatusDetails"&gt;"StatusDetails"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="212"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1692">The property value or %NULL if the property is not set. The returned value should be freed with g_free().</doc>
+          <type name="utf8" c:type="gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1686">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_icon"
+              c:identifier="cloud_providers_dbus_account_get_icon"
+              glib:get-property="icon"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1578">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Icon"&gt;"Icon"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.
+
+The returned value is only valid until the property changes so on the client-side it is only safe to use this function on the thread where @object was constructed. Use cloud_providers_dbus_account_dup_icon() if on another thread.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="204"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1588">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1580">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_name"
+              c:identifier="cloud_providers_dbus_account_get_name"
+              glib:get-property="name"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1472">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Name"&gt;"Name"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.
+
+The returned value is only valid until the property changes so on the client-side it is only safe to use this function on the thread where @object was constructed. Use cloud_providers_dbus_account_dup_name() if on another thread.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="196"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1482">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1474">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_path"
+              c:identifier="cloud_providers_dbus_account_get_path"
+              glib:get-property="path"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1525">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Path"&gt;"Path"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.
+
+The returned value is only valid until the property changes so on the client-side it is only safe to use this function on the thread where @object was constructed. Use cloud_providers_dbus_account_dup_path() if on another thread.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="200"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1535">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1527">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_status"
+              c:identifier="cloud_providers_dbus_account_get_status"
+              glib:get-property="status"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1631">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Status"&gt;"Status"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="208"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1639">The property value.</doc>
+          <type name="gint" c:type="gint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1633">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_status_details"
+              c:identifier="cloud_providers_dbus_account_get_status_details"
+              glib:get-property="status-details"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1664">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.StatusDetails"&gt;"StatusDetails"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.
+
+The returned value is only valid until the property changes so on the client-side it is only safe to use this function on the thread where @object was constructed. Use cloud_providers_dbus_account_dup_status_details() if on another thread.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="211"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1674">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1666">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="set_icon"
+              c:identifier="cloud_providers_dbus_account_set_icon"
+              glib:set-property="icon"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1616">Sets the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Icon"&gt;"Icon"&lt;/link&gt; D-Bus property to @value.
+
+Since this D-Bus property is not writable, it is only meaningful to use this function on the service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="206"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1618">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1619">The value to set.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_name"
+              c:identifier="cloud_providers_dbus_account_set_name"
+              glib:set-property="name"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1510">Sets the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Name"&gt;"Name"&lt;/link&gt; D-Bus property to @value.
+
+Since this D-Bus property is not writable, it is only meaningful to use this function on the service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="198"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1512">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1513">The value to set.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_path"
+              c:identifier="cloud_providers_dbus_account_set_path"
+              glib:set-property="path"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1563">Sets the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Path"&gt;"Path"&lt;/link&gt; D-Bus property to @value.
+
+Since this D-Bus property is not writable, it is only meaningful to use this function on the service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="202"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1565">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1566">The value to set.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_status"
+              c:identifier="cloud_providers_dbus_account_set_status"
+              glib:set-property="status"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1649">Sets the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Status"&gt;"Status"&lt;/link&gt; D-Bus property to @value.
+
+Since this D-Bus property is not writable, it is only meaningful to use this function on the service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="209"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1651">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1652">The value to set.</doc>
+            <type name="gint" c:type="gint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_status_details"
+              c:identifier="cloud_providers_dbus_account_set_status_details"
+              glib:set-property="status-details"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1702">Sets the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.StatusDetails"&gt;"StatusDetails"&lt;/link&gt; D-Bus property to @value.
+
+Since this D-Bus property is not writable, it is only meaningful to use this function on the service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="213"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1704">A #CloudProvidersDbusAccount.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1705">The value to set.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="icon"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_icon"
+                getter="get_icon"
+                default-value="NULL">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1443">Represents the D-Bus property &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Icon"&gt;"Icon"&lt;/link&gt;.
+
+Since the D-Bus property for this #GObject property is readable but not writable, it is meaningful to read from it on both the client- and service-side. It is only meaningful, however, to write to it on the service-side.</doc>
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="name"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_name"
+                getter="get_name"
+                default-value="NULL">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1425">Represents the D-Bus property &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Name"&gt;"Name"&lt;/link&gt;.
+
+Since the D-Bus property for this #GObject property is readable but not writable, it is meaningful to read from it on both the client- and service-side. It is only meaningful, however, to write to it on the service-side.</doc>
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="path"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_path"
+                getter="get_path"
+                default-value="NULL">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1434">Represents the D-Bus property &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Path"&gt;"Path"&lt;/link&gt;.
+
+Since the D-Bus property for this #GObject property is readable but not writable, it is meaningful to read from it on both the client- and service-side. It is only meaningful, however, to write to it on the service-side.</doc>
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="status"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_status"
+                getter="get_status"
+                default-value="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1452">Represents the D-Bus property &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.Status"&gt;"Status"&lt;/link&gt;.
+
+Since the D-Bus property for this #GObject property is readable but not writable, it is meaningful to read from it on both the client- and service-side. It is only meaningful, however, to write to it on the service-side.</doc>
+        <type name="gint" c:type="gint"/>
+      </property>
+      <property name="status-details"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_status_details"
+                getter="get_status_details"
+                default-value="NULL">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1461">Represents the D-Bus property &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Account.StatusDetails"&gt;"StatusDetails"&lt;/link&gt;.
+
+Since the D-Bus property for this #GObject property is readable but not writable, it is meaningful to read from it on both the client- and service-side. It is only meaningful, however, to write to it on the service-side.</doc>
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </interface>
+    <record name="DbusAccountIface"
+            c:type="CloudProvidersDbusAccountIface"
+            glib:is-gtype-struct-for="DbusAccount">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="1406">Virtual table for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt;.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="183"/>
+      <field name="parent_iface">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1408">The parent interface.</doc>
+        <type name="GObject.TypeInterface" c:type="GTypeInterface"/>
+      </field>
+      <field name="get_icon">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1409">Getter for the #CloudProvidersDbusAccount:icon property.</doc>
+        <callback name="get_icon">
+          <source-position filename="src/cloudproviders-generated.h"
+                           line="173"/>
+          <return-value transfer-ownership="none" nullable="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1588">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </return-value>
+          <parameters>
+            <parameter name="object" transfer-ownership="none">
+              <doc xml:space="preserve"
+                   filename="src/cloudproviders-generated.c"
+                   line="1580">A #CloudProvidersDbusAccount.</doc>
+              <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="get_name">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1410">Getter for the #CloudProvidersDbusAccount:name property.</doc>
+        <callback name="get_name">
+          <source-position filename="src/cloudproviders-generated.h"
+                           line="175"/>
+          <return-value transfer-ownership="none" nullable="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1482">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </return-value>
+          <parameters>
+            <parameter name="object" transfer-ownership="none">
+              <doc xml:space="preserve"
+                   filename="src/cloudproviders-generated.c"
+                   line="1474">A #CloudProvidersDbusAccount.</doc>
+              <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="get_path">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1411">Getter for the #CloudProvidersDbusAccount:path property.</doc>
+        <callback name="get_path">
+          <source-position filename="src/cloudproviders-generated.h"
+                           line="177"/>
+          <return-value transfer-ownership="none" nullable="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1535">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </return-value>
+          <parameters>
+            <parameter name="object" transfer-ownership="none">
+              <doc xml:space="preserve"
+                   filename="src/cloudproviders-generated.c"
+                   line="1527">A #CloudProvidersDbusAccount.</doc>
+              <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="get_status">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1412">Getter for the #CloudProvidersDbusAccount:status property.</doc>
+        <callback name="get_status">
+          <source-position filename="src/cloudproviders-generated.h"
+                           line="179"/>
+          <return-value transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1639">The property value.</doc>
+            <type name="gint" c:type="gint"/>
+          </return-value>
+          <parameters>
+            <parameter name="object" transfer-ownership="none">
+              <doc xml:space="preserve"
+                   filename="src/cloudproviders-generated.c"
+                   line="1633">A #CloudProvidersDbusAccount.</doc>
+              <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="get_status_details">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1413">Getter for the #CloudProvidersDbusAccount:status-details property.</doc>
+        <callback name="get_status_details">
+          <source-position filename="src/cloudproviders-generated.h"
+                           line="181"/>
+          <return-value transfer-ownership="none" nullable="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="1674">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </return-value>
+          <parameters>
+            <parameter name="object" transfer-ownership="none">
+              <doc xml:space="preserve"
+                   filename="src/cloudproviders-generated.c"
+                   line="1666">A #CloudProvidersDbusAccount.</doc>
+              <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+    <class name="DbusAccountProxy"
+           c:symbol-prefix="dbus_account_proxy"
+           c:type="CloudProvidersDbusAccountProxy"
+           parent="Gio.DBusProxy"
+           glib:type-name="CloudProvidersDbusAccountProxy"
+           glib:get-type="cloud_providers_dbus_account_proxy_get_type"
+           glib:type-struct="DbusAccountProxyClass">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="1719">The #CloudProvidersDbusAccountProxy structure contains only private data and should only be accessed using the provided API.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="239"/>
+      <implements name="DbusAccount"/>
+      <implements name="Gio.AsyncInitable"/>
+      <implements name="Gio.DBusInterface"/>
+      <implements name="Gio.Initable"/>
+      <constructor name="new_finish"
+                   c:identifier="cloud_providers_dbus_account_proxy_new_finish"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2043">Finishes an operation started with cloud_providers_dbus_account_proxy_new().</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="255"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="2050">The constructed proxy object or %NULL if @error is set.</doc>
+          <type name="DbusAccountProxy" c:type="CloudProvidersDbusAccount*"/>
+        </return-value>
+        <parameters>
+          <parameter name="res" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2045">The #GAsyncResult obtained from the #GAsyncReadyCallback passed to cloud_providers_dbus_account_proxy_new().</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_for_bus_finish"
+                   c:identifier="cloud_providers_dbus_account_proxy_new_for_bus_finish"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2133">Finishes an operation started with cloud_providers_dbus_account_proxy_new_for_bus().</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="274"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="2140">The constructed proxy object or %NULL if @error is set.</doc>
+          <type name="DbusAccountProxy" c:type="CloudProvidersDbusAccount*"/>
+        </return-value>
+        <parameters>
+          <parameter name="res" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2135">The #GAsyncResult obtained from the #GAsyncReadyCallback passed to cloud_providers_dbus_account_proxy_new_for_bus().</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_for_bus_sync"
+                   c:identifier="cloud_providers_dbus_account_proxy_new_for_bus_sync"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2158">Like cloud_providers_dbus_account_proxy_new_sync() but takes a #GBusType instead of a #GDBusConnection.
+
+The calling thread is blocked until a reply is received.
+
+See cloud_providers_dbus_account_proxy_new_for_bus() for the asynchronous version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="277"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="2173">The constructed proxy object or %NULL if @error is set.</doc>
+          <type name="DbusAccountProxy" c:type="CloudProvidersDbusAccount*"/>
+        </return-value>
+        <parameters>
+          <parameter name="bus_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2160">A #GBusType.</doc>
+            <type name="Gio.BusType" c:type="GBusType"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2161">Flags from the #GDBusProxyFlags enumeration.</doc>
+            <type name="Gio.DBusProxyFlags" c:type="GDBusProxyFlags"/>
+          </parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2162">A bus name (well-known or unique).</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2163">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2164">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_sync"
+                   c:identifier="cloud_providers_dbus_account_proxy_new_sync"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2068">Synchronously creates a proxy for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt;. See g_dbus_proxy_new_sync() for more details.
+
+The calling thread is blocked until a reply is received.
+
+See cloud_providers_dbus_account_proxy_new() for the asynchronous version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="258"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="2083">The constructed proxy object or %NULL if @error is set.</doc>
+          <type name="DbusAccountProxy" c:type="CloudProvidersDbusAccount*"/>
+        </return-value>
+        <parameters>
+          <parameter name="connection" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2070">A #GDBusConnection.</doc>
+            <type name="Gio.DBusConnection" c:type="GDBusConnection*"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2071">Flags from the #GDBusProxyFlags enumeration.</doc>
+            <type name="Gio.DBusProxyFlags" c:type="GDBusProxyFlags"/>
+          </parameter>
+          <parameter name="name"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2072">A bus name (well-known or unique) or %NULL if @connection is not a message bus connection.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2073">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2074">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <function name="new"
+                c:identifier="cloud_providers_dbus_account_proxy_new"
+                glib:finish-func="new_finish">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2013">Asynchronously creates a proxy for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt;. See g_dbus_proxy_new() for more details.
+
+When the operation is finished, @callback will be invoked in the thread-default main loop of the thread you are calling this method from (see g_main_context_push_thread_default()).
+You can then call cloud_providers_dbus_account_proxy_new_finish() to get the result of the operation.
+
+See cloud_providers_dbus_account_proxy_new_sync() for the synchronous, blocking version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="247"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="connection" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2015">A #GDBusConnection.</doc>
+            <type name="Gio.DBusConnection" c:type="GDBusConnection*"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2016">Flags from the #GDBusProxyFlags enumeration.</doc>
+            <type name="Gio.DBusProxyFlags" c:type="GDBusProxyFlags"/>
+          </parameter>
+          <parameter name="name"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2017">A bus name (well-known or unique) or %NULL if @connection is not a message bus connection.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2018">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2019">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="6">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2020">A #GAsyncReadyCallback to call when the request is satisfied.</doc>
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2021">User data to pass to @callback.</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="new_for_bus"
+                c:identifier="cloud_providers_dbus_account_proxy_new_for_bus"
+                glib:finish-func="new_for_bus_finish">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2103">Like cloud_providers_dbus_account_proxy_new() but takes a #GBusType instead of a #GDBusConnection.
+
+When the operation is finished, @callback will be invoked in the thread-default main loop of the thread you are calling this method from (see g_main_context_push_thread_default()).
+You can then call cloud_providers_dbus_account_proxy_new_for_bus_finish() to get the result of the operation.
+
+See cloud_providers_dbus_account_proxy_new_for_bus_sync() for the synchronous, blocking version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="266"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="bus_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2105">A #GBusType.</doc>
+            <type name="Gio.BusType" c:type="GBusType"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2106">Flags from the #GDBusProxyFlags enumeration.</doc>
+            <type name="Gio.DBusProxyFlags" c:type="GDBusProxyFlags"/>
+          </parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2107">A bus name (well-known or unique).</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2108">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2109">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="6">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2110">A #GAsyncReadyCallback to call when the request is satisfied.</doc>
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2111">User data to pass to @callback.</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </function>
+      <field name="parent_instance" readable="0" private="1">
+        <type name="Gio.DBusProxy" c:type="GDBusProxy"/>
+      </field>
+      <field name="priv" readable="0" private="1">
+        <type name="DbusAccountProxyPrivate"
+              c:type="CloudProvidersDbusAccountProxyPrivate*"/>
+      </field>
+    </class>
+    <record name="DbusAccountProxyClass"
+            c:type="CloudProvidersDbusAccountProxyClass"
+            glib:is-gtype-struct-for="DbusAccountProxy">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="1725">Class structure for #CloudProvidersDbusAccountProxy.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="239"/>
+      <field name="parent_class">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1727">The parent class.</doc>
+        <type name="Gio.DBusProxyClass" c:type="GDBusProxyClass"/>
+      </field>
+    </record>
+    <record name="DbusAccountProxyPrivate"
+            c:type="CloudProvidersDbusAccountProxyPrivate"
+            disguised="1"
+            opaque="1">
+      <source-position filename="src/cloudproviders-generated.h" line="227"/>
+    </record>
+    <class name="DbusAccountSkeleton"
+           c:symbol-prefix="dbus_account_skeleton"
+           c:type="CloudProvidersDbusAccountSkeleton"
+           parent="Gio.DBusInterfaceSkeleton"
+           glib:type-name="CloudProvidersDbusAccountSkeleton"
+           glib:get-type="cloud_providers_dbus_account_skeleton_get_type"
+           glib:type-struct="DbusAccountSkeletonClass">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="2195">The #CloudProvidersDbusAccountSkeleton structure contains only private data and should only be accessed using the provided API.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="309"/>
+      <implements name="DbusAccount"/>
+      <implements name="Gio.DBusInterface"/>
+      <constructor name="new"
+                   c:identifier="cloud_providers_dbus_account_skeleton_new">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2709">Creates a skeleton object for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt;.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="317"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="2714">The skeleton object.</doc>
+          <type name="DbusAccountSkeleton"
+                c:type="CloudProvidersDbusAccount*"/>
+        </return-value>
+      </constructor>
+      <field name="parent_instance" readable="0" private="1">
+        <type name="Gio.DBusInterfaceSkeleton"
+              c:type="GDBusInterfaceSkeleton"/>
+      </field>
+      <field name="priv" readable="0" private="1">
+        <type name="DbusAccountSkeletonPrivate"
+              c:type="CloudProvidersDbusAccountSkeletonPrivate*"/>
+      </field>
+    </class>
+    <record name="DbusAccountSkeletonClass"
+            c:type="CloudProvidersDbusAccountSkeletonClass"
+            glib:is-gtype-struct-for="DbusAccountSkeleton">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="2201">Class structure for #CloudProvidersDbusAccountSkeleton.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="309"/>
+      <field name="parent_class">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2203">The parent class.</doc>
+        <type name="Gio.DBusInterfaceSkeletonClass"
+              c:type="GDBusInterfaceSkeletonClass"/>
+      </field>
+    </record>
+    <record name="DbusAccountSkeletonPrivate"
+            c:type="CloudProvidersDbusAccountSkeletonPrivate"
+            disguised="1"
+            opaque="1">
+      <source-position filename="src/cloudproviders-generated.h" line="297"/>
+    </record>
+    <interface name="DbusObject"
+               c:symbol-prefix="dbus_object"
+               c:type="CloudProvidersDbusObject"
+               glib:type-name="CloudProvidersDbusObject"
+               glib:get-type="cloud_providers_dbus_object_get_type"
+               glib:type-struct="DbusObjectIface">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="2735">The #CloudProvidersDbusObject type is a specialized container of interfaces.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="334"/>
+      <prerequisite name="Gio.DBusObject"/>
+      <method name="get_account"
+              c:identifier="cloud_providers_dbus_object_get_account"
+              glib:get-property="account">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2791">Gets the #CloudProvidersDbusAccount instance for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt; on @object, if any.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="343"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="2797">A #CloudProvidersDbusAccount that must be freed with g_object_unref() or %NULL if @object does not implement the interface.</doc>
+          <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2793">A #CloudProvidersDbusObject.</doc>
+            <type name="DbusObject" c:type="CloudProvidersDbusObject*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_provider"
+              c:identifier="cloud_providers_dbus_object_get_provider"
+              glib:get-property="provider">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2774">Gets the #CloudProvidersDbusProvider instance for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt; on @object, if any.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="342"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="2780">A #CloudProvidersDbusProvider that must be freed with g_object_unref() or %NULL if @object does not implement the interface.</doc>
+          <type name="DbusProvider" c:type="CloudProvidersDbusProvider*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2776">A #CloudProvidersDbusObject.</doc>
+            <type name="DbusObject" c:type="CloudProvidersDbusObject*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="peek_account"
+              c:identifier="cloud_providers_dbus_object_peek_account"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2829">Like cloud_providers_dbus_object_get_account() but doesn't increase the reference count on the returned object.
+
+It is not safe to use the returned object if you are on another thread than the one where the #GDBusObjectManagerClient or #GDBusObjectManagerServer for @object is running.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="345"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="2837">A #CloudProvidersDbusAccount or %NULL if @object does not implement the interface. Do not free the returned object, it is owned by @object.</doc>
+          <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2831">A #CloudProvidersDbusObject.</doc>
+            <type name="DbusObject" c:type="CloudProvidersDbusObject*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="peek_provider"
+              c:identifier="cloud_providers_dbus_object_peek_provider"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2809">Like cloud_providers_dbus_object_get_provider() but doesn't increase the reference count on the returned object.
+
+It is not safe to use the returned object if you are on another thread than the one where the #GDBusObjectManagerClient or #GDBusObjectManagerServer for @object is running.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="344"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="2817">A #CloudProvidersDbusProvider or %NULL if @object does not implement the interface. Do not free the returned object, it is owned by @object.</doc>
+          <type name="DbusProvider" c:type="CloudProvidersDbusProvider*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2811">A #CloudProvidersDbusObject.</doc>
+            <type name="DbusObject" c:type="CloudProvidersDbusObject*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <property name="account"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_account">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2763">The #CloudProvidersDbusAccount instance corresponding to the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt;, if any.
+
+Connect to the #GObject::notify signal to get informed of property changes.</doc>
+        <type name="DbusAccount"/>
+      </property>
+      <property name="provider"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_provider">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2754">The #CloudProvidersDbusProvider instance corresponding to the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt;, if any.
+
+Connect to the #GObject::notify signal to get informed of property changes.</doc>
+        <type name="DbusProvider"/>
+      </property>
+    </interface>
+    <record name="DbusObjectIface"
+            c:type="CloudProvidersDbusObjectIface"
+            glib:is-gtype-struct-for="DbusObject">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="2741">Virtual table for the #CloudProvidersDbusObject interface.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="334"/>
+      <field name="parent_iface">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2743">The parent interface.</doc>
+        <type name="GObject.TypeInterface" c:type="GTypeInterface"/>
+      </field>
+    </record>
+    <class name="DbusObjectManagerClient"
+           c:symbol-prefix="dbus_object_manager_client"
+           c:type="CloudProvidersDbusObjectManagerClient"
+           parent="Gio.DBusObjectManagerClient"
+           glib:type-name="CloudProvidersDbusObjectManagerClient"
+           glib:get-type="cloud_providers_dbus_object_manager_client_get_type"
+           glib:type-struct="DbusObjectManagerClientClass">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="3132">The #CloudProvidersDbusObjectManagerClient structure contains only private data and should only be accessed using the provided API.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="434"/>
+      <implements name="Gio.AsyncInitable"/>
+      <implements name="Gio.DBusObjectManager"/>
+      <implements name="Gio.Initable"/>
+      <constructor name="new_finish"
+                   c:identifier="cloud_providers_dbus_object_manager_client_new_finish"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3220">Finishes an operation started with cloud_providers_dbus_object_manager_client_new().</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="452"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="3227">The constructed object manager client or %NULL if @error is set.</doc>
+          <type name="DbusObjectManagerClient" c:type="GDBusObjectManager*"/>
+        </return-value>
+        <parameters>
+          <parameter name="res" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3222">The #GAsyncResult obtained from the #GAsyncReadyCallback passed to cloud_providers_dbus_object_manager_client_new().</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_for_bus_finish"
+                   c:identifier="cloud_providers_dbus_object_manager_client_new_for_bus_finish"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3310">Finishes an operation started with cloud_providers_dbus_object_manager_client_new_for_bus().</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="471"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="3317">The constructed object manager client or %NULL if @error is set.</doc>
+          <type name="DbusObjectManagerClient" c:type="GDBusObjectManager*"/>
+        </return-value>
+        <parameters>
+          <parameter name="res" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3312">The #GAsyncResult obtained from the #GAsyncReadyCallback passed to cloud_providers_dbus_object_manager_client_new_for_bus().</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_for_bus_sync"
+                   c:identifier="cloud_providers_dbus_object_manager_client_new_for_bus_sync"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3335">Like cloud_providers_dbus_object_manager_client_new_sync() but takes a #GBusType instead of a #GDBusConnection.
+
+The calling thread is blocked until a reply is received.
+
+See cloud_providers_dbus_object_manager_client_new_for_bus() for the asynchronous version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="474"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="3350">The constructed object manager client or %NULL if @error is set.</doc>
+          <type name="DbusObjectManagerClient" c:type="GDBusObjectManager*"/>
+        </return-value>
+        <parameters>
+          <parameter name="bus_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3337">A #GBusType.</doc>
+            <type name="Gio.BusType" c:type="GBusType"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3338">Flags from the #GDBusObjectManagerClientFlags enumeration.</doc>
+            <type name="Gio.DBusObjectManagerClientFlags"
+                  c:type="GDBusObjectManagerClientFlags"/>
+          </parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3339">A bus name (well-known or unique).</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3340">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3341">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_sync"
+                   c:identifier="cloud_providers_dbus_object_manager_client_new_sync"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3245">Synchronously creates #GDBusObjectManagerClient using cloud_providers_dbus_object_manager_client_get_proxy_type() as the #GDBusProxyTypeFunc. See g_dbus_object_manager_client_new_sync() for more details.
+
+The calling thread is blocked until a reply is received.
+
+See cloud_providers_dbus_object_manager_client_new() for the asynchronous version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="455"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="3260">The constructed object manager client or %NULL if @error is set.</doc>
+          <type name="DbusObjectManagerClient" c:type="GDBusObjectManager*"/>
+        </return-value>
+        <parameters>
+          <parameter name="connection" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3247">A #GDBusConnection.</doc>
+            <type name="Gio.DBusConnection" c:type="GDBusConnection*"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3248">Flags from the #GDBusObjectManagerClientFlags enumeration.</doc>
+            <type name="Gio.DBusObjectManagerClientFlags"
+                  c:type="GDBusObjectManagerClientFlags"/>
+          </parameter>
+          <parameter name="name"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3249">A bus name (well-known or unique) or %NULL if @connection is not a message bus connection.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3250">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3251">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <function name="get_proxy_type"
+                c:identifier="cloud_providers_dbus_object_manager_client_get_proxy_type">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3157">A #GDBusProxyTypeFunc that maps @interface_name to the generated #GDBusObjectProxy derived and #GDBusProxy derived types.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="442"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="3166">A #GDBusProxy derived #GType if @interface_name is not %NULL, otherwise the #GType for #CloudProvidersDbusObjectProxy.</doc>
+          <type name="GType" c:type="GType"/>
+        </return-value>
+        <parameters>
+          <parameter name="manager" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3159">A #GDBusObjectManagerClient.</doc>
+            <type name="Gio.DBusObjectManagerClient"
+                  c:type="GDBusObjectManagerClient*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3160">The object path of the remote object (unused).</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="interface_name"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3161">Interface name of the remote object or %NULL to get the object proxy #GType.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3162">User data (unused).</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="new"
+                c:identifier="cloud_providers_dbus_object_manager_client_new"
+                glib:finish-func="new_finish">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3190">Asynchronously creates #GDBusObjectManagerClient using cloud_providers_dbus_object_manager_client_get_proxy_type() as the #GDBusProxyTypeFunc. See g_dbus_object_manager_client_new() for more details.
+
+When the operation is finished, @callback will be invoked in the thread-default main loop of the thread you are calling this method from (see g_main_context_push_thread_default()).
+You can then call cloud_providers_dbus_object_manager_client_new_finish() to get the result of the operation.
+
+See cloud_providers_dbus_object_manager_client_new_sync() for the synchronous, blocking version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="444"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="connection" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3192">A #GDBusConnection.</doc>
+            <type name="Gio.DBusConnection" c:type="GDBusConnection*"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3193">Flags from the #GDBusObjectManagerClientFlags enumeration.</doc>
+            <type name="Gio.DBusObjectManagerClientFlags"
+                  c:type="GDBusObjectManagerClientFlags"/>
+          </parameter>
+          <parameter name="name"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3194">A bus name (well-known or unique) or %NULL if @connection is not a message bus connection.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3195">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3196">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="6">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3197">A #GAsyncReadyCallback to call when the request is satisfied.</doc>
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3198">User data to pass to @callback.</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="new_for_bus"
+                c:identifier="cloud_providers_dbus_object_manager_client_new_for_bus"
+                glib:finish-func="new_for_bus_finish">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3280">Like cloud_providers_dbus_object_manager_client_new() but takes a #GBusType instead of a #GDBusConnection.
+
+When the operation is finished, @callback will be invoked in the thread-default main loop of the thread you are calling this method from (see g_main_context_push_thread_default()).
+You can then call cloud_providers_dbus_object_manager_client_new_for_bus_finish() to get the result of the operation.
+
+See cloud_providers_dbus_object_manager_client_new_for_bus_sync() for the synchronous, blocking version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="463"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="bus_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3282">A #GBusType.</doc>
+            <type name="Gio.BusType" c:type="GBusType"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3283">Flags from the #GDBusObjectManagerClientFlags enumeration.</doc>
+            <type name="Gio.DBusObjectManagerClientFlags"
+                  c:type="GDBusObjectManagerClientFlags"/>
+          </parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3284">A bus name (well-known or unique).</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3285">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3286">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="6">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3287">A #GAsyncReadyCallback to call when the request is satisfied.</doc>
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3288">User data to pass to @callback.</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </function>
+      <field name="parent_instance" readable="0" private="1">
+        <type name="Gio.DBusObjectManagerClient"
+              c:type="GDBusObjectManagerClient"/>
+      </field>
+      <field name="priv" readable="0" private="1">
+        <type name="DbusObjectManagerClientPrivate"
+              c:type="CloudProvidersDbusObjectManagerClientPrivate*"/>
+      </field>
+    </class>
+    <record name="DbusObjectManagerClientClass"
+            c:type="CloudProvidersDbusObjectManagerClientClass"
+            glib:is-gtype-struct-for="DbusObjectManagerClient">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="3138">Class structure for #CloudProvidersDbusObjectManagerClient.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="434"/>
+      <field name="parent_class">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3140">The parent class.</doc>
+        <type name="Gio.DBusObjectManagerClientClass"
+              c:type="GDBusObjectManagerClientClass"/>
+      </field>
+    </record>
+    <record name="DbusObjectManagerClientPrivate"
+            c:type="CloudProvidersDbusObjectManagerClientPrivate"
+            disguised="1"
+            opaque="1">
+      <source-position filename="src/cloudproviders-generated.h" line="422"/>
+    </record>
+    <class name="DbusObjectProxy"
+           c:symbol-prefix="dbus_object_proxy"
+           c:type="CloudProvidersDbusObjectProxy"
+           parent="Gio.DBusObjectProxy"
+           glib:type-name="CloudProvidersDbusObjectProxy"
+           glib:get-type="cloud_providers_dbus_object_proxy_get_type"
+           glib:type-struct="DbusObjectProxyClass">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="2861">The #CloudProvidersDbusObjectProxy structure contains only private data and should only be accessed using the provided API.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="368"/>
+      <implements name="DbusObject"/>
+      <implements name="Gio.DBusObject"/>
+      <constructor name="new"
+                   c:identifier="cloud_providers_dbus_object_proxy_new">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2944">Creates a new proxy object.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="376"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="2951">The proxy object.</doc>
+          <type name="DbusObjectProxy"
+                c:type="CloudProvidersDbusObjectProxy*"/>
+        </return-value>
+        <parameters>
+          <parameter name="connection" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2946">A #GDBusConnection.</doc>
+            <type name="Gio.DBusConnection" c:type="GDBusConnection*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="2947">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <field name="parent_instance" readable="0" private="1">
+        <type name="Gio.DBusObjectProxy" c:type="GDBusObjectProxy"/>
+      </field>
+      <field name="priv" readable="0" private="1">
+        <type name="DbusObjectProxyPrivate"
+              c:type="CloudProvidersDbusObjectProxyPrivate*"/>
+      </field>
+    </class>
+    <record name="DbusObjectProxyClass"
+            c:type="CloudProvidersDbusObjectProxyClass"
+            glib:is-gtype-struct-for="DbusObjectProxy">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="2867">Class structure for #CloudProvidersDbusObjectProxy.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="368"/>
+      <field name="parent_class">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2869">The parent class.</doc>
+        <type name="Gio.DBusObjectProxyClass" c:type="GDBusObjectProxyClass"/>
+      </field>
+    </record>
+    <record name="DbusObjectProxyPrivate"
+            c:type="CloudProvidersDbusObjectProxyPrivate"
+            disguised="1"
+            opaque="1">
+      <source-position filename="src/cloudproviders-generated.h" line="356"/>
+    </record>
+    <class name="DbusObjectSkeleton"
+           c:symbol-prefix="dbus_object_skeleton"
+           c:type="CloudProvidersDbusObjectSkeleton"
+           parent="Gio.DBusObjectSkeleton"
+           glib:type-name="CloudProvidersDbusObjectSkeleton"
+           glib:get-type="cloud_providers_dbus_object_skeleton_get_type"
+           glib:type-struct="DbusObjectSkeletonClass">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="2962">The #CloudProvidersDbusObjectSkeleton structure contains only private data and should only be accessed using the provided API.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="399"/>
+      <implements name="DbusObject"/>
+      <implements name="Gio.DBusObject"/>
+      <constructor name="new"
+                   c:identifier="cloud_providers_dbus_object_skeleton_new">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3079">Creates a new skeleton object.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="407"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="3085">The skeleton object.</doc>
+          <type name="DbusObjectSkeleton"
+                c:type="CloudProvidersDbusObjectSkeleton*"/>
+        </return-value>
+        <parameters>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3081">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_account"
+              c:identifier="cloud_providers_dbus_object_skeleton_set_account">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3106">Sets the #CloudProvidersDbusAccount instance for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt; on @object.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="409"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3108">A #CloudProvidersDbusObjectSkeleton.</doc>
+            <type name="DbusObjectSkeleton"
+                  c:type="CloudProvidersDbusObjectSkeleton*"/>
+          </instance-parameter>
+          <parameter name="interface_"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3109">A #CloudProvidersDbusAccount or %NULL to clear the interface.</doc>
+            <type name="DbusAccount" c:type="CloudProvidersDbusAccount*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_provider"
+              c:identifier="cloud_providers_dbus_object_skeleton_set_provider">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="3094">Sets the #CloudProvidersDbusProvider instance for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt; on @object.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="408"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3096">A #CloudProvidersDbusObjectSkeleton.</doc>
+            <type name="DbusObjectSkeleton"
+                  c:type="CloudProvidersDbusObjectSkeleton*"/>
+          </instance-parameter>
+          <parameter name="interface_"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="3097">A #CloudProvidersDbusProvider or %NULL to clear the interface.</doc>
+            <type name="DbusProvider" c:type="CloudProvidersDbusProvider*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <field name="parent_instance" readable="0" private="1">
+        <type name="Gio.DBusObjectSkeleton" c:type="GDBusObjectSkeleton"/>
+      </field>
+      <field name="priv" readable="0" private="1">
+        <type name="DbusObjectSkeletonPrivate"
+              c:type="CloudProvidersDbusObjectSkeletonPrivate*"/>
+      </field>
+    </class>
+    <record name="DbusObjectSkeletonClass"
+            c:type="CloudProvidersDbusObjectSkeletonClass"
+            glib:is-gtype-struct-for="DbusObjectSkeleton">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="2968">Class structure for #CloudProvidersDbusObjectSkeleton.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="399"/>
+      <field name="parent_class">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="2970">The parent class.</doc>
+        <type name="Gio.DBusObjectSkeletonClass"
+              c:type="GDBusObjectSkeletonClass"/>
+      </field>
+    </record>
+    <record name="DbusObjectSkeletonPrivate"
+            c:type="CloudProvidersDbusObjectSkeletonPrivate"
+            disguised="1"
+            opaque="1">
+      <source-position filename="src/cloudproviders-generated.h" line="387"/>
+    </record>
+    <interface name="DbusProvider"
+               c:symbol-prefix="dbus_provider"
+               c:type="CloudProvidersDbusProvider"
+               glib:type-name="CloudProvidersDbusProvider"
+               glib:get-type="cloud_providers_dbus_provider_get_type"
+               glib:type-struct="DbusProviderIface">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="281">Abstract interface type for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt;.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="35"/>
+      <function name="interface_info"
+                c:identifier="cloud_providers_dbus_provider_interface_info">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="249">Gets a machine-readable description of the &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt; D-Bus interface.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="43"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="254">A #GDBusInterfaceInfo. Do not free.</doc>
+          <type name="Gio.DBusInterfaceInfo" c:type="GDBusInterfaceInfo*"/>
+        </return-value>
+      </function>
+      <function name="override_properties"
+                c:identifier="cloud_providers_dbus_provider_override_properties">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="262">Overrides all #GObject properties in the #CloudProvidersDbusProvider interface for a concrete class.
+The properties are overridden in the order they are defined.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="44"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="270">The last property id.</doc>
+          <type name="guint" c:type="guint"/>
+        </return-value>
+        <parameters>
+          <parameter name="klass" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="264">The class structure for a #GObject derived class.</doc>
+            <type name="GObject.ObjectClass" c:type="GObjectClass*"/>
+          </parameter>
+          <parameter name="property_id_begin" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="265">The property id to assign to the first overridden property.</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </function>
+      <virtual-method name="get_name" invoker="get_name" introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="313">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Provider.Name"&gt;"Name"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.
+
+The returned value is only valid until the property changes so on the client-side it is only safe to use this function on the thread where @object was constructed. Use cloud_providers_dbus_provider_dup_name() if on another thread.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="33"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="323">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="315">A #CloudProvidersDbusProvider.</doc>
+            <type name="DbusProvider" c:type="CloudProvidersDbusProvider*"/>
+          </instance-parameter>
+        </parameters>
+      </virtual-method>
+      <method name="dup_name"
+              c:identifier="cloud_providers_dbus_provider_dup_name"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="333">Gets a copy of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Provider.Name"&gt;"Name"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="49"/>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="341">The property value or %NULL if the property is not set. The returned value should be freed with g_free().</doc>
+          <type name="utf8" c:type="gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="335">A #CloudProvidersDbusProvider.</doc>
+            <type name="DbusProvider" c:type="CloudProvidersDbusProvider*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_name"
+              c:identifier="cloud_providers_dbus_provider_get_name"
+              glib:get-property="name"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="313">Gets the value of the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Provider.Name"&gt;"Name"&lt;/link&gt; D-Bus property.
+
+Since this D-Bus property is readable, it is meaningful to use this function on both the client- and service-side.
+
+The returned value is only valid until the property changes so on the client-side it is only safe to use this function on the thread where @object was constructed. Use cloud_providers_dbus_provider_dup_name() if on another thread.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="48"/>
+        <return-value transfer-ownership="none" nullable="1">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="323">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="315">A #CloudProvidersDbusProvider.</doc>
+            <type name="DbusProvider" c:type="CloudProvidersDbusProvider*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="set_name"
+              c:identifier="cloud_providers_dbus_provider_set_name"
+              glib:set-property="name"
+              introspectable="0">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="351">Sets the &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Provider.Name"&gt;"Name"&lt;/link&gt; D-Bus property to @value.
+
+Since this D-Bus property is not writable, it is only meaningful to use this function on the service-side.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="50"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="object" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="353">A #CloudProvidersDbusProvider.</doc>
+            <type name="DbusProvider" c:type="CloudProvidersDbusProvider*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="354">The value to set.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="name"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_name"
+                getter="get_name"
+                default-value="NULL">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="302">Represents the D-Bus property &lt;link linkend="gdbus-property-org-freedesktop-CloudProviders-Provider.Name"&gt;"Name"&lt;/link&gt;.
+
+Since the D-Bus property for this #GObject property is readable but not writable, it is meaningful to read from it on both the client- and service-side. It is only meaningful, however, to write to it on the service-side.</doc>
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </interface>
+    <record name="DbusProviderIface"
+            c:type="CloudProvidersDbusProviderIface"
+            glib:is-gtype-struct-for="DbusProvider">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="287">Virtual table for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt;.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="35"/>
+      <field name="parent_iface">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="289">The parent interface.</doc>
+        <type name="GObject.TypeInterface" c:type="GTypeInterface"/>
+      </field>
+      <field name="get_name">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="290">Getter for the #CloudProvidersDbusProvider:name property.</doc>
+        <callback name="get_name">
+          <source-position filename="src/cloudproviders-generated.h"
+                           line="33"/>
+          <return-value transfer-ownership="none" nullable="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="323">The property value or %NULL if the property is not set. Do not free the returned value, it belongs to @object.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </return-value>
+          <parameters>
+            <parameter name="object" transfer-ownership="none">
+              <doc xml:space="preserve"
+                   filename="src/cloudproviders-generated.c"
+                   line="315">A #CloudProvidersDbusProvider.</doc>
+              <type name="DbusProvider" c:type="CloudProvidersDbusProvider*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+    <class name="DbusProviderProxy"
+           c:symbol-prefix="dbus_provider_proxy"
+           c:type="CloudProvidersDbusProviderProxy"
+           parent="Gio.DBusProxy"
+           glib:type-name="CloudProvidersDbusProviderProxy"
+           glib:get-type="cloud_providers_dbus_provider_proxy_get_type"
+           glib:type-struct="DbusProviderProxyClass">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="368">The #CloudProvidersDbusProviderProxy structure contains only private data and should only be accessed using the provided API.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="76"/>
+      <implements name="DbusProvider"/>
+      <implements name="Gio.AsyncInitable"/>
+      <implements name="Gio.DBusInterface"/>
+      <implements name="Gio.Initable"/>
+      <constructor name="new_finish"
+                   c:identifier="cloud_providers_dbus_provider_proxy_new_finish"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="628">Finishes an operation started with cloud_providers_dbus_provider_proxy_new().</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="92"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="635">The constructed proxy object or %NULL if @error is set.</doc>
+          <type name="DbusProviderProxy" c:type="CloudProvidersDbusProvider*"/>
+        </return-value>
+        <parameters>
+          <parameter name="res" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="630">The #GAsyncResult obtained from the #GAsyncReadyCallback passed to cloud_providers_dbus_provider_proxy_new().</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_for_bus_finish"
+                   c:identifier="cloud_providers_dbus_provider_proxy_new_for_bus_finish"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="718">Finishes an operation started with cloud_providers_dbus_provider_proxy_new_for_bus().</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="111"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="725">The constructed proxy object or %NULL if @error is set.</doc>
+          <type name="DbusProviderProxy" c:type="CloudProvidersDbusProvider*"/>
+        </return-value>
+        <parameters>
+          <parameter name="res" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="720">The #GAsyncResult obtained from the #GAsyncReadyCallback passed to cloud_providers_dbus_provider_proxy_new_for_bus().</doc>
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_for_bus_sync"
+                   c:identifier="cloud_providers_dbus_provider_proxy_new_for_bus_sync"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="743">Like cloud_providers_dbus_provider_proxy_new_sync() but takes a #GBusType instead of a #GDBusConnection.
+
+The calling thread is blocked until a reply is received.
+
+See cloud_providers_dbus_provider_proxy_new_for_bus() for the asynchronous version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="114"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="758">The constructed proxy object or %NULL if @error is set.</doc>
+          <type name="DbusProviderProxy" c:type="CloudProvidersDbusProvider*"/>
+        </return-value>
+        <parameters>
+          <parameter name="bus_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="745">A #GBusType.</doc>
+            <type name="Gio.BusType" c:type="GBusType"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="746">Flags from the #GDBusProxyFlags enumeration.</doc>
+            <type name="Gio.DBusProxyFlags" c:type="GDBusProxyFlags"/>
+          </parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="747">A bus name (well-known or unique).</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="748">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="749">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <constructor name="new_sync"
+                   c:identifier="cloud_providers_dbus_provider_proxy_new_sync"
+                   throws="1">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="653">Synchronously creates a proxy for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt;. See g_dbus_proxy_new_sync() for more details.
+
+The calling thread is blocked until a reply is received.
+
+See cloud_providers_dbus_provider_proxy_new() for the asynchronous version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="95"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="668">The constructed proxy object or %NULL if @error is set.</doc>
+          <type name="DbusProviderProxy" c:type="CloudProvidersDbusProvider*"/>
+        </return-value>
+        <parameters>
+          <parameter name="connection" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="655">A #GDBusConnection.</doc>
+            <type name="Gio.DBusConnection" c:type="GDBusConnection*"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="656">Flags from the #GDBusProxyFlags enumeration.</doc>
+            <type name="Gio.DBusProxyFlags" c:type="GDBusProxyFlags"/>
+          </parameter>
+          <parameter name="name"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="657">A bus name (well-known or unique) or %NULL if @connection is not a message bus connection.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="658">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="659">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <function name="new"
+                c:identifier="cloud_providers_dbus_provider_proxy_new"
+                glib:finish-func="new_finish">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="598">Asynchronously creates a proxy for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt;. See g_dbus_proxy_new() for more details.
+
+When the operation is finished, @callback will be invoked in the thread-default main loop of the thread you are calling this method from (see g_main_context_push_thread_default()).
+You can then call cloud_providers_dbus_provider_proxy_new_finish() to get the result of the operation.
+
+See cloud_providers_dbus_provider_proxy_new_sync() for the synchronous, blocking version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="84"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="connection" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="600">A #GDBusConnection.</doc>
+            <type name="Gio.DBusConnection" c:type="GDBusConnection*"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="601">Flags from the #GDBusProxyFlags enumeration.</doc>
+            <type name="Gio.DBusProxyFlags" c:type="GDBusProxyFlags"/>
+          </parameter>
+          <parameter name="name"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="602">A bus name (well-known or unique) or %NULL if @connection is not a message bus connection.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="603">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="604">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="6">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="605">A #GAsyncReadyCallback to call when the request is satisfied.</doc>
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="606">User data to pass to @callback.</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="new_for_bus"
+                c:identifier="cloud_providers_dbus_provider_proxy_new_for_bus"
+                glib:finish-func="new_for_bus_finish">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="688">Like cloud_providers_dbus_provider_proxy_new() but takes a #GBusType instead of a #GDBusConnection.
+
+When the operation is finished, @callback will be invoked in the thread-default main loop of the thread you are calling this method from (see g_main_context_push_thread_default()).
+You can then call cloud_providers_dbus_provider_proxy_new_for_bus_finish() to get the result of the operation.
+
+See cloud_providers_dbus_provider_proxy_new_for_bus_sync() for the synchronous, blocking version of this constructor.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="103"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="bus_type" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="690">A #GBusType.</doc>
+            <type name="Gio.BusType" c:type="GBusType"/>
+          </parameter>
+          <parameter name="flags" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="691">Flags from the #GDBusProxyFlags enumeration.</doc>
+            <type name="Gio.DBusProxyFlags" c:type="GDBusProxyFlags"/>
+          </parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="692">A bus name (well-known or unique).</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="693">An object path.</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="694">A #GCancellable or %NULL.</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="6">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="695">A #GAsyncReadyCallback to call when the request is satisfied.</doc>
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="src/cloudproviders-generated.c"
+                 line="696">User data to pass to @callback.</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </function>
+      <field name="parent_instance" readable="0" private="1">
+        <type name="Gio.DBusProxy" c:type="GDBusProxy"/>
+      </field>
+      <field name="priv" readable="0" private="1">
+        <type name="DbusProviderProxyPrivate"
+              c:type="CloudProvidersDbusProviderProxyPrivate*"/>
+      </field>
+    </class>
+    <record name="DbusProviderProxyClass"
+            c:type="CloudProvidersDbusProviderProxyClass"
+            glib:is-gtype-struct-for="DbusProviderProxy">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="374">Class structure for #CloudProvidersDbusProviderProxy.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="76"/>
+      <field name="parent_class">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="376">The parent class.</doc>
+        <type name="Gio.DBusProxyClass" c:type="GDBusProxyClass"/>
+      </field>
+    </record>
+    <record name="DbusProviderProxyPrivate"
+            c:type="CloudProvidersDbusProviderProxyPrivate"
+            disguised="1"
+            opaque="1">
+      <source-position filename="src/cloudproviders-generated.h" line="64"/>
+    </record>
+    <class name="DbusProviderSkeleton"
+           c:symbol-prefix="dbus_provider_skeleton"
+           c:type="CloudProvidersDbusProviderSkeleton"
+           parent="Gio.DBusInterfaceSkeleton"
+           glib:type-name="CloudProvidersDbusProviderSkeleton"
+           glib:get-type="cloud_providers_dbus_provider_skeleton_get_type"
+           glib:type-struct="DbusProviderSkeletonClass">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="780">The #CloudProvidersDbusProviderSkeleton structure contains only private data and should only be accessed using the provided API.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="146"/>
+      <implements name="DbusProvider"/>
+      <implements name="Gio.DBusInterface"/>
+      <constructor name="new"
+                   c:identifier="cloud_providers_dbus_provider_skeleton_new">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1242">Creates a skeleton object for the D-Bus interface &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt;.</doc>
+        <source-position filename="src/cloudproviders-generated.h" line="154"/>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1247">The skeleton object.</doc>
+          <type name="DbusProviderSkeleton"
+                c:type="CloudProvidersDbusProvider*"/>
+        </return-value>
+      </constructor>
+      <field name="parent_instance" readable="0" private="1">
+        <type name="Gio.DBusInterfaceSkeleton"
+              c:type="GDBusInterfaceSkeleton"/>
+      </field>
+      <field name="priv" readable="0" private="1">
+        <type name="DbusProviderSkeletonPrivate"
+              c:type="CloudProvidersDbusProviderSkeletonPrivate*"/>
+      </field>
+    </class>
+    <record name="DbusProviderSkeletonClass"
+            c:type="CloudProvidersDbusProviderSkeletonClass"
+            glib:is-gtype-struct-for="DbusProviderSkeleton">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="786">Class structure for #CloudProvidersDbusProviderSkeleton.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="146"/>
+      <field name="parent_class">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="788">The parent class.</doc>
+        <type name="Gio.DBusInterfaceSkeletonClass"
+              c:type="GDBusInterfaceSkeletonClass"/>
+      </field>
+    </record>
+    <record name="DbusProviderSkeletonPrivate"
+            c:type="CloudProvidersDbusProviderSkeletonPrivate"
+            disguised="1"
+            opaque="1">
+      <source-position filename="src/cloudproviders-generated.h" line="134"/>
+    </record>
+    <constant name="PROVIDER_DBUS_IFACE"
+              value="org.freedesktop.CloudProviders.Provider"
+              c:type="CLOUD_PROVIDERS_PROVIDER_DBUS_IFACE">
+      <source-position filename="src/cloudprovidersprovider.h" line="26"/>
+      <type name="utf8" c:type="gchar*"/>
+    </constant>
+    <class name="Provider"
+           c:symbol-prefix="provider"
+           c:type="CloudProvidersProvider"
+           parent="GObject.Object"
+           glib:type-name="CloudProvidersProvider"
+           glib:get-type="cloud_providers_provider_get_type"
+           glib:type-struct="ProviderClass">
+      <doc xml:space="preserve"
+           filename="src/cloudprovidersprovider.c"
+           line="42">#CloudProvidersProvider is the basic object object for client implementers
+that contains the properties of the provider such as name, and the accounts
+associated with it.</doc>
+      <source-position filename="src/cloudprovidersprovider.h" line="30"/>
+      <constructor name="new" c:identifier="cloud_providers_provider_new">
+        <source-position filename="src/cloudprovidersprovider.h" line="32"/>
+        <return-value transfer-ownership="full">
+          <type name="Provider" c:type="CloudProvidersProvider*"/>
+        </return-value>
+        <parameters>
+          <parameter name="bus_name" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="object_path" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="get_accounts"
+              c:identifier="cloud_providers_provider_get_accounts">
+        <source-position filename="src/cloudprovidersprovider.h" line="35"/>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudprovidersprovider.c"
+               line="442">A GList* of #CloudProvidersProvider objects.</doc>
+          <type name="GLib.List" c:type="GList*">
+            <type name="Account"/>
+          </type>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersprovider.c"
+                 line="441">A CloudProvidersProvider</doc>
+            <type name="Provider" c:type="CloudProvidersProvider*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_name"
+              c:identifier="cloud_providers_provider_get_name"
+              glib:get-property="name">
+        <source-position filename="src/cloudprovidersprovider.h" line="34"/>
+        <return-value transfer-ownership="none">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Provider" c:type="CloudProvidersProvider*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <property name="name"
+                transfer-ownership="none"
+                getter="get_name"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="accounts-changed" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+      <glib:signal name="removed" when="last">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <record name="ProviderClass"
+            c:type="CloudProvidersProviderClass"
+            glib:is-gtype-struct-for="Provider">
+      <source-position filename="src/cloudprovidersprovider.h" line="30"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <class name="ProviderExporter"
+           c:symbol-prefix="provider_exporter"
+           c:type="CloudProvidersProviderExporter"
+           parent="GObject.Object"
+           glib:type-name="CloudProvidersProviderExporter"
+           glib:get-type="cloud_providers_provider_exporter_get_type"
+           glib:type-struct="ProviderExporterClass">
+      <doc xml:space="preserve"
+           filename="src/cloudprovidersproviderexporter.c"
+           line="57">#CloudProvidersProviderExporter is the base object representing a single cloud provider.
+Multiple #CloudProvidersAccountExporter objects can be added with cloud_providers_provider_exporter_add_account()
+After adding the initial set of accounts cloud_providers_provider_exporter_export_objects() must be called.</doc>
+      <source-position filename="src/cloudprovidersproviderexporter.h"
+                       line="28"/>
+      <constructor name="new"
+                   c:identifier="cloud_providers_provider_exporter_new">
+        <source-position filename="src/cloudprovidersproviderexporter.h"
+                         line="46"/>
+        <return-value transfer-ownership="full">
+          <type name="ProviderExporter"
+                c:type="CloudProvidersProviderExporter*"/>
+        </return-value>
+        <parameters>
+          <parameter name="bus" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersproviderexporter.c"
+                 line="347">A #GDBusConnection to export the objects to</doc>
+            <type name="Gio.DBusConnection" c:type="GDBusConnection*"/>
+          </parameter>
+          <parameter name="bus_name" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersproviderexporter.c"
+                 line="348">A DBus name to bind to</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="bus_path" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersproviderexporter.c"
+                 line="349">A DBus object path</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="get_name"
+              c:identifier="cloud_providers_provider_exporter_get_name"
+              glib:get-property="name">
+        <source-position filename="src/cloudprovidersproviderexporter.h"
+                         line="43"/>
+        <return-value transfer-ownership="none">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="ProviderExporter"
+                  c:type="CloudProvidersProviderExporter*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="remove_account"
+              c:identifier="cloud_providers_provider_exporter_remove_account">
+        <doc xml:space="preserve"
+             filename="src/cloudprovidersproviderexporter.c"
+             line="129">Each cloud provider can have a variety of account associated with it. Use this
+function to remove the accounts that were added when created by cloud_providers_account_exporter_new().</doc>
+        <source-position filename="src/cloudprovidersproviderexporter.h"
+                         line="36"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersproviderexporter.c"
+                 line="131">The cloud provider exporter</doc>
+            <type name="ProviderExporter"
+                  c:type="CloudProvidersProviderExporter*"/>
+          </instance-parameter>
+          <parameter name="account" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="src/cloudprovidersproviderexporter.c"
+                 line="132">The account object</doc>
+            <type name="AccountExporter"
+                  c:type="CloudProvidersAccountExporter*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_name"
+              c:identifier="cloud_providers_provider_exporter_set_name"
+              glib:set-property="name">
+        <source-position filename="src/cloudprovidersproviderexporter.h"
+                         line="40"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="ProviderExporter"
+                  c:type="CloudProvidersProviderExporter*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="bus"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none">
+        <type name="Gio.DBusConnection"/>
+      </property>
+      <property name="bus-name"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="bus-path"
+                writable="1"
+                construct-only="1"
+                transfer-ownership="none"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="name"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_name"
+                getter="get_name"
+                default-value="NULL">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+    <record name="ProviderExporterClass"
+            c:type="CloudProvidersProviderExporterClass"
+            glib:is-gtype-struct-for="ProviderExporter">
+      <source-position filename="src/cloudprovidersproviderexporter.h"
+                       line="28"/>
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <record name="_AccountClass" c:type="_CloudProvidersAccountClass">
+      <source-position filename="src/cloudprovidersaccount.h" line="51"/>
+      <field name="parent_class" writable="1">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <record name="_AccountExporterClass"
+            c:type="_CloudProvidersAccountExporterClass">
+      <source-position filename="src/cloudprovidersaccountexporter.h"
+                       line="35"/>
+      <field name="parent_class" writable="1">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <record name="_CollectorClass" c:type="_CloudProvidersCollectorClass">
+      <source-position filename="src/cloudproviderscollector.h" line="33"/>
+      <field name="parent_class" writable="1">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <record name="_ProviderExporterClass"
+            c:type="_CloudProvidersProviderExporterClass">
+      <source-position filename="src/cloudprovidersproviderexporter.h"
+                       line="33"/>
+      <field name="parent_class" writable="1">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+    </record>
+    <function name="dbus_account_interface_info"
+              c:identifier="cloud_providers_dbus_account_interface_info"
+              moved-to="DbusAccount.interface_info">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="1364">Gets a machine-readable description of the &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Account.top_of_page"&gt;org.freedesktop.CloudProviders.Account&lt;/link&gt; D-Bus interface.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="191"/>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1369">A #GDBusInterfaceInfo. Do not free.</doc>
+        <type name="Gio.DBusInterfaceInfo" c:type="GDBusInterfaceInfo*"/>
+      </return-value>
+    </function>
+    <function name="dbus_account_override_properties"
+              c:identifier="cloud_providers_dbus_account_override_properties"
+              moved-to="DbusAccount.override_properties">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="1377">Overrides all #GObject properties in the #CloudProvidersDbusAccount interface for a concrete class.
+The properties are overridden in the order they are defined.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="192"/>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="1385">The last property id.</doc>
+        <type name="guint" c:type="guint"/>
+      </return-value>
+      <parameters>
+        <parameter name="klass" transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1379">The class structure for a #GObject derived class.</doc>
+          <type name="GObject.ObjectClass" c:type="GObjectClass*"/>
+        </parameter>
+        <parameter name="property_id_begin" transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="1380">The property id to assign to the first overridden property.</doc>
+          <type name="guint" c:type="guint"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="dbus_provider_interface_info"
+              c:identifier="cloud_providers_dbus_provider_interface_info"
+              moved-to="DbusProvider.interface_info">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="249">Gets a machine-readable description of the &lt;link linkend="gdbus-interface-org-freedesktop-CloudProviders-Provider.top_of_page"&gt;org.freedesktop.CloudProviders.Provider&lt;/link&gt; D-Bus interface.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="43"/>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="254">A #GDBusInterfaceInfo. Do not free.</doc>
+        <type name="Gio.DBusInterfaceInfo" c:type="GDBusInterfaceInfo*"/>
+      </return-value>
+    </function>
+    <function name="dbus_provider_override_properties"
+              c:identifier="cloud_providers_dbus_provider_override_properties"
+              moved-to="DbusProvider.override_properties">
+      <doc xml:space="preserve"
+           filename="src/cloudproviders-generated.c"
+           line="262">Overrides all #GObject properties in the #CloudProvidersDbusProvider interface for a concrete class.
+The properties are overridden in the order they are defined.</doc>
+      <source-position filename="src/cloudproviders-generated.h" line="44"/>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve"
+             filename="src/cloudproviders-generated.c"
+             line="270">The last property id.</doc>
+        <type name="guint" c:type="guint"/>
+      </return-value>
+      <parameters>
+        <parameter name="klass" transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="264">The class structure for a #GObject derived class.</doc>
+          <type name="GObject.ObjectClass" c:type="GObjectClass*"/>
+        </parameter>
+        <parameter name="property_id_begin" transfer-ownership="none">
+          <doc xml:space="preserve"
+               filename="src/cloudproviders-generated.c"
+               line="265">The property id to assign to the first overridden property.</doc>
+          <type name="guint" c:type="guint"/>
+        </parameter>
+      </parameters>
+    </function>
+  </namespace>
+</repository>
