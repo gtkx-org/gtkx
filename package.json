@@ -18,14 +18,15 @@
         "typecheck": "turbo typecheck --filter=!website --filter=!gtkx"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.4.4",
+        "@biomejs/biome": "^2.4.5",
         "@gtkx/codegen": "workspace:*",
-        "@types/node": "^25.3.2",
+        "@types/node": "^25.3.3",
         "@types/react": "^19.2.14",
         "react": "^19.2.4",
+        "tsx": "^4.21.0",
         "turbo": "^2.8.12",
         "typescript": "^5.9.3",
         "vitest": "^4.0.18"
     },
-    "packageManager": "pnpm@10.30.0"
+    "packageManager": "pnpm@10.30.3"
 }

@@ -36,7 +36,7 @@
     },
     "devDependencies": {
         "@biomejs/js-api": "^4.0.0",
-        "@biomejs/wasm-nodejs": "^2.4.4",
+        "@biomejs/wasm-nodejs": "^2.4.5",
         "@clack/prompts": "^1.0.1",
         "@gtkx/gir": "workspace:*",
         "@gtkx/native": "workspace:*",

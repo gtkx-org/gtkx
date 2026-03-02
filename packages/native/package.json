@@ -41,7 +41,7 @@
     "scripts": {
         "build": "tsc -b && cp ../../README.md .",
         "lint": "cargo fmt --check && cargo clippy -- -D warnings",
-        "native-build": "node scripts/build.js",
+        "native-build": "tsx scripts/native-build.ts",
         "native-test": "xvfb-run -a cargo test -- --test-threads=1",
         "test": "vitest run",
         "typecheck": "tsc -b --emitDeclarationOnly"
