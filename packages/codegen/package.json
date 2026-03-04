@@ -37,7 +37,7 @@
     "devDependencies": {
         "@biomejs/js-api": "^4.0.0",
         "@biomejs/wasm-nodejs": "^2.4.5",
-        "@clack/prompts": "^1.0.1",
+        "@clack/prompts": "^1.1.0",
         "@gtkx/gir": "workspace:*",
         "@gtkx/native": "workspace:*",
         "citty": "^0.2.1",
