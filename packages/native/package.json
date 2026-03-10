@@ -52,6 +52,6 @@
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
-        "@neon-rs/cli": "^0.1.82"
+        "@neon-rs/cli": "^0.2.6"
     }
 }
