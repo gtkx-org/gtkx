@@ -100,6 +100,7 @@ export class RawGirParser {
             attributeNamePrefix: "@_",
             textNodeName: "#text",
             isArray: (_name, jpath, _isLeafNode, _isAttribute) => {
+                if (typeof jpath !== "string") return false;
                 const path = jpath.split(".").slice(1).join(".");
                 return ARRAY_ELEMENT_PATHS.has(path);
             },
