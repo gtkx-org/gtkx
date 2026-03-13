@@ -40,7 +40,7 @@ const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.constant",
     "namespace.alias",
     "namespace.class.method",
-    "namespace.class.constructor",
+    "namespace.class._constructor",
     "namespace.class.function",
     "namespace.class.property",
     "namespace.class.signal",
@@ -50,11 +50,11 @@ const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.interface.signal",
     "namespace.interface.glib:signal",
     "namespace.record.method",
-    "namespace.record.constructor",
+    "namespace.record._constructor",
     "namespace.record.function",
     "namespace.record.field",
     "namespace.class.method.parameters.parameter",
-    "namespace.class.constructor.parameters.parameter",
+    "namespace.class._constructor.parameters.parameter",
     "namespace.class.function.parameters.parameter",
     "namespace.function.parameters.parameter",
     "namespace.enumeration.member",
@@ -63,7 +63,7 @@ const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.class.glib:signal.parameters.parameter",
     "namespace.interface.glib:signal.parameters.parameter",
     "namespace.record.method.parameters.parameter",
-    "namespace.record.constructor.parameters.parameter",
+    "namespace.record._constructor.parameters.parameter",
     "namespace.record.function.parameters.parameter",
     "namespace.callback.parameters.parameter",
 ]);
@@ -99,6 +99,7 @@ export class RawGirParser {
             ignoreAttributes: false,
             attributeNamePrefix: "@_",
             textNodeName: "#text",
+            transformTagName: (tagName) => (tagName === "constructor" ? "_constructor" : tagName),
             isArray: (_name, jpath, _isLeafNode, _isAttribute) => {
                 if (typeof jpath !== "string") return false;
                 const path = jpath.split(".").slice(1).join(".");
@@ -184,7 +185,7 @@ export class RawGirParser {
                 cls.implements as Record<string, unknown>[] | Record<string, unknown> | undefined,
             ),
             methods: this.parseMethods(ensureArray(cls.method)),
-            constructors: this.parseConstructors(ensureArray(cls.constructor)),
+            constructors: this.parseConstructors(ensureArray(cls["_constructor"])),
             functions: this.parseFunctions(ensureArray(cls.function)),
             properties: this.parseProperties(ensureArray(cls.property)),
             signals: this.parseSignals(ensureArray(cls["glib:signal"])),
@@ -554,7 +555,7 @@ export class RawGirParser {
             freeFunction: record["@_free-function"] ? String(record["@_free-function"]) : undefined,
             fields: this.parseFields(ensureArray(record.field)),
             methods: this.parseMethods(ensureArray(record.method)),
-            constructors: this.parseConstructors(ensureArray(record.constructor)),
+            constructors: this.parseConstructors(ensureArray(record["_constructor"])),
             functions: this.parseFunctions(ensureArray(record.function)),
             doc: extractDoc(record),
         }));
