@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 neon = "1.1.1"
-gtk4 = "0.11.0"
+gtk4 = "0.11.1"
 libloading = "0.9.0"
 libffi = "5.1.0"
 anyhow = "1.0.102"
