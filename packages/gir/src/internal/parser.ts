@@ -105,7 +105,7 @@ export class RawGirParser {
                 const path = jpath.split(".").slice(1).join(".");
                 return ARRAY_ELEMENT_PATHS.has(path);
             },
-            maxEntityCount: 10000,
+            processEntities: { maxEntityCount: 10000 },
         });
     }
 
