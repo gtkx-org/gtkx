@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alloc, call, getNativeId } from "../../index.js";
+import { alloc, call, getNativeId, type NativeHandle } from "../../index.js";
 import { GDK_LIB, GTK_LIB } from "./utils.js";
 
 describe("getNativeId", () => {
@@ -14,7 +14,7 @@ describe("getNativeId", () => {
             },
         );
 
-        const id = getNativeId(label);
+        const id = getNativeId(label as NativeHandle);
 
         expect(typeof id).toBe("number");
     });
@@ -38,8 +38,8 @@ describe("getNativeId", () => {
             },
         );
 
-        const id1 = getNativeId(label);
-        const id2 = getNativeId(label);
+        const id1 = getNativeId(label as NativeHandle);
+        const id2 = getNativeId(label as NativeHandle);
 
         expect(id1).toBe(id2);
     });
@@ -58,8 +58,8 @@ describe("getNativeId", () => {
             { type: "gobject", ownership: "borrowed" },
         );
 
-        const id1 = getNativeId(label1);
-        const id2 = getNativeId(label2);
+        const id1 = getNativeId(label1 as NativeHandle);
+        const id2 = getNativeId(label2 as NativeHandle);
 
         expect(id1).not.toBe(id2);
     });
@@ -76,7 +76,7 @@ describe("getNativeId", () => {
         );
 
         const map = new Map<number, string>();
-        const id = getNativeId(label);
+        const id = getNativeId(label as NativeHandle);
         map.set(id, "label-value");
 
         expect(map.get(id)).toBe("label-value");

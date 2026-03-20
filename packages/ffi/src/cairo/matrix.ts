@@ -22,10 +22,10 @@ declare module "../generated/cairo/matrix.js" {
     }
 }
 
-export const allocMatrix = (): { handle: unknown; obj: MatrixImpl } => {
+export const allocMatrix = (): { handle: NativeHandle; obj: MatrixImpl } => {
     const handle = alloc(48, "cairo_matrix_t", LIB);
     const obj = Object.create(MatrixImpl.prototype) as MatrixImpl;
-    obj.handle = handle as NativeHandle;
+    obj.handle = handle;
     return { handle, obj };
 };
 
@@ -36,7 +36,7 @@ class MatrixImpl extends Matrix {
     constructor(xx: number, yx: number, xy: number, yy: number, x0: number, y0: number);
     constructor(xx?: number, yx?: number, xy?: number, yy?: number, x0?: number, y0?: number) {
         super();
-        this.handle = alloc(48, "cairo_matrix_t", LIB) as NativeHandle;
+        this.handle = alloc(48, "cairo_matrix_t", LIB);
         if (xx === undefined) {
             call(LIB, "cairo_matrix_init_identity", [{ type: MATRIX_T, value: this.handle }], { type: "undefined" });
         } else {

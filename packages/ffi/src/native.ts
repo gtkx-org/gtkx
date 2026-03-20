@@ -1,5 +1,7 @@
 import {
     type Arg,
+    type FfiValue,
+    type NativeHandle,
     alloc as nativeAlloc,
     call as nativeCall,
     freeze as nativeFreeze,
@@ -122,7 +124,7 @@ const ensureIsStarted = (detail?: string) => {
  * @returns The unmarshaled return value
  * @throws If runtime not started or undefined required argument
  */
-export const call = (library: string, symbol: string, args: Arg[], returnType: Type): unknown => {
+export const call = (library: string, symbol: string, args: Arg[], returnType: Type): FfiValue => {
     ensureIsStarted(`attempted call: ${library}:${symbol}`);
     return nativeCall(library, symbol, args, returnType);
 };
@@ -136,7 +138,7 @@ export const call = (library: string, symbol: string, args: Arg[], returnType: T
  * @returns Handle to the allocated memory
  * @throws If runtime not started
  */
-export const alloc = (size: number, typeName?: string, library?: string): unknown => {
+export const alloc = (size: number, typeName?: string, library?: string): NativeHandle => {
     ensureIsStarted(`attempted alloc: ${library ?? "unknown"}:${typeName ?? "unknown"}`);
     return nativeAlloc(size, typeName, library);
 };
@@ -150,7 +152,7 @@ export const alloc = (size: number, typeName?: string, library?: string): unknow
  * @returns The unmarshaled value
  * @throws If runtime not started
  */
-export const read = (handle: unknown, type: Type, offset: number): unknown => {
+export const read = (handle: NativeHandle, type: Type, offset: number): FfiValue => {
     ensureIsStarted("attempted read");
     return nativeRead(handle, type, offset);
 };
@@ -164,7 +166,7 @@ export const read = (handle: unknown, type: Type, offset: number): unknown => {
  * @returns Handle to the dereferenced memory location
  * @throws If runtime not started
  */
-export const readPointer = (handle: unknown, ptrOffset: number, elementOffset: number): unknown => {
+export const readPointer = (handle: NativeHandle, ptrOffset: number, elementOffset: number): NativeHandle => {
     ensureIsStarted("attempted readPointer");
     return nativeReadPointer(handle, ptrOffset, elementOffset);
 };
@@ -178,7 +180,7 @@ export const readPointer = (handle: unknown, ptrOffset: number, elementOffset: n
  * @param value - Value to write
  * @throws If runtime not started
  */
-export const write = (handle: unknown, type: Type, offset: number, value: unknown): void => {
+export const write = (handle: NativeHandle, type: Type, offset: number, value: unknown): void => {
     ensureIsStarted("attempted write");
     nativeWrite(handle, type, offset, value);
 };
@@ -194,10 +196,10 @@ export const write = (handle: unknown, type: Type, offset: number, value: unknow
  * @throws If runtime not started
  */
 export const writePointer = (
-    destHandle: unknown,
+    destHandle: NativeHandle,
     ptrOffset: number,
     elementOffset: number,
-    sourceHandle: unknown,
+    sourceHandle: NativeHandle,
     size: number,
 ): void => {
     ensureIsStarted("attempted writePointer");

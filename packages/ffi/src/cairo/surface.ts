@@ -385,7 +385,7 @@ export const imageCreateForData = (
         type: "struct",
         innerType: "guint8*",
         ownership: "borrowed",
-    });
+    }) as NativeHandle;
     const rowBytes = Math.min(stride, actualStride);
     const byteType = { type: "int", size: 8, unsigned: true } as const;
     for (let row = 0; row < height; row++) {

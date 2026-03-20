@@ -6,6 +6,14 @@
  */
 export type NativeHandle = { readonly __brand: "NativeHandle" };
 
+/**
+ * Union of all possible FFI return value types.
+ *
+ * Returned by `call()` and `read()` where the concrete type
+ * depends on the type descriptor passed to the function.
+ */
+export type FfiValue = NativeHandle | number | string | boolean | FfiValue[] | null | undefined;
+
 type IntegerType = { type: "int"; size: 8 | 16 | 32 | 64; unsigned: boolean; library?: string; getTypeFn?: string };
 
 type FloatType = { type: "float"; size: 32 | 64 };
@@ -112,6 +120,6 @@ export type Arg = {
  * @typeParam T - The type of the referenced value
  */
 export type Ref<T> = {
-    /** The current value */
+    readonly __brand: "Ref";
     value: T;
 };

@@ -1,6 +1,7 @@
 export {
     Arg,
     createRef,
+    type FfiValue,
     getNativeId,
     type NativeHandle,
     Ref,

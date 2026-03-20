@@ -269,6 +269,7 @@ export class ImportsBuilder {
     private collectNativeTypeImports(): string[] {
         const imports: string[] = [];
         if (this.ctx.usesArg) imports.push("Arg");
+        if (this.ctx.usesCreateRef) imports.push("createRef");
         if (this.ctx.usesRef) imports.push("Ref");
         if (this.ctx.usesType) imports.push("Type");
         return imports;

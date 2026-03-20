@@ -1,4 +1,4 @@
-import { call, createRef, read } from "../../index.js";
+import { call, createRef, type NativeHandle, read } from "../../index.js";
 
 export { createRef };
 
@@ -90,7 +90,7 @@ export function forceGC(): void {
 }
 
 export function getRefCount(obj: unknown): number {
-    return read(obj, { type: "int", size: 32, unsigned: true }, GOBJECT_REF_COUNT_OFFSET) as number;
+    return read(obj as NativeHandle, { type: "int", size: 32, unsigned: true }, GOBJECT_REF_COUNT_OFFSET) as number;
 }
 
 type MemoryMeasurement = {

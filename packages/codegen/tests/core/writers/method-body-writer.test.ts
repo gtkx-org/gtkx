@@ -668,10 +668,11 @@ describe("MethodBodyWriter", () => {
             });
 
             const output = sourceFile.getFullText();
-            expect(output).toContain("const error = { value: null as unknown }");
+            expect(output).toContain("const error = createRef<NativeHandle | null>(null)");
             expect(output).toContain("if (error.value !== null)");
             expect(output).toContain("NativeError");
             expect(ctx.usesNativeError).toBe(true);
+            expect(ctx.usesCreateRef).toBe(true);
         });
 
         it("wraps gobject return values", () => {
@@ -807,10 +808,11 @@ describe("MethodBodyWriter", () => {
             });
 
             const output = sourceFile.getFullText();
-            expect(output).toContain("const error = { value: null as unknown }");
+            expect(output).toContain("const error = createRef<NativeHandle | null>(null)");
             expect(output).toContain("if (error.value !== null)");
             expect(output).toContain("NativeError");
             expect(ctx.usesNativeError).toBe(true);
+            expect(ctx.usesCreateRef).toBe(true);
         });
     });
 

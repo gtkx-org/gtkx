@@ -885,7 +885,7 @@ Context.prototype.copyClipRectangleList = function (): Array<{
         "cairo_copy_clip_rectangle_list",
         [{ type: CAIRO_T, value: this.handle }],
         RECT_LIST_T,
-    );
+    ) as NativeHandle;
 
     const numRectangles = read(listHandle, INT_TYPE, 16) as number;
     const result: Array<{ x: number; y: number; width: number; height: number }> = [];
@@ -1192,12 +1192,22 @@ Context.prototype.glyphExtents = function (glyphs: Array<{ index: number; x: num
 };
 
 Context.prototype.copyPath = function (): PathData[] {
-    const pathHandle = call(LIB, "cairo_copy_path", [{ type: CAIRO_T, value: this.handle }], PATH_STRUCT_T);
+    const pathHandle = call(
+        LIB,
+        "cairo_copy_path",
+        [{ type: CAIRO_T, value: this.handle }],
+        PATH_STRUCT_T,
+    ) as NativeHandle;
     return parsePath(pathHandle);
 };
 
 Context.prototype.copyPathFlat = function (): PathData[] {
-    const pathHandle = call(LIB, "cairo_copy_path_flat", [{ type: CAIRO_T, value: this.handle }], PATH_STRUCT_T);
+    const pathHandle = call(
+        LIB,
+        "cairo_copy_path_flat",
+        [{ type: CAIRO_T, value: this.handle }],
+        PATH_STRUCT_T,
+    ) as NativeHandle;
     return parsePath(pathHandle);
 };
 

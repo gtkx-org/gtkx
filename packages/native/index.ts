@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
-import type { Arg, CallbackType, NativeHandle, Ref, Type } from "./types.js";
+import type { Arg, CallbackType, FfiValue, NativeHandle, Ref, Type } from "./types.js";
 
 const require = createRequire(import.meta.url);
 
@@ -48,7 +48,7 @@ const native = loadNativeBinding();
  * ```
  */
 export function createRef<T>(value: T): Ref<T> {
-    return { value };
+    return { value } as Ref<T>;
 }
 
 /**
@@ -63,8 +63,8 @@ export function createRef<T>(value: T): Ref<T> {
  * @param returnType - Expected return type
  * @returns The function return value
  */
-export function call(library: string, symbol: string, args: Arg[], returnType: Type): unknown {
-    return native.call(library, symbol, args, returnType);
+export function call(library: string, symbol: string, args: Arg[], returnType: Type): FfiValue {
+    return native.call(library, symbol, args, returnType) as FfiValue;
 }
 
 /**
@@ -76,8 +76,8 @@ export function call(library: string, symbol: string, args: Arg[], returnType: T
  *
  * @internal Use `@gtkx/ffi` start() instead
  */
-export function start(appId: string, flags?: number): unknown {
-    return native.start(appId, flags);
+export function start(appId: string, flags?: number): NativeHandle {
+    return native.start(appId, flags) as NativeHandle;
 }
 
 /**
@@ -97,8 +97,8 @@ export function stop(): void {
  * @param offset - Byte offset from the handle pointer
  * @returns The read value
  */
-export function read(handle: unknown, type: Type, offset: number): unknown {
-    return native.read(handle, type, offset);
+export function read(handle: NativeHandle, type: Type, offset: number): FfiValue {
+    return native.read(handle, type, offset) as FfiValue;
 }
 
 /**
@@ -109,7 +109,7 @@ export function read(handle: unknown, type: Type, offset: number): unknown {
  * @param offset - Byte offset from the handle pointer
  * @param value - Value to write
  */
-export function write(handle: unknown, type: Type, offset: number, value: unknown): void {
+export function write(handle: NativeHandle, type: Type, offset: number, value: unknown): void {
     native.write(handle, type, offset, value);
 }
 
@@ -121,8 +121,8 @@ export function write(handle: unknown, type: Type, offset: number, value: unknow
  * @param lib - Optional library containing the type
  * @returns Native pointer to allocated memory
  */
-export function alloc(size: number, glibTypeName?: string, lib?: string): unknown {
-    return native.alloc(size, glibTypeName, lib);
+export function alloc(size: number, glibTypeName?: string, lib?: string): NativeHandle {
+    return native.alloc(size, glibTypeName, lib) as NativeHandle;
 }
 
 /**
@@ -133,7 +133,7 @@ export function alloc(size: number, glibTypeName?: string, lib?: string): unknow
  * @param handle - Native handle
  * @returns Internal handle ID
  */
-export function getNativeId(handle: unknown): number {
+export function getNativeId(handle: NativeHandle): number {
     return native.getNativeId(handle);
 }
 
@@ -148,8 +148,8 @@ export function getNativeId(handle: unknown): number {
  * @param elementOffset - Byte offset from the dereferenced pointer
  * @returns Native handle pointing to the element (borrowed, non-owning)
  */
-export function readPointer(handle: unknown, ptrOffset: number, elementOffset: number): unknown {
-    return native.readPointer(handle, ptrOffset, elementOffset);
+export function readPointer(handle: NativeHandle, ptrOffset: number, elementOffset: number): NativeHandle {
+    return native.readPointer(handle, ptrOffset, elementOffset) as NativeHandle;
 }
 
 /**
@@ -165,10 +165,10 @@ export function readPointer(handle: unknown, ptrOffset: number, elementOffset: n
  * @param size - Size in bytes of the struct to copy
  */
 export function writePointer(
-    destHandle: unknown,
+    destHandle: NativeHandle,
     ptrOffset: number,
     elementOffset: number,
-    sourceHandle: unknown,
+    sourceHandle: NativeHandle,
     size: number,
 ): void {
     native.writePointer(destHandle, ptrOffset, elementOffset, sourceHandle, size);
@@ -182,4 +182,4 @@ export function unfreeze(): void {
     native.unfreeze();
 }
 
-export type { Arg, CallbackType, NativeHandle, Ref, Type };
+export type { Arg, CallbackType, FfiValue, NativeHandle, Ref, Type };

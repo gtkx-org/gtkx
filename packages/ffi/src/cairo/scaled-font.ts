@@ -233,9 +233,9 @@ ScaledFont.prototype.textToGlyphs = function (
     const encoder = new TextEncoder();
     const utf8 = encoder.encode(text);
 
-    const glyphsRef = createRef(null);
+    const glyphsRef = createRef<NativeHandle | null>(null);
     const numGlyphsRef = createRef(0);
-    const clustersRef = createRef(null);
+    const clustersRef = createRef<NativeHandle | null>(null);
     const numClustersRef = createRef(0);
     const clusterFlagsRef = createRef(0);
 
@@ -260,13 +260,16 @@ ScaledFont.prototype.textToGlyphs = function (
     const numGlyphs = numGlyphsRef.value as number;
     const numClusters = numClustersRef.value as number;
 
+    const glyphsBuf = glyphsRef.value as NativeHandle;
+    const clustersBuf = clustersRef.value as NativeHandle;
+
     const glyphs: CairoGlyph[] = [];
     for (let i = 0; i < numGlyphs; i++) {
         const offset = i * 24;
         glyphs.push({
-            index: read(glyphsRef.value, ULONG_TYPE, offset) as number,
-            x: read(glyphsRef.value, DOUBLE_TYPE, offset + 8) as number,
-            y: read(glyphsRef.value, DOUBLE_TYPE, offset + 16) as number,
+            index: read(glyphsBuf, ULONG_TYPE, offset) as number,
+            x: read(glyphsBuf, DOUBLE_TYPE, offset + 8) as number,
+            y: read(glyphsBuf, DOUBLE_TYPE, offset + 16) as number,
         });
     }
 
@@ -274,8 +277,8 @@ ScaledFont.prototype.textToGlyphs = function (
     for (let i = 0; i < numClusters; i++) {
         const offset = i * 8;
         clusters.push({
-            numBytes: read(clustersRef.value, INT_TYPE, offset) as number,
-            numGlyphs: read(clustersRef.value, INT_TYPE, offset + 4) as number,
+            numBytes: read(clustersBuf, INT_TYPE, offset) as number,
+            numGlyphs: read(clustersBuf, INT_TYPE, offset + 4) as number,
         });
     }
 

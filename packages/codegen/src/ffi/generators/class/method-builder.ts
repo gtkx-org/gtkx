@@ -235,7 +235,9 @@ export class MethodBuilder {
                             writer.writeLine("value: (_source: unknown, result: unknown) => {");
                             writer.indent(() => {
                                 if (finishMethod.throws) {
-                                    writer.writeLine("const error = { value: null as unknown };");
+                                    this.ctx.usesCreateRef = true;
+                                    this.ctx.usesNativeHandle = true;
+                                    writer.writeLine("const error = createRef<NativeHandle | null>(null);");
                                 }
 
                                 if (hasReturnValue) {
@@ -270,7 +272,7 @@ export class MethodBuilder {
                                     if (wrapInfo.needsWrap) {
                                         writer.writeLine(");");
                                     } else {
-                                        writer.writeLine(`) as ${baseReturnType};`);
+                                        writer.writeLine(`) as unknown as ${baseReturnType};`);
                                     }
                                 } else {
                                     writer.writeLine(");");
@@ -278,11 +280,10 @@ export class MethodBuilder {
 
                                 if (finishMethod.throws) {
                                     const gerrorRef = this.methodBody.setupGErrorImports();
-
                                     writer.writeLine("if (error.value !== null) {");
                                     writer.indent(() => {
                                         writer.writeLine(
-                                            `reject(new NativeError(getNativeObject(error.value as NativeHandle, ${gerrorRef})));`,
+                                            `reject(new NativeError(getNativeObject(error.value, ${gerrorRef})));`,
                                         );
                                         writer.writeLine("return;");
                                     });

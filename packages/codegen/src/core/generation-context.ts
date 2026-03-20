@@ -102,6 +102,9 @@ export class GenerationContext {
     /** Whether the module uses the Arg type for varargs */
     usesArg = false;
 
+    /** Whether the module uses the createRef function */
+    usesCreateRef = false;
+
     /** Whether the module uses synthetic property setters (GObject.Value and typeFromName) */
     usesSyntheticPropertySetter = false;
 
@@ -159,6 +162,7 @@ export class GenerationContext {
         this.usesGetClassByTypeName = false;
         this.usesGObjectNamespace = false;
         this.usesArg = false;
+        this.usesCreateRef = false;
         this.usesSyntheticPropertySetter = false;
         this.usesSyntheticPropertyGetter = false;
 

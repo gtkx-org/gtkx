@@ -93,8 +93,8 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
     }
 
     const handle = nativeStart(appId, flags);
-    applicationHandle = handle as NativeHandle;
-    const application = getNativeObject(handle as NativeHandle) as Application;
+    applicationHandle = handle;
+    const application = getNativeObject(handle) as Application;
 
     try {
         initAdwaita();

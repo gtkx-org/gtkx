@@ -667,7 +667,9 @@ export class MethodBodyWriter {
             const resultVarName = this.getResultVarName(options.parameters);
 
             if (options.throws) {
-                writer.writeLine("const error = { value: null as unknown };");
+                this.ctx.usesCreateRef = true;
+                this.ctx.usesNativeHandle = true;
+                writer.writeLine("const error = createRef<NativeHandle | null>(null);");
             }
 
             const sizeParamOffset = options.self ? 1 : 0;
@@ -793,7 +795,7 @@ export class MethodBodyWriter {
                 })(writer);
 
                 if (needsCast) {
-                    writer.write(` as ${tsReturnType}`);
+                    writer.write(` as unknown as ${tsReturnType}`);
                 }
                 writer.write(";");
                 writer.newLine();
@@ -843,7 +845,7 @@ export class MethodBodyWriter {
 
         writer.writeLine("if (error.value !== null) {");
         writer.indent(() => {
-            writer.writeLine(`throw new NativeError(getNativeObject(error.value as NativeHandle, ${gerrorRef}));`);
+            writer.writeLine(`throw new NativeError(getNativeObject(error.value, ${gerrorRef}));`);
         });
         writer.writeLine("}");
     }
@@ -924,7 +926,9 @@ export class MethodBodyWriter {
             this.writeCallbackWrapperDeclarations(writer, args);
 
             if (throws) {
-                writer.writeLine("const error = { value: null as unknown };");
+                this.ctx.usesCreateRef = true;
+                this.ctx.usesNativeHandle = true;
+                writer.writeLine("const error = createRef<NativeHandle | null>(null);");
                 args.push({
                     type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(),
                     value: "error",

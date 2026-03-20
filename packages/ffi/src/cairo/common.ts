@@ -1,3 +1,4 @@
+import type { NativeHandle } from "@gtkx/native";
 import { PathDataType } from "../generated/cairo/enums.js";
 import { alloc, call, read, readPointer, write } from "../native.js";
 
@@ -170,7 +171,7 @@ export const CLUSTER_BUF_T = {
     ownership: "borrowed",
 } as const;
 
-export const allocGlyphBuffer = (glyphs: Array<{ index: number; x: number; y: number }>): unknown => {
+export const allocGlyphBuffer = (glyphs: Array<{ index: number; x: number; y: number }>): NativeHandle => {
     const buf = alloc(glyphs.length * 24, "cairo_glyph_t[]", LIB);
     let offset = 0;
     for (const glyph of glyphs) {
@@ -182,7 +183,7 @@ export const allocGlyphBuffer = (glyphs: Array<{ index: number; x: number; y: nu
     return buf;
 };
 
-export const allocClusterBuffer = (clusters: Array<{ numBytes: number; numGlyphs: number }>): unknown => {
+export const allocClusterBuffer = (clusters: Array<{ numBytes: number; numGlyphs: number }>): NativeHandle => {
     const buf = alloc(clusters.length * 8, "cairo_text_cluster_t[]", LIB);
     let offset = 0;
     for (const cluster of clusters) {
@@ -213,7 +214,7 @@ export type FontExtents = {
     maxYAdvance: number;
 };
 
-export const readTextExtents = (handle: unknown): TextExtents => ({
+export const readTextExtents = (handle: NativeHandle): TextExtents => ({
     xBearing: read(handle, DOUBLE_TYPE, 0) as number,
     yBearing: read(handle, DOUBLE_TYPE, 8) as number,
     width: read(handle, DOUBLE_TYPE, 16) as number,
@@ -222,7 +223,7 @@ export const readTextExtents = (handle: unknown): TextExtents => ({
     yAdvance: read(handle, DOUBLE_TYPE, 40) as number,
 });
 
-export const readFontExtents = (handle: unknown): FontExtents => ({
+export const readFontExtents = (handle: NativeHandle): FontExtents => ({
     ascent: read(handle, DOUBLE_TYPE, 0) as number,
     descent: read(handle, DOUBLE_TYPE, 8) as number,
     height: read(handle, DOUBLE_TYPE, 16) as number,
@@ -250,7 +251,7 @@ export type PathData =
  *     offset 0: double x
  *     offset 8: double y
  */
-export const parsePath = (pathHandle: unknown): PathData[] => {
+export const parsePath = (pathHandle: NativeHandle): PathData[] => {
     const numData = read(pathHandle, INT_TYPE, 16) as number;
     const result: PathData[] = [];
     let i = 0;

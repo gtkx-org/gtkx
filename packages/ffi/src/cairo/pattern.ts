@@ -590,7 +590,7 @@ Pattern.prototype.meshGetPath = function (patchNum: number): PathData[] {
             { type: INT_TYPE, value: patchNum },
         ],
         PATH_STRUCT_T,
-    );
+    ) as NativeHandle;
     return parsePath(pathHandle);
 };
 
