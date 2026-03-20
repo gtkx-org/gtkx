@@ -643,7 +643,7 @@ export class FfiMapper {
         }
 
         const tsParams = this.buildCallbackTsParams(callback, imports);
-        const tsReturn = this.buildCallbackTsReturn(callback.returnType);
+        const tsReturn = this.buildCallbackTsReturn(callback.returnType, imports);
         const ts = `(${tsParams.join(", ")}) => ${tsReturn}`;
         const ffi = this.buildTrampolineFfiDescriptor(callback);
 
@@ -667,11 +667,12 @@ export class FfiMapper {
         return result;
     }
 
-    private buildCallbackTsReturn(returnType: GirType): string {
+    private buildCallbackTsReturn(returnType: GirType, imports: TypeImport[]): string {
         if (returnType.name === "none" || returnType.name === "void") {
             return "void";
         }
         const mapped = this.mapType(returnType, true, returnType.transferOwnership);
+        imports.push(...mapped.imports);
         const nullable = returnType.nullable ? " | null" : "";
         return `${mapped.ts}${nullable}`;
     }

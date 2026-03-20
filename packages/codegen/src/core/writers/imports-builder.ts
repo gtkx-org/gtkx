@@ -153,9 +153,10 @@ export class ImportsBuilder {
      */
     applyToSourceFile(sourceFile: SourceFile): void {
         const imports = this.collectImports();
+        const merged = this.mergeImportSpecs(imports);
         const structures: ImportDeclarationStructure[] = [];
 
-        for (const spec of imports) {
+        for (const spec of merged) {
             if (spec.namespaceImport) {
                 structures.push({
                     kind: StructureKind.ImportDeclaration,
@@ -191,9 +192,76 @@ export class ImportsBuilder {
             }
         }
 
-        if (structures.length > 0) {
-            sourceFile.addImportDeclarations(structures);
+        const deduped = this.deduplicateStructures(structures);
+        if (deduped.length > 0) {
+            sourceFile.addImportDeclarations(deduped);
         }
+    }
+
+    private deduplicateStructures(structures: ImportDeclarationStructure[]): ImportDeclarationStructure[] {
+        const byModule = new Map<string, ImportDeclarationStructure>();
+        const result: ImportDeclarationStructure[] = [];
+
+        for (const s of structures) {
+            if (s.namespaceImport || s.defaultImport) {
+                result.push(s);
+                continue;
+            }
+
+            const existing = byModule.get(s.moduleSpecifier);
+            if (existing && existing.namedImports && s.namedImports) {
+                const seen = new Set(
+                    (existing.namedImports as Array<{ name: string; isTypeOnly?: boolean }>).map((n) => `${n.name}:${n.isTypeOnly ?? false}`),
+                );
+                for (const imp of s.namedImports as Array<{ name: string; isTypeOnly?: boolean }>) {
+                    const key = `${imp.name}:${imp.isTypeOnly ?? false}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        (existing.namedImports as Array<{ name: string; isTypeOnly?: boolean }>).push(imp);
+                    }
+                }
+            } else {
+                byModule.set(s.moduleSpecifier, s);
+                result.push(s);
+            }
+        }
+
+        return result;
+    }
+
+    private mergeImportSpecs(specs: ImportSpec[]): ImportSpec[] {
+        const byModule = new Map<string, ImportSpec>();
+        const result: ImportSpec[] = [];
+
+        for (const spec of specs) {
+            if (spec.namespaceImport || spec.defaultImport) {
+                result.push(spec);
+                continue;
+            }
+
+            const existing = byModule.get(spec.moduleSpecifier);
+            if (existing) {
+                const namedSet = new Set(existing.namedImports ?? []);
+                for (const name of spec.namedImports ?? []) {
+                    namedSet.add(name);
+                }
+                existing.namedImports = Array.from(namedSet);
+
+                const typeSet = new Set(existing.typeOnlyImports ?? []);
+                for (const name of spec.typeOnlyImports ?? []) {
+                    typeSet.add(name);
+                }
+                if (typeSet.size > 0) {
+                    existing.typeOnlyImports = Array.from(typeSet);
+                }
+            } else {
+                const clone = { ...spec };
+                byModule.set(spec.moduleSpecifier, clone);
+                result.push(clone);
+            }
+        }
+
+        return result;
     }
 
     private collectNativeTypeImports(): string[] {
@@ -271,7 +339,13 @@ export class ImportsBuilder {
     }
 
     private collectRecordImports(): ImportSpec[] {
-        const entries: [string, string][] = Array.from(this.ctx.usedRecords).map((name) => [name, name]);
+        const hasSyntheticValueImport =
+            (this.ctx.usesSyntheticPropertySetter || this.ctx.usesSyntheticPropertyGetter) &&
+            this.options.namespace === "GObject";
+
+        const entries: [string, string][] = Array.from(this.ctx.usedRecords)
+            .filter((name) => !(hasSyntheticValueImport && name === "Value"))
+            .map((name) => [name, name]);
         return this.collectSameNamespaceImports(
             entries,
             (name) => name === this.currentNormalized || name === this.parentNormalized,
