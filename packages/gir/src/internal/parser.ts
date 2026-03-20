@@ -186,7 +186,7 @@ export class RawGirParser {
                 cls.implements as Record<string, unknown>[] | Record<string, unknown> | undefined,
             ),
             methods: this.parseMethods(ensureArray(cls.method)),
-            constructors: this.parseConstructors(ensureArray(cls["_constructor"])),
+            constructors: this.parseConstructors(ensureArray(cls._constructor)),
             functions: this.parseFunctions(ensureArray(cls.function)),
             properties: this.parseProperties(ensureArray(cls.property)),
             signals: this.parseSignals(ensureArray(cls["glib:signal"])),
@@ -556,7 +556,7 @@ export class RawGirParser {
             freeFunction: record["@_free-function"] ? String(record["@_free-function"]) : undefined,
             fields: this.parseFields(ensureArray(record.field)),
             methods: this.parseMethods(ensureArray(record.method)),
-            constructors: this.parseConstructors(ensureArray(record["_constructor"])),
+            constructors: this.parseConstructors(ensureArray(record._constructor)),
             functions: this.parseFunctions(ensureArray(record.function)),
             doc: extractDoc(record),
         }));

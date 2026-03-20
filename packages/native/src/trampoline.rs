@@ -47,10 +47,10 @@ impl TrampolineState {
         }
 
         let cif_return_type: libffi::Type = (&data_ref.return_type).into();
-        let cif = libffi::Cif::new(cif_arg_types.into_iter(), cif_return_type);
+        let cif = libffi::Cif::new(cif_arg_types, cif_return_type);
 
         let closure = libffi::Closure::new(cif, universal_handler, data_ref);
-        let code_ptr = closure.code_ptr() as *const _ as *mut c_void;
+        let code_ptr = *closure.code_ptr() as *mut c_void;
 
         TrampolineState {
             _closure: ManuallyDrop::new(closure),
@@ -60,6 +60,9 @@ impl TrampolineState {
     }
 }
 
+/// # Safety
+/// `user_data` must be a valid pointer to a `TrampolineState` allocated via `Box::new`,
+/// or null.
 pub unsafe extern "C" fn destroy_handler(user_data: *mut c_void) {
     if !user_data.is_null() {
         drop(unsafe { Box::from_raw(user_data as *mut TrampolineState) });
@@ -102,7 +105,11 @@ unsafe extern "C" fn universal_handler(
         |result| result,
     );
 
-    write_return_value(result as *mut u64 as *mut c_void, js_result, &data.return_type);
+    write_return_value(
+        result as *mut u64 as *mut c_void,
+        js_result,
+        &data.return_type,
+    );
 }
 
 unsafe fn read_arg(arg_ptr: *const c_void, ty: &Type) -> anyhow::Result<Value> {
@@ -197,7 +204,17 @@ fn write_return_value(ret: *mut c_void, js_result: Result<Value, ()>, return_typ
         }
         Type::GObject(_) | Type::Boxed(_) | Type::Fundamental(_) => {
             let ptr = match js_result {
-                Ok(Value::Object(handle)) => handle.get_ptr().unwrap_or(std::ptr::null_mut()),
+                Ok(Value::Object(handle)) => {
+                    let p = handle.get_ptr().unwrap_or(std::ptr::null_mut());
+                    if !p.is_null() {
+                        unsafe {
+                            gtk4::glib::gobject_ffi::g_object_ref(
+                                p as *mut gtk4::glib::gobject_ffi::GObject,
+                            )
+                        };
+                    }
+                    p
+                }
                 _ => std::ptr::null_mut(),
             };
             unsafe { *(ret as *mut *mut c_void) = ptr };
@@ -207,9 +224,7 @@ fn write_return_value(ret: *mut c_void, js_result: Result<Value, ()>, return_typ
                 Ok(Value::String(s)) => {
                     let c_str = std::ffi::CString::new(s).ok();
                     c_str
-                        .map(|cs| unsafe {
-                            gtk4::glib::ffi::g_strdup(cs.as_ptr()) as *mut c_void
-                        })
+                        .map(|cs| unsafe { gtk4::glib::ffi::g_strdup(cs.as_ptr()) as *mut c_void })
                         .unwrap_or(std::ptr::null_mut())
                 }
                 _ => std::ptr::null_mut(),

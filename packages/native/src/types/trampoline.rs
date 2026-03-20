@@ -35,7 +35,7 @@ impl TrampolineType {
         })?);
 
         let has_destroy: Option<Handle<JsBoolean>> = obj.get_opt(cx, "hasDestroy")?;
-        let has_destroy = has_destroy.map_or(false, |v| v.value(cx));
+        let has_destroy = has_destroy.is_some_and(|v| v.value(cx));
 
         let user_data_index: Option<Handle<JsNumber>> = obj.get_opt(cx, "userDataIndex")?;
         let user_data_index = user_data_index.map(|v| v.value(cx) as usize);

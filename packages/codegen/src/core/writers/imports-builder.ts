@@ -209,9 +209,11 @@ export class ImportsBuilder {
             }
 
             const existing = byModule.get(s.moduleSpecifier);
-            if (existing && existing.namedImports && s.namedImports) {
+            if (existing?.namedImports && s.namedImports) {
                 const seen = new Set(
-                    (existing.namedImports as Array<{ name: string; isTypeOnly?: boolean }>).map((n) => `${n.name}:${n.isTypeOnly ?? false}`),
+                    (existing.namedImports as Array<{ name: string; isTypeOnly?: boolean }>).map(
+                        (n) => `${n.name}:${n.isTypeOnly ?? false}`,
+                    ),
                 );
                 for (const imp of s.namedImports as Array<{ name: string; isTypeOnly?: boolean }>) {
                     const key = `${imp.name}:${imp.isTypeOnly ?? false}`;

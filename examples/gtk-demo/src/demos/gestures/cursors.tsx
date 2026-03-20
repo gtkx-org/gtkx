@@ -111,16 +111,16 @@ const CursorPreview = ({ info }: { info: CursorInfo }) => {
 const CursorRow = ({ info }: { info: CursorInfo }) => {
     const cursors = useMemo(() => {
         const texture = getCursorTexture(info);
-        const named = new Gdk.Cursor(info.name, null);
+        const named = Gdk.Cursor.newFromName(info.name, null);
         const image = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null);
 
         if (info.name === "gtk-logo") {
-            const fallback = new Gdk.Cursor("default", null);
+            const fallback = Gdk.Cursor.newFromName("default", null);
             const imageWithFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, fallback);
             return [image, image, imageWithFallback, imageWithFallback] as const;
         }
 
-        const namedWithFallback = new Gdk.Cursor(
+        const namedWithFallback = Gdk.Cursor.newFromName(
             info.name,
             Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null),
         );
@@ -128,7 +128,7 @@ const CursorRow = ({ info }: { info: CursorInfo }) => {
             texture,
             info.hotX,
             info.hotY,
-            new Gdk.Cursor(info.name, null),
+            Gdk.Cursor.newFromName(info.name, null),
         );
 
         return [named, image, namedWithFallback, imageWithFallback] as const;

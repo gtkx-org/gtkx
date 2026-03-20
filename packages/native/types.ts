@@ -51,24 +51,11 @@ type RefType = { type: "ref"; innerType: Type };
 
 type NullType = { type: "null" };
 
-type NullType = { type: "null" };
-
 type UndefinedType = { type: "undefined" };
 
 export type CallbackType = {
     type: "callback";
-    kind:
-        | "animationTargetFunc"
-        | "asyncReadyCallback"
-        | "closure"
-        | "destroyNotify"
-        | "drawingAreaDrawFunc"
-        | "pathIntersectionFunc"
-        | "scaleFormatValueFunc"
-        | "shapeRendererFunc"
-        | "shortcutFunc"
-        | "tickCallback"
-        | "treeListModelCreateModelFunc";
+    kind: "closure" | "asyncReadyCallback";
     argTypes: Type[];
     returnType: Type;
     sourceType?: Type;

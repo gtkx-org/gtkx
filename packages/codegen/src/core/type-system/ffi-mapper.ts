@@ -29,8 +29,8 @@ import {
     STRUCT_ELEMENT_SIZES,
     stringType,
     structType,
-    trampolineType,
     type TypeImport,
+    trampolineType,
 } from "./ffi-types.js";
 
 /**

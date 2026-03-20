@@ -144,7 +144,7 @@ const HypertextDemo = () => {
                     </x.TextTag>
                     {"/ "}
                     <x.TextAnchor key="speaker">
-                        <GtkImage iconName="audio-volume-high-symbolic" cursor={new Gdk.Cursor("pointer")}>
+                        <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer")}>
                             <GtkGestureClick onPressed={() => sayWord("tag")} />
                         </GtkImage>
                     </x.TextAnchor>
@@ -185,7 +185,7 @@ const HypertextDemo = () => {
                     </x.TextTag>
                     {"/ "}
                     <x.TextAnchor key="speaker">
-                        <GtkImage iconName="audio-volume-high-symbolic" cursor={new Gdk.Cursor("pointer")}>
+                        <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer")}>
                             <GtkGestureClick onPressed={() => sayWord("hypertext")} />
                         </GtkImage>
                     </x.TextAnchor>
@@ -256,7 +256,7 @@ const HypertextDemo = () => {
             const result = textView.getIterAtPosition(iter, motionX, motionY);
             if (!result) {
                 if (hoveringRef.current) {
-                    textView.setCursor(new Gdk.Cursor("text"));
+                    textView.setCursor(Gdk.Cursor.newFromName("text"));
                     hoveringRef.current = false;
                 }
                 return;
@@ -265,7 +265,7 @@ const HypertextDemo = () => {
             const overLink = findLinkAtOffset(iter.getOffset()) !== null;
             if (overLink !== hoveringRef.current) {
                 hoveringRef.current = overLink;
-                textView.setCursor(new Gdk.Cursor(overLink ? "pointer" : "text"));
+                textView.setCursor(Gdk.Cursor.newFromName(overLink ? "pointer" : "text"));
             }
         },
         [findLinkAtOffset],

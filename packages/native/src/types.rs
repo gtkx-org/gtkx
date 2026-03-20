@@ -309,6 +309,12 @@ impl Type {
                     types.push(libffi::Type::pointer());
                 }
             }
+            Type::Callback(callback_type)
+                if callback_type.kind == callback::CallbackKind::AsyncReady =>
+            {
+                types.push(libffi::Type::pointer());
+                types.push(libffi::Type::pointer());
+            }
             other => types.push(other.into()),
         }
     }

@@ -53,7 +53,7 @@ export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProp
     private applyOwnProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
         if (hasChanged(oldProps, newProps, "onDraw")) {
             if (this.container.getAllocatedWidth() > 0) {
-                this.container.setDrawFunc(newProps.onDraw ? wrapDrawFunc(newProps.onDraw) : null);
+                this.container.setDrawFunc(newProps.onDraw ? wrapDrawFunc(newProps.onDraw) : undefined);
             } else if (newProps.onDraw) {
                 ensurePendingBatch().push({ container: this.container, fn: newProps.onDraw });
             }

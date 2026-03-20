@@ -199,43 +199,39 @@ describe("call - callback types", () => {
     });
 
     describe("destroy trampoline", () => {
-        it("registers destroy notify callback", () => {
-            const button = createButton("Test");
-            let destroyCalled = false;
+        it("connects signal with trampoline destroy handler", () => {
+            const cancellable = createCancellable();
+            let callbackInvoked = false;
 
-            call(
+            const handlerId = call(
                 GOBJECT_LIB,
-                "g_object_set_data_full",
+                "g_signal_connect_data",
                 [
-                    { type: GOBJECT_BORROWED, value: button },
-                    { type: STRING, value: "test-data" },
+                    { type: GOBJECT_BORROWED, value: cancellable },
+                    { type: STRING, value: "cancelled" },
                     {
                         type: {
-                            type: "callback",
-                            kind: "destroyNotify",
-                            argTypes: [],
+                            type: "trampoline",
+                            argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "null" }],
                             returnType: { type: "undefined" },
+                            hasDestroy: true,
+                            userDataIndex: 1,
                         },
                         value: () => {
-                            destroyCalled = true;
+                            callbackInvoked = true;
                         },
                     },
+                    { type: INT32, value: 0 },
                 ],
-                UNDEFINED,
+                UINT64,
             );
 
-            call(
-                GOBJECT_LIB,
-                "g_object_set_data",
-                [
-                    { type: GOBJECT_BORROWED, value: button },
-                    { type: STRING, value: "test-data" },
-                    { type: NULL, value: null },
-                ],
-                UNDEFINED,
-            );
+            expect(typeof handlerId).toBe("number");
+            expect(handlerId).toBeGreaterThan(0);
 
-            expect(destroyCalled).toBe(true);
+            call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], UNDEFINED);
+
+            expect(callbackInvoked).toBe(true);
         });
     });
 
@@ -297,41 +293,34 @@ describe("call - callback types", () => {
             expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
         });
 
-        it("does not leak destroy callback after invocation", () => {
+        it("does not leak trampoline memory on disconnect", () => {
             const mem = startMemoryMeasurement();
 
             for (let i = 0; i < 100; i++) {
-                const button = createButton(`Button ${i}`);
+                const cancellable = createCancellable();
 
-                call(
+                const handlerId = call(
                     GOBJECT_LIB,
-                    "g_object_set_data_full",
+                    "g_signal_connect_data",
                     [
-                        { type: GOBJECT_BORROWED, value: button },
-                        { type: STRING, value: "data" },
+                        { type: GOBJECT_BORROWED, value: cancellable },
+                        { type: STRING, value: "cancelled" },
                         {
                             type: {
-                                type: "callback",
-                                kind: "destroyNotify",
-                                argTypes: [],
+                                type: "trampoline",
+                                argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "null" }],
                                 returnType: { type: "undefined" },
+                                hasDestroy: true,
+                                userDataIndex: 1,
                             },
                             value: () => {},
                         },
+                        { type: INT32, value: 0 },
                     ],
-                    UNDEFINED,
+                    UINT64,
                 );
 
-                call(
-                    GOBJECT_LIB,
-                    "g_object_set_data",
-                    [
-                        { type: GOBJECT_BORROWED, value: button },
-                        { type: STRING, value: "data" },
-                        { type: NULL, value: null },
-                    ],
-                    UNDEFINED,
-                );
+                disconnectSignal(cancellable, handlerId as number);
             }
 
             expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
