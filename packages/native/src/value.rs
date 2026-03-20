@@ -487,7 +487,7 @@ impl Value {
                     ),
                 }
             }
-            Type::Array(_) | Type::HashTable(_) | Type::Callback(_) => {
+            Type::Array(_) | Type::HashTable(_) | Type::Callback(_) | Type::Trampoline(_) => {
                 bail!(
                     "Type {:?} should not appear in glib value conversion - this indicates a bug in the type mapping",
                     ty

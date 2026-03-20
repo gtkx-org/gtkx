@@ -119,6 +119,7 @@ impl CallRequest {
                 }
                 Type::Null => ffi::FfiValue::Void,
                 Type::Callback(_) => bail!("Callbacks cannot be return types"),
+                Type::Trampoline(_) => bail!("Trampolines cannot be return types"),
                 Type::Ref(_) => bail!("Ref types cannot be return types"),
             }
         };

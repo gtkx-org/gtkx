@@ -51,6 +51,8 @@ type RefType = { type: "ref"; innerType: Type };
 
 type NullType = { type: "null" };
 
+type NullType = { type: "null" };
+
 type UndefinedType = { type: "undefined" };
 
 export type CallbackType = {
@@ -73,6 +75,14 @@ export type CallbackType = {
     resultType?: Type;
 };
 
+export type TrampolineType = {
+    type: "trampoline";
+    argTypes: Type[];
+    returnType: Type;
+    hasDestroy?: boolean;
+    userDataIndex?: number;
+};
+
 /**
  * Discriminated union of all FFI type descriptors.
  *
@@ -91,6 +101,7 @@ export type Type =
     | HashTableType
     | RefType
     | CallbackType
+    | TrampolineType
     | NullType
     | UndefinedType;
 

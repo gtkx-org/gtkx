@@ -1,48 +1,9 @@
-//! FFI value representation for native calls.
-//!
-//! Defines [`FfiValue`], an enum that represents values in a form suitable
-//! for passing to libffi. Each variant corresponds to a different primitive
-//! or pointer type that can be marshaled across the FFI boundary.
-
 use std::ffi::c_void;
-use std::ptr::NonNull;
 
-use gtk4::glib::{self, gobject_ffi};
 use libffi::middle as libffi;
 
-use super::storage::{FfiStorage, FfiStorageKind};
-use crate::gtk_dispatch::GtkDispatcher;
-
-#[derive(Debug)]
-pub struct CallbackValue {
-    pub callback_fn: *mut c_void,
-    pub closure: FfiStorage,
-    pub destroy_ptr: Option<*mut c_void>,
-    pub data_first: bool,
-}
-
-impl CallbackValue {
-    pub fn build(closure: glib::Closure, callback_fn: *mut c_void) -> FfiValue {
-        use glib::translate::ToGlibPtr as _;
-
-        let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
-        unsafe { GtkDispatcher::install_closure_invalidate_notifier(closure_ptr) };
-
-        // SAFETY: closure pointer from glib::Closure::to_glib_full is guaranteed non-null
-        let closure_nonnull =
-            NonNull::new(closure_ptr).expect("closure pointer should not be null");
-
-        let callback_data = Box::new(crate::callback::ClosureCallbackData::new(closure_nonnull));
-        let data_ptr = Box::into_raw(callback_data) as *mut c_void;
-
-        FfiValue::Callback(CallbackValue {
-            callback_fn,
-            closure: FfiStorage::new(data_ptr, FfiStorageKind::Callback(data_ptr)),
-            destroy_ptr: Some(crate::callback::ClosureCallbackData::release as *mut c_void),
-            data_first: false,
-        })
-    }
-}
+use super::storage::FfiStorage;
+use crate::trampoline::TrampolineState;
 
 #[derive(Debug)]
 pub enum FfiValue {
@@ -58,8 +19,25 @@ pub enum FfiValue {
     F64(f64),
     Ptr(*mut c_void),
     Storage(FfiStorage),
-    Callback(CallbackValue),
+    Trampoline(TrampolineValue),
     Void,
+}
+
+pub struct TrampolineValue {
+    pub fn_ptr: *mut c_void,
+    pub state_ptr: *mut c_void,
+    pub destroy_ptr: Option<*mut c_void>,
+    pub _owned_state: Option<Box<TrampolineState>>,
+}
+
+impl std::fmt::Debug for TrampolineValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TrampolineValue")
+            .field("fn_ptr", &self.fn_ptr)
+            .field("state_ptr", &self.state_ptr)
+            .field("destroy_ptr", &self.destroy_ptr)
+            .finish()
+    }
 }
 
 impl FfiValue {
@@ -78,9 +56,9 @@ impl FfiValue {
             FfiValue::F64(value) => value as *const f64 as *mut c_void,
             FfiValue::Ptr(ptr) => ptr as *const *mut c_void as *mut c_void,
             FfiValue::Storage(storage) => storage.ptr(),
-            FfiValue::Callback(_) => {
+            FfiValue::Trampoline(_) => {
                 unreachable!(
-                    "Callback should not be converted to a single pointer - it requires special handling in call.rs"
+                    "Trampoline should not be converted to a single pointer - it requires special handling via append_libffi_args"
                 )
             }
             FfiValue::Void => std::ptr::null_mut(),
@@ -122,15 +100,10 @@ impl FfiValue {
 
     pub fn append_libffi_args<'a>(&'a self, args: &mut Vec<libffi::Arg<'a>>) {
         match self {
-            FfiValue::Callback(callback) => {
-                if callback.data_first {
-                    args.push(libffi::arg(callback.closure.ptr_ref()));
-                    args.push(libffi::arg(&callback.callback_fn));
-                } else {
-                    args.push(libffi::arg(&callback.callback_fn));
-                    args.push(libffi::arg(callback.closure.ptr_ref()));
-                }
-                if let Some(destroy_ptr) = &callback.destroy_ptr {
+            FfiValue::Trampoline(tv) => {
+                args.push(libffi::arg(&tv.fn_ptr));
+                args.push(libffi::arg(&tv.state_ptr));
+                if let Some(destroy_ptr) = &tv.destroy_ptr {
                     args.push(libffi::arg(destroy_ptr));
                 }
             }
@@ -161,8 +134,8 @@ impl<'a> From<&'a FfiValue> for libffi::Arg<'a> {
             FfiValue::F64(value) => libffi::arg(value),
             FfiValue::Ptr(ptr) => libffi::arg(ptr),
             FfiValue::Storage(storage) => libffi::arg(storage.ptr_ref()),
-            FfiValue::Callback(_) => {
-                unreachable!("Callback requires append_libffi_args for multiple arguments")
+            FfiValue::Trampoline(_) => {
+                unreachable!("Trampoline requires append_libffi_args for multiple arguments")
             }
             FfiValue::Void => libffi::arg(&()),
         }

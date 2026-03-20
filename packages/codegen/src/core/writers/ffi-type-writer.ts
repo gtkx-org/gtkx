@@ -173,6 +173,8 @@ export class FfiTypeWriter {
                 return this.buildHashTableProperties(type);
             case "callback":
                 return this.buildCallbackProperties(type);
+            case "trampoline":
+                return this.buildTrampolineProperties(type);
             case "boolean":
                 return [{ name: "type", value: '"boolean"' }];
             case "undefined":
@@ -329,6 +331,34 @@ export class FfiTypeWriter {
 
         if (type.resultType) {
             props.push({ name: "resultType", value: this.toWriter(type.resultType) });
+        }
+
+        return props;
+    }
+
+    private buildTrampolineProperties(type: FfiTypeDescriptor): ObjectProperty[] {
+        const props: ObjectProperty[] = [{ name: "type", value: '"trampoline"' }];
+
+        props.push({
+            name: "argTypes",
+            value: (writer) => {
+                writer.write("[");
+                type.argTypes?.forEach((argType: FfiTypeDescriptor, index: number) => {
+                    if (index > 0) writer.write(", ");
+                    this.toWriter(argType)(writer);
+                });
+                writer.write("]");
+            },
+        });
+
+        props.push({ name: "returnType", value: this.toWriter(type.returnType ?? { type: "undefined" }) });
+
+        if (type.hasDestroy) {
+            props.push({ name: "hasDestroy", value: true });
+        }
+
+        if (type.userDataIndex !== undefined) {
+            props.push({ name: "userDataIndex", value: type.userDataIndex });
         }
 
         return props;

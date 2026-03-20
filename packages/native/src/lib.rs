@@ -43,6 +43,7 @@ mod js_dispatch;
 pub mod managed;
 pub mod module;
 pub mod state;
+pub mod trampoline;
 pub mod types;
 pub mod value;
 pub mod wait_signal;

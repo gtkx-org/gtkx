@@ -42,7 +42,6 @@ pub enum FfiStorageKind {
     BoxedValue(Box<super::FfiValue>),
     PtrStorage(Box<*mut c_void>),
     HashTable(HashTableData),
-    Callback(*mut c_void),
 }
 
 #[derive(Debug)]

@@ -81,6 +81,10 @@ export type FfiTypeDescriptor = {
     returnType?: FfiTypeDescriptor;
 
     optional?: boolean;
+
+    hasDestroy?: boolean;
+
+    userDataIndex?: number;
 };
 
 /**
@@ -414,6 +418,26 @@ export const refType = (innerType: FfiTypeDescriptor): FfiTypeDescriptor => ({
     type: "ref",
     innerType,
 });
+
+export const trampolineType = (
+    argTypes: FfiTypeDescriptor[],
+    returnType: FfiTypeDescriptor,
+    hasDestroy?: boolean,
+    userDataIndex?: number,
+): FfiTypeDescriptor => {
+    const result: FfiTypeDescriptor = {
+        type: "trampoline",
+        argTypes,
+        returnType,
+    };
+    if (hasDestroy) {
+        result.hasDestroy = hasDestroy;
+    }
+    if (userDataIndex !== undefined) {
+        result.userDataIndex = userDataIndex;
+    }
+    return result;
+};
 
 /**
  * GLib primitive type names that can be used in plain struct fields.

@@ -49,17 +49,19 @@ mod hashtable;
 mod numeric;
 mod ref_type;
 mod string;
+mod trampoline;
 
 pub use array::ArrayKind;
 pub use array::ArrayType;
 pub use boxed::{BoxedType, StructType};
-pub use callback::{CallbackKind, CallbackType};
+pub use callback::CallbackType;
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
 pub use hashtable::{HashTableEntryEncoder, HashTableType};
 pub use numeric::{FloatKind, IntegerKind, IntegerPrimitive, IntegerType, NumericPrimitive};
 pub use ref_type::RefType;
 pub use string::StringType;
+pub use trampoline::TrampolineType;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Ownership {
@@ -143,6 +145,7 @@ pub enum Type {
     Array(ArrayType),
     HashTable(HashTableType),
     Callback(CallbackType),
+    Trampoline(TrampolineType),
     Ref(RefType),
 }
 
@@ -162,6 +165,7 @@ impl std::fmt::Display for Type {
             Type::Array(_) => write!(f, "Array"),
             Type::HashTable(_) => write!(f, "HashTable"),
             Type::Callback(t) => write!(f, "Callback({:?})", t.kind),
+            Type::Trampoline(_) => write!(f, "Trampoline"),
             Type::Ref(t) => write!(f, "Ref({})", t.inner_type),
         }
     }
@@ -190,6 +194,7 @@ impl Type {
             "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
             "hashtable" => Ok(Type::HashTable(HashTableType::from_js_value(cx, value)?)),
             "callback" => Ok(Type::Callback(CallbackType::from_js_value(cx, value)?)),
+            "trampoline" => Ok(Type::Trampoline(TrampolineType::from_js_value(cx, value)?)),
             "ref" => Ok(Type::Ref(RefType::from_js_value(cx, obj.upcast())?)),
             "fundamental" => Ok(Type::Fundamental(FundamentalType::from_js_value(
                 cx, value,
@@ -296,11 +301,11 @@ impl Type {
 impl Type {
     pub fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         match self {
-            Type::Callback(callback_type) if callback_type.kind != CallbackKind::Closure => {
+            Type::Trampoline(trampoline_type) => {
                 types.push(libffi::Type::pointer());
                 types.push(libffi::Type::pointer());
 
-                if callback_type.kind.has_destroy_notify() {
+                if trampoline_type.has_destroy {
                     types.push(libffi::Type::pointer());
                 }
             }
@@ -324,6 +329,7 @@ impl From<&Type> for libffi::Type {
             Type::Array(ty) => ty.into(),
             Type::HashTable(ty) => ty.into(),
             Type::Callback(_) => libffi::Type::pointer(),
+            Type::Trampoline(_) => libffi::Type::pointer(),
             Type::Ref(ty) => ty.into(),
             Type::Undefined => libffi::Type::void(),
         }
@@ -352,6 +358,7 @@ impl ffi::FfiEncode for Type {
             Type::Array(t) => t.encode(value, optional),
             Type::HashTable(t) => t.encode(value, optional),
             Type::Callback(t) => t.encode(value, optional),
+            Type::Trampoline(t) => t.encode(value, optional),
             Type::Ref(t) => t.encode(value, optional),
         }
     }
@@ -379,6 +386,7 @@ impl ffi::FfiDecode for Type {
             Type::Array(t) => t.decode(ffi_value),
             Type::HashTable(t) => t.decode(ffi_value),
             Type::Callback(_) => bail!("Callbacks cannot be converted from ffi::FfiValue"),
+            Type::Trampoline(_) => bail!("Trampolines cannot be converted from ffi::FfiValue"),
             Type::Ref(t) => t.decode(ffi_value),
         }
     }

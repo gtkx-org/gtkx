@@ -724,9 +724,10 @@ describe("FfiMapper", () => {
                 });
                 const result = mapper.mapParameter(param);
 
-                expect(result.ffi.type).toBe("callback");
-                if (result.ffi.type === "callback") {
-                    expect(result.ffi.kind).toBe("asyncReadyCallback");
+                expect(result.ffi.type).toBe("trampoline");
+                if (result.ffi.type === "trampoline") {
+                    expect(result.ffi.argTypes).toBeDefined();
+                    expect(result.ffi.returnType).toBeDefined();
                 }
             });
 
@@ -855,7 +856,7 @@ describe("FfiMapper", () => {
             expect(mapper.hasUnsupportedCallback(param)).toBe(false);
         });
 
-        it("returns true for unsupported callback", () => {
+        it("returns false for any GIR callback (all are now supported)", () => {
             const customCallback = createNormalizedCallback({
                 name: "CustomCallback",
                 qualifiedName: qualifiedName("Gtk", "CustomCallback"),
@@ -870,7 +871,7 @@ describe("FfiMapper", () => {
                 name: "callback",
                 type: createNormalizedType({ name: "CustomCallback" }),
             });
-            expect(mapper.hasUnsupportedCallback(param)).toBe(true);
+            expect(mapper.hasUnsupportedCallback(param)).toBe(false);
         });
 
         it("returns true for GLib.Closure", () => {
@@ -1652,7 +1653,7 @@ describe("FfiMapper - Extended Coverage", () => {
             expect(result?.find((p) => p.name === "data")).toBeUndefined();
         });
 
-        it("returns null for unsupported callback", () => {
+        it("returns mappings for any GIR callback (all are now supported)", () => {
             const customCallback = createNormalizedCallback({
                 name: "CustomCallback",
                 qualifiedName: qualifiedName("Gtk", "CustomCallback"),
@@ -1670,7 +1671,7 @@ describe("FfiMapper - Extended Coverage", () => {
                 }),
             );
 
-            expect(result).toBeNull();
+            expect(result).not.toBeNull();
         });
 
         it("maps callback return type correctly", () => {

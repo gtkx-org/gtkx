@@ -308,22 +308,24 @@ export class SignalBuilder {
     }
 
     private writeCallExpression(writer: CodeBlockWriter, signal: GirSignal, paramData: SignalParamData[]): void {
-        this.writeSignalConnectCall(writer, (w) => {
-            w.write('type: "callback", ');
-            this.writeArgTypes(w, paramData);
+        const userDataIndex = 1 + paramData.length;
+        this.writeTrampolineSignalConnectCall(writer, (w) => {
+            w.write('type: "trampoline", ');
+            this.writeTrampolineArgTypes(w, paramData);
             w.write(", ");
             this.writeReturnType(w, signal);
-            w.write(', kind: "closure"');
+            w.write(`, hasDestroy: true, userDataIndex: ${userDataIndex}`);
         });
     }
 
-    private writeArgTypes(writer: CodeBlockWriter, paramData: SignalParamData[]): void {
+    private writeTrampolineArgTypes(writer: CodeBlockWriter, paramData: SignalParamData[]): void {
         writer.write("argTypes: [");
         writer.write('{ type: "gobject", ownership: "borrowed" }');
         for (const p of paramData) {
             writer.write(", ");
             this.writers.ffiTypeWriter.toWriter(p.mapped.ffi)(writer);
         }
+        writer.write(', { type: "null" }');
         writer.write("]");
     }
 
@@ -356,14 +358,45 @@ export class SignalBuilder {
             );
         });
         writer.writeLine("};");
-        this.writeSignalConnectCall(writer, (w) => {
+        this.writeClosureSignalConnectCall(writer, (w) => {
             w.write(
                 'type: "callback", argTypes: [{ type: "gobject", ownership: "borrowed" }], returnType: { type: "undefined" }, kind: "closure"',
             );
         });
     }
 
-    private writeSignalConnectCall(writer: CodeBlockWriter, callbackTypeWriter: (w: CodeBlockWriter) => void): void {
+    private writeTrampolineSignalConnectCall(
+        writer: CodeBlockWriter,
+        trampolineTypeWriter: (w: CodeBlockWriter) => void,
+    ): void {
+        writer.writeLine("return call(");
+        writer.indent(() => {
+            writer.writeLine(`"${this.options.sharedLibrary}",`);
+            writer.writeLine('"g_signal_connect_data",');
+            writer.writeLine("[");
+            writer.indent(() => {
+                writer.writeLine('{ type: { type: "gobject", ownership: "borrowed" }, value: this.handle },');
+                writer.writeLine('{ type: { type: "string", ownership: "borrowed" }, value: signal },');
+                writer.writeLine("{");
+                writer.indent(() => {
+                    writer.write("type: { ");
+                    trampolineTypeWriter(writer);
+                    writer.writeLine(" },");
+                    writer.writeLine("value: wrappedHandler,");
+                });
+                writer.writeLine("},");
+                writer.writeLine('{ type: { type: "int", size: 32, unsigned: true }, value: after ? 1 : 0 },');
+            });
+            writer.writeLine("],");
+            writer.writeLine('{ type: "int", size: 64, unsigned: true }');
+        });
+        writer.writeLine(") as number;");
+    }
+
+    private writeClosureSignalConnectCall(
+        writer: CodeBlockWriter,
+        callbackTypeWriter: (w: CodeBlockWriter) => void,
+    ): void {
         writer.writeLine("return call(");
         writer.indent(() => {
             writer.writeLine(`"${this.options.sharedLibrary}",`);
