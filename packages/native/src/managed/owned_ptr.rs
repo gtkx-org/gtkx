@@ -47,11 +47,4 @@ impl OwnedPtr {
     pub fn should_free(&self) -> bool {
         self.is_owned && !self.ptr.is_null()
     }
-
-    pub fn borrow(&self) -> Self {
-        Self {
-            ptr: self.ptr,
-            is_owned: false,
-        }
-    }
 }

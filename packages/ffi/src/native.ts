@@ -6,10 +6,8 @@ import {
     call as nativeCall,
     freeze as nativeFreeze,
     read as nativeRead,
-    readPointer as nativeReadPointer,
     unfreeze as nativeUnfreeze,
     write as nativeWrite,
-    writePointer as nativeWritePointer,
     type Type,
 } from "@gtkx/native";
 import type { GError } from "./generated/glib/error.js";
@@ -158,20 +156,6 @@ export const read = (handle: NativeHandle, type: Type, offset: number): FfiValue
 };
 
 /**
- * Reads a value through a pointer in native memory.
- *
- * @param handle - Handle to the memory region containing the pointer
- * @param ptrOffset - Byte offset to the pointer within handle
- * @param elementOffset - Byte offset from the dereferenced pointer
- * @returns Handle to the dereferenced memory location
- * @throws If runtime not started
- */
-export const readPointer = (handle: NativeHandle, ptrOffset: number, elementOffset: number): NativeHandle => {
-    ensureIsStarted("attempted readPointer");
-    return nativeReadPointer(handle, ptrOffset, elementOffset);
-};
-
-/**
  * Writes a value to native memory.
  *
  * @param handle - Handle to the memory region
@@ -183,27 +167,6 @@ export const readPointer = (handle: NativeHandle, ptrOffset: number, elementOffs
 export const write = (handle: NativeHandle, type: Type, offset: number, value: unknown): void => {
     ensureIsStarted("attempted write");
     nativeWrite(handle, type, offset, value);
-};
-
-/**
- * Writes data through a pointer in native memory.
- *
- * @param destHandle - Handle to the destination memory region
- * @param ptrOffset - Byte offset to the pointer within destHandle
- * @param elementOffset - Byte offset from the dereferenced pointer
- * @param sourceHandle - Handle to the source data
- * @param size - Number of bytes to copy
- * @throws If runtime not started
- */
-export const writePointer = (
-    destHandle: NativeHandle,
-    ptrOffset: number,
-    elementOffset: number,
-    sourceHandle: NativeHandle,
-    size: number,
-): void => {
-    ensureIsStarted("attempted writePointer");
-    nativeWritePointer(destHandle, ptrOffset, elementOffset, sourceHandle, size);
 };
 
 export const freeze = (): void => {

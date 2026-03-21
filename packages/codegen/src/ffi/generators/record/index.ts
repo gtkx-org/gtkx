@@ -85,8 +85,7 @@ export class RecordGenerator {
             classDecl.addMethods(methodStructures);
         }
 
-        const isBoxedType = !!record.glibTypeName;
-        this.generateFields(record.fields, record.methods, classDecl, isBoxedType);
+        this.generateFields(record.fields, record.methods, classDecl);
 
         if (record.glibTypeName) {
             this.ctx.usesRegisterNativeClass = true;
@@ -458,7 +457,6 @@ export class RecordGenerator {
         fields: readonly GirField[],
         methods: readonly GirMethod[],
         classDecl: ClassDeclaration,
-        isBoxedType: boolean,
     ): void {
         const layout = this.fieldBuilder.calculateLayout(fields);
         const methodNames = new Set(methods.map((m) => toCamelCase(m.name)));
@@ -471,19 +469,19 @@ export class RecordGenerator {
             let fieldName = toValidMemberName(toCamelCase(field.name));
             if (fieldName === "id") fieldName = "id_";
 
+            if (field.type.isArray && field.type.elementType) {
+                const elementTypeName = String(field.type.elementType.name);
+                if (this.fieldBuilder.isNestedStructType(elementTypeName)) {
+                    this.generateArrayFieldAccessors(field, fieldName, offset, fields, classDecl, methodNames);
+                }
+                continue;
+            }
+
             const capitalizedFieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
             const getterName = `get${capitalizedFieldName}`;
             const setterName = `set${capitalizedFieldName}`;
             const isReadable = field.readable !== false && !methodNames.has(getterName);
-            const isWritable = field.writable !== false && isBoxedType && !methodNames.has(setterName);
-
-            if (field.type.isArray && field.type.elementType) {
-                const elementTypeName = String(field.type.elementType.name);
-                if (this.fieldBuilder.isNestedStructType(elementTypeName)) {
-                    this.generateArrayFieldAccessor(field, fieldName, offset, classDecl, isBoxedType, methodNames);
-                    continue;
-                }
-            }
+            const isWritable = field.writable !== false && !methodNames.has(setterName);
 
             const typeName = String(field.type.name);
             if (!this.fieldBuilder.isGeneratableFieldType(typeName)) continue;
@@ -491,7 +489,7 @@ export class RecordGenerator {
             const isInlineNestedStruct = this.fieldBuilder.isInlineNestedStruct(field);
 
             if (isInlineNestedStruct) {
-                this.generateNestedStructAccessors(field, fieldName, offset, classDecl, isBoxedType, methodNames);
+                this.generateNestedStructAccessors(field, fieldName, offset, classDecl, methodNames);
             } else if (!this.fieldBuilder.isNestedStructType(typeName)) {
                 const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
                 this.ctx.addTypeImports(typeMapping.imports);
@@ -531,13 +529,13 @@ export class RecordGenerator {
 
                 if (isWritable) {
                     this.ctx.usesWrite = true;
+                    const writeValue = needsObjectWrap ? "value.handle" : "value";
                     classDecl.addMethod({
                         name: setterName,
                         parameters: [{ name: "value", type: typeMapping.ts }],
                         statements: (writer) => {
                             writer.write("write(this.handle, ");
                             this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
-                            const writeValue = needsObjectWrap ? "value.handle" : "value";
                             writer.writeLine(`, ${offset}, ${writeValue});`);
                         },
                     });
@@ -546,78 +544,11 @@ export class RecordGenerator {
         }
     }
 
-    private generateArrayFieldAccessor(
-        field: GirField,
-        fieldName: string,
-        ptrOffset: number,
-        classDecl: ClassDeclaration,
-        isBoxedType: boolean,
-        methodNames: Set<string>,
-    ): void {
-        const elementType = field.type.elementType;
-        if (!elementType) return;
-
-        const elementTypeName = String(elementType.name);
-        const elementSize = this.fieldBuilder.getRecordSize(elementTypeName);
-        if (elementSize === 0) return;
-
-        const typeMapping = this.ffiMapper.mapType(elementType, false, elementType.transferOwnership);
-        this.ctx.addTypeImports(typeMapping.imports);
-
-        const tsTypeName = typeMapping.ts;
-        const singularName = fieldName.endsWith("s") ? fieldName.slice(0, -1) : fieldName;
-        const capitalizedSingular = singularName.charAt(0).toUpperCase() + singularName.slice(1);
-        const getterName = `get${capitalizedSingular}`;
-        const setterName = `set${capitalizedSingular}`;
-
-        const isReadable = field.readable !== false && !methodNames.has(getterName);
-        const isWritable = field.writable !== false && isBoxedType && !methodNames.has(setterName);
-
-        if (isReadable) {
-            this.ctx.usesReadPointer = true;
-            this.ctx.usesNativeHandle = true;
-            this.ctx.usesRead = true;
-
-            classDecl.addMethod({
-                name: `get${capitalizedSingular}`,
-                parameters: [{ name: "index", type: "number" }],
-                returnType: tsTypeName,
-                docs: buildJsDocStructure(field.doc, this.options.namespace),
-                statements: (writer) => {
-                    writer.writeLine(`const elementOffset = index * ${elementSize};`);
-                    writer.writeLine(
-                        `const handle = readPointer(this.handle, ${ptrOffset}, elementOffset) as NativeHandle;`,
-                    );
-                    this.writeDeepCopyConstruction(writer, "handle", elementTypeName, tsTypeName, 0);
-                },
-            });
-        }
-
-        if (isWritable) {
-            this.ctx.usesWritePointer = true;
-
-            classDecl.addMethod({
-                name: `set${capitalizedSingular}`,
-                parameters: [
-                    { name: "index", type: "number" },
-                    { name: "value", type: tsTypeName },
-                ],
-                statements: (writer) => {
-                    writer.writeLine(`const elementOffset = index * ${elementSize};`);
-                    writer.writeLine(
-                        `writePointer(this.handle, ${ptrOffset}, elementOffset, value.handle, ${elementSize});`,
-                    );
-                },
-            });
-        }
-    }
-
     private generateNestedStructAccessors(
         field: GirField,
         fieldName: string,
         baseOffset: number,
         classDecl: ClassDeclaration,
-        isBoxedType: boolean,
         methodNames: Set<string>,
     ): void {
         const typeName = String(field.type.name);
@@ -632,7 +563,7 @@ export class RecordGenerator {
         const getterName = `get${capitalizedFieldName}`;
         const setterName = `set${capitalizedFieldName}`;
         const isReadable = field.readable !== false && !methodNames.has(getterName);
-        const isWritable = field.writable !== false && isBoxedType && !methodNames.has(setterName);
+        const isWritable = field.writable !== false && !methodNames.has(setterName);
 
         const writableFields = nestedLayout.filter(
             (item) =>
@@ -696,100 +627,124 @@ export class RecordGenerator {
         }
     }
 
-    private writeDeepCopyConstruction(
-        writer: import("ts-morph").CodeBlockWriter,
-        handleExpr: string,
-        typeName: string,
-        tsTypeName: string,
-        baseOffset: number,
-    ): void {
-        const layout = this.fieldBuilder.getNestedStructLayout(typeName);
-        if (!layout || layout.length === 0) {
-            writer.writeLine(`return new ${tsTypeName}({});`);
-            return;
-        }
-
-        writer.writeLine(`return new ${tsTypeName}({`);
-        writer.indent(() => {
-            for (const item of layout) {
-                const field = item.field;
-                const offset = baseOffset + item.offset;
-                let fieldName = toValidMemberName(toCamelCase(field.name));
-                if (fieldName === "id") fieldName = "id_";
-                const fieldTypeName = String(field.type.name);
-
-                if (this.fieldBuilder.isWritableType(field.type)) {
-                    const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                    writer.write(`${fieldName}: read(${handleExpr}, `);
-                    this.writers.ffiTypeWriter.toWriter(typeMapping.ffi)(writer);
-                    writer.writeLine(`, ${offset}) as ${typeMapping.ts},`);
-                } else if (this.fieldBuilder.isInlineNestedStruct(field)) {
-                    const nestedTypeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                    this.ctx.addTypeImports(nestedTypeMapping.imports);
-                    this.writeNestedStructConstruction(
-                        writer,
-                        handleExpr,
-                        fieldName,
-                        fieldTypeName,
-                        nestedTypeMapping.ts,
-                        offset,
-                    );
-                }
-            }
-        });
-        writer.writeLine(`});`);
-    }
-
-    private writeNestedStructConstruction(
-        writer: import("ts-morph").CodeBlockWriter,
-        handleExpr: string,
+    private generateArrayFieldAccessors(
+        field: GirField,
         fieldName: string,
-        typeName: string,
-        tsTypeName: string,
-        baseOffset: number,
+        ptrOffset: number,
+        allFields: readonly GirField[],
+        classDecl: ClassDeclaration,
+        methodNames: Set<string>,
     ): void {
-        const nestedLayout = this.fieldBuilder.getNestedStructLayout(typeName);
-        if (!nestedLayout || nestedLayout.length === 0) {
-            writer.writeLine(`${fieldName}: new ${tsTypeName}({}),`);
-            return;
+        const elementType = field.type.elementType;
+        if (!elementType) return;
+
+        const elementTypeName = String(elementType.name);
+        const elementSize = this.fieldBuilder.getRecordSize(elementTypeName);
+        if (elementSize === 0) return;
+
+        const typeMapping = this.ffiMapper.mapType(elementType, false, elementType.transferOwnership);
+        this.ctx.addTypeImports(typeMapping.imports);
+
+        const tsTypeName = typeMapping.ts;
+        const singularName = fieldName.endsWith("s") ? fieldName.slice(0, -1) : fieldName;
+        const capitalizedSingular = singularName.charAt(0).toUpperCase() + singularName.slice(1);
+        const getterName = `get${capitalizedSingular}`;
+        const setterName = `set${capitalizedSingular}`;
+
+        const isReadable = field.readable !== false && !methodNames.has(getterName);
+        const isWritable = field.writable !== false && !methodNames.has(setterName);
+
+        const lengthFieldIndex = field.type.sizeParamIndex;
+        if (lengthFieldIndex === undefined) return;
+
+        const publicFields = allFields.filter((f) => !f.private);
+        const lengthField = publicFields[lengthFieldIndex];
+        if (!lengthField) return;
+
+        const lengthFieldName = toValidMemberName(toCamelCase(lengthField.name));
+        const lengthGetter = `get${lengthFieldName.charAt(0).toUpperCase() + lengthFieldName.slice(1)}`;
+
+        const nestedLayout = this.fieldBuilder.getNestedStructLayout(elementTypeName);
+        if (!nestedLayout) return;
+
+        const writableNestedFields = nestedLayout.filter(
+            (item) =>
+                this.fieldBuilder.isGeneratableFieldType(String(item.field.type.name)) &&
+                this.fieldBuilder.isWritableType(item.field.type),
+        );
+        if (writableNestedFields.length === 0) return;
+
+        const structTypeExpr = `{ type: "struct", innerType: "${elementTypeName}", size: this.${lengthGetter}() * ${elementSize}, ownership: "full" }`;
+
+        if (isReadable) {
+            this.ctx.usesRead = true;
+            this.ctx.usesNativeHandle = true;
+
+            classDecl.addMethod({
+                name: getterName,
+                parameters: [{ name: "index", type: "number" }],
+                returnType: tsTypeName,
+                docs: buildJsDocStructure(field.doc, this.options.namespace),
+                statements: (writer) => {
+                    writer.writeLine(
+                        `const array = read(this.handle, ${structTypeExpr}, ${ptrOffset}) as NativeHandle;`,
+                    );
+                    writer.writeLine(`const base = index * ${elementSize};`);
+                    writer.writeLine(`return new ${tsTypeName}({`);
+                    writer.indent(() => {
+                        for (const nestedItem of writableNestedFields) {
+                            const nestedField = nestedItem.field;
+                            const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
+                            const nestedTypeMapping = this.ffiMapper.mapType(
+                                nestedField.type,
+                                false,
+                                nestedField.type.transferOwnership,
+                            );
+
+                            writer.write(`${nestedFieldName}: read(array, `);
+                            this.writers.ffiTypeWriter.toWriter(nestedTypeMapping.ffi)(writer);
+                            writer.writeLine(`, base + ${nestedItem.offset}) as ${nestedTypeMapping.ts},`);
+                        }
+                    });
+                    writer.writeLine("});");
+                },
+            });
         }
 
-        writer.writeLine(`${fieldName}: new ${tsTypeName}({`);
-        writer.indent(() => {
-            for (const nestedItem of nestedLayout) {
-                const nestedField = nestedItem.field;
-                const nestedOffset = baseOffset + nestedItem.offset;
-                let nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
-                if (nestedFieldName === "id") nestedFieldName = "id_";
-                const nestedFieldTypeName = String(nestedField.type.name);
+        if (isWritable) {
+            this.ctx.usesRead = true;
+            this.ctx.usesWrite = true;
+            this.ctx.usesNativeHandle = true;
 
-                if (this.fieldBuilder.isWritableType(nestedField.type)) {
-                    const nestedTypeMapping = this.ffiMapper.mapType(
-                        nestedField.type,
-                        false,
-                        nestedField.type.transferOwnership,
+            classDecl.addMethod({
+                name: setterName,
+                parameters: [
+                    { name: "index", type: "number" },
+                    { name: "value", type: tsTypeName },
+                ],
+                statements: (writer) => {
+                    writer.writeLine(
+                        `const array = read(this.handle, ${structTypeExpr}, ${ptrOffset}) as NativeHandle;`,
                     );
-                    writer.write(`${nestedFieldName}: read(${handleExpr}, `);
-                    this.writers.ffiTypeWriter.toWriter(nestedTypeMapping.ffi)(writer);
-                    writer.writeLine(`, ${nestedOffset}) as ${nestedTypeMapping.ts},`);
-                } else if (this.fieldBuilder.isInlineNestedStruct(nestedField)) {
-                    const nestedNestedTypeMapping = this.ffiMapper.mapType(
-                        nestedField.type,
-                        false,
-                        nestedField.type.transferOwnership,
-                    );
-                    this.ctx.addTypeImports(nestedNestedTypeMapping.imports);
-                    this.writeNestedStructConstruction(
-                        writer,
-                        handleExpr,
-                        nestedFieldName,
-                        nestedFieldTypeName,
-                        nestedNestedTypeMapping.ts,
-                        nestedOffset,
-                    );
-                }
-            }
-        });
-        writer.writeLine(`}),`);
+                    writer.writeLine(`const base = index * ${elementSize};`);
+                    for (const nestedItem of writableNestedFields) {
+                        const nestedField = nestedItem.field;
+                        const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
+                        const capitalizedNestedFieldName =
+                            nestedFieldName.charAt(0).toUpperCase() + nestedFieldName.slice(1);
+                        const nestedTypeMapping = this.ffiMapper.mapType(
+                            nestedField.type,
+                            false,
+                            nestedField.type.transferOwnership,
+                        );
+
+                        writer.write(`write(array, `);
+                        this.writers.ffiTypeWriter.toWriter(nestedTypeMapping.ffi)(writer);
+                        writer.writeLine(`, base + ${nestedItem.offset}, value.get${capitalizedNestedFieldName}());`);
+                    }
+                    writer.writeLine(`write(this.handle, ${structTypeExpr}, ${ptrOffset}, array);`);
+                },
+            });
+        }
     }
 }

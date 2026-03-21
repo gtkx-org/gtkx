@@ -11,8 +11,8 @@
 //! | `stop` | Shutdown the GLib main loop and join its thread |
 //! | `call` | Execute FFI function call to native library |
 //! | `alloc` | Allocate memory for boxed types |
-//! | `read` | Read field from boxed memory |
-//! | `write` | Write field to boxed memory |
+//! | `read` | Read field from boxed/struct memory |
+//! | `write` | Write primitive field to boxed memory (constructor initialization) |
 //! | `getNativeId` | Get internal handle ID for managed object |
 //! | `freeze` | Freeze tick callbacks during React commit (prevents intermediate repaints) |
 //! | `unfreeze` | Unfreeze tick callbacks and allow a single repaint |
@@ -59,8 +59,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("call", module::call)?;
     cx.export_function("read", module::read)?;
     cx.export_function("write", module::write)?;
-    cx.export_function("readPointer", module::read_pointer)?;
-    cx.export_function("writePointer", module::write_pointer)?;
     cx.export_function("alloc", module::alloc)?;
     cx.export_function("getNativeId", module::get_native_id)?;
     cx.export_function("freeze", module::freeze)?;

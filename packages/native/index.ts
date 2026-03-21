@@ -137,43 +137,6 @@ export function getNativeId(handle: NativeHandle): number {
     return native.getNativeId(handle);
 }
 
-/**
- * Reads a value from memory pointed to by a pointer field.
- *
- * Used for accessing array elements or dereferencing pointer fields.
- * Reads the pointer at ptrOffset, then reads from that location plus elementOffset.
- *
- * @param handle - Native handle pointing to the parent struct
- * @param ptrOffset - Byte offset of the pointer field in the parent
- * @param elementOffset - Byte offset from the dereferenced pointer
- * @returns Native handle pointing to the element (borrowed, non-owning)
- */
-export function readPointer(handle: NativeHandle, ptrOffset: number, elementOffset: number): NativeHandle {
-    return native.readPointer(handle, ptrOffset, elementOffset) as NativeHandle;
-}
-
-/**
- * Writes a struct value to memory pointed to by a pointer field.
- *
- * Used for setting array elements. Copies the data from source to the
- * destination array element.
- *
- * @param destHandle - Native handle pointing to the parent struct containing the pointer
- * @param ptrOffset - Byte offset of the pointer field in the parent
- * @param elementOffset - Byte offset from the dereferenced pointer (index * elementSize)
- * @param sourceHandle - Native handle of the struct to copy from
- * @param size - Size in bytes of the struct to copy
- */
-export function writePointer(
-    destHandle: NativeHandle,
-    ptrOffset: number,
-    elementOffset: number,
-    sourceHandle: NativeHandle,
-    size: number,
-): void {
-    native.writePointer(destHandle, ptrOffset, elementOffset, sourceHandle, size);
-}
-
 export function freeze(): void {
     native.freeze();
 }

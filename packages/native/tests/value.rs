@@ -957,7 +957,7 @@ fn from_glib_value_struct_fails() {
 }
 
 #[test]
-fn from_cif_value_struct_transfer_none_without_size_borrows_pointer() {
+fn from_cif_value_struct_transfer_none_without_size_creates_unowned() {
     common::ensure_gtk_init();
 
     let struct_ptr = unsafe { glib::ffi::g_malloc0(24) };

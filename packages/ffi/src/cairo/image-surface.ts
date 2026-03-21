@@ -91,6 +91,7 @@ export class ImageSurface extends Surface {
             type: "struct",
             innerType: "guint8*",
             ownership: "borrowed",
+            size: totalBytes,
         }) as NativeHandle | null;
         if (ptr === null) return new Uint8Array(0);
         const result = new Uint8Array(totalBytes);

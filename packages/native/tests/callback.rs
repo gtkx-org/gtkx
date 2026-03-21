@@ -6,7 +6,6 @@ use std::sync::{
 };
 
 use gtk4::glib;
-use gtk4::glib::translate::FromGlibPtrFull as _;
 
 use native::callback::ClosureGuard;
 

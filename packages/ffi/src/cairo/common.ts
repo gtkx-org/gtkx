@@ -1,6 +1,6 @@
 import type { NativeHandle } from "@gtkx/native";
 import { PathDataType } from "../generated/cairo/enums.js";
-import { alloc, call, read, readPointer, write } from "../native.js";
+import { alloc, call, read, write } from "../native.js";
 
 export const LIB = "libcairo.so.2";
 const LIB_GOBJECT = "libcairo-gobject.so.2";
@@ -253,43 +253,52 @@ export type PathData =
  */
 export const parsePath = (pathHandle: NativeHandle): PathData[] => {
     const numData = read(pathHandle, INT_TYPE, 16) as number;
+    if (numData === 0) {
+        call(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T, value: pathHandle }], { type: "undefined" });
+        return [];
+    }
+    const dataArray = read(
+        pathHandle,
+        { type: "struct", innerType: "cairo_path_data_t", size: numData * 16, ownership: "full" },
+        8,
+    ) as NativeHandle;
     const result: PathData[] = [];
     let i = 0;
     while (i < numData) {
-        const element = readPointer(pathHandle, 8, i * 16);
-        const headerType = read(element, INT_TYPE, 0) as number;
-        const length = read(element, INT_TYPE, 4) as number;
+        const base = i * 16;
+        const headerType = read(dataArray, INT_TYPE, base) as number;
+        const length = read(dataArray, INT_TYPE, base + 4) as number;
         switch (headerType) {
             case PathDataType.MOVE_TO: {
-                const pt = readPointer(pathHandle, 8, (i + 1) * 16);
+                const ptBase = (i + 1) * 16;
                 result.push({
                     type: "moveTo",
-                    x: read(pt, DOUBLE_TYPE, 0) as number,
-                    y: read(pt, DOUBLE_TYPE, 8) as number,
+                    x: read(dataArray, DOUBLE_TYPE, ptBase) as number,
+                    y: read(dataArray, DOUBLE_TYPE, ptBase + 8) as number,
                 });
                 break;
             }
             case PathDataType.LINE_TO: {
-                const pt = readPointer(pathHandle, 8, (i + 1) * 16);
+                const ptBase = (i + 1) * 16;
                 result.push({
                     type: "lineTo",
-                    x: read(pt, DOUBLE_TYPE, 0) as number,
-                    y: read(pt, DOUBLE_TYPE, 8) as number,
+                    x: read(dataArray, DOUBLE_TYPE, ptBase) as number,
+                    y: read(dataArray, DOUBLE_TYPE, ptBase + 8) as number,
                 });
                 break;
             }
             case PathDataType.CURVE_TO: {
-                const pt1 = readPointer(pathHandle, 8, (i + 1) * 16);
-                const pt2 = readPointer(pathHandle, 8, (i + 2) * 16);
-                const pt3 = readPointer(pathHandle, 8, (i + 3) * 16);
+                const pt1 = (i + 1) * 16;
+                const pt2 = (i + 2) * 16;
+                const pt3 = (i + 3) * 16;
                 result.push({
                     type: "curveTo",
-                    x1: read(pt1, DOUBLE_TYPE, 0) as number,
-                    y1: read(pt1, DOUBLE_TYPE, 8) as number,
-                    x2: read(pt2, DOUBLE_TYPE, 0) as number,
-                    y2: read(pt2, DOUBLE_TYPE, 8) as number,
-                    x3: read(pt3, DOUBLE_TYPE, 0) as number,
-                    y3: read(pt3, DOUBLE_TYPE, 8) as number,
+                    x1: read(dataArray, DOUBLE_TYPE, pt1) as number,
+                    y1: read(dataArray, DOUBLE_TYPE, pt1 + 8) as number,
+                    x2: read(dataArray, DOUBLE_TYPE, pt2) as number,
+                    y2: read(dataArray, DOUBLE_TYPE, pt2 + 8) as number,
+                    x3: read(dataArray, DOUBLE_TYPE, pt3) as number,
+                    y3: read(dataArray, DOUBLE_TYPE, pt3 + 8) as number,
                 });
                 break;
             }

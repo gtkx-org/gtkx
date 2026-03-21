@@ -305,9 +305,7 @@ export class ImportsBuilder {
         if (this.ctx.usesCall) imports.push("call");
         if (this.ctx.usesNativeError) imports.push("NativeError");
         if (this.ctx.usesRead) imports.push("read");
-        if (this.ctx.usesReadPointer) imports.push("readPointer");
         if (this.ctx.usesWrite) imports.push("write");
-        if (this.ctx.usesWritePointer) imports.push("writePointer");
         return imports;
     }
 

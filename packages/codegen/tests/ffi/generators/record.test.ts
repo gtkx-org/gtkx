@@ -187,7 +187,7 @@ describe("RecordGenerator", () => {
             expect(code).toContain("getX()");
         });
 
-        it("generates setter for writable field on boxed type", () => {
+        it("generates setter for writable field", () => {
             const { generator, sourceFile } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",

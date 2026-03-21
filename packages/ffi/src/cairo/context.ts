@@ -18,7 +18,7 @@ import type { Matrix } from "../generated/cairo/matrix.js";
 import { Pattern } from "../generated/cairo/pattern.js";
 import { ScaledFont } from "../generated/cairo/scaled-font.js";
 import { Surface } from "../generated/cairo/surface.js";
-import { alloc, call, read, readPointer } from "../native.js";
+import { alloc, call, read } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import {
     allocClusterBuffer,
@@ -888,15 +888,24 @@ Context.prototype.copyClipRectangleList = function (): Array<{
     ) as NativeHandle;
 
     const numRectangles = read(listHandle, INT_TYPE, 16) as number;
+    if (numRectangles === 0) {
+        call(LIB, "cairo_rectangle_list_destroy", [{ type: RECT_LIST_T, value: listHandle }], { type: "undefined" });
+        return [];
+    }
+    const rectsArray = read(
+        listHandle,
+        { type: "struct", innerType: "cairo_rectangle_t", size: numRectangles * 32, ownership: "full" },
+        8,
+    ) as NativeHandle;
     const result: Array<{ x: number; y: number; width: number; height: number }> = [];
 
     for (let i = 0; i < numRectangles; i++) {
-        const rect = readPointer(listHandle, 8, i * 32);
+        const base = i * 32;
         result.push({
-            x: read(rect, DOUBLE_TYPE, 0) as number,
-            y: read(rect, DOUBLE_TYPE, 8) as number,
-            width: read(rect, DOUBLE_TYPE, 16) as number,
-            height: read(rect, DOUBLE_TYPE, 24) as number,
+            x: read(rectsArray, DOUBLE_TYPE, base) as number,
+            y: read(rectsArray, DOUBLE_TYPE, base + 8) as number,
+            width: read(rectsArray, DOUBLE_TYPE, base + 16) as number,
+            height: read(rectsArray, DOUBLE_TYPE, base + 24) as number,
         });
     }
 

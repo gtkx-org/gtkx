@@ -5,9 +5,7 @@ export {
     getNativeId,
     type NativeHandle,
     Ref,
-    readPointer,
     Type,
-    writePointer,
 } from "@gtkx/native";
 export * from "./lifecycle.js";
 export * from "./native.js";

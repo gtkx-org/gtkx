@@ -1,3 +1,5 @@
+import type { NativeHandle } from "@gtkx/ffi";
+import { read, write } from "@gtkx/ffi";
 import { Antialias, Context, Filter, FontOptions, HintMetrics, HintStyle } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
@@ -25,6 +27,40 @@ import sourceCode from "./fontrendering.tsx?raw";
 
 const PANGO_SCALE = 1024;
 const DEFAULT_TEXT = "Fonts render";
+const GLYPH_INFO_SIZE = 24;
+const U32 = { type: "int", size: 32, unsigned: true } as const;
+const I32 = { type: "int", size: 32, unsigned: false } as const;
+const GLYPHS_STRUCT = (numGlyphs: number) =>
+    ({ type: "struct", innerType: "PangoGlyphInfo", size: numGlyphs * GLYPH_INFO_SIZE, ownership: "full" }) as const;
+
+type GlyphData = { glyph: number; width: number; xOffset: number; yOffset: number; attr: number };
+
+const readGlyphsArray = (glyphString: Pango.GlyphString): NativeHandle =>
+    read(glyphString.handle, GLYPHS_STRUCT(glyphString.getNumGlyphs()), 8) as NativeHandle;
+
+const readGlyph = (glyphsArray: NativeHandle, index: number): GlyphData => {
+    const base = index * GLYPH_INFO_SIZE;
+    return {
+        glyph: read(glyphsArray, U32, base) as number,
+        width: read(glyphsArray, I32, base + 4) as number,
+        xOffset: read(glyphsArray, I32, base + 8) as number,
+        yOffset: read(glyphsArray, I32, base + 12) as number,
+        attr: read(glyphsArray, U32, base + 16) as number,
+    };
+};
+
+const writeGlyph = (glyphsArray: NativeHandle, index: number, g: GlyphData): void => {
+    const base = index * GLYPH_INFO_SIZE;
+    write(glyphsArray, U32, base, g.glyph);
+    write(glyphsArray, I32, base + 4, g.width);
+    write(glyphsArray, I32, base + 8, g.xOffset);
+    write(glyphsArray, I32, base + 12, g.yOffset);
+    write(glyphsArray, U32, base + 16, g.attr);
+};
+
+const commitGlyphs = (glyphString: Pango.GlyphString, glyphsArray: NativeHandle): void => {
+    write(glyphString.handle, GLYPHS_STRUCT(glyphString.getNumGlyphs()), 8, glyphsArray);
+};
 
 type Mode = "text" | "grid";
 
@@ -305,20 +341,12 @@ const FontRenderingDemo = () => {
                 layout.getPixelExtents(undefined, logicalRect);
             }
 
+            const glyphs = readGlyphsArray(glyphString);
             for (let i = 0; i < 4; i++) {
-                const g = glyphString.getGlyph(2 * i);
-                const geom = g.getGeometry();
-                const newGlyph = new Pango.GlyphInfo({
-                    glyph: g.getGlyph(),
-                    geometry: new Pango.GlyphGeometry({
-                        width: Math.round((geom.getWidth() * 3) / 2),
-                        xOffset: geom.getXOffset(),
-                        yOffset: geom.getYOffset(),
-                    }),
-                    attr: g.getAttr(),
-                });
-                glyphString.setGlyph(2 * i, newGlyph);
+                const g = readGlyph(glyphs, 2 * i);
+                writeGlyph(glyphs, 2 * i, { ...g, width: Math.round((g.width * 3) / 2) });
             }
+            commitGlyphs(glyphString, glyphs);
 
             const surfaceWidth = Math.round((logicalRect.getWidth() * 3) / 2);
             const surfaceHeight = logicalRect.getHeight() * 4;
@@ -353,40 +381,28 @@ const FontRenderingDemo = () => {
                 smallLayout.getPixelExtents(undefined, smallLogical);
             }
 
+            const smallGlyphs = readGlyphsArray(smallGlyphString);
             for (let i = 0; i < 4; i++) {
-                const g = smallGlyphString.getGlyph(2 * i);
-                const geom = g.getGeometry();
-                const newGlyph = new Pango.GlyphInfo({
-                    glyph: g.getGlyph(),
-                    geometry: new Pango.GlyphGeometry({
-                        width: Math.round((geom.getWidth() * 3) / 2),
-                        xOffset: geom.getXOffset(),
-                        yOffset: geom.getYOffset(),
-                    }),
-                    attr: g.getAttr(),
-                });
-                smallGlyphString.setGlyph(2 * i, newGlyph);
+                const g = readGlyph(smallGlyphs, 2 * i);
+                writeGlyph(smallGlyphs, 2 * i, { ...g, width: Math.round((g.width * 3) / 2) });
             }
+            commitGlyphs(smallGlyphString, smallGlyphs);
 
             smallCr.setSourceRgb(1, 1, 1);
             smallCr.paint();
             smallCr.setSourceRgb(0, 0, 0);
 
             for (let j = 0; j < 4; j++) {
+                const offsetGlyphs = readGlyphsArray(smallGlyphString);
                 for (let i = 0; i < 4; i++) {
-                    const g = smallGlyphString.getGlyph(2 * i);
-                    const geom = g.getGeometry();
-                    const newGlyph = new Pango.GlyphInfo({
-                        glyph: g.getGlyph(),
-                        geometry: new Pango.GlyphGeometry({
-                            width: geom.getWidth(),
-                            xOffset: Math.round((i * PANGO_SCALE) / 4),
-                            yOffset: Math.round((j * PANGO_SCALE) / 4),
-                        }),
-                        attr: g.getAttr(),
+                    const g = readGlyph(offsetGlyphs, 2 * i);
+                    writeGlyph(offsetGlyphs, 2 * i, {
+                        ...g,
+                        xOffset: Math.round((i * PANGO_SCALE) / 4),
+                        yOffset: Math.round((j * PANGO_SCALE) / 4),
                     });
-                    smallGlyphString.setGlyph(2 * i, newGlyph);
                 }
+                commitGlyphs(smallGlyphString, offsetGlyphs);
 
                 smallCr.moveTo(0, j * smallLogical.getHeight());
                 PangoCairo.showLayout(smallCr, smallLayout);

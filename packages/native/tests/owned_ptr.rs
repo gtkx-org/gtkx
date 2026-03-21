@@ -74,21 +74,16 @@ fn boxed_clone_copies_when_owned() {
 }
 
 #[test]
-fn boxed_clone_borrows_when_not_owned() {
+fn boxed_clone_null_remains_null() {
     common::ensure_gtk_init();
 
     let gtype = gtk4::gdk::RGBA::static_type();
-    let original_ptr = common::allocate_test_boxed(gtype);
     let boxed = Boxed::from_glib_none(Some(gtype), std::ptr::null_mut()).unwrap();
 
     let cloned = boxed.clone();
 
     assert!(cloned.as_ptr().is_null());
     assert!(!cloned.is_owned());
-
-    unsafe {
-        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original_ptr);
-    }
 }
 
 #[test]
@@ -117,5 +112,5 @@ fn boxed_from_glib_none_without_size_or_gtype_fails() {
 
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert!(err.to_string().contains("Cannot safely copy"));
+    assert!(err.to_string().contains("Cannot copy boxed type"));
 }

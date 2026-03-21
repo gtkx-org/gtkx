@@ -12,7 +12,7 @@ mod stop;
 
 pub use alloc::alloc;
 pub use call::call;
-pub use field::{read, read_pointer, write, write_pointer};
+pub use field::{read, write};
 pub use freeze::{freeze, unfreeze};
 pub use object::get_native_id;
 pub use start::start;

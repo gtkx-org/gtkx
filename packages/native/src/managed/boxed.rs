@@ -21,10 +21,10 @@ impl Boxed {
     }
 
     #[must_use]
-    pub fn borrowed(gtype: Option<glib::Type>, ptr: *mut c_void) -> Self {
+    pub(crate) fn from_ptr_unowned(ptr: *mut c_void) -> Self {
         Self {
             inner: OwnedPtr::from_none(ptr),
-            gtype,
+            gtype: None,
         }
     }
 
@@ -68,7 +68,7 @@ impl Boxed {
                 } else {
                     let name = type_name.unwrap_or("unknown");
                     bail!(
-                        "Cannot safely copy boxed type '{}': no size info or gtype. \
+                        "Cannot copy boxed type '{}': no size or GType available. \
                          Pointer {:p} may become dangling if the source is freed",
                         name,
                         ptr
@@ -97,9 +97,9 @@ impl Boxed {
 
 impl Clone for Boxed {
     fn clone(&self) -> Self {
-        if !self.inner.should_free() {
+        if self.inner.is_null() {
             return Self {
-                inner: self.inner.borrow(),
+                inner: OwnedPtr::from_none(std::ptr::null_mut()),
                 gtype: self.gtype,
             };
         }
@@ -116,9 +116,8 @@ impl Clone for Boxed {
             }
             None => {
                 panic!(
-                    "Cannot clone owned Boxed without GType - the size is unknown and \
-                     returning a borrowed reference would create a dangling pointer. \
-                     Use Boxed::borrowed() for non-owned pointers or ensure GType is available."
+                    "Cannot clone Boxed without GType - the size is unknown. \
+                     Ensure the Boxed was created with a known size or GType."
                 );
             }
         }
