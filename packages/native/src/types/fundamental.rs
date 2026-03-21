@@ -8,7 +8,6 @@ use std::ffi::c_void;
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::ToGlibPtr as _};
-use libffi::middle as libffi;
 use neon::object::Object as _;
 use neon::prelude::*;
 
@@ -16,6 +15,13 @@ use super::{FfiCodec, Ownership};
 use crate::managed::{Fundamental, NativeValue, RefFn, UnrefFn};
 use crate::state::GtkThreadState;
 use crate::{ffi, value};
+
+fn extract_object_ptr(value: &Result<value::Value, ()>) -> *mut c_void {
+    match value {
+        Ok(value::Value::Object(handle)) => handle.get_ptr().unwrap_or(std::ptr::null_mut()),
+        _ => std::ptr::null_mut(),
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct FundamentalType {
@@ -46,12 +52,6 @@ impl FundamentalType {
         GtkThreadState::with(|state| {
             state.lookup_fundamental_fns(&self.library, &self.ref_func, &self.unref_func)
         })
-    }
-}
-
-impl From<&FundamentalType> for libffi::Type {
-    fn from(_: &FundamentalType) -> Self {
-        libffi::Type::pointer()
     }
 }
 
@@ -118,12 +118,9 @@ impl FfiCodec for FundamentalType {
             NativeValue::Fundamental(fundamental).into(),
         ))
     }
-}
 
-impl FundamentalType {
-    /// # Safety
-    /// `ptr` must be null or point to a valid fundamental type instance.
-    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         if ptr.is_null() {
             return Ok(value::Value::Null);
         }
@@ -134,10 +131,13 @@ impl FundamentalType {
         ))
     }
 
-    /// # Safety
-    /// `ret` must point to a writable return value buffer, and `ptr` must be null
-    /// or point to a valid fundamental type instance.
-    pub unsafe fn write_return_ptr(&self, ret: *mut c_void, ptr: *mut c_void) {
+    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
+        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        self.ptr_to_value(inner_ptr, context)
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let ptr = extract_object_ptr(value);
         let ptr = if !ptr.is_null() {
             match self.lookup_fns() {
                 Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
@@ -147,5 +147,16 @@ impl FundamentalType {
             ptr
         };
         unsafe { *(ret as *mut *mut c_void) = ptr };
+    }
+
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+        if self.ownership.is_full() && !ptr.is_null() {
+            let (ref_fn, _) = self.lookup_fns()?;
+            if let Some(ref_fn) = ref_fn {
+                return Ok(unsafe { ref_fn(ptr) });
+            }
+        }
+        Ok(ptr)
     }
 }

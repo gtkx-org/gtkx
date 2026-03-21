@@ -5,12 +5,18 @@ use gtk4::glib::{
     self,
     translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
 };
-use libffi::middle as libffi;
 use neon::prelude::*;
 
 use super::{FfiCodec, Ownership};
 use crate::managed::NativeValue;
 use crate::{ffi, value};
+
+fn extract_object_ptr(value: &Result<value::Value, ()>) -> *mut c_void {
+    match value {
+        Ok(value::Value::Object(handle)) => handle.get_ptr().unwrap_or(std::ptr::null_mut()),
+        _ => std::ptr::null_mut(),
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct GObjectType {
@@ -22,12 +28,6 @@ impl GObjectType {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let ownership = Ownership::from_js_value(cx, obj, "gobject")?;
         Ok(Self { ownership })
-    }
-}
-
-impl From<&GObjectType> for libffi::Type {
-    fn from(_: &GObjectType) -> Self {
-        libffi::Type::pointer()
     }
 }
 
@@ -75,29 +75,35 @@ impl FfiCodec for GObjectType {
         let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
         Ok(value::Value::Object(NativeValue::GObject(obj).into()))
     }
-}
 
-impl GObjectType {
-    /// # Safety
-    /// `ptr` must be null or point to a valid GObject.
-    pub unsafe fn ptr_to_value(ptr: *mut c_void) -> value::Value {
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         if ptr.is_null() {
-            return value::Value::Null;
+            return Ok(value::Value::Null);
         }
         let object =
             unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
-        value::Value::Object(NativeValue::GObject(object).into())
+        Ok(value::Value::Object(NativeValue::GObject(object).into()))
     }
 
-    /// # Safety
-    /// `ret` must point to a writable return value buffer, and `ptr` must be null
-    /// or point to a valid GObject.
-    pub unsafe fn write_return_ptr(ret: *mut c_void, ptr: *mut c_void) {
+    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
+        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        self.ptr_to_value(inner_ptr, context)
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let ptr = extract_object_ptr(value);
         if !ptr.is_null() {
             unsafe {
                 glib::gobject_ffi::g_object_ref(ptr as *mut glib::gobject_ffi::GObject);
             }
         }
         unsafe { *(ret as *mut *mut c_void) = ptr };
+    }
+
+    fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+        if self.ownership.is_full() && !ptr.is_null() {
+            unsafe { glib::gobject_ffi::g_object_ref(ptr as *mut _) };
+        }
+        Ok(ptr)
     }
 }

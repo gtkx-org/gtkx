@@ -10,7 +10,7 @@ const TabsDemo = () => {
         const t = new Pango.TabArray(3, true);
         t.setTab(0, Pango.TabAlign.LEFT, 0);
         t.setTab(1, Pango.TabAlign.DECIMAL, 150);
-        t.setDecimalPoint(1, ".".charCodeAt(0));
+        t.setDecimalPoint(1, ".");
         t.setTab(2, Pango.TabAlign.RIGHT, 290);
         return t;
     }, []);

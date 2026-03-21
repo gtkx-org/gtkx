@@ -52,10 +52,21 @@ impl GtkThread {
     }
 
     pub fn join(&self) {
-        if let Ok(mut guard) = self.handle.lock()
-            && let Some(handle) = guard.take()
+        let handle = self
+            .handle
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take();
+
+        if let Some(handle) = handle
+            && let Err(payload) = handle.join()
         {
-            let _ = handle.join();
+            let msg = payload
+                .downcast_ref::<&str>()
+                .copied()
+                .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
+                .unwrap_or("unknown panic");
+            gtkx_warn!("GTK thread panicked: {msg}");
         }
     }
 }

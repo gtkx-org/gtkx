@@ -79,7 +79,7 @@ macro_rules! impl_integer_kind_dispatch {
             /// - `cif` matches the function signature of the symbol at `ptr`
             /// - `ptr` is a valid function pointer
             /// - `args` contains valid arguments matching the CIF's expected types
-            pub unsafe fn call_cif(
+            pub unsafe fn call_cif_raw(
                 self,
                 cif: &libffi::Cif,
                 ptr: libffi::CodePtr,
@@ -116,25 +116,7 @@ impl IntegerKind {
         storage.as_numeric_slice(self)
     }
 
-    pub fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        let number = match value {
-            value::Value::Number(n) => *n,
-            value::Value::Object(handle) => handle
-                .get_ptr_as_usize()
-                .ok_or_else(|| anyhow::anyhow!("Object has been garbage collected"))?
-                as f64,
-            value::Value::Null | value::Value::Undefined if optional => 0.0,
-            _ => bail!("Expected a Number for integer type, got {:?}", value),
-        };
-
-        Ok(self.to_ffi_value(number))
-    }
-
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Number(ffi_value.to_number()?))
-    }
-
-    pub fn ptr_to_value(self, ptr: *mut c_void) -> value::Value {
+    pub fn ptr_to_value_raw(self, ptr: *mut c_void) -> value::Value {
         let number = match self {
             IntegerKind::I8 | IntegerKind::I16 => ptr as isize as f64,
             IntegerKind::U8 | IntegerKind::U16 => ptr as usize as f64,
@@ -145,8 +127,27 @@ impl IntegerKind {
         };
         value::Value::Number(number)
     }
+}
 
-    pub fn from_glib_value(self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+impl FfiCodec for IntegerKind {
+    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+        let number = match value {
+            value::Value::Number(n) => *n,
+            value::Value::Object(handle) => handle
+                .get_ptr_as_usize()
+                .ok_or_else(|| anyhow::anyhow!("Object has been garbage collected"))?
+                as f64,
+            value::Value::Null | value::Value::Undefined if optional => 0.0,
+            _ => bail!("Expected a Number for integer type, got {:?}", value),
+        };
+        Ok(self.to_ffi_value(number))
+    }
+
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Number(ffi_value.to_number()?))
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let number = match self {
             IntegerKind::I8 => gvalue
                 .get::<i8>()
@@ -183,19 +184,38 @@ impl IntegerKind {
         };
         Ok(value::Value::Number(number))
     }
-}
 
-impl FfiCodec for IntegerKind {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        IntegerKind::encode(self, value, optional)
+    fn libffi_type(&self) -> libffi::Type {
+        self.ffi_type()
     }
 
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        IntegerKind::decode(self, ffi_value)
+    fn call_cif(
+        &self,
+        cif: &libffi::Cif,
+        ptr: libffi::CodePtr,
+        args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(unsafe { IntegerKind::call_cif_raw(*self, cif, ptr, args) })
     }
 
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        IntegerKind::from_glib_value(*self, gvalue)
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        Ok(IntegerKind::ptr_to_value_raw(*self, ptr))
+    }
+
+    fn read_from_raw_ptr(
+        &self,
+        ptr: *const c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Number(self.read_ptr(ptr as *const u8)))
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let n = match value {
+            Ok(value::Value::Number(n)) => *n,
+            _ => 0.0,
+        };
+        self.write_ptr(ret as *mut u8, n);
     }
 }
 
@@ -275,7 +295,7 @@ impl FloatKind {
     /// - `ptr` is a valid function pointer
     /// - `args` contains valid arguments matching the CIF's expected types
     #[must_use]
-    pub unsafe fn call_cif(
+    pub unsafe fn call_cif_raw(
         self,
         cif: &libffi::Cif,
         ptr: libffi::CodePtr,
@@ -288,32 +308,23 @@ impl FloatKind {
             }
         }
     }
+}
 
-    pub fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FfiCodec for FloatKind {
+    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let number = match value {
             value::Value::Number(n) => *n,
             value::Value::Null | value::Value::Undefined if optional => 0.0,
             _ => bail!("Expected a Number for float type, got {:?}", value),
         };
-
         Ok(self.to_ffi_value(number))
     }
 
-    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         Ok(value::Value::Number(ffi_value.to_number()?))
     }
 
-    /// # Safety
-    /// `ptr` must point to a valid float value in memory.
-    pub unsafe fn ptr_to_value(self, ptr: *mut c_void) -> value::Value {
-        let val = match self {
-            FloatKind::F32 => (unsafe { *(ptr as *const f32) }) as f64,
-            FloatKind::F64 => unsafe { *(ptr as *const f64) },
-        };
-        value::Value::Number(val)
-    }
-
-    pub fn from_glib_value(self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let number = match self {
             FloatKind::F32 => gvalue
                 .get::<f32>()
@@ -325,19 +336,45 @@ impl FloatKind {
         };
         Ok(value::Value::Number(number))
     }
-}
 
-impl FfiCodec for FloatKind {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        FloatKind::encode(self, value, optional)
+    fn libffi_type(&self) -> libffi::Type {
+        self.ffi_type()
     }
 
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        FloatKind::decode(self, ffi_value)
+    fn call_cif(
+        &self,
+        cif: &libffi::Cif,
+        ptr: libffi::CodePtr,
+        args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(unsafe { FloatKind::call_cif_raw(*self, cif, ptr, args) })
     }
 
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        FloatKind::from_glib_value(*self, gvalue)
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Number(0.0));
+        }
+        let val = match self {
+            FloatKind::F32 => (unsafe { *(ptr as *const f32) }) as f64,
+            FloatKind::F64 => unsafe { *(ptr as *const f64) },
+        };
+        Ok(value::Value::Number(val))
+    }
+
+    fn read_from_raw_ptr(
+        &self,
+        ptr: *const c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Number(self.read_ptr(ptr as *const u8)))
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let n = match value {
+            Ok(value::Value::Number(n)) => *n,
+            _ => 0.0,
+        };
+        self.write_ptr(ret as *mut u8, n);
     }
 }
 
@@ -352,16 +389,47 @@ pub struct EnumType(pub TaggedType);
 
 impl FfiCodec for EnumType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        IntegerKind::I32.encode(value, optional)
+        FfiCodec::encode(&IntegerKind::I32, value, optional)
     }
 
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        IntegerKind::I32.decode(ffi_value)
+        FfiCodec::decode(&IntegerKind::I32, ffi_value)
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let v = unsafe { glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _) };
         Ok(value::Value::Number(v as f64))
+    }
+
+    fn libffi_type(&self) -> libffi::Type {
+        libffi::Type::i32()
+    }
+
+    fn call_cif(
+        &self,
+        cif: &libffi::Cif,
+        ptr: libffi::CodePtr,
+        args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        FfiCodec::call_cif(&IntegerKind::I32, cif, ptr, args)
+    }
+
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        Ok(IntegerKind::I32.ptr_to_value_raw(ptr))
+    }
+
+    fn read_from_raw_ptr(
+        &self,
+        ptr: *const c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Number(
+            IntegerKind::I32.read_ptr(ptr as *const u8),
+        ))
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        FfiCodec::write_return_to_raw_ptr(&IntegerKind::I32, ret, value);
     }
 }
 
@@ -370,16 +438,47 @@ pub struct FlagsType(pub TaggedType);
 
 impl FfiCodec for FlagsType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        IntegerKind::U32.encode(value, optional)
+        FfiCodec::encode(&IntegerKind::U32, value, optional)
     }
 
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        IntegerKind::U32.decode(ffi_value)
+        FfiCodec::decode(&IntegerKind::U32, ffi_value)
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let v =
             unsafe { glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _) };
         Ok(value::Value::Number(v as f64))
+    }
+
+    fn libffi_type(&self) -> libffi::Type {
+        libffi::Type::u32()
+    }
+
+    fn call_cif(
+        &self,
+        cif: &libffi::Cif,
+        ptr: libffi::CodePtr,
+        args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        FfiCodec::call_cif(&IntegerKind::U32, cif, ptr, args)
+    }
+
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        Ok(IntegerKind::U32.ptr_to_value_raw(ptr))
+    }
+
+    fn read_from_raw_ptr(
+        &self,
+        ptr: *const c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Number(
+            IntegerKind::U32.read_ptr(ptr as *const u8),
+        ))
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        FfiCodec::write_return_to_raw_ptr(&IntegerKind::U32, ret, value);
     }
 }

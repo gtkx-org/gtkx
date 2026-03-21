@@ -2,14 +2,13 @@ use std::ffi::{CStr, CString, c_char, c_void};
 
 use anyhow::bail;
 use gtk4::glib;
-use libffi::middle as libffi;
 use neon::object::Object as _;
 use neon::prelude::*;
 
 use super::{FfiCodec, NeonContextExt as _, Ownership};
 use crate::arg::Arg;
 use crate::ffi::{FfiStorage, FfiStorageKind};
-use crate::types::{FloatKind, Type};
+use crate::types::{FloatKind, IntegerKind, Type};
 use crate::{ffi, value};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -114,11 +113,23 @@ impl FfiCodec for ArrayType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         ArrayType::decode(self, ffi_value)
     }
-}
 
-impl From<&ArrayType> for libffi::Type {
-    fn from(_: &ArrayType) -> Self {
-        libffi::Type::pointer()
+    fn decode_with_context(
+        &self,
+        ffi_value: &ffi::FfiValue,
+        ffi_args: &[ffi::FfiValue],
+        args: &[crate::arg::Arg],
+    ) -> anyhow::Result<value::Value> {
+        ArrayType::decode_with_context(self, ffi_value, ffi_args, args)
+    }
+
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn ptr_to_value(
+        &self,
+        ptr: *mut std::ffi::c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        unsafe { ArrayType::ptr_to_value(self, ptr) }
     }
 }
 
@@ -176,9 +187,9 @@ impl ArrayType {
             | Type::Struct(_)
             | Type::Fundamental(_)
             | Type::String(_) => Some(std::mem::size_of::<*mut c_void>()),
-            Type::Enum(_)
-            | Type::Flags(_)
-            | Type::Void(_)
+            Type::Enum(_) => Some(size_of::<i32>()),
+            Type::Flags(_) => Some(size_of::<u32>()),
+            Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
             | Type::Callback(_)
@@ -311,7 +322,7 @@ impl ArrayType {
                         for handle in &handles {
                             match handle.get_ptr() {
                                 Some(ptr) => {
-                                    let ptr = unsafe { self.item_type.ref_for_transfer(ptr)? };
+                                    let ptr = self.item_type.ref_for_transfer(ptr)?;
                                     list = unsafe { glib::ffi::g_list_append(list, ptr) };
                                 }
                                 None => bail!("GObject in GList has been garbage collected"),
@@ -331,7 +342,7 @@ impl ArrayType {
                         for handle in handles.iter().rev() {
                             match handle.get_ptr() {
                                 Some(ptr) => {
-                                    let ptr = unsafe { self.item_type.ref_for_transfer(ptr)? };
+                                    let ptr = self.item_type.ref_for_transfer(ptr)?;
                                     list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
                                 }
                                 None => bail!("GObject in GSList has been garbage collected"),
@@ -355,7 +366,7 @@ impl ArrayType {
                         for handle in &handles {
                             match handle.get_ptr() {
                                 Some(ptr) => {
-                                    ptrs.push(unsafe { self.item_type.ref_for_transfer(ptr)? });
+                                    ptrs.push(self.item_type.ref_for_transfer(ptr)?);
                                 }
                                 None => bail!("GObject in array has been garbage collected"),
                             }
@@ -373,9 +384,19 @@ impl ArrayType {
                 let values = Self::extract_booleans(array)?;
                 Ok(ffi::FfiValue::Storage(values.into()))
             }
-            Type::Enum(_)
-            | Type::Flags(_)
-            | Type::Void(_)
+            Type::Enum(_) => {
+                let values = Self::extract_numbers(array)?;
+                Ok(ffi::FfiValue::Storage(
+                    IntegerKind::I32.to_ffi_storage(&values),
+                ))
+            }
+            Type::Flags(_) => {
+                let values = Self::extract_numbers(array)?;
+                Ok(ffi::FfiValue::Storage(
+                    IntegerKind::U32.to_ffi_storage(&values),
+                ))
+            }
+            Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
             | Type::Callback(_)
@@ -448,7 +469,7 @@ impl ArrayType {
                     let ptr = handle.get_ptr().ok_or_else(|| {
                         anyhow::anyhow!("Object in GArray has been garbage collected")
                     })?;
-                    let ptr = unsafe { self.item_type.ref_for_transfer(ptr)? };
+                    let ptr = self.item_type.ref_for_transfer(ptr)?;
                     unsafe {
                         glib::ffi::g_array_append_vals(
                             g_array,
@@ -470,9 +491,31 @@ impl ArrayType {
                     }
                 }
             }
-            Type::Enum(_)
-            | Type::Flags(_)
-            | Type::Void(_)
+            Type::Enum(_) => {
+                for n in Self::extract_numbers(array)? {
+                    let v = n as i32;
+                    unsafe {
+                        glib::ffi::g_array_append_vals(
+                            g_array,
+                            &v as *const i32 as *const c_void,
+                            1,
+                        );
+                    }
+                }
+            }
+            Type::Flags(_) => {
+                for n in Self::extract_numbers(array)? {
+                    let v = n as u32;
+                    unsafe {
+                        glib::ffi::g_array_append_vals(
+                            g_array,
+                            &v as *const u32 as *const c_void,
+                            1,
+                        );
+                    }
+                }
+            }
+            Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
             | Type::Callback(_)
@@ -574,7 +617,7 @@ impl ArrayType {
 
         while !current.is_null() {
             let data = unsafe { (*current).data };
-            let item_value = unsafe { self.item_type.ptr_to_value(data, "GList item")? };
+            let item_value = self.item_type.ptr_to_value(data, "GList item")?;
             values.push(item_value);
             current = unsafe { (*current).next };
         }
@@ -628,7 +671,7 @@ impl ArrayType {
                 let ptrs = unsafe { std::slice::from_raw_parts(data as *const *mut c_void, len) };
                 let mut values = Vec::with_capacity(len);
                 for &item_ptr in ptrs {
-                    values.push(unsafe { self.item_type.ptr_to_value(item_ptr, "GArray item")? });
+                    values.push(self.item_type.ptr_to_value(item_ptr, "GArray item")?);
                 }
                 values
             }
@@ -645,9 +688,15 @@ impl ArrayType {
                 }
                 values
             }
-            Type::Enum(_)
-            | Type::Flags(_)
-            | Type::Void(_)
+            Type::Enum(_) => {
+                let f64_values = IntegerKind::I32.read_slice(data, len);
+                f64_values.into_iter().map(value::Value::Number).collect()
+            }
+            Type::Flags(_) => {
+                let f64_values = IntegerKind::U32.read_slice(data, len);
+                f64_values.into_iter().map(value::Value::Number).collect()
+            }
+            Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
             | Type::Callback(_)
@@ -677,7 +726,7 @@ impl ArrayType {
         let mut values = Vec::with_capacity(len);
         for i in 0..len {
             let item_ptr = unsafe { *pdata.add(i) };
-            let item_value = unsafe { self.item_type.ptr_to_value(item_ptr, "GPtrArray item")? };
+            let item_value = self.item_type.ptr_to_value(item_ptr, "GPtrArray item")?;
             values.push(item_value);
         }
 
@@ -697,10 +746,10 @@ impl ArrayType {
             if item_ptr.is_null() {
                 break;
             }
-            values.push(unsafe {
+            values.push(
                 self.item_type
-                    .ptr_to_value(item_ptr, "null-terminated array item")?
-            });
+                    .ptr_to_value(item_ptr, "null-terminated array item")?,
+            );
             i += 1;
         }
 
@@ -775,9 +824,15 @@ impl ArrayType {
                     .map(|handle| value::Value::Object(*handle))
                     .collect()
             }
-            Type::Enum(_)
-            | Type::Flags(_)
-            | Type::Void(_)
+            Type::Enum(_) => {
+                let f64_vec = IntegerKind::I32.vec_to_f64(storage)?;
+                f64_vec.into_iter().map(value::Value::Number).collect()
+            }
+            Type::Flags(_) => {
+                let f64_vec = IntegerKind::U32.vec_to_f64(storage)?;
+                f64_vec.into_iter().map(value::Value::Number).collect()
+            }
+            Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
             | Type::Callback(_)
@@ -802,9 +857,9 @@ impl ArrayType {
             | Type::Struct(_)
             | Type::String(_)
             | Type::Fundamental(_) => self.decode_sized_ptr_array(ptr, length),
-            Type::Enum(_)
-            | Type::Flags(_)
-            | Type::Void(_)
+            Type::Enum(_) => Self::decode_sized_byte_array(ptr, length, &IntegerKind::I32),
+            Type::Flags(_) => Self::decode_sized_byte_array(ptr, length, &IntegerKind::U32),
+            Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
             | Type::Callback(_)
@@ -826,7 +881,7 @@ impl ArrayType {
         let mut values = Vec::with_capacity(length);
         for i in 0..length {
             let item_ptr = unsafe { *ptr_array.add(i) };
-            values.push(unsafe { self.item_type.ptr_to_value(item_ptr, "sized array item")? });
+            values.push(self.item_type.ptr_to_value(item_ptr, "sized array item")?);
         }
         Ok(value::Value::Array(values))
     }
@@ -902,8 +957,7 @@ impl ArrayType {
                 let mut values = Vec::with_capacity(len);
                 for i in 0..len {
                     let item_ptr = unsafe { *pdata.add(i) };
-                    let item_value =
-                        unsafe { self.item_type.ptr_to_value(item_ptr, "GPtrArray item")? };
+                    let item_value = self.item_type.ptr_to_value(item_ptr, "GPtrArray item")?;
                     values.push(item_value);
                 }
                 Ok(value::Value::Array(values))

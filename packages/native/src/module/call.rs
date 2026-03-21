@@ -20,13 +20,9 @@
 //! DrawFunc). These expand to multiple FFI arguments: the callback function
 //! pointer, user data, and optionally a destroy notify.
 
-use std::{
-    ffi::{c_char, c_void},
-    ops::Deref,
-    sync::Arc,
-};
+use std::{ffi::c_void, ops::Deref, sync::Arc};
 
-use anyhow::bail;
+use anyhow::Context as _;
 use libffi::middle as libffi;
 use neon::prelude::*;
 
@@ -34,7 +30,7 @@ use crate::{
     arg::Arg,
     ffi, gtk_dispatch,
     state::GtkThreadState,
-    types::{FfiCodec as _, IntegerKind, Type},
+    types::{FfiCodec as _, Type},
     value::Value,
 };
 
@@ -71,14 +67,19 @@ impl CallRequest {
         }
 
         let cif = libffi::Builder::new()
-            .res((&self.result_type).into())
+            .res(self.result_type.libffi_type())
             .args(arg_types)
             .into_cif();
 
         let ffi_values = self
             .args
             .iter()
-            .map(|arg| arg.ty.encode(&arg.value, arg.optional))
+            .enumerate()
+            .map(|(i, arg)| {
+                arg.ty
+                    .encode(&arg.value, arg.optional)
+                    .with_context(|| format!("encoding arg {} of {}", i, self.symbol_name))
+            })
             .collect::<anyhow::Result<Vec<ffi::FfiValue>>>()?;
 
         let mut ffi_args: Vec<libffi::Arg> = Vec::with_capacity(ffi_values.len() + 1);
@@ -99,38 +100,10 @@ impl CallRequest {
             })?
         };
 
-        // SAFETY: The symbol pointer is valid and the CIF matches the function signature.
-        // Argument types are validated by the FFI binding definitions.
-        let result = unsafe {
-            match self.result_type {
-                Type::Void(_) => {
-                    cif.call::<()>(symbol_ptr, &ffi_args);
-                    ffi::FfiValue::Void
-                }
-                Type::Integer(ref int_kind) => int_kind.call_cif(&cif, symbol_ptr, &ffi_args),
-                Type::Float(ref float_kind) => float_kind.call_cif(&cif, symbol_ptr, &ffi_args),
-                Type::Enum(_) => IntegerKind::I32.call_cif(&cif, symbol_ptr, &ffi_args),
-                Type::Flags(_) | Type::Unichar(_) => {
-                    IntegerKind::U32.call_cif(&cif, symbol_ptr, &ffi_args)
-                }
-                Type::String(_) => {
-                    let ptr = cif.call::<*const c_char>(symbol_ptr, &ffi_args);
-                    ffi::FfiValue::Ptr(ptr as *mut c_void)
-                }
-                Type::Boolean(_) => ffi::FfiValue::I32(cif.call::<i32>(symbol_ptr, &ffi_args)),
-                Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
-                    let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
-                    ffi::FfiValue::Ptr(ptr)
-                }
-                Type::Array(_) | Type::HashTable(_) => {
-                    let ptr = cif.call::<*mut c_void>(symbol_ptr, &ffi_args);
-                    ffi::FfiValue::Ptr(ptr)
-                }
-                Type::Callback(_) => bail!("Callbacks cannot be return types"),
-                Type::Trampoline(_) => bail!("Trampolines cannot be return types"),
-                Type::Ref(_) => bail!("Ref types cannot be return types"),
-            }
-        };
+        let result = self
+            .result_type
+            .call_cif(&cif, symbol_ptr, &ffi_args)
+            .with_context(|| format!("calling {}", self.symbol_name))?;
 
         let mut ref_updates = Vec::new();
 
@@ -147,7 +120,8 @@ impl CallRequest {
         }
 
         let return_value =
-            Value::from_ffi_value_with_args(&result, &self.result_type, &ffi_values, &self.args)?;
+            Value::from_ffi_value_with_args(&result, &self.result_type, &ffi_values, &self.args)
+                .with_context(|| format!("decoding return value of {}", self.symbol_name))?;
         Ok((return_value, ref_updates))
     }
 }

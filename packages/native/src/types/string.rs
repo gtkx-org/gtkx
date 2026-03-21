@@ -2,7 +2,6 @@ use std::ffi::{CStr, CString, c_char, c_void};
 
 use anyhow::bail;
 use gtk4::glib;
-use libffi::middle as libffi;
 use neon::prelude::*;
 
 use super::{FfiCodec, Ownership};
@@ -26,12 +25,6 @@ impl StringType {
             .ok();
 
         Ok(StringType { ownership, length })
-    }
-}
-
-impl From<&StringType> for libffi::Type {
-    fn from(_: &StringType) -> Self {
-        libffi::Type::pointer()
     }
 }
 
@@ -74,23 +67,22 @@ impl FfiCodec for StringType {
             .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
         Ok(value::Value::String(string))
     }
-}
 
-impl StringType {
-    /// # Safety
-    /// `ptr` must be null or point to a valid null-terminated C string.
-    pub unsafe fn ptr_to_value(ptr: *mut c_void) -> value::Value {
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         if ptr.is_null() {
-            return value::Value::Null;
+            return Ok(value::Value::Null);
         }
         let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
-        value::Value::String(c_str.to_string_lossy().into_owned())
+        Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
     }
 
-    /// # Safety
-    /// `ret` must point to a writable return value buffer.
-    pub unsafe fn write_return_value(ret: *mut c_void, js_result: &Result<value::Value, ()>) {
-        let ptr = match js_result {
+    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
+        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        self.ptr_to_value(inner_ptr, context)
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let ptr = match value {
             Ok(value::Value::String(s)) => CString::new(s.as_bytes())
                 .ok()
                 .map(|cs| unsafe { glib::ffi::g_strdup(cs.as_ptr()) as *mut c_void })

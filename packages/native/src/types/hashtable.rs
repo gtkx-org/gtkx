@@ -2,7 +2,6 @@ use std::ffi::{CString, c_void};
 
 use anyhow::bail;
 use gtk4::glib;
-use libffi::middle as libffi;
 use neon::prelude::*;
 
 use super::{FfiCodec, Ownership};
@@ -194,8 +193,8 @@ impl HashTableType {
             let key_ptr = key_encoder.encode(key)?;
             let val_ptr = value_encoder.encode(val)?;
 
-            let key_ptr = unsafe { self.key_type.ref_for_transfer(key_ptr)? };
-            let val_ptr = unsafe { self.value_type.ref_for_transfer(val_ptr)? };
+            let key_ptr = self.key_type.ref_for_transfer(key_ptr)?;
+            let val_ptr = self.value_type.ref_for_transfer(val_ptr)?;
 
             unsafe {
                 glib::ffi::g_hash_table_insert(hash_table, key_ptr, val_ptr);
@@ -209,12 +208,6 @@ impl HashTableType {
                 should_free: self.ownership.is_borrowed(),
             }),
         )))
-    }
-}
-
-impl From<&HashTableType> for libffi::Type {
-    fn from(_value: &HashTableType) -> Self {
-        libffi::Type::pointer()
     }
 }
 
@@ -279,5 +272,12 @@ impl FfiCodec for HashTableType {
         }
 
         Ok(value::Value::Array(pairs))
+    }
+
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Array(vec![]));
+        }
+        self.decode(&ffi::FfiValue::Ptr(ptr))
     }
 }

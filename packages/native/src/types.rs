@@ -35,7 +35,7 @@ use std::ffi::c_void;
 
 use anyhow::bail;
 use enum_dispatch::enum_dispatch;
-use gtk4::glib::{self, translate::IntoGlib as _};
+use gtk4::glib;
 use libffi::middle as libffi;
 use neon::prelude::*;
 
@@ -161,6 +161,73 @@ pub trait FfiCodec {
         let _ = gvalue;
         bail!("This type does not support GLib value conversion")
     }
+
+    fn libffi_type(&self) -> libffi::Type {
+        libffi::Type::pointer()
+    }
+
+    fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
+        types.push(self.libffi_type());
+    }
+
+    fn decode_with_context(
+        &self,
+        ffi_value: &ffi::FfiValue,
+        _ffi_args: &[ffi::FfiValue],
+        _args: &[crate::arg::Arg],
+    ) -> anyhow::Result<value::Value> {
+        self.decode(ffi_value)
+    }
+
+    /// Call a native function via libffi and return the raw result.
+    ///
+    /// The caller must ensure `cif`, `ptr`, and `args` are valid and match
+    /// the function's signature.
+    fn call_cif(
+        &self,
+        cif: &libffi::Cif,
+        ptr: libffi::CodePtr,
+        args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(ffi::FfiValue::Ptr(unsafe {
+            cif.call::<*mut c_void>(ptr, args)
+        }))
+    }
+
+    /// Read a value from a raw pointer (e.g. from a trampoline argument or out-parameter).
+    ///
+    /// For scalar types, the pointer points directly to the value.
+    /// For pointer types, the pointer points to a `*mut c_void` that must be dereferenced.
+    ///
+    /// The caller must ensure `ptr` is valid for the type being read.
+    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
+        let _ = (ptr, context);
+        bail!("This type cannot be read from a raw pointer")
+    }
+
+    /// Write a return value to a raw pointer buffer (e.g. a trampoline return slot).
+    ///
+    /// The caller must ensure `ret` points to a writable buffer of appropriate size.
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let _ = value;
+        unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
+    }
+
+    /// Add a reference for ownership transfer (e.g. when passing a full-ownership
+    /// value that the callee will free).
+    ///
+    /// The caller must ensure `ptr` is null or points to a valid instance.
+    fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+        Ok(ptr)
+    }
+
+    /// Convert a raw pointer to a Value (for reading decoded results, hash table entries, etc.).
+    ///
+    /// The caller must ensure `ptr` is null or points to a valid instance.
+    fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
+        let _ = (ptr, context);
+        bail!("This type cannot be read from pointer")
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -189,6 +256,37 @@ impl FfiCodec for BooleanType {
             .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {}", e))?;
         Ok(value::Value::Boolean(boolean))
     }
+
+    fn libffi_type(&self) -> libffi::Type {
+        libffi::Type::i32()
+    }
+
+    fn call_cif(
+        &self,
+        cif: &libffi::Cif,
+        ptr: libffi::CodePtr,
+        args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(ffi::FfiValue::I32(unsafe { cif.call::<i32>(ptr, args) }))
+    }
+
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Boolean(ptr as isize != 0))
+    }
+
+    fn read_from_raw_ptr(
+        &self,
+        ptr: *const c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        let val = unsafe { *(ptr as *const i32) };
+        Ok(value::Value::Boolean(val != 0))
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let val = matches!(value, Ok(value::Value::Boolean(true)));
+        unsafe { *(ret as *mut i32) = val as i32 };
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -206,6 +304,34 @@ impl FfiCodec for VoidType {
     fn from_glib_value(&self, _gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         Ok(value::Value::Null)
     }
+
+    fn libffi_type(&self) -> libffi::Type {
+        libffi::Type::void()
+    }
+
+    fn call_cif(
+        &self,
+        cif: &libffi::Cif,
+        ptr: libffi::CodePtr,
+        args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        unsafe { cif.call::<()>(ptr, args) };
+        Ok(ffi::FfiValue::Void)
+    }
+
+    fn ptr_to_value(&self, _ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Undefined)
+    }
+
+    fn read_from_raw_ptr(
+        &self,
+        _ptr: *const c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Undefined)
+    }
+
+    fn write_return_to_raw_ptr(&self, _ret: *mut c_void, _value: &Result<value::Value, ()>) {}
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -229,6 +355,44 @@ impl FfiCodec for UnicharType {
         };
         let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
         Ok(value::Value::String(ch.to_string()))
+    }
+
+    fn libffi_type(&self) -> libffi::Type {
+        libffi::Type::u32()
+    }
+
+    fn call_cif(
+        &self,
+        cif: &libffi::Cif,
+        ptr: libffi::CodePtr,
+        args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        IntegerKind::U32.call_cif(cif, ptr, args)
+    }
+
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        let cp = ptr as usize as u32;
+        let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
+        Ok(value::Value::String(ch.to_string()))
+    }
+
+    fn read_from_raw_ptr(
+        &self,
+        ptr: *const c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        let val = unsafe { *(ptr as *const u32) };
+        let ch = char::from_u32(val).unwrap_or('\u{FFFD}');
+        Ok(value::Value::String(ch.to_string()))
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let val = match value {
+            Ok(value::Value::String(s)) => s.chars().next().map(|c| c as u32).unwrap_or(0),
+            Ok(value::Value::Number(n)) => *n as u32,
+            _ => 0,
+        };
+        unsafe { *(ret as *mut u32) = val };
     }
 }
 
@@ -320,173 +484,6 @@ impl Type {
                 cx, value,
             )?)),
             _ => cx.throw_type_error(format!("Unknown type: {}", ty)),
-        }
-    }
-
-    /// # Safety
-    /// `ptr` must be null or point to a valid instance of the type described by `self`.
-    pub unsafe fn ptr_to_value(
-        &self,
-        ptr: *mut c_void,
-        context: &str,
-    ) -> anyhow::Result<value::Value> {
-        match self {
-            Type::String(_) => Ok(unsafe { StringType::ptr_to_value(ptr) }),
-            Type::Integer(kind) => Ok(kind.ptr_to_value(ptr)),
-            Type::Enum(_) => Ok(IntegerKind::I32.ptr_to_value(ptr)),
-            Type::Flags(_) => Ok(IntegerKind::U32.ptr_to_value(ptr)),
-            Type::GObject(_) => Ok(unsafe { GObjectType::ptr_to_value(ptr) }),
-            Type::Boxed(t) => unsafe { t.ptr_to_value(ptr) },
-            Type::Boolean(_) => Ok(value::Value::Boolean(ptr as isize != 0)),
-            Type::Float(kind) => Ok(unsafe { kind.ptr_to_value(ptr) }),
-            Type::Struct(t) => unsafe { t.ptr_to_value(ptr) },
-            Type::Fundamental(t) => unsafe { t.ptr_to_value(ptr) },
-            Type::Array(t) => unsafe { t.ptr_to_value(ptr) },
-            Type::HashTable(t) => {
-                if ptr.is_null() {
-                    return Ok(value::Value::Array(vec![]));
-                }
-                t.decode(&ffi::FfiValue::Ptr(ptr))
-            }
-            Type::Unichar(_) => {
-                let cp = ptr as u32;
-                let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
-                Ok(value::Value::String(ch.to_string()))
-            }
-            Type::Void(_) => Ok(value::Value::Undefined),
-            Type::Callback(_) | Type::Trampoline(_) | Type::Ref(_) => {
-                bail!("Type {} cannot be read from pointer in {}", self, context)
-            }
-        }
-    }
-}
-
-impl Type {
-    /// # Safety
-    /// `ptr` must be null or point to a valid instance of the type described by `self`.
-    pub unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        if ptr.is_null() {
-            return Ok(ptr);
-        }
-        match self {
-            Type::GObject(t) if t.ownership.is_full() => {
-                unsafe { glib::gobject_ffi::g_object_ref(ptr as *mut _) };
-                Ok(ptr)
-            }
-            Type::Boxed(t) if t.ownership.is_full() => match t.gtype() {
-                Some(gtype) => Ok(unsafe {
-                    glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
-                }),
-                None => Ok(ptr),
-            },
-            Type::Fundamental(t) if t.ownership.is_full() => {
-                let (ref_fn, _) = t.lookup_fns()?;
-                match ref_fn {
-                    Some(ref_fn) => Ok(unsafe { ref_fn(ptr) }),
-                    None => Ok(ptr),
-                }
-            }
-            Type::Integer(_)
-            | Type::Float(_)
-            | Type::Enum(_)
-            | Type::Flags(_)
-            | Type::String(_)
-            | Type::Boolean(_)
-            | Type::Void(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Ref(_)
-            | Type::Unichar(_)
-            | Type::Struct(_)
-            | Type::GObject(_)
-            | Type::Boxed(_)
-            | Type::Fundamental(_) => Ok(ptr),
-        }
-    }
-}
-
-impl Type {
-    pub fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
-        match self {
-            Type::Trampoline(trampoline_type) => {
-                types.push(libffi::Type::pointer());
-                types.push(libffi::Type::pointer());
-
-                if trampoline_type.has_destroy {
-                    types.push(libffi::Type::pointer());
-                }
-            }
-            Type::Integer(_)
-            | Type::Float(_)
-            | Type::Enum(_)
-            | Type::Flags(_)
-            | Type::String(_)
-            | Type::Boolean(_)
-            | Type::Void(_)
-            | Type::GObject(_)
-            | Type::Boxed(_)
-            | Type::Struct(_)
-            | Type::Fundamental(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Ref(_)
-            | Type::Unichar(_) => types.push(self.into()),
-        }
-    }
-}
-
-impl From<&Type> for libffi::Type {
-    fn from(value: &Type) -> Self {
-        match value {
-            Type::Integer(kind) => (*kind).into(),
-            Type::Float(kind) => (*kind).into(),
-            Type::Enum(_) => libffi::Type::i32(),
-            Type::Flags(_) => libffi::Type::u32(),
-            Type::String(ty) => ty.into(),
-            Type::Boolean(_) => libffi::Type::i32(),
-            Type::GObject(ty) => ty.into(),
-            Type::Boxed(ty) => ty.into(),
-            Type::Struct(ty) => ty.into(),
-            Type::Fundamental(ty) => ty.into(),
-            Type::Array(ty) => ty.into(),
-            Type::HashTable(ty) => ty.into(),
-            Type::Callback(_) => libffi::Type::pointer(),
-            Type::Trampoline(_) => libffi::Type::pointer(),
-            Type::Ref(ty) => ty.into(),
-            Type::Unichar(_) => libffi::Type::u32(),
-            Type::Void(_) => libffi::Type::void(),
-        }
-    }
-}
-
-impl Type {
-    pub fn decode_with_context(
-        &self,
-        ffi_value: &ffi::FfiValue,
-        ffi_args: &[ffi::FfiValue],
-        args: &[crate::arg::Arg],
-    ) -> anyhow::Result<value::Value> {
-        match self {
-            Type::Array(array_type) => array_type.decode_with_context(ffi_value, ffi_args, args),
-            Type::Ref(ref_type) => ref_type.decode_with_context(ffi_value, ffi_args, args),
-            Type::Integer(_)
-            | Type::Float(_)
-            | Type::Enum(_)
-            | Type::Flags(_)
-            | Type::String(_)
-            | Type::Boolean(_)
-            | Type::Void(_)
-            | Type::GObject(_)
-            | Type::Boxed(_)
-            | Type::Struct(_)
-            | Type::Fundamental(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Unichar(_) => self.decode(ffi_value),
         }
     }
 }

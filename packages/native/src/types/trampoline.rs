@@ -1,6 +1,7 @@
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
+use libffi::middle as libffi;
 use neon::prelude::*;
 
 use crate::ffi;
@@ -97,6 +98,23 @@ impl TrampolineType {
 }
 
 impl FfiCodec for TrampolineType {
+    fn call_cif(
+        &self,
+        _cif: &libffi::Cif,
+        _ptr: libffi::CodePtr,
+        _args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        anyhow::bail!("Trampolines cannot be return types")
+    }
+
+    fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
+        types.push(libffi::Type::pointer());
+        types.push(libffi::Type::pointer());
+        if self.has_destroy {
+            types.push(libffi::Type::pointer());
+        }
+    }
+
     fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 
@@ -123,52 +141,50 @@ impl FfiCodec for TrampolineType {
         let state = TrampolineState::create(data);
         let fn_ptr = state.code_ptr;
 
-        if self.scope == TrampolineScope::Forever {
-            let state_ptr = Box::into_raw(Box::new(state)) as *mut c_void;
-
-            Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
-                fn_ptr,
-                state_ptr,
-                destroy_ptr: None,
-                _owned_state: None,
-            }))
-        } else if self.has_destroy || self.scope == TrampolineScope::Notified {
-            let state_ptr = Box::into_raw(Box::new(state)) as *mut c_void;
-            let destroy_ptr = destroy_handler as *mut c_void;
-
-            Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
-                fn_ptr,
-                state_ptr,
-                destroy_ptr: Some(destroy_ptr),
-                _owned_state: None,
-            }))
-        } else if self.scope == TrampolineScope::Async {
-            let boxed = Box::new(state);
-            let raw_ptr = Box::into_raw(boxed);
-            unsafe {
-                (*raw_ptr)
-                    .data_ref()
-                    .oneshot_state_ptr
-                    .store(raw_ptr, Ordering::Release);
+        match self.scope {
+            TrampolineScope::Forever => {
+                let state_ptr = Box::into_raw(Box::new(state)) as *mut c_void;
+                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
+                    fn_ptr,
+                    state_ptr,
+                    destroy_ptr: None,
+                    _owned_state: None,
+                }))
             }
-            let state_ptr = raw_ptr as *mut c_void;
-
-            Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
-                fn_ptr,
-                state_ptr,
-                destroy_ptr: None,
-                _owned_state: None,
-            }))
-        } else {
-            let state = Box::new(state);
-            let state_ptr = &*state as *const TrampolineState as *mut c_void;
-
-            Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
-                fn_ptr,
-                state_ptr,
-                destroy_ptr: None,
-                _owned_state: Some(state),
-            }))
+            TrampolineScope::Notified => {
+                let state_ptr = Box::into_raw(Box::new(state)) as *mut c_void;
+                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
+                    fn_ptr,
+                    state_ptr,
+                    destroy_ptr: Some(destroy_handler as *mut c_void),
+                    _owned_state: None,
+                }))
+            }
+            TrampolineScope::Async => {
+                let raw_ptr = Box::into_raw(Box::new(state));
+                unsafe {
+                    (*raw_ptr)
+                        .data_ref()
+                        .oneshot_state_ptr
+                        .store(raw_ptr, Ordering::Release);
+                }
+                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
+                    fn_ptr,
+                    state_ptr: raw_ptr as *mut c_void,
+                    destroy_ptr: None,
+                    _owned_state: None,
+                }))
+            }
+            TrampolineScope::Call => {
+                let state = Box::new(state);
+                let state_ptr = &*state as *const TrampolineState as *mut c_void;
+                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
+                    fn_ptr,
+                    state_ptr,
+                    destroy_ptr: None,
+                    _owned_state: Some(state),
+                }))
+            }
         }
     }
 }

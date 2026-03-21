@@ -40,12 +40,6 @@ impl RefType {
     }
 }
 
-impl From<&RefType> for libffi::Type {
-    fn from(_: &RefType) -> Self {
-        libffi::Type::pointer()
-    }
-}
-
 impl FfiCodec for RefType {
     fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ref_val = match val {
@@ -257,6 +251,36 @@ impl FfiCodec for RefType {
                 self.inner_type
             ),
         }
+    }
+
+    fn call_cif(
+        &self,
+        _cif: &libffi::Cif,
+        _ptr: libffi::CodePtr,
+        _args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        bail!("Ref types cannot be return types")
+    }
+
+    fn read_from_raw_ptr(
+        &self,
+        ptr: *const c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        if inner_ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        self.inner_type.read_from_raw_ptr(inner_ptr, "ref inner")
+    }
+
+    fn decode_with_context(
+        &self,
+        ffi_value: &ffi::FfiValue,
+        ffi_args: &[ffi::FfiValue],
+        args: &[Arg],
+    ) -> anyhow::Result<value::Value> {
+        RefType::decode_with_context(self, ffi_value, ffi_args, args)
     }
 }
 

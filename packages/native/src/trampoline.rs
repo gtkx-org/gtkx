@@ -10,7 +10,7 @@ use neon::handle::Root;
 use neon::types::JsFunction;
 
 use crate::js_dispatch::JsDispatcher;
-use crate::types::{IntegerKind, Type};
+use crate::types::{FfiCodec as _, Type};
 use crate::value::Value;
 
 pub struct TrampolineData {
@@ -31,145 +31,6 @@ impl std::fmt::Debug for TrampolineData {
             .field("user_data_index", &self.user_data_index)
             .field("is_oneshot", &self.is_oneshot)
             .finish()
-    }
-}
-
-impl TrampolineData {
-    fn read_scalar(ptr: *const c_void, ty: &Type) -> anyhow::Result<Value> {
-        match ty {
-            Type::Integer(int_kind) => Ok(Value::Number(int_kind.read_ptr(ptr as *const u8))),
-            Type::Enum(_) => Ok(Value::Number(IntegerKind::I32.read_ptr(ptr as *const u8))),
-            Type::Flags(_) => Ok(Value::Number(IntegerKind::U32.read_ptr(ptr as *const u8))),
-            Type::Float(float_kind) => Ok(Value::Number(float_kind.read_ptr(ptr as *const u8))),
-            Type::Boolean(_) => {
-                let val = unsafe { *(ptr as *const i32) };
-                Ok(Value::Boolean(val != 0))
-            }
-            Type::Unichar(_) => {
-                let val = unsafe { *(ptr as *const u32) };
-                let ch = char::from_u32(val).unwrap_or('\u{FFFD}');
-                Ok(Value::String(ch.to_string()))
-            }
-            Type::GObject(_)
-            | Type::Boxed(_)
-            | Type::Struct(_)
-            | Type::Fundamental(_)
-            | Type::String(_)
-            | Type::Void(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Ref(_) => {
-                anyhow::bail!("Unsupported scalar type in trampoline: {ty}")
-            }
-        }
-    }
-
-    unsafe fn read_arg(arg_ptr: *const c_void, ty: &Type) -> anyhow::Result<Value> {
-        match ty {
-            Type::Integer(_)
-            | Type::Enum(_)
-            | Type::Flags(_)
-            | Type::Float(_)
-            | Type::Boolean(_)
-            | Type::Unichar(_) => Self::read_scalar(arg_ptr, ty),
-
-            Type::GObject(_)
-            | Type::Boxed(_)
-            | Type::Struct(_)
-            | Type::Fundamental(_)
-            | Type::String(_) => {
-                let ptr = unsafe { *(arg_ptr as *const *mut c_void) };
-                unsafe { ty.ptr_to_value(ptr, "trampoline arg") }
-            }
-
-            Type::Void(_) => Ok(Value::Null),
-
-            Type::Ref(ref_type) => {
-                let ptr = unsafe { *(arg_ptr as *const *mut c_void) };
-                if ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-                Self::read_scalar(ptr, &ref_type.inner_type)
-            }
-
-            Type::Array(_) | Type::HashTable(_) | Type::Callback(_) | Type::Trampoline(_) => {
-                anyhow::bail!("Unsupported type in trampoline arg: {ty}")
-            }
-        }
-    }
-
-    fn extract_number(js_result: &Result<Value, ()>) -> f64 {
-        match js_result {
-            Ok(Value::Number(n)) => *n,
-            _ => 0.0,
-        }
-    }
-
-    fn extract_object_ptr(js_result: &Result<Value, ()>) -> *mut c_void {
-        match js_result {
-            Ok(Value::Object(handle)) => handle.get_ptr().unwrap_or(std::ptr::null_mut()),
-            _ => std::ptr::null_mut(),
-        }
-    }
-
-    fn write_return_value(ret: *mut c_void, js_result: Result<Value, ()>, return_type: &Type) {
-        match return_type {
-            Type::Void(_) => {}
-            Type::Boolean(_) => {
-                let val = matches!(js_result, Ok(Value::Boolean(true)));
-                unsafe { *(ret as *mut i32) = val as i32 };
-            }
-            Type::Integer(int_kind) => {
-                int_kind.write_ptr(ret as *mut u8, Self::extract_number(&js_result));
-            }
-            Type::Enum(_) => {
-                IntegerKind::I32.write_ptr(ret as *mut u8, Self::extract_number(&js_result));
-            }
-            Type::Flags(_) => {
-                IntegerKind::U32.write_ptr(ret as *mut u8, Self::extract_number(&js_result));
-            }
-            Type::Float(float_kind) => {
-                float_kind.write_ptr(ret as *mut u8, Self::extract_number(&js_result));
-            }
-            Type::Unichar(_) => {
-                let val = match js_result {
-                    Ok(Value::String(s)) => s.chars().next().map(|c| c as u32).unwrap_or(0),
-                    Ok(Value::Number(n)) => n as u32,
-                    _ => 0,
-                };
-                unsafe { *(ret as *mut u32) = val };
-            }
-            Type::GObject(_) => unsafe {
-                crate::types::GObjectType::write_return_ptr(
-                    ret,
-                    Self::extract_object_ptr(&js_result),
-                );
-            },
-            Type::Boxed(t) => unsafe {
-                t.write_return_ptr(ret, Self::extract_object_ptr(&js_result));
-            },
-            Type::Fundamental(t) => unsafe {
-                t.write_return_ptr(ret, Self::extract_object_ptr(&js_result));
-            },
-            Type::String(_) => unsafe {
-                crate::types::StringType::write_return_value(ret, &js_result);
-            },
-            Type::Struct(_) => unsafe {
-                *(ret as *mut *mut c_void) = Self::extract_object_ptr(&js_result);
-            },
-            Type::Ref(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_) => {
-                gtkx_warn!(
-                    "write_return_value: unsupported return type {return_type}, writing null"
-                );
-                unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
-            }
-        }
     }
 }
 
@@ -209,10 +70,10 @@ impl TrampolineState {
 
         let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_types.len());
         for ty in &data_ref.arg_types {
-            cif_arg_types.push(ty.into());
+            cif_arg_types.push(ty.libffi_type());
         }
 
-        let cif_return_type: libffi::Type = (&data_ref.return_type).into();
+        let cif_return_type: libffi::Type = data_ref.return_type.libffi_type();
         let cif = libffi::Cif::new(cif_arg_types, cif_return_type);
 
         let closure = libffi::Closure::new(cif, trampoline_handler, data_ref);
@@ -249,7 +110,7 @@ unsafe extern "C" fn trampoline_handler(
         }
 
         let arg_ptr = unsafe { *args.add(i) };
-        match unsafe { TrampolineData::read_arg(arg_ptr, ty) } {
+        match ty.read_from_raw_ptr(arg_ptr, "trampoline arg") {
             Ok(val) => values.push(val),
             Err(e) => {
                 gtkx_warn!("trampoline_handler: failed to read arg {i}: {e}");
@@ -280,11 +141,8 @@ unsafe extern "C" fn trampoline_handler(
         |result| result,
     );
 
-    TrampolineData::write_return_value(
-        result as *mut u64 as *mut c_void,
-        js_result,
-        &data.return_type,
-    );
+    data.return_type
+        .write_return_to_raw_ptr(result as *mut u64 as *mut c_void, &js_result);
 
     if let Some(ptr) = state_ptr {
         drop(unsafe { Box::from_raw(ptr) });

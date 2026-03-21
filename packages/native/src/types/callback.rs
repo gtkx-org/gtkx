@@ -6,6 +6,7 @@ use gtk4::glib::{
     self, gobject_ffi,
     translate::{FromGlibPtrFull as _, ToGlibPtr as _},
 };
+use libffi::middle as libffi;
 use neon::prelude::*;
 
 use crate::callback::ClosureGuard;
@@ -31,7 +32,6 @@ impl ClosureContext {
     }
 
     fn build_closure_with_guard(self, return_type: Box<Type>) -> glib::Closure {
-        let has_ref_params = self.arg_types.iter().any(|t| matches!(t, Type::Ref(_)));
         let closure_holder: Arc<AtomicPtr<gobject_ffi::GClosure>> =
             Arc::new(AtomicPtr::new(std::ptr::null_mut()));
         let closure_holder_for_callback = closure_holder.clone();
@@ -50,68 +50,47 @@ impl ClosureContext {
 
             let return_type_ref: Option<&Type> = Some(&return_type);
 
-            if has_ref_params {
-                let ref_pointers: Vec<(*mut c_void, &Type)> = args
-                    .iter()
-                    .zip(self.arg_types.iter())
-                    .filter_map(|(gval, ty)| {
-                        if let Type::Ref(ref_type) = ty {
-                            let ptr = unsafe {
-                                glib::gobject_ffi::g_value_get_pointer(
-                                    gval.to_glib_none().0 as *const _,
-                                )
-                            };
-                            Some((ptr, &*ref_type.inner_type))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+            let ref_pointers: Vec<(*mut c_void, &Type)> = args
+                .iter()
+                .zip(self.arg_types.iter())
+                .filter_map(|(gval, ty)| {
+                    if let Type::Ref(ref_type) = ty {
+                        let ptr = unsafe {
+                            glib::gobject_ffi::g_value_get_pointer(
+                                gval.to_glib_none().0 as *const _,
+                            )
+                        };
+                        Some((ptr, &*ref_type.inner_type))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
 
-                js_dispatch::JsDispatcher::global().invoke_and_wait(
-                    &self.channel,
-                    &self.js_func,
-                    args_values,
-                    true,
-                    |result| match result {
-                        Ok(value::Value::Array(arr)) => {
-                            for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
-                                if let Some(val) = arr.get(i + 1)
-                                    && !(*ptr).is_null()
-                                {
-                                    Self::write_ref_value_to_ptr(*ptr, val, inner_type);
-                                }
+            js_dispatch::JsDispatcher::global().invoke_and_wait(
+                &self.channel,
+                &self.js_func,
+                args_values,
+                true,
+                |result| match result {
+                    Ok(value::Value::Array(arr)) if !ref_pointers.is_empty() => {
+                        for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
+                            if let Some(val) = arr.get(i + 1)
+                                && !(*ptr).is_null()
+                            {
+                                Self::write_ref_value_to_ptr(*ptr, val, inner_type);
                             }
-                            let return_val =
-                                arr.into_iter().next().unwrap_or(value::Value::Undefined);
-                            value::Value::into_glib_value_with_default(return_val, return_type_ref)
                         }
-                        Ok(value) => {
-                            value::Value::into_glib_value_with_default(value, return_type_ref)
-                        }
-                        Err(_) => value::Value::into_glib_value_with_default(
-                            value::Value::Undefined,
-                            return_type_ref,
-                        ),
-                    },
-                )
-            } else {
-                js_dispatch::JsDispatcher::global().invoke_and_wait(
-                    &self.channel,
-                    &self.js_func,
-                    args_values,
-                    true,
-                    |result| match result {
-                        Ok(value) => {
-                            value::Value::into_glib_value_with_default(value, return_type_ref)
-                        }
-                        Err(_) => value::Value::into_glib_value_with_default(
-                            value::Value::Undefined,
-                            return_type_ref,
-                        ),
-                    },
-                )
-            }
+                        let return_val = arr.into_iter().next().unwrap_or(value::Value::Undefined);
+                        value::Value::into_glib_value_with_default(return_val, return_type_ref)
+                    }
+                    Ok(value) => value::Value::into_glib_value_with_default(value, return_type_ref),
+                    Err(_) => value::Value::into_glib_value_with_default(
+                        value::Value::Undefined,
+                        return_type_ref,
+                    ),
+                },
+            )
         });
 
         let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
@@ -209,5 +188,14 @@ impl FfiCodec for CallbackType {
         };
 
         Ok(self.build_ffi_value(callback))
+    }
+
+    fn call_cif(
+        &self,
+        _cif: &libffi::Cif,
+        _ptr: libffi::CodePtr,
+        _args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        anyhow::bail!("Callbacks cannot be return types")
     }
 }

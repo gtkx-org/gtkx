@@ -230,8 +230,8 @@ interface UcdSection {
 
 function groupByScript(entries: UcdEntry[]): UcdSection[] {
     const sorted = [...entries].sort((a, b) => {
-        const sa = GLib.unicharGetScript(a.codepoint);
-        const sb = GLib.unicharGetScript(b.codepoint);
+        const sa = GLib.unicharGetScript(a.char);
+        const sb = GLib.unicharGetScript(b.char);
         if (sa !== sb) return sa - sb;
         return a.codepoint - b.codepoint;
     });
@@ -241,7 +241,7 @@ function groupByScript(entries: UcdEntry[]): UcdSection[] {
     let currentEntries: UcdEntry[] = [];
 
     for (const entry of sorted) {
-        const script = getScriptName(GLib.unicharGetScript(entry.codepoint));
+        const script = getScriptName(GLib.unicharGetScript(entry.char));
         if (script !== currentScript) {
             if (currentEntries.length > 0) {
                 sections.push({ script: currentScript, entries: currentEntries });
@@ -323,7 +323,7 @@ const ListViewUcdDemo = () => {
                         title="Char"
                         renderCell={(item: UcdEntry) => (
                             <GtkInscription
-                                text={GLib.unicharIsprint(item.codepoint) ? item.char : ""}
+                                text={GLib.unicharIsprint(item.char) ? item.char : ""}
                                 marginTop={4}
                                 marginBottom={4}
                             />
@@ -350,7 +350,7 @@ const ListViewUcdDemo = () => {
                         resizable
                         renderCell={(item: UcdEntry) => (
                             <GtkInscription
-                                text={UNICODE_TYPE_NAMES[GLib.unicharType(item.codepoint)] ?? "Unknown"}
+                                text={UNICODE_TYPE_NAMES[GLib.unicharType(item.char)] ?? "Unknown"}
                                 cssClasses={["dim-label"]}
                                 xalign={0}
                                 textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
@@ -365,7 +365,7 @@ const ListViewUcdDemo = () => {
                         resizable
                         renderCell={(item: UcdEntry) => (
                             <GtkInscription
-                                text={BREAK_TYPE_NAMES[GLib.unicharBreakType(item.codepoint)] ?? "Unknown"}
+                                text={BREAK_TYPE_NAMES[GLib.unicharBreakType(item.char)] ?? "Unknown"}
                                 cssClasses={["dim-label"]}
                                 xalign={0}
                                 textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
@@ -380,7 +380,7 @@ const ListViewUcdDemo = () => {
                         resizable
                         renderCell={(item: UcdEntry) => (
                             <GtkInscription
-                                text={COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.codepoint)] ?? "Unknown"}
+                                text={COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.char)] ?? "Unknown"}
                                 cssClasses={["dim-label"]}
                                 xalign={0}
                                 textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}

@@ -12,7 +12,6 @@ use gtk4::glib::{
     self,
     translate::{FromGlib as _, IntoGlib as _, ToGlibPtr as _},
 };
-use libffi::middle as libffi;
 use neon::object::Object as _;
 use neon::prelude::*;
 
@@ -20,6 +19,13 @@ use super::{FfiCodec, Ownership};
 use crate::managed::{Boxed, NativeValue};
 use crate::state::GtkThreadState;
 use crate::{ffi, value};
+
+fn extract_object_ptr(value: &Result<value::Value, ()>) -> *mut c_void {
+    match value {
+        Ok(value::Value::Object(handle)) => handle.get_ptr().unwrap_or(std::ptr::null_mut()),
+        _ => std::ptr::null_mut(),
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct BoxedType {
@@ -85,12 +91,6 @@ impl BoxedType {
     }
 }
 
-impl From<&BoxedType> for libffi::Type {
-    fn from(_: &BoxedType) -> Self {
-        libffi::Type::pointer()
-    }
-}
-
 impl FfiCodec for BoxedType {
     fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("Boxed object")?;
@@ -145,12 +145,8 @@ impl FfiCodec for BoxedType {
         };
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
     }
-}
 
-impl BoxedType {
-    /// # Safety
-    /// `ptr` must be null or point to a valid boxed type instance.
-    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         if ptr.is_null() {
             return Ok(value::Value::Null);
         }
@@ -159,10 +155,13 @@ impl BoxedType {
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
     }
 
-    /// # Safety
-    /// `ret` must point to a writable return value buffer, and `ptr` must be null
-    /// or point to a valid boxed type instance.
-    pub unsafe fn write_return_ptr(&self, ret: *mut c_void, ptr: *mut c_void) {
+    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
+        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        self.ptr_to_value(inner_ptr, context)
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let ptr = extract_object_ptr(value);
         let ptr = if !ptr.is_null() {
             match self.gtype() {
                 Some(gtype) => unsafe {
@@ -174,6 +173,19 @@ impl BoxedType {
             ptr
         };
         unsafe { *(ret as *mut *mut c_void) = ptr };
+    }
+
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+        if self.ownership.is_full()
+            && !ptr.is_null()
+            && let Some(gtype) = self.gtype()
+        {
+            let copied =
+                unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _) };
+            return Ok(copied);
+        }
+        Ok(ptr)
     }
 }
 
@@ -206,12 +218,6 @@ impl StructType {
             type_name,
             size,
         })
-    }
-}
-
-impl From<&StructType> for libffi::Type {
-    fn from(_: &StructType) -> Self {
-        libffi::Type::pointer()
     }
 }
 
@@ -248,16 +254,22 @@ impl FfiCodec for StructType {
             "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
         )
     }
-}
 
-impl StructType {
-    /// # Safety
-    /// `ptr` must be null or point to a valid struct instance.
-    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         if ptr.is_null() {
             return Ok(value::Value::Null);
         }
         let boxed = Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))?;
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+    }
+
+    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
+        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        self.ptr_to_value(inner_ptr, context)
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let ptr = extract_object_ptr(value);
+        unsafe { *(ret as *mut *mut c_void) = ptr };
     }
 }

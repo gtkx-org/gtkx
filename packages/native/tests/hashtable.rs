@@ -134,7 +134,9 @@ fn ptr_to_value_boolean_true() {
     let ty = Type::Boolean(BooleanType);
     let ptr = std::ptr::dangling_mut::<c_void>();
 
-    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
+    let value = ty
+        .ptr_to_value(ptr, "test")
+        .expect("decoding should succeed");
 
     match value {
         Value::Boolean(true) => (),
@@ -147,7 +149,9 @@ fn ptr_to_value_boolean_false() {
     let ty = Type::Boolean(BooleanType);
     let ptr = std::ptr::null_mut::<c_void>();
 
-    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
+    let value = ty
+        .ptr_to_value(ptr, "test")
+        .expect("decoding should succeed");
 
     match value {
         Value::Boolean(false) => (),
@@ -160,7 +164,9 @@ fn ptr_to_value_boolean_nonzero_is_true() {
     let ty = Type::Boolean(BooleanType);
     let ptr = 42isize as *mut c_void;
 
-    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
+    let value = ty
+        .ptr_to_value(ptr, "test")
+        .expect("decoding should succeed");
 
     match value {
         Value::Boolean(true) => (),
@@ -178,7 +184,9 @@ fn ptr_to_value_float() {
         mem as *mut c_void
     };
 
-    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
+    let value = ty
+        .ptr_to_value(ptr, "test")
+        .expect("decoding should succeed");
 
     match value {
         Value::Number(n) => assert!((n - std::f64::consts::E).abs() < f64::EPSILON),
@@ -196,8 +204,9 @@ fn ptr_to_value_struct_null() {
         size: Some(16),
     });
 
-    let value =
-        unsafe { ty.ptr_to_value(std::ptr::null_mut(), "test") }.expect("decoding should succeed");
+    let value = ty
+        .ptr_to_value(std::ptr::null_mut(), "test")
+        .expect("decoding should succeed");
 
     match value {
         Value::Null => (),
@@ -217,7 +226,9 @@ fn ptr_to_value_struct_non_null() {
 
     let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
-    let value = unsafe { ty.ptr_to_value(ptr, "test") }.expect("decoding should succeed");
+    let value = ty
+        .ptr_to_value(ptr, "test")
+        .expect("decoding should succeed");
 
     match value {
         Value::Object(_) => (),
