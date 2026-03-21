@@ -1,13 +1,12 @@
 use std::ffi::c_void;
 
-use super::OwnedPtr;
-
 pub type UnrefFn = unsafe extern "C" fn(*mut c_void);
 pub type RefFn = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
 
 #[derive(Debug)]
 pub struct Fundamental {
-    inner: OwnedPtr,
+    ptr: *mut c_void,
+    owned: bool,
     ref_fn: Option<RefFn>,
     unref_fn: Option<UnrefFn>,
 }
@@ -20,7 +19,8 @@ impl Fundamental {
         unref_fn: Option<UnrefFn>,
     ) -> Self {
         Self {
-            inner: OwnedPtr::from_full(ptr),
+            ptr,
+            owned: true,
             ref_fn,
             unref_fn,
         }
@@ -35,15 +35,13 @@ impl Fundamental {
     ) -> Self {
         if ptr.is_null() {
             return Self {
-                inner: OwnedPtr::null(),
+                ptr: std::ptr::null_mut(),
+                owned: false,
                 ref_fn,
                 unref_fn,
             };
         }
 
-        // For copy-based types (like PangoAttribute), ref_fn returns a NEW pointer.
-        // For ref-counted types, ref_fn returns the same pointer with incremented count.
-        // In both cases, we must use the returned pointer.
         let owned_ptr = if let Some(do_ref) = ref_fn {
             unsafe { do_ref(ptr) }
         } else {
@@ -51,7 +49,8 @@ impl Fundamental {
         };
 
         Self {
-            inner: OwnedPtr::from_full(owned_ptr),
+            ptr: owned_ptr,
+            owned: true,
             ref_fn,
             unref_fn,
         }
@@ -60,36 +59,30 @@ impl Fundamental {
     #[inline]
     #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
-        self.inner.as_ptr()
-    }
-
-    #[must_use]
-    pub fn is_owned(&self) -> bool {
-        self.inner.is_owned()
+        self.ptr
     }
 }
 
 impl Clone for Fundamental {
     fn clone(&self) -> Self {
-        if self.inner.is_null() {
+        if self.ptr.is_null() {
             return Self {
-                inner: OwnedPtr::null(),
+                ptr: std::ptr::null_mut(),
+                owned: false,
                 ref_fn: self.ref_fn,
                 unref_fn: self.unref_fn,
             };
         }
 
-        // For copy-based types (like PangoAttribute), ref_fn returns a NEW pointer.
-        // For ref-counted types, ref_fn returns the same pointer with incremented count.
-        // In both cases, we must use the returned pointer.
         let cloned_ptr = if let Some(ref_fn) = self.ref_fn {
-            unsafe { ref_fn(self.inner.as_ptr()) }
+            unsafe { ref_fn(self.ptr) }
         } else {
-            self.inner.as_ptr()
+            self.ptr
         };
 
         Self {
-            inner: OwnedPtr::from_full(cloned_ptr),
+            ptr: cloned_ptr,
+            owned: true,
             ref_fn: self.ref_fn,
             unref_fn: self.unref_fn,
         }
@@ -98,10 +91,11 @@ impl Clone for Fundamental {
 
 impl Drop for Fundamental {
     fn drop(&mut self) {
-        if self.inner.should_free()
+        if self.owned
+            && !self.ptr.is_null()
             && let Some(unref_fn) = self.unref_fn
         {
-            unsafe { unref_fn(self.inner.as_ptr()) };
+            unsafe { unref_fn(self.ptr) };
         }
     }
 }

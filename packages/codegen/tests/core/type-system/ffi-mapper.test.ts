@@ -683,6 +683,27 @@ describe("FfiMapper", () => {
                     expect(result.ffi.ownership).toBe("borrowed");
                 }
             });
+
+            it("sets ownership to full for transfer-container on GObject parameter", () => {
+                const buttonClass = createNormalizedClass({ name: "Button" });
+                const ns = createNormalizedNamespace({
+                    name: "Gtk",
+                    classes: new Map([["Button", buttonClass]]),
+                });
+                const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+                const param = createNormalizedParameter({
+                    name: "widget",
+                    type: createNormalizedType({ name: "Button" }),
+                    transferOwnership: "container",
+                });
+                const result = mapper.mapParameter(param);
+
+                expect(result.ffi.type).toBe("gobject");
+                if (result.ffi.type === "gobject") {
+                    expect(result.ffi.ownership).toBe("full");
+                }
+            });
         });
 
         describe("callbacks in parameters", () => {
@@ -1074,7 +1095,7 @@ describe("FfiMapper - Extended Coverage", () => {
             expect(result.ffi).toEqual({ type: "string", ownership: "full" });
         });
 
-        it("maps GObject array with container transfer", () => {
+        it("maps GObject array with container transfer - container owned, elements borrowed", () => {
             const buttonClass = createNormalizedClass({ name: "Button" });
             const ns = createNormalizedNamespace({
                 name: "Gtk",
@@ -1092,6 +1113,8 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ffi.type).toBe("array");
             expect(result.ffi.ownership).toBe("full");
+            expect(result.ffi.itemType.type).toBe("gobject");
+            expect(result.ffi.itemType.ownership).toBe("borrowed");
         });
 
         it("maps boxed type with transfer-full", () => {
@@ -1198,6 +1221,95 @@ describe("FfiMapper - Extended Coverage", () => {
             const result = mapper.mapType(type, true);
 
             expect(result.ffi.ownership).toBe("borrowed");
+        });
+
+        it("maps GObject array with full transfer - elements are fully owned", () => {
+            const buttonClass = createNormalizedClass({ name: "Button" });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Button", buttonClass]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const type = createNormalizedType({
+                name: "Button",
+                isArray: true,
+                elementType: createNormalizedType({ name: "Button" }),
+                transferOwnership: "full",
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ffi.type).toBe("array");
+            expect(result.ffi.ownership).toBe("full");
+            expect(result.ffi.itemType.type).toBe("gobject");
+            expect(result.ffi.itemType.ownership).toBe("full");
+        });
+
+        it("maps string array with container transfer - elements are borrowed", () => {
+            const { mapper } = createTestSetup();
+
+            const type = createNormalizedType({
+                name: "utf8",
+                isArray: true,
+                elementType: createNormalizedType({ name: "utf8" }),
+                transferOwnership: "container",
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ffi.type).toBe("array");
+            expect(result.ffi.ownership).toBe("full");
+            expect(result.ffi.itemType.type).toBe("string");
+            expect(result.ffi.itemType.ownership).toBe("borrowed");
+        });
+
+        it("maps hashtable with container transfer - keys and values are borrowed", () => {
+            const buttonClass = createNormalizedClass({ name: "Button" });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Button", buttonClass]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const type = createNormalizedType({
+                name: qualifiedName("GLib", "HashTable"),
+                isArray: false,
+                containerType: "ghashtable",
+                typeParameters: [createNormalizedType({ name: "utf8" }), createNormalizedType({ name: "Button" })],
+                transferOwnership: "container",
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ffi.type).toBe("hashtable");
+            expect(result.ffi.ownership).toBe("full");
+            expect(result.ffi.keyType.type).toBe("string");
+            expect(result.ffi.keyType.ownership).toBe("borrowed");
+            expect(result.ffi.valueType.type).toBe("gobject");
+            expect(result.ffi.valueType.ownership).toBe("borrowed");
+        });
+
+        it("maps hashtable with full transfer - keys and values are fully owned", () => {
+            const buttonClass = createNormalizedClass({ name: "Button" });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Button", buttonClass]]),
+            });
+            const { mapper } = createTestSetup(new Map([["Gtk", ns]]));
+
+            const type = createNormalizedType({
+                name: qualifiedName("GLib", "HashTable"),
+                isArray: false,
+                containerType: "ghashtable",
+                typeParameters: [createNormalizedType({ name: "utf8" }), createNormalizedType({ name: "Button" })],
+                transferOwnership: "full",
+            });
+            const result = mapper.mapType(type);
+
+            expect(result.ffi.type).toBe("hashtable");
+            expect(result.ffi.ownership).toBe("full");
+            expect(result.ffi.keyType.type).toBe("string");
+            expect(result.ffi.keyType.ownership).toBe("full");
+            expect(result.ffi.valueType.type).toBe("gobject");
+            expect(result.ffi.valueType.ownership).toBe("full");
         });
     });
 

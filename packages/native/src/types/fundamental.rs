@@ -81,8 +81,8 @@ impl From<&FundamentalType> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for FundamentalType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FundamentalType {
+    pub fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let mut ptr = value.object_ptr("Fundamental")?;
 
         if self.ownership.is_full() && !ptr.is_null() {
@@ -98,10 +98,8 @@ impl ffi::FfiEncode for FundamentalType {
 
         Ok(ffi::FfiValue::Ptr(ptr))
     }
-}
 
-impl ffi::FfiDecode for FundamentalType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(ptr) = ffi_value.as_non_null_ptr("Fundamental")? else {
             return Ok(value::Value::Null);
         };

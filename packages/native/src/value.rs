@@ -23,7 +23,6 @@ use gtk4::glib::{
 };
 use neon::{handle::Root, object::Object as _, prelude::*};
 
-use crate::ffi::FfiDecode;
 use crate::managed::{Boxed, Fundamental, NativeHandle, NativeValue};
 use crate::types::*;
 use crate::{arg::Arg, ffi};

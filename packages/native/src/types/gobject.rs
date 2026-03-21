@@ -29,8 +29,8 @@ impl From<&GObjectType> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for GObjectType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl GObjectType {
+    pub fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("GObject")?;
 
         if self.ownership.is_full() && !ptr.is_null() {
@@ -39,10 +39,8 @@ impl ffi::FfiEncode for GObjectType {
 
         Ok(ffi::FfiValue::Ptr(ptr))
     }
-}
 
-impl ffi::FfiDecode for GObjectType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(object_ptr) = ffi_value.as_non_null_ptr("GObject")? else {
             return Ok(value::Value::Null);
         };

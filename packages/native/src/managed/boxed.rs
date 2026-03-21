@@ -3,11 +3,10 @@ use std::ffi::c_void;
 use anyhow::bail;
 use gtk4::glib::{self, translate::IntoGlib as _};
 
-use super::OwnedPtr;
-
 #[derive(Debug)]
 pub struct Boxed {
-    inner: OwnedPtr,
+    ptr: *mut c_void,
+    owned: bool,
     gtype: Option<glib::Type>,
 }
 
@@ -15,7 +14,8 @@ impl Boxed {
     #[must_use]
     pub fn from_glib_full(gtype: Option<glib::Type>, ptr: *mut c_void) -> Self {
         Self {
-            inner: OwnedPtr::from_full(ptr),
+            ptr,
+            owned: true,
             gtype,
         }
     }
@@ -23,7 +23,8 @@ impl Boxed {
     #[must_use]
     pub(crate) fn from_ptr_unowned(ptr: *mut c_void) -> Self {
         Self {
-            inner: OwnedPtr::from_none(ptr),
+            ptr,
+            owned: false,
             gtype: None,
         }
     }
@@ -40,7 +41,8 @@ impl Boxed {
     ) -> anyhow::Result<Self> {
         if ptr.is_null() {
             return Ok(Self {
-                inner: OwnedPtr::from_none(ptr),
+                ptr,
+                owned: false,
                 gtype,
             });
         }
@@ -50,7 +52,8 @@ impl Boxed {
                 let cloned_ptr =
                     unsafe { glib::gobject_ffi::g_boxed_copy(gt.into_glib(), ptr as *const _) };
                 Ok(Self {
-                    inner: OwnedPtr::from_full(cloned_ptr),
+                    ptr: cloned_ptr,
+                    owned: true,
                     gtype,
                 })
             }
@@ -62,7 +65,8 @@ impl Boxed {
                         dest
                     };
                     Ok(Self {
-                        inner: OwnedPtr::from_full(cloned_ptr),
+                        ptr: cloned_ptr,
+                        owned: true,
                         gtype: None,
                     })
                 } else {
@@ -81,25 +85,21 @@ impl Boxed {
     #[inline]
     #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
-        self.inner.as_ptr()
+        self.ptr
     }
 
     #[must_use]
     pub fn gtype(&self) -> Option<glib::Type> {
         self.gtype
     }
-
-    #[must_use]
-    pub fn is_owned(&self) -> bool {
-        self.inner.is_owned()
-    }
 }
 
 impl Clone for Boxed {
     fn clone(&self) -> Self {
-        if self.inner.is_null() {
+        if self.ptr.is_null() {
             return Self {
-                inner: OwnedPtr::from_none(std::ptr::null_mut()),
+                ptr: std::ptr::null_mut(),
+                owned: false,
                 gtype: self.gtype,
             };
         }
@@ -107,10 +107,11 @@ impl Clone for Boxed {
         match self.gtype {
             Some(gt) => {
                 let cloned_ptr = unsafe {
-                    glib::gobject_ffi::g_boxed_copy(gt.into_glib(), self.inner.as_ptr() as *const _)
+                    glib::gobject_ffi::g_boxed_copy(gt.into_glib(), self.ptr as *const _)
                 };
                 Self {
-                    inner: OwnedPtr::from_full(cloned_ptr),
+                    ptr: cloned_ptr,
+                    owned: true,
                     gtype: self.gtype,
                 }
             }
@@ -126,14 +127,14 @@ impl Clone for Boxed {
 
 impl Drop for Boxed {
     fn drop(&mut self) {
-        if self.inner.should_free() {
+        if self.owned && !self.ptr.is_null() {
             unsafe {
                 match self.gtype {
                     Some(gtype) => {
-                        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.inner.as_ptr());
+                        glib::gobject_ffi::g_boxed_free(gtype.into_glib(), self.ptr);
                     }
                     None => {
-                        glib::ffi::g_free(self.inner.as_ptr());
+                        glib::ffi::g_free(self.ptr);
                     }
                 }
             }

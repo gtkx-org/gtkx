@@ -42,8 +42,8 @@ impl From<&RefType> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for RefType {
-    fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl RefType {
+    pub fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ref_val = match val {
             value::Value::Ref(r) => r,
             value::Value::Null | value::Value::Undefined => {
@@ -134,10 +134,8 @@ impl ffi::FfiEncode for RefType {
             }
         }
     }
-}
 
-impl ffi::FfiDecode for RefType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let storage = match ffi_value {
             ffi::FfiValue::Storage(s) => s,
             ffi::FfiValue::Ptr(ptr) if ptr.is_null() => return Ok(value::Value::Null),
@@ -215,7 +213,7 @@ impl ffi::FfiDecode for RefType {
         }
     }
 
-    fn decode_with_context(
+    pub fn decode_with_context(
         &self,
         ffi_value: &ffi::FfiValue,
         ffi_args: &[ffi::FfiValue],

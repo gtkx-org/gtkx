@@ -78,8 +78,9 @@ export class FfiMapper {
             const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
 
             if (keyType && valueType) {
-                const keyResult = this.mapType(keyType, isReturn, parentTransferOwnership);
-                const valueResult = this.mapType(valueType, isReturn, parentTransferOwnership);
+                const elementTransfer = this.deriveElementTransfer(type.transferOwnership ?? parentTransferOwnership);
+                const keyResult = this.mapType(keyType, isReturn, elementTransfer);
+                const valueResult = this.mapType(valueType, isReturn, elementTransfer);
                 imports.push(...keyResult.imports, ...valueResult.imports);
 
                 return {
@@ -127,7 +128,7 @@ export class FfiMapper {
                 type.sizeParamIndex !== undefined ? type.sizeParamIndex + sizeParamOffset : undefined;
 
             if (type.elementType) {
-                const elementTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
+                const elementTransferOwnership = this.deriveElementTransfer(type.transferOwnership ?? parentTransferOwnership);
                 const elementResult = this.mapType(
                     type.elementType,
                     isReturn,
@@ -250,7 +251,7 @@ export class FfiMapper {
 
         const mapped = this.mapType(param.type, false, param.transferOwnership, sizeParamOffset);
         const isObjectType = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
-        const isTransferFull = param.transferOwnership === "full";
+        const isTransferFull = param.transferOwnership === "full" || param.transferOwnership === "container";
         const isTransferNone = param.transferOwnership === "none" || param.transferOwnership === undefined;
 
         if (isObjectType && isTransferFull) {
@@ -509,6 +510,11 @@ export class FfiMapper {
         return !isReturn;
     }
 
+    private deriveElementTransfer(parentTransfer?: string): string | undefined {
+        if (parentTransfer === "container") return "none";
+        return parentTransfer;
+    }
+
     private mapResolvedType(
         resolved: ResolvedType,
         isReturn: boolean,
@@ -706,7 +712,7 @@ export class FfiMapper {
         const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
 
         if (type.elementType) {
-            const elementTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
+            const elementTransferOwnership = this.deriveElementTransfer(type.transferOwnership ?? parentTransferOwnership);
             const elementResult = this.mapType(type.elementType, isReturn, elementTransferOwnership);
             imports.push(...elementResult.imports);
 

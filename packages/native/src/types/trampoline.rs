@@ -49,8 +49,8 @@ impl TrampolineType {
     }
 }
 
-impl ffi::FfiEncode for TrampolineType {
-    fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl TrampolineType {
+    pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 
         let callback = match val {

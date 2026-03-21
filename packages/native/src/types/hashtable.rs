@@ -233,8 +233,8 @@ impl From<&HashTableType> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for HashTableType {
-    fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl HashTableType {
+    pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let tuples = match val {
             value::Value::Array(arr) => arr,
             value::Value::Null | value::Value::Undefined if optional => {
@@ -256,10 +256,8 @@ impl ffi::FfiEncode for HashTableType {
 
         Self::encode_hashtable(tuples, key_encoder, value_encoder)
     }
-}
 
-impl ffi::FfiDecode for HashTableType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(hash_ptr) = ffi_value.as_non_null_ptr("GHashTable")? else {
             return Ok(value::Value::Array(vec![]));
         };

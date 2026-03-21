@@ -146,8 +146,8 @@ impl Drop for GListGuard {
     }
 }
 
-impl ffi::FfiEncode for ArrayType {
-    fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl ArrayType {
+    pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let array = match val {
             value::Value::Array(arr) => arr,
             value::Value::Null | value::Value::Undefined if optional => {
@@ -337,10 +337,8 @@ impl ffi::FfiEncode for ArrayType {
             _ => bail!("Unsupported array item type: {:?}", self.item_type),
         }
     }
-}
 
-impl ffi::FfiDecode for ArrayType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         if self.kind == ArrayKind::GList || self.kind == ArrayKind::GSList {
             return self.decode_glist(ffi_value);
         }
@@ -371,7 +369,7 @@ impl ffi::FfiDecode for ArrayType {
         self.decode_storage(storage)
     }
 
-    fn decode_with_context(
+    pub fn decode_with_context(
         &self,
         ffi_value: &ffi::FfiValue,
         ffi_args: &[ffi::FfiValue],

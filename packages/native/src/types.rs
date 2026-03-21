@@ -342,8 +342,8 @@ impl From<&Type> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for Type {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl Type {
+    pub fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         match self {
             Type::Integer(t) => t.encode(value, optional),
             Type::Float(t) => t.encode(value, optional),
@@ -368,10 +368,8 @@ impl ffi::FfiEncode for Type {
             Type::Ref(t) => t.encode(value, optional),
         }
     }
-}
 
-impl ffi::FfiDecode for Type {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         match self {
             Type::Null => Ok(value::Value::Null),
             Type::Undefined => Ok(value::Value::Undefined),
@@ -397,7 +395,7 @@ impl ffi::FfiDecode for Type {
         }
     }
 
-    fn decode_with_context(
+    pub fn decode_with_context(
         &self,
         ffi_value: &ffi::FfiValue,
         ffi_args: &[ffi::FfiValue],

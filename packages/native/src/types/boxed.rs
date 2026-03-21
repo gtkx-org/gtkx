@@ -98,8 +98,8 @@ impl From<&BoxedType> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for BoxedType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl BoxedType {
+    pub fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("Boxed object")?;
 
         if let Some(gtype) = self.gtype()
@@ -113,10 +113,8 @@ impl ffi::FfiEncode for BoxedType {
 
         Ok(ffi::FfiValue::Ptr(ptr))
     }
-}
 
-impl ffi::FfiDecode for BoxedType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(boxed_ptr) = ffi_value.as_non_null_ptr("Boxed")? else {
             return Ok(value::Value::Null);
         };
@@ -179,15 +177,13 @@ impl From<&StructType> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for StructType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl StructType {
+    pub fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("Struct object")?;
         Ok(ffi::FfiValue::Ptr(ptr))
     }
-}
 
-impl ffi::FfiDecode for StructType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(struct_ptr) = ffi_value.as_non_null_ptr("Struct")? else {
             return Ok(value::Value::Null);
         };

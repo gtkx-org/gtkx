@@ -10,7 +10,6 @@ use neon::prelude::*;
 
 use crate::callback::ClosureGuard;
 use crate::ffi::{self, FfiStorage};
-use crate::gtk_dispatch::GtkDispatcher;
 use crate::js_dispatch;
 use crate::types::Type;
 use crate::value;
@@ -117,7 +116,6 @@ impl ClosureContext {
 
         let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
         closure_holder.store(closure_ptr, Ordering::Release);
-        unsafe { GtkDispatcher::install_closure_invalidate_notifier(closure_ptr) };
 
         unsafe { glib::Closure::from_glib_full(closure_ptr) }
     }
@@ -218,7 +216,6 @@ impl CallbackKind {
                 });
 
                 let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
-                unsafe { GtkDispatcher::install_closure_invalidate_notifier(closure_ptr) };
 
                 ffi::FfiValue::Trampoline(ffi::TrampolineValue {
                     fn_ptr: crate::callback::async_ready_trampoline as *mut c_void,
@@ -306,8 +303,8 @@ impl CallbackType {
     }
 }
 
-impl ffi::FfiEncode for CallbackType {
-    fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl CallbackType {
+    pub fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 
         let callback = match val {

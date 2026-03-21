@@ -7,15 +7,11 @@
 //! # Key Components
 //!
 //! - [`FfiValue`]: Raw FFI-compatible value representation
-//! - [`FfiEncode`]: Trait for encoding JavaScript values to FFI
-//! - [`FfiDecode`]: Trait for decoding FFI values to JavaScript
 //! - [`FfiStorage`]: Temporary storage for FFI call arguments
 
-mod encode;
 mod storage;
 mod value;
 
-pub use encode::{FfiDecode, FfiEncode};
 pub use storage::{FfiStorage, FfiStorageKind, HashTableData, HashTableStorage};
 pub use value::{FfiValue, TrampolineValue};
 

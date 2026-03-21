@@ -424,8 +424,8 @@ impl From<IntegerKind> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for IntegerKind {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl IntegerKind {
+    pub fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let number = match value {
             value::Value::Number(n) => *n,
             value::Value::Object(handle) => handle
@@ -438,10 +438,8 @@ impl ffi::FfiEncode for IntegerKind {
 
         Ok(self.to_ffi_value(number))
     }
-}
 
-impl ffi::FfiDecode for IntegerKind {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         Ok(value::Value::Number(ffi_value.to_number()?))
     }
 }
@@ -493,14 +491,12 @@ impl From<&IntegerType> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for IntegerType {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl IntegerType {
+    pub fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         self.kind.encode(value, optional)
     }
-}
 
-impl ffi::FfiDecode for IntegerType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         self.kind.decode(ffi_value)
     }
 }
@@ -600,8 +596,8 @@ impl From<FloatKind> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for FloatKind {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl FloatKind {
+    pub fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let number = match value {
             value::Value::Number(n) => *n,
             value::Value::Null | value::Value::Undefined if optional => 0.0,
@@ -610,10 +606,8 @@ impl ffi::FfiEncode for FloatKind {
 
         Ok(self.to_ffi_value(number))
     }
-}
 
-impl ffi::FfiDecode for FloatKind {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         Ok(value::Value::Number(ffi_value.to_number()?))
     }
 }

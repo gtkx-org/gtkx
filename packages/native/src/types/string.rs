@@ -49,8 +49,8 @@ impl From<&StringType> for libffi::Type {
     }
 }
 
-impl ffi::FfiEncode for StringType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
+impl StringType {
+    pub fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         match value {
             value::Value::String(s) => {
                 let cstring = CString::new(s.as_bytes())?;
@@ -66,10 +66,8 @@ impl ffi::FfiEncode for StringType {
             _ => bail!("Expected a String for string type, got {:?}", value),
         }
     }
-}
 
-impl ffi::FfiDecode for StringType {
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+    pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(str_ptr) = ffi_value.as_non_null_ptr("string")? else {
             return Ok(value::Value::Null);
         };

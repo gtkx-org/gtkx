@@ -23,11 +23,9 @@
 
 mod boxed;
 mod fundamental;
-mod owned_ptr;
 
 pub use boxed::Boxed;
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
-pub(crate) use owned_ptr::OwnedPtr;
 
 use std::ffi::c_void;
 

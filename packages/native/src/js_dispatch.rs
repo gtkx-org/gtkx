@@ -17,11 +17,7 @@
 //!   dispatching pending GTK tasks while waiting to prevent deadlocks.
 
 use std::collections::VecDeque;
-use std::sync::{
-    Arc, Mutex, OnceLock,
-    atomic::{AtomicUsize, Ordering},
-    mpsc,
-};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 use neon::prelude::*;
 
@@ -37,7 +33,6 @@ struct PendingCallback {
 pub struct JsDispatcher {
     queue: Mutex<VecDeque<PendingCallback>>,
     pub wake: WaitSignal,
-    executing_callback_depth: AtomicUsize,
 }
 
 static DISPATCHER: OnceLock<JsDispatcher> = OnceLock::new();
@@ -51,12 +46,7 @@ impl JsDispatcher {
         Self {
             queue: Mutex::new(VecDeque::new()),
             wake: WaitSignal::new(),
-            executing_callback_depth: AtomicUsize::new(0),
         }
-    }
-
-    pub fn is_executing_callback(&self) -> bool {
-        self.executing_callback_depth.load(Ordering::Acquire) > 0
     }
 
     fn push_callback(&self, callback: PendingCallback) {
@@ -94,14 +84,12 @@ impl JsDispatcher {
 
     pub fn process_pending<'a, C: Context<'a>>(&self, cx: &mut C) {
         while let Some(pending) = self.pop_callback() {
-            self.executing_callback_depth.fetch_add(1, Ordering::AcqRel);
             let result = Self::execute_callback(
                 cx,
                 &pending.callback,
                 &pending.args,
                 pending.capture_result,
             );
-            self.executing_callback_depth.fetch_sub(1, Ordering::AcqRel);
             let _ = pending.result_tx.send(result);
             self.wake.notify();
         }
@@ -118,11 +106,8 @@ impl JsDispatcher {
     where
         F: FnOnce(Result<Value, ()>) -> T,
     {
-        gtk_dispatch::GtkDispatcher::global().enter_callback();
         let rx = self.queue(channel, callback.clone(), args, capture_result);
-        let result = self.wait_for_result(rx, on_result);
-        gtk_dispatch::GtkDispatcher::global().exit_callback();
-        result
+        self.wait_for_result(rx, on_result)
     }
 
     fn wait_for_result<T, F>(&self, rx: mpsc::Receiver<Result<Value, ()>>, on_result: F) -> T
@@ -130,7 +115,7 @@ impl JsDispatcher {
         F: FnOnce(Result<Value, ()>) -> T,
     {
         loop {
-            gtk_dispatch::GtkDispatcher::global().dispatch_callback_pending();
+            gtk_dispatch::GtkDispatcher::global().dispatch_pending();
 
             match rx.try_recv() {
                 Ok(result) => return on_result(result),
