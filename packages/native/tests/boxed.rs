@@ -279,7 +279,7 @@ fn plain_struct_debug_format() {
 
     let debug_str = format!("{:?}", boxed);
     assert!(debug_str.contains("Boxed"));
-    assert!(debug_str.contains("is_owned: true"));
+    assert!(debug_str.contains("owned: true"));
 }
 
 #[test]

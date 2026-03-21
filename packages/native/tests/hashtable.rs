@@ -4,7 +4,7 @@ use std::ffi::c_void;
 
 use gtk4::glib;
 
-use native::ffi::{FfiDecode as _, FfiEncode as _, FfiValue, HashTableStorage};
+use native::ffi::{FfiValue, HashTableStorage};
 use native::types::{
     FloatKind, HashTableEntryEncoder, HashTableType, IntegerKind, IntegerType, Ownership,
     StringType, StructType, Type,

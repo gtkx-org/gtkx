@@ -188,6 +188,7 @@ impl HashTableType {
     }
 
     fn encode_hashtable(
+        &self,
         tuples: &[value::Value],
         key_encoder: HashTableEntryEncoder,
         value_encoder: HashTableEntryEncoder,
@@ -211,6 +212,9 @@ impl HashTableType {
             key_storage = ks;
             val_storage = vs;
 
+            let key_ptr = self.key_type.ref_for_transfer(key_ptr)?;
+            let val_ptr = self.value_type.ref_for_transfer(val_ptr)?;
+
             unsafe {
                 glib::ffi::g_hash_table_insert(hash_table, key_ptr, val_ptr);
             }
@@ -222,6 +226,7 @@ impl HashTableType {
                 handle: hash_table,
                 keys: key_storage,
                 values: val_storage,
+                should_free: self.ownership.is_borrowed(),
             }),
         )))
     }
@@ -254,7 +259,7 @@ impl HashTableType {
                 anyhow::anyhow!("Unsupported GHashTable value type: {:?}", self.value_type)
             })?;
 
-        Self::encode_hashtable(tuples, key_encoder, value_encoder)
+        self.encode_hashtable(tuples, key_encoder, value_encoder)
     }
 
     pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {

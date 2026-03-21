@@ -33,10 +33,18 @@ pub enum FfiStorageKind {
     F64Vec(Vec<f64>),
     StringArray(Vec<std::ffi::CString>, Vec<*mut c_void>),
     ObjectArray(Vec<crate::managed::NativeHandle>, Vec<*mut c_void>),
-    GList(Vec<crate::managed::NativeHandle>, *mut glib::ffi::GList),
-    GSList(Vec<crate::managed::NativeHandle>, *mut glib::ffi::GSList),
-    StringGList(Vec<std::ffi::CString>, *mut glib::ffi::GList),
-    StringGSList(Vec<std::ffi::CString>, *mut glib::ffi::GSList),
+    GList(
+        Vec<crate::managed::NativeHandle>,
+        *mut glib::ffi::GList,
+        bool,
+    ),
+    GSList(
+        Vec<crate::managed::NativeHandle>,
+        *mut glib::ffi::GSList,
+        bool,
+    ),
+    StringGList(Vec<std::ffi::CString>, *mut glib::ffi::GList, bool),
+    StringGSList(Vec<std::ffi::CString>, *mut glib::ffi::GSList, bool),
     CString(std::ffi::CString),
     Buffer(Vec<u8>),
     BoxedValue(Box<super::FfiValue>),
@@ -49,6 +57,7 @@ pub struct HashTableData {
     pub handle: *mut glib::ffi::GHashTable,
     pub keys: HashTableStorage,
     pub values: HashTableStorage,
+    pub should_free: bool,
 }
 
 #[derive(Debug)]
@@ -173,27 +182,27 @@ impl Drop for FfiStorage {
                 }
             }
             FfiStorageKind::HashTable(data) => {
-                if !data.handle.is_null() {
+                if data.should_free && !data.handle.is_null() {
                     unsafe { glib::ffi::g_hash_table_unref(data.handle) };
                 }
             }
-            FfiStorageKind::GList(_, list_ptr) => {
-                if !list_ptr.is_null() {
+            FfiStorageKind::GList(_, list_ptr, should_free) => {
+                if *should_free && !list_ptr.is_null() {
                     unsafe { glib::ffi::g_list_free(*list_ptr) };
                 }
             }
-            FfiStorageKind::GSList(_, list_ptr) => {
-                if !list_ptr.is_null() {
+            FfiStorageKind::GSList(_, list_ptr, should_free) => {
+                if *should_free && !list_ptr.is_null() {
                     unsafe { glib::ffi::g_slist_free(*list_ptr) };
                 }
             }
-            FfiStorageKind::StringGList(_, list_ptr) => {
-                if !list_ptr.is_null() {
+            FfiStorageKind::StringGList(_, list_ptr, should_free) => {
+                if *should_free && !list_ptr.is_null() {
                     unsafe { glib::ffi::g_list_free(*list_ptr) };
                 }
             }
-            FfiStorageKind::StringGSList(_, list_ptr) => {
-                if !list_ptr.is_null() {
+            FfiStorageKind::StringGSList(_, list_ptr, should_free) => {
+                if *should_free && !list_ptr.is_null() {
                     unsafe { glib::ffi::g_slist_free(*list_ptr) };
                 }
             }

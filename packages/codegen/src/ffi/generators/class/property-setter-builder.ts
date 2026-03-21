@@ -13,7 +13,7 @@ import { StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { getSyntheticSetterPrimitiveInfo } from "../../../core/type-system/ffi-types.js";
+import { getSyntheticSetterPrimitiveInfo, type MappedType } from "../../../core/type-system/ffi-types.js";
 import {
     collectDirectMembers,
     collectOwnAndInterfaceMethodNames,
@@ -69,7 +69,7 @@ export class PropertySetterBuilder {
 
     private buildSetterStructure(prop: GirProperty): MethodDeclarationStructure | null {
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
-        const gvalueSetterInfo = this.getGValueSetterInfo(prop);
+        const gvalueSetterInfo = this.getGValueSetterInfo(prop, typeMapping);
 
         if (!gvalueSetterInfo) {
             return null;
@@ -98,14 +98,13 @@ export class PropertySetterBuilder {
         };
     }
 
-    private getGValueSetterInfo(prop: GirProperty): GValueSetterInfo | null {
+    private getGValueSetterInfo(prop: GirProperty, typeMapping: MappedType): GValueSetterInfo | null {
         const typeName = String(prop.type.name);
         const primitiveInfo = getSyntheticSetterPrimitiveInfo(typeName);
         if (primitiveInfo) {
             return primitiveInfo;
         }
 
-        const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
         if (typeMapping.kind === "enum") {
             return { gtypeName: "gint", setMethod: "setInt", isEnum: true };
         }
@@ -115,8 +114,9 @@ export class PropertySetterBuilder {
         }
 
         if (typeMapping.kind === "class") {
-            if (this.isFundamentalClass(typeName)) {
-                return null;
+            const fundamentalInfo = this.getFundamentalClassSetterInfo(typeName);
+            if (fundamentalInfo) {
+                return fundamentalInfo;
             }
             return { staticConstructor: "newFromObject", isClass: true };
         }
@@ -125,13 +125,47 @@ export class PropertySetterBuilder {
             return { staticConstructor: "newFromObject", isInterface: true };
         }
 
+        if (typeMapping.kind === "record") {
+            return this.getRecordSetterInfo(typeName, typeMapping);
+        }
+
         return null;
     }
 
-    private isFundamentalClass(typeName: string): boolean {
+    private getFundamentalClassSetterInfo(typeName: string): GValueSetterInfo | null {
         const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
         const cls = this.repository.resolveClass(qualifiedName as QualifiedName);
-        return cls?.fundamental ?? false;
+        if (!cls?.fundamental) return null;
+
+        if (cls.refFunc === "g_variant_ref_sink") {
+            return { staticConstructor: "newFromVariant" };
+        }
+
+        if (cls.refFunc === "g_param_spec_ref_sink") {
+            return { gtypeName: "GParam", setMethod: "setParam", isFundamental: true };
+        }
+
+        if (cls.glibTypeName) {
+            return { staticConstructor: "newFromBoxed" };
+        }
+
+        return null;
+    }
+
+    private getRecordSetterInfo(typeName: string, typeMapping: MappedType): GValueSetterInfo | null {
+        if (typeMapping.ffi.type === "boxed") {
+            return { staticConstructor: "newFromBoxed" };
+        }
+
+        if (typeMapping.ffi.type === "fundamental") {
+            const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
+            const record = this.repository.resolveRecord(qualifiedName as QualifiedName);
+            if (record?.glibTypeName) {
+                return { staticConstructor: "newFromBoxed" };
+            }
+        }
+
+        return null;
     }
 
     private writeSetterBody(propertyName: string, setterInfo: GValueSetterInfo): WriterFunction {
@@ -141,6 +175,10 @@ export class PropertySetterBuilder {
         return (writer) => {
             if (setterInfo.staticConstructor) {
                 writer.writeLine(`const gvalue = GObject.Value.${setterInfo.staticConstructor}(value);`);
+            } else if (setterInfo.isFundamental) {
+                writer.writeLine(`const gvalue = new GObject.Value();`);
+                writer.writeLine(`gvalue.init(GObject.typeFromName("${setterInfo.gtypeName}"));`);
+                writer.writeLine(`gvalue.${setterInfo.setMethod}(value);`);
             } else {
                 writer.writeLine(`const gvalue = new GObject.Value();`);
                 writer.writeLine(`gvalue.init(GObject.typeFromName("${setterInfo.gtypeName}"));`);
@@ -175,4 +213,5 @@ interface GValueSetterInfo {
     isFlags?: boolean;
     isClass?: boolean;
     isInterface?: boolean;
+    isFundamental?: boolean;
 }

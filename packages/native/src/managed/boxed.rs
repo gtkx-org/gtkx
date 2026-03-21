@@ -88,6 +88,12 @@ impl Boxed {
         self.ptr
     }
 
+    #[inline]
+    #[must_use]
+    pub fn is_owned(&self) -> bool {
+        self.owned
+    }
+
     #[must_use]
     pub fn gtype(&self) -> Option<glib::Type> {
         self.gtype

@@ -114,6 +114,10 @@ impl GtkDispatcher {
         self.js_wait_depth.fetch_sub(1, Ordering::AcqRel);
     }
 
+    pub fn is_js_waiting(&self) -> bool {
+        self.js_wait_depth.load(Ordering::Acquire) > 0
+    }
+
     pub fn mark_started(&self) {
         self.stopped.store(false, Ordering::Release);
         self.started.store(true, Ordering::Release);

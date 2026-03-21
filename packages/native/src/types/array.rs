@@ -204,29 +204,39 @@ impl ArrayType {
                     }
                 }
 
+                let should_free = self.ownership.is_borrowed();
+                let dup_strings =
+                    matches!(&*self.item_type, Type::String(s) if s.ownership.is_full());
+
                 match self.kind {
                     ArrayKind::GList => {
                         let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
                         for s in &cstrings {
-                            list = unsafe {
-                                glib::ffi::g_list_append(list, s.as_ptr() as *mut c_void)
+                            let ptr = if dup_strings {
+                                unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
+                            } else {
+                                s.as_ptr() as *mut c_void
                             };
+                            list = unsafe { glib::ffi::g_list_append(list, ptr) };
                         }
                         Ok(ffi::FfiValue::Storage(FfiStorage::new(
                             list as *mut c_void,
-                            FfiStorageKind::StringGList(cstrings, list),
+                            FfiStorageKind::StringGList(cstrings, list, should_free),
                         )))
                     }
                     ArrayKind::GSList => {
                         let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
                         for s in cstrings.iter().rev() {
-                            list = unsafe {
-                                glib::ffi::g_slist_prepend(list, s.as_ptr() as *mut c_void)
+                            let ptr = if dup_strings {
+                                unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
+                            } else {
+                                s.as_ptr() as *mut c_void
                             };
+                            list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
                         }
                         Ok(ffi::FfiValue::Storage(FfiStorage::new(
                             list as *mut c_void,
-                            FfiStorageKind::StringGSList(cstrings, list),
+                            FfiStorageKind::StringGSList(cstrings, list, should_free),
                         )))
                     }
                     _ => {
@@ -274,12 +284,15 @@ impl ArrayType {
                     return Ok(ffi::FfiValue::Storage(buffer.into()));
                 }
 
+                let should_free = self.ownership.is_borrowed();
+
                 match self.kind {
                     ArrayKind::GList => {
                         let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
                         for handle in &handles {
                             match handle.get_ptr() {
                                 Some(ptr) => {
+                                    let ptr = self.item_type.ref_for_transfer(ptr)?;
                                     list = unsafe { glib::ffi::g_list_append(list, ptr) };
                                 }
                                 None => bail!("GObject in GList has been garbage collected"),
@@ -287,7 +300,7 @@ impl ArrayType {
                         }
                         Ok(ffi::FfiValue::Storage(FfiStorage::new(
                             list as *mut c_void,
-                            FfiStorageKind::GList(handles, list),
+                            FfiStorageKind::GList(handles, list, should_free),
                         )))
                     }
                     ArrayKind::GSList => {
@@ -295,6 +308,7 @@ impl ArrayType {
                         for handle in handles.iter().rev() {
                             match handle.get_ptr() {
                                 Some(ptr) => {
+                                    let ptr = self.item_type.ref_for_transfer(ptr)?;
                                     list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
                                 }
                                 None => bail!("GObject in GSList has been garbage collected"),
@@ -302,14 +316,14 @@ impl ArrayType {
                         }
                         Ok(ffi::FfiValue::Storage(FfiStorage::new(
                             list as *mut c_void,
-                            FfiStorageKind::GSList(handles, list),
+                            FfiStorageKind::GSList(handles, list, should_free),
                         )))
                     }
                     _ => {
                         let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(handles.len());
                         for handle in &handles {
                             match handle.get_ptr() {
-                                Some(ptr) => ptrs.push(ptr),
+                                Some(ptr) => ptrs.push(self.item_type.ref_for_transfer(ptr)?),
                                 None => bail!("GObject in array has been garbage collected"),
                             }
                         }

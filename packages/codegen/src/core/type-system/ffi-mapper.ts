@@ -128,7 +128,9 @@ export class FfiMapper {
                 type.sizeParamIndex !== undefined ? type.sizeParamIndex + sizeParamOffset : undefined;
 
             if (type.elementType) {
-                const elementTransferOwnership = this.deriveElementTransfer(type.transferOwnership ?? parentTransferOwnership);
+                const elementTransferOwnership = this.deriveElementTransfer(
+                    type.transferOwnership ?? parentTransferOwnership,
+                );
                 const elementResult = this.mapType(
                     type.elementType,
                     isReturn,
@@ -712,7 +714,9 @@ export class FfiMapper {
         const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
 
         if (type.elementType) {
-            const elementTransferOwnership = this.deriveElementTransfer(type.transferOwnership ?? parentTransferOwnership);
+            const elementTransferOwnership = this.deriveElementTransfer(
+                type.transferOwnership ?? parentTransferOwnership,
+            );
             const elementResult = this.mapType(type.elementType, isReturn, elementTransferOwnership);
             imports.push(...elementResult.imports);
 

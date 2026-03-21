@@ -121,6 +121,7 @@ fn hashtable_storage_unrefs_on_drop() {
                 handle: hash_table,
                 keys: HashTableStorage::Integers,
                 values: HashTableStorage::Integers,
+                should_free: true,
             }),
         );
     }
@@ -137,6 +138,7 @@ fn hashtable_storage_null_handle_safe_on_drop() {
                 handle: std::ptr::null_mut(),
                 keys: HashTableStorage::Integers,
                 values: HashTableStorage::Integers,
+                should_free: true,
             }),
         );
     }

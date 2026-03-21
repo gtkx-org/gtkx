@@ -94,6 +94,13 @@ export class PropertyAnalyzer {
             return true;
         }
 
+        if (
+            typeMapping.kind === "record" &&
+            (typeMapping.ffi.type === "boxed" || typeMapping.ffi.type === "fundamental")
+        ) {
+            return true;
+        }
+
         return false;
     }
 

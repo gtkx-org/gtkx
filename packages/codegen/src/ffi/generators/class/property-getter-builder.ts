@@ -4,7 +4,7 @@ import { StructureKind } from "ts-morph";
 import type { GenerationContext } from "../../../core/generation-context.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
-import { getSyntheticGetterPrimitiveInfo } from "../../../core/type-system/ffi-types.js";
+import { getSyntheticGetterPrimitiveInfo, type MappedType } from "../../../core/type-system/ffi-types.js";
 import {
     collectDirectMembers,
     collectOwnAndInterfaceMethodNames,
@@ -60,7 +60,7 @@ export class PropertyGetterBuilder {
 
     private buildGetterStructure(prop: GirProperty): MethodDeclarationStructure | null {
         const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
-        const gvalueGetterInfo = this.getGValueGetterInfo(prop);
+        const gvalueGetterInfo = this.getGValueGetterInfo(prop, typeMapping);
 
         if (!gvalueGetterInfo) {
             return null;
@@ -70,7 +70,10 @@ export class PropertyGetterBuilder {
         let returnType = typeMapping.ts;
         const isNullable = typeMapping.nullable ?? false;
 
-        if (gvalueGetterInfo.isInterface && !isNullable) {
+        if (
+            (gvalueGetterInfo.isInterface || gvalueGetterInfo.isBoxed || gvalueGetterInfo.isFundamental) &&
+            !isNullable
+        ) {
             returnType = `${returnType} | null`;
         }
 
@@ -89,14 +92,13 @@ export class PropertyGetterBuilder {
         };
     }
 
-    private getGValueGetterInfo(prop: GirProperty): GValueGetterInfo | null {
+    private getGValueGetterInfo(prop: GirProperty, typeMapping: MappedType): GValueGetterInfo | null {
         const typeName = String(prop.type.name);
         const primitiveInfo = getSyntheticGetterPrimitiveInfo(typeName);
         if (primitiveInfo) {
             return primitiveInfo;
         }
 
-        const typeMapping = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
         if (typeMapping.kind === "enum") {
             return { gtypeName: "gint", getMethod: "getEnum", isEnum: true };
         }
@@ -106,8 +108,9 @@ export class PropertyGetterBuilder {
         }
 
         if (typeMapping.kind === "class") {
-            if (this.isFundamentalClass(typeName)) {
-                return null;
+            const fundamentalInfo = this.getFundamentalClassGetterInfo(typeName, typeMapping);
+            if (fundamentalInfo) {
+                return fundamentalInfo;
             }
             return { getMethod: "getObject", isClass: true };
         }
@@ -116,13 +119,57 @@ export class PropertyGetterBuilder {
             return { getMethod: "getObject", isInterface: true };
         }
 
+        if (typeMapping.kind === "record") {
+            return this.getRecordGetterInfo(typeName, typeMapping);
+        }
+
         return null;
     }
 
-    private isFundamentalClass(typeName: string): boolean {
+    private getFundamentalClassGetterInfo(typeName: string, typeMapping: MappedType): GValueGetterInfo | null {
         const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
         const cls = this.repository.resolveClass(qualifiedName as QualifiedName);
-        return cls?.fundamental ?? false;
+        if (!cls?.fundamental) return null;
+
+        if (cls.refFunc === "g_variant_ref_sink") {
+            return { gtypeName: "GVariant", getMethod: "getVariant", isFundamental: true };
+        }
+
+        if (cls.refFunc === "g_param_spec_ref_sink") {
+            return { gtypeName: "GParam", getMethod: "getParam", isFundamental: true };
+        }
+
+        if (cls.glibTypeName) {
+            return { gtypeName: cls.glibTypeName, getMethod: "getBoxed", isBoxed: true, tsType: typeMapping.ts };
+        }
+
+        return null;
+    }
+
+    private getRecordGetterInfo(typeName: string, typeMapping: MappedType): GValueGetterInfo | null {
+        if (typeMapping.ffi.type === "boxed" && typeof typeMapping.ffi.innerType === "string") {
+            return {
+                gtypeName: typeMapping.ffi.innerType as string,
+                getMethod: "getBoxed",
+                isBoxed: true,
+                tsType: typeMapping.ts,
+            };
+        }
+
+        if (typeMapping.ffi.type === "fundamental") {
+            const qualifiedName = typeName.includes(".") ? typeName : `${this.options.namespace}.${typeName}`;
+            const record = this.repository.resolveRecord(qualifiedName as QualifiedName);
+            if (record?.glibTypeName) {
+                return {
+                    gtypeName: record.glibTypeName,
+                    getMethod: "getBoxed",
+                    isBoxed: true,
+                    tsType: typeMapping.ts,
+                };
+            }
+        }
+
+        return null;
     }
 
     private writeGetterBody(propertyName: string, getterInfo: GValueGetterInfo, returnType: string): WriterFunction {
@@ -158,7 +205,11 @@ export class PropertyGetterBuilder {
             });
             writer.writeLine(");");
 
-            if (getterInfo.isClass || getterInfo.isInterface) {
+            if (getterInfo.isBoxed) {
+                writer.writeLine(`return gvalue.${getterInfo.getMethod}(${getterInfo.tsType});`);
+            } else if (getterInfo.isFundamental) {
+                writer.writeLine(`return gvalue.${getterInfo.getMethod}() as ${returnType};`);
+            } else if (getterInfo.isClass || getterInfo.isInterface) {
                 writer.writeLine(`return gvalue.${getterInfo.getMethod}() as ${returnType};`);
             } else if (getterInfo.isEnum || getterInfo.isFlags) {
                 writer.writeLine(`return gvalue.${getterInfo.getMethod}() as ${returnType};`);
@@ -179,4 +230,7 @@ interface GValueGetterInfo {
     isFlags?: boolean;
     isClass?: boolean;
     isInterface?: boolean;
+    isBoxed?: boolean;
+    isFundamental?: boolean;
+    tsType?: string;
 }

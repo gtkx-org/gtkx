@@ -42,20 +42,11 @@ declare module "../generated/gobject/value.js" {
         holds(gtype: number): boolean;
 
         /**
-         * Gets the contents of a G_TYPE_BOXED derived GValue.
-         * Returns a borrowed reference to the boxed value.
+         * Gets an owned copy of the boxed value from a G_TYPE_BOXED derived GValue.
          * @param targetType - The class constructor to wrap the result with
-         * @returns The boxed value wrapped in the target type, or null
+         * @returns An owned copy of the boxed value wrapped in the target type, or null
          */
         getBoxed<T extends NativeObject>(targetType: NativeClass<T>): T | null;
-
-        /**
-         * Gets the contents of a G_TYPE_BOXED derived GValue, duplicating the value.
-         * Returns an owned copy that must be freed by the caller.
-         * @param targetType - The class constructor to wrap the result with
-         * @returns A duplicated boxed value wrapped in the target type, or null
-         */
-        dupBoxed<T extends NativeObject>(targetType: NativeClass<T>): T | null;
     }
 
     namespace Value {
@@ -160,36 +151,6 @@ Value.prototype.holds = function (gtype: number): boolean {
 };
 
 Value.prototype.getBoxed = function <T extends NativeObject>(targetType: NativeClass<T>): T | null {
-    const glibTypeName = targetType.glibTypeName;
-    if (!glibTypeName) {
-        throw new Error("targetType must have a glibTypeName");
-    }
-    const ptr = call(
-        "libgobject-2.0.so.0",
-        "g_value_get_boxed",
-        [
-            {
-                type: {
-                    type: "boxed",
-                    ownership: "borrowed",
-                    innerType: "GValue",
-                    library: "libgobject-2.0.so.0",
-                },
-                value: this.handle,
-            },
-        ],
-        {
-            type: "boxed",
-            ownership: "borrowed",
-            innerType: glibTypeName,
-            library: "libgobject-2.0.so.0",
-        },
-    );
-    if (ptr === null) return null;
-    return getNativeObject(ptr as NativeHandle, targetType);
-};
-
-Value.prototype.dupBoxed = function <T extends NativeObject>(targetType: NativeClass<T>): T | null {
     const glibTypeName = targetType.glibTypeName;
     if (!glibTypeName) {
         throw new Error("targetType must have a glibTypeName");

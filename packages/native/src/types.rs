@@ -34,7 +34,7 @@
 use std::ffi::{c_char, c_void};
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::FromGlibPtrNone as _};
+use gtk4::glib::{self, translate::FromGlibPtrNone as _, translate::IntoGlib as _};
 use libffi::middle as libffi;
 use neon::prelude::*;
 
@@ -294,6 +294,39 @@ impl Type {
                 Ok(value::Value::Array(values))
             }
             _ => bail!("Unsupported {} type: {:?}", context, self),
+        }
+    }
+}
+
+impl Type {
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    pub fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+        if ptr.is_null() {
+            return Ok(ptr);
+        }
+        match self {
+            Type::GObject(t) if t.ownership.is_full() => {
+                unsafe { glib::gobject_ffi::g_object_ref(ptr as *mut _) };
+                Ok(ptr)
+            }
+            Type::Boxed(t) if t.ownership.is_full() => {
+                if let Some(gtype) = t.gtype() {
+                    Ok(unsafe {
+                        glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
+                    })
+                } else {
+                    Ok(ptr)
+                }
+            }
+            Type::Fundamental(t) if t.ownership.is_full() => {
+                let (ref_fn, _) = t.lookup_fns()?;
+                if let Some(ref_fn) = ref_fn {
+                    Ok(unsafe { ref_fn(ptr) })
+                } else {
+                    Ok(ptr)
+                }
+            }
+            _ => Ok(ptr),
         }
     }
 }

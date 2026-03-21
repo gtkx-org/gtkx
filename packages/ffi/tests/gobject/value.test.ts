@@ -188,7 +188,7 @@ describe("Value instance methods", () => {
     });
 
     describe("getBoxed", () => {
-        it("extracts a boxed value from a GValue", () => {
+        it("returns an owned copy of the boxed value", () => {
             const rgba = new Gdk.RGBA({ red: 0.5, green: 0.25, blue: 0.75, alpha: 1.0 });
             const v = Value.newFromBoxed(rgba);
             const extracted = v.getBoxed(Gdk.RGBA);
@@ -196,19 +196,7 @@ describe("Value instance methods", () => {
             expect(extracted?.getRed()).toBeCloseTo(0.5);
             expect(extracted?.getGreen()).toBeCloseTo(0.25);
             expect(extracted?.getBlue()).toBeCloseTo(0.75);
-        });
-    });
-
-    describe("dupBoxed", () => {
-        it("duplicates a boxed value from a GValue", () => {
-            const rgba = new Gdk.RGBA({ red: 0.1, green: 0.2, blue: 0.3, alpha: 0.4 });
-            const v = Value.newFromBoxed(rgba);
-            const duped = v.dupBoxed(Gdk.RGBA);
-            expect(duped).not.toBeNull();
-            expect(duped?.getRed()).toBeCloseTo(0.1);
-            expect(duped?.getGreen()).toBeCloseTo(0.2);
-            expect(duped?.getBlue()).toBeCloseTo(0.3);
-            expect(duped?.getAlpha()).toBeCloseTo(0.4);
+            expect(extracted?.getAlpha()).toBeCloseTo(1.0);
         });
     });
 });
