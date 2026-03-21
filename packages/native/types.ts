@@ -68,15 +68,15 @@ type HashTableType = {
 
 type RefType = { type: "ref"; innerType: Type };
 
+type UnicharType = { type: "unichar" };
+
 type VoidType = { type: "void" };
 
 export type CallbackType = {
     type: "callback";
-    kind: "closure" | "asyncReadyCallback";
+    kind: "closure";
     argTypes: Type[];
     returnType: Type;
-    sourceType?: Type;
-    resultType?: Type;
 };
 
 export type TrampolineType = {
@@ -85,6 +85,7 @@ export type TrampolineType = {
     returnType: Type;
     hasDestroy?: boolean;
     userDataIndex?: number;
+    scope?: "call" | "notified" | "async" | "forever";
 };
 
 /**
@@ -116,6 +117,7 @@ export type Type =
     | RefType
     | CallbackType
     | TrampolineType
+    | UnicharType
     | VoidType;
 
 /**

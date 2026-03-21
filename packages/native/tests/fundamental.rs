@@ -82,7 +82,7 @@ fn from_glib_none_refs_pointer() {
     let initial_ref = get_param_spec_refcount(ptr);
 
     let fundamental =
-        Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref));
+        unsafe { Fundamental::from_glib_none(ptr, Some(param_spec_ref), Some(param_spec_unref)) };
 
     assert!(fundamental.is_owned());
     assert_eq!(fundamental.as_ptr(), ptr);
@@ -97,11 +97,13 @@ fn from_glib_none_refs_pointer() {
 
 #[test]
 fn from_glib_none_null_ptr_safe() {
-    let fundamental: Fundamental = Fundamental::from_glib_none(
-        std::ptr::null_mut(),
-        Some(param_spec_ref),
-        Some(param_spec_unref),
-    );
+    let fundamental: Fundamental = unsafe {
+        Fundamental::from_glib_none(
+            std::ptr::null_mut(),
+            Some(param_spec_ref),
+            Some(param_spec_unref),
+        )
+    };
 
     assert!(!fundamental.is_owned());
     assert!(fundamental.as_ptr().is_null());
@@ -128,11 +130,13 @@ fn clone_increases_refcount() {
 
 #[test]
 fn clone_null_ptr_safe() {
-    let fundamental: Fundamental = Fundamental::from_glib_none(
-        std::ptr::null_mut(),
-        Some(param_spec_ref),
-        Some(param_spec_unref),
-    );
+    let fundamental: Fundamental = unsafe {
+        Fundamental::from_glib_none(
+            std::ptr::null_mut(),
+            Some(param_spec_ref),
+            Some(param_spec_unref),
+        )
+    };
 
     let cloned = fundamental.clone();
 
@@ -164,7 +168,7 @@ fn from_glib_none_without_ref_fn_does_not_ref() {
     let ptr = create_param_spec();
     let initial_ref = get_param_spec_refcount(ptr);
 
-    let fundamental = Fundamental::from_glib_none(ptr, None, Some(param_spec_unref));
+    let fundamental = unsafe { Fundamental::from_glib_none(ptr, None, Some(param_spec_unref)) };
 
     assert!(fundamental.is_owned());
     assert_eq!(get_param_spec_refcount(ptr), initial_ref);

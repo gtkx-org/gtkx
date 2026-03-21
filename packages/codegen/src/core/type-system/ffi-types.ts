@@ -58,6 +58,8 @@ export type FfiTypeDescriptor = {
     hasDestroy?: boolean;
 
     userDataIndex?: number;
+
+    scope?: "call" | "notified" | "async" | "forever";
 };
 
 /**
@@ -171,6 +173,7 @@ export const PRIMITIVE_TYPE_MAP = new Map<string, { ts: string; ffi: FfiTypeDesc
     ["gpointer", { ts: "number", ffi: FFI_POINTER }],
     ["gconstpointer", { ts: "number", ffi: FFI_POINTER }],
     ["guintptr", { ts: "number", ffi: FFI_UINT64 }],
+    ["gunichar", { ts: "string", ffi: { type: "unichar" } }],
     ["gintptr", { ts: "number", ffi: FFI_INT64 }],
     ["gfloat", { ts: "number", ffi: FFI_FLOAT32 }],
     ["gdouble", { ts: "number", ffi: FFI_FLOAT64 }],
@@ -645,6 +648,7 @@ const FFI_TYPE_BYTE_SIZES: Record<string, number> = {
     int64: 8,
     uint64: 8,
     float64: 8,
+    unichar: 4,
 };
 
 export const getFfiTypeByteSize = (ffiType: string): number => FFI_TYPE_BYTE_SIZES[ffiType] ?? 8;

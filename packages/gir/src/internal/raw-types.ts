@@ -183,7 +183,7 @@ export type RawParameter = {
     callerAllocates?: boolean;
     nullable?: boolean;
     optional?: boolean;
-    scope?: "async" | "call" | "notified";
+    scope?: "async" | "call" | "notified" | "forever";
     closure?: number;
     destroy?: number;
     transferOwnership?: "none" | "full" | "container";

@@ -162,6 +162,7 @@ export class FfiTypeWriter {
             case "float32":
             case "float64":
             case "boolean":
+            case "unichar":
             case "void":
                 return [{ name: "type", value: `"${type.type}"` }];
             case "enum":
@@ -352,6 +353,10 @@ export class FfiTypeWriter {
 
         if (type.userDataIndex !== undefined) {
             props.push({ name: "userDataIndex", value: type.userDataIndex });
+        }
+
+        if (type.scope) {
+            props.push({ name: "scope", value: `"${type.scope}"` });
         }
 
         return props;

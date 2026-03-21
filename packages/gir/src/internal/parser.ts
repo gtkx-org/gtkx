@@ -344,7 +344,7 @@ export class RawGirParser {
             callerAllocates: callerAllocates === "1",
             nullable: param["@_nullable"] === "1",
             optional: param["@_allow-none"] === "1" || param["@_optional"] === "1",
-            scope: scope as "async" | "call" | "notified" | undefined,
+            scope: scope as "async" | "call" | "notified" | "forever" | undefined,
             closure: closure !== undefined ? parseInt(closure, 10) : undefined,
             destroy: destroy !== undefined ? parseInt(destroy, 10) : undefined,
             transferOwnership:

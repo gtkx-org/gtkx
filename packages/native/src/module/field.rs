@@ -141,10 +141,18 @@ impl ReadRequest {
                 }
 
                 let (ref_fn, unref_fn) = fundamental_type.lookup_fns()?;
-                let fundamental = Fundamental::from_glib_none(ptr, ref_fn, unref_fn);
+                let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
                 Ok(Value::Object(NativeValue::Fundamental(fundamental).into()))
             }
-            _ => bail!("Unsupported field type for read: {:?}", self.field_type),
+            Type::Void
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Ref(_)
+            | Type::Unichar => {
+                bail!("Unsupported field type for read: {:?}", self.field_type)
+            }
         }
     }
 }

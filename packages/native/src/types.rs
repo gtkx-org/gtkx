@@ -31,10 +31,10 @@
 //!
 //! [`Ownership`]: Ownership
 
-use std::ffi::{c_char, c_void};
+use std::ffi::c_void;
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::FromGlibPtrNone as _, translate::IntoGlib as _};
+use gtk4::glib::{self, translate::IntoGlib as _, translate::ToGlibPtr as _};
 use libffi::middle as libffi;
 use neon::prelude::*;
 
@@ -68,6 +68,7 @@ pub use string::StringType;
 pub use trampoline::TrampolineType;
 
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub enum Ownership {
     #[default]
     Borrowed,
@@ -76,11 +77,13 @@ pub enum Ownership {
 
 impl Ownership {
     #[inline]
+    #[must_use]
     pub fn is_full(self) -> bool {
         matches!(self, Ownership::Full)
     }
 
     #[inline]
+    #[must_use]
     pub fn is_borrowed(self) -> bool {
         matches!(self, Ownership::Borrowed)
     }
@@ -135,6 +138,7 @@ impl std::str::FromStr for Ownership {
 }
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum Type {
     Integer(IntegerKind),
     Float(FloatKind),
@@ -152,6 +156,7 @@ pub enum Type {
     Callback(CallbackType),
     Trampoline(TrampolineType),
     Ref(RefType),
+    Unichar,
 }
 
 impl std::fmt::Display for Type {
@@ -170,9 +175,10 @@ impl std::fmt::Display for Type {
             Type::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
             Type::Array(_) => write!(f, "Array"),
             Type::HashTable(_) => write!(f, "HashTable"),
-            Type::Callback(t) => write!(f, "Callback({:?})", t.kind),
+            Type::Callback(_) => write!(f, "Callback"),
             Type::Trampoline(_) => write!(f, "Trampoline"),
             Type::Ref(t) => write!(f, "Ref({})", t.inner_type),
+            Type::Unichar => write!(f, "Unichar"),
         }
     }
 }
@@ -211,6 +217,7 @@ impl Type {
             "callback" => Ok(Type::Callback(CallbackType::from_js_value(cx, value)?)),
             "trampoline" => Ok(Type::Trampoline(TrampolineType::from_js_value(cx, value)?)),
             "ref" => Ok(Type::Ref(RefType::from_js_value(cx, obj.upcast())?)),
+            "unichar" => Ok(Type::Unichar),
             "fundamental" => Ok(Type::Fundamental(FundamentalType::from_js_value(
                 cx, value,
             )?)),
@@ -218,145 +225,48 @@ impl Type {
         }
     }
 
-    pub fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
-        use std::ffi::CStr;
+    /// # Safety
+    /// `ptr` must be null or point to a valid instance of the type described by `self`.
+    pub unsafe fn ptr_to_value(
+        &self,
+        ptr: *mut c_void,
+        context: &str,
+    ) -> anyhow::Result<value::Value> {
         match self {
-            Type::String(_) => {
-                if ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
-                Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
-            }
-            Type::Integer(int_kind) => {
-                let number = match int_kind {
-                    IntegerKind::I32 => ptr as i32 as f64,
-                    IntegerKind::U32 => ptr as u32 as f64,
-                    IntegerKind::I64 => ptr as i64 as f64,
-                    IntegerKind::U64 => ptr as u64 as f64,
-                    _ => ptr as isize as f64,
-                };
-                Ok(value::Value::Number(number))
-            }
-            Type::Enum(_) => {
-                let number = ptr as i32 as f64;
-                Ok(value::Value::Number(number))
-            }
-            Type::Flags(_) => {
-                let number = ptr as u32 as f64;
-                Ok(value::Value::Number(number))
-            }
-            Type::GObject(_) => {
-                if ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let object =
-                    unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
-                Ok(value::Value::Object(
-                    crate::managed::NativeValue::GObject(object).into(),
-                ))
-            }
-            Type::Boxed(boxed_type) => {
-                if ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let gtype = boxed_type.gtype();
-                let boxed = crate::managed::Boxed::from_glib_none(gtype, ptr)?;
-                Ok(value::Value::Object(
-                    crate::managed::NativeValue::Boxed(boxed).into(),
-                ))
-            }
-            Type::Boolean => {
-                let boolean = ptr as isize != 0;
-                Ok(value::Value::Boolean(boolean))
-            }
-            Type::Float(float_kind) => {
-                let float_val = match float_kind {
-                    FloatKind::F32 => (unsafe { *(ptr as *const f32) }) as f64,
-                    FloatKind::F64 => unsafe { *(ptr as *const f64) },
-                };
-                Ok(value::Value::Number(float_val))
-            }
-            Type::Struct(struct_type) => {
-                if ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let boxed = crate::managed::Boxed::from_glib_none_with_size(
-                    None,
-                    ptr,
-                    struct_type.size,
-                    Some(&struct_type.type_name),
-                )?;
-                Ok(value::Value::Object(
-                    crate::managed::NativeValue::Boxed(boxed).into(),
-                ))
-            }
-            Type::Fundamental(fundamental_type) => {
-                if ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let (ref_fn, unref_fn) = fundamental_type.lookup_fns()?;
-                let fundamental =
-                    crate::managed::Fundamental::from_glib_none(ptr, ref_fn, unref_fn);
-                Ok(value::Value::Object(
-                    crate::managed::NativeValue::Fundamental(fundamental).into(),
-                ))
-            }
-            Type::Array(array_type) if array_type.kind == ArrayKind::GPtrArray => {
+            Type::String(_) => Ok(unsafe { StringType::ptr_to_value(ptr) }),
+            Type::Integer(kind) => Ok(kind.ptr_to_value(ptr)),
+            Type::Enum(_) => Ok(IntegerKind::I32.ptr_to_value(ptr)),
+            Type::Flags(_) => Ok(IntegerKind::U32.ptr_to_value(ptr)),
+            Type::GObject(_) => Ok(unsafe { GObjectType::ptr_to_value(ptr) }),
+            Type::Boxed(t) => unsafe { t.ptr_to_value(ptr) },
+            Type::Boolean => Ok(value::Value::Boolean(ptr as isize != 0)),
+            Type::Float(kind) => Ok(unsafe { kind.ptr_to_value(ptr) }),
+            Type::Struct(t) => unsafe { t.ptr_to_value(ptr) },
+            Type::Fundamental(t) => unsafe { t.ptr_to_value(ptr) },
+            Type::Array(t) => unsafe { t.ptr_to_value(ptr) },
+            Type::HashTable(t) => {
                 if ptr.is_null() {
                     return Ok(value::Value::Array(vec![]));
                 }
-                let ptr_array = ptr as *mut glib::ffi::GPtrArray;
-                let len = unsafe { (*ptr_array).len as usize };
-                let pdata = unsafe { (*ptr_array).pdata };
-                let mut values = Vec::with_capacity(len);
-                for i in 0..len {
-                    let item_ptr = unsafe { *pdata.add(i) };
-                    let item_value = array_type
-                        .item_type
-                        .ptr_to_value(item_ptr, "GPtrArray item")?;
-                    values.push(item_value);
-                }
-                Ok(value::Value::Array(values))
+                t.decode(&ffi::FfiValue::Ptr(ptr))
             }
-            Type::Array(array_type) if array_type.kind == ArrayKind::GArray => {
-                if ptr.is_null() {
-                    return Ok(value::Value::Array(vec![]));
-                }
-                let ffi_value = ffi::FfiValue::Ptr(ptr);
-                array_type.decode_garray(&ffi_value)
+            Type::Unichar => {
+                let cp = ptr as u32;
+                let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
+                Ok(value::Value::String(ch.to_string()))
             }
-            Type::Array(array_type)
-                if array_type.kind == ArrayKind::GList || array_type.kind == ArrayKind::GSList =>
-            {
-                if ptr.is_null() {
-                    return Ok(value::Value::Array(vec![]));
-                }
-                let ffi_value = ffi::FfiValue::Ptr(ptr);
-                array_type.decode_glist(&ffi_value)
+            Type::Void => Ok(value::Value::Undefined),
+            Type::Callback(_) | Type::Trampoline(_) | Type::Ref(_) => {
+                bail!("Type {} cannot be read from pointer in {}", self, context)
             }
-            Type::Array(array_type) => {
-                if ptr.is_null() {
-                    return Ok(value::Value::Array(vec![]));
-                }
-                let ffi_value = ffi::FfiValue::Ptr(ptr);
-                array_type.decode(&ffi_value)
-            }
-            Type::HashTable(ht_type) => {
-                if ptr.is_null() {
-                    return Ok(value::Value::Array(vec![]));
-                }
-                let ffi_value = ffi::FfiValue::Ptr(ptr);
-                ht_type.decode(&ffi_value)
-            }
-            _ => bail!("Unsupported {} type: {:?}", context, self),
         }
     }
 }
 
 impl Type {
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    pub fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+    /// # Safety
+    /// `ptr` must be null or point to a valid instance of the type described by `self`.
+    pub unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
         if ptr.is_null() {
             return Ok(ptr);
         }
@@ -365,24 +275,36 @@ impl Type {
                 unsafe { glib::gobject_ffi::g_object_ref(ptr as *mut _) };
                 Ok(ptr)
             }
-            Type::Boxed(t) if t.ownership.is_full() => {
-                if let Some(gtype) = t.gtype() {
-                    Ok(unsafe {
-                        glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
-                    })
-                } else {
-                    Ok(ptr)
-                }
-            }
+            Type::Boxed(t) if t.ownership.is_full() => match t.gtype() {
+                Some(gtype) => Ok(unsafe {
+                    glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
+                }),
+                None => Ok(ptr),
+            },
             Type::Fundamental(t) if t.ownership.is_full() => {
                 let (ref_fn, _) = t.lookup_fns()?;
-                if let Some(ref_fn) = ref_fn {
-                    Ok(unsafe { ref_fn(ptr) })
-                } else {
-                    Ok(ptr)
+                match ref_fn {
+                    Some(ref_fn) => Ok(unsafe { ref_fn(ptr) }),
+                    None => Ok(ptr),
                 }
             }
-            _ => Ok(ptr),
+            Type::Integer(_)
+            | Type::Float(_)
+            | Type::Enum(_)
+            | Type::Flags(_)
+            | Type::String(_)
+            | Type::Boolean
+            | Type::Void
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Ref(_)
+            | Type::Unichar
+            | Type::Struct(_)
+            | Type::GObject(_)
+            | Type::Boxed(_)
+            | Type::Fundamental(_) => Ok(ptr),
         }
     }
 }
@@ -398,13 +320,22 @@ impl Type {
                     types.push(libffi::Type::pointer());
                 }
             }
-            Type::Callback(callback_type)
-                if callback_type.kind == callback::CallbackKind::AsyncReady =>
-            {
-                types.push(libffi::Type::pointer());
-                types.push(libffi::Type::pointer());
-            }
-            other => types.push(other.into()),
+            Type::Integer(_)
+            | Type::Float(_)
+            | Type::Enum(_)
+            | Type::Flags(_)
+            | Type::String(_)
+            | Type::Boolean
+            | Type::Void
+            | Type::GObject(_)
+            | Type::Boxed(_)
+            | Type::Struct(_)
+            | Type::Fundamental(_)
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Ref(_)
+            | Type::Unichar => types.push(self.into()),
         }
     }
 }
@@ -427,6 +358,7 @@ impl From<&Type> for libffi::Type {
             Type::Callback(_) => libffi::Type::pointer(),
             Type::Trampoline(_) => libffi::Type::pointer(),
             Type::Ref(ty) => ty.into(),
+            Type::Unichar => libffi::Type::u32(),
             Type::Void => libffi::Type::void(),
         }
     }
@@ -457,6 +389,15 @@ impl Type {
             Type::Callback(t) => t.encode(value, optional),
             Type::Trampoline(t) => t.encode(value, optional),
             Type::Ref(t) => t.encode(value, optional),
+            Type::Unichar => {
+                let cp = match value {
+                    value::Value::String(s) => s.chars().next().map(|c| c as u32).unwrap_or(0),
+                    value::Value::Number(n) => *n as u32,
+                    value::Value::Null | value::Value::Undefined if optional => 0,
+                    _ => bail!("Expected a string for unichar type, got {:?}", value),
+                };
+                Ok(ffi::FfiValue::U32(cp))
+            }
         }
     }
 
@@ -484,6 +425,14 @@ impl Type {
             Type::Callback(_) => bail!("Callbacks cannot be converted from ffi::FfiValue"),
             Type::Trampoline(_) => bail!("Trampolines cannot be converted from ffi::FfiValue"),
             Type::Ref(t) => t.decode(ffi_value),
+            Type::Unichar => {
+                let cp = match ffi_value {
+                    ffi::FfiValue::U32(v) => *v,
+                    _ => bail!("Expected FfiValue::U32 for unichar, got {:?}", ffi_value),
+                };
+                let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
+                Ok(value::Value::String(ch.to_string()))
+            }
         }
     }
 
@@ -496,7 +445,63 @@ impl Type {
         match self {
             Type::Array(array_type) => array_type.decode_with_context(ffi_value, ffi_args, args),
             Type::Ref(ref_type) => ref_type.decode_with_context(ffi_value, ffi_args, args),
-            _ => self.decode(ffi_value),
+            Type::Integer(_)
+            | Type::Float(_)
+            | Type::Enum(_)
+            | Type::Flags(_)
+            | Type::String(_)
+            | Type::Boolean
+            | Type::Void
+            | Type::GObject(_)
+            | Type::Boxed(_)
+            | Type::Struct(_)
+            | Type::Fundamental(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Unichar => self.decode(ffi_value),
+        }
+    }
+
+    pub fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        match self {
+            Type::Integer(kind) => kind.from_glib_value(gvalue),
+            Type::Float(kind) => kind.from_glib_value(gvalue),
+            Type::Enum(_) => {
+                let v = unsafe {
+                    glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _)
+                };
+                Ok(value::Value::Number(v as f64))
+            }
+            Type::Flags(_) => {
+                let v = unsafe {
+                    glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _)
+                };
+                Ok(value::Value::Number(v as f64))
+            }
+            Type::String(_) => StringType::from_glib_value(gvalue),
+            Type::Boolean => {
+                let boolean: bool = gvalue
+                    .get()
+                    .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {}", e))?;
+                Ok(value::Value::Boolean(boolean))
+            }
+            Type::GObject(_) => GObjectType::from_glib_value(gvalue),
+            Type::Boxed(t) => t.from_glib_value(gvalue),
+            Type::Struct(t) => t.from_glib_value(gvalue),
+            Type::Fundamental(t) => t.from_glib_value(gvalue),
+            Type::Ref(t) => t.from_glib_value(gvalue),
+            Type::Void => Ok(value::Value::Null),
+            Type::Unichar => {
+                let val = unsafe {
+                    glib::gobject_ffi::g_value_get_uint(gvalue.to_glib_none().0 as *const _)
+                };
+                let ch = char::from_u32(val).unwrap_or('\u{FFFD}');
+                Ok(value::Value::String(ch.to_string()))
+            }
+            Type::Array(_) | Type::HashTable(_) | Type::Callback(_) | Type::Trampoline(_) => {
+                bail!("Type {:?} should not appear in glib value conversion", self)
+            }
         }
     }
 }

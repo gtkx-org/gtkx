@@ -877,7 +877,7 @@ export class GirParameter {
     readonly callerAllocates: boolean;
     readonly nullable: boolean;
     readonly optional: boolean;
-    readonly scope?: "async" | "call" | "notified";
+    readonly scope?: "async" | "call" | "notified" | "forever";
     readonly closure?: number;
     readonly destroy?: number;
     readonly transferOwnership?: "none" | "full" | "container";
@@ -890,7 +890,7 @@ export class GirParameter {
         callerAllocates: boolean;
         nullable: boolean;
         optional: boolean;
-        scope?: "async" | "call" | "notified";
+        scope?: "async" | "call" | "notified" | "forever";
         closure?: number;
         destroy?: number;
         transferOwnership?: "none" | "full" | "container";

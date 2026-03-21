@@ -4,6 +4,10 @@
 //! derive from GObject. Examples include `GParamSpec` and Pango layout types.
 //! They have custom ref/unref functions rather than using `g_object_ref/unref`.
 
+use std::ffi::c_void;
+
+use anyhow::bail;
+use gtk4::glib::{self, translate::ToGlibPtr as _};
 use libffi::middle as libffi;
 use neon::object::Object as _;
 use neon::prelude::*;
@@ -40,23 +44,7 @@ impl FundamentalType {
 
     pub fn lookup_fns(&self) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
         GtkThreadState::with(|state| {
-            let library = state.library(&self.library)?;
-
-            let ref_fn = unsafe {
-                library
-                    .get::<RefFn>(self.ref_func.as_bytes())
-                    .ok()
-                    .map(|sym| *sym)
-            };
-
-            let unref_fn = unsafe {
-                library
-                    .get::<UnrefFn>(self.unref_func.as_bytes())
-                    .ok()
-                    .map(|sym| *sym)
-            };
-
-            Ok((ref_fn, unref_fn))
+            state.lookup_fundamental_fns(&self.library, &self.ref_func, &self.unref_func)
         })
     }
 }
@@ -94,11 +82,68 @@ impl FundamentalType {
         let fundamental = if self.ownership.is_full() {
             Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
         } else {
-            Fundamental::from_glib_none(ptr, ref_fn, unref_fn)
+            unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
         };
 
         Ok(value::Value::Object(
             NativeValue::Fundamental(fundamental).into(),
         ))
+    }
+
+    /// # Safety
+    /// `ptr` must be null or point to a valid fundamental type instance.
+    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let (ref_fn, unref_fn) = self.lookup_fns()?;
+        let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
+        Ok(value::Value::Object(
+            NativeValue::Fundamental(fundamental).into(),
+        ))
+    }
+
+    pub fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let gvalue_type = gvalue.type_();
+        let ptr = if gvalue_type.is_a(glib::types::Type::VARIANT) {
+            unsafe {
+                glib::gobject_ffi::g_value_get_variant(gvalue.to_glib_none().0 as *const _)
+                    .cast::<c_void>()
+            }
+        } else if gvalue_type.is_a(glib::types::Type::PARAM_SPEC) {
+            unsafe {
+                glib::gobject_ffi::g_value_get_param(gvalue.to_glib_none().0 as *const _)
+                    .cast::<c_void>()
+            }
+        } else {
+            bail!("Unsupported fundamental type in GValue: {:?}", gvalue_type)
+        };
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let (ref_fn, unref_fn) = self.lookup_fns()?;
+        let fundamental = if self.ownership.is_full() {
+            Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
+        } else {
+            unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
+        };
+        Ok(value::Value::Object(
+            NativeValue::Fundamental(fundamental).into(),
+        ))
+    }
+
+    /// # Safety
+    /// `ret` must point to a writable return value buffer, and `ptr` must be null
+    /// or point to a valid fundamental type instance.
+    pub unsafe fn write_return_ptr(&self, ret: *mut c_void, ptr: *mut c_void) {
+        let ptr = if !ptr.is_null() {
+            match self.lookup_fns() {
+                Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
+                _ => ptr,
+            }
+        } else {
+            ptr
+        };
+        unsafe { *(ret as *mut *mut c_void) = ptr };
     }
 }

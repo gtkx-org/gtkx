@@ -230,7 +230,7 @@ export class MethodBuilder {
                         writer.writeLine("{");
                         writer.indent(() => {
                             writer.writeLine(
-                                'type: { type: "callback", kind: "asyncReadyCallback", argTypes: [], returnType: { type: "void" }, sourceType: { type: "gobject", ownership: "borrowed" }, resultType: { type: "gobject", ownership: "borrowed" } },',
+                                'type: { type: "trampoline", argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "gobject", ownership: "borrowed" }, { type: "uint64" }], returnType: { type: "void" }, userDataIndex: 2, scope: "async" },',
                             );
                             writer.writeLine("value: (_source: unknown, result: unknown) => {");
                             writer.indent(() => {

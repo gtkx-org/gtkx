@@ -52,7 +52,7 @@ impl JsDispatcher {
     fn push_callback(&self, callback: PendingCallback) {
         self.queue
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .push_back(callback);
         gtk_dispatch::GtkDispatcher::global().wake.notify();
     }
@@ -60,7 +60,7 @@ impl JsDispatcher {
     fn pop_callback(&self) -> Option<PendingCallback> {
         self.queue
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .pop_front()
     }
 
@@ -113,10 +113,10 @@ impl JsDispatcher {
         F: FnOnce(Result<Value, ()>) -> T,
     {
         let rx = self.queue(channel, callback.clone(), args, capture_result);
-        self.wait_for_result(rx, on_result)
+        self.wait_for_result(&rx, on_result)
     }
 
-    fn wait_for_result<T, F>(&self, rx: mpsc::Receiver<Result<Value, ()>>, on_result: F) -> T
+    fn wait_for_result<T, F>(&self, rx: &mpsc::Receiver<Result<Value, ()>>, on_result: F) -> T
     where
         F: FnOnce(Result<Value, ()>) -> T,
     {

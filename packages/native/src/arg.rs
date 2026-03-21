@@ -25,6 +25,7 @@ pub struct Arg {
 }
 
 impl Arg {
+    #[must_use]
     pub fn new(ty: Type, value: Value) -> Self {
         Arg {
             ty,

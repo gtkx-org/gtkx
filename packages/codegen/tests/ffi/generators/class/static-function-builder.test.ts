@@ -180,7 +180,7 @@ describe("StaticFunctionBuilder", () => {
             expect(structures[0].returnType).toBeUndefined();
         });
 
-        it("filters out functions with unsupported callbacks", () => {
+        it("includes functions with GLib.Closure callbacks", () => {
             const { builder } = createTestSetup({
                 staticFunctions: [
                     createNormalizedFunction({
@@ -204,8 +204,7 @@ describe("StaticFunctionBuilder", () => {
 
             const structures = builder.buildStructures();
 
-            expect(structures).toHaveLength(1);
-            expect(structures[0].name).toBe("normal");
+            expect(structures).toHaveLength(2);
         });
 
         it("uses normalized class name for return type mapping", () => {

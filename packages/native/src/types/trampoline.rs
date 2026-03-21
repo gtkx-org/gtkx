@@ -1,4 +1,5 @@
 use std::ffi::c_void;
+use std::sync::atomic::{AtomicPtr, Ordering};
 
 use neon::prelude::*;
 
@@ -7,12 +8,40 @@ use crate::trampoline::{TrampolineData, TrampolineState, destroy_handler};
 use crate::types::Type;
 use crate::value;
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum TrampolineScope {
+    #[default]
+    Call,
+    Notified,
+    Async,
+    Forever,
+}
+
+impl std::str::FromStr for TrampolineScope {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "call" => Ok(TrampolineScope::Call),
+            "notified" => Ok(TrampolineScope::Notified),
+            "async" => Ok(TrampolineScope::Async),
+            "forever" => Ok(TrampolineScope::Forever),
+            other => Err(format!(
+                "'scope' must be 'call', 'notified', 'async', or 'forever'; got '{}'",
+                other
+            )),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TrampolineType {
     pub arg_types: Vec<Type>,
     pub return_type: Box<Type>,
     pub has_destroy: bool,
     pub user_data_index: Option<usize>,
+    pub scope: TrampolineScope,
 }
 
 impl TrampolineType {
@@ -40,11 +69,29 @@ impl TrampolineType {
         let user_data_index: Option<Handle<JsNumber>> = obj.get_opt(cx, "userDataIndex")?;
         let user_data_index = user_data_index.map(|v| v.value(cx) as usize);
 
+        let scope_prop: Option<Handle<JsString>> = obj.get_opt(cx, "scope")?;
+        let scope = match scope_prop {
+            Some(s) => {
+                let scope_str = s.value(cx);
+                scope_str
+                    .parse()
+                    .map_err(|e: String| super::throw_str_error(cx, e))?
+            }
+            None => {
+                if has_destroy {
+                    TrampolineScope::Notified
+                } else {
+                    TrampolineScope::Call
+                }
+            }
+        };
+
         Ok(TrampolineType {
             arg_types,
             return_type,
             has_destroy,
             user_data_index,
+            scope,
         })
     }
 }
@@ -61,18 +108,31 @@ impl TrampolineType {
             _ => bail!("Expected a Callback for trampoline type, got {:?}", val),
         };
 
+        let is_oneshot = self.scope == TrampolineScope::Async;
+
         let data = TrampolineData {
             channel: callback.channel.clone(),
             js_func: callback.js_func.clone(),
             arg_types: self.arg_types.clone(),
             return_type: (*self.return_type).clone(),
             user_data_index: self.user_data_index,
+            is_oneshot,
+            oneshot_state_ptr: AtomicPtr::new(std::ptr::null_mut()),
         };
 
         let state = TrampolineState::create(data);
         let fn_ptr = state.code_ptr;
 
-        if self.has_destroy {
+        if self.scope == TrampolineScope::Forever {
+            let state_ptr = Box::into_raw(Box::new(state)) as *mut c_void;
+
+            Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
+                fn_ptr,
+                state_ptr,
+                destroy_ptr: None,
+                _owned_state: None,
+            }))
+        } else if self.has_destroy || self.scope == TrampolineScope::Notified {
             let state_ptr = Box::into_raw(Box::new(state)) as *mut c_void;
             let destroy_ptr = destroy_handler as *mut c_void;
 
@@ -80,6 +140,23 @@ impl TrampolineType {
                 fn_ptr,
                 state_ptr,
                 destroy_ptr: Some(destroy_ptr),
+                _owned_state: None,
+            }))
+        } else if self.scope == TrampolineScope::Async {
+            let boxed = Box::new(state);
+            let raw_ptr = Box::into_raw(boxed);
+            unsafe {
+                (*raw_ptr)
+                    .data_ref()
+                    .oneshot_state_ptr
+                    .store(raw_ptr, Ordering::Release);
+            }
+            let state_ptr = raw_ptr as *mut c_void;
+
+            Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
+                fn_ptr,
+                state_ptr,
+                destroy_ptr: None,
                 _owned_state: None,
             }))
         } else {

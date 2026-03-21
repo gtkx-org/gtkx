@@ -59,6 +59,16 @@ pub struct GtkDispatcher {
     pub wake: WaitSignal,
 }
 
+impl std::fmt::Debug for GtkDispatcher {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GtkDispatcher")
+            .field("started", &self.started)
+            .field("stopped", &self.stopped)
+            .field("freeze_depth", &self.freeze_depth)
+            .finish()
+    }
+}
+
 static DISPATCHER: OnceLock<GtkDispatcher> = OnceLock::new();
 
 impl GtkDispatcher {
@@ -83,7 +93,7 @@ impl GtkDispatcher {
     fn push_task(&self, task: Task) {
         self.queue
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .push_back(task);
         if self.freeze_loop_active.load(Ordering::Acquire) {
             self.freeze_wake.notify();
@@ -94,7 +104,7 @@ impl GtkDispatcher {
     fn pop_task(&self) -> Option<Task> {
         self.queue
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .pop_front()
     }
 

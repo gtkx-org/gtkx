@@ -24,12 +24,13 @@ use std::thread::JoinHandle;
 use gtk4::gio::ApplicationHoldGuard;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
-use crate::managed::NativeValue;
+use crate::managed::{NativeValue, RefFn, UnrefFn};
 
 thread_local! {
     static GTK_THREAD_STATE: RefCell<GtkThreadState> = RefCell::new(GtkThreadState::default());
 }
 
+#[derive(Debug)]
 pub struct GtkThread {
     handle: Mutex<Option<JoinHandle<()>>>,
 }
@@ -46,7 +47,7 @@ impl GtkThread {
     pub fn set_handle(&self, handle: JoinHandle<()>) {
         self.handle
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .replace(handle);
     }
 
@@ -70,6 +71,7 @@ pub struct GtkThreadState {
     /// like WebKit spawn threads with TLS destructors - calling dlclose() while
     /// those threads exist causes segfaults. Libraries are reclaimed at process exit.
     pub libraries: ManuallyDrop<HashMap<String, Library>>,
+    fundamental_fn_cache: HashMap<String, (Option<RefFn>, Option<UnrefFn>)>,
 }
 
 impl Default for GtkThreadState {
@@ -79,7 +81,18 @@ impl Default for GtkThreadState {
             next_handle_id: 1,
             libraries: ManuallyDrop::new(HashMap::new()),
             app_hold_guard: None,
+            fundamental_fn_cache: HashMap::new(),
         }
+    }
+}
+
+impl std::fmt::Debug for GtkThreadState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GtkThreadState")
+            .field("handle_map_len", &self.handle_map.len())
+            .field("next_handle_id", &self.next_handle_id)
+            .field("libraries_len", &self.libraries.len())
+            .finish()
     }
 }
 
@@ -89,6 +102,38 @@ impl GtkThreadState {
         F: FnOnce(&mut GtkThreadState) -> R,
     {
         GTK_THREAD_STATE.with_borrow_mut(f)
+    }
+
+    pub fn lookup_fundamental_fns(
+        &mut self,
+        library_name: &str,
+        ref_func: &str,
+        unref_func: &str,
+    ) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
+        if let Some(cached) = self.fundamental_fn_cache.get(ref_func) {
+            return Ok(*cached);
+        }
+
+        let library = self.library(library_name)?;
+
+        let ref_fn = unsafe {
+            library
+                .get::<RefFn>(ref_func.as_bytes())
+                .ok()
+                .map(|sym| *sym)
+        };
+
+        let unref_fn = unsafe {
+            library
+                .get::<UnrefFn>(unref_func.as_bytes())
+                .ok()
+                .map(|sym| *sym)
+        };
+
+        let result = (ref_fn, unref_fn);
+        self.fundamental_fn_cache
+            .insert(ref_func.to_owned(), result);
+        Ok(result)
     }
 
     pub fn library(&mut self, name: &str) -> anyhow::Result<&Library> {

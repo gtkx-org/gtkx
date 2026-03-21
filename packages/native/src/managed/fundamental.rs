@@ -26,9 +26,10 @@ impl Fundamental {
         }
     }
 
+    /// # Safety
+    /// `ptr` must be null or point to a valid fundamental type instance.
     #[must_use]
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    pub fn from_glib_none(
+    pub unsafe fn from_glib_none(
         ptr: *mut c_void,
         ref_fn: Option<RefFn>,
         unref_fn: Option<UnrefFn>,
@@ -42,10 +43,9 @@ impl Fundamental {
             };
         }
 
-        let owned_ptr = if let Some(do_ref) = ref_fn {
-            unsafe { do_ref(ptr) }
-        } else {
-            ptr
+        let owned_ptr = match ref_fn {
+            Some(do_ref) => unsafe { do_ref(ptr) },
+            None => ptr,
         };
 
         Self {

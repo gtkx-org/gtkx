@@ -43,7 +43,7 @@ impl ClosureContext {
             let args_values = match value::Value::from_glib_values(args, &self.arg_types) {
                 Ok(v) => v,
                 Err(e) => {
-                    eprintln!("[gtkx] WARNING: closure: failed to convert callback arguments: {e}");
+                    gtkx_warn!("closure: failed to convert callback arguments: {e}");
                     return None;
                 }
             };
@@ -77,7 +77,7 @@ impl ClosureContext {
                         Ok(value::Value::Array(arr)) => {
                             for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
                                 if let Some(val) = arr.get(i + 1)
-                                    && !ptr.is_null()
+                                    && !(*ptr).is_null()
                                 {
                                     write_ref_value_to_ptr(*ptr, val, inner_type);
                                 }
@@ -140,139 +140,38 @@ fn write_ref_value_to_ptr(ptr: *mut c_void, val: &value::Value, inner_type: &Typ
         },
         (value::Value::Null | value::Value::Undefined, _) => {}
         _ => {
-            eprintln!(
+            gtkx_warn!(
                 "write_ref_value_to_ptr: unexpected value/type pair: {:?} / {:?}",
-                val, inner_type
+                val,
+                inner_type
             );
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CallbackKind {
-    Closure,
-    AsyncReady,
+pub fn build_closure_ffi_value(callback: &Callback, callback_type: &CallbackType) -> ffi::FfiValue {
+    let ctx = ClosureContext::from_callback(callback, callback_type);
+    let closure = ctx.build_closure_with_guard(callback_type.return_type.clone());
+    let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
+    ffi::FfiValue::Storage(FfiStorage::closure(closure_ptr))
 }
 
-impl std::str::FromStr for CallbackKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "closure" => Ok(CallbackKind::Closure),
-            "asyncReadyCallback" => Ok(CallbackKind::AsyncReady),
-            _ => Err(format!(
-                "'kind' must be 'closure' or 'asyncReadyCallback'; got '{}'",
-                s
-            )),
-        }
-    }
-}
-
-impl CallbackKind {
-    pub fn build_ffi_value(
-        &self,
-        callback: &Callback,
-        callback_type: &CallbackType,
-    ) -> ffi::FfiValue {
-        match self {
-            CallbackKind::Closure => {
-                let ctx = ClosureContext::from_callback(callback, callback_type);
-                let closure = ctx.build_closure_with_guard(callback_type.return_type.clone());
-                let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
-                ffi::FfiValue::Storage(FfiStorage::closure(closure_ptr))
-            }
-            CallbackKind::AsyncReady => {
-                let source_type = callback_type
-                    .source_type
-                    .clone()
-                    .unwrap_or(Box::new(Type::Void));
-                let result_type = callback_type
-                    .result_type
-                    .clone()
-                    .unwrap_or(Box::new(Type::Void));
-
-                let channel = callback.channel.clone();
-                let js_func = callback.js_func.clone();
-
-                let closure = glib::Closure::new(move |args: &[glib::Value]| {
-                    let source_value = args
-                        .first()
-                        .and_then(|gval| {
-                            value::Value::from_glib_value(gval, &source_type)
-                                .map_err(|e| eprintln!("[gtkx] WARNING: async callback: failed to convert source value: {e}"))
-                                .ok()
-                        })
-                        .unwrap_or(value::Value::Null);
-
-                    let result_value = args
-                        .get(1)
-                        .and_then(|gval| {
-                            value::Value::from_glib_value(gval, &result_type)
-                                .map_err(|e| eprintln!("[gtkx] WARNING: async callback: failed to convert result value: {e}"))
-                                .ok()
-                        })
-                        .unwrap_or(value::Value::Null);
-
-                    js_dispatch::JsDispatcher::global().invoke_and_wait(
-                        &channel,
-                        &js_func,
-                        vec![source_value, result_value],
-                        false,
-                        |_| None::<glib::Value>,
-                    )
-                });
-
-                let closure_ptr: *mut gobject_ffi::GClosure = closure.to_glib_full();
-
-                ffi::FfiValue::Trampoline(ffi::TrampolineValue {
-                    fn_ptr: crate::callback::async_ready_trampoline as *mut c_void,
-                    state_ptr: closure_ptr as *mut c_void,
-                    destroy_ptr: None,
-                    _owned_state: None,
-                })
-            }
-        }
-    }
-
-    fn build_null_ffi_value(&self) -> ffi::FfiValue {
-        match self {
-            CallbackKind::Closure => ffi::FfiValue::Storage(FfiStorage::new(
-                std::ptr::null_mut(),
-                ffi::FfiStorageKind::Unit,
-            )),
-            CallbackKind::AsyncReady => ffi::FfiValue::Trampoline(ffi::TrampolineValue {
-                fn_ptr: std::ptr::null_mut(),
-                state_ptr: std::ptr::null_mut(),
-                destroy_ptr: None,
-                _owned_state: None,
-            }),
-        }
-    }
+fn build_null_closure_ffi_value() -> ffi::FfiValue {
+    ffi::FfiValue::Storage(FfiStorage::new(
+        std::ptr::null_mut(),
+        ffi::FfiStorageKind::Unit,
+    ))
 }
 
 #[derive(Debug, Clone)]
 pub struct CallbackType {
-    pub kind: CallbackKind,
     pub arg_types: Vec<Type>,
     pub return_type: Box<Type>,
-    pub source_type: Option<Box<Type>>,
-    pub result_type: Option<Box<Type>>,
 }
 
 impl CallbackType {
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-
-        let kind_prop: Handle<'_, JsValue> = obj.prop(cx, "kind").get()?;
-        let kind_str = kind_prop
-            .downcast::<JsString, _>(cx)
-            .or_else(|_| cx.throw_type_error("'kind' property is required for callback types"))?
-            .value(cx);
-
-        let kind: CallbackKind = kind_str
-            .parse()
-            .map_err(|e: String| super::throw_str_error(cx, e))?;
 
         let arg_types_prop: Handle<'_, JsValue> = obj.prop(cx, "argTypes").get()?;
         let arg_types_arr = arg_types_prop.downcast::<JsArray, _>(cx).or_else(|_| {
@@ -289,24 +188,9 @@ impl CallbackType {
             cx.throw_type_error("'returnType' property is required for callback types")
         })?);
 
-        let source_type: Option<Handle<JsValue>> = obj.get_opt(cx, "sourceType")?;
-        let source_type = match source_type {
-            Some(v) => Some(Box::new(Type::from_js_value(cx, v)?)),
-            None => None,
-        };
-
-        let result_type: Option<Handle<JsValue>> = obj.get_opt(cx, "resultType")?;
-        let result_type = match result_type {
-            Some(v) => Some(Box::new(Type::from_js_value(cx, v)?)),
-            None => None,
-        };
-
         Ok(CallbackType {
-            kind,
             arg_types,
             return_type,
-            source_type,
-            result_type,
         })
     }
 }
@@ -318,11 +202,11 @@ impl CallbackType {
         let callback = match val {
             value::Value::Callback(callback) => callback,
             value::Value::Null | value::Value::Undefined if optional => {
-                return Ok(self.kind.build_null_ffi_value());
+                return Ok(build_null_closure_ffi_value());
             }
             _ => bail!("Expected a Callback for callback type, got {:?}", val),
         };
 
-        Ok(self.kind.build_ffi_value(callback, self))
+        Ok(build_closure_ffi_value(callback, self))
     }
 }

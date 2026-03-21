@@ -1,4 +1,10 @@
-use gtk4::glib::{self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNone as _};
+use std::ffi::c_void;
+
+use anyhow::bail;
+use gtk4::glib::{
+    self,
+    translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
+};
 use libffi::middle as libffi;
 use neon::prelude::*;
 
@@ -54,5 +60,42 @@ impl GObjectType {
         };
 
         Ok(value::Value::Object(object.into()))
+    }
+
+    /// # Safety
+    /// `ptr` must be null or point to a valid GObject.
+    pub unsafe fn ptr_to_value(ptr: *mut c_void) -> value::Value {
+        if ptr.is_null() {
+            return value::Value::Null;
+        }
+        let object =
+            unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
+        value::Value::Object(NativeValue::GObject(object).into())
+    }
+
+    pub fn from_glib_value(gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let obj_ptr =
+            unsafe { glib::gobject_ffi::g_value_get_object(gvalue.to_glib_none().0 as *const _) };
+        if obj_ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let type_class = unsafe { (*obj_ptr).g_type_instance.g_class };
+        if type_class.is_null() {
+            bail!("GObject has invalid type class (object may have been freed)");
+        }
+        let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
+        Ok(value::Value::Object(NativeValue::GObject(obj).into()))
+    }
+
+    /// # Safety
+    /// `ret` must point to a writable return value buffer, and `ptr` must be null
+    /// or point to a valid GObject.
+    pub unsafe fn write_return_ptr(ret: *mut c_void, ptr: *mut c_void) {
+        if !ptr.is_null() {
+            unsafe {
+                glib::gobject_ffi::g_object_ref(ptr as *mut glib::gobject_ffi::GObject);
+            }
+        }
+        unsafe { *(ret as *mut *mut c_void) = ptr };
     }
 }

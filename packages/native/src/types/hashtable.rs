@@ -28,6 +28,7 @@ impl PartialEq for HashTableEntryEncoder {
 }
 
 impl HashTableEntryEncoder {
+    #[must_use]
     pub fn from_type(ty: &Type) -> Option<Self> {
         match ty {
             Type::String(_) => Some(Self::String),
@@ -176,8 +177,8 @@ impl HashTableType {
     fn encode_hashtable(
         &self,
         tuples: &[value::Value],
-        key_encoder: HashTableEntryEncoder,
-        value_encoder: HashTableEntryEncoder,
+        key_encoder: &HashTableEntryEncoder,
+        value_encoder: &HashTableEntryEncoder,
     ) -> anyhow::Result<ffi::FfiValue> {
         let hash_table = unsafe {
             glib::ffi::g_hash_table_new_full(
@@ -193,8 +194,8 @@ impl HashTableType {
             let key_ptr = key_encoder.encode(key)?;
             let val_ptr = value_encoder.encode(val)?;
 
-            let key_ptr = self.key_type.ref_for_transfer(key_ptr)?;
-            let val_ptr = self.value_type.ref_for_transfer(val_ptr)?;
+            let key_ptr = unsafe { self.key_type.ref_for_transfer(key_ptr)? };
+            let val_ptr = unsafe { self.value_type.ref_for_transfer(val_ptr)? };
 
             unsafe {
                 glib::ffi::g_hash_table_insert(hash_table, key_ptr, val_ptr);
@@ -238,7 +239,7 @@ impl HashTableType {
                 anyhow::anyhow!("Unsupported GHashTable value type: {:?}", self.value_type)
             })?;
 
-        self.encode_hashtable(tuples, key_encoder, value_encoder)
+        self.encode_hashtable(tuples, &key_encoder, &value_encoder)
     }
 
     pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {

@@ -6,6 +6,7 @@ use super::storage::FfiStorage;
 use crate::trampoline::TrampolineState;
 
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum FfiValue {
     U8(u8),
     I8(i8),
@@ -69,7 +70,18 @@ impl FfiValue {
         match self {
             FfiValue::Ptr(ptr) => Ok(*ptr),
             FfiValue::Storage(storage) => Ok(storage.ptr()),
-            _ => anyhow::bail!(
+            FfiValue::U8(_)
+            | FfiValue::I8(_)
+            | FfiValue::U16(_)
+            | FfiValue::I16(_)
+            | FfiValue::U32(_)
+            | FfiValue::I32(_)
+            | FfiValue::U64(_)
+            | FfiValue::I64(_)
+            | FfiValue::F32(_)
+            | FfiValue::F64(_)
+            | FfiValue::Trampoline(_)
+            | FfiValue::Void => anyhow::bail!(
                 "Expected a pointer FfiValue for {}, got {:?}",
                 type_name,
                 self
@@ -94,7 +106,9 @@ impl FfiValue {
             FfiValue::U64(v) => Ok(*v as f64),
             FfiValue::F32(v) => Ok(*v as f64),
             FfiValue::F64(v) => Ok(*v),
-            _ => anyhow::bail!("Expected a numeric FfiValue, got {:?}", self),
+            FfiValue::Ptr(_) | FfiValue::Storage(_) | FfiValue::Trampoline(_) | FfiValue::Void => {
+                anyhow::bail!("Expected a numeric FfiValue, got {:?}", self)
+            }
         }
     }
 
@@ -107,10 +121,23 @@ impl FfiValue {
                     args.push(libffi::arg(destroy_ptr));
                 }
             }
-            other => args.push(other.into()),
+            FfiValue::U8(_)
+            | FfiValue::I8(_)
+            | FfiValue::U16(_)
+            | FfiValue::I16(_)
+            | FfiValue::U32(_)
+            | FfiValue::I32(_)
+            | FfiValue::U64(_)
+            | FfiValue::I64(_)
+            | FfiValue::F32(_)
+            | FfiValue::F64(_)
+            | FfiValue::Ptr(_)
+            | FfiValue::Storage(_)
+            | FfiValue::Void => args.push(self.into()),
         }
     }
 
+    #[must_use]
     pub fn storage(&self) -> Option<&FfiStorage> {
         match self {
             FfiValue::Storage(storage) => Some(storage),

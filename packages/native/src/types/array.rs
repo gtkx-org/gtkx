@@ -13,6 +13,7 @@ use crate::types::{FloatKind, Type};
 use crate::{ffi, value};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ArrayKind {
     Array,
     GList,
@@ -169,7 +170,15 @@ impl ArrayType {
             | Type::Struct(_)
             | Type::Fundamental(_)
             | Type::String(_) => Some(std::mem::size_of::<*mut c_void>()),
-            _ => None,
+            Type::Enum(_)
+            | Type::Flags(_)
+            | Type::Void
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Ref(_)
+            | Type::Unichar => None,
         }
     }
 
@@ -220,7 +229,11 @@ impl ArrayType {
                         }
                         Ok(ffi::FfiValue::Storage(FfiStorage::new(
                             list as *mut c_void,
-                            FfiStorageKind::StringGList(cstrings, list, should_free),
+                            FfiStorageKind::StringGList(ffi::StringGListData {
+                                strings: cstrings,
+                                list_ptr: list,
+                                should_free,
+                            }),
                         )))
                     }
                     ArrayKind::GSList => {
@@ -235,10 +248,18 @@ impl ArrayType {
                         }
                         Ok(ffi::FfiValue::Storage(FfiStorage::new(
                             list as *mut c_void,
-                            FfiStorageKind::StringGSList(cstrings, list, should_free),
+                            FfiStorageKind::StringGSList(ffi::StringGSListData {
+                                strings: cstrings,
+                                list_ptr: list,
+                                should_free,
+                            }),
                         )))
                     }
-                    _ => {
+                    ArrayKind::Array
+                    | ArrayKind::GPtrArray
+                    | ArrayKind::GArray
+                    | ArrayKind::Sized { .. }
+                    | ArrayKind::Fixed { .. } => {
                         let mut ptrs: Vec<*mut c_void> =
                             cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
 
@@ -284,7 +305,7 @@ impl ArrayType {
                         for handle in &handles {
                             match handle.get_ptr() {
                                 Some(ptr) => {
-                                    let ptr = self.item_type.ref_for_transfer(ptr)?;
+                                    let ptr = unsafe { self.item_type.ref_for_transfer(ptr)? };
                                     list = unsafe { glib::ffi::g_list_append(list, ptr) };
                                 }
                                 None => bail!("GObject in GList has been garbage collected"),
@@ -292,7 +313,11 @@ impl ArrayType {
                         }
                         Ok(ffi::FfiValue::Storage(FfiStorage::new(
                             list as *mut c_void,
-                            FfiStorageKind::GList(handles, list, should_free),
+                            FfiStorageKind::GList(ffi::GListData {
+                                handles,
+                                list_ptr: list,
+                                should_free,
+                            }),
                         )))
                     }
                     ArrayKind::GSList => {
@@ -300,7 +325,7 @@ impl ArrayType {
                         for handle in handles.iter().rev() {
                             match handle.get_ptr() {
                                 Some(ptr) => {
-                                    let ptr = self.item_type.ref_for_transfer(ptr)?;
+                                    let ptr = unsafe { self.item_type.ref_for_transfer(ptr)? };
                                     list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
                                 }
                                 None => bail!("GObject in GSList has been garbage collected"),
@@ -308,14 +333,24 @@ impl ArrayType {
                         }
                         Ok(ffi::FfiValue::Storage(FfiStorage::new(
                             list as *mut c_void,
-                            FfiStorageKind::GSList(handles, list, should_free),
+                            FfiStorageKind::GSList(ffi::GSListData {
+                                handles,
+                                list_ptr: list,
+                                should_free,
+                            }),
                         )))
                     }
-                    _ => {
+                    ArrayKind::Array
+                    | ArrayKind::GPtrArray
+                    | ArrayKind::GArray
+                    | ArrayKind::Sized { .. }
+                    | ArrayKind::Fixed { .. } => {
                         let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(handles.len());
                         for handle in &handles {
                             match handle.get_ptr() {
-                                Some(ptr) => ptrs.push(self.item_type.ref_for_transfer(ptr)?),
+                                Some(ptr) => {
+                                    ptrs.push(unsafe { self.item_type.ref_for_transfer(ptr)? });
+                                }
                                 None => bail!("GObject in array has been garbage collected"),
                             }
                         }
@@ -332,7 +367,15 @@ impl ArrayType {
                 let values = extract_booleans(array)?;
                 Ok(ffi::FfiValue::Storage(values.into()))
             }
-            _ => bail!("Unsupported array item type: {:?}", self.item_type),
+            Type::Enum(_)
+            | Type::Flags(_)
+            | Type::Void
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Ref(_)
+            | Type::Unichar => bail!("Unsupported array item type: {:?}", self.item_type),
         }
     }
 
@@ -399,7 +442,7 @@ impl ArrayType {
                     let ptr = handle.get_ptr().ok_or_else(|| {
                         anyhow::anyhow!("Object in GArray has been garbage collected")
                     })?;
-                    let ptr = self.item_type.ref_for_transfer(ptr)?;
+                    let ptr = unsafe { self.item_type.ref_for_transfer(ptr)? };
                     unsafe {
                         glib::ffi::g_array_append_vals(
                             g_array,
@@ -421,7 +464,15 @@ impl ArrayType {
                     }
                 }
             }
-            _ => {
+            Type::Enum(_)
+            | Type::Flags(_)
+            | Type::Void
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Ref(_)
+            | Type::Unichar => {
                 unsafe { glib::ffi::g_array_unref(g_array) };
                 bail!("Unsupported GArray item type: {:?}", self.item_type);
             }
@@ -430,21 +481,19 @@ impl ArrayType {
         let should_free = self.ownership.is_borrowed();
         Ok(ffi::FfiValue::Storage(FfiStorage::new(
             g_array as *mut c_void,
-            FfiStorageKind::GArray(g_array, should_free),
+            FfiStorageKind::GArray(ffi::GArrayData {
+                array_ptr: g_array,
+                should_free,
+            }),
         )))
     }
 
     pub fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        if self.kind == ArrayKind::GList || self.kind == ArrayKind::GSList {
-            return self.decode_glist(ffi_value);
-        }
-
-        if self.kind == ArrayKind::GArray {
-            return self.decode_garray(ffi_value);
-        }
-
-        if self.kind == ArrayKind::GPtrArray {
-            return self.decode_gptrarray(ffi_value);
+        match &self.kind {
+            ArrayKind::GList | ArrayKind::GSList => return self.decode_glist(ffi_value),
+            ArrayKind::GArray => return self.decode_garray(ffi_value),
+            ArrayKind::GPtrArray => return self.decode_gptrarray(ffi_value),
+            ArrayKind::Array | ArrayKind::Sized { .. } | ArrayKind::Fixed { .. } => {}
         }
 
         if let ffi::FfiValue::Ptr(ptr) = ffi_value {
@@ -497,7 +546,11 @@ impl ArrayType {
                     return self.decode_sized_array(*ptr, *size);
                 }
             }
-            _ => {}
+            ArrayKind::Array
+            | ArrayKind::GList
+            | ArrayKind::GSList
+            | ArrayKind::GPtrArray
+            | ArrayKind::GArray => {}
         }
 
         self.decode(ffi_value)
@@ -515,7 +568,7 @@ impl ArrayType {
 
         while !current.is_null() {
             let data = unsafe { (*current).data };
-            let item_value = self.item_type.ptr_to_value(data, "GList item")?;
+            let item_value = unsafe { self.item_type.ptr_to_value(data, "GList item")? };
             values.push(item_value);
             current = unsafe { (*current).next };
         }
@@ -569,7 +622,7 @@ impl ArrayType {
                 let ptrs = unsafe { std::slice::from_raw_parts(data as *const *mut c_void, len) };
                 let mut values = Vec::with_capacity(len);
                 for &item_ptr in ptrs {
-                    values.push(self.item_type.ptr_to_value(item_ptr, "GArray item")?);
+                    values.push(unsafe { self.item_type.ptr_to_value(item_ptr, "GArray item")? });
                 }
                 values
             }
@@ -586,7 +639,15 @@ impl ArrayType {
                 }
                 values
             }
-            _ => bail!("Unsupported GArray item type: {:?}", self.item_type),
+            Type::Enum(_)
+            | Type::Flags(_)
+            | Type::Void
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Ref(_)
+            | Type::Unichar => bail!("Unsupported GArray item type: {:?}", self.item_type),
         };
 
         if self.ownership.is_full() {
@@ -610,7 +671,7 @@ impl ArrayType {
         let mut values = Vec::with_capacity(len);
         for i in 0..len {
             let item_ptr = unsafe { *pdata.add(i) };
-            let item_value = self.item_type.ptr_to_value(item_ptr, "GPtrArray item")?;
+            let item_value = unsafe { self.item_type.ptr_to_value(item_ptr, "GPtrArray item")? };
             values.push(item_value);
         }
 
@@ -630,10 +691,10 @@ impl ArrayType {
             if item_ptr.is_null() {
                 break;
             }
-            values.push(
+            values.push(unsafe {
                 self.item_type
-                    .ptr_to_value(item_ptr, "null-terminated array item")?,
-            );
+                    .ptr_to_value(item_ptr, "null-terminated array item")?
+            });
             i += 1;
         }
 
@@ -708,7 +769,15 @@ impl ArrayType {
                     .map(|handle| value::Value::Object(*handle))
                     .collect()
             }
-            _ => bail!(
+            Type::Enum(_)
+            | Type::Flags(_)
+            | Type::Void
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Ref(_)
+            | Type::Unichar => bail!(
                 "Unsupported array item type for ffi value conversion: {:?}",
                 self.item_type
             ),
@@ -727,7 +796,15 @@ impl ArrayType {
             | Type::Struct(_)
             | Type::String(_)
             | Type::Fundamental(_) => self.decode_sized_ptr_array(ptr, length),
-            _ => bail!(
+            Type::Enum(_)
+            | Type::Flags(_)
+            | Type::Void
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Ref(_)
+            | Type::Unichar => bail!(
                 "Unsupported item type for sized array: {:?}",
                 self.item_type
             ),
@@ -743,7 +820,7 @@ impl ArrayType {
         let mut values = Vec::with_capacity(length);
         for i in 0..length {
             let item_ptr = unsafe { *ptr_array.add(i) };
-            values.push(self.item_type.ptr_to_value(item_ptr, "sized array item")?);
+            values.push(unsafe { self.item_type.ptr_to_value(item_ptr, "sized array item")? });
         }
         Ok(value::Value::Array(values))
     }
@@ -803,6 +880,41 @@ impl ArrayType {
         let values = f64_values.into_iter().map(value::Value::Number).collect();
 
         Ok(value::Value::Array(values))
+    }
+
+    /// # Safety
+    /// `ptr` must be null or point to a valid array of the kind described by `self`.
+    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Array(vec![]));
+        }
+        match self.kind {
+            ArrayKind::GPtrArray => {
+                let ptr_array = ptr as *mut glib::ffi::GPtrArray;
+                let len = unsafe { (*ptr_array).len as usize };
+                let pdata = unsafe { (*ptr_array).pdata };
+                let mut values = Vec::with_capacity(len);
+                for i in 0..len {
+                    let item_ptr = unsafe { *pdata.add(i) };
+                    let item_value =
+                        unsafe { self.item_type.ptr_to_value(item_ptr, "GPtrArray item")? };
+                    values.push(item_value);
+                }
+                Ok(value::Value::Array(values))
+            }
+            ArrayKind::GArray => {
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                self.decode_garray(&ffi_value)
+            }
+            ArrayKind::GList | ArrayKind::GSList => {
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                self.decode_glist(&ffi_value)
+            }
+            ArrayKind::Array | ArrayKind::Sized { .. } | ArrayKind::Fixed { .. } => {
+                let ffi_value = ffi::FfiValue::Ptr(ptr);
+                self.decode(&ffi_value)
+            }
+        }
     }
 
     fn size_from_args(

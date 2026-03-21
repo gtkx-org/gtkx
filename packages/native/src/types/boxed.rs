@@ -5,7 +5,13 @@
 //! or have fixed sizes. This module provides [`BoxedType`] and [`StructType`]
 //! descriptors that handle encoding/decoding these types for FFI calls.
 
-use gtk4::glib::{self, translate::FromGlib as _, translate::IntoGlib as _};
+use std::ffi::c_void;
+
+use anyhow::bail;
+use gtk4::glib::{
+    self,
+    translate::{FromGlib as _, IntoGlib as _, ToGlibPtr as _},
+};
 use libffi::middle as libffi;
 use neon::object::Object as _;
 use neon::prelude::*;
@@ -54,6 +60,7 @@ impl BoxedType {
         })
     }
 
+    #[must_use]
     pub fn gtype(&self) -> Option<glib::Type> {
         glib::Type::from_name(&self.type_name).or_else(|| self.resolve_gtype_from_library())
     }
@@ -118,6 +125,53 @@ impl BoxedType {
         };
 
         Ok(value::Value::Object(boxed.into()))
+    }
+
+    /// # Safety
+    /// `ptr` must be null or point to a valid boxed type instance.
+    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let gtype = self.gtype();
+        let boxed = Boxed::from_glib_none(gtype, ptr)?;
+        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+    }
+
+    pub fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let gvalue_type = gvalue.type_();
+        let boxed_ptr =
+            unsafe { glib::gobject_ffi::g_value_get_boxed(gvalue.to_glib_none().0 as *const _) };
+        if boxed_ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let gtype = self.gtype().or(Some(gvalue_type));
+        let boxed = if self.ownership.is_full() {
+            let owned_ptr = unsafe {
+                glib::gobject_ffi::g_value_dup_boxed(gvalue.to_glib_none().0 as *const _)
+            };
+            Boxed::from_glib_full(gtype, owned_ptr)
+        } else {
+            Boxed::from_glib_none(gtype, boxed_ptr)?
+        };
+        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+    }
+
+    /// # Safety
+    /// `ret` must point to a writable return value buffer, and `ptr` must be null
+    /// or point to a valid boxed type instance.
+    pub unsafe fn write_return_ptr(&self, ret: *mut c_void, ptr: *mut c_void) {
+        let ptr = if !ptr.is_null() {
+            match self.gtype() {
+                Some(gtype) => unsafe {
+                    glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
+                },
+                None => ptr,
+            }
+        } else {
+            ptr
+        };
+        unsafe { *(ret as *mut *mut c_void) = ptr };
     }
 }
 
@@ -185,5 +239,21 @@ impl StructType {
         };
 
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+    }
+
+    /// # Safety
+    /// `ptr` must be null or point to a valid struct instance.
+    pub unsafe fn ptr_to_value(&self, ptr: *mut c_void) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let boxed = Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))?;
+        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+    }
+
+    pub fn from_glib_value(&self, _gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        bail!(
+            "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
+        )
     }
 }

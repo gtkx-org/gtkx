@@ -35,6 +35,9 @@
 //! - `Type`: Type system describing all FFI-compatible types
 //! - `ffi::FfiValue`: Low-level libffi argument representation
 
+#[macro_use]
+mod macros;
+
 pub mod arg;
 pub mod callback;
 pub mod ffi;

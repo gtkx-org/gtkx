@@ -76,12 +76,14 @@ describe("PRIMITIVE_TYPE_MAP", () => {
         expect(PRIMITIVE_TYPE_MAP.get("gssize")?.ffi).toEqual({ type: "int64" });
     });
 
-    it("maps all primitives to number TypeScript type except boolean and void", () => {
+    it("maps all primitives to number TypeScript type except boolean, void, and gunichar", () => {
         for (const [name, { ts }] of PRIMITIVE_TYPE_MAP) {
             if (name === "gboolean") {
                 expect(ts).toBe("boolean");
             } else if (name === "void" || name === "none") {
                 expect(ts).toBe("void");
+            } else if (name === "gunichar") {
+                expect(ts).toBe("string");
             } else {
                 expect(ts).toBe("number");
             }

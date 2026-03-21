@@ -1,6 +1,6 @@
 use std::sync::{Condvar, Mutex};
-use std::time::Duration;
 
+#[derive(Debug)]
 pub struct WaitSignal {
     state: Mutex<bool>,
     condvar: Condvar,
@@ -13,6 +13,7 @@ impl Default for WaitSignal {
 }
 
 impl WaitSignal {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             state: Mutex::new(false),
@@ -21,21 +22,25 @@ impl WaitSignal {
     }
 
     pub fn notify(&self) {
-        let mut notified = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut notified = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         *notified = true;
         self.condvar.notify_one();
     }
 
     pub fn wait(&self) {
-        let mut notified = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        if *notified {
-            *notified = false;
-            return;
+        let mut notified = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        while !*notified {
+            notified = self
+                .condvar
+                .wait(notified)
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
         }
-        let (mut guard, _) = self
-            .condvar
-            .wait_timeout(notified, Duration::from_millis(5))
-            .unwrap_or_else(|e| e.into_inner());
-        *guard = false;
+        *notified = false;
     }
 }

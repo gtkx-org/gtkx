@@ -12,7 +12,10 @@
 mod storage;
 mod value;
 
-pub use storage::{FfiStorage, FfiStorageKind, HashTableData};
+pub use storage::{
+    FfiStorage, FfiStorageKind, GArrayData, GListData, GSListData, HashTableData, StringGListData,
+    StringGSListData,
+};
 pub use value::{FfiValue, TrampolineValue};
 
 use crate::arg::Arg;

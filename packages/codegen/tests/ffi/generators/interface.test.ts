@@ -235,7 +235,7 @@ describe("InterfaceGenerator", () => {
     });
 
     describe("method filtering", () => {
-        it("filters out methods with unsupported callbacks", () => {
+        it("includes methods with GLib.Closure callbacks", () => {
             const { generator, sourceFile } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
@@ -263,7 +263,7 @@ describe("InterfaceGenerator", () => {
 
             const code = getGeneratedCode(sourceFile);
             expect(code).toContain("normal");
-            expect(code).not.toContain("withClosure");
+            expect(code).toContain("withClosure");
         });
 
         it("filters out duplicate methods with same cIdentifier", () => {

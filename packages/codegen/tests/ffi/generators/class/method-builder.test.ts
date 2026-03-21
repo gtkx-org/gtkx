@@ -186,7 +186,7 @@ describe("MethodBuilder", () => {
             expect(structures).toHaveLength(1);
         });
 
-        it("filters out methods with unsupported callbacks", () => {
+        it("includes methods with GLib.Closure callbacks", () => {
             const { builder } = createTestSetup();
             const methods = [
                 createNormalizedMethod({
@@ -209,8 +209,7 @@ describe("MethodBuilder", () => {
 
             const structures = builder.buildStructures(methods, false);
 
-            expect(structures).toHaveLength(1);
-            expect(structures[0].name).toBe("normal");
+            expect(structures).toHaveLength(2);
         });
     });
 
@@ -349,7 +348,7 @@ describe("MethodBuilder", () => {
             expect(result).toBe(false);
         });
 
-        it("returns true for GLib.Closure", () => {
+        it("returns false for GLib.Closure", () => {
             const { builder } = createTestSetup();
             const parameters = [
                 createNormalizedParameter({
@@ -360,7 +359,7 @@ describe("MethodBuilder", () => {
 
             const result = builder.hasUnsupportedCallbacks(parameters);
 
-            expect(result).toBe(true);
+            expect(result).toBe(false);
         });
     });
 
@@ -407,7 +406,7 @@ describe("MethodBuilder", () => {
             expect(result.main?.name).toBe("new");
         });
 
-        it("filters out constructors with unsupported callbacks", () => {
+        it("includes constructors with GLib.Closure callbacks", () => {
             const { builder } = createTestSetup();
             const constructors = [
                 createNormalizedConstructor({
@@ -431,8 +430,7 @@ describe("MethodBuilder", () => {
 
             const result = builder.selectConstructors(constructors);
 
-            expect(result.supported).toHaveLength(1);
-            expect(result.supported[0].name).toBe("new");
+            expect(result.supported).toHaveLength(2);
         });
     });
 

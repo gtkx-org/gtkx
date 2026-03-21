@@ -243,13 +243,16 @@ export class FfiMapper {
             if (callbackResult.ffi.type === "trampoline" && param.destroy !== undefined) {
                 callbackResult.ffi.hasDestroy = true;
             }
+            if (callbackResult.ffi.type === "trampoline" && param.scope) {
+                callbackResult.ffi.scope = param.scope as "call" | "notified" | "async";
+            }
             return callbackResult;
         }
 
         if (param.type.name === "GLib.Closure") {
             return {
                 ts: "(...args: unknown[]) => unknown",
-                ffi: { type: "callback" },
+                ffi: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
                 imports,
             };
         }
@@ -302,8 +305,8 @@ export class FfiMapper {
      * Checks if a parameter has an unsupported callback type.
      * Supported callbacks are those with native implementations in NATIVE_CALLBACKS.
      */
-    hasUnsupportedCallback(param: GirParameter): boolean {
-        return param.type.name === "GLib.Closure";
+    hasUnsupportedCallback(_param: GirParameter): boolean {
+        return false;
     }
 
     getCallbackParamMappings(param: GirParameter): Array<{ name: string; mapped: MappedType }> | null {

@@ -1,7 +1,10 @@
 use std::ffi::{CStr, c_char, c_void};
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::FromGlibPtrFull as _, translate::FromGlibPtrNone as _};
+use gtk4::glib::{
+    self,
+    translate::{FromGlibPtrFull as _, FromGlibPtrNone as _, ToGlibPtr as _},
+};
 use libffi::middle as libffi;
 use neon::object::Object as _;
 use neon::prelude::*;
@@ -21,6 +24,7 @@ pub struct RefType {
 }
 
 impl RefType {
+    #[must_use]
     pub fn new(inner_type: Type) -> Self {
         RefType {
             inner_type: Box::new(inner_type),
@@ -188,7 +192,7 @@ impl RefType {
                 let fundamental = if fundamental_type.ownership.is_full() {
                     Fundamental::from_glib_full(actual_ptr, ref_fn, unref_fn)
                 } else {
-                    Fundamental::from_glib_none(actual_ptr, ref_fn, unref_fn)
+                    unsafe { Fundamental::from_glib_none(actual_ptr, ref_fn, unref_fn) }
                 };
                 Ok(value::Value::Object(
                     NativeValue::Fundamental(fundamental).into(),
@@ -270,6 +274,40 @@ impl RefType {
 }
 
 impl RefType {
+    pub fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let ptr =
+            unsafe { glib::gobject_ffi::g_value_get_pointer(gvalue.to_glib_none().0 as *const _) };
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        match &*self.inner_type {
+            Type::Float(float_kind) => {
+                let val = float_kind.read_ptr(ptr as *const u8);
+                Ok(value::Value::Number(val))
+            }
+            Type::Integer(int_kind) => {
+                let val = int_kind.read_ptr(ptr as *const u8);
+                Ok(value::Value::Number(val))
+            }
+            Type::Enum(_) => {
+                let val = IntegerKind::I32.read_ptr(ptr as *const u8);
+                Ok(value::Value::Number(val))
+            }
+            Type::Flags(_) => {
+                let val = IntegerKind::U32.read_ptr(ptr as *const u8);
+                Ok(value::Value::Number(val))
+            }
+            Type::Boolean => {
+                let val = unsafe { *(ptr as *const i32) };
+                Ok(value::Value::Boolean(val != 0))
+            }
+            _ => bail!(
+                "Unsupported Ref inner type for GValue conversion: {:?}",
+                self.inner_type
+            ),
+        }
+    }
+
     fn decode_ref_string(
         &self,
         storage: &FfiStorage,

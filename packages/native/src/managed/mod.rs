@@ -65,13 +65,13 @@ impl NativeHandle {
         self.get_ptr().map(|ptr| ptr as usize)
     }
 
-    pub(crate) fn require_ptr(&self) -> anyhow::Result<*mut c_void> {
+    pub(crate) fn require_ptr(self) -> anyhow::Result<*mut c_void> {
         self.get_ptr().ok_or_else(|| {
             anyhow::anyhow!("Object with handle {} has been garbage collected", self.0)
         })
     }
 
-    pub(crate) fn require_non_null_ptr(&self) -> anyhow::Result<*mut c_void> {
+    pub(crate) fn require_non_null_ptr(self) -> anyhow::Result<*mut c_void> {
         let ptr = self.require_ptr()?;
         if ptr.is_null() {
             anyhow::bail!("Object with handle {} has a null pointer", self.0);
@@ -79,6 +79,7 @@ impl NativeHandle {
         Ok(ptr)
     }
 
+    #[must_use]
     pub fn inner(&self) -> usize {
         self.0
     }

@@ -67,4 +67,34 @@ impl StringType {
 
         Ok(value::Value::String(string))
     }
+
+    /// # Safety
+    /// `ptr` must be null or point to a valid null-terminated C string.
+    pub unsafe fn ptr_to_value(ptr: *mut c_void) -> value::Value {
+        if ptr.is_null() {
+            return value::Value::Null;
+        }
+        let c_str = unsafe { CStr::from_ptr(ptr as *const c_char) };
+        value::Value::String(c_str.to_string_lossy().into_owned())
+    }
+
+    pub fn from_glib_value(gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let string: String = gvalue
+            .get()
+            .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
+        Ok(value::Value::String(string))
+    }
+
+    /// # Safety
+    /// `ret` must point to a writable return value buffer.
+    pub unsafe fn write_return_value(ret: *mut c_void, js_result: &Result<value::Value, ()>) {
+        let ptr = match js_result {
+            Ok(value::Value::String(s)) => CString::new(s.as_bytes())
+                .ok()
+                .map(|cs| unsafe { glib::ffi::g_strdup(cs.as_ptr()) as *mut c_void })
+                .unwrap_or(std::ptr::null_mut()),
+            _ => std::ptr::null_mut(),
+        };
+        unsafe { *(ret as *mut *mut c_void) = ptr };
+    }
 }

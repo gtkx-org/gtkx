@@ -18,12 +18,12 @@ use anyhow::bail;
 use gtk4::glib::{
     self,
     prelude::{ObjectExt as _, ObjectType as _},
-    translate::{FromGlibPtrNone as _, ToGlibPtr as _, ToGlibPtrMut as _},
+    translate::{FromGlibPtrNone as _, ToGlibPtrMut as _},
     value::ToValue as _,
 };
 use neon::{handle::Root, object::Object as _, prelude::*};
 
-use crate::managed::{Boxed, Fundamental, NativeHandle, NativeValue};
+use crate::managed::NativeHandle;
 use crate::types::*;
 use crate::{arg::Arg, ffi};
 
@@ -34,6 +34,7 @@ pub struct Callback {
 }
 
 impl Callback {
+    #[must_use]
     pub fn new(js_func: Arc<Root<JsFunction>>, channel: Channel) -> Self {
         Callback { js_func, channel }
     }
@@ -64,6 +65,7 @@ pub struct Ref {
 }
 
 impl Ref {
+    #[must_use]
     pub fn new(value: Value, js_obj: Arc<Root<JsObject>>) -> Self {
         Ref {
             value: Box::new(value),
@@ -85,6 +87,7 @@ impl Ref {
 }
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum Value {
     Number(f64),
     String(String),
@@ -104,7 +107,14 @@ impl Value {
                 .get_ptr()
                 .ok_or_else(|| anyhow::anyhow!("{} has been garbage collected", type_name)),
             Value::Null | Value::Undefined => Ok(std::ptr::null_mut()),
-            _ => anyhow::bail!("Expected an Object for {} type, got {:?}", type_name, self),
+            Value::Number(_)
+            | Value::String(_)
+            | Value::Boolean(_)
+            | Value::Array(_)
+            | Value::Callback(_)
+            | Value::Ref(_) => {
+                anyhow::bail!("Expected an Object for {} type, got {:?}", type_name, self)
+            }
         }
     }
 
@@ -121,6 +131,7 @@ impl Value {
         ty.decode_with_context(ffi_value, ffi_args, args)
     }
 
+    #[must_use]
     pub fn into_glib_value_with_default(self, return_type: Option<&Type>) -> Option<glib::Value> {
         match &self {
             Value::Undefined => match return_type {
@@ -133,9 +144,26 @@ impl Value {
                 Some(Type::String(_)) => Some(Option::<String>::None.into()),
                 Some(Type::GObject(_)) => Some(Option::<glib::Object>::None.into()),
                 Some(Type::Void) | None => None,
-                _ => None,
+                Some(
+                    Type::Boxed(_)
+                    | Type::Struct(_)
+                    | Type::Fundamental(_)
+                    | Type::Array(_)
+                    | Type::HashTable(_)
+                    | Type::Callback(_)
+                    | Type::Trampoline(_)
+                    | Type::Ref(_)
+                    | Type::Unichar,
+                ) => None,
             },
-            _ => self.to_glib_value_typed(return_type).ok(),
+            Value::Number(_)
+            | Value::String(_)
+            | Value::Boolean(_)
+            | Value::Object(_)
+            | Value::Null
+            | Value::Array(_)
+            | Value::Callback(_)
+            | Value::Ref(_) => self.to_glib_value_typed(return_type).ok(),
         }
     }
 
@@ -194,9 +222,9 @@ impl Value {
             Value::Null | Value::Undefined => {
                 bail!("Cannot convert Null/Undefined to glib::Value without a type hint")
             }
-            other => bail!(
+            Value::Array(_) | Value::Callback(_) | Value::Ref(_) => bail!(
                 "Unsupported Value type for glib::Value conversion: {:?}",
-                other
+                self
             ),
         }
     }
@@ -289,7 +317,7 @@ impl Value {
             }
             Value::Null => Ok(cx.null().upcast()),
             Value::Undefined => Ok(cx.undefined().upcast()),
-            _ => cx.throw_type_error(format!(
+            Value::Callback(_) | Value::Ref(_) => cx.throw_type_error(format!(
                 "Unsupported Value type for JS conversion: {:?}",
                 self
             )),
@@ -297,184 +325,7 @@ impl Value {
     }
 
     pub fn from_glib_value(gvalue: &glib::Value, ty: &Type) -> anyhow::Result<Self> {
-        match ty {
-            Type::Integer(int_kind) => {
-                let number = match int_kind {
-                    IntegerKind::I8 => gvalue
-                        .get::<i8>()
-                        .map_err(|e| anyhow::anyhow!("Failed to get i8 from GValue: {}", e))?
-                        as f64,
-                    IntegerKind::U8 => gvalue
-                        .get::<u8>()
-                        .map_err(|e| anyhow::anyhow!("Failed to get u8 from GValue: {}", e))?
-                        as f64,
-                    IntegerKind::I16 => gvalue.get::<i32>().map_err(|e| {
-                        anyhow::anyhow!("Failed to get i32 (as i16) from GValue: {}", e)
-                    })? as i16 as f64,
-                    IntegerKind::U16 => gvalue.get::<u32>().map_err(|e| {
-                        anyhow::anyhow!("Failed to get u32 (as u16) from GValue: {}", e)
-                    })? as u16 as f64,
-                    IntegerKind::I32 => gvalue
-                        .get::<i32>()
-                        .map_err(|e| anyhow::anyhow!("Failed to get i32 from GValue: {}", e))?
-                        as f64,
-                    IntegerKind::U32 => gvalue
-                        .get::<u32>()
-                        .map_err(|e| anyhow::anyhow!("Failed to get u32 from GValue: {}", e))?
-                        as f64,
-                    IntegerKind::I64 => gvalue
-                        .get::<i64>()
-                        .map_err(|e| anyhow::anyhow!("Failed to get i64 from GValue: {}", e))?
-                        as f64,
-                    IntegerKind::U64 => gvalue
-                        .get::<u64>()
-                        .map_err(|e| anyhow::anyhow!("Failed to get u64 from GValue: {}", e))?
-                        as f64,
-                };
-                Ok(Value::Number(number))
-            }
-            Type::Enum(_) => {
-                let enum_value = unsafe {
-                    glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _)
-                };
-                Ok(Value::Number(enum_value as f64))
-            }
-            Type::Flags(_) => {
-                let flags_value = unsafe {
-                    glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _)
-                };
-                Ok(Value::Number(flags_value as f64))
-            }
-            Type::Float(float_kind) => {
-                let number = match float_kind {
-                    FloatKind::F32 => gvalue
-                        .get::<f32>()
-                        .map_err(|e| anyhow::anyhow!("Failed to get f32 from GValue: {}", e))?
-                        as f64,
-                    FloatKind::F64 => gvalue
-                        .get::<f64>()
-                        .map_err(|e| anyhow::anyhow!("Failed to get f64 from GValue: {}", e))?,
-                };
-                Ok(Value::Number(number))
-            }
-            Type::String(_) => {
-                let string: String = gvalue
-                    .get()
-                    .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
-                Ok(Value::String(string))
-            }
-            Type::Boolean => {
-                let boolean: bool = gvalue
-                    .get()
-                    .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {}", e))?;
-                Ok(Value::Boolean(boolean))
-            }
-            Type::GObject(_) => Self::from_glib_gobject(gvalue),
-            Type::Boxed(boxed_type) => {
-                let gvalue_type = gvalue.type_();
-
-                // SAFETY: gvalue contains a valid boxed type
-                let boxed_ptr = unsafe {
-                    glib::gobject_ffi::g_value_get_boxed(gvalue.to_glib_none().0 as *const _)
-                };
-
-                if boxed_ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-
-                let gtype = boxed_type.gtype().or(Some(gvalue_type));
-
-                let boxed = if boxed_type.ownership.is_full() {
-                    // SAFETY: gvalue contains a valid boxed type and we're duplicating ownership
-                    let owned_ptr = unsafe {
-                        glib::gobject_ffi::g_value_dup_boxed(gvalue.to_glib_none().0 as *const _)
-                    };
-                    Boxed::from_glib_full(gtype, owned_ptr)
-                } else {
-                    Boxed::from_glib_none(gtype, boxed_ptr)?
-                };
-
-                let handle = NativeValue::Boxed(boxed).into();
-                Ok(Value::Object(handle))
-            }
-            Type::Void => Ok(Value::Null),
-            Type::Struct(_) => {
-                bail!(
-                    "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
-                )
-            }
-            Type::Fundamental(fundamental_type) => {
-                let gvalue_type = gvalue.type_();
-
-                let ptr = if gvalue_type.is_a(glib::types::Type::VARIANT) {
-                    // SAFETY: gvalue contains a valid variant type checked above
-                    unsafe {
-                        glib::gobject_ffi::g_value_get_variant(gvalue.to_glib_none().0 as *const _)
-                            .cast::<c_void>()
-                    }
-                } else if gvalue_type.is_a(glib::types::Type::PARAM_SPEC) {
-                    // SAFETY: gvalue contains a valid param spec type checked above
-                    unsafe {
-                        glib::gobject_ffi::g_value_get_param(gvalue.to_glib_none().0 as *const _)
-                            .cast::<c_void>()
-                    }
-                } else {
-                    bail!("Unsupported fundamental type in GValue: {:?}", gvalue_type)
-                };
-
-                if ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-
-                let (ref_fn, unref_fn) = fundamental_type.lookup_fns()?;
-                let fundamental = if fundamental_type.ownership.is_full() {
-                    Fundamental::from_glib_full(ptr, ref_fn, unref_fn)
-                } else {
-                    Fundamental::from_glib_none(ptr, ref_fn, unref_fn)
-                };
-                Ok(Value::Object(NativeValue::Fundamental(fundamental).into()))
-            }
-            Type::Ref(ref_type) => {
-                let ptr = unsafe {
-                    glib::gobject_ffi::g_value_get_pointer(gvalue.to_glib_none().0 as *const _)
-                };
-                if ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-                match &*ref_type.inner_type {
-                    Type::Float(float_kind) => {
-                        let val = float_kind.read_ptr(ptr as *const u8);
-                        Ok(Value::Number(val))
-                    }
-                    Type::Integer(int_kind) => {
-                        let val = int_kind.read_ptr(ptr as *const u8);
-                        Ok(Value::Number(val))
-                    }
-                    Type::Enum(_) => {
-                        let val = IntegerKind::I32.read_ptr(ptr as *const u8);
-                        Ok(Value::Number(val))
-                    }
-                    Type::Flags(_) => {
-                        let val = IntegerKind::U32.read_ptr(ptr as *const u8);
-                        Ok(Value::Number(val))
-                    }
-                    Type::Boolean => {
-                        let val = unsafe { *(ptr as *const i32) };
-                        Ok(Value::Boolean(val != 0))
-                    }
-                    _ => bail!(
-                        "Unsupported Ref inner type for GValue conversion: {:?}",
-                        ref_type.inner_type
-                    ),
-                }
-            }
-            Type::Array(_) | Type::HashTable(_) | Type::Callback(_) | Type::Trampoline(_) => {
-                bail!(
-                    "Type {:?} should not appear in glib value conversion - this indicates a bug in the type mapping",
-                    ty
-                )
-            }
-        }
+        ty.from_glib_value(gvalue)
     }
 
     pub fn from_glib_values(args: &[glib::Value], arg_types: &[Type]) -> anyhow::Result<Vec<Self>> {
@@ -482,25 +333,5 @@ impl Value {
             .zip(arg_types.iter())
             .map(|(gval, ty)| Self::from_glib_value(gval, ty))
             .collect()
-    }
-
-    fn from_glib_gobject(gvalue: &glib::Value) -> anyhow::Result<Value> {
-        // SAFETY: gvalue contains a valid GObject type
-        let obj_ptr =
-            unsafe { glib::gobject_ffi::g_value_get_object(gvalue.to_glib_none().0 as *const _) };
-
-        if obj_ptr.is_null() {
-            return Ok(Value::Null);
-        }
-
-        // SAFETY: obj_ptr is non-null and points to a valid GObject
-        let type_class = unsafe { (*obj_ptr).g_type_instance.g_class };
-        if type_class.is_null() {
-            bail!("GObject has invalid type class (object may have been freed)");
-        }
-
-        // SAFETY: obj_ptr is a valid GObject with a valid type class
-        let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
-        Ok(Value::Object(NativeValue::GObject(obj).into()))
     }
 }

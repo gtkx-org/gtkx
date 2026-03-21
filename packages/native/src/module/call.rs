@@ -110,7 +110,9 @@ impl CallRequest {
                 Type::Integer(ref int_kind) => int_kind.call_cif(&cif, symbol_ptr, &ffi_args),
                 Type::Float(ref float_kind) => float_kind.call_cif(&cif, symbol_ptr, &ffi_args),
                 Type::Enum(_) => IntegerKind::I32.call_cif(&cif, symbol_ptr, &ffi_args),
-                Type::Flags(_) => IntegerKind::U32.call_cif(&cif, symbol_ptr, &ffi_args),
+                Type::Flags(_) | Type::Unichar => {
+                    IntegerKind::U32.call_cif(&cif, symbol_ptr, &ffi_args)
+                }
                 Type::String(_) => {
                     let ptr = cif.call::<*const c_char>(symbol_ptr, &ffi_args);
                     ffi::FfiValue::Ptr(ptr as *mut c_void)

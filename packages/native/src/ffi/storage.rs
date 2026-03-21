@@ -1,9 +1,3 @@
-//! Temporary storage for FFI call arguments.
-//!
-//! Provides [`FfiStorage`] for managing memory that must remain valid during
-//! native function calls. This includes arrays, strings, and other heap-allocated
-//! data that is passed by reference to native code.
-
 use std::ffi::c_void;
 
 use gtk4::glib;
@@ -14,6 +8,46 @@ use crate::types::IntegerKind;
 pub struct FfiStorage {
     ptr: *mut c_void,
     kind: FfiStorageKind,
+}
+
+#[derive(Debug)]
+pub struct GListData {
+    pub handles: Vec<crate::managed::NativeHandle>,
+    pub list_ptr: *mut glib::ffi::GList,
+    pub should_free: bool,
+}
+
+#[derive(Debug)]
+pub struct GSListData {
+    pub handles: Vec<crate::managed::NativeHandle>,
+    pub list_ptr: *mut glib::ffi::GSList,
+    pub should_free: bool,
+}
+
+#[derive(Debug)]
+pub struct StringGListData {
+    pub strings: Vec<std::ffi::CString>,
+    pub list_ptr: *mut glib::ffi::GList,
+    pub should_free: bool,
+}
+
+#[derive(Debug)]
+pub struct StringGSListData {
+    pub strings: Vec<std::ffi::CString>,
+    pub list_ptr: *mut glib::ffi::GSList,
+    pub should_free: bool,
+}
+
+#[derive(Debug)]
+pub struct GArrayData {
+    pub array_ptr: *mut glib::ffi::GArray,
+    pub should_free: bool,
+}
+
+#[derive(Debug)]
+pub struct HashTableData {
+    pub handle: *mut glib::ffi::GHashTable,
+    pub should_free: bool,
 }
 
 #[derive(Debug)]
@@ -32,30 +66,16 @@ pub enum FfiStorageKind {
     F64Vec(Vec<f64>),
     StringArray(Vec<std::ffi::CString>, Vec<*mut c_void>),
     ObjectArray(Vec<crate::managed::NativeHandle>, Vec<*mut c_void>),
-    GList(
-        Vec<crate::managed::NativeHandle>,
-        *mut glib::ffi::GList,
-        bool,
-    ),
-    GSList(
-        Vec<crate::managed::NativeHandle>,
-        *mut glib::ffi::GSList,
-        bool,
-    ),
-    StringGList(Vec<std::ffi::CString>, *mut glib::ffi::GList, bool),
-    StringGSList(Vec<std::ffi::CString>, *mut glib::ffi::GSList, bool),
+    GList(GListData),
+    GSList(GSListData),
+    StringGList(StringGListData),
+    StringGSList(StringGSListData),
     CString(std::ffi::CString),
-    GArray(*mut glib::ffi::GArray, bool),
+    GArray(GArrayData),
     Buffer(Vec<u8>),
     BoxedValue(Box<super::FfiValue>),
     PtrStorage(Box<*mut c_void>),
     HashTable(HashTableData),
-}
-
-#[derive(Debug)]
-pub struct HashTableData {
-    pub handle: *mut glib::ffi::GHashTable,
-    pub should_free: bool,
 }
 
 impl FfiStorage {
@@ -71,47 +91,34 @@ impl FfiStorage {
     }
 
     #[inline]
+    #[must_use]
     pub fn ptr(&self) -> *mut c_void {
         self.ptr
     }
 
     #[inline]
+    #[must_use]
     pub fn ptr_ref(&self) -> &*mut c_void {
         &self.ptr
     }
 
+    #[must_use]
     pub fn kind(&self) -> &FfiStorageKind {
         &self.kind
     }
 
     pub fn as_numeric_slice(&self, int_kind: IntegerKind) -> anyhow::Result<Vec<f64>> {
-        match (&self.kind, int_kind) {
-            (FfiStorageKind::U8Vec(v), IntegerKind::U8) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            (FfiStorageKind::I8Vec(v), IntegerKind::I8) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            (FfiStorageKind::U16Vec(v), IntegerKind::U16) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            (FfiStorageKind::I16Vec(v), IntegerKind::I16) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            (FfiStorageKind::U32Vec(v), IntegerKind::U32) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            (FfiStorageKind::I32Vec(v), IntegerKind::I32) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            (FfiStorageKind::U64Vec(v), IntegerKind::U64) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            (FfiStorageKind::I64Vec(v), IntegerKind::I64) => {
-                Ok(v.iter().map(|&x| x as f64).collect())
-            }
-            _ => anyhow::bail!("FfiStorage does not match integer kind {:?}", int_kind),
+        macro_rules! dispatch {
+            ($($variant:ident : $ty:ident : $vec_variant:ident),+ $(,)?) => {
+                match (&self.kind, int_kind) {
+                    $((FfiStorageKind::$vec_variant(v), IntegerKind::$variant) => {
+                        Ok(v.iter().map(|&x| x as f64).collect())
+                    }),+
+                    _ => anyhow::bail!("FfiStorage does not match integer kind {:?}", int_kind),
+                }
+            };
         }
+        with_integer_kinds!(dispatch)
     }
 
     pub fn as_f32_slice(&self) -> anyhow::Result<&[f32]> {
@@ -165,7 +172,7 @@ impl Drop for FfiStorage {
                     unsafe {
                         glib::gobject_ffi::g_closure_unref(
                             self.ptr as *mut glib::gobject_ffi::GClosure,
-                        )
+                        );
                     };
                 }
             }
@@ -174,107 +181,67 @@ impl Drop for FfiStorage {
                     unsafe { glib::ffi::g_hash_table_unref(data.handle) };
                 }
             }
-            FfiStorageKind::GList(_, list_ptr, should_free) => {
-                if *should_free && !list_ptr.is_null() {
-                    unsafe { glib::ffi::g_list_free(*list_ptr) };
+            FfiStorageKind::GList(data) => {
+                if data.should_free && !data.list_ptr.is_null() {
+                    unsafe { glib::ffi::g_list_free(data.list_ptr) };
                 }
             }
-            FfiStorageKind::GSList(_, list_ptr, should_free) => {
-                if *should_free && !list_ptr.is_null() {
-                    unsafe { glib::ffi::g_slist_free(*list_ptr) };
+            FfiStorageKind::GSList(data) => {
+                if data.should_free && !data.list_ptr.is_null() {
+                    unsafe { glib::ffi::g_slist_free(data.list_ptr) };
                 }
             }
-            FfiStorageKind::GArray(array_ptr, should_free) => {
-                if *should_free && !array_ptr.is_null() {
-                    unsafe { glib::ffi::g_array_unref(*array_ptr) };
+            FfiStorageKind::GArray(data) => {
+                if data.should_free && !data.array_ptr.is_null() {
+                    unsafe { glib::ffi::g_array_unref(data.array_ptr) };
                 }
             }
-            FfiStorageKind::StringGList(_, list_ptr, should_free) => {
-                if *should_free && !list_ptr.is_null() {
-                    unsafe { glib::ffi::g_list_free(*list_ptr) };
+            FfiStorageKind::StringGList(data) => {
+                if data.should_free && !data.list_ptr.is_null() {
+                    unsafe { glib::ffi::g_list_free(data.list_ptr) };
                 }
             }
-            FfiStorageKind::StringGSList(_, list_ptr, should_free) => {
-                if *should_free && !list_ptr.is_null() {
-                    unsafe { glib::ffi::g_slist_free(*list_ptr) };
+            FfiStorageKind::StringGSList(data) => {
+                if data.should_free && !data.list_ptr.is_null() {
+                    unsafe { glib::ffi::g_slist_free(data.list_ptr) };
                 }
             }
-            _ => {}
+            FfiStorageKind::Unit
+            | FfiStorageKind::U8Vec(_)
+            | FfiStorageKind::I8Vec(_)
+            | FfiStorageKind::U16Vec(_)
+            | FfiStorageKind::I16Vec(_)
+            | FfiStorageKind::U32Vec(_)
+            | FfiStorageKind::I32Vec(_)
+            | FfiStorageKind::U64Vec(_)
+            | FfiStorageKind::I64Vec(_)
+            | FfiStorageKind::F32Vec(_)
+            | FfiStorageKind::F64Vec(_)
+            | FfiStorageKind::StringArray(_, _)
+            | FfiStorageKind::ObjectArray(_, _)
+            | FfiStorageKind::CString(_)
+            | FfiStorageKind::Buffer(_)
+            | FfiStorageKind::BoxedValue(_)
+            | FfiStorageKind::PtrStorage(_) => {}
         }
     }
 }
 
-impl From<Vec<u8>> for FfiStorage {
-    fn from(vec: Vec<u8>) -> Self {
-        Self {
-            ptr: vec.as_ptr() as *mut c_void,
-            kind: FfiStorageKind::U8Vec(vec),
-        }
-    }
+macro_rules! impl_ffi_storage_from_integer_vecs {
+    ($($variant:ident : $ty:ident : $vec_variant:ident),+ $(,)?) => {
+        $(
+            impl From<Vec<$ty>> for FfiStorage {
+                fn from(vec: Vec<$ty>) -> Self {
+                    Self {
+                        ptr: vec.as_ptr() as *mut c_void,
+                        kind: FfiStorageKind::$vec_variant(vec),
+                    }
+                }
+            }
+        )+
+    };
 }
-
-impl From<Vec<i8>> for FfiStorage {
-    fn from(vec: Vec<i8>) -> Self {
-        Self {
-            ptr: vec.as_ptr() as *mut c_void,
-            kind: FfiStorageKind::I8Vec(vec),
-        }
-    }
-}
-
-impl From<Vec<u16>> for FfiStorage {
-    fn from(vec: Vec<u16>) -> Self {
-        Self {
-            ptr: vec.as_ptr() as *mut c_void,
-            kind: FfiStorageKind::U16Vec(vec),
-        }
-    }
-}
-
-impl From<Vec<i16>> for FfiStorage {
-    fn from(vec: Vec<i16>) -> Self {
-        Self {
-            ptr: vec.as_ptr() as *mut c_void,
-            kind: FfiStorageKind::I16Vec(vec),
-        }
-    }
-}
-
-impl From<Vec<u32>> for FfiStorage {
-    fn from(vec: Vec<u32>) -> Self {
-        Self {
-            ptr: vec.as_ptr() as *mut c_void,
-            kind: FfiStorageKind::U32Vec(vec),
-        }
-    }
-}
-
-impl From<Vec<i32>> for FfiStorage {
-    fn from(vec: Vec<i32>) -> Self {
-        Self {
-            ptr: vec.as_ptr() as *mut c_void,
-            kind: FfiStorageKind::I32Vec(vec),
-        }
-    }
-}
-
-impl From<Vec<u64>> for FfiStorage {
-    fn from(vec: Vec<u64>) -> Self {
-        Self {
-            ptr: vec.as_ptr() as *mut c_void,
-            kind: FfiStorageKind::U64Vec(vec),
-        }
-    }
-}
-
-impl From<Vec<i64>> for FfiStorage {
-    fn from(vec: Vec<i64>) -> Self {
-        Self {
-            ptr: vec.as_ptr() as *mut c_void,
-            kind: FfiStorageKind::I64Vec(vec),
-        }
-    }
-}
+with_integer_kinds!(impl_ffi_storage_from_integer_vecs);
 
 impl From<Vec<f32>> for FfiStorage {
     fn from(vec: Vec<f32>) -> Self {

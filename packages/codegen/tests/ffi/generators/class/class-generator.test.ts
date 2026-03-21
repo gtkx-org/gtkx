@@ -357,7 +357,7 @@ describe("ClassGenerator", () => {
     });
 
     describe("failure cases", () => {
-        it("returns success false for class with only unsupported constructors", () => {
+        it("returns success true for class with GLib.Closure constructor", () => {
             const { generator, sourceFile } = createTestSetup({
                 constructors: [
                     createNormalizedConstructor({
@@ -376,7 +376,7 @@ describe("ClassGenerator", () => {
 
             const result = generator.generateToSourceFile(sourceFile);
 
-            expect(result.success).toBe(false);
+            expect(result.success).toBe(true);
         });
     });
 

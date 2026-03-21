@@ -762,6 +762,9 @@ describe("FfiMapper", () => {
 
                 expect(result.ts).toBe("(...args: unknown[]) => unknown");
                 expect(result.ffi.type).toBe("callback");
+                expect(result.ffi.kind).toBe("closure");
+                expect(result.ffi.argTypes).toEqual([]);
+                expect(result.ffi.returnType).toEqual({ type: "void" });
             });
         });
     });
@@ -895,13 +898,13 @@ describe("FfiMapper", () => {
             expect(mapper.hasUnsupportedCallback(param)).toBe(false);
         });
 
-        it("returns true for GLib.Closure", () => {
+        it("returns false for GLib.Closure", () => {
             const { mapper } = createTestSetup();
             const param = createNormalizedParameter({
                 name: "closure",
                 type: createNormalizedType({ name: "GLib.Closure" }),
             });
-            expect(mapper.hasUnsupportedCallback(param)).toBe(true);
+            expect(mapper.hasUnsupportedCallback(param)).toBe(false);
         });
     });
 });
