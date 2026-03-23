@@ -29,6 +29,7 @@ pub struct StringGListData {
     pub strings: Vec<std::ffi::CString>,
     pub list_ptr: *mut glib::ffi::GList,
     pub should_free: bool,
+    pub elements_duped: bool,
 }
 
 #[derive(Debug)]
@@ -36,11 +37,18 @@ pub struct StringGSListData {
     pub strings: Vec<std::ffi::CString>,
     pub list_ptr: *mut glib::ffi::GSList,
     pub should_free: bool,
+    pub elements_duped: bool,
 }
 
 #[derive(Debug)]
 pub struct GArrayData {
     pub array_ptr: *mut glib::ffi::GArray,
+    pub should_free: bool,
+}
+
+#[derive(Debug)]
+pub struct GByteArrayData {
+    pub array_ptr: *mut glib::ffi::GByteArray,
     pub should_free: bool,
 }
 
@@ -72,6 +80,7 @@ pub enum FfiStorageKind {
     StringGSList(StringGSListData),
     CString(std::ffi::CString),
     GArray(GArrayData),
+    GByteArray(GByteArrayData),
     Buffer(Vec<u8>),
     BoxedValue(Box<super::FfiValue>),
     PtrStorage(Box<*mut c_void>),
@@ -196,14 +205,31 @@ impl Drop for FfiStorage {
                     unsafe { glib::ffi::g_array_unref(data.array_ptr) };
                 }
             }
+            FfiStorageKind::GByteArray(data) => {
+                if data.should_free && !data.array_ptr.is_null() {
+                    unsafe { glib::ffi::g_byte_array_unref(data.array_ptr) };
+                }
+            }
             FfiStorageKind::StringGList(data) => {
                 if data.should_free && !data.list_ptr.is_null() {
-                    unsafe { glib::ffi::g_list_free(data.list_ptr) };
+                    if data.elements_duped {
+                        unsafe {
+                            glib::ffi::g_list_free_full(data.list_ptr, Some(glib::ffi::g_free));
+                        }
+                    } else {
+                        unsafe { glib::ffi::g_list_free(data.list_ptr) };
+                    }
                 }
             }
             FfiStorageKind::StringGSList(data) => {
                 if data.should_free && !data.list_ptr.is_null() {
-                    unsafe { glib::ffi::g_slist_free(data.list_ptr) };
+                    if data.elements_duped {
+                        unsafe {
+                            glib::ffi::g_slist_free_full(data.list_ptr, Some(glib::ffi::g_free));
+                        }
+                    } else {
+                        unsafe { glib::ffi::g_slist_free(data.list_ptr) };
+                    }
                 }
             }
             FfiStorageKind::Unit

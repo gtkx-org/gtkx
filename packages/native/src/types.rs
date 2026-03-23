@@ -353,7 +353,8 @@ impl FfiCodec for UnicharType {
             ffi::FfiValue::U32(v) => *v,
             _ => bail!("Expected FfiValue::U32 for unichar, got {:?}", ffi_value),
         };
-        let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
+        let ch = char::from_u32(cp)
+            .ok_or_else(|| anyhow::anyhow!("Invalid Unicode codepoint: 0x{:X}", cp))?;
         Ok(value::Value::String(ch.to_string()))
     }
 

@@ -33,11 +33,16 @@ impl FfiCodec for StringType {
         match value {
             value::Value::String(s) => {
                 let cstring = CString::new(s.as_bytes())?;
-                let ptr = cstring.as_ptr() as *mut c_void;
-                Ok(ffi::FfiValue::Storage(ffi::FfiStorage::new(
-                    ptr,
-                    ffi::FfiStorageKind::CString(cstring),
-                )))
+                if self.ownership.is_full() {
+                    let glib_ptr = unsafe { glib::ffi::g_strdup(cstring.as_ptr()) };
+                    Ok(ffi::FfiValue::Ptr(glib_ptr as *mut c_void))
+                } else {
+                    let ptr = cstring.as_ptr() as *mut c_void;
+                    Ok(ffi::FfiValue::Storage(ffi::FfiStorage::new(
+                        ptr,
+                        ffi::FfiStorageKind::CString(cstring),
+                    )))
+                }
             }
             value::Value::Null | value::Value::Undefined => {
                 Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()))
@@ -52,7 +57,7 @@ impl FfiCodec for StringType {
         };
 
         let c_str = unsafe { CStr::from_ptr(str_ptr as *const c_char) };
-        let string = c_str.to_str()?.to_string();
+        let string = c_str.to_string_lossy().into_owned();
 
         if self.ownership.is_full() {
             unsafe { glib::ffi::g_free(str_ptr) };

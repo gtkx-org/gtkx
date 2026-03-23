@@ -1,7 +1,10 @@
 use std::ffi::c_void;
 
 use anyhow::bail;
-use gtk4::glib::{self, translate::ToGlibPtr as _};
+use gtk4::glib::{
+    self,
+    translate::{IntoGlib as _, ToGlibPtr as _},
+};
 use libffi::middle as libffi;
 use neon::prelude::*;
 
@@ -96,6 +99,21 @@ macro_rules! impl_integer_kind_dispatch {
 }
 with_integer_kinds!(impl_integer_kind_dispatch);
 
+const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_992.0;
+
+fn check_int_range(value: f64, min: f64, max: f64, type_name: &str) -> anyhow::Result<()> {
+    if !value.is_finite() || value.fract() != 0.0 || value < min || value > max {
+        bail!(
+            "Value {} is out of range for {} [{}, {}]",
+            value,
+            type_name,
+            min,
+            max
+        );
+    }
+    Ok(())
+}
+
 impl IntegerKind {
     #[must_use]
     pub fn is_unsigned(self) -> bool {
@@ -110,6 +128,52 @@ impl IntegerKind {
             Self::U32 | Self::I32 => 4,
             Self::U64 | Self::I64 => 8,
         }
+    }
+
+    pub fn checked_to_ffi_value(self, value: f64) -> anyhow::Result<ffi::FfiValue> {
+        match self {
+            Self::I8 => {
+                check_int_range(value, i8::MIN as f64, i8::MAX as f64, "i8")?;
+                Ok(ffi::FfiValue::I8(value as i8))
+            }
+            Self::U8 => {
+                check_int_range(value, 0.0, u8::MAX as f64, "u8")?;
+                Ok(ffi::FfiValue::U8(value as u8))
+            }
+            Self::I16 => {
+                check_int_range(value, i16::MIN as f64, i16::MAX as f64, "i16")?;
+                Ok(ffi::FfiValue::I16(value as i16))
+            }
+            Self::U16 => {
+                check_int_range(value, 0.0, u16::MAX as f64, "u16")?;
+                Ok(ffi::FfiValue::U16(value as u16))
+            }
+            Self::I32 => {
+                check_int_range(value, i32::MIN as f64, i32::MAX as f64, "i32")?;
+                Ok(ffi::FfiValue::I32(value as i32))
+            }
+            Self::U32 => {
+                check_int_range(value, 0.0, u32::MAX as f64, "u32")?;
+                Ok(ffi::FfiValue::U32(value as u32))
+            }
+            Self::I64 => {
+                check_int_range(value, -MAX_SAFE_INTEGER, MAX_SAFE_INTEGER, "i64")?;
+                Ok(ffi::FfiValue::I64(value as i64))
+            }
+            Self::U64 => {
+                check_int_range(value, 0.0, MAX_SAFE_INTEGER, "u64")?;
+                Ok(ffi::FfiValue::U64(value as u64))
+            }
+        }
+    }
+
+    pub fn checked_to_ffi_storage(self, values: &[f64]) -> anyhow::Result<ffi::FfiStorage> {
+        for (i, &v) in values.iter().enumerate() {
+            if let Err(e) = self.checked_to_ffi_value(v) {
+                bail!("Array element {}: {}", i, e);
+            }
+        }
+        Ok(self.to_ffi_storage(values))
     }
 
     pub fn vec_to_f64(self, storage: &ffi::FfiStorage) -> anyhow::Result<Vec<f64>> {
@@ -140,7 +204,7 @@ impl FfiCodec for IntegerKind {
             value::Value::Null | value::Value::Undefined if optional => 0.0,
             _ => bail!("Expected a Number for integer type, got {:?}", value),
         };
-        Ok(self.to_ffi_value(number))
+        self.checked_to_ffi_value(number)
     }
 
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
@@ -280,6 +344,18 @@ impl FloatKind {
         }
     }
 
+    pub fn checked_to_ffi_value(self, value: f64) -> anyhow::Result<ffi::FfiValue> {
+        match self {
+            Self::F32 => {
+                if value.is_finite() && (value > f32::MAX as f64 || value < -(f32::MAX as f64)) {
+                    bail!("Value {} is out of range for f32", value);
+                }
+                Ok(ffi::FfiValue::F32(value as f32))
+            }
+            Self::F64 => Ok(ffi::FfiValue::F64(value)),
+        }
+    }
+
     #[must_use]
     pub fn to_ffi_value(self, value: f64) -> ffi::FfiValue {
         match self {
@@ -317,7 +393,7 @@ impl FfiCodec for FloatKind {
             value::Value::Null | value::Value::Undefined if optional => 0.0,
             _ => bail!("Expected a Number for float type, got {:?}", value),
         };
-        Ok(self.to_ffi_value(number))
+        self.checked_to_ffi_value(number)
     }
 
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
@@ -404,9 +480,40 @@ impl EnumType {
     }
 }
 
+impl EnumType {
+    fn validate_enum_value(&self, value: i32) {
+        if let Ok(gtype) = crate::state::GtkThreadState::gtype_from_lib(
+            &self.tagged.library,
+            &self.tagged.get_type_fn,
+        ) {
+            unsafe {
+                let enum_class = glib::gobject_ffi::g_type_class_ref(gtype.into_glib())
+                    as *mut glib::gobject_ffi::GEnumClass;
+                if !enum_class.is_null() {
+                    let enum_value = glib::gobject_ffi::g_enum_get_value(enum_class, value);
+                    if enum_value.is_null() {
+                        gtkx_warn!(
+                            "Enum value {} is not a valid member of {} (GType {})",
+                            value,
+                            self.tagged.get_type_fn,
+                            gtype
+                        );
+                    }
+                    glib::gobject_ffi::g_type_class_unref(enum_class as *mut _);
+                }
+            }
+        }
+    }
+}
+
 impl FfiCodec for EnumType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        FfiCodec::encode(&self.storage, value, optional)
+        let result = FfiCodec::encode(&self.storage, value, optional)?;
+        #[cfg(debug_assertions)]
+        if let value::Value::Number(n) = value {
+            self.validate_enum_value(*n as i32);
+        }
+        Ok(result)
     }
 
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {

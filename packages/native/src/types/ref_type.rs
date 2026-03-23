@@ -192,6 +192,26 @@ impl FfiCodec for RefType {
                     NativeValue::Fundamental(fundamental).into(),
                 ))
             }
+            Type::Struct(struct_type) => {
+                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
+                if actual_ptr.is_null() {
+                    return Ok(value::Value::Null);
+                }
+                let boxed = if struct_type.ownership.is_full() {
+                    Boxed::from_glib_full(None, actual_ptr)
+                } else {
+                    match struct_type.size {
+                        Some(_) => Boxed::from_glib_none_with_size(
+                            None,
+                            actual_ptr,
+                            struct_type.size,
+                            Some(&struct_type.type_name),
+                        )?,
+                        None => Boxed::from_ptr_unowned(actual_ptr),
+                    }
+                };
+                Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+            }
             Type::Integer(int_type) => {
                 let number = int_type.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
@@ -343,19 +363,17 @@ impl RefType {
 
         match storage.kind() {
             FfiStorageKind::Buffer(_) => {
-                // SAFETY: storage.ptr() points to a null-terminated C string in our buffer
                 let c_str = unsafe { CStr::from_ptr(storage.ptr() as *const c_char) };
-                let string = c_str.to_str()?.to_string();
+                let string = c_str.to_string_lossy().into_owned();
                 Ok(value::Value::String(string))
             }
             _ => {
-                // SAFETY: storage.ptr() points to a pointer-to-string
                 let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
                 if str_ptr.is_null() {
                     return Ok(value::Value::Null);
                 }
                 let c_str = unsafe { CStr::from_ptr(str_ptr) };
-                let string = c_str.to_str()?.to_string();
+                let string = c_str.to_string_lossy().into_owned();
 
                 if string_type.ownership.is_full() {
                     // SAFETY: str_ptr was allocated by GLib and we have owned ownership

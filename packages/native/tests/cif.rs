@@ -173,10 +173,33 @@ fn try_from_float_f64() {
 }
 
 #[test]
-fn try_from_string() {
+fn try_from_string_full() {
     let arg = Arg::new(
         Type::String(StringType {
             ownership: Ownership::Full,
+            length: None,
+        }),
+        value::Value::String("hello world".to_string()),
+    );
+
+    let result = FfiValue::try_from(arg);
+    assert!(result.is_ok());
+    if let FfiValue::Ptr(ptr) = result.unwrap() {
+        unsafe {
+            let s = std::ffi::CStr::from_ptr(ptr as *const i8);
+            assert_eq!(s.to_str().unwrap(), "hello world");
+            gtk4::glib::ffi::g_free(ptr);
+        }
+    } else {
+        panic!("Expected FfiValue::Ptr for full ownership string");
+    }
+}
+
+#[test]
+fn try_from_string_borrowed() {
+    let arg = Arg::new(
+        Type::String(StringType {
+            ownership: Ownership::Borrowed,
             length: None,
         }),
         value::Value::String("hello world".to_string()),
@@ -190,7 +213,7 @@ fn try_from_string() {
             assert_eq!(s.to_str().unwrap(), "hello world");
         }
     } else {
-        panic!("Expected FfiValue::Storage");
+        panic!("Expected FfiValue::Storage for borrowed string");
     }
 }
 

@@ -129,11 +129,25 @@ impl FfiCodec for BoxedType {
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let gvalue_type = gvalue.type_();
+
+        if gvalue_type == glib::Type::STRING {
+            let string: String = gvalue
+                .get()
+                .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
+            return Ok(value::Value::String(string));
+        }
+
         let boxed_ptr =
             unsafe { glib::gobject_ffi::g_value_get_boxed(gvalue.to_glib_none().0 as *const _) };
         if boxed_ptr.is_null() {
             return Ok(value::Value::Null);
         }
+
+        if gvalue_type.name() == "GValue" {
+            let inner_gvalue = unsafe { &*(boxed_ptr as *const glib::Value) };
+            return self.from_glib_value(inner_gvalue);
+        }
+
         let gtype = self.gtype().or(Some(gvalue_type));
         let boxed = if self.ownership.is_full() {
             let owned_ptr = unsafe {

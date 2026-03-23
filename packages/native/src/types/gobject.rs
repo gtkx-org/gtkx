@@ -49,6 +49,11 @@ impl FfiCodec for GObjectType {
 
         let gobject_ptr = object_ptr as *mut glib::gobject_ffi::GObject;
 
+        let type_class = unsafe { (*gobject_ptr).g_type_instance.g_class };
+        if type_class.is_null() {
+            bail!("GObject has invalid type class (object may have been freed)");
+        }
+
         let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
 
         let object = if is_floating {
@@ -81,8 +86,12 @@ impl FfiCodec for GObjectType {
         if ptr.is_null() {
             return Ok(value::Value::Null);
         }
-        let object =
-            unsafe { glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject) };
+        let gobject_ptr = ptr as *mut glib::gobject_ffi::GObject;
+        let type_class = unsafe { (*gobject_ptr).g_type_instance.g_class };
+        if type_class.is_null() {
+            bail!("GObject has invalid type class (object may have been freed)");
+        }
+        let object = unsafe { glib::Object::from_glib_none(gobject_ptr) };
         Ok(value::Value::Object(NativeValue::GObject(object).into()))
     }
 

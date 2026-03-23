@@ -204,6 +204,41 @@ impl Value {
             Value::Boolean(b) => Ok(b.into()),
             Value::Object(handle) => {
                 if let Some(ptr) = handle.get_ptr() {
+                    if let Some(Type::Boxed(boxed_type)) = expected_type
+                        && let Some(gtype) = boxed_type.gtype()
+                    {
+                        let mut value = glib::Value::from_type(gtype);
+                        unsafe {
+                            glib::gobject_ffi::g_value_set_boxed(
+                                value.to_glib_none_mut().0,
+                                ptr as *const _,
+                            );
+                        }
+                        return Ok(value);
+                    }
+                    if let Some(Type::Fundamental(fundamental_type)) = expected_type {
+                        let gtype_name = &fundamental_type.unref_func;
+                        if gtype_name.contains("variant") {
+                            let mut value = glib::Value::from_type(glib::types::Type::VARIANT);
+                            unsafe {
+                                glib::gobject_ffi::g_value_set_variant(
+                                    value.to_glib_none_mut().0,
+                                    ptr as *mut _,
+                                );
+                            }
+                            return Ok(value);
+                        }
+                        if gtype_name.contains("param") {
+                            let mut value = glib::Value::from_type(glib::types::Type::PARAM_SPEC);
+                            unsafe {
+                                glib::gobject_ffi::g_value_set_param(
+                                    value.to_glib_none_mut().0,
+                                    ptr as *mut _,
+                                );
+                            }
+                            return Ok(value);
+                        }
+                    }
                     let obj: glib::Object = unsafe {
                         glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
                     };
