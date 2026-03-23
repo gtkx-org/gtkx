@@ -24,7 +24,7 @@ fn handle_from_registers_in_map() {
     assert!(handle.inner() > 0);
 
     GtkThreadState::with(|state| {
-        assert!(state.handle_map.contains_key(&handle.inner()));
+        assert!(state.handles.get(handle.inner()).is_some());
     });
 }
 
@@ -46,7 +46,7 @@ fn handle_get_ptr_returns_none_after_removal() {
     let handle: NativeHandle = object.into();
 
     GtkThreadState::with(|state| {
-        state.handle_map.remove(&handle.inner());
+        state.handles.remove(handle.inner());
     });
 
     assert_eq!(handle.get_ptr(), None);
@@ -157,7 +157,7 @@ fn multiple_handles_independent() {
     let handle2: NativeHandle = NativeValue::GObject(obj2.clone()).into();
 
     GtkThreadState::with(|state| {
-        state.handle_map.remove(&handle1.inner());
+        state.handles.remove(handle1.inner());
     });
 
     assert_eq!(handle1.get_ptr(), None);

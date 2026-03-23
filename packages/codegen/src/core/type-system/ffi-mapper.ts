@@ -595,7 +595,13 @@ export class FfiMapper {
                     if (sharedLib) {
                         return {
                             ts: qualifiedName,
-                            ffi: fundamentalType(sharedLib, resolved.copyFunction, resolved.freeFunction, transferFull),
+                            ffi: fundamentalType(
+                                sharedLib,
+                                resolved.copyFunction,
+                                resolved.freeFunction,
+                                transferFull,
+                                resolved.glibTypeName,
+                            ),
                             imports,
                             kind: "record",
                         };
@@ -638,7 +644,13 @@ export class FfiMapper {
                     if (sharedLib) {
                         return {
                             ts: qualifiedName,
-                            ffi: fundamentalType(sharedLib, resolved.refFunc, resolved.unrefFunc, transferFull),
+                            ffi: fundamentalType(
+                                sharedLib,
+                                resolved.refFunc,
+                                resolved.unrefFunc,
+                                transferFull,
+                                resolved.glibTypeName,
+                            ),
                             imports,
                             kind: resolved.kind,
                         };

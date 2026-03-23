@@ -680,6 +680,7 @@ fn from_cif_value_fundamental_gvariant_transfer_none() {
         library: "libglib-2.0.so.0".to_string(),
         ref_func: "g_variant_ref_sink".to_string(),
         unref_func: "g_variant_unref".to_string(),
+        type_name: Some("GVariant".to_string()),
     };
     let type_ = Type::Fundamental(fundamental_type);
 
@@ -706,6 +707,7 @@ fn from_cif_value_fundamental_null() {
         library: "libglib-2.0.so.0".to_string(),
         ref_func: "g_variant_ref_sink".to_string(),
         unref_func: "g_variant_unref".to_string(),
+        type_name: Some("GVariant".to_string()),
     };
     let type_ = Type::Fundamental(fundamental_type);
 

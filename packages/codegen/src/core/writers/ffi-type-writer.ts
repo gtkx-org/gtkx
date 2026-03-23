@@ -118,6 +118,7 @@ export class FfiTypeWriter {
         fundamentalLib?: string;
         fundamentalRefFunc?: string;
         fundamentalUnrefFunc?: string;
+        fundamentalTypeName?: string;
     }): WriterFunction {
         if (options.isRecord && options.recordName) {
             const lib = options.sharedLibrary ?? this.options.currentSharedLibrary ?? "";
@@ -138,13 +139,17 @@ export class FfiTypeWriter {
             options.fundamentalRefFunc &&
             options.fundamentalUnrefFunc
         ) {
-            return Writers.object({
+            const obj: Record<string, string> = {
                 type: '"fundamental"',
                 ownership: '"borrowed"',
                 library: `"${options.fundamentalLib}"`,
                 refFn: `"${options.fundamentalRefFunc}"`,
                 unrefFn: `"${options.fundamentalUnrefFunc}"`,
-            });
+            };
+            if (options.fundamentalTypeName) {
+                obj.typeName = `"${options.fundamentalTypeName}"`;
+            }
+            return Writers.object(obj);
         }
         return Writers.object({ type: '"gobject"', ownership: '"borrowed"' });
     }
@@ -217,6 +222,9 @@ export class FfiTypeWriter {
         props.push({ name: "library", value: `"${type.library ?? ""}"` });
         props.push({ name: "refFn", value: `"${type.refFn ?? ""}"` });
         props.push({ name: "unrefFn", value: `"${type.unrefFn ?? ""}"` });
+        if (type.typeName) {
+            props.push({ name: "typeName", value: `"${type.typeName}"` });
+        }
         return props;
     }
 

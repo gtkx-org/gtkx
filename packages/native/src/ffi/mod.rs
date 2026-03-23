@@ -19,7 +19,7 @@ pub use storage::{
 pub use value::{FfiValue, TrampolineValue};
 
 use crate::arg::Arg;
-use crate::types::FfiCodec as _;
+use crate::types::FfiEncoder as _;
 
 impl TryFrom<Arg> for FfiValue {
     type Error = anyhow::Error;

@@ -17,29 +17,42 @@
 
 use neon::prelude::*;
 
+use super::handler::{JsThreadCommand, execute_js_command};
 use crate::{
     gtk_dispatch,
     state::{GtkThread, GtkThreadState},
 };
 
-pub fn stop(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let dispatcher = gtk_dispatch::GtkDispatcher::global();
+struct StopCommand;
 
-    dispatcher.enter_js_wait();
+impl JsThreadCommand for StopCommand {
+    fn from_js(_cx: &mut FunctionContext) -> NeonResult<Self> {
+        Ok(Self)
+    }
 
-    let rx = dispatcher.run_on_gtk_thread(|| {
-        GtkThreadState::with(|state| {
-            state.app_hold_guard.take();
+    fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
+        let dispatcher = gtk_dispatch::GtkDispatcher::global();
+
+        dispatcher.enter_js_wait();
+
+        let rx = dispatcher.run_on_gtk_thread(|| {
+            GtkThreadState::with(|state| {
+                state.app_hold_guard.take();
+            });
         });
-    });
 
-    dispatcher
-        .wait_for_gtk_result(&mut cx, &rx)
-        .or_else(|err| cx.throw_error(err.to_string()))?;
+        dispatcher
+            .wait_for_gtk_result(cx, &rx)
+            .or_else(|err| cx.throw_error(err.to_string()))?;
 
-    dispatcher.mark_stopped();
+        dispatcher.mark_stopped();
 
-    GtkThread::global().join();
+        GtkThread::global().join();
 
-    Ok(cx.undefined())
+        Ok(cx.undefined().upcast())
+    }
+}
+
+pub fn stop(mut cx: FunctionContext) -> JsResult<JsValue> {
+    execute_js_command::<StopCommand>(&mut cx)
 }

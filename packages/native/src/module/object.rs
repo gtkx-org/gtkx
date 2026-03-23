@@ -5,19 +5,44 @@
 
 use neon::prelude::*;
 
-use crate::gtk_dispatch;
+use super::handler::{ModuleRequest, ModuleResponse, dispatch_request};
 use crate::managed::NativeHandle;
 
-pub fn get_native_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
-    let boxed_handle = cx.argument::<JsBox<NativeHandle>>(0)?;
-    let native_handle = *boxed_handle.as_inner();
+struct NativeIdResult(Option<usize>);
 
-    let ptr = gtk_dispatch::GtkDispatcher::global()
-        .dispatch_and_wait(&mut cx, move || native_handle.get_ptr_as_usize())
-        .or_else(|err| cx.throw_error(err.to_string()))?;
-
-    match ptr {
-        Some(p) => Ok(cx.number(p as f64)),
-        None => cx.throw_error("Object has been garbage collected"),
+impl ModuleResponse for NativeIdResult {
+    fn to_js_response<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
+        match self.0 {
+            Some(p) => Ok(cx.number(p as f64).upcast()),
+            None => cx.throw_error("Object has been garbage collected"),
+        }
     }
+}
+
+struct GetNativeIdRequest {
+    handle: NativeHandle,
+}
+
+impl ModuleRequest for GetNativeIdRequest {
+    type Output = NativeIdResult;
+
+    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
+        let boxed_handle = cx.argument::<JsBox<NativeHandle>>(0)?;
+        Ok(Self {
+            handle: *boxed_handle.as_inner(),
+        })
+    }
+
+    fn execute(self) -> anyhow::Result<NativeIdResult> {
+        Ok(NativeIdResult(self.handle.get_ptr_as_usize()))
+    }
+
+    fn error_context() -> &'static str {
+        "get native id"
+    }
+}
+
+pub fn get_native_id(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    let result = dispatch_request::<GetNativeIdRequest>(&mut cx)?;
+    result.downcast_or_throw::<JsNumber, _>(&mut cx)
 }

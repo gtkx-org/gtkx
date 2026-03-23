@@ -19,6 +19,11 @@ pub(crate) trait ModuleResponse {
     fn to_js_response<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue>;
 }
 
+pub(crate) trait JsThreadCommand: Sized {
+    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self>;
+    fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue>;
+}
+
 pub(crate) fn dispatch_request<'a, R: ModuleRequest>(
     cx: &mut FunctionContext<'a>,
 ) -> JsResult<'a, JsValue> {
@@ -28,6 +33,13 @@ pub(crate) fn dispatch_request<'a, R: ModuleRequest>(
         .or_else(|err| cx.throw_error(err.to_string()))?
         .or_else(|err| cx.throw_error(format!("Error during {}: {err}", R::error_context())))?;
     result.to_js_response(cx)
+}
+
+pub(crate) fn execute_js_command<'a, C: JsThreadCommand>(
+    cx: &mut FunctionContext<'a>,
+) -> JsResult<'a, JsValue> {
+    let command = C::from_js(cx)?;
+    command.execute(cx)
 }
 
 impl ModuleResponse for Value {

@@ -15,17 +15,17 @@ use gtk4::glib;
 use gtk4::glib::ffi::g_malloc0;
 use neon::prelude::*;
 
-use crate::{
-    gtk_dispatch,
-    managed::{Boxed, NativeHandle, NativeValue},
-};
+use super::handler::{ModuleRequest, dispatch_request};
+use crate::managed::{Boxed, NativeHandle, NativeValue};
 
 struct AllocRequest {
     size: usize,
     type_name: Option<String>,
 }
 
-impl AllocRequest {
+impl ModuleRequest for AllocRequest {
+    type Output = NativeHandle;
+
     fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
         let size = cx.argument::<JsNumber>(0)?.value(cx) as usize;
 
@@ -51,15 +51,12 @@ impl AllocRequest {
         let boxed = Boxed::from_glib_full(gtype, ptr);
         Ok(NativeValue::Boxed(boxed).into())
     }
+
+    fn error_context() -> &'static str {
+        "alloc"
+    }
 }
 
 pub fn alloc(mut cx: FunctionContext) -> JsResult<JsValue> {
-    let request = AllocRequest::from_js(&mut cx)?;
-
-    let handle = gtk_dispatch::GtkDispatcher::global()
-        .dispatch_and_wait(&mut cx, || request.execute())
-        .or_else(|err| cx.throw_error(err.to_string()))?
-        .or_else(|err| cx.throw_error(format!("Error during alloc: {err}")))?;
-
-    Ok(cx.boxed(handle).upcast())
+    dispatch_request::<AllocRequest>(&mut cx)
 }

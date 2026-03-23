@@ -6,6 +6,7 @@ mod alloc;
 mod call;
 mod field;
 mod freeze;
+pub(crate) mod handler;
 mod object;
 mod start;
 mod stop;

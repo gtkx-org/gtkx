@@ -4,7 +4,7 @@ use anyhow::bail;
 use gtk4::glib;
 use neon::prelude::*;
 
-use super::{FfiCodec, Ownership};
+use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::ffi::{FfiStorage, FfiStorageKind, HashTableData};
 use crate::types::Type;
 use crate::types::array::ArrayKind;
@@ -211,7 +211,7 @@ impl HashTableType {
     }
 }
 
-impl FfiCodec for HashTableType {
+impl FfiEncoder for HashTableType {
     fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let tuples = match val {
             value::Value::Array(arr) => arr,
@@ -234,7 +234,9 @@ impl FfiCodec for HashTableType {
 
         self.encode_hashtable(tuples, &key_encoder, &value_encoder)
     }
+}
 
+impl FfiDecoder for HashTableType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(hash_ptr) = ffi_value.as_non_null_ptr("GHashTable")? else {
             return Ok(value::Value::Array(vec![]));
@@ -273,7 +275,9 @@ impl FfiCodec for HashTableType {
 
         Ok(value::Value::Array(pairs))
     }
+}
 
+impl RawPtrCodec for HashTableType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         if ptr.is_null() {
             return Ok(value::Value::Array(vec![]));
@@ -281,3 +285,5 @@ impl FfiCodec for HashTableType {
         self.decode(&ffi::FfiValue::Ptr(ptr))
     }
 }
+
+impl GlibValueCodec for HashTableType {}

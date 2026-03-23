@@ -5,10 +5,10 @@ use gtk4::glib;
 use neon::object::Object as _;
 use neon::prelude::*;
 
-use super::{FfiCodec, NeonContextExt as _, Ownership};
+use super::{FfiDecoder, FfiEncoder, GlibValueCodec, NeonContextExt as _, Ownership, RawPtrCodec};
 use crate::arg::Arg;
 use crate::ffi::{FfiStorage, FfiStorageKind};
-use crate::types::{FloatKind, Type};
+use crate::types::{FloatKind, IntegerKind, Type};
 use crate::{ffi, value};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,11 +107,13 @@ impl ArrayType {
     }
 }
 
-impl FfiCodec for ArrayType {
+impl FfiEncoder for ArrayType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         ArrayType::encode(self, value, optional)
     }
+}
 
+impl FfiDecoder for ArrayType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         ArrayType::decode(self, ffi_value)
     }
@@ -124,7 +126,9 @@ impl FfiCodec for ArrayType {
     ) -> anyhow::Result<value::Value> {
         ArrayType::decode_with_context(self, ffi_value, ffi_args, args)
     }
+}
 
+impl RawPtrCodec for ArrayType {
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn ptr_to_value(
         &self,
@@ -132,6 +136,343 @@ impl FfiCodec for ArrayType {
         _context: &str,
     ) -> anyhow::Result<value::Value> {
         unsafe { ArrayType::ptr_to_value(self, ptr) }
+    }
+}
+
+impl GlibValueCodec for ArrayType {}
+
+trait ArrayKindEncoder {
+    fn encode_integers(
+        &self,
+        values: &[f64],
+        int_type: IntegerKind,
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue>;
+
+    fn encode_floats(
+        &self,
+        values: &[f64],
+        float_kind: FloatKind,
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue>;
+
+    fn encode_booleans(
+        &self,
+        values: &[i32],
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue>;
+
+    fn encode_strings(
+        &self,
+        cstrings: Vec<CString>,
+        dup_elements: bool,
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue>;
+
+    fn encode_handles(
+        &self,
+        handles: &[crate::managed::NativeHandle],
+        item_type: &Type,
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue>;
+}
+
+struct NullTerminatedArrayEncoder;
+
+impl ArrayKindEncoder for NullTerminatedArrayEncoder {
+    fn encode_integers(
+        &self,
+        values: &[f64],
+        int_type: IntegerKind,
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(ffi::FfiValue::Storage(
+            int_type.checked_to_ffi_storage(values)?,
+        ))
+    }
+
+    fn encode_floats(
+        &self,
+        values: &[f64],
+        float_kind: FloatKind,
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        match float_kind {
+            FloatKind::F32 => {
+                let values: Vec<f32> = values
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &v)| {
+                        if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
+                            bail!("Array element {}: value {} is out of range for f32", i, v);
+                        }
+                        Ok(v as f32)
+                    })
+                    .collect::<anyhow::Result<Vec<f32>>>()?;
+                Ok(ffi::FfiValue::Storage(values.into()))
+            }
+            FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.to_vec().into())),
+        }
+    }
+
+    fn encode_booleans(
+        &self,
+        values: &[i32],
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(ffi::FfiValue::Storage(values.to_vec().into()))
+    }
+
+    fn encode_strings(
+        &self,
+        cstrings: Vec<CString>,
+        dup_elements: bool,
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        let mut ptrs: Vec<*mut c_void> = cstrings
+            .iter()
+            .map(|s| {
+                if dup_elements {
+                    unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
+                } else {
+                    s.as_ptr() as *mut c_void
+                }
+            })
+            .collect();
+
+        ptrs.push(std::ptr::null_mut());
+
+        let ptr = ptrs.as_ptr() as *mut c_void;
+
+        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+            ptr,
+            FfiStorageKind::StringArray(cstrings, ptrs),
+        )))
+    }
+
+    fn encode_handles(
+        &self,
+        handles: &[crate::managed::NativeHandle],
+        item_type: &Type,
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(handles.len());
+        for handle in handles {
+            match handle.get_ptr() {
+                Some(ptr) => {
+                    ptrs.push(item_type.ref_for_transfer(ptr)?);
+                }
+                None => bail!("GObject in array has been garbage collected"),
+            }
+        }
+        let ptr = ptrs.as_ptr() as *mut c_void;
+
+        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+            ptr,
+            FfiStorageKind::ObjectArray(handles.to_vec(), ptrs),
+        )))
+    }
+}
+
+struct GListEncoder;
+
+impl ArrayKindEncoder for GListEncoder {
+    fn encode_integers(
+        &self,
+        values: &[f64],
+        int_type: IntegerKind,
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(ffi::FfiValue::Storage(
+            int_type.checked_to_ffi_storage(values)?,
+        ))
+    }
+
+    fn encode_floats(
+        &self,
+        values: &[f64],
+        float_kind: FloatKind,
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        match float_kind {
+            FloatKind::F32 => {
+                let values: Vec<f32> = values
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &v)| {
+                        if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
+                            bail!("Array element {}: value {} is out of range for f32", i, v);
+                        }
+                        Ok(v as f32)
+                    })
+                    .collect::<anyhow::Result<Vec<f32>>>()?;
+                Ok(ffi::FfiValue::Storage(values.into()))
+            }
+            FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.to_vec().into())),
+        }
+    }
+
+    fn encode_booleans(
+        &self,
+        values: &[i32],
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(ffi::FfiValue::Storage(values.to_vec().into()))
+    }
+
+    fn encode_strings(
+        &self,
+        cstrings: Vec<CString>,
+        dup_elements: bool,
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        let should_free = ownership.is_borrowed();
+        let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
+        for s in &cstrings {
+            let ptr = if dup_elements {
+                unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
+            } else {
+                s.as_ptr() as *mut c_void
+            };
+            list = unsafe { glib::ffi::g_list_append(list, ptr) };
+        }
+        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+            list as *mut c_void,
+            FfiStorageKind::StringGList(ffi::StringGListData {
+                strings: cstrings,
+                list_ptr: list,
+                should_free,
+                elements_duped: dup_elements,
+            }),
+        )))
+    }
+
+    fn encode_handles(
+        &self,
+        handles: &[crate::managed::NativeHandle],
+        item_type: &Type,
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        let should_free = ownership.is_borrowed();
+        let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
+        for handle in handles {
+            match handle.get_ptr() {
+                Some(ptr) => {
+                    let ptr = item_type.ref_for_transfer(ptr)?;
+                    list = unsafe { glib::ffi::g_list_append(list, ptr) };
+                }
+                None => bail!("GObject in GList has been garbage collected"),
+            }
+        }
+        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+            list as *mut c_void,
+            FfiStorageKind::GList(ffi::GListData {
+                handles: handles.to_vec(),
+                list_ptr: list,
+                should_free,
+            }),
+        )))
+    }
+}
+
+struct GSListEncoder;
+
+impl ArrayKindEncoder for GSListEncoder {
+    fn encode_integers(
+        &self,
+        values: &[f64],
+        int_type: IntegerKind,
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(ffi::FfiValue::Storage(
+            int_type.checked_to_ffi_storage(values)?,
+        ))
+    }
+
+    fn encode_floats(
+        &self,
+        values: &[f64],
+        float_kind: FloatKind,
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        match float_kind {
+            FloatKind::F32 => {
+                let values: Vec<f32> = values
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &v)| {
+                        if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
+                            bail!("Array element {}: value {} is out of range for f32", i, v);
+                        }
+                        Ok(v as f32)
+                    })
+                    .collect::<anyhow::Result<Vec<f32>>>()?;
+                Ok(ffi::FfiValue::Storage(values.into()))
+            }
+            FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.to_vec().into())),
+        }
+    }
+
+    fn encode_booleans(
+        &self,
+        values: &[i32],
+        _ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(ffi::FfiValue::Storage(values.to_vec().into()))
+    }
+
+    fn encode_strings(
+        &self,
+        cstrings: Vec<CString>,
+        dup_elements: bool,
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        let should_free = ownership.is_borrowed();
+        let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
+        for s in cstrings.iter().rev() {
+            let ptr = if dup_elements {
+                unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
+            } else {
+                s.as_ptr() as *mut c_void
+            };
+            list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
+        }
+        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+            list as *mut c_void,
+            FfiStorageKind::StringGSList(ffi::StringGSListData {
+                strings: cstrings,
+                list_ptr: list,
+                should_free,
+                elements_duped: dup_elements,
+            }),
+        )))
+    }
+
+    fn encode_handles(
+        &self,
+        handles: &[crate::managed::NativeHandle],
+        item_type: &Type,
+        ownership: Ownership,
+    ) -> anyhow::Result<ffi::FfiValue> {
+        let should_free = ownership.is_borrowed();
+        let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
+        for handle in handles.iter().rev() {
+            match handle.get_ptr() {
+                Some(ptr) => {
+                    let ptr = item_type.ref_for_transfer(ptr)?;
+                    list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
+                }
+                None => bail!("GObject in GSList has been garbage collected"),
+            }
+        }
+        Ok(ffi::FfiValue::Storage(FfiStorage::new(
+            list as *mut c_void,
+            FfiStorageKind::GSList(ffi::GSListData {
+                handles: handles.to_vec(),
+                list_ptr: list,
+                should_free,
+            }),
+        )))
     }
 }
 
@@ -218,111 +559,34 @@ impl ArrayType {
             return self.encode_garray(array);
         }
 
+        let encoder: &dyn ArrayKindEncoder = match &self.kind {
+            ArrayKind::GList => &GListEncoder,
+            ArrayKind::GSList => &GSListEncoder,
+            ArrayKind::Array
+            | ArrayKind::GPtrArray
+            | ArrayKind::Sized { .. }
+            | ArrayKind::Fixed { .. } => &NullTerminatedArrayEncoder,
+            ArrayKind::GArray | ArrayKind::GByteArray => unreachable!(),
+        };
+
         match &*self.item_type {
             Type::Integer(int_type) => {
                 let values = Self::extract_numbers(array)?;
-                Ok(ffi::FfiValue::Storage(
-                    int_type.checked_to_ffi_storage(&values)?,
-                ))
+                encoder.encode_integers(&values, *int_type, self.ownership)
             }
             Type::Float(float_kind) => {
                 let values = Self::extract_numbers(array)?;
-                match float_kind {
-                    FloatKind::F32 => {
-                        let values: Vec<f32> = values
-                            .iter()
-                            .enumerate()
-                            .map(|(i, &v)| {
-                                if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64))
-                                {
-                                    bail!(
-                                        "Array element {}: value {} is out of range for f32",
-                                        i,
-                                        v
-                                    );
-                                }
-                                Ok(v as f32)
-                            })
-                            .collect::<anyhow::Result<Vec<f32>>>()?;
-                        Ok(ffi::FfiValue::Storage(values.into()))
-                    }
-                    FloatKind::F64 => Ok(ffi::FfiValue::Storage(values.into())),
-                }
+                encoder.encode_floats(&values, *float_kind, self.ownership)
+            }
+            Type::Boolean(_) => {
+                let values = Self::extract_booleans(array)?;
+                encoder.encode_booleans(&values, self.ownership)
             }
             Type::String(_) => {
                 let cstrings = Self::extract_strings(array)?;
-                let should_free = self.ownership.is_borrowed();
-                let dup_strings =
+                let dup_elements =
                     matches!(&*self.item_type, Type::String(s) if s.ownership.is_full());
-
-                match self.kind {
-                    ArrayKind::GList => {
-                        let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
-                        for s in &cstrings {
-                            let ptr = if dup_strings {
-                                unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
-                            } else {
-                                s.as_ptr() as *mut c_void
-                            };
-                            list = unsafe { glib::ffi::g_list_append(list, ptr) };
-                        }
-                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                            list as *mut c_void,
-                            FfiStorageKind::StringGList(ffi::StringGListData {
-                                strings: cstrings,
-                                list_ptr: list,
-                                should_free,
-                                elements_duped: dup_strings,
-                            }),
-                        )))
-                    }
-                    ArrayKind::GSList => {
-                        let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
-                        for s in cstrings.iter().rev() {
-                            let ptr = if dup_strings {
-                                unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
-                            } else {
-                                s.as_ptr() as *mut c_void
-                            };
-                            list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
-                        }
-                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                            list as *mut c_void,
-                            FfiStorageKind::StringGSList(ffi::StringGSListData {
-                                strings: cstrings,
-                                list_ptr: list,
-                                should_free,
-                                elements_duped: dup_strings,
-                            }),
-                        )))
-                    }
-                    ArrayKind::Array
-                    | ArrayKind::GPtrArray
-                    | ArrayKind::GArray
-                    | ArrayKind::GByteArray
-                    | ArrayKind::Sized { .. }
-                    | ArrayKind::Fixed { .. } => {
-                        let mut ptrs: Vec<*mut c_void> = cstrings
-                            .iter()
-                            .map(|s| {
-                                if dup_strings {
-                                    unsafe { glib::ffi::g_strdup(s.as_ptr()) as *mut c_void }
-                                } else {
-                                    s.as_ptr() as *mut c_void
-                                }
-                            })
-                            .collect();
-
-                        ptrs.push(std::ptr::null_mut());
-
-                        let ptr = ptrs.as_ptr() as *mut c_void;
-
-                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                            ptr,
-                            FfiStorageKind::StringArray(cstrings, ptrs),
-                        )))
-                    }
-                }
+                encoder.encode_strings(cstrings, dup_elements, self.ownership)
             }
             Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
                 let handles = Self::extract_handles(array)?;
@@ -347,76 +611,7 @@ impl ArrayType {
                     return Ok(ffi::FfiValue::Storage(buffer.into()));
                 }
 
-                let should_free = self.ownership.is_borrowed();
-
-                match self.kind {
-                    ArrayKind::GList => {
-                        let mut list: *mut glib::ffi::GList = std::ptr::null_mut();
-                        for handle in &handles {
-                            match handle.get_ptr() {
-                                Some(ptr) => {
-                                    let ptr = self.item_type.ref_for_transfer(ptr)?;
-                                    list = unsafe { glib::ffi::g_list_append(list, ptr) };
-                                }
-                                None => bail!("GObject in GList has been garbage collected"),
-                            }
-                        }
-                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                            list as *mut c_void,
-                            FfiStorageKind::GList(ffi::GListData {
-                                handles,
-                                list_ptr: list,
-                                should_free,
-                            }),
-                        )))
-                    }
-                    ArrayKind::GSList => {
-                        let mut list: *mut glib::ffi::GSList = std::ptr::null_mut();
-                        for handle in handles.iter().rev() {
-                            match handle.get_ptr() {
-                                Some(ptr) => {
-                                    let ptr = self.item_type.ref_for_transfer(ptr)?;
-                                    list = unsafe { glib::ffi::g_slist_prepend(list, ptr) };
-                                }
-                                None => bail!("GObject in GSList has been garbage collected"),
-                            }
-                        }
-                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                            list as *mut c_void,
-                            FfiStorageKind::GSList(ffi::GSListData {
-                                handles,
-                                list_ptr: list,
-                                should_free,
-                            }),
-                        )))
-                    }
-                    ArrayKind::Array
-                    | ArrayKind::GPtrArray
-                    | ArrayKind::GArray
-                    | ArrayKind::GByteArray
-                    | ArrayKind::Sized { .. }
-                    | ArrayKind::Fixed { .. } => {
-                        let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(handles.len());
-                        for handle in &handles {
-                            match handle.get_ptr() {
-                                Some(ptr) => {
-                                    ptrs.push(self.item_type.ref_for_transfer(ptr)?);
-                                }
-                                None => bail!("GObject in array has been garbage collected"),
-                            }
-                        }
-                        let ptr = ptrs.as_ptr() as *mut c_void;
-
-                        Ok(ffi::FfiValue::Storage(FfiStorage::new(
-                            ptr,
-                            FfiStorageKind::ObjectArray(handles, ptrs),
-                        )))
-                    }
-                }
-            }
-            Type::Boolean(_) => {
-                let values = Self::extract_booleans(array)?;
-                Ok(ffi::FfiValue::Storage(values.into()))
+                encoder.encode_handles(&handles, &self.item_type, self.ownership)
             }
             Type::Enum(e) => {
                 let values = Self::extract_numbers(array)?;

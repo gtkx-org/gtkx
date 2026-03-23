@@ -5,11 +5,11 @@ use std::ffi::c_void;
 use gtk4::glib;
 
 use native::ffi::FfiValue;
-use native::types::FfiCodec;
 use native::types::{
     BooleanType, FloatKind, HashTableEntryEncoder, HashTableType, IntegerKind, Ownership,
     StringType, StructType, Type,
 };
+use native::types::{FfiDecoder, FfiEncoder, RawPtrCodec};
 use native::value::Value;
 
 #[test]

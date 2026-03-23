@@ -5,8 +5,10 @@ use libffi::middle as libffi;
 use neon::prelude::*;
 
 use crate::ffi;
-use crate::trampoline::{TrampolineData, TrampolineState, destroy_handler};
-use crate::types::{FfiCodec, NeonContextExt as _, Type};
+use crate::trampoline::{TrampolineData, TrampolineState};
+use crate::types::{
+    FfiDecoder, FfiEncoder, GlibValueCodec, NeonContextExt as _, RawPtrCodec, Type,
+};
 use crate::value;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -97,7 +99,7 @@ impl TrampolineType {
     }
 }
 
-impl FfiCodec for TrampolineType {
+impl FfiEncoder for TrampolineType {
     fn call_cif(
         &self,
         _cif: &libffi::Cif,
@@ -144,21 +146,18 @@ impl FfiCodec for TrampolineType {
         match self.scope {
             TrampolineScope::Forever => {
                 let state_ptr = Box::into_raw(Box::new(state)) as *mut c_void;
-                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
-                    fn_ptr,
-                    state_ptr,
-                    destroy_ptr: None,
-                    _owned_state: None,
-                }))
+                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
+                    fn_ptr, state_ptr, None, None,
+                )))
             }
             TrampolineScope::Notified => {
                 let state_ptr = Box::into_raw(Box::new(state)) as *mut c_void;
-                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
+                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
                     fn_ptr,
                     state_ptr,
-                    destroy_ptr: Some(destroy_handler as *mut c_void),
-                    _owned_state: None,
-                }))
+                    Some(TrampolineState::destroy as *mut c_void),
+                    None,
+                )))
             }
             TrampolineScope::Async => {
                 let raw_ptr = Box::into_raw(Box::new(state));
@@ -168,38 +167,44 @@ impl FfiCodec for TrampolineType {
                         .oneshot_state_ptr
                         .store(raw_ptr, Ordering::Release);
                 }
-                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
+                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
                     fn_ptr,
-                    state_ptr: raw_ptr as *mut c_void,
-                    destroy_ptr: None,
-                    _owned_state: None,
-                }))
+                    raw_ptr as *mut c_void,
+                    None,
+                    None,
+                )))
             }
             TrampolineScope::Call => {
                 let state = Box::new(state);
                 let state_ptr = &*state as *const TrampolineState as *mut c_void;
-                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue {
+                Ok(ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
                     fn_ptr,
                     state_ptr,
-                    destroy_ptr: None,
-                    _owned_state: Some(state),
-                }))
+                    None,
+                    Some(state),
+                )))
             }
         }
     }
 }
 
+impl FfiDecoder for TrampolineType {}
+
+impl RawPtrCodec for TrampolineType {}
+
+impl GlibValueCodec for TrampolineType {}
+
 impl TrampolineType {
     fn build_null_ffi_value(&self) -> ffi::FfiValue {
-        ffi::FfiValue::Trampoline(ffi::TrampolineValue {
-            fn_ptr: std::ptr::null_mut(),
-            state_ptr: std::ptr::null_mut(),
-            destroy_ptr: if self.has_destroy {
+        ffi::FfiValue::Trampoline(ffi::TrampolineValue::new(
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            if self.has_destroy {
                 Some(std::ptr::null_mut())
             } else {
                 None
             },
-            _owned_state: None,
-        })
+            None,
+        ))
     }
 }

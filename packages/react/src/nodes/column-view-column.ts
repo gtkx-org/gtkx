@@ -145,7 +145,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
         if (props.resizable !== undefined) this.column.setResizable(props.resizable);
         if (props.fixedWidth !== undefined) this.column.setFixedWidth(props.fixedWidth);
         if (props.visible !== undefined) this.column.setVisible(props.visible);
-        if (props.sortable) this.column.setSorter(new Gtk.Sorter());
+        if (props.sortable) this.column.setSorter(new Gtk.CustomSorter());
     }
 
     private applyColumnProps(oldProps: ColumnViewColumnProps, newProps: ColumnViewColumnProps): void {
@@ -157,7 +157,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
         if (hasChanged(oldProps, newProps, "fixedWidth")) this.column.setFixedWidth(newProps.fixedWidth ?? -1);
         if (hasChanged(oldProps, newProps, "visible")) this.column.setVisible(newProps.visible ?? true);
         if (hasChanged(oldProps, newProps, "sortable")) {
-            this.column.setSorter(newProps.sortable ? new Gtk.Sorter() : null);
+            this.column.setSorter(newProps.sortable ? new Gtk.CustomSorter() : null);
         }
         if (hasChanged(oldProps, newProps, "renderCell")) this.scheduleParentUpdate();
     }

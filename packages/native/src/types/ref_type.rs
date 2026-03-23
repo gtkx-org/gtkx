@@ -14,7 +14,7 @@ use crate::ffi::{FfiStorage, FfiStorageKind};
 use crate::managed::{Boxed, Fundamental, NativeValue};
 use crate::{
     ffi,
-    types::{ArrayKind, FfiCodec, IntegerKind, Type},
+    types::{ArrayKind, FfiDecoder, FfiEncoder, GlibValueCodec, IntegerKind, RawPtrCodec, Type},
     value,
 };
 
@@ -40,7 +40,7 @@ impl RefType {
     }
 }
 
-impl FfiCodec for RefType {
+impl FfiEncoder for RefType {
     fn encode(&self, val: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ref_val = match val {
             value::Value::Ref(r) => r,
@@ -133,6 +133,17 @@ impl FfiCodec for RefType {
         }
     }
 
+    fn call_cif(
+        &self,
+        _cif: &libffi::Cif,
+        _ptr: libffi::CodePtr,
+        _args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        bail!("Ref types cannot be return types")
+    }
+}
+
+impl FfiDecoder for RefType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let storage = match ffi_value {
             ffi::FfiValue::Storage(s) => s,
@@ -145,7 +156,6 @@ impl FfiCodec for RefType {
 
         match &*self.inner_type {
             Type::GObject(gobject_type) => {
-                // SAFETY: storage.ptr() points to a pointer-to-GObject allocated by encode
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 if actual_ptr.is_null() {
                     return Ok(value::Value::Null);
@@ -162,7 +172,6 @@ impl FfiCodec for RefType {
                 Ok(value::Value::Object(NativeValue::GObject(object).into()))
             }
             Type::Boxed(boxed_type) => {
-                // SAFETY: storage.ptr() points to a pointer-to-boxed allocated by encode
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 if actual_ptr.is_null() {
                     return Ok(value::Value::Null);
@@ -176,7 +185,6 @@ impl FfiCodec for RefType {
                 Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
             }
             Type::Fundamental(fundamental_type) => {
-                // SAFETY: storage.ptr() points to a pointer-to-fundamental allocated by encode
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 if actual_ptr.is_null() {
                     return Ok(value::Value::Null);
@@ -239,6 +247,31 @@ impl FfiCodec for RefType {
         }
     }
 
+    fn decode_with_context(
+        &self,
+        ffi_value: &ffi::FfiValue,
+        ffi_args: &[ffi::FfiValue],
+        args: &[Arg],
+    ) -> anyhow::Result<value::Value> {
+        RefType::decode_with_context(self, ffi_value, ffi_args, args)
+    }
+}
+
+impl RawPtrCodec for RefType {
+    fn read_from_raw_ptr(
+        &self,
+        ptr: *const c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        if inner_ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        self.inner_type.read_from_raw_ptr(inner_ptr, "ref inner")
+    }
+}
+
+impl GlibValueCodec for RefType {
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let ptr =
             unsafe { glib::gobject_ffi::g_value_get_pointer(gvalue.to_glib_none().0 as *const _) };
@@ -271,36 +304,6 @@ impl FfiCodec for RefType {
                 self.inner_type
             ),
         }
-    }
-
-    fn call_cif(
-        &self,
-        _cif: &libffi::Cif,
-        _ptr: libffi::CodePtr,
-        _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        bail!("Ref types cannot be return types")
-    }
-
-    fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        if inner_ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        self.inner_type.read_from_raw_ptr(inner_ptr, "ref inner")
-    }
-
-    fn decode_with_context(
-        &self,
-        ffi_value: &ffi::FfiValue,
-        ffi_args: &[ffi::FfiValue],
-        args: &[Arg],
-    ) -> anyhow::Result<value::Value> {
-        RefType::decode_with_context(self, ffi_value, ffi_args, args)
     }
 }
 

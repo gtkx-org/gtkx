@@ -3,12 +3,12 @@ use std::ffi::c_void;
 use anyhow::bail;
 use gtk4::glib::{
     self,
-    translate::{IntoGlib as _, ToGlibPtr as _},
+    translate::{IntoGlib as _, ToGlibPtr as _, ToGlibPtrMut as _},
 };
 use libffi::middle as libffi;
 use neon::prelude::*;
 
-use super::FfiCodec;
+use super::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec};
 use crate::{ffi, value};
 
 #[derive(Debug, Clone, Copy)]
@@ -101,19 +101,6 @@ with_integer_kinds!(impl_integer_kind_dispatch);
 
 const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_992.0;
 
-fn check_int_range(value: f64, min: f64, max: f64, type_name: &str) -> anyhow::Result<()> {
-    if !value.is_finite() || value.fract() != 0.0 || value < min || value > max {
-        bail!(
-            "Value {} is out of range for {} [{}, {}]",
-            value,
-            type_name,
-            min,
-            max
-        );
-    }
-    Ok(())
-}
-
 impl IntegerKind {
     #[must_use]
     pub fn is_unsigned(self) -> bool {
@@ -130,41 +117,32 @@ impl IntegerKind {
         }
     }
 
-    pub fn checked_to_ffi_value(self, value: f64) -> anyhow::Result<ffi::FfiValue> {
-        match self {
-            Self::I8 => {
-                check_int_range(value, i8::MIN as f64, i8::MAX as f64, "i8")?;
-                Ok(ffi::FfiValue::I8(value as i8))
-            }
-            Self::U8 => {
-                check_int_range(value, 0.0, u8::MAX as f64, "u8")?;
-                Ok(ffi::FfiValue::U8(value as u8))
-            }
-            Self::I16 => {
-                check_int_range(value, i16::MIN as f64, i16::MAX as f64, "i16")?;
-                Ok(ffi::FfiValue::I16(value as i16))
-            }
-            Self::U16 => {
-                check_int_range(value, 0.0, u16::MAX as f64, "u16")?;
-                Ok(ffi::FfiValue::U16(value as u16))
-            }
-            Self::I32 => {
-                check_int_range(value, i32::MIN as f64, i32::MAX as f64, "i32")?;
-                Ok(ffi::FfiValue::I32(value as i32))
-            }
-            Self::U32 => {
-                check_int_range(value, 0.0, u32::MAX as f64, "u32")?;
-                Ok(ffi::FfiValue::U32(value as u32))
-            }
-            Self::I64 => {
-                check_int_range(value, -MAX_SAFE_INTEGER, MAX_SAFE_INTEGER, "i64")?;
-                Ok(ffi::FfiValue::I64(value as i64))
-            }
-            Self::U64 => {
-                check_int_range(value, 0.0, MAX_SAFE_INTEGER, "u64")?;
-                Ok(ffi::FfiValue::U64(value as u64))
-            }
+    fn check_range(self, value: f64) -> anyhow::Result<()> {
+        let (min, max, name) = match self {
+            Self::I8 => (i8::MIN as f64, i8::MAX as f64, "i8"),
+            Self::U8 => (0.0, u8::MAX as f64, "u8"),
+            Self::I16 => (i16::MIN as f64, i16::MAX as f64, "i16"),
+            Self::U16 => (0.0, u16::MAX as f64, "u16"),
+            Self::I32 => (i32::MIN as f64, i32::MAX as f64, "i32"),
+            Self::U32 => (0.0, u32::MAX as f64, "u32"),
+            Self::I64 => (-MAX_SAFE_INTEGER, MAX_SAFE_INTEGER, "i64"),
+            Self::U64 => (0.0, MAX_SAFE_INTEGER, "u64"),
+        };
+        if !value.is_finite() || value.fract() != 0.0 || value < min || value > max {
+            bail!(
+                "Value {} is out of range for {} [{}, {}]",
+                value,
+                name,
+                min,
+                max
+            );
         }
+        Ok(())
+    }
+
+    pub fn checked_to_ffi_value(self, value: f64) -> anyhow::Result<ffi::FfiValue> {
+        self.check_range(value)?;
+        Ok(self.to_ffi_value(value))
     }
 
     pub fn checked_to_ffi_storage(self, values: &[f64]) -> anyhow::Result<ffi::FfiStorage> {
@@ -193,7 +171,7 @@ impl IntegerKind {
     }
 }
 
-impl FfiCodec for IntegerKind {
+impl FfiEncoder for IntegerKind {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let number = match value {
             value::Value::Number(n) => *n,
@@ -207,8 +185,72 @@ impl FfiCodec for IntegerKind {
         self.checked_to_ffi_value(number)
     }
 
+    fn libffi_type(&self) -> libffi::Type {
+        self.ffi_type()
+    }
+
+    fn call_cif(
+        &self,
+        cif: &libffi::Cif,
+        ptr: libffi::CodePtr,
+        args: &[libffi::Arg],
+    ) -> anyhow::Result<ffi::FfiValue> {
+        Ok(unsafe { IntegerKind::call_cif_raw(*self, cif, ptr, args) })
+    }
+}
+
+impl FfiDecoder for IntegerKind {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         Ok(value::Value::Number(ffi_value.to_number()?))
+    }
+}
+
+impl RawPtrCodec for IntegerKind {
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        Ok(IntegerKind::ptr_to_value_raw(*self, ptr))
+    }
+
+    fn read_from_raw_ptr(
+        &self,
+        ptr: *const c_void,
+        _context: &str,
+    ) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Number(self.read_ptr(ptr as *const u8)))
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let n = match value {
+            Ok(value::Value::Number(n)) => *n,
+            _ => 0.0,
+        };
+        self.write_ptr(ret as *mut u8, n);
+    }
+
+    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+        let value::Value::Number(n) = value else {
+            bail!("Expected a Number for integer field write, got {:?}", value);
+        };
+        self.write_ptr(ptr as *mut u8, *n);
+        Ok(())
+    }
+}
+
+impl GlibValueCodec for IntegerKind {
+    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
+        let value::Value::Number(n) = val else {
+            return Ok(None);
+        };
+        let gvalue = match self {
+            IntegerKind::I8 => (*n as i8).into(),
+            IntegerKind::U8 => (*n as u8).into(),
+            IntegerKind::I16 => (*n as i16 as i32).into(),
+            IntegerKind::U16 => (*n as u16 as u32).into(),
+            IntegerKind::I32 => (*n as i32).into(),
+            IntegerKind::U32 => (*n as u32).into(),
+            IntegerKind::I64 => (*n as i64).into(),
+            IntegerKind::U64 => (*n as u64).into(),
+        };
+        Ok(Some(gvalue))
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
@@ -247,39 +289,6 @@ impl FfiCodec for IntegerKind {
                 as f64,
         };
         Ok(value::Value::Number(number))
-    }
-
-    fn libffi_type(&self) -> libffi::Type {
-        self.ffi_type()
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(unsafe { IntegerKind::call_cif_raw(*self, cif, ptr, args) })
-    }
-
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        Ok(IntegerKind::ptr_to_value_raw(*self, ptr))
-    }
-
-    fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Number(self.read_ptr(ptr as *const u8)))
-    }
-
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let n = match value {
-            Ok(value::Value::Number(n)) => *n,
-            _ => 0.0,
-        };
-        self.write_ptr(ret as *mut u8, n);
     }
 }
 
@@ -386,7 +395,7 @@ impl FloatKind {
     }
 }
 
-impl FfiCodec for FloatKind {
+impl FfiEncoder for FloatKind {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let number = match value {
             value::Value::Number(n) => *n,
@@ -394,23 +403,6 @@ impl FfiCodec for FloatKind {
             _ => bail!("Expected a Number for float type, got {:?}", value),
         };
         self.checked_to_ffi_value(number)
-    }
-
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Number(ffi_value.to_number()?))
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let number = match self {
-            FloatKind::F32 => gvalue
-                .get::<f32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get f32 from GValue: {}", e))?
-                as f64,
-            FloatKind::F64 => gvalue
-                .get::<f64>()
-                .map_err(|e| anyhow::anyhow!("Failed to get f64 from GValue: {}", e))?,
-        };
-        Ok(value::Value::Number(number))
     }
 
     fn libffi_type(&self) -> libffi::Type {
@@ -425,7 +417,15 @@ impl FfiCodec for FloatKind {
     ) -> anyhow::Result<ffi::FfiValue> {
         Ok(unsafe { FloatKind::call_cif_raw(*self, cif, ptr, args) })
     }
+}
 
+impl FfiDecoder for FloatKind {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        Ok(value::Value::Number(ffi_value.to_number()?))
+    }
+}
+
+impl RawPtrCodec for FloatKind {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         if ptr.is_null() {
             return Ok(value::Value::Number(0.0));
@@ -451,6 +451,40 @@ impl FfiCodec for FloatKind {
             _ => 0.0,
         };
         self.write_ptr(ret as *mut u8, n);
+    }
+
+    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+        let value::Value::Number(n) = value else {
+            bail!("Expected a Number for float field write, got {:?}", value);
+        };
+        self.write_ptr(ptr as *mut u8, *n);
+        Ok(())
+    }
+}
+
+impl GlibValueCodec for FloatKind {
+    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
+        let value::Value::Number(n) = val else {
+            return Ok(None);
+        };
+        let gvalue = match self {
+            FloatKind::F32 => (*n as f32).into(),
+            FloatKind::F64 => (*n).into(),
+        };
+        Ok(Some(gvalue))
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let number = match self {
+            FloatKind::F32 => gvalue
+                .get::<f32>()
+                .map_err(|e| anyhow::anyhow!("Failed to get f32 from GValue: {}", e))?
+                as f64,
+            FloatKind::F64 => gvalue
+                .get::<f64>()
+                .map_err(|e| anyhow::anyhow!("Failed to get f64 from GValue: {}", e))?,
+        };
+        Ok(value::Value::Number(number))
     }
 }
 
@@ -482,10 +516,9 @@ impl EnumType {
 
 impl EnumType {
     fn validate_enum_value(&self, value: i32) {
-        if let Ok(gtype) = crate::state::GtkThreadState::gtype_from_lib(
-            &self.tagged.library,
-            &self.tagged.get_type_fn,
-        ) {
+        if let Ok(gtype) = crate::state::GtkThreadState::with(|state| {
+            state.gtype_from_lib(&self.tagged.library, &self.tagged.get_type_fn)
+        }) {
             unsafe {
                 let enum_class = glib::gobject_ffi::g_type_class_ref(gtype.into_glib())
                     as *mut glib::gobject_ffi::GEnumClass;
@@ -506,23 +539,14 @@ impl EnumType {
     }
 }
 
-impl FfiCodec for EnumType {
+impl FfiEncoder for EnumType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        let result = FfiCodec::encode(&self.storage, value, optional)?;
+        let result = FfiEncoder::encode(&self.storage, value, optional)?;
         #[cfg(debug_assertions)]
         if let value::Value::Number(n) = value {
             self.validate_enum_value(*n as i32);
         }
         Ok(result)
-    }
-
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        FfiCodec::decode(&self.storage, ffi_value)
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let v = unsafe { glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _) };
-        Ok(value::Value::Number(v as f64))
     }
 
     fn libffi_type(&self) -> libffi::Type {
@@ -535,9 +559,17 @@ impl FfiCodec for EnumType {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
-        FfiCodec::call_cif(&self.storage, cif, ptr, args)
+        FfiEncoder::call_cif(&self.storage, cif, ptr, args)
     }
+}
 
+impl FfiDecoder for EnumType {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        FfiDecoder::decode(&self.storage, ffi_value)
+    }
+}
+
+impl RawPtrCodec for EnumType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         Ok(self.storage.ptr_to_value_raw(ptr))
     }
@@ -553,7 +585,32 @@ impl FfiCodec for EnumType {
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        FfiCodec::write_return_to_raw_ptr(&self.storage, ret, value);
+        RawPtrCodec::write_return_to_raw_ptr(&self.storage, ret, value);
+    }
+
+    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+        RawPtrCodec::write_value_to_raw_ptr(&self.storage, ptr, value)
+    }
+}
+
+impl GlibValueCodec for EnumType {
+    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
+        let value::Value::Number(n) = val else {
+            return Ok(None);
+        };
+        let gtype = crate::state::GtkThreadState::with(|state| {
+            state.gtype_from_lib(&self.tagged.library, &self.tagged.get_type_fn)
+        })?;
+        let mut gvalue = glib::Value::from_type(gtype);
+        unsafe {
+            glib::gobject_ffi::g_value_set_enum(gvalue.to_glib_none_mut().0, *n as i32);
+        }
+        Ok(Some(gvalue))
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let v = unsafe { glib::gobject_ffi::g_value_get_enum(gvalue.to_glib_none().0 as *const _) };
+        Ok(value::Value::Number(v as f64))
     }
 }
 
@@ -577,19 +634,9 @@ impl FlagsType {
     }
 }
 
-impl FfiCodec for FlagsType {
+impl FfiEncoder for FlagsType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        FfiCodec::encode(&self.storage, value, optional)
-    }
-
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        FfiCodec::decode(&self.storage, ffi_value)
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let v =
-            unsafe { glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _) };
-        Ok(value::Value::Number(v as f64))
+        FfiEncoder::encode(&self.storage, value, optional)
     }
 
     fn libffi_type(&self) -> libffi::Type {
@@ -602,9 +649,17 @@ impl FfiCodec for FlagsType {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
-        FfiCodec::call_cif(&self.storage, cif, ptr, args)
+        FfiEncoder::call_cif(&self.storage, cif, ptr, args)
     }
+}
 
+impl FfiDecoder for FlagsType {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        FfiDecoder::decode(&self.storage, ffi_value)
+    }
+}
+
+impl RawPtrCodec for FlagsType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         Ok(self.storage.ptr_to_value_raw(ptr))
     }
@@ -620,6 +675,32 @@ impl FfiCodec for FlagsType {
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        FfiCodec::write_return_to_raw_ptr(&self.storage, ret, value);
+        RawPtrCodec::write_return_to_raw_ptr(&self.storage, ret, value);
+    }
+
+    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+        RawPtrCodec::write_value_to_raw_ptr(&self.storage, ptr, value)
+    }
+}
+
+impl GlibValueCodec for FlagsType {
+    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
+        let value::Value::Number(n) = val else {
+            return Ok(None);
+        };
+        let gtype = crate::state::GtkThreadState::with(|state| {
+            state.gtype_from_lib(&self.tagged.library, &self.tagged.get_type_fn)
+        })?;
+        let mut gvalue = glib::Value::from_type(gtype);
+        unsafe {
+            glib::gobject_ffi::g_value_set_flags(gvalue.to_glib_none_mut().0, *n as u32);
+        }
+        Ok(Some(gvalue))
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let v =
+            unsafe { glib::gobject_ffi::g_value_get_flags(gvalue.to_glib_none().0 as *const _) };
+        Ok(value::Value::Number(v as f64))
     }
 }

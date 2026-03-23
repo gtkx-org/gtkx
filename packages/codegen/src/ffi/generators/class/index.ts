@@ -358,7 +358,13 @@ export class ClassGenerator {
     private getSelfTypeDescriptor(): SelfTypeDescriptor {
         const fundamentalInfo = this.getFundamentalTypeInfo();
         if (fundamentalInfo) {
-            return fundamentalSelfType(fundamentalInfo.lib, fundamentalInfo.refFn, fundamentalInfo.unrefFn);
+            return fundamentalSelfType(
+                fundamentalInfo.lib,
+                fundamentalInfo.refFn,
+                fundamentalInfo.unrefFn,
+                "borrowed",
+                fundamentalInfo.typeName,
+            );
         }
         return SELF_TYPE_GOBJECT;
     }
@@ -373,7 +379,7 @@ export class ClassGenerator {
         };
     }
 
-    private getFundamentalTypeInfo(): { lib: string; refFn: string; unrefFn: string } | null {
+    private getFundamentalTypeInfo(): { lib: string; refFn: string; unrefFn: string; typeName?: string } | null {
         let currentClass: GirClass | null = this.cls;
         while (currentClass) {
             if (currentClass.isFundamental() && currentClass.refFunc && currentClass.unrefFunc) {
@@ -384,6 +390,7 @@ export class ClassGenerator {
                         lib: ns.sharedLibrary,
                         refFn: currentClass.refFunc,
                         unrefFn: currentClass.unrefFunc,
+                        typeName: currentClass.glibTypeName,
                     };
                 }
             }

@@ -13,7 +13,7 @@ use crate::callback::ClosureGuard;
 use crate::ffi::{self, FfiStorage};
 use crate::js_dispatch;
 use crate::managed::{Boxed, NativeValue};
-use crate::types::{FfiCodec, IntegerKind, Type};
+use crate::types::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, Type};
 use crate::value;
 use crate::value::Callback;
 
@@ -78,8 +78,10 @@ impl ClosureContext {
                         for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
                             if let Some(val) = arr.get(i + 1)
                                 && !(*ptr).is_null()
+                                && !matches!(val, value::Value::Null | value::Value::Undefined)
+                                && let Err(e) = inner_type.write_value_to_raw_ptr(*ptr, val)
                             {
-                                Self::write_ref_value_to_ptr(*ptr, val, inner_type);
+                                gtkx_warn!("closure: failed to write ref value: {e}");
                             }
                         }
                         let return_val = arr.into_iter().next().unwrap_or(value::Value::Undefined);
@@ -133,34 +135,6 @@ impl ClosureContext {
             })
             .collect()
     }
-
-    fn write_ref_value_to_ptr(ptr: *mut c_void, val: &value::Value, inner_type: &Type) {
-        match (val, inner_type) {
-            (value::Value::Number(n), Type::Float(float_kind)) => {
-                float_kind.write_ptr(ptr as *mut u8, *n);
-            }
-            (value::Value::Number(n), Type::Integer(int_type)) => {
-                int_type.write_ptr(ptr as *mut u8, *n);
-            }
-            (value::Value::Number(n), Type::Enum(_)) => {
-                IntegerKind::I32.write_ptr(ptr as *mut u8, *n);
-            }
-            (value::Value::Number(n), Type::Flags(_)) => {
-                IntegerKind::U32.write_ptr(ptr as *mut u8, *n);
-            }
-            (value::Value::Boolean(b), Type::Boolean(_)) => unsafe {
-                *(ptr as *mut i32) = if *b { 1 } else { 0 };
-            },
-            (value::Value::Null | value::Value::Undefined, _) => {}
-            _ => {
-                gtkx_warn!(
-                    "write_ref_value_to_ptr: unexpected value/type pair: {:?} / {:?}",
-                    val,
-                    inner_type
-                );
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -210,7 +184,7 @@ impl CallbackType {
     }
 }
 
-impl FfiCodec for CallbackType {
+impl FfiEncoder for CallbackType {
     fn encode(&self, val: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         use anyhow::bail;
 
@@ -234,3 +208,9 @@ impl FfiCodec for CallbackType {
         anyhow::bail!("Callbacks cannot be return types")
     }
 }
+
+impl FfiDecoder for CallbackType {}
+
+impl RawPtrCodec for CallbackType {}
+
+impl GlibValueCodec for CallbackType {}

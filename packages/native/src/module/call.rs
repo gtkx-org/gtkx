@@ -26,11 +26,12 @@ use anyhow::Context as _;
 use libffi::middle as libffi;
 use neon::prelude::*;
 
+use super::handler::{ModuleRequest, dispatch_request};
 use crate::{
     arg::Arg,
     ffi, gtk_dispatch,
     state::GtkThreadState,
-    types::{FfiCodec as _, Type},
+    types::{FfiEncoder as _, Type},
     value::Value,
 };
 
@@ -43,7 +44,9 @@ struct CallRequest {
     result_type: Type,
 }
 
-impl CallRequest {
+impl ModuleRequest for CallRequest {
+    type Output = (Value, Vec<RefUpdate>);
+
     fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
         let library_name = cx.argument::<JsString>(0)?.value(cx);
         let symbol_name = cx.argument::<JsString>(1)?.value(cx);
@@ -124,6 +127,10 @@ impl CallRequest {
                 .with_context(|| format!("decoding return value of {}", self.symbol_name))?;
         Ok((return_value, ref_updates))
     }
+
+    fn error_context() -> &'static str {
+        "FFI call"
+    }
 }
 
 pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
@@ -131,22 +138,5 @@ pub fn call(mut cx: FunctionContext) -> JsResult<JsValue> {
         return cx.throw_error("GTK application has not been started. Call start() first.");
     }
 
-    let request = CallRequest::from_js(&mut cx)?;
-
-    let result = gtk_dispatch::GtkDispatcher::global()
-        .dispatch_and_wait(&mut cx, || request.execute())
-        .or_else(|err| cx.throw_error(err.to_string()))?;
-
-    let (value, ref_updates) =
-        result.or_else(|err| cx.throw_error(format!("Error during FFI call: {err}")))?;
-
-    for (js_obj, new_value) in ref_updates {
-        let js_obj = js_obj.to_inner(&mut cx);
-        let new_js_value = new_value.to_js_value(&mut cx)?;
-        let mut prop = js_obj.prop(&mut cx, "value");
-
-        prop.set(new_js_value)?;
-    }
-
-    value.to_js_value(&mut cx)
+    dispatch_request::<CallRequest>(&mut cx)
 }

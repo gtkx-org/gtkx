@@ -10,7 +10,7 @@ use neon::handle::Root;
 use neon::types::JsFunction;
 
 use crate::js_dispatch::JsDispatcher;
-use crate::types::{FfiCodec as _, Type};
+use crate::types::{FfiEncoder as _, RawPtrCodec as _, Type};
 use crate::value::Value;
 
 pub struct TrampolineData {
@@ -87,12 +87,72 @@ impl TrampolineState {
     }
 }
 
-/// # Safety
-/// `user_data` must be a valid pointer to a `TrampolineState` allocated via `Box::new`,
-/// or null.
-pub unsafe extern "C" fn destroy_handler(user_data: *mut c_void) {
-    if !user_data.is_null() {
-        drop(unsafe { Box::from_raw(user_data as *mut TrampolineState) });
+impl TrampolineState {
+    /// # Safety
+    /// `user_data` must be a valid pointer to a `TrampolineState` allocated via `Box::new`,
+    /// or null.
+    pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
+        if !user_data.is_null() {
+            drop(unsafe { Box::from_raw(user_data as *mut TrampolineState) });
+        }
+    }
+}
+
+impl TrampolineData {
+    /// # Safety
+    /// `args` must be a valid array of `self.arg_types.len()` argument pointers,
+    /// each pointing to a value of the corresponding type.
+    unsafe fn handle_call(
+        &self,
+        args: *const *const c_void,
+        result: *mut c_void,
+    ) -> Option<*mut TrampolineState> {
+        let mut values = Vec::with_capacity(self.arg_types.len());
+
+        for (i, ty) in self.arg_types.iter().enumerate() {
+            if self.user_data_index == Some(i) {
+                continue;
+            }
+
+            let arg_ptr = unsafe { *args.add(i) };
+            match ty.read_from_raw_ptr(arg_ptr, "trampoline arg") {
+                Ok(val) => values.push(val),
+                Err(e) => {
+                    gtkx_warn!("trampoline: failed to read arg {i}: {e}");
+                    values.push(Value::Null);
+                }
+            }
+        }
+
+        let capture_result = !matches!(self.return_type, Type::Void(_));
+
+        let state_ptr = if self.is_oneshot {
+            let ptr = self
+                .oneshot_state_ptr
+                .swap(std::ptr::null_mut(), Ordering::AcqRel);
+            if ptr.is_null() { None } else { Some(ptr) }
+        } else {
+            None
+        };
+
+        let js_result = JsDispatcher::global().invoke_and_wait(
+            &self.channel,
+            &self.js_func,
+            values,
+            capture_result,
+            |result| result,
+        );
+
+        if js_result.is_err() {
+            gtkx_warn!(
+                "trampoline: JS callback threw an exception (return type: {})",
+                self.return_type
+            );
+        }
+
+        self.return_type.write_return_to_raw_ptr(result, &js_result);
+
+        state_ptr
     }
 }
 
@@ -102,55 +162,7 @@ unsafe extern "C" fn trampoline_handler(
     args: *const *const c_void,
     data: &TrampolineData,
 ) {
-    let mut values = Vec::with_capacity(data.arg_types.len());
-
-    for (i, ty) in data.arg_types.iter().enumerate() {
-        if data.user_data_index == Some(i) {
-            continue;
-        }
-
-        let arg_ptr = unsafe { *args.add(i) };
-        match ty.read_from_raw_ptr(arg_ptr, "trampoline arg") {
-            Ok(val) => values.push(val),
-            Err(e) => {
-                gtkx_warn!("trampoline_handler: failed to read arg {i}: {e}");
-                values.push(Value::Null);
-            }
-        }
-    }
-
-    let capture_result = !matches!(data.return_type, Type::Void(_));
-
-    let channel = data.channel.clone();
-    let js_func = data.js_func.clone();
-
-    let state_ptr = if data.is_oneshot {
-        let ptr = data
-            .oneshot_state_ptr
-            .swap(std::ptr::null_mut(), Ordering::AcqRel);
-        if ptr.is_null() { None } else { Some(ptr) }
-    } else {
-        None
-    };
-
-    let js_result = JsDispatcher::global().invoke_and_wait(
-        &channel,
-        &js_func,
-        values,
-        capture_result,
-        |result| result,
-    );
-
-    if js_result.is_err() {
-        gtkx_warn!(
-            "trampoline_handler: JS callback threw an exception (return type: {})",
-            data.return_type
-        );
-    }
-
-    data.return_type
-        .write_return_to_raw_ptr(result as *mut u64 as *mut c_void, &js_result);
-
+    let state_ptr = unsafe { data.handle_call(args, result as *mut u64 as *mut c_void) };
     if let Some(ptr) = state_ptr {
         drop(unsafe { Box::from_raw(ptr) });
     }

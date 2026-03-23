@@ -29,7 +29,7 @@ pub use fundamental::{Fundamental, RefFn, UnrefFn};
 
 use std::ffi::c_void;
 
-use gtk4::glib::{self, object::ObjectType as _};
+use gtk4::glib;
 use neon::prelude::*;
 
 use crate::{gtk_dispatch, state::GtkThreadState};
@@ -38,11 +38,9 @@ use crate::{gtk_dispatch, state::GtkThreadState};
 pub struct NativeHandle(pub(crate) usize);
 
 impl From<NativeValue> for NativeHandle {
-    fn from(object: NativeValue) -> Self {
+    fn from(value: NativeValue) -> Self {
         GtkThreadState::with(|state| {
-            let key = state.next_handle_id;
-            state.next_handle_id = state.next_handle_id.wrapping_add(1);
-            state.handle_map.insert(key, object);
+            let key = state.handles.insert(value);
             NativeHandle(key)
         })
     }
@@ -51,13 +49,7 @@ impl From<NativeValue> for NativeHandle {
 impl NativeHandle {
     #[must_use]
     pub fn get_ptr(&self) -> Option<*mut c_void> {
-        GtkThreadState::with(|state| {
-            state.handle_map.get(&self.0).map(|object| match object {
-                NativeValue::GObject(obj) => obj.as_ptr() as *mut c_void,
-                NativeValue::Boxed(boxed) => boxed.as_ptr(),
-                NativeValue::Fundamental(fundamental) => fundamental.as_ptr(),
-            })
-        })
+        GtkThreadState::with(|state| state.handles.get_ptr(self.0))
     }
 
     #[must_use]
@@ -91,7 +83,7 @@ impl Finalize for NativeHandle {
             return;
         }
         glib::idle_add_once(move || {
-            GtkThreadState::with(|state| state.handle_map.remove(&self.0));
+            GtkThreadState::with(|state| state.handles.remove(self.0));
         });
     }
 }

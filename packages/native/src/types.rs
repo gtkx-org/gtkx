@@ -57,6 +57,7 @@ impl NeonContextExt for FunctionContext<'_> {
 }
 
 mod array;
+mod boolean;
 mod boxed;
 mod callback;
 mod fundamental;
@@ -66,9 +67,12 @@ mod numeric;
 mod ref_type;
 mod string;
 mod trampoline;
+mod unichar;
+mod void;
 
 pub use array::ArrayKind;
 pub use array::ArrayType;
+pub use boolean::BooleanType;
 pub use boxed::{BoxedType, StructType};
 pub use callback::CallbackType;
 pub use fundamental::FundamentalType;
@@ -78,6 +82,8 @@ pub use numeric::{EnumType, FlagsType, FloatKind, IntegerKind, TaggedType};
 pub use ref_type::RefType;
 pub use string::StringType;
 pub use trampoline::TrampolineType;
+pub use unichar::UnicharType;
+pub use void::VoidType;
 
 #[derive(Debug, Clone, Copy, Default)]
 #[non_exhaustive]
@@ -149,18 +155,8 @@ impl std::str::FromStr for Ownership {
 
 #[enum_dispatch]
 #[allow(clippy::wrong_self_convention)]
-pub trait FfiCodec {
+pub trait FfiEncoder {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue>;
-
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let _ = ffi_value;
-        bail!("This type cannot be decoded from FfiValue")
-    }
-
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let _ = gvalue;
-        bail!("This type does not support GLib value conversion")
-    }
 
     fn libffi_type(&self) -> libffi::Type {
         libffi::Type::pointer()
@@ -170,19 +166,6 @@ pub trait FfiCodec {
         types.push(self.libffi_type());
     }
 
-    fn decode_with_context(
-        &self,
-        ffi_value: &ffi::FfiValue,
-        _ffi_args: &[ffi::FfiValue],
-        _args: &[crate::arg::Arg],
-    ) -> anyhow::Result<value::Value> {
-        self.decode(ffi_value)
-    }
-
-    /// Call a native function via libffi and return the raw result.
-    ///
-    /// The caller must ensure `cif`, `ptr`, and `args` are valid and match
-    /// the function's signature.
     fn call_cif(
         &self,
         cif: &libffi::Cif,
@@ -194,210 +177,69 @@ pub trait FfiCodec {
         }))
     }
 
-    /// Read a value from a raw pointer (e.g. from a trampoline argument or out-parameter).
-    ///
-    /// For scalar types, the pointer points directly to the value.
-    /// For pointer types, the pointer points to a `*mut c_void` that must be dereferenced.
-    ///
-    /// The caller must ensure `ptr` is valid for the type being read.
+    fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+        Ok(ptr)
+    }
+}
+
+#[enum_dispatch]
+pub trait FfiDecoder {
+    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
+        let _ = ffi_value;
+        bail!("This type cannot be decoded from FfiValue")
+    }
+
+    fn decode_with_context(
+        &self,
+        ffi_value: &ffi::FfiValue,
+        _ffi_args: &[ffi::FfiValue],
+        _args: &[crate::arg::Arg],
+    ) -> anyhow::Result<value::Value> {
+        self.decode(ffi_value)
+    }
+}
+
+#[enum_dispatch]
+pub trait RawPtrCodec {
     fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
         let _ = (ptr, context);
         bail!("This type cannot be read from a raw pointer")
     }
 
-    /// Write a return value to a raw pointer buffer (e.g. a trampoline return slot).
-    ///
-    /// The caller must ensure `ret` points to a writable buffer of appropriate size.
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let _ = value;
         unsafe { *(ret as *mut *mut c_void) = std::ptr::null_mut() };
     }
 
-    /// Add a reference for ownership transfer (e.g. when passing a full-ownership
-    /// value that the callee will free).
-    ///
-    /// The caller must ensure `ptr` is null or points to a valid instance.
-    fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        Ok(ptr)
-    }
-
-    /// Convert a raw pointer to a Value (for reading decoded results, hash table entries, etc.).
-    ///
-    /// The caller must ensure `ptr` is null or points to a valid instance.
     fn ptr_to_value(&self, ptr: *mut c_void, context: &str) -> anyhow::Result<value::Value> {
         let _ = (ptr, context);
         bail!("This type cannot be read from pointer")
     }
+
+    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+        let _ = (ptr, value);
+        bail!("This type cannot be written to a raw pointer")
+    }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct BooleanType;
-
-impl FfiCodec for BooleanType {
-    fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        let boolean = match value {
-            value::Value::Boolean(b) => *b,
-            _ => bail!("Expected a Boolean for boolean type, got {:?}", value),
-        };
-        Ok(ffi::FfiValue::I32(i32::from(boolean)))
-    }
-
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let b = match ffi_value {
-            ffi::FfiValue::I32(v) => *v != 0,
-            _ => bail!("Expected a boolean ffi::FfiValue, got {:?}", ffi_value),
-        };
-        Ok(value::Value::Boolean(b))
-    }
-
+#[enum_dispatch]
+#[allow(clippy::wrong_self_convention)]
+pub trait GlibValueCodec {
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let boolean: bool = gvalue
-            .get()
-            .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {}", e))?;
-        Ok(value::Value::Boolean(boolean))
+        let _ = gvalue;
+        bail!("This type does not support GLib value conversion")
     }
 
-    fn libffi_type(&self) -> libffi::Type {
-        libffi::Type::i32()
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(ffi::FfiValue::I32(unsafe { cif.call::<i32>(ptr, args) }))
-    }
-
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Boolean(ptr as isize != 0))
-    }
-
-    fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        let val = unsafe { *(ptr as *const i32) };
-        Ok(value::Value::Boolean(val != 0))
-    }
-
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let val = matches!(value, Ok(value::Value::Boolean(true)));
-        unsafe { *(ret as *mut i32) = val as i32 };
+    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
+        let _ = val;
+        Ok(None)
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct VoidType;
+pub trait FfiCodec: FfiEncoder + FfiDecoder + RawPtrCodec + GlibValueCodec {}
+impl<T: FfiEncoder + FfiDecoder + RawPtrCodec + GlibValueCodec> FfiCodec for T {}
 
-impl FfiCodec for VoidType {
-    fn encode(&self, _value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()))
-    }
-
-    fn decode(&self, _ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Undefined)
-    }
-
-    fn from_glib_value(&self, _gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Null)
-    }
-
-    fn libffi_type(&self) -> libffi::Type {
-        libffi::Type::void()
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        unsafe { cif.call::<()>(ptr, args) };
-        Ok(ffi::FfiValue::Void)
-    }
-
-    fn ptr_to_value(&self, _ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Undefined)
-    }
-
-    fn read_from_raw_ptr(
-        &self,
-        _ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        Ok(value::Value::Undefined)
-    }
-
-    fn write_return_to_raw_ptr(&self, _ret: *mut c_void, _value: &Result<value::Value, ()>) {}
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct UnicharType;
-
-impl FfiCodec for UnicharType {
-    fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        let cp = match value {
-            value::Value::String(s) => s.chars().next().map(|c| c as u32).unwrap_or(0),
-            value::Value::Number(n) => *n as u32,
-            value::Value::Null | value::Value::Undefined if optional => 0,
-            _ => bail!("Expected a string for unichar type, got {:?}", value),
-        };
-        Ok(ffi::FfiValue::U32(cp))
-    }
-
-    fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let cp = match ffi_value {
-            ffi::FfiValue::U32(v) => *v,
-            _ => bail!("Expected FfiValue::U32 for unichar, got {:?}", ffi_value),
-        };
-        let ch = char::from_u32(cp)
-            .ok_or_else(|| anyhow::anyhow!("Invalid Unicode codepoint: 0x{:X}", cp))?;
-        Ok(value::Value::String(ch.to_string()))
-    }
-
-    fn libffi_type(&self) -> libffi::Type {
-        libffi::Type::u32()
-    }
-
-    fn call_cif(
-        &self,
-        cif: &libffi::Cif,
-        ptr: libffi::CodePtr,
-        args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        IntegerKind::U32.call_cif(cif, ptr, args)
-    }
-
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        let cp = ptr as usize as u32;
-        let ch = char::from_u32(cp).unwrap_or('\u{FFFD}');
-        Ok(value::Value::String(ch.to_string()))
-    }
-
-    fn read_from_raw_ptr(
-        &self,
-        ptr: *const c_void,
-        _context: &str,
-    ) -> anyhow::Result<value::Value> {
-        let val = unsafe { *(ptr as *const u32) };
-        let ch = char::from_u32(val).unwrap_or('\u{FFFD}');
-        Ok(value::Value::String(ch.to_string()))
-    }
-
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let val = match value {
-            Ok(value::Value::String(s)) => s.chars().next().map(|c| c as u32).unwrap_or(0),
-            Ok(value::Value::Number(n)) => *n as u32,
-            _ => 0,
-        };
-        unsafe { *(ret as *mut u32) = val };
-    }
-}
-
-#[enum_dispatch(FfiCodec)]
+#[enum_dispatch(FfiEncoder, FfiDecoder, RawPtrCodec, GlibValueCodec)]
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Type {

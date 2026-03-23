@@ -71,6 +71,8 @@ export type FfiTypeDescriptor = {
     scope?: "call" | "notified" | "async" | "forever";
 
     signed?: boolean;
+
+    typeName?: string;
 };
 
 /**
@@ -276,12 +278,14 @@ export const fundamentalType = (
     refFn: string,
     unrefFn: string,
     transferFull: boolean,
+    typeName?: string,
 ): FfiTypeDescriptor => ({
     type: "fundamental",
     library: lib,
     refFn,
     unrefFn,
     ownership: toOwnership(transferFull),
+    typeName,
 });
 
 /**
@@ -615,7 +619,14 @@ export const getSyntheticGetterPrimitiveInfo = (typeName: string): SyntheticGett
  */
 export type SelfTypeDescriptor =
     | { type: "gobject"; ownership: "borrowed" | "full" }
-    | { type: "fundamental"; ownership: "borrowed" | "full"; lib: string; refFn: string; unrefFn: string }
+    | {
+          type: "fundamental";
+          ownership: "borrowed" | "full";
+          lib: string;
+          refFn: string;
+          unrefFn: string;
+          typeName?: string;
+      }
     | { type: "boxed"; ownership: "borrowed" | "full"; innerType: string; lib: string; getTypeFn?: string };
 
 /** Self type descriptor for GObject instance methods. */
@@ -629,12 +640,14 @@ export const fundamentalSelfType = (
     refFn: string,
     unrefFn: string,
     ownership: "borrowed" | "full" = "borrowed",
+    typeName?: string,
 ): SelfTypeDescriptor => ({
     type: "fundamental",
     ownership,
     lib,
     refFn,
     unrefFn,
+    typeName,
 });
 
 /**

@@ -101,6 +101,14 @@ pub enum Value {
 }
 
 impl Value {
+    #[must_use]
+    pub fn result_to_ptr(result: &Result<Self, ()>) -> *mut c_void {
+        match result {
+            Ok(Value::Object(handle)) => handle.get_ptr().unwrap_or(std::ptr::null_mut()),
+            _ => std::ptr::null_mut(),
+        }
+    }
+
     pub fn object_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
             Value::Object(handle) => handle
@@ -134,28 +142,18 @@ impl Value {
     #[must_use]
     pub fn into_glib_value_with_default(self, return_type: Option<&Type>) -> Option<glib::Value> {
         match &self {
-            Value::Undefined => match return_type {
-                Some(Type::Boolean(_)) => Some(false.into()),
-                Some(Type::Integer(_)) => Some(0i32.into()),
-                Some(Type::Enum(tagged)) => Self::number_to_enum_value(0.0, &tagged.tagged).ok(),
-                Some(Type::Flags(tagged)) => Self::number_to_flags_value(0.0, &tagged.tagged).ok(),
-                Some(Type::Float(FloatKind::F32)) => Some(0.0f32.into()),
-                Some(Type::Float(FloatKind::F64)) => Some(0.0f64.into()),
-                Some(Type::String(_)) => Some(Option::<String>::None.into()),
-                Some(Type::GObject(_)) => Some(Option::<glib::Object>::None.into()),
-                Some(Type::Void(_)) | None => None,
-                Some(
-                    Type::Boxed(_)
-                    | Type::Struct(_)
-                    | Type::Fundamental(_)
-                    | Type::Array(_)
-                    | Type::HashTable(_)
-                    | Type::Callback(_)
-                    | Type::Trampoline(_)
-                    | Type::Ref(_)
-                    | Type::Unichar(_),
-                ) => None,
-            },
+            Value::Undefined => {
+                let ty = return_type?;
+                let default = match ty {
+                    Type::Boolean(_) => Value::Boolean(false),
+                    Type::Integer(_) | Type::Enum(_) | Type::Flags(_) => Value::Number(0.0),
+                    Type::Float(_) => Value::Number(0.0),
+                    Type::String(_) | Type::GObject(_) => Value::Null,
+                    Type::Void(_) => return None,
+                    _ => return None,
+                };
+                ty.to_glib_value(&default).ok().flatten()
+            }
             Value::Number(_)
             | Value::String(_)
             | Value::Boolean(_)
@@ -172,73 +170,17 @@ impl Value {
     }
 
     pub fn to_glib_value_typed(self, expected_type: Option<&Type>) -> anyhow::Result<glib::Value> {
+        if let Some(ty) = expected_type
+            && let Some(gvalue) = ty.to_glib_value(&self)?
+        {
+            return Ok(gvalue);
+        }
         match self {
-            Value::Number(n) => {
-                if let Some(Type::Enum(tagged)) = expected_type {
-                    return Self::number_to_enum_value(n, &tagged.tagged);
-                }
-                if let Some(Type::Flags(tagged)) = expected_type {
-                    return Self::number_to_flags_value(n, &tagged.tagged);
-                }
-                if let Some(Type::Integer(int_kind)) = expected_type {
-                    return match int_kind {
-                        IntegerKind::I8 => Ok((n as i8).into()),
-                        IntegerKind::U8 => Ok((n as u8).into()),
-                        IntegerKind::I16 => Ok((n as i16 as i32).into()),
-                        IntegerKind::U16 => Ok((n as u16 as u32).into()),
-                        IntegerKind::I32 => Ok((n as i32).into()),
-                        IntegerKind::U32 => Ok((n as u32).into()),
-                        IntegerKind::I64 => Ok((n as i64).into()),
-                        IntegerKind::U64 => Ok((n as u64).into()),
-                    };
-                }
-                if let Some(Type::Float(float_kind)) = expected_type {
-                    return match float_kind {
-                        FloatKind::F32 => Ok((n as f32).into()),
-                        FloatKind::F64 => Ok(n.into()),
-                    };
-                }
-                Ok(n.into())
-            }
+            Value::Number(n) => Ok(n.into()),
             Value::String(s) => Ok(s.into()),
             Value::Boolean(b) => Ok(b.into()),
             Value::Object(handle) => {
                 if let Some(ptr) = handle.get_ptr() {
-                    if let Some(Type::Boxed(boxed_type)) = expected_type
-                        && let Some(gtype) = boxed_type.gtype()
-                    {
-                        let mut value = glib::Value::from_type(gtype);
-                        unsafe {
-                            glib::gobject_ffi::g_value_set_boxed(
-                                value.to_glib_none_mut().0,
-                                ptr as *const _,
-                            );
-                        }
-                        return Ok(value);
-                    }
-                    if let Some(Type::Fundamental(fundamental_type)) = expected_type {
-                        let gtype_name = &fundamental_type.unref_func;
-                        if gtype_name.contains("variant") {
-                            let mut value = glib::Value::from_type(glib::types::Type::VARIANT);
-                            unsafe {
-                                glib::gobject_ffi::g_value_set_variant(
-                                    value.to_glib_none_mut().0,
-                                    ptr as *mut _,
-                                );
-                            }
-                            return Ok(value);
-                        }
-                        if gtype_name.contains("param") {
-                            let mut value = glib::Value::from_type(glib::types::Type::PARAM_SPEC);
-                            unsafe {
-                                glib::gobject_ffi::g_value_set_param(
-                                    value.to_glib_none_mut().0,
-                                    ptr as *mut _,
-                                );
-                            }
-                            return Ok(value);
-                        }
-                    }
                     let obj: glib::Object = unsafe {
                         glib::Object::from_glib_none(ptr as *mut glib::gobject_ffi::GObject)
                     };
@@ -262,26 +204,6 @@ impl Value {
                 self
             ),
         }
-    }
-
-    fn number_to_enum_value(n: f64, tagged: &TaggedType) -> anyhow::Result<glib::Value> {
-        let gtype =
-            crate::state::GtkThreadState::gtype_from_lib(&tagged.library, &tagged.get_type_fn)?;
-        let mut value = glib::Value::from_type(gtype);
-        unsafe {
-            glib::gobject_ffi::g_value_set_enum(value.to_glib_none_mut().0, n as i32);
-        }
-        Ok(value)
-    }
-
-    fn number_to_flags_value(n: f64, tagged: &TaggedType) -> anyhow::Result<glib::Value> {
-        let gtype =
-            crate::state::GtkThreadState::gtype_from_lib(&tagged.library, &tagged.get_type_fn)?;
-        let mut value = glib::Value::from_type(gtype);
-        unsafe {
-            glib::gobject_ffi::g_value_set_flags(value.to_glib_none_mut().0, n as u32);
-        }
-        Ok(value)
     }
 
     pub fn from_js_value<'a, C: Context<'a>>(

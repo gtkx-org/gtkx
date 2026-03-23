@@ -47,6 +47,7 @@ type FundamentalType = {
     library: string;
     refFn: string;
     unrefFn: string;
+    typeName?: string;
 };
 
 type ArrayType = {

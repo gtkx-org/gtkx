@@ -4,7 +4,7 @@ use anyhow::bail;
 use gtk4::glib;
 use neon::prelude::*;
 
-use super::{FfiCodec, Ownership};
+use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::{ffi, value};
 
 #[derive(Debug, Clone, Copy)]
@@ -28,7 +28,7 @@ impl StringType {
     }
 }
 
-impl FfiCodec for StringType {
+impl FfiEncoder for StringType {
     fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         match value {
             value::Value::String(s) => {
@@ -50,7 +50,9 @@ impl FfiCodec for StringType {
             _ => bail!("Expected a String for string type, got {:?}", value),
         }
     }
+}
 
+impl FfiDecoder for StringType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(str_ptr) = ffi_value.as_non_null_ptr("string")? else {
             return Ok(value::Value::Null);
@@ -65,14 +67,9 @@ impl FfiCodec for StringType {
 
         Ok(value::Value::String(string))
     }
+}
 
-    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        let string: String = gvalue
-            .get()
-            .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
-        Ok(value::Value::String(string))
-    }
-
+impl RawPtrCodec for StringType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         if ptr.is_null() {
             return Ok(value::Value::Null);
@@ -95,5 +92,37 @@ impl FfiCodec for StringType {
             _ => std::ptr::null_mut(),
         };
         unsafe { *(ret as *mut *mut c_void) = ptr };
+    }
+
+    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+        match value {
+            value::Value::String(s) => {
+                let c_string = CString::new(s.as_str())?;
+                let duped = unsafe { glib::ffi::g_strdup(c_string.as_ptr()) };
+                unsafe { (ptr as *mut *mut c_char).write_unaligned(duped) };
+            }
+            value::Value::Null | value::Value::Undefined => unsafe {
+                (ptr as *mut *const c_char).write_unaligned(std::ptr::null());
+            },
+            _ => bail!("Expected a String for string field write, got {:?}", value),
+        }
+        Ok(())
+    }
+}
+
+impl GlibValueCodec for StringType {
+    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
+        match val {
+            value::Value::String(s) => Ok(Some(s.as_str().into())),
+            value::Value::Null | value::Value::Undefined => Ok(Some(Option::<String>::None.into())),
+            _ => Ok(None),
+        }
+    }
+
+    fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        let string: String = gvalue
+            .get()
+            .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
+        Ok(value::Value::String(string))
     }
 }

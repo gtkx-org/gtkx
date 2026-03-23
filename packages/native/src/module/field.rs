@@ -23,16 +23,14 @@
 //! - `String` (copies via g_strdup)
 //! - `GObject` / `Boxed` / `Struct` / `Fundamental` (writes pointer value)
 
-use std::ffi::{CStr, c_char, c_void};
+use std::ffi::c_void;
 
-use anyhow::bail;
-use gtk4::glib::{self, translate::FromGlibPtrNone as _};
 use neon::prelude::*;
 
+use super::handler::{ModuleRequest, dispatch_request};
 use crate::{
-    gtk_dispatch,
-    managed::{Boxed, Fundamental, NativeHandle, NativeValue},
-    types::{IntegerKind, Type},
+    managed::NativeHandle,
+    types::{RawPtrCodec as _, Type},
     value::Value,
 };
 
@@ -42,7 +40,9 @@ struct ReadRequest {
     offset: usize,
 }
 
-impl ReadRequest {
+impl ModuleRequest for ReadRequest {
+    type Output = Value;
+
     fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
         let handle = cx.argument::<JsBox<NativeHandle>>(0)?;
         let js_type = cx.argument::<JsObject>(1)?;
@@ -59,113 +59,17 @@ impl ReadRequest {
 
     fn execute(self) -> anyhow::Result<Value> {
         let base_ptr = self.handle.require_non_null_ptr()?;
-        let field_ptr = unsafe { (base_ptr as *const u8).add(self.offset) };
+        let field_ptr = unsafe { (base_ptr as *const u8).add(self.offset) as *const c_void };
+        self.field_type.read_from_raw_ptr(field_ptr, "field read")
+    }
 
-        match self.field_type {
-            Type::Integer(int_kind) => {
-                let number = int_kind.read_ptr(field_ptr);
-                Ok(Value::Number(number))
-            }
-            Type::Enum(_) => {
-                let number = IntegerKind::I32.read_ptr(field_ptr);
-                Ok(Value::Number(number))
-            }
-            Type::Flags(_) => {
-                let number = IntegerKind::U32.read_ptr(field_ptr);
-                Ok(Value::Number(number))
-            }
-            Type::Float(float_kind) => {
-                let number = float_kind.read_ptr(field_ptr);
-                Ok(Value::Number(number))
-            }
-            Type::Boolean(_) => {
-                let value = unsafe { field_ptr.cast::<i32>().read_unaligned() != 0 };
-                Ok(Value::Boolean(value))
-            }
-            Type::String(_) => {
-                let str_ptr = unsafe { field_ptr.cast::<*const c_char>().read_unaligned() };
-
-                if str_ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-
-                let c_str = unsafe { CStr::from_ptr(str_ptr) };
-                let string = c_str.to_str()?.to_string();
-                Ok(Value::String(string))
-            }
-            Type::GObject(_) => {
-                let obj_ptr = unsafe {
-                    field_ptr
-                        .cast::<*mut glib::gobject_ffi::GObject>()
-                        .read_unaligned()
-                };
-
-                if obj_ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-
-                let object = unsafe { glib::Object::from_glib_none(obj_ptr) };
-                Ok(Value::Object(NativeValue::GObject(object).into()))
-            }
-            Type::Boxed(ref boxed_type) => {
-                let boxed_ptr = unsafe { field_ptr.cast::<*mut c_void>().read_unaligned() };
-
-                if boxed_ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-
-                let gtype = boxed_type.gtype();
-                let boxed = Boxed::from_glib_none(gtype, boxed_ptr)?;
-                Ok(Value::Object(NativeValue::Boxed(boxed).into()))
-            }
-            Type::Struct(ref struct_type) => {
-                let struct_ptr = unsafe { field_ptr.cast::<*mut c_void>().read_unaligned() };
-
-                if struct_ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-
-                let boxed = Boxed::from_glib_none_with_size(
-                    None,
-                    struct_ptr,
-                    struct_type.size,
-                    Some(&struct_type.type_name),
-                )?;
-                Ok(Value::Object(NativeValue::Boxed(boxed).into()))
-            }
-            Type::Fundamental(ref fundamental_type) => {
-                let ptr = unsafe { field_ptr.cast::<*mut c_void>().read_unaligned() };
-
-                if ptr.is_null() {
-                    return Ok(Value::Null);
-                }
-
-                let (ref_fn, unref_fn) = fundamental_type.lookup_fns()?;
-                let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
-                Ok(Value::Object(NativeValue::Fundamental(fundamental).into()))
-            }
-            Type::Void(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Ref(_)
-            | Type::Unichar(_) => {
-                bail!("Unsupported field type for read: {:?}", self.field_type)
-            }
-        }
+    fn error_context() -> &'static str {
+        "field read"
     }
 }
 
 pub fn read(mut cx: FunctionContext) -> JsResult<JsValue> {
-    let request = ReadRequest::from_js(&mut cx)?;
-
-    let value = gtk_dispatch::GtkDispatcher::global()
-        .dispatch_and_wait(&mut cx, || request.execute())
-        .or_else(|err| cx.throw_error(err.to_string()))?
-        .or_else(|err| cx.throw_error(format!("Error during read: {err}")))?;
-
-    value.to_js_value(&mut cx)
+    dispatch_request::<ReadRequest>(&mut cx)
 }
 
 struct WriteRequest {
@@ -175,7 +79,9 @@ struct WriteRequest {
     value: Value,
 }
 
-impl WriteRequest {
+impl ModuleRequest for WriteRequest {
+    type Output = ();
+
     fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
         let handle = cx.argument::<JsBox<NativeHandle>>(0)?;
         let js_type = cx.argument::<JsObject>(1)?;
@@ -195,56 +101,17 @@ impl WriteRequest {
 
     fn execute(self) -> anyhow::Result<()> {
         let base_ptr = self.handle.require_non_null_ptr()?;
-        let field_ptr = unsafe { (base_ptr as *mut u8).add(self.offset) };
+        let field_ptr = unsafe { (base_ptr as *mut u8).add(self.offset) as *mut c_void };
+        self.field_type
+            .write_value_to_raw_ptr(field_ptr, &self.value)
+    }
 
-        match (&self.field_type, &self.value) {
-            (Type::Integer(int_kind), Value::Number(n)) => {
-                int_kind.write_ptr(field_ptr, *n);
-            }
-            (Type::Enum(_), Value::Number(n)) => {
-                IntegerKind::I32.write_ptr(field_ptr, *n);
-            }
-            (Type::Flags(_), Value::Number(n)) => {
-                IntegerKind::U32.write_ptr(field_ptr, *n);
-            }
-            (Type::Float(float_kind), Value::Number(n)) => {
-                float_kind.write_ptr(field_ptr, *n);
-            }
-            (Type::Boolean(_), Value::Boolean(b)) => unsafe {
-                field_ptr.cast::<i32>().write_unaligned(i32::from(*b));
-            },
-            (Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_), value) => {
-                let ptr = value.object_ptr("field write target")?;
-                unsafe {
-                    field_ptr.cast::<*mut c_void>().write_unaligned(ptr);
-                }
-            }
-            (Type::String(_), Value::String(s)) => {
-                let c_string = std::ffi::CString::new(s.as_str())?;
-                let duped = unsafe { glib::ffi::g_strdup(c_string.as_ptr()) };
-                unsafe {
-                    field_ptr.cast::<*mut c_char>().write_unaligned(duped);
-                }
-            }
-            (Type::String(_), Value::Null) => unsafe {
-                field_ptr
-                    .cast::<*const c_char>()
-                    .write_unaligned(std::ptr::null());
-            },
-            _ => bail!("Unsupported field type for write: {:?}", self.field_type),
-        }
-
-        Ok(())
+    fn error_context() -> &'static str {
+        "field write"
     }
 }
 
 pub fn write(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let request = WriteRequest::from_js(&mut cx)?;
-
-    gtk_dispatch::GtkDispatcher::global()
-        .dispatch_and_wait(&mut cx, || request.execute())
-        .or_else(|err| cx.throw_error(err.to_string()))?
-        .or_else(|err| cx.throw_error(format!("Error during write: {err}")))?;
-
+    dispatch_request::<WriteRequest>(&mut cx)?;
     Ok(cx.undefined())
 }

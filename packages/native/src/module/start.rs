@@ -18,53 +18,69 @@ use std::sync::mpsc;
 use gtk4::{gio::ApplicationFlags, prelude::*};
 use neon::prelude::*;
 
+use super::handler::{JsThreadCommand, execute_js_command};
 use crate::{
     gtk_dispatch::GtkDispatcher,
     managed::{NativeHandle, NativeValue},
     state::{GtkThread, GtkThreadState},
 };
 
+struct StartCommand {
+    app_id: String,
+    flags: ApplicationFlags,
+}
+
+impl JsThreadCommand for StartCommand {
+    fn from_js(cx: &mut FunctionContext) -> NeonResult<Self> {
+        let app_id = cx.argument::<JsString>(0)?.value(cx);
+
+        let flags_value: Option<u32> = cx.argument_opt(1).and_then(|arg| {
+            arg.downcast::<JsNumber, _>(cx)
+                .ok()
+                .map(|n| n.value(cx) as u32)
+        });
+
+        let flags = flags_value
+            .map(ApplicationFlags::from_bits_truncate)
+            .unwrap_or(ApplicationFlags::FLAGS_NONE);
+
+        Ok(Self { app_id, flags })
+    }
+
+    fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue> {
+        let (tx, rx) = mpsc::channel::<NativeHandle>();
+
+        let handle = std::thread::spawn(move || {
+            let app = gtk4::Application::builder()
+                .application_id(self.app_id)
+                .flags(self.flags)
+                .build();
+
+            let app_handle: NativeHandle = NativeValue::GObject(app.clone().into()).into();
+
+            GtkThreadState::with(|state| {
+                state.app_hold_guard = Some(app.hold());
+            });
+
+            app.connect_activate(move |_| {
+                let _ = tx.send(app_handle);
+            });
+
+            app.run_with_args::<&str>(&[]);
+        });
+
+        GtkThread::global().set_handle(handle);
+
+        let app_handle = rx
+            .recv()
+            .or_else(|err| cx.throw_error(format!("Error starting GTK thread: {err}")))?;
+
+        GtkDispatcher::global().mark_started();
+
+        Ok(cx.boxed(app_handle).upcast())
+    }
+}
+
 pub fn start(mut cx: FunctionContext) -> JsResult<JsValue> {
-    let app_id = cx.argument::<JsString>(0)?.value(&mut cx);
-
-    let flags_value: Option<u32> = cx.argument_opt(1).and_then(|arg| {
-        arg.downcast::<JsNumber, _>(&mut cx)
-            .ok()
-            .map(|n| n.value(&mut cx) as u32)
-    });
-
-    let flags = flags_value
-        .map(ApplicationFlags::from_bits_truncate)
-        .unwrap_or(ApplicationFlags::FLAGS_NONE);
-
-    let (tx, rx) = mpsc::channel::<NativeHandle>();
-
-    let handle = std::thread::spawn(move || {
-        let app = gtk4::Application::builder()
-            .application_id(app_id)
-            .flags(flags)
-            .build();
-
-        let app_handle: NativeHandle = NativeValue::GObject(app.clone().into()).into();
-
-        GtkThreadState::with(|state| {
-            state.app_hold_guard = Some(app.hold());
-        });
-
-        app.connect_activate(move |_| {
-            let _ = tx.send(app_handle);
-        });
-
-        app.run_with_args::<&str>(&[]);
-    });
-
-    GtkThread::global().set_handle(handle);
-
-    let app_handle = rx
-        .recv()
-        .or_else(|err| cx.throw_error(format!("Error starting GTK thread: {err}")))?;
-
-    GtkDispatcher::global().mark_started();
-
-    Ok(cx.boxed(app_handle).upcast())
+    execute_js_command::<StartCommand>(&mut cx)
 }

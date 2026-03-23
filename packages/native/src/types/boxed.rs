@@ -10,22 +10,15 @@ use std::ffi::c_void;
 use anyhow::bail;
 use gtk4::glib::{
     self,
-    translate::{FromGlib as _, IntoGlib as _, ToGlibPtr as _},
+    translate::{FromGlib as _, IntoGlib as _, ToGlibPtr as _, ToGlibPtrMut as _},
 };
 use neon::object::Object as _;
 use neon::prelude::*;
 
-use super::{FfiCodec, Ownership};
+use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
 use crate::managed::{Boxed, NativeValue};
 use crate::state::GtkThreadState;
 use crate::{ffi, value};
-
-fn extract_object_ptr(value: &Result<value::Value, ()>) -> *mut c_void {
-    match value {
-        Ok(value::Value::Object(handle)) => handle.get_ptr().unwrap_or(std::ptr::null_mut()),
-        _ => std::ptr::null_mut(),
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct BoxedType {
@@ -91,7 +84,7 @@ impl BoxedType {
     }
 }
 
-impl FfiCodec for BoxedType {
+impl FfiEncoder for BoxedType {
     fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("Boxed object")?;
 
@@ -107,6 +100,21 @@ impl FfiCodec for BoxedType {
         Ok(ffi::FfiValue::Ptr(ptr))
     }
 
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+        if self.ownership.is_full()
+            && !ptr.is_null()
+            && let Some(gtype) = self.gtype()
+        {
+            let copied =
+                unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _) };
+            return Ok(copied);
+        }
+        Ok(ptr)
+    }
+}
+
+impl FfiDecoder for BoxedType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(boxed_ptr) = ffi_value.as_non_null_ptr("Boxed")? else {
             return Ok(value::Value::Null);
@@ -125,6 +133,62 @@ impl FfiCodec for BoxedType {
         };
 
         Ok(value::Value::Object(boxed.into()))
+    }
+}
+
+impl RawPtrCodec for BoxedType {
+    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
+        if ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let gtype = self.gtype();
+        let boxed = Boxed::from_glib_none(gtype, ptr)?;
+        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+    }
+
+    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
+        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        self.ptr_to_value(inner_ptr, context)
+    }
+
+    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
+        let ptr = value::Value::result_to_ptr(value);
+        let ptr = if !ptr.is_null() {
+            match self.gtype() {
+                Some(gtype) => unsafe {
+                    glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
+                },
+                None => ptr,
+            }
+        } else {
+            ptr
+        };
+        unsafe { *(ret as *mut *mut c_void) = ptr };
+    }
+
+    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+        let obj_ptr = value.object_ptr("Boxed field write")?;
+        unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
+        Ok(())
+    }
+}
+
+impl GlibValueCodec for BoxedType {
+    fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
+        let ptr = match val {
+            value::Value::Object(handle) => handle.get_ptr(),
+            value::Value::Null | value::Value::Undefined => return Ok(None),
+            _ => return Ok(None),
+        };
+        let Some(ptr) = ptr else { return Ok(None) };
+        let Some(gtype) = self.gtype() else {
+            return Ok(None);
+        };
+        let mut gvalue = glib::Value::from_type(gtype);
+        unsafe {
+            glib::gobject_ffi::g_value_set_boxed(gvalue.to_glib_none_mut().0, ptr as *const _);
+        }
+        Ok(Some(gvalue))
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
@@ -158,48 +222,6 @@ impl FfiCodec for BoxedType {
             Boxed::from_glib_none(gtype, boxed_ptr)?
         };
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-    }
-
-    fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        if ptr.is_null() {
-            return Ok(value::Value::Null);
-        }
-        let gtype = self.gtype();
-        let boxed = Boxed::from_glib_none(gtype, ptr)?;
-        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-    }
-
-    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        self.ptr_to_value(inner_ptr, context)
-    }
-
-    fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let ptr = extract_object_ptr(value);
-        let ptr = if !ptr.is_null() {
-            match self.gtype() {
-                Some(gtype) => unsafe {
-                    glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
-                },
-                None => ptr,
-            }
-        } else {
-            ptr
-        };
-        unsafe { *(ret as *mut *mut c_void) = ptr };
-    }
-
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        if self.ownership.is_full()
-            && !ptr.is_null()
-            && let Some(gtype) = self.gtype()
-        {
-            let copied =
-                unsafe { glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _) };
-            return Ok(copied);
-        }
-        Ok(ptr)
     }
 }
 
@@ -235,12 +257,14 @@ impl StructType {
     }
 }
 
-impl FfiCodec for StructType {
+impl FfiEncoder for StructType {
     fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let ptr = value.object_ptr("Struct object")?;
         Ok(ffi::FfiValue::Ptr(ptr))
     }
+}
 
+impl FfiDecoder for StructType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let Some(struct_ptr) = ffi_value.as_non_null_ptr("Struct")? else {
             return Ok(value::Value::Null);
@@ -262,13 +286,9 @@ impl FfiCodec for StructType {
 
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
     }
+}
 
-    fn from_glib_value(&self, _gvalue: &glib::Value) -> anyhow::Result<value::Value> {
-        bail!(
-            "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
-        )
-    }
-
+impl RawPtrCodec for StructType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         if ptr.is_null() {
             return Ok(value::Value::Null);
@@ -283,7 +303,21 @@ impl FfiCodec for StructType {
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
-        let ptr = extract_object_ptr(value);
+        let ptr = value::Value::result_to_ptr(value);
         unsafe { *(ret as *mut *mut c_void) = ptr };
+    }
+
+    fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
+        let obj_ptr = value.object_ptr("Struct field write")?;
+        unsafe { (ptr as *mut *mut c_void).write_unaligned(obj_ptr) };
+        Ok(())
+    }
+}
+
+impl GlibValueCodec for StructType {
+    fn from_glib_value(&self, _gvalue: &glib::Value) -> anyhow::Result<value::Value> {
+        bail!(
+            "Plain struct type should not appear in glib value conversion - structs without GType cannot be stored in GValue"
+        )
     }
 }

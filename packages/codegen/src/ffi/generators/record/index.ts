@@ -438,7 +438,13 @@ export class RecordGenerator {
         if (className) {
             selfTypeDescriptor =
                 copyFunction && freeFunction
-                    ? fundamentalSelfType(this.options.sharedLibrary, copyFunction, freeFunction, instanceOwnership)
+                    ? fundamentalSelfType(
+                          this.options.sharedLibrary,
+                          copyFunction,
+                          freeFunction,
+                          instanceOwnership,
+                          className,
+                      )
                     : boxedSelfType(className, this.options.sharedLibrary, glibGetType, instanceOwnership);
         } else {
             selfTypeDescriptor = SELF_TYPE_GOBJECT;
