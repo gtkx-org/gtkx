@@ -40,6 +40,11 @@ export class JsxTypesGenerator {
         this.propsBuilder.clearUsedNamespaces();
         this.controllerPropsBuilder.clearUsedNamespaces();
 
+        const widgetJsxNames = new Set(widgets.map((w) => w.jsxName));
+        const controllerJsxNames = new Set(controllers.map((c) => c.jsxName));
+        this.propsBuilder.setKnownJsxNames(widgetJsxNames);
+        this.controllerPropsBuilder.setKnownJsxNames(controllerJsxNames);
+
         this.generateBaseWidgetProps(file, widgets);
         this.generateWidgetPropsInterfaces(file, widgets);
         this.generateBaseControllerProps(file, controllers);

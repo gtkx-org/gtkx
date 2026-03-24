@@ -122,6 +122,12 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
         return iface;
     }
 
+    private knownJsxNames: ReadonlySet<string> = new Set<string>();
+
+    setKnownJsxNames(names: ReadonlySet<string>): void {
+        this.knownJsxNames = names;
+    }
+
     private getParentPropsName(controller: CodegenControllerMeta): string {
         const { parentClassName, parentNamespace } = controller;
 
@@ -129,8 +135,13 @@ export class ControllerPropsBuilder extends PropsBuilderBase {
             return "EventControllerBaseProps";
         }
 
-        const baseName = toPascalCase(parentClassName);
         const ns = parentNamespace ?? controller.namespace;
+        const parentJsxName = `${ns}${toPascalCase(parentClassName)}`;
+        if (this.knownJsxNames.size > 0 && !this.knownJsxNames.has(parentJsxName)) {
+            return "EventControllerBaseProps";
+        }
+
+        const baseName = toPascalCase(parentClassName);
         return `${ns}${baseName}Props`;
     }
 }

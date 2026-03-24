@@ -130,12 +130,23 @@ export class WidgetPropsBuilder extends PropsBuilderBase {
         return iface;
     }
 
+    private knownJsxNames: ReadonlySet<string> = new Set<string>();
+
+    setKnownJsxNames(names: ReadonlySet<string>): void {
+        this.knownJsxNames = names;
+    }
+
     private getParentPropsName(widget: JsxWidget): string {
         const { meta } = widget;
         const parentClassName = meta.parentClassName;
         const parentNamespace = meta.parentNamespace ?? meta.namespace;
 
         if (!parentClassName || parentClassName === "Widget") {
+            return "WidgetProps";
+        }
+
+        const parentJsxName = `${parentNamespace}${toPascalCase(parentClassName)}`;
+        if (this.knownJsxNames.size > 0 && !this.knownJsxNames.has(parentJsxName)) {
             return "WidgetProps";
         }
 
