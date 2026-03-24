@@ -15,7 +15,7 @@ import {
 } from "../../../core/type-system/ffi-types.js";
 import { toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import { FfiTypeWriter } from "../../../core/writers/ffi-type-writer.js";
-import type { ImportCollector } from "../../../core/writers/index.js";
+import { addTypeImports, type ImportCollector } from "../../../core/writers/index.js";
 
 /**
  * Field layout information.
@@ -117,7 +117,7 @@ export class FieldBuilder {
                     if (!nestedLayout) continue;
 
                     const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                    this.addTypeImports(typeMapping.imports);
+                    this.addFieldTypeImports(typeMapping.imports);
 
                     writer.writeLine(`if (init.${fieldName} !== undefined) {`);
                     writer.withIndent(() => {
@@ -143,7 +143,7 @@ export class FieldBuilder {
                     writer.writeLine("}");
                 } else {
                     const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                    this.addTypeImports(typeMapping.imports);
+                    this.addFieldTypeImports(typeMapping.imports);
 
                     writer.write(`if (init.${fieldName} !== undefined) write(this.handle, `);
                     writer.write(JSON.stringify(typeMapping.ffi));
@@ -242,16 +242,8 @@ export class FieldBuilder {
         return this.ffiTypeWriter;
     }
 
-    private addTypeImports(
-        imports: Array<{ isExternal: boolean; namespace: string; name: string; transformedName: string }>,
-    ): void {
-        for (const imp of imports) {
-            if (imp.isExternal) {
-                this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
-            } else {
-                this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
-            }
-        }
+    private addFieldTypeImports(imports: Parameters<typeof addTypeImports>[1]): void {
+        addTypeImports(this.imports, imports);
     }
 
     private resolveRecord(typeName: string): GirRecord | null {

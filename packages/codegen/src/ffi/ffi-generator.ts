@@ -240,6 +240,7 @@ export class FfiGenerator {
             const methodBody = createMethodBodyWriter(this.ffiMapper, file, {
                 sharedLibrary: generatorOptions.sharedLibrary,
                 glibLibrary: generatorOptions.glibLibrary,
+                selfNames: new Set([recordName]),
             });
             const supportedMethods = filterSupportedMethods(record.methods, (params) =>
                 methodBody.hasUnsupportedCallbacks(params),

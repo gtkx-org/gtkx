@@ -12,7 +12,7 @@ import { formatJsDoc } from "../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions } from "../../core/utils/filtering.js";
 import { toCamelCase, toValidIdentifier } from "../../core/utils/naming.js";
 import { formatNullableReturn } from "../../core/utils/type-qualification.js";
-import { createMethodBodyWriter, type MethodBodyWriter } from "../../core/writers/index.js";
+import { addTypeImports, createMethodBodyWriter, type MethodBodyWriter } from "../../core/writers/index.js";
 
 /**
  * Generates standalone exported functions into a FileBuilder.
@@ -59,7 +59,12 @@ export class FunctionGenerator {
         const funcName = toValidIdentifier(toCamelCase(func.name));
         const params = this.methodBody.buildParameterList(func.parameters);
         const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true, func.returnType.transferOwnership);
+        addTypeImports(this.file, returnTypeMapping.imports);
         const fullReturnType = formatNullableReturn(returnTypeMapping.ts, func.returnType.nullable === true);
+
+        const bodyWriter = this.methodBody.writeFunctionBody(func, returnTypeMapping, {
+            sharedLibrary: this.options.sharedLibrary,
+        });
 
         const initializer = (writer: Writer) => {
             writer.write("(");
@@ -80,9 +85,7 @@ export class FunctionGenerator {
 
             writer.write(" => ");
             writer.writeBlock(() => {
-                this.methodBody.writeFunctionBody(func, returnTypeMapping, {
-                    sharedLibrary: this.options.sharedLibrary,
-                })(writer);
+                bodyWriter(writer);
             });
         };
 

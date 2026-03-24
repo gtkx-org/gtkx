@@ -15,7 +15,7 @@ import { collectDirectMembers, collectParentSignalNames } from "../../../core/ut
 import { filterVarargs } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import { splitQualifiedName } from "../../../core/utils/qualified-name.js";
-import type { ImportCollector, MethodStructure } from "../../../core/writers/index.js";
+import { addTypeImports, type ImportCollector, type MethodStructure } from "../../../core/writers/index.js";
 import { type ParamWrapInfo, ParamWrapWriter } from "../../../core/writers/param-wrap-writer.js";
 
 type SignalParamData = {
@@ -37,6 +37,7 @@ export class SignalBuilder {
         private readonly imports: ImportCollector,
         private readonly repository: GirRepository,
         private readonly options: FfiGeneratorOptions,
+        private readonly selfNames: ReadonlySet<string> = new Set(),
     ) {
         this.className = normalizeClassName(cls.name);
     }
@@ -50,9 +51,10 @@ export class SignalBuilder {
         }
 
         this.imports.addImport("../../native.js", ["call"]);
+        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
         if (this.options.namespace !== "GObject") {
-            this.imports.addImport("../gobject/index.js", ["GObject"]);
+            this.imports.addNamespaceImport("../gobject/index.js", "GObject");
         } else {
             this.imports.addImport("./param-spec.js", ["ParamSpec"]);
         }
@@ -142,13 +144,7 @@ export class SignalBuilder {
             let returnType = "void";
             if (signal.returnType) {
                 const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
-                for (const imp of mapped.imports) {
-                    if (imp.isExternal) {
-                        this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
-                    } else {
-                        this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
-                    }
-                }
+                addTypeImports(this.imports, mapped.imports, this.selfNames);
                 returnType = mapped.ts;
             }
 
@@ -214,13 +210,7 @@ export class SignalBuilder {
     private buildParamData(params: GirParameter[]): SignalParamData[] {
         return params.map((p) => {
             const mapped = this.ffiMapper.mapParameter(p);
-            for (const imp of mapped.imports) {
-                if (imp.isExternal) {
-                    this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
-                } else {
-                    this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
-                }
-            }
+            addTypeImports(this.imports, mapped.imports, this.selfNames);
             if (mapped.ffi.type === "ref") {
                 this.imports.addImport("@gtkx/native", ["Ref"]);
             }
@@ -413,13 +403,7 @@ export class SignalBuilder {
 
         for (const param of filterVarargs(signal.parameters)) {
             const mapped = this.ffiMapper.mapParameter(param);
-            for (const imp of mapped.imports) {
-                if (imp.isExternal) {
-                    this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
-                } else {
-                    this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
-                }
-            }
+            addTypeImports(this.imports, mapped.imports, this.selfNames);
             if (mapped.ffi.type === "ref") {
                 this.imports.addImport("@gtkx/native", ["Ref"]);
             }

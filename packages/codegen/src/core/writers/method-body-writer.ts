@@ -11,7 +11,7 @@ import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType, SelfTypeDescriptor } from "../type-system/ffi-types.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { hasVarargs, isVararg } from "../utils/filtering.js";
-import { createWrappedName, toCamelCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
+import { createWrappedName, toCamelCase, toKebabCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
 import { formatNullableReturn } from "../utils/type-qualification.js";
 import { type CallArgument, type CallbackWrapperInfo, CallExpressionBuilder } from "./call-expression-builder.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
@@ -24,6 +24,7 @@ import { ParamWrapWriter } from "./param-wrap-writer.js";
 export type ImportCollector = {
     addImport(specifier: string, names: string[]): void;
     addTypeImport(specifier: string, names: string[]): void;
+    addNamespaceImport(specifier: string, alias: string): void;
 };
 
 /**
@@ -168,6 +169,7 @@ export class MethodBodyWriter {
     private ffiTypeWriter: FfiTypeWriter;
     private callExpression: CallExpressionBuilder;
     private paramWrapWriter: ParamWrapWriter;
+    private selfNames: ReadonlySet<string> = new Set();
 
     constructor(
         private readonly ffiMapper: FfiMapper,
@@ -177,6 +179,14 @@ export class MethodBodyWriter {
         this.ffiTypeWriter = ffiTypeWriter ?? new FfiTypeWriter();
         this.callExpression = new CallExpressionBuilder();
         this.paramWrapWriter = new ParamWrapWriter();
+    }
+
+    /**
+     * Sets names that should be excluded from type imports.
+     * Use this to prevent a class from importing itself.
+     */
+    setSelfNames(names: ReadonlySet<string>): void {
+        this.selfNames = names;
     }
 
     /**
@@ -579,7 +589,7 @@ export class MethodBodyWriter {
 
         for (const w of wrapInfos) {
             if (w.wrapInfo.needsWrap) {
-                this.imports.addImport("../../native-object.js", ["getNativeObject"]);
+                this.imports.addImport("../../registry.js", ["getNativeObject"]);
             }
             this.addTypeImportsFromMapping(w.mapped);
         }
@@ -662,20 +672,37 @@ export class MethodBodyWriter {
     }
 
     private writeCallableBody(options: CallableBodyOptions): (writer: Writer) => void {
-        return (writer) => {
-            const isNullable = options.returnType.nullable === true;
-            const rawReturnType = options.returnTypeMapping.ts;
-            const baseReturnType = options.ownClassName ?? rawReturnType;
-            const tsReturnType = formatNullableReturn(baseReturnType, isNullable);
+        this.imports.addImport("../../native.js", ["call"]);
+        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+        this.imports.addImport("../../registry.js", ["getNativeObject"]);
 
-            const wrapInfo = this.needsObjectWrap(options.returnTypeMapping);
-            const hasReturnValue = baseReturnType !== "void";
-            const gtkAllocatesRefs = this.identifyGtkAllocatedRefs(options.parameters);
+        const isNullable = options.returnType.nullable === true;
+        const rawReturnType = options.returnTypeMapping.ts;
+        const baseReturnType = options.ownClassName ?? rawReturnType;
+        const wrapInfo = this.needsObjectWrap(options.returnTypeMapping);
+        const hasReturnValue = baseReturnType !== "void";
+        const hasOwnClassReturn = options.ownClassName !== undefined;
+        const hasObjectWrapReturn = wrapInfo.needsWrap && hasReturnValue;
+
+        if (options.throws) {
+            this.imports.addImport("@gtkx/native", ["createRef"]);
+            this.setupGErrorImports();
+        }
+
+        if (hasOwnClassReturn || hasObjectWrapReturn || (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType)) {
+            this.imports.addImport("../../registry.js", ["getNativeObject"]);
+        }
+
+        const gtkAllocatesRefs = this.identifyGtkAllocatedRefs(options.parameters);
+        if (gtkAllocatesRefs.length > 0) {
+            this.imports.addImport("../../registry.js", ["getNativeObject"]);
+        }
+
+        return (writer) => {
+            const tsReturnType = formatNullableReturn(baseReturnType, isNullable);
             const resultVarName = this.getResultVarName(options.parameters);
 
             if (options.throws) {
-                this.imports.addImport("@gtkx/native", ["createRef"]);
-                this.imports.addTypeImport("@gtkx/native", ["NativeHandle"]);
                 writer.writeLine("const error = createRef<NativeHandle | null>(null);");
             }
 
@@ -691,11 +718,7 @@ export class MethodBodyWriter {
                 });
             }
 
-            const hasOwnClassReturn = options.ownClassName !== undefined;
-            const hasObjectWrapReturn = wrapInfo.needsWrap && hasReturnValue;
-
             if (hasOwnClassReturn || hasObjectWrapReturn) {
-                this.imports.addImport("../../native-object.js", ["getNativeObject"]);
                 writer.write("const ptr = ");
                 this.callExpression.toWriter({
                     sharedLibrary: options.sharedLibrary,
@@ -731,8 +754,6 @@ export class MethodBodyWriter {
                     }
                 }
             } else if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
-                this.imports.addImport("../../native-object.js", ["getNativeObject"]);
-
                 writer.write("const arr = ");
                 this.callExpression.toWriter({
                     sharedLibrary: options.sharedLibrary,
@@ -827,16 +848,16 @@ export class MethodBodyWriter {
      * @returns The GError class reference to use (e.g., "GLib.GError" or "GError")
      */
     setupGErrorImports(currentNamespace?: string): string {
-        this.imports.addImport("../../native-error.js", ["NativeError"]);
-        this.imports.addImport("../../native-object.js", ["getNativeObject"]);
+        this.imports.addImport("../../native.js", ["NativeError"]);
+        this.imports.addImport("../../registry.js", ["getNativeObject"]);
 
         const isGLibNamespace = currentNamespace === "GLib";
         const gerrorRef = isGLibNamespace ? "GError" : "GLib.GError";
 
         if (isGLibNamespace) {
-            this.imports.addImport("./Error.js", ["GError"]);
+            this.imports.addImport("./error.js", ["GError"]);
         } else {
-            this.imports.addImport("../GLib/index.js", ["GLib"]);
+            this.imports.addNamespaceImport("../glib/index.js", "GLib");
         }
 
         return gerrorRef;
@@ -854,7 +875,6 @@ export class MethodBodyWriter {
 
     private writeRefRewrap(writer: Writer, refs: GtkAllocatedRef[]): void {
         for (const ref of refs) {
-            this.imports.addImport("../../native-object.js", ["getNativeObject"]);
             if (ref.isArray && ref.arrayItemType) {
                 if (ref.arrayItemIsBoxed || ref.arrayItemIsInterface) {
                     writer.writeLine(
@@ -909,15 +929,21 @@ export class MethodBodyWriter {
         /** If true, pass the class to getNativeObject. Used for boxed types. */
         useClassInWrap: boolean;
     }): (writer: Writer) => void {
+        this.imports.addImport("../../native.js", ["call"]);
+        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+        this.imports.addImport("../../registry.js", ["getNativeObject"]);
         const { sharedLibrary, cIdentifier, args, returnTypeDescriptor, wrapClassName, throws, useClassInWrap } =
             options;
+
+        if (throws) {
+            this.imports.addImport("@gtkx/native", ["createRef"]);
+            this.setupGErrorImports();
+        }
 
         return (writer) => {
             this.writeCallbackWrapperDeclarations(writer, args);
 
             if (throws) {
-                this.imports.addImport("@gtkx/native", ["createRef"]);
-                this.imports.addTypeImport("@gtkx/native", ["NativeHandle"]);
                 writer.writeLine("const error = createRef<NativeHandle | null>(null);");
                 args.push({
                     type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(),
@@ -944,7 +970,6 @@ export class MethodBodyWriter {
                 this.writeErrorCheck(writer);
             }
 
-            this.imports.addImport("../../native-object.js", ["getNativeObject"]);
             if (useClassInWrap) {
                 writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${wrapClassName});`);
             } else {
@@ -972,22 +997,19 @@ export class MethodBodyWriter {
      */
     private addTypeImportsFromMapping(mapped: MappedType): void {
         for (const imp of mapped.imports) {
+            if (!imp.isExternal && this.selfNames.has(imp.transformedName)) continue;
             if (imp.isExternal) {
-                this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
+                this.imports.addNamespaceImport(`../${imp.namespace.toLowerCase()}/index.js`, imp.namespace);
             } else {
                 switch (imp.kind) {
                     case "enum":
                     case "flags":
-                        this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+                        this.imports.addImport("./enums.js", [imp.transformedName]);
                         break;
                     case "record":
-                        this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
-                        break;
                     case "class":
-                        this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
-                        break;
                     case "interface":
-                        this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
+                        this.imports.addImport(`./${toKebabCase(imp.name)}.js`, [imp.transformedName]);
                         break;
                     case "callback":
                         break;

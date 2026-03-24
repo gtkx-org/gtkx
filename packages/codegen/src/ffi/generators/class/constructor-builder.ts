@@ -14,6 +14,7 @@ import { collectPropertiesWithDefaults, convertDefaultValue } from "../../../cor
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { normalizeClassName, toCamelCase, toKebabCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import {
+    addTypeImports,
     createMethodBodyWriter,
     type ImportCollector,
     type MethodBodyWriter,
@@ -58,11 +59,13 @@ export class ConstructorBuilder {
         private readonly imports: ImportCollector,
         private readonly repository: GirRepository,
         private readonly options: FfiGeneratorOptions,
+        private readonly selfNames: ReadonlySet<string> = new Set(),
     ) {
         this.className = normalizeClassName(cls.name);
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
             sharedLibrary: options.sharedLibrary,
             glibLibrary: options.glibLibrary,
+            selfNames: this.selfNames,
         });
         this.propertyDefaults = collectPropertiesWithDefaults(cls, repository);
     }
@@ -104,7 +107,7 @@ export class ConstructorBuilder {
             if (!conversion) return param;
 
             for (const imp of conversion.imports) {
-                this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
+                this.imports.addNamespaceImport(`../${imp.namespace.toLowerCase()}/index.js`, imp.namespace);
             }
 
             return {
@@ -204,6 +207,8 @@ export class ConstructorBuilder {
 
     private buildConstructorWithOverloads(ctor: GirConstructor): ConstructorOverloads {
         this.imports.addImport("@gtkx/native", ["isNativeHandle"]);
+        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+        this.imports.addImport("../../native.js", ["call"]);
         this.imports.addImport("../../registry.js", ["registerNativeObject"]);
         const params = this.buildConstructorParameters(ctor);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
@@ -343,13 +348,7 @@ export class ConstructorBuilder {
             if (!prop.constructOnly) continue;
 
             const mapped: MappedType = this.ffiMapper.mapType(prop.type, false, prop.type.transferOwnership);
-            for (const imp of mapped.imports) {
-                if (imp.isExternal) {
-                    this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
-                } else {
-                    this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
-                }
-            }
+            addTypeImports(this.imports, mapped.imports, this.selfNames);
 
             const paramName = toValidIdentifier(toCamelCase(prop.name));
             const isNullable = mapped.nullable === true;
@@ -384,6 +383,8 @@ export class ConstructorBuilder {
 
     private buildGObjectNewConstructorWithOverloads(glibGetType: string): ConstructorOverloads {
         this.imports.addImport("@gtkx/native", ["isNativeHandle"]);
+        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+        this.imports.addImport("../../native.js", ["call"]);
         this.imports.addImport("../../registry.js", ["registerNativeObject"]);
 
         const constructOnlyProps = this.collectConstructOnlyProps();

@@ -622,12 +622,12 @@ export type SelfTypeDescriptor =
     | {
           type: "fundamental";
           ownership: "borrowed" | "full";
-          lib: string;
+          library: string;
           refFn: string;
           unrefFn: string;
           typeName?: string;
       }
-    | { type: "boxed"; ownership: "borrowed" | "full"; innerType: string; lib: string; getTypeFn?: string };
+    | { type: "boxed"; ownership: "borrowed" | "full"; innerType: string; library: string; getTypeFn?: string };
 
 /** Self type descriptor for GObject instance methods. */
 export const SELF_TYPE_GOBJECT: SelfTypeDescriptor = { type: "gobject", ownership: "borrowed" };
@@ -636,7 +636,7 @@ export const SELF_TYPE_GOBJECT: SelfTypeDescriptor = { type: "gobject", ownershi
  * Creates a fundamental self type descriptor for types with custom ref/unref.
  */
 export const fundamentalSelfType = (
-    lib: string,
+    library: string,
     refFn: string,
     unrefFn: string,
     ownership: "borrowed" | "full" = "borrowed",
@@ -644,7 +644,7 @@ export const fundamentalSelfType = (
 ): SelfTypeDescriptor => ({
     type: "fundamental",
     ownership,
-    lib,
+    library,
     refFn,
     unrefFn,
     typeName,
@@ -655,7 +655,7 @@ export const fundamentalSelfType = (
  */
 export const boxedSelfType = (
     innerType: string,
-    lib: string,
+    library: string,
     getTypeFn?: string,
     ownership: "borrowed" | "full" = "borrowed",
 ): SelfTypeDescriptor => {
@@ -663,7 +663,7 @@ export const boxedSelfType = (
         type: "boxed",
         ownership,
         innerType,
-        lib,
+        library,
     };
     if (getTypeFn) {
         result.getTypeFn = getTypeFn;

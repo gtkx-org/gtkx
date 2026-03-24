@@ -29,7 +29,12 @@ import {
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
-import { createMethodBodyWriter, type MethodBodyWriter, type MethodStructure } from "../../../core/writers/index.js";
+import {
+    addTypeImports,
+    createMethodBodyWriter,
+    type MethodBodyWriter,
+    type MethodStructure,
+} from "../../../core/writers/index.js";
 import { FieldBuilder } from "./field-builder.js";
 
 /**
@@ -55,6 +60,7 @@ function addMethodStructure(cls: ClassDeclarationBuilder, struct: MethodStructur
 export class RecordGenerator {
     private readonly fieldBuilder: FieldBuilder;
     private readonly methodBody: MethodBodyWriter;
+    private selfNames: ReadonlySet<string> = new Set();
 
     constructor(
         private readonly ffiMapper: FfiMapper,
@@ -81,6 +87,8 @@ export class RecordGenerator {
      */
     generate(record: GirRecord): void {
         const recordName = normalizeClassName(record.name);
+        this.selfNames = new Set([recordName]);
+        this.methodBody.setSelfNames(this.selfNames);
 
         this.generateInitInterface(record, recordName);
         const cls = this.generateClass(record, recordName);
@@ -128,13 +136,7 @@ export class RecordGenerator {
             let fieldName = toValidMemberName(toCamelCase(field.name));
             if (fieldName === "id") fieldName = "id_";
             const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-            for (const imp of typeMapping.imports) {
-                if (imp.isExternal) {
-                    this.file.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
-                } else {
-                    this.file.addImport(`./${imp.name}.js`, [imp.transformedName]);
-                }
-            }
+            addTypeImports(this.file, typeMapping.imports, this.selfNames);
             propStrings.push(`${fieldName}?: ${typeMapping.ts}`);
         }
 
@@ -194,6 +196,8 @@ export class RecordGenerator {
 
         if (mainConstructor) {
             this.file.addImport("@gtkx/native", ["isNativeHandle"]);
+            this.file.addTypeImport("../../object.js", ["NativeHandle"]);
+            this.file.addImport("../../native.js", ["call"]);
             const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
             const args = this.methodBody.buildCallArgumentsArray(mainConstructor.parameters);
             const glibTypeName = record.glibTypeName ?? record.cType;
@@ -264,6 +268,7 @@ export class RecordGenerator {
             const initFields = this.fieldBuilder.getInitializableFields(record.fields);
             if (record.fields.length > 0) {
                 this.file.addImport("@gtkx/native", ["isNativeHandle"]);
+                this.file.addTypeImport("../../object.js", ["NativeHandle"]);
                 const structSize = this.fieldBuilder.calculateStructSize(record.fields);
                 this.file.addImport("../../native.js", ["alloc"]);
 
@@ -591,13 +596,7 @@ export class RecordGenerator {
                 this.generateNestedStructAccessors(field, fieldName, offset, cls, methodNames);
             } else if (!this.fieldBuilder.isNestedStructType(typeName)) {
                 const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                for (const imp of typeMapping.imports) {
-                    if (imp.isExternal) {
-                        this.file.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
-                    } else {
-                        this.file.addImport(`./${imp.name}.js`, [imp.transformedName]);
-                    }
-                }
+                addTypeImports(this.file, typeMapping.imports, this.selfNames);
 
                 const needsObjectWrap =
                     typeMapping.ffi.type === "boxed" ||
@@ -664,13 +663,7 @@ export class RecordGenerator {
         if (!nestedLayout) return;
 
         const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-        for (const imp of typeMapping.imports) {
-            if (imp.isExternal) {
-                this.file.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
-            } else {
-                this.file.addImport(`./${imp.name}.js`, [imp.transformedName]);
-            }
-        }
+        addTypeImports(this.file, typeMapping.imports, this.selfNames);
 
         const tsTypeName = typeMapping.ts;
         const capitalizedFieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
@@ -760,13 +753,7 @@ export class RecordGenerator {
         if (elementSize === 0) return;
 
         const typeMapping = this.ffiMapper.mapType(elementType, false, elementType.transferOwnership);
-        for (const imp of typeMapping.imports) {
-            if (imp.isExternal) {
-                this.file.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
-            } else {
-                this.file.addImport(`./${imp.name}.js`, [imp.transformedName]);
-            }
-        }
+        addTypeImports(this.file, typeMapping.imports, this.selfNames);
 
         const tsTypeName = typeMapping.ts;
         const singularName = fieldName.endsWith("s") ? fieldName.slice(0, -1) : fieldName;

@@ -229,9 +229,10 @@ describe("Self type descriptors", () => {
         expect(fundamentalSelfType("libgobject-2.0.so.0", "g_param_spec_ref_sink", "g_param_spec_unref")).toEqual({
             type: "fundamental",
             ownership: "borrowed",
-            lib: "libgobject-2.0.so.0",
+            library: "libgobject-2.0.so.0",
             refFn: "g_param_spec_ref_sink",
             unrefFn: "g_param_spec_unref",
+            typeName: undefined,
         });
     });
 
@@ -240,7 +241,7 @@ describe("Self type descriptors", () => {
             type: "boxed",
             ownership: "borrowed",
             innerType: "Rectangle",
-            lib: "libgdk-4.so.1",
+            library: "libgdk-4.so.1",
         });
     });
 
@@ -249,7 +250,7 @@ describe("Self type descriptors", () => {
             type: "boxed",
             ownership: "borrowed",
             innerType: "Rectangle",
-            lib: "libgdk-4.so.1",
+            library: "libgdk-4.so.1",
             getTypeFn: "gdk_rectangle_get_type",
         });
     });

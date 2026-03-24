@@ -20,7 +20,7 @@ import {
 } from "../../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { createGetterName, toCamelCase } from "../../../core/utils/naming.js";
-import type { ImportCollector, MethodStructure } from "../../../core/writers/index.js";
+import { addTypeImports, type ImportCollector, type MethodStructure } from "../../../core/writers/index.js";
 
 export class PropertyGetterBuilder {
     private readonly existingMethodNames: Set<string>;
@@ -31,6 +31,7 @@ export class PropertyGetterBuilder {
         private readonly imports: ImportCollector,
         private readonly repository: GirRepository,
         private readonly options: FfiGeneratorOptions,
+        private readonly selfNames: ReadonlySet<string> = new Set(),
     ) {
         this.existingMethodNames = collectOwnAndInterfaceMethodNames(cls, repository, toCamelCase);
         for (const name of collectParentMethodNames(cls, repository)) {
@@ -85,13 +86,7 @@ export class PropertyGetterBuilder {
             returnType = `${returnType} | null`;
         }
 
-        for (const imp of typeMapping.imports) {
-            if (imp.isExternal) {
-                this.imports.addImport(`../${imp.namespace}/index.js`, [imp.namespace]);
-            } else {
-                this.imports.addImport(`./${imp.name}.js`, [imp.transformedName]);
-            }
-        }
+        addTypeImports(this.imports, typeMapping.imports, this.selfNames);
 
         return {
             name: methodName,
@@ -199,7 +194,7 @@ export class PropertyGetterBuilder {
             this.imports.addImport("./value.js", ["Value"]);
             this.imports.addImport("./functions.js", ["typeFromName"]);
         } else {
-            this.imports.addImport("../gobject/index.js", ["GObject"]);
+            this.imports.addNamespaceImport("../gobject/index.js", "GObject");
         }
 
         return (writer) => {

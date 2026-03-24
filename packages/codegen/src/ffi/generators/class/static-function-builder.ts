@@ -41,11 +41,13 @@ export class StaticFunctionBuilder {
         ffiMapper: FfiMapper,
         imports: ImportCollector,
         private readonly options: FfiGeneratorOptions,
+        selfNames?: ReadonlySet<string>,
     ) {
         this.className = normalizeClassName(cls.name);
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
             sharedLibrary: options.sharedLibrary,
             glibLibrary: options.glibLibrary,
+            selfNames,
         });
         this.parentStaticFunctionNames = collectParentStaticFunctionNames(cls);
     }

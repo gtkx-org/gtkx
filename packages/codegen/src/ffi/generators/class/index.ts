@@ -97,13 +97,14 @@ export class ClassGenerator {
         private readonly options: FfiGeneratorOptions,
     ) {
         this.className = normalizeClassName(cls.name);
+        const selfNames = new Set([this.className]);
 
-        this.constructorBuilder = new ConstructorBuilder(cls, ffiMapper, file, repository, options);
-        this.methodBuilder = new MethodBuilder(ffiMapper, file, this.methodRenames, options);
-        this.staticBuilder = new StaticFunctionBuilder(cls, ffiMapper, file, options);
-        this.signalBuilder = new SignalBuilder(cls, ffiMapper, file, repository, options);
-        this.propertyGetterBuilder = new PropertyGetterBuilder(cls, ffiMapper, file, repository, options);
-        this.propertySetterBuilder = new PropertySetterBuilder(cls, ffiMapper, file, repository, options);
+        this.constructorBuilder = new ConstructorBuilder(cls, ffiMapper, file, repository, options, selfNames);
+        this.methodBuilder = new MethodBuilder(ffiMapper, file, this.methodRenames, options, selfNames);
+        this.staticBuilder = new StaticFunctionBuilder(cls, ffiMapper, file, options, selfNames);
+        this.signalBuilder = new SignalBuilder(cls, ffiMapper, file, repository, options, selfNames);
+        this.propertyGetterBuilder = new PropertyGetterBuilder(cls, ffiMapper, file, repository, options, selfNames);
+        this.propertySetterBuilder = new PropertySetterBuilder(cls, ffiMapper, file, repository, options, selfNames);
 
         const analyzers: ClassMetaAnalyzers = {
             property: new PropertyAnalyzer(repository, ffiMapper),
@@ -196,7 +197,7 @@ export class ClassGenerator {
         if (parentInfo.hasParent) {
             if (parentInfo.isCrossNamespace && parentInfo.namespace) {
                 extendsExpr = `${parentInfo.namespace}.${parentInfo.className}`;
-                this.file.addImport(`../${parentInfo.namespace.toLowerCase()}/index.js`, [parentInfo.namespace]);
+                this.file.addNamespaceImport(`../${parentInfo.namespace.toLowerCase()}/index.js`, parentInfo.namespace);
             } else {
                 extendsExpr = parentInfo.className;
                 if (parentInfo.originalName) {

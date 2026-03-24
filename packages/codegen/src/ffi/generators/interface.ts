@@ -45,6 +45,7 @@ export class InterfaceGenerator {
     generate(iface: GirInterface): boolean {
         this.methodRenames.clear();
         const interfaceName = toPascalCase(iface.name);
+        this.methodBody.setSelfNames(new Set([interfaceName]));
 
         const interfaceMethodNames = new Set(iface.methods.map((m) => m.name));
         const prerequisiteMethods = this.collectPrerequisiteMethods(iface, interfaceMethodNames);
@@ -60,7 +61,7 @@ export class InterfaceGenerator {
         if (isGObjectNamespace) {
             this.file.addImport("./object.js", ["Object"]);
         } else {
-            this.file.addImport("../gobject/index.js", ["GObject"]);
+            this.file.addNamespaceImport("../gobject/index.js", "GObject");
         }
 
         const doc = buildJsDocStructure(iface.doc, this.options.namespace);

@@ -15,6 +15,7 @@ import { isMethodDuplicate } from "../../../core/utils/filtering.js";
 import { toCamelCase } from "../../../core/utils/naming.js";
 import { formatNullableReturn } from "../../../core/utils/type-qualification.js";
 import {
+    addTypeImports,
     createMethodBodyWriter,
     type ImportCollector,
     type MethodBodyWriter,
@@ -33,10 +34,12 @@ export class MethodBuilder {
         private readonly imports: ImportCollector,
         private readonly methodRenames: Map<string, string>,
         private readonly options: FfiGeneratorOptions,
+        selfNames?: ReadonlySet<string>,
     ) {
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
             sharedLibrary: options.sharedLibrary,
             glibLibrary: options.glibLibrary,
+            selfNames,
         });
     }
 
@@ -138,7 +141,8 @@ export class MethodBuilder {
             true,
             finishMethod.returnType.transferOwnership,
         );
-        this.imports.addImport("../../native-object.js", ["getNativeObject"]);
+        addTypeImports(this.imports, returnTypeMapping.imports);
+        this.imports.addImport("../../registry.js", ["getNativeObject"]);
 
         const innerReturnType = formatNullableReturn(returnTypeMapping.ts, finishMethod.returnType.nullable === true);
         const promiseReturnType = `Promise<${innerReturnType}>`;
@@ -199,11 +203,27 @@ export class MethodBuilder {
         selfTypeDescriptor: SelfTypeDescriptor,
     ): (writer: Writer) => void {
         this.imports.addImport("../../native.js", ["call"]);
+        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
 
         const hasReturnValue = returnTypeMapping.ts !== "void";
         const wrapInfo = this.methodBody.needsObjectWrap(returnTypeMapping);
         const isNullable = finishMethod.returnType.nullable === true;
         const baseReturnType = returnTypeMapping.ts;
+
+        if (finishMethod.throws) {
+            this.imports.addImport("@gtkx/native", ["createRef"]);
+            this.methodBody.setupGErrorImports();
+        }
+        if (
+            hasReturnValue &&
+            (wrapInfo.needsWrap ||
+                wrapInfo.needsBoxedWrap ||
+                wrapInfo.needsFundamentalWrap ||
+                wrapInfo.needsStructWrap ||
+                wrapInfo.needsInterfaceWrap)
+        ) {
+            this.imports.addImport("../../registry.js", ["getNativeObject"]);
+        }
 
         return (writer) => {
             const rejectParam = finishMethod.throws ? "reject" : "_reject";
@@ -231,7 +251,6 @@ export class MethodBuilder {
                             writer.withIndent(() => {
                                 if (finishMethod.throws) {
                                     this.imports.addImport("@gtkx/native", ["createRef"]);
-                                    this.imports.addTypeImport("@gtkx/native", ["NativeHandle"]);
                                     writer.writeLine("const error = createRef<NativeHandle | null>(null);");
                                 }
 
@@ -299,7 +318,6 @@ export class MethodBuilder {
                                             });
                                             writer.writeLine("}");
                                         }
-                                        this.imports.addImport("../../native-object.js", ["getNativeObject"]);
                                         if (
                                             wrapInfo.needsBoxedWrap ||
                                             wrapInfo.needsFundamentalWrap ||
