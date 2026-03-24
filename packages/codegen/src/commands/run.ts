@@ -57,7 +57,12 @@ export const run = defineCommand({
         mkdirSync(REACT_OUTPUT_DIR, { recursive: true });
 
         for (const [filePath, content] of result.reactFiles) {
-            writeFileSync(join(REACT_OUTPUT_DIR, filePath), content);
+            const fullPath = join(REACT_OUTPUT_DIR, filePath);
+            const dir = dirname(fullPath);
+            if (!existsSync(dir)) {
+                mkdirSync(dir, { recursive: true });
+            }
+            writeFileSync(fullPath, content);
         }
 
         reactSpinner.stop(`Wrote ${result.reactFiles.size} React files`);

@@ -44,12 +44,12 @@ export class CodegenOrchestrator {
 
         const ffiFiles = new Map<string, string>();
         for (const file of this.ffiGeneratedFiles) {
-            ffiFiles.set(`ffi/${file.path}`, file.content);
+            ffiFiles.set(file.path, file.content);
         }
 
         const reactFiles = new Map<string, string>();
         for (const file of this.reactGeneratedFiles) {
-            reactFiles.set(`react/${file.path}`, file.content);
+            reactFiles.set(file.path, file.content);
         }
 
         const duration = performance.now() - startTime;
