@@ -13,7 +13,6 @@ import {
 import type { GError } from "./generated/glib/error.js";
 import { typeCheckInstanceIsA, typeFromName } from "./generated/gobject/functions.js";
 import { TypeInstance } from "./generated/gobject/type-instance.js";
-import { isStarted } from "./lifecycle.js";
 import type { NativeClass, NativeObject } from "./object.js";
 
 export type { NativeHandle } from "./object.js";
@@ -104,14 +103,6 @@ export function getNativeInterface<T extends NativeObject>(obj: NativeObject, if
     return instance;
 }
 
-const ensureIsStarted = (detail?: string) => {
-    if (!isStarted()) {
-        throw new Error(
-            `GTK runtime not started. Call start() before making FFI calls. ${detail ? ` (${detail})` : ""}`,
-        );
-    }
-};
-
 /**
  * Invokes a native function through FFI.
  *
@@ -123,7 +114,6 @@ const ensureIsStarted = (detail?: string) => {
  * @throws If runtime not started or undefined required argument
  */
 export const call = (library: string, symbol: string, args: Arg[], returnType: Type): FfiValue => {
-    ensureIsStarted(`attempted call: ${library}:${symbol}`);
     return nativeCall(library, symbol, args, returnType);
 };
 
@@ -137,7 +127,6 @@ export const call = (library: string, symbol: string, args: Arg[], returnType: T
  * @throws If runtime not started
  */
 export const alloc = (size: number, typeName?: string, library?: string): NativeHandle => {
-    ensureIsStarted(`attempted alloc: ${library ?? "unknown"}:${typeName ?? "unknown"}`);
     return nativeAlloc(size, typeName, library);
 };
 
@@ -151,7 +140,6 @@ export const alloc = (size: number, typeName?: string, library?: string): Native
  * @throws If runtime not started
  */
 export const read = (handle: NativeHandle, type: Type, offset: number): FfiValue => {
-    ensureIsStarted("attempted read");
     return nativeRead(handle, type, offset);
 };
 
@@ -165,12 +153,10 @@ export const read = (handle: NativeHandle, type: Type, offset: number): FfiValue
  * @throws If runtime not started
  */
 export const write = (handle: NativeHandle, type: Type, offset: number, value: unknown): void => {
-    ensureIsStarted("attempted write");
     nativeWrite(handle, type, offset, value);
 };
 
 export const freeze = (): void => {
-    ensureIsStarted("attempted freeze");
     nativeFreeze();
 };
 
