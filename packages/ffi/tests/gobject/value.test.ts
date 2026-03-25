@@ -193,10 +193,10 @@ describe("Value instance methods", () => {
             const v = Value.newFromBoxed(rgba);
             const extracted = v.getBoxed(Gdk.RGBA);
             expect(extracted).not.toBeNull();
-            expect(extracted?.getRed()).toBeCloseTo(0.5);
-            expect(extracted?.getGreen()).toBeCloseTo(0.25);
-            expect(extracted?.getBlue()).toBeCloseTo(0.75);
-            expect(extracted?.getAlpha()).toBeCloseTo(1.0);
+            expect(extracted?.red).toBeCloseTo(0.5);
+            expect(extracted?.green).toBeCloseTo(0.25);
+            expect(extracted?.blue).toBeCloseTo(0.75);
+            expect(extracted?.alpha).toBeCloseTo(1.0);
         });
     });
 });

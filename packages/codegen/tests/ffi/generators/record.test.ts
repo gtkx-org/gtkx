@@ -154,7 +154,7 @@ describe("RecordGenerator", () => {
     });
 
     describe("field generation", () => {
-        it("generates getter for readable field", () => {
+        it("generates accessor for readable field", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -171,7 +171,8 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("getX()");
+            expect(code).toContain("get x()");
+            expect(code).toContain("set x(");
         });
 
         it("generates setter for writable field", () => {
@@ -192,7 +193,7 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("setX(value");
+            expect(code).toContain("set x(value");
         });
 
         it("converts field names to camelCase", () => {
@@ -212,7 +213,7 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("getSomeField()");
+            expect(code).toContain("get someField()");
         });
 
         it("renames id field to id_", () => {
@@ -232,7 +233,7 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("getId_()");
+            expect(code).toContain("get id_()");
         });
     });
 

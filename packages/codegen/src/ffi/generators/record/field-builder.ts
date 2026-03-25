@@ -124,8 +124,6 @@ export class FieldBuilder {
                         for (const nestedItem of nestedLayout) {
                             if (!this.isWritableType(nestedItem.field.type)) continue;
                             const nestedFieldName = toValidMemberName(toCamelCase(nestedItem.field.name));
-                            const capitalizedNestedFieldName =
-                                nestedFieldName.charAt(0).toUpperCase() + nestedFieldName.slice(1);
                             const nestedOffset = offset + nestedItem.offset;
                             const nestedTypeMapping = this.ffiMapper.mapType(
                                 nestedItem.field.type,
@@ -135,9 +133,7 @@ export class FieldBuilder {
 
                             writer.write(`write(this.handle, `);
                             writer.write(JSON.stringify(nestedTypeMapping.ffi));
-                            writer.writeLine(
-                                `, ${nestedOffset}, init.${fieldName}.get${capitalizedNestedFieldName}());`,
-                            );
+                            writer.writeLine(`, ${nestedOffset}, init.${fieldName}.${nestedFieldName});`);
                         }
                     });
                     writer.writeLine("}");

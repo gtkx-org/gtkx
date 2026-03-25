@@ -161,11 +161,11 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
         if (!page) return;
 
         if (this.props.tabExpand !== undefined) {
-            page.setTabExpand(this.props.tabExpand);
+            page.tabExpand = this.props.tabExpand;
         }
 
         if (this.props.tabFill !== undefined) {
-            page.setTabFill(this.props.tabFill);
+            page.tabFill = this.props.tabFill;
         }
     }
 

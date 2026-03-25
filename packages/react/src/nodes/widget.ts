@@ -297,23 +297,16 @@ export class WidgetNode<
     }
 
     private setProperty(key: string, value: unknown): void {
-        const propMeta = resolvePropMeta(this.container, key);
-        if (!propMeta) return;
+        const propName = resolvePropMeta(this.container, key);
+        if (!propName) return;
 
-        const [getterName, setterName] = propMeta;
-        const setter = this.container[setterName as keyof typeof this.container];
-        if (!setter || typeof setter !== "function") return;
+        const target = this.container as Record<string, unknown>;
 
-        if (getterName && findProperty(this.container, key) instanceof ParamSpecString) {
-            const getter = this.container[getterName as keyof typeof this.container];
-
-            if (getter && typeof getter === "function") {
-                const currentValue = getter.call(this.container);
-                if (currentValue === value) return;
-            }
+        if (findProperty(this.container, key) instanceof ParamSpecString) {
+            if (target[propName] === value) return;
         }
 
-        setter.call(this.container, value);
+        target[propName] = value;
     }
 
     private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {

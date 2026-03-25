@@ -10,7 +10,7 @@ import { raw, variableStatement } from "../../builders/index.js";
 import type { Writer } from "../../builders/writer.js";
 import type { CodegenControllerMeta } from "../../core/codegen-metadata.js";
 import type { PropertyAnalysis, SignalAnalysis } from "../../core/generator-types.js";
-import { toCamelCase } from "../../core/utils/naming.js";
+
 import { type MetadataReader, sortWidgetsByClassName } from "../metadata-reader.js";
 
 type ClassItem = {
@@ -108,14 +108,9 @@ export class InternalGenerator {
             const propEntries: Array<[string, string]> = [];
 
             for (const prop of item.properties) {
-                if (!prop.isWritable || !prop.setter) continue;
+                if (!prop.isWritable || (!prop.setter && !prop.isConstructOnly)) continue;
 
-                const getterName = prop.getter ? toCamelCase(prop.getter) : null;
-                const setterName = toCamelCase(prop.setter);
-                propEntries.push([
-                    `"${prop.camelName}"`,
-                    `[${getterName ? `"${getterName}"` : "null"}, "${setterName}"]`,
-                ]);
+                propEntries.push([`"${prop.camelName}"`, `"${prop.camelName}"`]);
             }
 
             if (propEntries.length > 0) {
@@ -127,7 +122,7 @@ export class InternalGenerator {
             variableStatement("PROPS", {
                 exported: true,
                 kind: "const",
-                type: "Record<string, Record<string, [string | null, string]>>",
+                type: "Record<string, Record<string, string>>",
                 initializer: (writer: Writer) => {
                     writeNestedObject(writer, entries);
                 },

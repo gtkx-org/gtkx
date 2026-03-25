@@ -87,14 +87,10 @@ export class EventControllerNode<
             return;
         }
 
-        const propMeta = resolvePropMeta(this.container, name);
+        const propName = resolvePropMeta(this.container, name);
 
-        if (propMeta) {
-            const [, setterName] = propMeta;
-            const setterFn = (this.container as unknown as Record<string, (v: unknown) => void>)[setterName];
-            if (typeof setterFn === "function") {
-                setterFn.call(this.container, value);
-            }
+        if (propName) {
+            (this.container as unknown as Record<string, unknown>)[propName] = value;
         }
     }
 }

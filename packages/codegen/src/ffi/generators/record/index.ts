@@ -8,6 +8,7 @@
 import type { GirConstructor, GirField, GirFunction, GirMethod, GirRecord, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../../builders/file-builder.js";
 import {
+    accessor,
     type ClassDeclarationBuilder,
     classDecl,
     constructorDecl,
@@ -581,11 +582,8 @@ export class RecordGenerator {
                 continue;
             }
 
-            const capitalizedFieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
-            const getterName = `get${capitalizedFieldName}`;
-            const setterName = `set${capitalizedFieldName}`;
-            const isReadable = field.readable !== false && !methodNames.has(getterName);
-            const isWritable = field.writable !== false && !methodNames.has(setterName);
+            const isReadable = field.readable !== false && !methodNames.has(fieldName);
+            const isWritable = field.writable !== false && !methodNames.has(fieldName);
 
             const typeName = String(field.type.name);
             if (!this.fieldBuilder.isGeneratableFieldType(typeName)) continue;
@@ -608,45 +606,47 @@ export class RecordGenerator {
                     this.file.addImport("../../object.js", ["NativeHandle"]);
                 }
 
-                if (isReadable) {
-                    this.file.addImport("../../native.js", ["read"]);
-                    const doc = buildJsDocStructure(field.doc, this.options.namespace);
+                if (!isReadable) continue;
 
-                    cls.addMethod(
-                        method(getterName, {
-                            returnType: needsObjectWrap ? `${typeMapping.ts} | null` : typeMapping.ts,
-                            doc: doc?.[0]?.description,
-                            body: (writer) => {
-                                if (needsObjectWrap) {
-                                    writer.write("const ptr = read(this.handle, ");
-                                    writer.write(JSON.stringify(typeMapping.ffi));
-                                    writer.writeLine(`, ${offset});`);
-                                    writer.writeLine("if (ptr === null) return null;");
-                                    writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${typeMapping.ts});`);
-                                } else {
-                                    writer.write("return read(this.handle, ");
-                                    writer.write(JSON.stringify(typeMapping.ffi));
-                                    writer.writeLine(`, ${offset}) as ${typeMapping.ts};`);
-                                }
-                            },
-                        }),
-                    );
-                }
+                this.file.addImport("../../native.js", ["read"]);
+                const doc = buildJsDocStructure(field.doc, this.options.namespace);
 
+                const getBody = needsObjectWrap
+                    ? (writer: Writer) => {
+                          writer.write("const ptr = read(this.handle, ");
+                          writer.write(JSON.stringify(typeMapping.ffi));
+                          writer.writeLine(`, ${offset});`);
+                          writer.writeLine("if (ptr === null) return null;");
+                          writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${typeMapping.ts});`);
+                      }
+                    : (writer: Writer) => {
+                          writer.write("return read(this.handle, ");
+                          writer.write(JSON.stringify(typeMapping.ffi));
+                          writer.writeLine(`, ${offset}) as ${typeMapping.ts};`);
+                      };
+
+                let setBody: ((writer: Writer) => void) | undefined;
                 if (isWritable) {
                     this.file.addImport("../../native.js", ["write"]);
-                    const writeValue = needsObjectWrap ? "value.handle" : "value";
-                    cls.addMethod(
-                        method(setterName, {
-                            params: [param("value", typeMapping.ts)],
-                            body: (writer) => {
-                                writer.write("write(this.handle, ");
-                                writer.write(JSON.stringify(typeMapping.ffi));
-                                writer.writeLine(`, ${offset}, ${writeValue});`);
-                            },
-                        }),
-                    );
+                    setBody = (writer) => {
+                        writer.write("write(this.handle, ");
+                        writer.write(JSON.stringify(typeMapping.ffi));
+                        if (needsObjectWrap) {
+                            writer.writeLine(`, ${offset}, value?.handle ?? null);`);
+                        } else {
+                            writer.writeLine(`, ${offset}, value);`);
+                        }
+                    };
                 }
+
+                cls.addAccessor(
+                    accessor(fieldName, {
+                        type: needsObjectWrap ? `${typeMapping.ts} | null` : typeMapping.ts,
+                        getBody,
+                        setBody,
+                        doc: doc?.[0]?.description,
+                    }),
+                );
             }
         }
     }
@@ -666,11 +666,8 @@ export class RecordGenerator {
         addTypeImports(this.file, typeMapping.imports, this.selfNames);
 
         const tsTypeName = typeMapping.ts;
-        const capitalizedFieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
-        const getterName = `get${capitalizedFieldName}`;
-        const setterName = `set${capitalizedFieldName}`;
-        const isReadable = field.readable !== false && !methodNames.has(getterName);
-        const isWritable = field.writable !== false && !methodNames.has(setterName);
+        const isReadable = field.readable !== false && !methodNames.has(fieldName);
+        const isWritable = field.writable !== false && !methodNames.has(fieldName);
 
         const writableFields = nestedLayout.filter(
             (item) =>
@@ -678,63 +675,61 @@ export class RecordGenerator {
                 this.fieldBuilder.isWritableType(item.field.type),
         );
 
-        if (isReadable) {
-            this.file.addImport("../../native.js", ["read"]);
-            const doc = buildJsDocStructure(field.doc, this.options.namespace);
-            cls.addMethod(
-                method(getterName, {
-                    returnType: tsTypeName,
-                    doc: doc?.[0]?.description,
-                    body: (writer) => {
-                        writer.writeLine(`return new ${tsTypeName}({`);
-                        writer.withIndent(() => {
-                            for (const nestedItem of writableFields) {
-                                const nestedField = nestedItem.field;
-                                const nestedOffset = baseOffset + nestedItem.offset;
-                                const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
-                                const nestedTypeMapping = this.ffiMapper.mapType(
-                                    nestedField.type,
-                                    false,
-                                    nestedField.type.transferOwnership,
-                                );
+        if (!isReadable) return;
 
-                                writer.write(`${nestedFieldName}: read(this.handle, `);
-                                writer.write(JSON.stringify(nestedTypeMapping.ffi));
-                                writer.writeLine(`, ${nestedOffset}) as ${nestedTypeMapping.ts},`);
-                            }
-                        });
-                        writer.writeLine(`});`);
-                    },
-                }),
-            );
-        }
+        this.file.addImport("../../native.js", ["read"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
 
+        const getBody = (writer: Writer) => {
+            writer.writeLine(`return new ${tsTypeName}({`);
+            writer.withIndent(() => {
+                for (const nestedItem of writableFields) {
+                    const nestedField = nestedItem.field;
+                    const nestedOffset = baseOffset + nestedItem.offset;
+                    const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
+                    const nestedTypeMapping = this.ffiMapper.mapType(
+                        nestedField.type,
+                        false,
+                        nestedField.type.transferOwnership,
+                    );
+
+                    writer.write(`${nestedFieldName}: read(this.handle, `);
+                    writer.write(JSON.stringify(nestedTypeMapping.ffi));
+                    writer.writeLine(`, ${nestedOffset}) as ${nestedTypeMapping.ts},`);
+                }
+            });
+            writer.writeLine(`});`);
+        };
+
+        let setBody: ((writer: Writer) => void) | undefined;
         if (isWritable && writableFields.length > 0) {
             this.file.addImport("../../native.js", ["write"]);
-            cls.addMethod(
-                method(setterName, {
-                    params: [param("value", tsTypeName)],
-                    body: (writer) => {
-                        for (const nestedItem of writableFields) {
-                            const nestedField = nestedItem.field;
-                            const nestedOffset = baseOffset + nestedItem.offset;
-                            const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
-                            const capitalizedNestedFieldName =
-                                nestedFieldName.charAt(0).toUpperCase() + nestedFieldName.slice(1);
-                            const nestedTypeMapping = this.ffiMapper.mapType(
-                                nestedField.type,
-                                false,
-                                nestedField.type.transferOwnership,
-                            );
+            setBody = (writer) => {
+                for (const nestedItem of writableFields) {
+                    const nestedField = nestedItem.field;
+                    const nestedOffset = baseOffset + nestedItem.offset;
+                    const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
+                    const nestedTypeMapping = this.ffiMapper.mapType(
+                        nestedField.type,
+                        false,
+                        nestedField.type.transferOwnership,
+                    );
 
-                            writer.write(`write(this.handle, `);
-                            writer.write(JSON.stringify(nestedTypeMapping.ffi));
-                            writer.writeLine(`, ${nestedOffset}, value.get${capitalizedNestedFieldName}());`);
-                        }
-                    },
-                }),
-            );
+                    writer.write(`write(this.handle, `);
+                    writer.write(JSON.stringify(nestedTypeMapping.ffi));
+                    writer.writeLine(`, ${nestedOffset}, value.${nestedFieldName});`);
+                }
+            };
         }
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: tsTypeName,
+                getBody,
+                setBody,
+                doc: doc?.[0]?.description,
+            }),
+        );
     }
 
     private generateArrayFieldAccessors(
@@ -772,7 +767,6 @@ export class RecordGenerator {
         if (!lengthField) return;
 
         const lengthFieldName = toValidMemberName(toCamelCase(lengthField.name));
-        const lengthGetter = `get${lengthFieldName.charAt(0).toUpperCase() + lengthFieldName.slice(1)}`;
 
         const nestedLayout = this.fieldBuilder.getNestedStructLayout(elementTypeName);
         if (!nestedLayout) return;
@@ -784,7 +778,7 @@ export class RecordGenerator {
         );
         if (writableNestedFields.length === 0) return;
 
-        const structTypeExpr = `{ type: "struct", innerType: "${elementTypeName}", size: this.${lengthGetter}() * ${elementSize}, ownership: "full" }`;
+        const structTypeExpr = `{ type: "struct", innerType: "${elementTypeName}", size: this.${lengthFieldName} * ${elementSize}, ownership: "full" }`;
 
         if (isReadable) {
             this.file.addImport("../../native.js", ["read"]);
@@ -838,8 +832,6 @@ export class RecordGenerator {
                         for (const nestedItem of writableNestedFields) {
                             const nestedField = nestedItem.field;
                             const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
-                            const capitalizedNestedFieldName =
-                                nestedFieldName.charAt(0).toUpperCase() + nestedFieldName.slice(1);
                             const nestedTypeMapping = this.ffiMapper.mapType(
                                 nestedField.type,
                                 false,
@@ -848,9 +840,7 @@ export class RecordGenerator {
 
                             writer.write(`write(array, `);
                             writer.write(JSON.stringify(nestedTypeMapping.ffi));
-                            writer.writeLine(
-                                `, base + ${nestedItem.offset}, value.get${capitalizedNestedFieldName}());`,
-                            );
+                            writer.writeLine(`, base + ${nestedItem.offset}, value.${nestedFieldName});`);
                         }
                         writer.writeLine(`write(this.handle, ${structTypeExpr}, ${ptrOffset}, array);`);
                     },

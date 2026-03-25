@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { resolvePropMeta } from "../../metadata.js";
-import type { ContainerClass } from "../../types.js";
+
 import { isAddable, isAppendable, isContentWidget, isRemovable, isSingleChild } from "./predicates.js";
 
 export function detachChild(child: Gtk.Widget, container: Gtk.Widget): void {
@@ -62,19 +62,13 @@ export function resolvePropertySetter(
     parentWidget: Gtk.Widget,
     propId: string,
 ): ((child: Gtk.Widget | null) => void) | null {
-    const propMeta = resolvePropMeta(parentWidget, propId);
+    const propName = resolvePropMeta(parentWidget, propId);
 
-    if (!propMeta) {
+    if (!propName) {
         return null;
     }
 
-    const [, setterName] = propMeta;
-    const setter = parentWidget[setterName as keyof Gtk.Widget];
-
-    if (typeof setter !== "function") {
-        const parentType = (parentWidget.constructor as ContainerClass).glibTypeName;
-        throw new Error(`Expected setter function for property '${propId}' on type '${parentType}'`);
-    }
-
-    return setter.bind(parentWidget) as (child: Gtk.Widget | null) => void;
+    return (child: Gtk.Widget | null) => {
+        (parentWidget as unknown as Record<string, unknown>)[propName] = child;
+    };
 }

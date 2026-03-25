@@ -4,13 +4,13 @@ import { resolve } from "node:path";
 import { css } from "@gtkx/css";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import {
+    AdwActionRow,
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwNavigationSplitView,
-    AdwToolbarView,
     AdwToggleGroup,
+    AdwToolbarView,
     GtkBox,
     GtkButton,
     GtkImage,
@@ -19,11 +19,11 @@ import {
     GtkListView,
     GtkMenuButton,
     GtkScrolledWindow,
-    AdwActionRow,
     quit,
 } from "@gtkx/react";
-import { afterEach, describe, it } from "vitest";
+import { cleanup, render, screen, userEvent } from "@gtkx/testing";
 import { useState } from "react";
+import { afterEach, describe, it } from "vitest";
 
 const noop = () => {};
 
@@ -59,10 +59,20 @@ interface Note {
 }
 
 const sampleNotes: Note[] = [
-    { id: "1", title: "Welcome to Notes", body: "Your first note! Start writing here.", createdAt: new Date("2026-03-20") },
+    {
+        id: "1",
+        title: "Welcome to Notes",
+        body: "Your first note! Start writing here.",
+        createdAt: new Date("2026-03-20"),
+    },
     { id: "2", title: "Shopping List", body: "Milk, eggs, bread, butter", createdAt: new Date("2026-03-22") },
     { id: "3", title: "Meeting Notes", body: "Discussed Q2 roadmap and priorities", createdAt: new Date("2026-03-24") },
-    { id: "4", title: "Book Recommendations", body: "The Pragmatic Programmer, Designing Data-Intensive Applications", createdAt: new Date("2026-03-25") },
+    {
+        id: "4",
+        title: "Book Recommendations",
+        body: "The Pragmatic Programmer, Designing Data-Intensive Applications",
+        createdAt: new Date("2026-03-25"),
+    },
 ];
 
 const noteCard = css`
@@ -248,7 +258,12 @@ const Chapter5 = () => (
                             <AdwHeaderBar.PackEnd>
                                 <GtkMenuButton iconName="open-menu-symbolic">
                                     <GtkMenuButton.MenuItem id="about" label="About Notes" onActivate={noop} />
-                                    <GtkMenuButton.MenuItem id="quit" label="Quit" accels="<Control>q" onActivate={noop} />
+                                    <GtkMenuButton.MenuItem
+                                        id="quit"
+                                        label="Quit"
+                                        accels="<Control>q"
+                                        onActivate={noop}
+                                    />
                                 </GtkMenuButton>
                             </AdwHeaderBar.PackEnd>
                         </AdwHeaderBar>
@@ -310,7 +325,12 @@ const Chapter6 = () => (
                             <AdwHeaderBar.PackEnd>
                                 <GtkMenuButton iconName="open-menu-symbolic">
                                     <GtkMenuButton.MenuItem id="about" label="About Notes" onActivate={noop} />
-                                    <GtkMenuButton.MenuItem id="quit" label="Quit" accels="<Control>q" onActivate={noop} />
+                                    <GtkMenuButton.MenuItem
+                                        id="quit"
+                                        label="Quit"
+                                        accels="<Control>q"
+                                        onActivate={noop}
+                                    />
                                 </GtkMenuButton>
                             </AdwHeaderBar.PackEnd>
                         </AdwHeaderBar>

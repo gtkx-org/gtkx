@@ -1,3 +1,4 @@
+import type { AccessorBuilder } from "../members/accessor.js";
 import type { ConstructorBuilder } from "../members/constructor.js";
 import { writeJsDoc } from "../members/doc.js";
 import type { MethodBuilder } from "../members/method.js";
@@ -16,6 +17,7 @@ export type ClassOptions = {
 /** Builder that emits a class declaration with properties, constructor, and methods. */
 export class ClassDeclarationBuilder implements Builder {
     private readonly properties: PropertyBuilder[] = [];
+    private readonly accessors: AccessorBuilder[] = [];
     private readonly methods: MethodBuilder[] = [];
     private ctor: ConstructorBuilder | null = null;
     private exported: boolean;
@@ -45,6 +47,12 @@ export class ClassDeclarationBuilder implements Builder {
         return this;
     }
 
+    /** Add an ES6 get/set accessor to the class body. */
+    addAccessor(a: AccessorBuilder): this {
+        this.accessors.push(a);
+        return this;
+    }
+
     /** Add a method to the class body. */
     addMethod(m: MethodBuilder): this {
         this.methods.push(m);
@@ -66,12 +74,17 @@ export class ClassDeclarationBuilder implements Builder {
                 prop.write(writer);
             }
 
-            if (this.properties.length > 0 && (this.ctor || this.methods.length > 0)) {
+            const hasMembers = this.accessors.length > 0 || this.ctor || this.methods.length > 0;
+            if (this.properties.length > 0 && hasMembers) {
                 writer.newLine();
             }
 
             if (this.ctor) {
                 this.ctor.write(writer);
+            }
+
+            for (const a of this.accessors) {
+                a.write(writer);
             }
 
             for (const m of this.methods) {

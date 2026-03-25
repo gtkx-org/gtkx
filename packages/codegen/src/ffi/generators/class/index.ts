@@ -34,8 +34,7 @@ import type { MethodStructure } from "../../../core/writers/index.js";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
 import { ConstructorBuilder } from "./constructor-builder.js";
 import { MethodBuilder } from "./method-builder.js";
-import { PropertyGetterBuilder } from "./property-getter-builder.js";
-import { PropertySetterBuilder } from "./property-setter-builder.js";
+import { PropertyAccessorBuilder } from "./property-accessor-builder.js";
 import { SignalBuilder } from "./signal-builder.js";
 import { StaticFunctionBuilder } from "./static-function-builder.js";
 
@@ -75,7 +74,7 @@ function addMethodStructure(cls: ClassDeclarationBuilder, struct: MethodStructur
  * - Methods
  * - Static functions
  * - Signals
- * - Property getters/setters
+ * - Property accessors
  * - Widget metadata
  */
 export class ClassGenerator {
@@ -84,8 +83,7 @@ export class ClassGenerator {
     private readonly methodBuilder: MethodBuilder;
     private readonly staticBuilder: StaticFunctionBuilder;
     private readonly signalBuilder: SignalBuilder;
-    private readonly propertyGetterBuilder: PropertyGetterBuilder;
-    private readonly propertySetterBuilder: PropertySetterBuilder;
+    private readonly propertyAccessorBuilder: PropertyAccessorBuilder;
     private readonly classMetaBuilder: ClassMetaBuilder;
     private readonly methodRenames = new Map<string, string>();
 
@@ -103,8 +101,14 @@ export class ClassGenerator {
         this.methodBuilder = new MethodBuilder(ffiMapper, file, this.methodRenames, options, selfNames);
         this.staticBuilder = new StaticFunctionBuilder(cls, ffiMapper, file, options, selfNames);
         this.signalBuilder = new SignalBuilder(cls, ffiMapper, file, repository, options, selfNames);
-        this.propertyGetterBuilder = new PropertyGetterBuilder(cls, ffiMapper, file, repository, options, selfNames);
-        this.propertySetterBuilder = new PropertySetterBuilder(cls, ffiMapper, file, repository, options, selfNames);
+        this.propertyAccessorBuilder = new PropertyAccessorBuilder(
+            cls,
+            ffiMapper,
+            file,
+            repository,
+            options,
+            selfNames,
+        );
 
         const analyzers: ClassMetaAnalyzers = {
             property: new PropertyAnalyzer(repository, ffiMapper),
@@ -166,8 +170,6 @@ export class ClassGenerator {
                 this.methodBuilder.buildStructures(methods, selfTypeDescriptor, asyncAnalysis),
             ),
             ...this.signalBuilder.buildConnectMethodStructures(),
-            ...this.propertyGetterBuilder.buildStructures(),
-            ...this.propertySetterBuilder.buildStructures(),
         ];
 
         if (this.cls.glibGetType) {
@@ -177,6 +179,10 @@ export class ClassGenerator {
 
         for (const struct of allMethodStructures) {
             addMethodStructure(cls, struct);
+        }
+
+        for (const a of this.propertyAccessorBuilder.buildAccessors()) {
+            cls.addAccessor(a);
         }
 
         this.file.add(cls);

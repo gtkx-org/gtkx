@@ -39,11 +39,11 @@ export class NativeError extends Error {
     readonly gerror: GError;
 
     getDomain(): number {
-        return this.gerror.getDomain();
+        return this.gerror.domain;
     }
 
     getCode(): number {
-        return this.gerror.getCode();
+        return this.gerror.code;
     }
 
     /**
@@ -52,7 +52,7 @@ export class NativeError extends Error {
      * @param gerror - GError wrapper instance
      */
     constructor(gerror: GError) {
-        super(gerror.getMessage() ?? "Unknown error");
+        super(gerror.message ?? "Unknown error");
 
         this.gerror = gerror;
         this.name = "NativeError";

@@ -18,6 +18,8 @@ export { VariableStatementBuilder, variableStatement } from "./declarations/vari
 export { ExportFileBuilder, exportFileBuilder } from "./export-file-builder.js";
 export { FileBuilder, fileBuilder } from "./file-builder.js";
 export { ImportRegistry } from "./import-registry.js";
+export type { AccessorOptions } from "./members/accessor.js";
+export { AccessorBuilder, accessor } from "./members/accessor.js";
 export type { ConstructorOptions } from "./members/constructor.js";
 export { ConstructorBuilder, constructorDecl } from "./members/constructor.js";
 export { writeJsDoc } from "./members/doc.js";

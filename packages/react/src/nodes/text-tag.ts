@@ -8,45 +8,45 @@ import { TextPaintableNode } from "./text-paintable.js";
 import { isTextContentParent, TextSegmentNode } from "./text-segment.js";
 import { VirtualNode } from "./virtual.js";
 
-const STYLE_PROPS: Partial<Record<keyof TextTagProps, keyof Gtk.TextTag>> = {
+const STYLE_PROPS: Partial<Record<keyof TextTagProps, keyof Gtk.TextTag | string>> = {
     background: "setBackground",
-    backgroundFullHeight: "setBackgroundFullHeight",
+    backgroundFullHeight: "backgroundFullHeight",
     foreground: "setForeground",
-    family: "setFamily",
-    font: "setFont",
-    sizePoints: "setSizePoints",
-    size: "setSize",
-    scale: "setScale",
-    weight: "setWeight",
-    style: "setStyle",
-    stretch: "setStretch",
-    variant: "setVariant",
-    strikethrough: "setStrikethrough",
-    underline: "setUnderline",
-    overline: "setOverline",
-    rise: "setRise",
-    letterSpacing: "setLetterSpacing",
-    lineHeight: "setLineHeight",
-    leftMargin: "setLeftMargin",
-    rightMargin: "setRightMargin",
-    indent: "setIndent",
-    pixelsAboveLines: "setPixelsAboveLines",
-    pixelsBelowLines: "setPixelsBelowLines",
-    pixelsInsideWrap: "setPixelsInsideWrap",
-    justification: "setJustification",
-    direction: "setDirection",
-    wrapMode: "setWrapMode",
-    editable: "setEditable",
-    invisible: "setInvisible",
-    allowBreaks: "setAllowBreaks",
-    insertHyphens: "setInsertHyphens",
-    fallback: "setFallback",
-    accumulativeMargin: "setAccumulativeMargin",
+    family: "family",
+    font: "font",
+    sizePoints: "sizePoints",
+    size: "size",
+    scale: "scale",
+    weight: "weight",
+    style: "style",
+    stretch: "stretch",
+    variant: "variant",
+    strikethrough: "strikethrough",
+    underline: "underline",
+    overline: "overline",
+    rise: "rise",
+    letterSpacing: "letterSpacing",
+    lineHeight: "lineHeight",
+    leftMargin: "leftMargin",
+    rightMargin: "rightMargin",
+    indent: "indent",
+    pixelsAboveLines: "pixelsAboveLines",
+    pixelsBelowLines: "pixelsBelowLines",
+    pixelsInsideWrap: "pixelsInsideWrap",
+    justification: "justification",
+    direction: "direction",
+    wrapMode: "wrapMode",
+    editable: "editable",
+    invisible: "invisible",
+    allowBreaks: "allowBreaks",
+    insertHyphens: "insertHyphens",
+    fallback: "fallback",
+    accumulativeMargin: "accumulativeMargin",
     paragraphBackground: "setParagraphBackground",
-    showSpaces: "setShowSpaces",
-    textTransform: "setTextTransform",
-    fontFeatures: "setFontFeatures",
-    language: "setLanguage",
+    showSpaces: "showSpaces",
+    textTransform: "textTransform",
+    fontFeatures: "fontFeatures",
+    language: "language",
 };
 
 type TextTagParent = Node & TextContentParent;
@@ -225,10 +225,15 @@ export class TextTagNode
         for (const prop of Object.keys(STYLE_PROPS) as (keyof TextTagProps)[]) {
             if (hasChanged(oldProps, newProps, prop)) {
                 const value = newProps[prop];
-                const method = STYLE_PROPS[prop];
-                if (value !== undefined && method) {
-                    const setter = this.tag[method] as (value: unknown) => void;
-                    setter.call(this.tag, value);
+                const target = STYLE_PROPS[prop];
+                if (value !== undefined && target) {
+                    const tag = this.tag as unknown as Record<string, unknown>;
+                    const member = tag[target];
+                    if (typeof member === "function") {
+                        (member as (v: unknown) => void).call(this.tag, value);
+                    } else {
+                        tag[target] = value;
+                    }
                 }
             }
         }

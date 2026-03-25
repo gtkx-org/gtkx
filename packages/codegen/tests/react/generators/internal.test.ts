@@ -140,7 +140,7 @@ describe("InternalGenerator", () => {
 
         it("has correct type annotation for PROPS", () => {
             const code = generateCode();
-            expect(code).toContain("Record<string, Record<string, [string | null, string]>>");
+            expect(code).toContain("Record<string, Record<string, string>>");
         });
     });
 

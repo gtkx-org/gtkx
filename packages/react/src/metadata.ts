@@ -27,7 +27,7 @@ const walkPrototypeChain = <T>(instance: Container, lookup: (typeName: string) =
     return null;
 };
 
-export const resolvePropMeta = (instance: Container, key: string): [string | null, string] | null =>
+export const resolvePropMeta = (instance: Container, key: string): string | null =>
     walkPrototypeChain(instance, (typeName) => PROPS[typeName]?.[key] ?? null);
 
 export const isConstructOnlyProp = (instance: Container, key: string): boolean =>
