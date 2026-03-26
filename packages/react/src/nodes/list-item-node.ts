@@ -3,24 +3,33 @@ import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { WidgetNode } from "./widget.js";
 
-export class ListItemNode extends Node<Gtk.ListItem | Gtk.ListHeader, Props, Node, WidgetNode> {
-    public override isValidChild(child: Node): boolean {
-        return child instanceof WidgetNode;
+export class ListItemNode extends Node<Gtk.ListItem | Gtk.ListHeader, Props, Node, Node> {
+    public override isValidChild(_child: Node): boolean {
+        return true;
     }
 
-    public override appendChild(child: WidgetNode): void {
+    public override appendChild(child: Node): void {
         super.appendChild(child);
-        this.container.setChild(child.container);
+
+        if (child instanceof WidgetNode) {
+            this.container.setChild(child.container);
+        }
     }
 
-    public override removeChild(child: WidgetNode): void {
-        this.container.setChild(null);
+    public override removeChild(child: Node): void {
+        if (child instanceof WidgetNode) {
+            this.container.setChild(null);
+        }
+
         super.removeChild(child);
     }
 
-    public override insertBefore(child: WidgetNode, before: WidgetNode): void {
+    public override insertBefore(child: Node, before: Node): void {
         super.insertBefore(child, before);
-        this.container.setChild(child.container);
+
+        if (child instanceof WidgetNode) {
+            this.container.setChild(child.container);
+        }
     }
 
     public static override createContainer(): Container {

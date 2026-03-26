@@ -705,23 +705,23 @@ Type constants for `dropTypes`: `Type.STRING`, `Type.INT`, `Type.DOUBLE`, `Type.
 
 ## Custom Drawing
 
-Render custom graphics with `GtkDrawingArea` using the `onDraw` callback:
+Render custom graphics with `GtkDrawingArea` using the `render` callback:
 
 ```tsx
 import type { Context } from "@gtkx/ffi/cairo";
 
 const Canvas = () => {
-    const handleDraw = (self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
+    const handleDraw = (cr: Context, width: number, height: number) => {
         cr.setSourceRgb(0.2, 0.4, 0.8);
         cr.rectangle(10, 10, width - 20, height - 20);
         cr.fill();
     };
 
-    return <GtkDrawingArea contentWidth={400} contentHeight={300} onDraw={handleDraw} />;
+    return <GtkDrawingArea contentWidth={400} contentHeight={300} render={handleDraw} />;
 };
 ```
 
-Add a `GtkGestureDrag` child for interactive drawing. Call `widget.queueDraw()` to trigger redraws.
+Changing the `render` callback reference automatically queues a redraw. Add a `GtkGestureDrag` child for interactive drawing.
 
 ## Event Controllers
 

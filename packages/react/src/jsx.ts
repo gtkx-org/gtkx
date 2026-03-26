@@ -879,6 +879,11 @@ declare module "./generated/jsx.js" {
         onValueChanged?: ((value: number, self: Adw.SpinRow) => void) | null;
     }
 
+    interface AdwSwitchRowProps {
+        /** Callback fired when the switch row active state changes */
+        onActiveChanged?: ((active: boolean, self: Adw.SwitchRow) => void) | null;
+    }
+
     interface GtkCalendarProps {
         /** Array of day numbers (1-31) to display as marked */
         markedDays?: number[] | null;
@@ -960,8 +965,8 @@ declare module "./generated/jsx.js" {
     }
 
     interface GtkDrawingAreaProps {
-        /** Callback fired when the drawing area needs to be redrawn */
-        onDraw?: ((cr: cairo.Context, width: number, height: number, self: Gtk.DrawingArea) => void) | null;
+        /** Render function called when the drawing area needs to be redrawn. Changing this reference automatically queues a redraw. */
+        render?: ((cr: cairo.Context, width: number, height: number, self: Gtk.DrawingArea) => void) | null;
     }
 
     interface GtkColorDialogButtonProps extends DialogButtonProps {

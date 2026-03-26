@@ -711,7 +711,7 @@ const FlowBoxDemo = () => {
                         <GtkDrawingArea
                             contentWidth={24}
                             contentHeight={24}
-                            onDraw={rgba ? (cr, w, h) => drawColor(cr, w, h, rgba) : undefined}
+                            render={rgba ? (cr, w, h) => drawColor(cr, w, h, rgba) : undefined}
                         />
                     </GtkButton>
                 ))}

@@ -7,36 +7,15 @@ import { filterProps, hasChanged } from "./internal/props.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-const OWN_PROPS = ["onDraw"] as const;
+const OWN_PROPS = ["render"] as const;
 
 type DrawFunc = (cr: import("@gtkx/ffi/cairo").Context, width: number, height: number, self: Gtk.DrawingArea) => void;
 type DrawingAreaProps = Pick<GtkDrawingAreaProps, (typeof OWN_PROPS)[number]>;
-
-type PendingDrawFuncEntry = { container: Gtk.DrawingArea; fn: DrawFunc };
-
-const pendingDrawFuncs: PendingDrawFuncEntry[] = [];
 
 function wrapDrawFunc(
     fn: DrawFunc,
 ): (self: Gtk.DrawingArea, cr: import("@gtkx/ffi/cairo").Context, width: number, height: number) => void {
     return (self, cr, width, height) => fn(cr, width, height, self);
-}
-
-function ensurePendingBatch(): PendingDrawFuncEntry[] {
-    if (pendingDrawFuncs.length === 0) {
-        queueMicrotask(flushPendingDrawFuncs);
-    }
-
-    return pendingDrawFuncs;
-}
-
-function flushPendingDrawFuncs(): void {
-    const batch = pendingDrawFuncs.splice(0);
-
-    for (const { container, fn } of batch) {
-        container.setDrawFunc(wrapDrawFunc(fn));
-        container.queueResize();
-    }
 }
 
 type DrawingAreaChild = EventControllerNode | SlotNode | ContainerSlotNode;
@@ -51,12 +30,16 @@ export class DrawingAreaNode extends WidgetNode<Gtk.DrawingArea, DrawingAreaProp
         this.applyOwnProps(oldProps, newProps);
     }
 
+    public override detachDeletedInstance(): void {
+        this.container.setDrawFunc(undefined);
+        super.detachDeletedInstance();
+    }
+
     private applyOwnProps(oldProps: DrawingAreaProps | null, newProps: DrawingAreaProps): void {
-        if (hasChanged(oldProps, newProps, "onDraw")) {
-            if (this.container.getAllocatedWidth() > 0) {
-                this.container.setDrawFunc(newProps.onDraw ? wrapDrawFunc(newProps.onDraw) : undefined);
-            } else if (newProps.onDraw) {
-                ensurePendingBatch().push({ container: this.container, fn: newProps.onDraw });
+        if (hasChanged(oldProps, newProps, "render")) {
+            this.container.setDrawFunc(newProps.render ? wrapDrawFunc(newProps.render) : undefined);
+            if (newProps.render) {
+                this.container.queueDraw();
             }
         }
     }

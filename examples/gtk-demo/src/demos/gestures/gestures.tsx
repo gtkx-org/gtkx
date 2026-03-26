@@ -112,7 +112,7 @@ const GesturesDemo = () => {
     }, []);
 
     return (
-        <GtkDrawingArea ref={drawingAreaRef} contentWidth={400} contentHeight={400} onDraw={drawFunc}>
+        <GtkDrawingArea ref={drawingAreaRef} contentWidth={400} contentHeight={400} render={drawFunc}>
             <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handleSwipe} />
             <GtkGestureSwipe
                 propagationPhase={Gtk.PropagationPhase.BUBBLE}

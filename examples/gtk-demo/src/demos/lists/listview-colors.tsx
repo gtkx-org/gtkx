@@ -208,7 +208,7 @@ const ColorGridItem = memo(({ item, showDetails }: { item: ColorItem; showDetail
                 <GtkDrawingArea
                     contentWidth={48}
                     contentHeight={48}
-                    onDraw={(cr, w, h) => drawColorSwatch(cr, w, h, item.r, item.g, item.b)}
+                    render={(cr, w, h) => drawColorSwatch(cr, w, h, item.r, item.g, item.b)}
                 />
                 <GtkLabel
                     label={`<b>${item.name}</b>`}
@@ -233,7 +233,7 @@ const ColorGridItem = memo(({ item, showDetails }: { item: ColorItem; showDetail
         <GtkDrawingArea
             contentWidth={32}
             contentHeight={32}
-            onDraw={(cr, w, h) => drawColorSwatch(cr, w, h, item.r, item.g, item.b)}
+            render={(cr, w, h) => drawColorSwatch(cr, w, h, item.r, item.g, item.b)}
         />
     );
 });
@@ -242,7 +242,7 @@ const renderSelectionItem = (item: ColorItem) => (
     <GtkDrawingArea
         contentWidth={8}
         contentHeight={8}
-        onDraw={(cr, w, h) => {
+        render={(cr, w, h) => {
             drawColorSwatch(cr, w, h, item.r, item.g, item.b);
         }}
     />
@@ -287,7 +287,7 @@ const SelectionInfoPanel = ({
                 <GtkDrawingArea
                     contentWidth={32}
                     contentHeight={32}
-                    onDraw={(cr, w, h) => drawColorSwatch(cr, w, h, averageColor.r, averageColor.g, averageColor.b)}
+                    render={(cr, w, h) => drawColorSwatch(cr, w, h, averageColor.r, averageColor.g, averageColor.b)}
                 />
             </GtkGrid.Child>
             <GtkGrid.Child column={4} row={2}>

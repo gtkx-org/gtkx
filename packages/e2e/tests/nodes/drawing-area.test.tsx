@@ -20,7 +20,7 @@ describe("render - DrawingArea", () => {
             expect(ref.current).toBeInstanceOf(Gtk.DrawingArea);
         });
 
-        it("creates DrawingArea without onDraw callback", async () => {
+        it("creates DrawingArea without render callback", async () => {
             const ref = createRef<Gtk.DrawingArea>();
 
             await render(<GtkDrawingArea ref={ref} />);
@@ -28,10 +28,10 @@ describe("render - DrawingArea", () => {
             expect(ref.current).not.toBeNull();
         });
 
-        it("creates DrawingArea with onDraw callback", async () => {
+        it("creates DrawingArea with render callback", async () => {
             const ref = createRef<Gtk.DrawingArea>();
 
-            await render(<GtkDrawingArea ref={ref} onDraw={noopDraw} />);
+            await render(<GtkDrawingArea ref={ref} render={noopDraw} />);
 
             expect(ref.current).not.toBeNull();
         });
@@ -61,29 +61,29 @@ describe("render - DrawingArea", () => {
             expect(ref.current?.getContentHeight()).toBe(100);
         });
 
-        it("updates onDraw callback when prop changes", async () => {
+        it("updates render callback when prop changes", async () => {
             const ref = createRef<Gtk.DrawingArea>();
-            const onDraw1: DrawFunc = () => {};
-            const onDraw2: DrawFunc = () => {};
+            const drawFunc1: DrawFunc = () => {};
+            const drawFunc2: DrawFunc = () => {};
 
-            function App({ onDraw }: { onDraw: DrawFunc }) {
-                return <GtkDrawingArea ref={ref} onDraw={onDraw} />;
+            function App({ drawFunc }: { drawFunc: DrawFunc }) {
+                return <GtkDrawingArea ref={ref} render={drawFunc} />;
             }
 
-            await render(<App onDraw={onDraw1} />);
+            await render(<App drawFunc={drawFunc1} />);
             expect(ref.current).not.toBeNull();
 
-            await render(<App onDraw={onDraw2} />);
+            await render(<App drawFunc={drawFunc2} />);
             expect(ref.current).not.toBeNull();
         });
 
-        it("sets widget properties alongside onDraw", async () => {
+        it("sets widget properties alongside render", async () => {
             const ref = createRef<Gtk.DrawingArea>();
 
             await render(
                 <GtkDrawingArea
                     ref={ref}
-                    onDraw={noopDraw}
+                    render={noopDraw}
                     contentWidth={300}
                     contentHeight={200}
                     visible={true}

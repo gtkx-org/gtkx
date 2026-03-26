@@ -45,7 +45,7 @@ const TextmaskDemo = () => {
         cr.restore();
     }, []);
 
-    return <GtkDrawingArea ref={drawingAreaRef} onDraw={drawFunc} widthRequest={400} heightRequest={240} />;
+    return <GtkDrawingArea ref={drawingAreaRef} render={drawFunc} widthRequest={400} heightRequest={240} />;
 };
 
 export const textmaskDemo: Demo = {

@@ -109,7 +109,7 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
                     valign={Gtk.Align.CENTER}
                 />
             ) : (
-                <GtkDrawingArea onDraw={handleDraw} hexpand vexpand />
+                <GtkDrawingArea render={handleDraw} hexpand vexpand />
             )}
         </>
     );

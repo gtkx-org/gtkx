@@ -110,7 +110,7 @@ const FramesDemo = ({ window }: DemoProps) => {
                 </GtkHeaderBar>
             </Slot>
             <GtkBox>
-                <GtkDrawingArea ref={drawingRef} onDraw={draw} hexpand vexpand />
+                <GtkDrawingArea ref={drawingRef} render={draw} hexpand vexpand />
             </GtkBox>
         </>
     );

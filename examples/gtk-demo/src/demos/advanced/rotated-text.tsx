@@ -144,7 +144,7 @@ const RotatedTextDemo = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} homogeneous spacing={0}>
-            <GtkDrawingArea ref={drawingAreaRef} onDraw={drawFunc} cssClasses={["view"]} />
+            <GtkDrawingArea ref={drawingAreaRef} render={drawFunc} cssClasses={["view"]} />
             <GtkLabel ref={labelRef} label={TEXT} />
         </GtkBox>
     );

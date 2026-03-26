@@ -8,6 +8,12 @@ import { attachChild, detachChild, isAttachedTo } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
+type SetChildContainer = { setChild: (child: Gtk.Widget | null) => void };
+
+function hasSetChild(obj: unknown): obj is SetChildContainer {
+    return obj !== null && typeof obj === "object" && "setChild" in obj && typeof obj.setChild === "function";
+}
+
 let animationCounter = 0;
 
 const DEFAULT_TIMED_DURATION = 300;
@@ -15,14 +21,14 @@ const DEFAULT_SPRING_DAMPING = 1;
 const DEFAULT_SPRING_MASS = 1;
 const DEFAULT_SPRING_STIFFNESS = 100;
 
-export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, WidgetNode> {
+export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode> {
     private className: string;
     private provider: Gtk.CssProvider | null = null;
     private display: Gdk.Display | null = null;
     private currentAnimation: Adw.Animation | null = null;
     private currentValues: AnimatableProperties = {};
     private isExiting = false;
-    private detachedParentWidget: Gtk.Widget | null = null;
+    private detachedParentContainer: unknown = null;
 
     constructor(typeName: string, props: AnimationProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
@@ -33,13 +39,13 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
         return child instanceof WidgetNode;
     }
 
-    public override isValidParent(parent: Node): boolean {
-        return parent instanceof WidgetNode;
+    public override isValidParent(_parent: Node): boolean {
+        return true;
     }
 
-    public override setParent(parent: WidgetNode | null): void {
+    public override setParent(parent: Node | null): void {
         if (!parent && this.parent) {
-            this.detachedParentWidget = this.parent.container;
+            this.detachedParentContainer = this.parent.container;
         }
 
         super.setParent(parent);
@@ -118,45 +124,55 @@ export class AnimationNode extends VirtualNode<AnimationProps, WidgetNode, Widge
     }
 
     private onChildChange(oldChild: Gtk.Widget | null): void {
-        const parentWidget = this.parent?.container ?? null;
+        const parentContainer = this.parent?.container ?? null;
         const childWidget = this.children[0]?.container ?? null;
 
         if (oldChild && this.provider) {
             oldChild.removeCssClass(this.className);
         }
 
-        if (oldChild && parentWidget && isAttachedTo(oldChild, parentWidget)) {
-            detachChild(oldChild, parentWidget);
+        if (oldChild && parentContainer instanceof Gtk.Widget && isAttachedTo(oldChild, parentContainer)) {
+            detachChild(oldChild, parentContainer);
+        } else if (oldChild && parentContainer && hasSetChild(parentContainer)) {
+            parentContainer.setChild(null);
         }
 
-        if (childWidget && parentWidget) {
-            attachChild(childWidget, parentWidget);
+        if (childWidget && parentContainer instanceof Gtk.Widget) {
+            attachChild(childWidget, parentContainer);
+            this.setupAnimatedChild(childWidget);
+        } else if (childWidget && parentContainer && hasSetChild(parentContainer)) {
+            parentContainer.setChild(childWidget);
+            this.setupAnimatedChild(childWidget);
+        }
+    }
 
-            this.setupCssProvider();
-            childWidget.addCssClass(this.className);
+    private setupAnimatedChild(childWidget: Gtk.Widget): void {
+        this.setupCssProvider();
+        childWidget.addCssClass(this.className);
 
-            const initial = this.props.initial;
-            const animate = this.props.animate;
+        const initial = this.props.initial;
+        const animate = this.props.animate;
 
-            if (initial === false || !this.props.animateOnMount) {
-                if (animate) {
-                    this.currentValues = { ...animate };
-                    this.applyValues(this.currentValues);
-                }
-            } else {
-                const initialValues = initial ?? animate ?? {};
-                this.currentValues = { ...initialValues };
+        if (initial === false || !this.props.animateOnMount) {
+            if (animate) {
+                this.currentValues = { ...animate };
                 this.applyValues(this.currentValues);
             }
+        } else {
+            const initialValues = initial ?? animate ?? {};
+            this.currentValues = { ...initialValues };
+            this.applyValues(this.currentValues);
         }
     }
 
     private detachChildFromParentWidget(): void {
-        const parentWidget = this.parent?.container ?? this.detachedParentWidget;
+        const parentContainer = this.parent?.container ?? this.detachedParentContainer;
         const childWidget = this.children[0]?.container ?? null;
 
-        if (childWidget && parentWidget && isAttachedTo(childWidget, parentWidget)) {
-            detachChild(childWidget, parentWidget);
+        if (childWidget && parentContainer instanceof Gtk.Widget && isAttachedTo(childWidget, parentContainer)) {
+            detachChild(childWidget, parentContainer);
+        } else if (childWidget && parentContainer && hasSetChild(parentContainer)) {
+            parentContainer.setChild(null);
         }
     }
 

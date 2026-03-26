@@ -481,7 +481,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
                             contentHeight={32}
                             halign={Gtk.Align.END}
                             valign={Gtk.Align.CENTER}
-                            onDraw={(cr, w, h) => {
+                            render={(cr, w, h) => {
                                 const c = pastedContent.color;
                                 if (c) {
                                     drawColorSwatch(cr, w, h, c);
