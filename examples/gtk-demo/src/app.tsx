@@ -72,7 +72,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const activeWindow = useProperty(app, "activeWindow");
     const windowRef = useRef<Gtk.Window>(null);
     const activeWindowRef = useRef<Gtk.Window | null>(null);
-    activeWindowRef.current = activeWindow;
+    activeWindowRef.current = activeWindow ?? null;
 
     if (!currentDemo?.component || !activeWindow) return null;
 
