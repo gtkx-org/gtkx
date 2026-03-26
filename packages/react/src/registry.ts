@@ -34,6 +34,7 @@ import { ScrolledWindowNode } from "./nodes/scrolled-window.js";
 import { SearchBarNode } from "./nodes/search-bar.js";
 import { ShortcutNode } from "./nodes/shortcut.js";
 import { SlotNode } from "./nodes/slot.js";
+import { SpinRowNode } from "./nodes/spin-row.js";
 import { SourceViewNode } from "./nodes/source-view.js";
 import { StackNode } from "./nodes/stack.js";
 import { StackPageNode } from "./nodes/stack-page.js";
@@ -95,6 +96,7 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     [Adw.AlertDialog, AlertDialogNode],
     [Adw.Dialog, DialogNode],
     [Gtk.Window, WindowNode],
+    [Adw.SpinRow, SpinRowNode],
     [Gtk.Scale, ScaleNode],
     [Gtk.LevelBar, LevelBarNode],
     [Gtk.ScrolledWindow, ScrolledWindowNode],

@@ -54,12 +54,13 @@ import {
     AdwSpinRow,
     createPortal,
     useApplication,
+    useProperty,
     useSetting,
 } from "@gtkx/react";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
-    const activeWindow = app.getActiveWindow();
+    const activeWindow = useProperty(app, "activeWindow");
 
     if (!activeWindow) return null;
 
@@ -171,7 +172,7 @@ import { useMemo } from "react";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
-    const activeWindow = app.getActiveWindow();
+    const activeWindow = useProperty(app, "activeWindow");
     const settings = useMemo(() => new Gio.Settings("com.example.notes"), []);
 
     const compactMode = useSetting("com.example.notes", "compact-mode", "boolean");

@@ -18,6 +18,7 @@ import {
     GtkWindow,
     quit,
     useApplication,
+    useProperty,
 } from "@gtkx/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
@@ -68,7 +69,7 @@ interface DemoWindowProps {
 const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const { currentDemo } = useDemo();
     const app = useApplication();
-    const activeWindow = app.getActiveWindow();
+    const activeWindow = useProperty(app, "activeWindow");
     const windowRef = useRef<Gtk.Window>(null);
     const activeWindowRef = useRef<Gtk.Window | null>(null);
     activeWindowRef.current = activeWindow;
@@ -104,7 +105,7 @@ const AppContent = () => {
     const [showAbout, setShowAbout] = useState(false);
     const [notebookPage, setNotebookPage] = useState(0);
     const app = useApplication();
-    const activeWindow = app.getActiveWindow();
+    const activeWindow = useProperty(app, "activeWindow");
 
     const gtkxLogo = useMemo(() => {
         const pixbuf = GdkPixbuf.Pixbuf.newFromFileAtScale(logoPath, 64, 64, true);
@@ -126,8 +127,7 @@ const AppContent = () => {
     }, []);
 
     const handleKeyboardShortcuts = useCallback(() => {
-        const window = app.getActiveWindow();
-        if (!window) return;
+        if (!activeWindow) return;
 
         const dialog = new Adw.ShortcutsDialog();
 
@@ -142,8 +142,8 @@ const AppContent = () => {
         navigation.add(new Adw.ShortcutsItem("Previous tab", "<Control>Page_Up"));
         dialog.add(navigation);
 
-        dialog.present(window);
-    }, [app]);
+        dialog.present(activeWindow);
+    }, [activeWindow]);
 
     const handleAbout = useCallback(() => {
         setShowAbout(true);

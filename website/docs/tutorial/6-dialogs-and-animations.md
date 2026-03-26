@@ -9,7 +9,7 @@ Let's add confirmation dialogs for destructive actions and smooth animations for
 Use `AdwAlertDialog` with the `responses` prop and `createPortal` to show it on the active window:
 
 ```tsx
-import { AdwAlertDialog, createPortal, useApplication } from "@gtkx/react";
+import { AdwAlertDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
 import * as Adw from "@gtkx/ffi/adw";
 import { useState } from "react";
 
@@ -23,7 +23,7 @@ const DeleteConfirmation = ({
     onCancel: () => void;
 }) => {
     const app = useApplication();
-    const activeWindow = app.getActiveWindow();
+    const activeWindow = useProperty(app, "activeWindow");
 
     if (!activeWindow) return null;
 
