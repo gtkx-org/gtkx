@@ -241,13 +241,13 @@ class McpClient {
     }
 
     private send(message: IpcRequest | IpcResponse): void {
-        if (!this.socket || !this.socket.writable) return;
+        if (!this.socket?.writable) return;
         this.socket.write(`${JSON.stringify(message)}\n`);
     }
 
     private sendRequest(method: IpcMethod, params?: unknown): Promise<unknown> {
         return new Promise((resolve, reject) => {
-            if (!this.socket || !this.socket.writable) {
+            if (!this.socket?.writable) {
                 reject(new Error("Socket not connected"));
                 return;
             }

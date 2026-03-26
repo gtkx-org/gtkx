@@ -36,16 +36,13 @@
             "path": "examples/browser/tsconfig.json"
         },
         {
-            "path": "examples/todo/tsconfig.json"
-        },
-        {
             "path": "examples/gtk-demo/tsconfig.json"
         },
         {
-            "path": "examples/deploying/tsconfig.json"
+            "path": "examples/hello-world/tsconfig.json"
         },
         {
-            "path": "examples/hello-world/tsconfig.json"
+            "path": "examples/tutorial/tsconfig.json"
         }
     ]
 }

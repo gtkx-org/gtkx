@@ -1,5 +1,3 @@
-import SCHEMA_ID from "../../com.gtkx.tutorial.gschema.xml";
-
 import {
     AdwPreferencesGroup,
     AdwPreferencesPage,
@@ -11,14 +9,15 @@ import {
     useProperty,
     useSetting,
 } from "@gtkx/react";
+import schemaId from "../../com.gtkx.tutorial.gschema.xml";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
-    const [compactMode, setCompactMode] = useSetting(SCHEMA_ID, "compact-mode", "boolean");
-    const [spellCheck, setSpellCheck] = useSetting(SCHEMA_ID, "spell-check", "boolean");
-    const [fontSize, setFontSize] = useSetting(SCHEMA_ID, "font-size", "int");
+    const [compactMode, setCompactMode] = useSetting(schemaId, "compact-mode", "boolean");
+    const [spellCheck, setSpellCheck] = useSetting(schemaId, "spell-check", "boolean");
+    const [fontSize, setFontSize] = useSetting(schemaId, "font-size", "int");
 
     if (!activeWindow) return null;
 

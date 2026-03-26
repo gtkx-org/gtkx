@@ -19,8 +19,7 @@ Choose your preferred package manager and enable testing when prompted.
 Replace the generated `src/app.tsx` with an Adwaita-styled window:
 
 ```tsx
-import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView, GtkBox, GtkLabel, quit } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
+import { AdwApplicationWindow, AdwHeaderBar, AdwStatusPage, AdwToolbarView, quit } from "@gtkx/react";
 
 export default function App() {
     return (
@@ -29,23 +28,21 @@ export default function App() {
                 <AdwToolbarView.AddTopBar>
                     <AdwHeaderBar />
                 </AdwToolbarView.AddTopBar>
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
-                    marginTop={24}
-                    marginStart={24}
-                    marginEnd={24}
+                <AdwStatusPage
                     vexpand
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.CENTER}
-                >
-                    <GtkLabel label="No notes yet" cssClasses={["dim-label", "title-3"]} />
-                </GtkBox>
+                    iconName="document-edit-symbolic"
+                    title="No Notes Yet"
+                    description="Press + to create your first note"
+                />
             </AdwToolbarView>
         </AdwApplicationWindow>
     );
 }
 ```
+
+### Status Pages
+
+`AdwStatusPage` is the standard GNOME pattern for empty states and placeholder views. It displays a centered icon, title, and description — use it instead of manual label layouts.
 
 ### Compound Components
 
@@ -78,13 +75,11 @@ Add a "New Note" button to the header bar:
 import {
     AdwApplicationWindow,
     AdwHeaderBar,
+    AdwStatusPage,
     AdwToolbarView,
-    GtkBox,
     GtkButton,
-    GtkLabel,
     quit,
 } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
 
 export default function App() {
     return (
@@ -95,25 +90,27 @@ export default function App() {
                         <AdwHeaderBar.PackStart>
                             <GtkButton
                                 iconName="list-add-symbolic"
+                                tooltipText="New Note"
                                 onClicked={() => console.log("New note!")}
                             />
                         </AdwHeaderBar.PackStart>
                     </AdwHeaderBar>
                 </AdwToolbarView.AddTopBar>
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={12}
+                <AdwStatusPage
                     vexpand
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.CENTER}
-                >
-                    <GtkLabel label="No notes yet" cssClasses={["dim-label", "title-3"]} />
-                </GtkBox>
+                    iconName="document-edit-symbolic"
+                    title="No Notes Yet"
+                    description="Press + to create your first note"
+                />
             </AdwToolbarView>
         </AdwApplicationWindow>
     );
 }
 ```
+
+::: tip Tooltips
+The GNOME HIG requires tooltips on all header bar controls. Always set `tooltipText` on buttons in the header bar so users can discover their function on hover.
+:::
 
 Run `npm run dev` to see your app with a header bar and a "+" button.
 

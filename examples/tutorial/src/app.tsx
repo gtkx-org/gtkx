@@ -1,37 +1,36 @@
-import SCHEMA_ID from "../com.gtkx.tutorial.gschema.xml";
-
-import { css } from "@gtkx/css";
+import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwNavigationSplitView,
+    AdwStatusPage,
+    AdwToastOverlay,
     AdwToggleGroup,
     AdwToolbarView,
     GtkBox,
     GtkButton,
-    GtkLabel,
     GtkListView,
     GtkMenuButton,
     GtkScrolledWindow,
+    GtkSearchBar,
+    GtkSearchEntry,
     GtkShortcutController,
     quit,
     useSetting,
 } from "@gtkx/react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import schemaId from "../com.gtkx.tutorial.gschema.xml";
+import { About } from "./components/about.js";
 import { DeleteConfirmation } from "./components/delete-confirmation.js";
 import { NoteCard } from "./components/note-card.js";
 import { Preferences } from "./components/preferences.js";
 import { Sidebar } from "./components/sidebar.js";
 import type { Note } from "./types.js";
 
-const emptyState = css`
-    padding: 48px;
-`;
-
 export function App() {
-    const [compactMode] = useSetting(SCHEMA_ID, "compact-mode", "boolean");
-    const [fontSize] = useSetting(SCHEMA_ID, "font-size", "int");
+    const [compactMode] = useSetting(schemaId, "compact-mode", "boolean");
+    const [fontSize] = useSetting(schemaId, "font-size", "int");
 
     const [notes, setNotes] = useState<Note[]>([
         { id: "1", title: "Welcome", body: "Your first note!", createdAt: new Date() },
@@ -49,8 +48,20 @@ export function App() {
     const [viewMode, setViewMode] = useState("list");
     const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
     const [showPreferences, setShowPreferences] = useState(false);
+    const [showAbout, setShowAbout] = useState(false);
+    const [searchMode, setSearchMode] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
 
     const selectedNote = notes.find((n) => n.id === selectedId);
+
+    const filteredNotes = searchQuery
+        ? notes.filter(
+              (n) =>
+                  n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  n.body.toLowerCase().includes(searchQuery.toLowerCase()),
+          )
+        : notes;
 
     const addNote = () => {
         const note: Note = {
@@ -73,19 +84,35 @@ export function App() {
         if (selectedNote) setNoteToDelete(selectedNote);
     };
 
-    const confirmDelete = () => {
-        if (noteToDelete) {
-            setNotes(notes.filter((n) => n.id !== noteToDelete.id));
-            if (selectedId === noteToDelete.id) setSelectedId(null);
-            setNoteToDelete(null);
-        }
-    };
+    const confirmDelete = useCallback(() => {
+        if (!noteToDelete) return;
+
+        const deletedNote = noteToDelete;
+        const deletedIndex = notes.indexOf(deletedNote);
+        setNotes(notes.filter((n) => n.id !== deletedNote.id));
+        if (selectedId === deletedNote.id) setSelectedId(null);
+        setNoteToDelete(null);
+
+        const toast = new Adw.Toast(`\u201c${deletedNote.title}\u201d deleted`);
+        toast.buttonLabel = "Undo";
+        toast.connect("button-clicked", () => {
+            setNotes((prev) => {
+                const restored = [...prev];
+                restored.splice(deletedIndex, 0, deletedNote);
+                return restored;
+            });
+        });
+        toastOverlayRef.current?.addToast(toast);
+    }, [noteToDelete, notes, selectedId]);
+
+    const searchEntryRef = useRef<Gtk.SearchEntry | null>(null);
 
     return (
         <AdwApplicationWindow title="Notes" defaultWidth={900} defaultHeight={600} onClose={quit}>
             <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                 <GtkShortcutController.Shortcut trigger="<Control>n" onActivate={addNote} />
                 <GtkShortcutController.Shortcut trigger="Delete" onActivate={deleteSelected} disabled={!selectedId} />
+                <GtkShortcutController.Shortcut trigger="<Control>f" onActivate={() => setSearchMode(true)} />
             </GtkShortcutController>
 
             <AdwNavigationSplitView sidebarWidthFraction={0.25} minSidebarWidth={200} maxSidebarWidth={300}>
@@ -94,12 +121,21 @@ export function App() {
                         <AdwToolbarView.AddTopBar>
                             <AdwHeaderBar>
                                 <AdwHeaderBar.PackStart>
-                                    <GtkButton iconName="list-add-symbolic" onClicked={addNote} />
+                                    <GtkButton
+                                        iconName="list-add-symbolic"
+                                        tooltipText="New Note (Ctrl+N)"
+                                        onClicked={addNote}
+                                    />
                                 </AdwHeaderBar.PackStart>
                             </AdwHeaderBar>
                         </AdwToolbarView.AddTopBar>
                         <Sidebar
-                            noteCounts={{ all: notes.length, favorites: 0, recent: notes.length, trash: 0 }}
+                            noteCounts={{
+                                all: notes.length,
+                                favorites: 0,
+                                recent: notes.length,
+                                trash: 0,
+                            }}
                             onCategoryChanged={setCategory}
                         />
                     </AdwToolbarView>
@@ -120,19 +156,26 @@ export function App() {
                                             {
                                                 id: "list",
                                                 iconName: "view-list-symbolic",
-                                                tooltip: "List view",
+                                                tooltip: "List View",
                                             },
                                             {
                                                 id: "grid",
                                                 iconName: "view-grid-symbolic",
-                                                tooltip: "Grid view",
+                                                tooltip: "Grid View",
                                             },
                                         ]}
                                     />
                                 }
                             >
+                                <AdwHeaderBar.PackStart>
+                                    <GtkButton
+                                        iconName="system-search-symbolic"
+                                        tooltipText="Search (Ctrl+F)"
+                                        onClicked={() => setSearchMode(!searchMode)}
+                                    />
+                                </AdwHeaderBar.PackStart>
                                 <AdwHeaderBar.PackEnd>
-                                    <GtkMenuButton iconName="open-menu-symbolic">
+                                    <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
                                         <GtkMenuButton.MenuItem
                                             id="new"
                                             label="New Note"
@@ -146,13 +189,18 @@ export function App() {
                                                 onActivate={() => setShowPreferences(true)}
                                                 accels="<Control>comma"
                                             />
+                                            <GtkMenuButton.MenuItem
+                                                id="shortcuts"
+                                                label="Keyboard Shortcuts"
+                                                onActivate={() => {}}
+                                                accels="<Control>question"
+                                            />
                                         </GtkMenuButton.MenuSection>
                                         <GtkMenuButton.MenuSection>
                                             <GtkMenuButton.MenuItem
-                                                id="quit"
-                                                label="Quit"
-                                                onActivate={quit}
-                                                accels="<Control>q"
+                                                id="about"
+                                                label="About Notes"
+                                                onActivate={() => setShowAbout(true)}
                                             />
                                         </GtkMenuButton.MenuSection>
                                     </GtkMenuButton>
@@ -160,55 +208,72 @@ export function App() {
                             </AdwHeaderBar>
                         </AdwToolbarView.AddTopBar>
 
-                        {notes.length > 0 ? (
-                            viewMode === "list" ? (
-                                <GtkScrolledWindow vexpand>
-                                    <GtkListView
-                                        estimatedItemHeight={compactMode ? 50 : 80}
-                                        selectionMode={Gtk.SelectionMode.SINGLE}
-                                        selected={selectedId ? [selectedId] : []}
-                                        onSelectionChanged={(ids) => setSelectedId(ids[0] ?? null)}
-                                        items={notes.map((note) => ({
-                                            id: note.id,
-                                            value: note,
-                                        }))}
-                                        renderItem={(note) => (
-                                            <NoteCard note={note} compact={compactMode} fontSize={fontSize} />
-                                        )}
+                        <AdwToastOverlay ref={toastOverlayRef}>
+                            <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
+                                <GtkSearchBar
+                                    searchModeEnabled={searchMode}
+                                    onSearchModeChanged={setSearchMode}
+                                    keyCaptureWidget={searchEntryRef.current}
+                                >
+                                    <GtkSearchEntry
+                                        ref={searchEntryRef}
+                                        placeholderText="Search notes\u2026"
+                                        onSearchChanged={(self) => setSearchQuery(self.text ?? "")}
                                     />
-                                </GtkScrolledWindow>
-                            ) : (
-                                <GtkScrolledWindow vexpand>
-                                    <GtkBox
-                                        orientation={Gtk.Orientation.VERTICAL}
-                                        spacing={8}
-                                        marginTop={12}
-                                        marginBottom={12}
-                                        marginStart={12}
-                                        marginEnd={12}
-                                    >
-                                        {notes.map((note) => (
-                                            <NoteCard
-                                                key={note.id}
-                                                note={note}
-                                                compact={compactMode}
-                                                fontSize={fontSize}
+                                </GtkSearchBar>
+
+                                {filteredNotes.length > 0 ? (
+                                    viewMode === "list" ? (
+                                        <GtkScrolledWindow vexpand>
+                                            <GtkListView
+                                                estimatedItemHeight={compactMode ? 50 : 80}
+                                                selectionMode={Gtk.SelectionMode.SINGLE}
+                                                selected={selectedId ? [selectedId] : []}
+                                                onSelectionChanged={(ids) => setSelectedId(ids[0] ?? null)}
+                                                items={filteredNotes.map((note) => ({
+                                                    id: note.id,
+                                                    value: note,
+                                                }))}
+                                                renderItem={(note) => (
+                                                    <NoteCard note={note} compact={compactMode} fontSize={fontSize} />
+                                                )}
                                             />
-                                        ))}
-                                    </GtkBox>
-                                </GtkScrolledWindow>
-                            )
-                        ) : (
-                            <GtkBox
-                                orientation={Gtk.Orientation.VERTICAL}
-                                vexpand
-                                halign={Gtk.Align.CENTER}
-                                valign={Gtk.Align.CENTER}
-                                cssClasses={[emptyState]}
-                            >
-                                <GtkLabel label="No notes yet" cssClasses={["dim-label", "title-3"]} />
+                                        </GtkScrolledWindow>
+                                    ) : (
+                                        <GtkScrolledWindow vexpand>
+                                            <GtkBox
+                                                orientation={Gtk.Orientation.VERTICAL}
+                                                spacing={8}
+                                                marginTop={12}
+                                                marginBottom={12}
+                                                marginStart={12}
+                                                marginEnd={12}
+                                            >
+                                                {filteredNotes.map((note) => (
+                                                    <NoteCard
+                                                        key={note.id}
+                                                        note={note}
+                                                        compact={compactMode}
+                                                        fontSize={fontSize}
+                                                    />
+                                                ))}
+                                            </GtkBox>
+                                        </GtkScrolledWindow>
+                                    )
+                                ) : (
+                                    <AdwStatusPage
+                                        vexpand
+                                        iconName={searchQuery ? "system-search-symbolic" : "document-edit-symbolic"}
+                                        title={searchQuery ? "No Results Found" : "No Notes Yet"}
+                                        description={
+                                            searchQuery
+                                                ? `No notes match \u201c${searchQuery}\u201d`
+                                                : "Press + or Ctrl+N to create your first note"
+                                        }
+                                    />
+                                )}
                             </GtkBox>
-                        )}
+                        </AdwToastOverlay>
                     </AdwToolbarView>
                 </AdwNavigationSplitView.Page>
             </AdwNavigationSplitView>
@@ -222,6 +287,7 @@ export function App() {
             )}
 
             {showPreferences && <Preferences onClose={() => setShowPreferences(false)} />}
+            {showAbout && <About onClose={() => setShowAbout(false)} />}
         </AdwApplicationWindow>
     );
 }

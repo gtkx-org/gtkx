@@ -9,3 +9,8 @@ declare module "*.data" {
     const path: string;
     export default path;
 }
+
+declare module "*.gschema.xml" {
+    const schemaId: string;
+    export default schemaId;
+}

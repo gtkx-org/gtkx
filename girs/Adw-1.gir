@@ -8837,12 +8837,12 @@ setting the content child.</doc>
                    version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1407">Creates a new `AdwBottomSheet`.</doc>
+             line="1408">Creates a new `AdwBottomSheet`.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="27"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="1412">the new created `AdwBottomSheet`</doc>
+               line="1413">the new created `AdwBottomSheet`</doc>
           <type name="Gtk.Widget" c:type="GtkWidget*"/>
         </return-value>
       </constructor>
@@ -8852,19 +8852,19 @@ setting the content child.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1735">Gets horizontal alignment of the bottom sheet.</doc>
+             line="1736">Gets horizontal alignment of the bottom sheet.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="54"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="1741">the horizontal alignment</doc>
+               line="1742">the horizontal alignment</doc>
           <type name="gfloat" c:type="float"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1737">a bottom sheet</doc>
+                 line="1738">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -8875,19 +8875,19 @@ setting the content child.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1525">Gets the bottom bar widget for @self.</doc>
+             line="1526">Gets the bottom bar widget for @self.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="42"/>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="1531">the bottom bar widget</doc>
+               line="1532">the bottom bar widget</doc>
           <type name="Gtk.Widget" c:type="GtkWidget*"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1527">a bottom sheet</doc>
+                 line="1528">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -8898,7 +8898,7 @@ setting the content child.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="2068">Gets the current bottom bar height.
+             line="2069">Gets the current bottom bar height.
 
 It can be used to shift the content upwards permanently to accommodate for
 the bottom bar.</doc>
@@ -8906,14 +8906,14 @@ the bottom bar.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="2077">the bottom bar height</doc>
+               line="2078">the bottom bar height</doc>
           <type name="gint" c:type="int"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="2070">a bottom sheet</doc>
+                 line="2071">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -8924,19 +8924,19 @@ the bottom bar.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1998">Gets whether the bottom sheet can be closed by user.</doc>
+             line="1999">Gets whether the bottom sheet can be closed by user.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="84"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="2004">whether the sheet can be closed by user</doc>
+               line="2005">whether the sheet can be closed by user</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="2000">a bottom sheet</doc>
+                 line="2001">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -8947,19 +8947,19 @@ the bottom bar.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1942">Gets whether the bottom sheet can be opened by user.</doc>
+             line="1943">Gets whether the bottom sheet can be opened by user.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="78"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="1948">whether the sheet can be opened by user.</doc>
+               line="1949">whether the sheet can be opened by user.</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1944">a bottom sheet</doc>
+                 line="1945">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -8970,19 +8970,19 @@ the bottom bar.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1422">Gets the content widget for @self.</doc>
+             line="1423">Gets the content widget for @self.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="30"/>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="1428">the content widget</doc>
+               line="1429">the content widget</doc>
           <type name="Gtk.Widget" c:type="GtkWidget*"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1424">a bottom sheet</doc>
+                 line="1425">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -8993,19 +8993,19 @@ the bottom bar.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1783">Gets whether the bottom sheet takes the full width.</doc>
+             line="1784">Gets whether the bottom sheet takes the full width.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="60"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="1789">whether the sheet takes up the full width</doc>
+               line="1790">whether the sheet takes up the full width</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1785">a bottom sheet</doc>
+                 line="1786">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -9016,19 +9016,19 @@ the bottom bar.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1890">Gets whether the bottom sheet is modal.</doc>
+             line="1891">Gets whether the bottom sheet is modal.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="72"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="1896">whether the sheet is modal</doc>
+               line="1897">whether the sheet is modal</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1892">a bottom sheet</doc>
+                 line="1893">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -9039,19 +9039,19 @@ the bottom bar.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1595">Gets whether the bottom sheet is open.</doc>
+             line="1596">Gets whether the bottom sheet is open.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="48"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="1601">whether the sheet is open</doc>
+               line="1602">whether the sheet is open</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1597">a bottom sheet</doc>
+                 line="1598">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -9062,19 +9062,19 @@ the bottom bar.</doc>
               version="1.7">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="2089">Gets whether the bottom bar is revealed.</doc>
+             line="2090">Gets whether the bottom bar is revealed.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="95"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="2095">whether the bottom bar is revealed</doc>
+               line="2096">whether the bottom bar is revealed</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="2091">a bottom sheet</doc>
+                 line="2092">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -9085,19 +9085,19 @@ the bottom bar.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1472">Gets the bottom sheet widget for @self.</doc>
+             line="1473">Gets the bottom sheet widget for @self.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="36"/>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="1478">the sheet widget</doc>
+               line="1479">the sheet widget</doc>
           <type name="Gtk.Widget" c:type="GtkWidget*"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1474">a bottom sheet</doc>
+                 line="1475">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -9108,21 +9108,21 @@ the bottom bar.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="2048">Gets the current bottom sheet height.
+             line="2049">Gets the current bottom sheet height.
 
 It can be used to shift the content upwards when the bottom sheet is open.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="90"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="2056">the sheet height</doc>
+               line="2057">the sheet height</doc>
           <type name="gint" c:type="int"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="2050">a bottom sheet</doc>
+                 line="2051">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -9133,19 +9133,19 @@ It can be used to shift the content upwards when the bottom sheet is open.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1830">Gets whether to show a drag handle in the bottom sheet.</doc>
+             line="1831">Gets whether to show a drag handle in the bottom sheet.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="66"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-bottom-sheet.c"
-               line="1836">whether to show the drag handle</doc>
+               line="1837">whether to show the drag handle</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1832">a bottom sheet</doc>
+                 line="1833">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
         </parameters>
@@ -9156,7 +9156,7 @@ It can be used to shift the content upwards when the bottom sheet is open.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1753">Sets horizontal alignment of the bottom sheet.
+             line="1754">Sets horizontal alignment of the bottom sheet.
 
 0 means the bottom sheet is flush with the start edge, 1 means it's flush
 with the end edge. 0.5 means it's centered.
@@ -9170,13 +9170,13 @@ Only used when [property@BottomSheet:full-width] is set to `FALSE`.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1755">a bottom sheet</doc>
+                 line="1756">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="align" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1756">the new alignment</doc>
+                 line="1757">the new alignment</doc>
             <type name="gfloat" c:type="float"/>
           </parameter>
         </parameters>
@@ -9187,7 +9187,7 @@ Only used when [property@BottomSheet:full-width] is set to `FALSE`.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1543">Sets the bottom bar widget for @self.
+             line="1544">Sets the bottom bar widget for @self.
 
 Shown when [property@BottomSheet:open] is `FALSE`. When open, morphs into
 the [property@BottomSheet:sheet].
@@ -9202,7 +9202,7 @@ Bottom bar can be temporarily hidden using the
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1545">a bottom sheet</doc>
+                 line="1546">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="bottom_bar"
@@ -9211,7 +9211,7 @@ Bottom bar can be temporarily hidden using the
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1546">the bottom bar widget</doc>
+                 line="1547">the bottom bar widget</doc>
             <type name="Gtk.Widget" c:type="GtkWidget*"/>
           </parameter>
         </parameters>
@@ -9222,7 +9222,7 @@ Bottom bar can be temporarily hidden using the
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="2016">Sets whether the bottom sheet can be closed by user.
+             line="2017">Sets whether the bottom sheet can be closed by user.
 
 It can be closed via the close button, swiping down, pressing
 &lt;kbd&gt;Escape&lt;/kbd&gt; or clicking the content dimming (when modal).
@@ -9236,13 +9236,13 @@ Bottom sheet can still be closed using [property@BottomSheet:open].</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="2018">a bottom sheet</doc>
+                 line="2019">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="can_close" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="2019">whether the sheet can be closed by user</doc>
+                 line="2020">whether the sheet can be closed by user</doc>
             <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
@@ -9253,7 +9253,7 @@ Bottom sheet can still be closed using [property@BottomSheet:open].</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1960">Sets whether the bottom sheet can be opened by user.
+             line="1961">Sets whether the bottom sheet can be opened by user.
 
 It can be opened via clicking or swiping up from the bottom bar.
 
@@ -9268,13 +9268,13 @@ Bottom sheet can still be opened using [property@BottomSheet:open].</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1962">a bottom sheet</doc>
+                 line="1963">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="can_open" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1963">whether the sheet can be opened by user.</doc>
+                 line="1964">whether the sheet can be opened by user.</doc>
             <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
@@ -9285,7 +9285,7 @@ Bottom sheet can still be opened using [property@BottomSheet:open].</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1440">Sets the content widget for @self.
+             line="1441">Sets the content widget for @self.
 
 It's always shown, and the bottom sheet is overlaid over it.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="32"/>
@@ -9296,7 +9296,7 @@ It's always shown, and the bottom sheet is overlaid over it.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1442">a bottom sheet</doc>
+                 line="1443">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="content"
@@ -9305,7 +9305,7 @@ It's always shown, and the bottom sheet is overlaid over it.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1443">the content widget</doc>
+                 line="1444">the content widget</doc>
             <type name="Gtk.Widget" c:type="GtkWidget*"/>
           </parameter>
         </parameters>
@@ -9316,7 +9316,7 @@ It's always shown, and the bottom sheet is overlaid over it.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1801">Sets whether the bottom sheet takes the full width.
+             line="1802">Sets whether the bottom sheet takes the full width.
 
 When full width, [property@BottomSheet:align] is ignored.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="62"/>
@@ -9327,13 +9327,13 @@ When full width, [property@BottomSheet:align] is ignored.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1803">a bottom sheet</doc>
+                 line="1804">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="full_width" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1804">whether the sheet takes up the full width</doc>
+                 line="1805">whether the sheet takes up the full width</doc>
             <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
@@ -9344,7 +9344,7 @@ When full width, [property@BottomSheet:align] is ignored.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1908">Sets whether the bottom sheet is modal.
+             line="1909">Sets whether the bottom sheet is modal.
 
 When modal, [property@BottomSheet:content] will be dimmed when the bottom
 sheet is open, and clicking it will close the bottom sheet. It also cannot be
@@ -9359,13 +9359,13 @@ Otherwise, the content is accessible even when the bottom sheet is open.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1910">a bottom sheet</doc>
+                 line="1911">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="modal" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1911">whether the sheet is modal</doc>
+                 line="1912">whether the sheet is modal</doc>
             <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
@@ -9376,7 +9376,7 @@ Otherwise, the content is accessible even when the bottom sheet is open.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1613">Sets whether the bottom sheet is open.</doc>
+             line="1614">Sets whether the bottom sheet is open.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="50"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
@@ -9385,13 +9385,13 @@ Otherwise, the content is accessible even when the bottom sheet is open.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1615">a bottom sheet</doc>
+                 line="1616">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="open" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1616">whether to open the sheet</doc>
+                 line="1617">whether to open the sheet</doc>
             <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
@@ -9402,7 +9402,7 @@ Otherwise, the content is accessible even when the bottom sheet is open.</doc>
               version="1.7">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="2107">Sets whether to reveal the bottom bar.
+             line="2108">Sets whether to reveal the bottom bar.
 
 The transition will be animated.
 
@@ -9416,13 +9416,13 @@ See [property@BottomSheet:bottom-bar] and
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="2109">a bottom sheet</doc>
+                 line="2110">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="reveal" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="2110">whether to reveal the bottom bar</doc>
+                 line="2111">whether to reveal the bottom bar</doc>
             <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
@@ -9433,7 +9433,7 @@ See [property@BottomSheet:bottom-bar] and
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1490">Sets the bottom sheet widget for @self.
+             line="1491">Sets the bottom sheet widget for @self.
 
 Only shown when [property@BottomSheet:open] is `TRUE`.</doc>
         <source-position filename="src/adw-bottom-sheet.h" line="38"/>
@@ -9444,7 +9444,7 @@ Only shown when [property@BottomSheet:open] is `TRUE`.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1492">a bottom sheet</doc>
+                 line="1493">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="sheet"
@@ -9453,7 +9453,7 @@ Only shown when [property@BottomSheet:open] is `TRUE`.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1493">the sheet widget</doc>
+                 line="1494">the sheet widget</doc>
             <type name="Gtk.Widget" c:type="GtkWidget*"/>
           </parameter>
         </parameters>
@@ -9464,7 +9464,7 @@ Only shown when [property@BottomSheet:open] is `TRUE`.</doc>
               version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="1848">Sets whether to show a drag handle in the bottom sheet.
+             line="1849">Sets whether to show a drag handle in the bottom sheet.
 
 The handle will be overlaid over [property@BottomSheet:sheet].
 
@@ -9481,13 +9481,13 @@ the bottom bar up) with a pointer, instead of just touchscreen.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1850">a bottom sheet</doc>
+                 line="1851">a bottom sheet</doc>
             <type name="BottomSheet" c:type="AdwBottomSheet*"/>
           </instance-parameter>
           <parameter name="show_drag_handle" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-bottom-sheet.c"
-                 line="1851">whether to show the drag handle</doc>
+                 line="1852">whether to show the drag handle</doc>
             <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
@@ -9501,7 +9501,7 @@ the bottom bar up) with a pointer, instead of just touchscreen.</doc>
                 default-value="0.500000">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="826">Horizontal alignment of the bottom sheet.
+             line="827">Horizontal alignment of the bottom sheet.
 
 0 means the bottom sheet is flush with the start edge, 1 means it's flush
 with the end edge. 0.5 means it's centered.
@@ -9517,7 +9517,7 @@ Only used when [property@BottomSheet:full-width] is set to `FALSE`.</doc>
                 getter="get_bottom_bar">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="796">The bottom bar widget.
+             line="797">The bottom bar widget.
 
 Shown when [property@BottomSheet:open] is `FALSE`. When open, morphs into
 the [property@BottomSheet:sheet].
@@ -9533,7 +9533,7 @@ Bottom bar can be temporarily hidden using the
                 default-value="0">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="944">The current bottom bar height.
+             line="945">The current bottom bar height.
 
 It can be used to shift the content upwards permanently to accommodate for
 the bottom bar.</doc>
@@ -9548,7 +9548,7 @@ the bottom bar.</doc>
                 default-value="TRUE">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="913">Whether the bottom sheet can be closed by user.
+             line="914">Whether the bottom sheet can be closed by user.
 
 It can be closed via the close button, swiping down, pressing
 &lt;kbd&gt;Escape&lt;/kbd&gt; or clicking the content dimming (when modal).
@@ -9565,7 +9565,7 @@ Bottom sheet can still be closed using [property@BottomSheet:open].</doc>
                 default-value="TRUE">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="895">Whether the bottom sheet can be opened by user.
+             line="896">Whether the bottom sheet can be opened by user.
 
 It can be opened via clicking or swiping up from the bottom bar.
 
@@ -9582,7 +9582,7 @@ Bottom sheet can still be opened using [property@BottomSheet:open].</doc>
                 getter="get_content">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="768">The content widget.
+             line="769">The content widget.
 
 It's always shown, and the bottom sheet is overlaid over it.</doc>
         <type name="Gtk.Widget"/>
@@ -9596,7 +9596,7 @@ It's always shown, and the bottom sheet is overlaid over it.</doc>
                 default-value="TRUE">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="843">Whether the bottom sheet takes the full width.
+             line="844">Whether the bottom sheet takes the full width.
 
 When full width, [property@BottomSheet:align] is ignored.</doc>
         <type name="gboolean" c:type="gboolean"/>
@@ -9610,7 +9610,7 @@ When full width, [property@BottomSheet:align] is ignored.</doc>
                 default-value="TRUE">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="877">Whether the bottom sheet is modal.
+             line="878">Whether the bottom sheet is modal.
 
 When modal, [property@BottomSheet:content] will be dimmed when the bottom
 sheet is open, and clicking it will close the bottom sheet. It also cannot
@@ -9628,7 +9628,7 @@ Otherwise, the content is accessible even when the bottom sheet is open.</doc>
                 default-value="FALSE">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="814">Whether the bottom sheet is open.</doc>
+             line="815">Whether the bottom sheet is open.</doc>
         <type name="gboolean" c:type="gboolean"/>
       </property>
       <property name="reveal-bottom-bar"
@@ -9640,7 +9640,7 @@ Otherwise, the content is accessible even when the bottom sheet is open.</doc>
                 default-value="TRUE">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="959">Whether to reveal the bottom bar.
+             line="960">Whether to reveal the bottom bar.
 
 The transition will be animated.
 
@@ -9656,7 +9656,7 @@ See [property@BottomSheet:bottom-bar] and
                 getter="get_sheet">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="782">The bottom sheet widget.
+             line="783">The bottom sheet widget.
 
 Only shown when [property@BottomSheet:open] is `TRUE`.</doc>
         <type name="Gtk.Widget"/>
@@ -9668,7 +9668,7 @@ Only shown when [property@BottomSheet:open] is `TRUE`.</doc>
                 default-value="0">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="930">The current bottom sheet height.
+             line="931">The current bottom sheet height.
 
 It can be used to shift the content upwards when the bottom sheet is open.</doc>
         <type name="gint" c:type="gint"/>
@@ -9682,7 +9682,7 @@ It can be used to shift the content upwards when the bottom sheet is open.</doc>
                 default-value="TRUE">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="857">Whether to overlay a drag handle in the bottom sheet.
+             line="858">Whether to overlay a drag handle in the bottom sheet.
 
 The handle will be overlaid over [property@BottomSheet:sheet].
 
@@ -9696,7 +9696,7 @@ swipe the bottom bar up) with a pointer, instead of just touchscreen.</doc>
       <glib:signal name="close-attempt" when="last" version="1.6">
         <doc xml:space="preserve"
              filename="src/adw-bottom-sheet.c"
-             line="978">Emitted when the close button or shortcut is used while
+             line="979">Emitted when the close button or shortcut is used while
 [property@Dialog:can-close] is set to `FALSE`.</doc>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
@@ -14386,12 +14386,12 @@ minimum size, and [property@Gtk.Widget:width-request] and
       <constructor name="new" c:identifier="adw_dialog_new" version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1348">Creates a new `AdwDialog`.</doc>
+             line="1349">Creates a new `AdwDialog`.</doc>
         <source-position filename="src/adw-dialog.h" line="47"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1353">the new created `AdwDialog`</doc>
+               line="1354">the new created `AdwDialog`</doc>
           <type name="Dialog" c:type="AdwDialog*"/>
         </return-value>
       </constructor>
@@ -14422,7 +14422,7 @@ minimum size, and [property@Gtk.Widget:width-request] and
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1995">Adds @breakpoint to @self.</doc>
+             line="1996">Adds @breakpoint to @self.</doc>
         <source-position filename="src/adw-dialog.h" line="110"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
@@ -14431,13 +14431,13 @@ minimum size, and [property@Gtk.Widget:width-request] and
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1997">a dialog</doc>
+                 line="1998">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="breakpoint" transfer-ownership="full">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1998">the breakpoint to add</doc>
+                 line="1999">the breakpoint to add</doc>
             <type name="Breakpoint" c:type="AdwBreakpoint*"/>
           </parameter>
         </parameters>
@@ -14445,7 +14445,7 @@ minimum size, and [property@Gtk.Widget:width-request] and
       <method name="close" c:identifier="adw_dialog_close" version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1907">Attempts to close @self.
+             line="1908">Attempts to close @self.
 
 If the [property@Dialog:can-close] property is set to `FALSE`, the
 [signal@Dialog::close-attempt] signal is emitted.
@@ -14455,14 +14455,14 @@ See also: [method@Dialog.force_close].</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1918">whether @self was successfully closed</doc>
+               line="1919">whether @self was successfully closed</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1909">a dialog</doc>
+                 line="1910">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14472,7 +14472,7 @@ See also: [method@Dialog.force_close].</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1961">Closes @self.
+             line="1962">Closes @self.
 
 Unlike [method@Dialog.close], it succeeds even if [property@Dialog:can-close]
 is set to `FALSE`.</doc>
@@ -14484,7 +14484,7 @@ is set to `FALSE`.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1963">a dialog</doc>
+                 line="1964">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14495,19 +14495,19 @@ is set to `FALSE`.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1469">Gets whether @self can be closed.</doc>
+             line="1470">Gets whether @self can be closed.</doc>
         <source-position filename="src/adw-dialog.h" line="62"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1475">whether the dialog can be closed</doc>
+               line="1476">whether the dialog can be closed</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1471">a dialog</doc>
+                 line="1472">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14518,19 +14518,19 @@ is set to `FALSE`.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1363">Gets the child widget of @self.</doc>
+             line="1364">Gets the child widget of @self.</doc>
         <source-position filename="src/adw-dialog.h" line="50"/>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1369">the child widget of @self</doc>
+               line="1370">the child widget of @self</doc>
           <type name="Gtk.Widget" c:type="GtkWidget*"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1365">a dialog</doc>
+                 line="1366">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14541,19 +14541,19 @@ is set to `FALSE`.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1581">Gets the height of the dialog's contents.</doc>
+             line="1582">Gets the height of the dialog's contents.</doc>
         <source-position filename="src/adw-dialog.h" line="74"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1587">the content height</doc>
+               line="1588">the content height</doc>
           <type name="gint" c:type="int"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1583">a dialog</doc>
+                 line="1584">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14564,19 +14564,19 @@ is set to `FALSE`.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1531">Gets the width of the dialog's contents.</doc>
+             line="1532">Gets the width of the dialog's contents.</doc>
         <source-position filename="src/adw-dialog.h" line="68"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1537">the content width</doc>
+               line="1538">the content width</doc>
           <type name="gint" c:type="int"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1533">a dialog</doc>
+                 line="1534">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14587,19 +14587,19 @@ is set to `FALSE`.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="2020">Gets the current breakpoint.</doc>
+             line="2021">Gets the current breakpoint.</doc>
         <source-position filename="src/adw-dialog.h" line="114"/>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="2026">the current breakpoint</doc>
+               line="2027">the current breakpoint</doc>
           <type name="Breakpoint" c:type="AdwBreakpoint*"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="2022">a dialog</doc>
+                 line="2023">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14610,19 +14610,19 @@ is set to `FALSE`.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1825">Gets the default widget for @self.</doc>
+             line="1826">Gets the default widget for @self.</doc>
         <source-position filename="src/adw-dialog.h" line="98"/>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1831">the default widget</doc>
+               line="1832">the default widget</doc>
           <type name="Gtk.Widget" c:type="GtkWidget*"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1827">a dialog</doc>
+                 line="1828">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14633,19 +14633,19 @@ is set to `FALSE`.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1753">Gets the focus widget for @self.</doc>
+             line="1754">Gets the focus widget for @self.</doc>
         <source-position filename="src/adw-dialog.h" line="92"/>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1759">the focus widget</doc>
+               line="1760">the focus widget</doc>
           <type name="Gtk.Widget" c:type="GtkWidget*"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1755">a dialog</doc>
+                 line="1756">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14656,19 +14656,19 @@ is set to `FALSE`.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1631">Gets whether to size content of @self automatically.</doc>
+             line="1632">Gets whether to size content of @self automatically.</doc>
         <source-position filename="src/adw-dialog.h" line="80"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1637">whether to size content automatically</doc>
+               line="1638">whether to size content automatically</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1633">a dialog</doc>
+                 line="1634">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14679,12 +14679,12 @@ is set to `FALSE`.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1690">Gets presentation mode for @self.</doc>
+             line="1691">Gets presentation mode for @self.</doc>
         <source-position filename="src/adw-dialog.h" line="86"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1696">the presentation mode</doc>
+               line="1697">the presentation mode</doc>
           <type name="DialogPresentationMode"
                 c:type="AdwDialogPresentationMode"/>
         </return-value>
@@ -14692,7 +14692,7 @@ is set to `FALSE`.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1692">a dialog</doc>
+                 line="1693">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14703,19 +14703,19 @@ is set to `FALSE`.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1418">Gets the title of @self.</doc>
+             line="1419">Gets the title of @self.</doc>
         <source-position filename="src/adw-dialog.h" line="56"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="src/adw-dialog.c"
-               line="1424">the title</doc>
+               line="1425">the title</doc>
           <type name="utf8" c:type="const char*"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1420">a dialog</doc>
+                 line="1421">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
         </parameters>
@@ -14723,7 +14723,7 @@ is set to `FALSE`.</doc>
       <method name="present" c:identifier="adw_dialog_present" version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="2066">Presents @self within @parent's window.
+             line="2067">Presents @self within @parent's window.
 
 If @self is already shown, raises it to the top instead.
 
@@ -14737,7 +14737,7 @@ will be shown within it. Otherwise, it will be a separate window.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="2068">a dialog</doc>
+                 line="2069">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="parent"
@@ -14746,7 +14746,7 @@ will be shown within it. Otherwise, it will be a separate window.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="2069">a widget within the toplevel</doc>
+                 line="2070">a widget within the toplevel</doc>
             <type name="Gtk.Widget" c:type="GtkWidget*"/>
           </parameter>
         </parameters>
@@ -14757,7 +14757,7 @@ will be shown within it. Otherwise, it will be a separate window.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1491">Sets whether @self can be closed.
+             line="1492">Sets whether @self can be closed.
 
 If set to `FALSE`, the close button, shortcuts and
 [method@Dialog.close] will result in [signal@Dialog::close-attempt] being
@@ -14771,13 +14771,13 @@ emitted instead, and bottom sheet close swipe will be disabled.
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1493">a dialog</doc>
+                 line="1494">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="can_close" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1494">whether to allow closing</doc>
+                 line="1495">whether to allow closing</doc>
             <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
@@ -14788,7 +14788,7 @@ emitted instead, and bottom sheet close swipe will be disabled.
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1385">Sets the child widget of @self.</doc>
+             line="1386">Sets the child widget of @self.</doc>
         <source-position filename="src/adw-dialog.h" line="52"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
@@ -14797,7 +14797,7 @@ emitted instead, and bottom sheet close swipe will be disabled.
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1387">a dialog</doc>
+                 line="1388">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="child"
@@ -14806,7 +14806,7 @@ emitted instead, and bottom sheet close swipe will be disabled.
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1388">the child widget</doc>
+                 line="1389">the child widget</doc>
             <type name="Gtk.Widget" c:type="GtkWidget*"/>
           </parameter>
         </parameters>
@@ -14817,7 +14817,7 @@ emitted instead, and bottom sheet close swipe will be disabled.
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1603">Sets the height of the dialog's contents.
+             line="1604">Sets the height of the dialog's contents.
 
 Set it to -1 to reset it to the content's natural height.
 
@@ -14830,13 +14830,13 @@ See also: [property@Gtk.Window:default-height]</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1605">a dialog</doc>
+                 line="1606">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="content_height" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1606">the content height</doc>
+                 line="1607">the content height</doc>
             <type name="gint" c:type="int"/>
           </parameter>
         </parameters>
@@ -14847,7 +14847,7 @@ See also: [property@Gtk.Window:default-height]</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1553">Sets the width of the dialog's contents.
+             line="1554">Sets the width of the dialog's contents.
 
 Set it to -1 to reset it to the content's natural width.
 
@@ -14860,13 +14860,13 @@ See also: [property@Gtk.Window:default-width]</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1555">a dialog</doc>
+                 line="1556">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="content_width" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1556">the content width</doc>
+                 line="1557">the content width</doc>
             <type name="gint" c:type="int"/>
           </parameter>
         </parameters>
@@ -14877,7 +14877,7 @@ See also: [property@Gtk.Window:default-width]</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1847">Sets the default widget for @self.
+             line="1848">Sets the default widget for @self.
 
 It's activated when the user presses Enter.</doc>
         <source-position filename="src/adw-dialog.h" line="100"/>
@@ -14888,7 +14888,7 @@ It's activated when the user presses Enter.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1849">a dialog</doc>
+                 line="1850">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="default_widget"
@@ -14897,7 +14897,7 @@ It's activated when the user presses Enter.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1850">the default widget</doc>
+                 line="1851">the default widget</doc>
             <type name="Gtk.Widget" c:type="GtkWidget*"/>
           </parameter>
         </parameters>
@@ -14908,7 +14908,7 @@ It's activated when the user presses Enter.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1775">Sets the focus widget for @self.
+             line="1776">Sets the focus widget for @self.
 
 If @focus is not the current focus widget, and is focusable, sets it as the
 focus widget for the dialog.
@@ -14924,7 +14924,7 @@ to a particular widget in the dialog, it is usually more convenient to use
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1777">a dialog</doc>
+                 line="1778">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="focus"
@@ -14933,7 +14933,7 @@ to a particular widget in the dialog, it is usually more convenient to use
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1778">the focus widget</doc>
+                 line="1779">the focus widget</doc>
             <type name="Gtk.Widget" c:type="GtkWidget*"/>
           </parameter>
         </parameters>
@@ -14944,7 +14944,7 @@ to a particular widget in the dialog, it is usually more convenient to use
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1653">Sets whether to size content of @self automatically.
+             line="1654">Sets whether to size content of @self automatically.
 
 If set to `TRUE`, always use the content's natural size instead of
 [property@Dialog:content-width] and [property@Dialog:content-height]. If
@@ -14959,13 +14959,13 @@ See also: [property@Gtk.Window:resizable]</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1655">a dialog</doc>
+                 line="1656">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="follows_content_size" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1656">whether to size content automatically</doc>
+                 line="1657">whether to size content automatically</doc>
             <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
@@ -14976,7 +14976,7 @@ See also: [property@Gtk.Window:resizable]</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1712">Sets presentation mode for @self.
+             line="1713">Sets presentation mode for @self.
 
 When set to `ADW_DIALOG_AUTO`, the dialog appears as a bottom sheet when the
 following condition is met: `max-width: 450px or max-height: 360px`, and as a
@@ -14995,13 +14995,13 @@ Presentation mode does nothing for dialogs presented as a window.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1714">a dialog</doc>
+                 line="1715">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="presentation_mode" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1715">the new presentation mode</doc>
+                 line="1716">the new presentation mode</doc>
             <type name="DialogPresentationMode"
                   c:type="AdwDialogPresentationMode"/>
           </parameter>
@@ -15013,7 +15013,7 @@ Presentation mode does nothing for dialogs presented as a window.</doc>
               version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1440">Sets the title of @self.</doc>
+             line="1441">Sets the title of @self.</doc>
         <source-position filename="src/adw-dialog.h" line="58"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
@@ -15022,13 +15022,13 @@ Presentation mode does nothing for dialogs presented as a window.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1442">a dialog</doc>
+                 line="1443">a dialog</doc>
             <type name="Dialog" c:type="AdwDialog*"/>
           </instance-parameter>
           <parameter name="title" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="src/adw-dialog.c"
-                 line="1443">the new title</doc>
+                 line="1444">the new title</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
         </parameters>
@@ -15042,7 +15042,7 @@ Presentation mode does nothing for dialogs presented as a window.</doc>
                 default-value="TRUE">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1078">Whether the dialog can be closed.
+             line="1079">Whether the dialog can be closed.
 
 If set to `FALSE`, the close button, shortcuts and
 [method@Dialog.close] will result in [signal@Dialog::close-attempt] being
@@ -15058,7 +15058,7 @@ emitted instead, and bottom sheet close swipe will be disabled.
                 getter="get_child">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1054">The child widget of the `AdwDialog`.</doc>
+             line="1055">The child widget of the `AdwDialog`.</doc>
         <type name="Gtk.Widget"/>
       </property>
       <property name="content-height"
@@ -15070,7 +15070,7 @@ emitted instead, and bottom sheet close swipe will be disabled.
                 default-value="-1">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1111">The height of the dialog's contents.
+             line="1112">The height of the dialog's contents.
 
 Set it to -1 to reset it to the content's natural height.
 
@@ -15086,7 +15086,7 @@ See also: [property@Gtk.Window:default-height]</doc>
                 default-value="-1">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1095">The width of the dialog's contents.
+             line="1096">The width of the dialog's contents.
 
 Set it to -1 to reset it to the content's natural width.
 
@@ -15099,7 +15099,7 @@ See also: [property@Gtk.Window:default-width]</doc>
                 getter="get_current_breakpoint">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1194">The current breakpoint.</doc>
+             line="1195">The current breakpoint.</doc>
         <type name="Breakpoint"/>
       </property>
       <property name="default-widget"
@@ -15110,7 +15110,7 @@ See also: [property@Gtk.Window:default-width]</doc>
                 getter="get_default_widget">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1180">The default widget.
+             line="1181">The default widget.
 
 It's activated when the user presses Enter.</doc>
         <type name="Gtk.Widget"/>
@@ -15123,7 +15123,7 @@ It's activated when the user presses Enter.</doc>
                 getter="get_focus">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1168">The focus widget.</doc>
+             line="1169">The focus widget.</doc>
         <type name="Gtk.Widget"/>
       </property>
       <property name="follows-content-size"
@@ -15135,7 +15135,7 @@ It's activated when the user presses Enter.</doc>
                 default-value="FALSE">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1127">Whether to size content automatically.
+             line="1128">Whether to size content automatically.
 
 If set to `TRUE`, always use the content's natural size instead of
 [property@Dialog:content-width] and [property@Dialog:content-height]. If
@@ -15153,7 +15153,7 @@ See also: [property@Gtk.Window:resizable]</doc>
                 default-value="ADW_DIALOG_AUTO">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1145">The dialog's presentation mode.
+             line="1146">The dialog's presentation mode.
 
 When set to `ADW_DIALOG_AUTO`, the dialog appears as a bottom sheet when
 the following condition is met: `max-width: 450px or max-height: 360px`,
@@ -15174,7 +15174,7 @@ Presentation mode does nothing for dialogs presented as a window.</doc>
                 getter="get_title">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1066">The title of the dialog.</doc>
+             line="1067">The title of the dialog.</doc>
         <type name="utf8" c:type="gchar*"/>
       </property>
       <field name="parent_instance">
@@ -15183,7 +15183,7 @@ Presentation mode does nothing for dialogs presented as a window.</doc>
       <glib:signal name="close-attempt" when="last" version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1208">Emitted when the close button or shortcut is used, or
+             line="1209">Emitted when the close button or shortcut is used, or
 [method@Dialog.close] is called while [property@Dialog:can-close] is set to
 `FALSE`.</doc>
         <return-value transfer-ownership="none">
@@ -15193,7 +15193,7 @@ Presentation mode does nothing for dialogs presented as a window.</doc>
       <glib:signal name="closed" when="last" version="1.5">
         <doc xml:space="preserve"
              filename="src/adw-dialog.c"
-             line="1231">Emitted when the dialog is successfully closed.</doc>
+             line="1232">Emitted when the dialog is successfully closed.</doc>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -21578,7 +21578,7 @@ New values may be added to this enumeration over time.</doc>
       <source-position filename="src/adw-version.h" line="22"/>
       <type name="gint" c:type="gint"/>
     </constant>
-    <constant name="MICRO_VERSION" value="3" c:type="ADW_MICRO_VERSION">
+    <constant name="MICRO_VERSION" value="5" c:type="ADW_MICRO_VERSION">
       <doc xml:space="preserve"
            filename="src/adw-version.h"
            line="31">Adwaita micro version component (e.g. 3 if the version is 1.2.3).</doc>
@@ -44558,7 +44558,7 @@ See also [property@ToolbarView:bottom-bar-style].</doc>
         </parameter>
       </parameters>
     </function-macro>
-    <constant name="VERSION_S" value="1.8.3" c:type="ADW_VERSION_S">
+    <constant name="VERSION_S" value="1.8.5.1" c:type="ADW_VERSION_S">
       <doc xml:space="preserve"
            filename="src/adw-version.h"
            line="45">Adwaita version, encoded as a string, useful for printing and

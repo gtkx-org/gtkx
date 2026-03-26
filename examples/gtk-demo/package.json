@@ -2,6 +2,7 @@
     "name": "gtk-demo",
     "version": "0.0.0",
     "private": true,
+    "license": "MPL-2.0",
     "description": "GTK4 widget showcase - React port of official gtk-demo",
     "type": "module",
     "gtkx": {

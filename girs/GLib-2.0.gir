@@ -22841,7 +22841,7 @@ linked against at application run time.</doc>
       <source-position filename="glib/gtypes.h" line="76"/>
       <type name="guint8" c:type="guint8"/>
     </constant>
-    <constant name="MICRO_VERSION" value="3" c:type="GLIB_MICRO_VERSION">
+    <constant name="MICRO_VERSION" value="4" c:type="GLIB_MICRO_VERSION">
       <doc xml:space="preserve"
            filename="glib/gversion.c"
            line="78">The micro version number of the GLib library.
@@ -52148,7 +52148,7 @@ See [Unicode Standard Annex #24: Script names](http://www.unicode.org/reports/tr
                 version="2.30">
         <doc xml:space="preserve"
              filename="glib/guniprop.c"
-             line="1574">Looks up the Unicode script for @iso15924.  ISO 15924 assigns four-letter
+             line="1605">Looks up the Unicode script for @iso15924.  ISO 15924 assigns four-letter
 codes to scripts.  For example, the code for Arabic is 'Arab'.
 This function accepts four letter codes encoded as a @guint32 in a
 big-endian fashion.  That is, the code expected for Arabic is
@@ -52161,7 +52161,7 @@ for details.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1588">the Unicode script for @iso15924, or
+               line="1619">the Unicode script for @iso15924, or
   of %G_UNICODE_SCRIPT_INVALID_CODE if @iso15924 is zero and
   %G_UNICODE_SCRIPT_UNKNOWN if @iso15924 is unknown.</doc>
           <type name="UnicodeScript" c:type="GUnicodeScript"/>
@@ -52170,7 +52170,7 @@ for details.</doc>
           <parameter name="iso15924" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="glib/guniprop.c"
-                 line="1576">a Unicode script</doc>
+                 line="1607">a Unicode script</doc>
             <type name="guint32" c:type="guint32"/>
           </parameter>
         </parameters>
@@ -52180,7 +52180,7 @@ for details.</doc>
                 version="2.30">
         <doc xml:space="preserve"
              filename="glib/guniprop.c"
-             line="1542">Looks up the ISO 15924 code for @script.  ISO 15924 assigns four-letter
+             line="1573">Looks up the ISO 15924 code for @script.  ISO 15924 assigns four-letter
 codes to scripts.  For example, the code for Arabic is 'Arab'.  The
 four letter codes are encoded as a @guint32 by this function in a
 big-endian fashion.  That is, the code returned for Arabic is
@@ -52193,7 +52193,7 @@ for details.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1556">the ISO 15924 code for @script, encoded as an integer,
+               line="1587">the ISO 15924 code for @script, encoded as an integer,
   of zero if @script is %G_UNICODE_SCRIPT_INVALID_CODE or
   ISO 15924 code 'Zzzz' (script code for UNKNOWN) if @script is not understood.</doc>
           <type name="guint32" c:type="guint32"/>
@@ -52202,7 +52202,7 @@ for details.</doc>
           <parameter name="script" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="glib/guniprop.c"
-                 line="1544">a Unicode script</doc>
+                 line="1575">a Unicode script</doc>
             <type name="UnicodeScript" c:type="GUnicodeScript"/>
           </parameter>
         </parameters>
@@ -58024,7 +58024,7 @@ counts.</doc>
               version="2.24">
         <doc xml:space="preserve"
              filename="glib/gvariant-core.c"
-             line="1435">Checks if @value is in normal form.
+             line="1438">Checks if @value is in normal form.
 
 The main reason to do this is to detect if a given chunk of
 serialized data is in normal form: load the data into a #GVariant
@@ -58041,14 +58041,14 @@ GVariant is guaranteed to handle nesting up to at least 64 levels.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/gvariant-core.c"
-               line="1453">%TRUE if @value is in normal form</doc>
+               line="1456">%TRUE if @value is in normal form</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="value" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="glib/gvariant-core.c"
-                 line="1437">a #GVariant instance</doc>
+                 line="1440">a #GVariant instance</doc>
             <type name="Variant" c:type="GVariant*"/>
           </instance-parameter>
         </parameters>
@@ -58392,7 +58392,7 @@ are not floating.</doc>
       <method name="store" c:identifier="g_variant_store" version="2.24">
         <doc xml:space="preserve"
              filename="glib/gvariant-core.c"
-             line="1394">Stores the serialized form of @value at @data.  @data should be
+             line="1397">Stores the serialized form of @value at @data.  @data should be
 large enough.  See g_variant_get_size().
 
 The stored data is in machine native byte order but may not be in
@@ -58412,13 +58412,13 @@ This function is approximately O(n) in the size of @data.</doc>
           <instance-parameter name="value" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="glib/gvariant-core.c"
-                 line="1396">the #GVariant to store</doc>
+                 line="1399">the #GVariant to store</doc>
             <type name="Variant" c:type="GVariant*"/>
           </instance-parameter>
           <parameter name="data" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="glib/gvariant-core.c"
-                 line="1397">the location to store the serialized data at</doc>
+                 line="1400">the location to store the serialized data at</doc>
             <type name="gpointer" c:type="gpointer"/>
           </parameter>
         </parameters>
@@ -64890,14 +64890,14 @@ g_atomic_ref_count_init() to be used again.</doc>
               version="2.12">
       <doc xml:space="preserve"
            filename="glib/gbase64.c"
-           line="370">Decode a sequence of Base-64 encoded text into binary data.  Note
+           line="377">Decode a sequence of Base-64 encoded text into binary data.  Note
 that the returned binary data is not necessarily zero-terminated,
 so it should not be used as a character string.</doc>
       <source-position filename="glib/gbase64.h" line="54"/>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve"
              filename="glib/gbase64.c"
-             line="379">
+             line="386">
               newly allocated buffer containing the binary data
               that @text represents. The returned buffer must
               be freed with g_free().</doc>
@@ -64909,7 +64909,7 @@ so it should not be used as a character string.</doc>
         <parameter name="text" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/gbase64.c"
-               line="372">zero-terminated string with base64 text to decode</doc>
+               line="379">zero-terminated string with base64 text to decode</doc>
           <type name="utf8" c:type="const gchar*"/>
         </parameter>
         <parameter name="out_len"
@@ -64918,7 +64918,7 @@ so it should not be used as a character string.</doc>
                    transfer-ownership="full">
           <doc xml:space="preserve"
                filename="glib/gbase64.c"
-               line="373">The length of the decoded data is written here</doc>
+               line="380">The length of the decoded data is written here</doc>
           <type name="gsize" c:type="gsize*"/>
         </parameter>
       </parameters>
@@ -64928,13 +64928,13 @@ so it should not be used as a character string.</doc>
               version="2.20">
       <doc xml:space="preserve"
            filename="glib/gbase64.c"
-           line="409">Decode a sequence of Base-64 encoded text into binary data
+           line="416">Decode a sequence of Base-64 encoded text into binary data
 by overwriting the input data.</doc>
       <source-position filename="glib/gbase64.h" line="57"/>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve"
              filename="glib/gbase64.c"
-             line="418">The binary data that @text responds. This pointer
+             line="425">The binary data that @text responds. This pointer
               is the same as the input @text.</doc>
         <type name="guint8" c:type="guchar*"/>
       </return-value>
@@ -64945,7 +64945,7 @@ by overwriting the input data.</doc>
                    transfer-ownership="full">
           <doc xml:space="preserve"
                filename="glib/gbase64.c"
-               line="411">zero-terminated
+               line="418">zero-terminated
        string with base64 text to decode</doc>
           <array length="1" zero-terminated="0" c:type="gchar*">
             <type name="guint8"/>
@@ -64957,7 +64957,7 @@ by overwriting the input data.</doc>
                    transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/gbase64.c"
-               line="413">The length of the decoded data is written here</doc>
+               line="420">The length of the decoded data is written here</doc>
           <type name="gsize" c:type="gsize*"/>
         </parameter>
       </parameters>
@@ -64968,7 +64968,7 @@ by overwriting the input data.</doc>
               introspectable="0">
       <doc xml:space="preserve"
            filename="glib/gbase64.c"
-           line="280">Incrementally decode a sequence of binary data from its Base-64 stringified
+           line="287">Incrementally decode a sequence of binary data from its Base-64 stringified
 representation. By calling this function multiple times you can convert
 data in chunks to avoid having to have the full encoded data in memory.
 
@@ -64980,14 +64980,14 @@ state).</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve"
              filename="glib/gbase64.c"
-             line="297">The number of bytes of output that was written</doc>
+             line="304">The number of bytes of output that was written</doc>
         <type name="gsize" c:type="gsize"/>
       </return-value>
       <parameters>
         <parameter name="in" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/gbase64.c"
-               line="282">binary input data</doc>
+               line="289">binary input data</doc>
           <array length="1" zero-terminated="0" c:type="const gchar*">
             <type name="guint8"/>
           </array>
@@ -64995,7 +64995,7 @@ state).</doc>
         <parameter name="len" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/gbase64.c"
-               line="283">max length of @in data to decode</doc>
+               line="290">max length of @in data to decode</doc>
           <type name="gsize" c:type="gsize"/>
         </parameter>
         <parameter name="out"
@@ -65004,7 +65004,7 @@ state).</doc>
                    transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/gbase64.c"
-               line="284">output buffer</doc>
+               line="291">output buffer</doc>
           <array zero-terminated="0" c:type="guchar*">
             <type name="guint8"/>
           </array>
@@ -65015,7 +65015,7 @@ state).</doc>
                    transfer-ownership="full">
           <doc xml:space="preserve"
                filename="glib/gbase64.c"
-               line="285">Saved state between steps, initialize to 0</doc>
+               line="292">Saved state between steps, initialize to 0</doc>
           <type name="gint" c:type="gint*"/>
         </parameter>
         <parameter name="save"
@@ -65024,7 +65024,7 @@ state).</doc>
                    transfer-ownership="full">
           <doc xml:space="preserve"
                filename="glib/gbase64.c"
-               line="286">Saved state between steps, initialize to 0</doc>
+               line="293">Saved state between steps, initialize to 0</doc>
           <type name="guint" c:type="guint*"/>
         </parameter>
       </parameters>
@@ -88697,7 +88697,7 @@ for details.</doc>
               version="2.4">
       <doc xml:space="preserve"
            filename="glib/guniprop.c"
-           line="1236">In Unicode, some characters are "mirrored". This means that their
+           line="1267">In Unicode, some characters are "mirrored". This means that their
 images are mirrored horizontally in text that is laid out from right
 to left. For instance, "(" would become its mirror image, ")", in
 right-to-left text.
@@ -88710,14 +88710,14 @@ pointed to by @mirrored_ch.  Otherwise the original character is put.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve"
              filename="glib/guniprop.c"
-             line="1251">%TRUE if @ch has a mirrored character, %FALSE otherwise</doc>
+             line="1282">%TRUE if @ch has a mirrored character, %FALSE otherwise</doc>
         <type name="gboolean" c:type="gboolean"/>
       </return-value>
       <parameters>
         <parameter name="ch" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1238">a Unicode character</doc>
+               line="1269">a Unicode character</doc>
           <type name="gunichar" c:type="gunichar"/>
         </parameter>
         <parameter name="mirrored_ch"
@@ -88726,7 +88726,7 @@ pointed to by @mirrored_ch.  Otherwise the original character is put.</doc>
                    transfer-ownership="full">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1239">location to store the mirrored character</doc>
+               line="1270">location to store the mirrored character</doc>
           <type name="gunichar" c:type="gunichar*"/>
         </parameter>
       </parameters>
@@ -88736,7 +88736,7 @@ pointed to by @mirrored_ch.  Otherwise the original character is put.</doc>
               version="2.14">
       <doc xml:space="preserve"
            filename="glib/guniprop.c"
-           line="1299">Looks up the #GUnicodeScript for a particular character (as defined
+           line="1330">Looks up the #GUnicodeScript for a particular character (as defined
 by Unicode Standard Annex \#24). No check is made for @ch being a
 valid Unicode character; if you pass in invalid character, the
 result is undefined.
@@ -88747,14 +88747,14 @@ two are interchangeable.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve"
              filename="glib/guniprop.c"
-             line="1311">the #GUnicodeScript for the character.</doc>
+             line="1342">the #GUnicodeScript for the character.</doc>
         <type name="UnicodeScript" c:type="GUnicodeScript"/>
       </return-value>
       <parameters>
         <parameter name="ch" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1301">a Unicode character</doc>
+               line="1332">a Unicode character</doc>
           <type name="gunichar" c:type="gunichar"/>
         </parameter>
       </parameters>
@@ -89394,7 +89394,7 @@ manual for more information.</doc>
               version="2.30">
       <doc xml:space="preserve"
            filename="glib/guniprop.c"
-           line="1574">Looks up the Unicode script for @iso15924.  ISO 15924 assigns four-letter
+           line="1605">Looks up the Unicode script for @iso15924.  ISO 15924 assigns four-letter
 codes to scripts.  For example, the code for Arabic is 'Arab'.
 This function accepts four letter codes encoded as a @guint32 in a
 big-endian fashion.  That is, the code expected for Arabic is
@@ -89407,7 +89407,7 @@ for details.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve"
              filename="glib/guniprop.c"
-             line="1588">the Unicode script for @iso15924, or
+             line="1619">the Unicode script for @iso15924, or
   of %G_UNICODE_SCRIPT_INVALID_CODE if @iso15924 is zero and
   %G_UNICODE_SCRIPT_UNKNOWN if @iso15924 is unknown.</doc>
         <type name="UnicodeScript" c:type="GUnicodeScript"/>
@@ -89416,7 +89416,7 @@ for details.</doc>
         <parameter name="iso15924" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1576">a Unicode script</doc>
+               line="1607">a Unicode script</doc>
           <type name="guint32" c:type="guint32"/>
         </parameter>
       </parameters>
@@ -89427,7 +89427,7 @@ for details.</doc>
               version="2.30">
       <doc xml:space="preserve"
            filename="glib/guniprop.c"
-           line="1542">Looks up the ISO 15924 code for @script.  ISO 15924 assigns four-letter
+           line="1573">Looks up the ISO 15924 code for @script.  ISO 15924 assigns four-letter
 codes to scripts.  For example, the code for Arabic is 'Arab'.  The
 four letter codes are encoded as a @guint32 by this function in a
 big-endian fashion.  That is, the code returned for Arabic is
@@ -89440,7 +89440,7 @@ for details.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve"
              filename="glib/guniprop.c"
-             line="1556">the ISO 15924 code for @script, encoded as an integer,
+             line="1587">the ISO 15924 code for @script, encoded as an integer,
   of zero if @script is %G_UNICODE_SCRIPT_INVALID_CODE or
   ISO 15924 code 'Zzzz' (script code for UNKNOWN) if @script is not understood.</doc>
         <type name="guint32" c:type="guint32"/>
@@ -89449,7 +89449,7 @@ for details.</doc>
         <parameter name="script" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1544">a Unicode script</doc>
+               line="1575">a Unicode script</doc>
           <type name="UnicodeScript" c:type="GUnicodeScript"/>
         </parameter>
       </parameters>
@@ -91374,7 +91374,7 @@ unpaired surrogates or partial character sequences.</doc>
     <function name="utf8_casefold" c:identifier="g_utf8_casefold">
       <doc xml:space="preserve"
            filename="glib/guniprop.c"
-           line="1169">Converts a string into a form that is independent of case. The
+           line="1200">Converts a string into a form that is independent of case. The
 result will not correspond to any particular case, but can be
 compared for equality or ordered with the results of calling
 g_utf8_casefold() on other strings.
@@ -91389,7 +91389,7 @@ provide such a function.</doc>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve"
              filename="glib/guniprop.c"
-             line="1186">a newly allocated string, that is a
+             line="1217">a newly allocated string, that is a
   case independent form of @str.</doc>
         <type name="utf8" c:type="gchar*"/>
       </return-value>
@@ -91397,13 +91397,13 @@ provide such a function.</doc>
         <parameter name="str" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1171">a UTF-8 encoded string</doc>
+               line="1202">a UTF-8 encoded string</doc>
           <type name="utf8" c:type="const gchar*"/>
         </parameter>
         <parameter name="len" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1172">length of @str, in bytes, or -1 if @str is nul-terminated.</doc>
+               line="1203">length of @str, in bytes, or -1 if @str is nul-terminated.</doc>
           <type name="gssize" c:type="gssize"/>
         </parameter>
       </parameters>
@@ -91920,7 +91920,7 @@ If @len is `-1`, allow unbounded search.</doc>
     <function name="utf8_strdown" c:identifier="g_utf8_strdown">
       <doc xml:space="preserve"
            filename="glib/guniprop.c"
-           line="1133">Converts all Unicode characters in the string that have a case
+           line="1162">Converts all Unicode characters in the string that have a case
 to lowercase. The exact manner that this is done depends
 on the current locale, and may result in the number of
 characters in the string changing.</doc>
@@ -91928,7 +91928,7 @@ characters in the string changing.</doc>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve"
              filename="glib/guniprop.c"
-             line="1143">a newly allocated string, with all characters
+             line="1172">a newly allocated string, with all characters
    converted to lowercase.</doc>
         <type name="utf8" c:type="gchar*"/>
       </return-value>
@@ -91936,13 +91936,13 @@ characters in the string changing.</doc>
         <parameter name="str" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1135">a UTF-8 encoded string</doc>
+               line="1164">a UTF-8 encoded string</doc>
           <type name="utf8" c:type="const gchar*"/>
         </parameter>
         <parameter name="len" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="1136">length of @str, in bytes, or -1 if @str is nul-terminated.</doc>
+               line="1165">length of @str, in bytes, or -1 if @str is nul-terminated.</doc>
           <type name="gssize" c:type="gssize"/>
         </parameter>
       </parameters>
@@ -92101,7 +92101,7 @@ no longer needed.</doc>
     <function name="utf8_strup" c:identifier="g_utf8_strup">
       <doc xml:space="preserve"
            filename="glib/guniprop.c"
-           line="938">Converts all Unicode characters in the string that have a case
+           line="964">Converts all Unicode characters in the string that have a case
 to uppercase. The exact manner that this is done depends
 on the current locale, and may result in the number of
 characters in the string increasing. (For instance, the
@@ -92110,7 +92110,7 @@ German ess-zet will be changed to SS.)</doc>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve"
              filename="glib/guniprop.c"
-             line="949">a newly allocated string, with all characters
+             line="975">a newly allocated string, with all characters
    converted to uppercase.</doc>
         <type name="utf8" c:type="gchar*"/>
       </return-value>
@@ -92118,13 +92118,13 @@ German ess-zet will be changed to SS.)</doc>
         <parameter name="str" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="940">a UTF-8 encoded string</doc>
+               line="966">a UTF-8 encoded string</doc>
           <type name="utf8" c:type="const gchar*"/>
         </parameter>
         <parameter name="len" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="glib/guniprop.c"
-               line="941">length of @str, in bytes, or -1 if @str is nul-terminated.</doc>
+               line="967">length of @str, in bytes, or -1 if @str is nul-terminated.</doc>
           <type name="gssize" c:type="gssize"/>
         </parameter>
       </parameters>

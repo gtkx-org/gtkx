@@ -14,10 +14,7 @@ type OwnProps = Pick<AdwToggleGroupProps, (typeof OWN_PROPS)[number]>;
 export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, OwnProps> {
     private managedToggles: Adw.Toggle[] = [];
 
-    public static override createContainer(
-        props: Props,
-        containerClass: typeof Gtk.Widget,
-    ): Container | null {
+    public static override createContainer(props: Props, containerClass: typeof Gtk.Widget): Container | null {
         const { activeName: _, active: __, ...rest } = props;
         return createContainerWithProperties(containerClass, rest);
     }
@@ -27,10 +24,7 @@ export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, OwnProps> {
             this.syncToggles(newProps.toggles ?? []);
         }
 
-        super.commitUpdate(
-            oldProps ? filterProps(oldProps, OWN_PROPS) : null,
-            filterProps(newProps, OWN_PROPS),
-        );
+        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
 
         if (hasChanged(oldProps, newProps, "activeName")) {
             this.container.setActiveName(newProps.activeName ?? null);
@@ -48,9 +42,7 @@ export class ToggleGroupNode extends WidgetNode<Adw.ToggleGroup, OwnProps> {
                 this,
                 this.container,
                 "notify::active",
-                callback
-                    ? () => callback(this.container.getActive(), this.container.getActiveName())
-                    : undefined,
+                callback ? () => callback(this.container.getActive(), this.container.getActiveName()) : undefined,
             );
         }
     }

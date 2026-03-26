@@ -259,7 +259,7 @@ const AppContent = () => {
                         comments="Program to demonstrate GTKX widgets"
                         authors={["The GTKX Team"]}
                         logo={gtkxLogo}
-                        licenseType={Gtk.License.MIT_X11}
+                        licenseType={Gtk.License.MPL_2_0}
                         wrapLicense
                         onClose={handleCloseAbout}
                     />,

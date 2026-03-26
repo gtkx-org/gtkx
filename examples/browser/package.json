@@ -2,6 +2,7 @@
     "name": "browser",
     "version": "0.0.0",
     "private": true,
+    "license": "MPL-2.0",
     "description": "Simple browser using WebKitWebView",
     "type": "module",
     "gtkx": {

@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build-dir/
+*.tsbuildinfo
+
+# Flatpak
+.flatpak-builder/
+flatpak-repo/
+
+# Turborepo
+.turbo/
+
+# Generated vendor files
+vendor/

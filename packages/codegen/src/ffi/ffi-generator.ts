@@ -71,7 +71,7 @@ export class FfiGenerator {
 
     private getNamespaceLibrary(namespaceName: string): string {
         const ns = this.options.repository.getNamespace(namespaceName);
-        if (!ns || !ns.sharedLibrary) {
+        if (!ns?.sharedLibrary) {
             throw new Error(`No shared library found for namespace: ${namespaceName}`);
         }
         const firstLib = ns.sharedLibrary.split(",")[0];

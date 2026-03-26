@@ -22,6 +22,7 @@ export default function App() {
     const [notes, setNotes] = useState<Note[]>([
         { id: "1", title: "Welcome", body: "Your first note!", createdAt: new Date() },
         { id: "2", title: "Shopping List", body: "Milk, eggs, bread", createdAt: new Date() },
+        { id: "3", title: "Meeting Notes", body: "Discuss project timeline and deliverables", createdAt: new Date() },
     ]);
 
     const addNote = () => {
@@ -81,6 +82,7 @@ Put it all together:
 import {
     AdwApplicationWindow,
     AdwHeaderBar,
+    AdwStatusPage,
     AdwToolbarView,
     GtkBox,
     GtkButton,
@@ -128,6 +130,7 @@ export default function App() {
     const [notes, setNotes] = useState<Note[]>([
         { id: "1", title: "Welcome", body: "Your first note!", createdAt: new Date() },
         { id: "2", title: "Shopping List", body: "Milk, eggs, bread", createdAt: new Date() },
+        { id: "3", title: "Meeting Notes", body: "Discuss project timeline and deliverables", createdAt: new Date() },
     ]);
 
     const addNote = () => {
@@ -146,47 +149,56 @@ export default function App() {
                 <AdwToolbarView.AddTopBar>
                     <AdwHeaderBar>
                         <AdwHeaderBar.PackStart>
-                            <GtkButton iconName="list-add-symbolic" onClicked={addNote} />
+                            <GtkButton iconName="list-add-symbolic" tooltipText="New Note" onClicked={addNote} />
                         </AdwHeaderBar.PackStart>
                     </AdwHeaderBar>
                 </AdwToolbarView.AddTopBar>
-                <GtkScrolledWindow vexpand>
-                    <GtkBox
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={8}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                    >
-                        {notes.map((note) => (
-                            <GtkBox
-                                key={note.id}
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={4}
-                                cssClasses={[noteCard]}
-                            >
-                                <GtkLabel
-                                    label={note.title}
-                                    halign={Gtk.Align.START}
-                                    cssClasses={[noteTitle]}
-                                />
-                                <GtkLabel
-                                    label={note.body || "Empty note"}
-                                    halign={Gtk.Align.START}
-                                    cssClasses={[notePreview]}
-                                    ellipsize={2}
-                                    lines={1}
-                                />
-                                <GtkLabel
-                                    label={note.createdAt.toLocaleDateString()}
-                                    halign={Gtk.Align.START}
-                                    cssClasses={[noteDate]}
-                                />
-                            </GtkBox>
-                        ))}
-                    </GtkBox>
-                </GtkScrolledWindow>
+                {notes.length > 0 ? (
+                    <GtkScrolledWindow vexpand>
+                        <GtkBox
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={8}
+                            marginTop={12}
+                            marginBottom={12}
+                            marginStart={12}
+                            marginEnd={12}
+                        >
+                            {notes.map((note) => (
+                                <GtkBox
+                                    key={note.id}
+                                    orientation={Gtk.Orientation.VERTICAL}
+                                    spacing={4}
+                                    cssClasses={[noteCard]}
+                                >
+                                    <GtkLabel
+                                        label={note.title}
+                                        halign={Gtk.Align.START}
+                                        cssClasses={[noteTitle]}
+                                    />
+                                    <GtkLabel
+                                        label={note.body || "Empty note"}
+                                        halign={Gtk.Align.START}
+                                        cssClasses={[notePreview]}
+                                        ellipsize={2}
+                                        lines={1}
+                                    />
+                                    <GtkLabel
+                                        label={note.createdAt.toLocaleDateString()}
+                                        halign={Gtk.Align.START}
+                                        cssClasses={[noteDate]}
+                                    />
+                                </GtkBox>
+                            ))}
+                        </GtkBox>
+                    </GtkScrolledWindow>
+                ) : (
+                    <AdwStatusPage
+                        vexpand
+                        iconName="document-edit-symbolic"
+                        title="No Notes Yet"
+                        description="Press + to create your first note"
+                    />
+                )}
             </AdwToolbarView>
         </AdwApplicationWindow>
     );

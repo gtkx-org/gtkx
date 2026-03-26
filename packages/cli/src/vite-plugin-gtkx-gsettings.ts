@@ -7,6 +7,7 @@ import type { Plugin } from "vite";
 const SCHEMA_RE = /\.gschema\.xml$/;
 const SCHEMA_ID_RE = /<schema\s+id="([^"]+)"/g;
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
+const VIRTUAL_INIT = "\0gtkx-gsettings-init";
 
 /**
  * Vite plugin that compiles GSettings schemas when imported.
@@ -22,11 +23,10 @@ const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
  * `Gio.Settings` can find the compiled result. Schema file changes
  * trigger recompilation via HMR.
  *
- * **Build mode:** Inlines the schema XML into the bundle. At startup the
- * module compiles the schema to a temporary directory and prepends it to
- * `GSETTINGS_SCHEMA_DIR`. This makes the app self-contained — no
- * post-install step is needed. If the schema is already installed
- * system-wide (e.g. via Flatpak), the duplicate entry is harmless.
+ * **Build mode:** All imported schemas are compiled together at build time
+ * into a single `gschemas.compiled` asset emitted next to the bundle. At
+ * runtime a shared init module sets `GSETTINGS_SCHEMA_DIR` to the
+ * bundle's directory once, regardless of how many schemas are imported.
  *
  * @example
  * ```ts
@@ -38,6 +38,7 @@ export function gtkxGSettings(): Plugin {
     let schemaDir: string | null = null;
     let isBuild = false;
     const trackedSchemas = new Map<string, string>();
+    const buildSchemas = new Map<string, string>();
 
     const ensureSchemaDir = (): string => {
         if (!schemaDir) {
@@ -63,6 +64,7 @@ export function gtkxGSettings(): Plugin {
         },
 
         async resolveId(source, importer, options) {
+            if (source === VIRTUAL_INIT) return VIRTUAL_INIT;
             if (!SCHEMA_RE.test(source)) return;
 
             const resolved = await this.resolve(source, importer, {
@@ -75,6 +77,17 @@ export function gtkxGSettings(): Plugin {
         },
 
         load(id) {
+            if (id === VIRTUAL_INIT) {
+                return [
+                    `import { dirname } from "node:path";`,
+                    `import { fileURLToPath } from "node:url";`,
+                    ``,
+                    `const bundleDir = dirname(fileURLToPath(import.meta.url));`,
+                    `const existing = process.env.GSETTINGS_SCHEMA_DIR;`,
+                    `process.env.GSETTINGS_SCHEMA_DIR = existing ? bundleDir + ":" + existing : bundleDir;`,
+                ].join("\n");
+            }
+
             if (!id.startsWith(VIRTUAL_PREFIX)) return;
 
             const filePath = id.slice(VIRTUAL_PREFIX.length);
@@ -82,7 +95,8 @@ export function gtkxGSettings(): Plugin {
             const fileName = basename(filePath);
 
             if (isBuild) {
-                console.log(`[gtkx] Inlined GSettings schema: ${fileName}`);
+                buildSchemas.set(filePath, fileName);
+                console.log(`[gtkx] Queued GSettings schema: ${fileName}`);
             } else {
                 trackedSchemas.set(filePath, id);
 
@@ -99,7 +113,7 @@ export function gtkxGSettings(): Plugin {
             }
 
             if (schemaIds.length === 0) {
-                this.error(`No <schema id="..."> found in ${basename(filePath)}`);
+                this.error(`No <schema id="..."> found in ${fileName}`);
             }
 
             const exports = [`export default ${JSON.stringify(schemaIds[0])};`];
@@ -109,23 +123,29 @@ export function gtkxGSettings(): Plugin {
             }
 
             if (isBuild) {
-                const preamble = [
-                    `import { execFileSync } from "node:child_process";`,
-                    `import { mkdtempSync, writeFileSync } from "node:fs";`,
-                    `import { tmpdir } from "node:os";`,
-                    `import { join } from "node:path";`,
-                    ``,
-                    `const xml = ${JSON.stringify(xml)};`,
-                    `const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));`,
-                    `writeFileSync(join(dir, ${JSON.stringify(fileName)}), xml);`,
-                    `execFileSync("glib-compile-schemas", [dir]);`,
-                    `const existing = process.env.GSETTINGS_SCHEMA_DIR;`,
-                    `process.env.GSETTINGS_SCHEMA_DIR = existing ? dir + ":" + existing : dir;`,
-                ];
-                return [...preamble, "", ...exports].join("\n");
+                return [`import ${JSON.stringify(VIRTUAL_INIT)};`, "", ...exports].join("\n");
             }
 
             return exports.join("\n");
+        },
+
+        buildEnd() {
+            if (!isBuild || buildSchemas.size === 0) return;
+
+            const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-build-"));
+            for (const [filePath, fileName] of buildSchemas) {
+                copyFileSync(filePath, join(dir, fileName));
+            }
+            execFileSync("glib-compile-schemas", [dir]);
+
+            const compiled = readFileSync(join(dir, "gschemas.compiled"));
+            this.emitFile({
+                type: "asset",
+                fileName: "gschemas.compiled",
+                source: compiled,
+            });
+
+            console.log(`[gtkx] Compiled ${buildSchemas.size} GSettings schema(s)`);
         },
 
         handleHotUpdate({ file, server }) {

@@ -17,6 +17,7 @@
 //!   dispatching pending GTK tasks while waiting to prevent deadlocks.
 
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 use neon::prelude::*;
@@ -33,6 +34,7 @@ struct PendingCallback {
 pub struct JsDispatcher {
     queue: Mutex<VecDeque<PendingCallback>>,
     pub wake: WaitSignal,
+    pub signal_callback_depth: AtomicUsize,
 }
 
 static DISPATCHER: OnceLock<JsDispatcher> = OnceLock::new();
@@ -46,6 +48,7 @@ impl JsDispatcher {
         Self {
             queue: Mutex::new(VecDeque::new()),
             wake: WaitSignal::new(),
+            signal_callback_depth: AtomicUsize::new(0),
         }
     }
 
@@ -90,12 +93,14 @@ impl JsDispatcher {
 
     pub fn process_pending<'a, C: Context<'a>>(&self, cx: &mut C) {
         while let Some(pending) = self.pop_callback() {
+            self.signal_callback_depth.fetch_add(1, Ordering::AcqRel);
             let result = Self::execute_callback(
                 cx,
                 &pending.callback,
                 &pending.args,
                 pending.capture_result,
             );
+            self.signal_callback_depth.fetch_sub(1, Ordering::AcqRel);
             if pending.result_tx.send(result).is_err() {
                 // Receiver dropped — GTK thread is shutting down
             }
@@ -123,7 +128,7 @@ impl JsDispatcher {
         F: FnOnce(anyhow::Result<Value>) -> T,
     {
         loop {
-            gtk_dispatch::GtkDispatcher::global().dispatch_pending();
+            gtk_dispatch::GtkDispatcher::global().dispatch_signal_pending();
 
             match rx.try_recv() {
                 Ok(result) => return on_result(result),

@@ -64,7 +64,13 @@ export const build = async (options: BuildOptions): Promise<void> => {
 
     await viteBuild({
         ...viteConfig,
-        plugins: [...(viteConfig?.plugins ?? []), gtkxGSettings(), gtkxAssets(), gtkxBuiltUrl(assetBase), gtkxNative(root)],
+        plugins: [
+            ...(viteConfig?.plugins ?? []),
+            gtkxGSettings(),
+            gtkxAssets(),
+            gtkxBuiltUrl(assetBase),
+            gtkxNative(root),
+        ],
         build: {
             ...viteConfig?.build,
             ssr: entry,

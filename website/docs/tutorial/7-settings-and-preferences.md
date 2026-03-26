@@ -9,7 +9,7 @@ Most desktop apps need a preferences dialog. GTKX provides `useProperty` and `us
 First, add a "Preferences" item to the menu button from [Chapter 4](./4-menus-and-shortcuts.md):
 
 ```tsx
-<GtkMenuButton iconName="open-menu-symbolic">
+<GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
     <GtkMenuButton.MenuItem
         id="new"
         label="New Note"
@@ -23,6 +23,12 @@ First, add a "Preferences" item to the menu button from [Chapter 4](./4-menus-an
             onActivate={() => setShowPreferences(true)}
             accels="<Control>comma"
         />
+        <GtkMenuButton.MenuItem
+            id="shortcuts"
+            label="Keyboard Shortcuts"
+            onActivate={() => {}}
+            accels="<Control>question"
+        />
     </GtkMenuButton.MenuSection>
     <GtkMenuButton.MenuSection>
         <GtkMenuButton.MenuItem
@@ -30,14 +36,36 @@ First, add a "Preferences" item to the menu button from [Chapter 4](./4-menus-an
             label="About Notes"
             onActivate={() => setShowAbout(true)}
         />
-        <GtkMenuButton.MenuItem
-            id="quit"
-            label="Quit"
-            onActivate={quit}
-            accels="<Control>q"
-        />
     </GtkMenuButton.MenuSection>
 </GtkMenuButton>
+```
+
+## Defining a GSettings Schema
+
+GSettings needs a schema that declares your keys, their types, and default values. Create a `.gschema.xml` file in your project root — `gtkx dev` will compile it automatically:
+
+```xml
+<!-- com.example.notes.gschema.xml -->
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="com.example.notes" path="/com/example/notes/">
+    <key name="compact-mode" type="b">
+      <default>false</default>
+      <summary>Compact mode</summary>
+      <description>Use smaller spacing in the note list</description>
+    </key>
+    <key name="spell-check" type="b">
+      <default>true</default>
+      <summary>Spell check</summary>
+      <description>Highlight spelling errors while typing</description>
+    </key>
+    <key name="font-size" type="i">
+      <default>14</default>
+      <summary>Font size</summary>
+      <description>Base font size for the editor</description>
+    </key>
+  </schema>
+</schemalist>
 ```
 
 ## The Preferences Dialog
@@ -55,7 +83,6 @@ import {
     createPortal,
     useApplication,
     useProperty,
-    useSetting,
 } from "@gtkx/react";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
@@ -70,7 +97,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
             modal
             defaultWidth={500}
             defaultHeight={400}
-            onCloseRequest={onClose}
+            onClose={onClose}
         >
             <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
                 <AdwPreferencesGroup title="Appearance">
@@ -111,15 +138,15 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
 | `AdwSpinRow` | A row with a numeric spin button |
 | `AdwComboRow` | A row with a dropdown selector |
 
-## Reading System Settings with `useSetting`
+## Reading and Writing Settings with `useSetting`
 
-The `useSetting` hook subscribes to a GSettings key and returns its value as React state. When the setting changes (even from outside your app), the component re-renders automatically.
+The `useSetting` hook subscribes to a GSettings key and returns a `[value, setValue]` tuple, similar to `useState`. When the setting changes (even from outside your app), the component re-renders automatically. Calling the setter writes the new value to GSettings.
 
 ```tsx
 import { useSetting } from "@gtkx/react";
 
 function ThemeIndicator() {
-    const colorScheme = useSetting("org.gnome.desktop.interface", "color-scheme", "string");
+    const [colorScheme] = useSetting("org.gnome.desktop.interface", "color-scheme", "string");
 
     return <GtkLabel label={colorScheme === "prefer-dark" ? "Dark mode" : "Light mode"} />;
 }
@@ -127,15 +154,15 @@ function ThemeIndicator() {
 
 ### Supported Types
 
-The third argument selects the GSettings getter used to read the value:
+The third argument selects the GSettings getter/setter used to read and write the value:
 
-| Type | Returns | GSettings Method |
+| Type | Returns | GSettings Methods |
 |------|---------|-----------------|
-| `"boolean"` | `boolean` | `getBoolean()` |
-| `"int"` | `number` | `getInt()` |
-| `"double"` | `number` | `getDouble()` |
-| `"string"` | `string` | `getString()` |
-| `"strv"` | `string[]` | `getStrv()` |
+| `"boolean"` | `boolean` | `getBoolean()` / `setBoolean()` |
+| `"int"` | `number` | `getInt()` / `setInt()` |
+| `"double"` | `number` | `getDouble()` / `setDouble()` |
+| `"string"` | `string` | `getString()` / `setString()` |
+| `"strv"` | `string[]` | `getStrv()` / `setStrv()` |
 
 ## Observing GObject Properties with `useProperty`
 
@@ -164,20 +191,18 @@ The return type is inferred from the ES6 accessor on the object — `useProperty
 
 ## Wiring Preferences to Settings
 
-Here's a complete preferences dialog that reads and writes GSettings values:
+Here's a complete preferences dialog that reads and writes GSettings values. The `useSetting` setter writes directly to GSettings, which fires the `changed` signal and keeps the UI in sync — even if the setting is changed externally (for example via `gsettings set` in a terminal or `dconf-editor`):
 
 ```tsx
-import * as Gio from "@gtkx/ffi/gio";
-import { useMemo } from "react";
+import schemaId from "../com.example.notes.gschema.xml";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
-    const settings = useMemo(() => new Gio.Settings("com.example.notes"), []);
 
-    const compactMode = useSetting("com.example.notes", "compact-mode", "boolean");
-    const spellCheck = useSetting("com.example.notes", "spell-check", "boolean");
-    const fontSize = useSetting("com.example.notes", "font-size", "int");
+    const [compactMode, setCompactMode] = useSetting(schemaId, "compact-mode", "boolean");
+    const [spellCheck, setSpellCheck] = useSetting(schemaId, "spell-check", "boolean");
+    const [fontSize, setFontSize] = useSetting(schemaId, "font-size", "int");
 
     if (!activeWindow) return null;
 
@@ -187,7 +212,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
             modal
             defaultWidth={500}
             defaultHeight={400}
-            onCloseRequest={onClose}
+            onClose={onClose}
         >
             <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
                 <AdwPreferencesGroup title="Appearance">
@@ -195,7 +220,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
                         title="Compact Mode"
                         subtitle="Use smaller spacing in the note list"
                         active={compactMode}
-                        onActiveChanged={(active) => settings.setBoolean("compact-mode", active)}
+                        onActiveChanged={setCompactMode}
                     />
                 </AdwPreferencesGroup>
                 <AdwPreferencesGroup title="Editor">
@@ -203,7 +228,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
                         title="Spell Check"
                         subtitle="Highlight spelling errors while typing"
                         active={spellCheck}
-                        onActiveChanged={(active) => settings.setBoolean("spell-check", active)}
+                        onActiveChanged={setSpellCheck}
                     />
                     <AdwSpinRow
                         title="Font Size"
@@ -212,7 +237,7 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
                         lower={8}
                         upper={32}
                         stepIncrement={1}
-                        onValueChanged={(value) => settings.setInt("font-size", value)}
+                        onValueChanged={setFontSize}
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
@@ -222,11 +247,58 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-Each `useSetting` call subscribes to the `changed::key` signal on the GSettings backend. When a value is written with `settings.setBoolean(...)`, the signal fires and the hook updates the React state. This keeps the UI in sync even if the setting is changed externally (for example via `gsettings set` in a terminal or `dconf-editor`).
-
 ::: tip
-GSettings requires a schema installed on the system. During development, use `glib-compile-schemas` to compile your `.gschema.xml` file and set `GSETTINGS_SCHEMA_DIR` to its location. GTKX's `gtkx dev` command handles this automatically when your schema is in the project root.
+GSettings requires a compiled schema installed on the system. Importing your `.gschema.xml` file directly (as shown above) triggers automatic compilation via the GTKX Vite plugin — no manual build step needed.
 :::
+
+## Applying Settings to the UI
+
+Settings are only useful if they change what the user sees. Read them in your top-level component with `useSetting` and pass the values down as props:
+
+```tsx
+// app.tsx
+import schemaId from "./com.example.notes.gschema.xml";
+
+export function App() {
+    const [compactMode] = useSetting(schemaId, "compact-mode", "boolean");
+    const [fontSize] = useSetting(schemaId, "font-size", "int");
+
+    // ... pass compactMode and fontSize to child components
+    return (
+        <GtkListView
+            estimatedItemHeight={compactMode ? 50 : 80}
+            renderItem={(note) => (
+                <NoteCard note={note} compact={compactMode} fontSize={fontSize} />
+            )}
+        />
+    );
+}
+```
+
+Then use dynamic CSS to apply the values. The `css` function deduplicates by content hash, so identical interpolations reuse the same class:
+
+```tsx
+import { css } from "@gtkx/css";
+
+const NoteCard = ({ note, compact, fontSize }: NoteCardProps) => {
+    const cardStyle = css`
+        padding: ${compact ? 8 : 16}px;
+    `;
+
+    const titleStyle = css`
+        font-weight: bold;
+        font-size: ${fontSize}px;
+    `;
+
+    return (
+        <GtkBox spacing={compact ? 2 : 4} cssClasses={[baseCard, cardStyle]}>
+            <GtkLabel label={note.title} cssClasses={[titleStyle]} />
+        </GtkBox>
+    );
+};
+```
+
+Because `useSetting` re-renders the component when the value changes, toggling a preference in the dialog updates the entire app instantly.
 
 ## Next
 

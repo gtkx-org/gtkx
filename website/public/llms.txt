@@ -15,19 +15,23 @@
 
 - [Introduction](https://gtkx.dev/docs/introduction): What GTKX is, how it works, architecture overview, and target audience
 - [Getting Started](https://gtkx.dev/docs/getting-started): Create first app, project structure, basic component patterns
-- [CLI Reference](https://gtkx.dev/docs/cli): gtkx create, gtkx dev, gtkx build commands, npm scripts, programmatic API
 - [FFI Bindings](https://gtkx.dev/docs/ffi-bindings): Importing GTK/GLib bindings, async methods, cancellation, error handling
-- [Styling](https://gtkx.dev/docs/styling): css(), cx(), injectGlobal()
-- [Portals and Dialogs](https://gtkx.dev/docs/portals): createPortal(), rendering dialogs and popovers outside the normal component tree
-- [Animations](https://gtkx.dev/docs/animations): x.Animation declarative animation component, timed and spring modes, exit animations
-- [x.* Elements](https://gtkx.dev/docs/x-elements): Grid layout, fixed positioning, overlays, notebook pages, rich text, keyboard shortcuts
-- [Lists](https://gtkx.dev/docs/lists): GtkListView, GtkGridView, GtkColumnView, GtkDropDown examples
-- [Menus](https://gtkx.dev/docs/menus): x.MenuItem, x.MenuSection, x.MenuSubmenu examples
-- [Slots](https://gtkx.dev/docs/slots): Named child positions (x.Slot) for widgets like GtkPaned, GtkMenuButton; x.ContainerSlot for widgets like HeaderBar, ToolbarView
-- [Adwaita](https://gtkx.dev/docs/adwaita): Adwaita x.* components examples
+- [Styling and CSS](https://gtkx.dev/docs/styling): css(), cx(), injectGlobal()
+- [Portals](https://gtkx.dev/docs/portals): createPortal(), rendering dialogs and popovers outside the normal component tree
 - [Testing](https://gtkx.dev/docs/testing): render(), renderHook(), screen queries and userEvent utilities, testing patterns
+- [CLI Reference](https://gtkx.dev/docs/cli): gtkx create, gtkx dev, gtkx build commands, npm scripts, programmatic API
 - [MCP Integration](https://gtkx.dev/docs/mcp): AI assistant integration via Model Context Protocol, widget tree inspection, automated UI interaction
-- [Deploying](https://gtkx.dev/docs/deploying): Node.js Single Executable Application (SEA), Flatpak/Snap packaging
+
+## Tutorial: Building a Notes App
+
+- [1. Window & Header Bar](https://gtkx.dev/docs/tutorial/1-window-and-header-bar): AdwApplicationWindow, AdwHeaderBar, compound components
+- [2. Styling with CSS-in-JS](https://gtkx.dev/docs/tutorial/2-styling): @gtkx/css, GTK CSS variables, responsive styling
+- [3. Lists & Data](https://gtkx.dev/docs/tutorial/3-lists): GtkListView, GtkColumnView, virtualized lists, tree models
+- [4. Menus & Shortcuts](https://gtkx.dev/docs/tutorial/4-menus-and-shortcuts): GtkMenuButton, keyboard shortcuts, actions
+- [5. Navigation & Split Views](https://gtkx.dev/docs/tutorial/5-navigation): AdwNavigationSplitView, AdwNavigationView, AdwViewStack
+- [6. Dialogs & Animations](https://gtkx.dev/docs/tutorial/6-dialogs-and-animations): AdwAlertDialog, portals, AdwTimedAnimation, AdwSpringAnimation
+- [7. Settings & Preferences](https://gtkx.dev/docs/tutorial/7-settings-and-preferences): GSettings schemas, useSetting hook, preferences dialog
+- [8. Deploying](https://gtkx.dev/docs/tutorial/8-deploying): Node.js Single Executable Application (SEA), Flatpak/Snap packaging
 
 ## API Reference
 

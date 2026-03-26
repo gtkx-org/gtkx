@@ -6,7 +6,7 @@ import { intro, log, outro } from "../core/utils/progress.js";
 import { GIRS_DIR, SYSTEM_GIRS_DIR } from "./constants.js";
 
 /** Root namespace keys whose transitive dependencies form the full GIR set. */
-const ROOTS = ["Gtk-4.0", "Adw-1"];
+const ROOTS = ["Gtk-4.0", "Adw-1", "GES-1.0", "GtkSource-5", "Vte-3.91", "WebKit-6.0"];
 
 export const sync = defineCommand({
     meta: {

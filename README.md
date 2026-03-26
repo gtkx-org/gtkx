@@ -49,10 +49,8 @@ Explore complete applications in the [`examples/`](./examples) directory:
 
 - **[hello-world](./examples/hello-world)** — Minimal application showing a counter
 - **[gtk-demo](./examples/gtk-demo)** — Full replica of the official GTK demo app
-- **[todo](./examples/todo)** — Full-featured todo application with Adwaita components and testing
-- **[x-showcase](./examples/x-showcase)** — Showcase of all x.\* virtual components
+- **[tutorial](./examples/tutorial)** — Notes app from the tutorial with GSettings and Adwaita
 - **[browser](./examples/browser)** — Simple browser using WebKitWebView
-- **[deploying](./examples/deploying)** — Example of packaging and distributing a GTKX app
 
 ## Documentation
 

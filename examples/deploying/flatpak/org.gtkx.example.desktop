@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=GTKX Example
-Comment=Example GTKX application
-Exec=gtkx-example
-Icon=org.gtkx.example
-Terminal=false
-Type=Application
-Categories=Utility;
-StartupNotify=true

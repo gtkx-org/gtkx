@@ -108,7 +108,7 @@ export class SocketServer extends EventEmitter<SocketServerEventMap> {
 
     send(connectionId: string, message: IpcMessage): boolean {
         const connection = this.connections.get(connectionId);
-        if (!connection || !connection.socket.writable) {
+        if (!connection?.socket.writable) {
             return false;
         }
 

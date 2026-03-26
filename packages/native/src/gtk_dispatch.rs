@@ -26,6 +26,15 @@
 //! freeze/unfreeze calls are no-ops. Only the outermost [`GtkDispatcher::unfreeze`] exits
 //! the loop.
 //!
+//! ## Signal Dispatch Isolation
+//!
+//! When a GTK signal callback dispatches to JS via `invoke_and_wait`, GLib blocks and
+//! cooperatively processes tasks from JS to prevent deadlocks. However, only tasks
+//! dispatched while `in_signal_dispatch` is set are processed during this cooperative
+//! loop. This prevents unrelated tasks (e.g., model splices from React microtasks) from
+//! executing during the PAINT phase of a frame, which would cause "snapshot without
+//! allocation" warnings.
+//!
 //! ## Shutdown
 //!
 //! [`GtkDispatcher::mark_stopped`] signals that the application is shutting down. After this,
@@ -46,7 +55,12 @@ use crate::error_reporter::NativeErrorReporter;
 use crate::js_dispatch;
 use crate::wait_signal::WaitSignal;
 
-type Task = Box<dyn FnOnce() + Send + 'static>;
+type TaskFn = Box<dyn FnOnce() + Send + 'static>;
+
+struct Task {
+    func: TaskFn,
+    signal_scoped: bool,
+}
 
 pub struct GtkDispatcher {
     queue: Mutex<VecDeque<Task>>,
@@ -91,11 +105,18 @@ impl GtkDispatcher {
         }
     }
 
-    fn push_task(&self, task: Task) {
+    fn push_task(&self, func: TaskFn) {
+        let signal_scoped = js_dispatch::JsDispatcher::global()
+            .signal_callback_depth
+            .load(Ordering::Acquire)
+            > 0;
         self.queue
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .push_back(task);
+            .push_back(Task {
+                func,
+                signal_scoped,
+            });
         if self.freeze_loop_active.load(Ordering::Acquire) {
             self.freeze_wake.notify();
         }
@@ -107,6 +128,20 @@ impl GtkDispatcher {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .pop_front()
+    }
+
+    fn pop_signal_scoped_task(&self) -> Option<Task> {
+        let mut queue = self
+            .queue
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        for i in 0..queue.len() {
+            if queue[i].signal_scoped {
+                return queue.remove(i);
+            }
+        }
+        None
     }
 
     pub fn run_on_gtk_thread<F, T>(&self, task: F) -> mpsc::Receiver<T>
@@ -210,7 +245,22 @@ impl GtkDispatcher {
         let mut dispatched = false;
 
         while let Some(task) = self.pop_task() {
-            task();
+            (task.func)();
+            dispatched = true;
+        }
+
+        if dispatched {
+            self.wake.notify();
+        }
+
+        dispatched
+    }
+
+    pub fn dispatch_signal_pending(&self) -> bool {
+        let mut dispatched = false;
+
+        while let Some(task) = self.pop_signal_scoped_task() {
+            (task.func)();
             dispatched = true;
         }
 

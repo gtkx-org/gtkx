@@ -13,26 +13,28 @@ import { GtkMenuButton } from "@gtkx/react";
 
 <AdwHeaderBar>
     <AdwHeaderBar.PackStart>
-        <GtkButton iconName="list-add-symbolic" onClicked={addNote} />
+        <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" onClicked={addNote} />
     </AdwHeaderBar.PackStart>
     <AdwHeaderBar.PackEnd>
-        <GtkMenuButton iconName="open-menu-symbolic">
+        <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
             <GtkMenuButton.MenuItem
                 id="new"
                 label="New Note"
                 onActivate={addNote}
                 accels="<Control>n"
             />
-            <GtkMenuButton.MenuSection label="Sort">
+            <GtkMenuButton.MenuSection>
                 <GtkMenuButton.MenuItem
-                    id="sort-title"
-                    label="By Title"
-                    onActivate={() => setSortBy("title")}
+                    id="preferences"
+                    label="Preferences"
+                    onActivate={() => setShowPreferences(true)}
+                    accels="<Control>comma"
                 />
                 <GtkMenuButton.MenuItem
-                    id="sort-date"
-                    label="By Date"
-                    onActivate={() => setSortBy("date")}
+                    id="shortcuts"
+                    label="Keyboard Shortcuts"
+                    onActivate={() => {}}
+                    accels="<Control>question"
                 />
             </GtkMenuButton.MenuSection>
             <GtkMenuButton.MenuSection>
@@ -46,6 +48,14 @@ import { GtkMenuButton } from "@gtkx/react";
     </AdwHeaderBar.PackEnd>
 </AdwHeaderBar>
 ```
+
+::: tip GNOME HIG Menu Guidelines
+The GNOME HIG has specific recommendations for primary menus:
+- Always use `open-menu-symbolic` as the icon and "Main Menu" as the tooltip
+- Include **Preferences**, **Keyboard Shortcuts**, and **About** items (in that order, in a final section)
+- Do **not** include "Quit" or "Close" — users close windows via the window controls
+- Keep menus between 3–12 items, grouped by purpose
+:::
 
 ### Menu Elements
 
@@ -158,7 +168,6 @@ import {
     AdwApplicationWindow,
     AdwHeaderBar,
     AdwToolbarView,
-    GtkBox,
     GtkButton,
     GtkMenuButton,
     GtkShortcutController,
@@ -183,10 +192,14 @@ export default function App() {
                 <AdwToolbarView.AddTopBar>
                     <AdwHeaderBar>
                         <AdwHeaderBar.PackStart>
-                            <GtkButton iconName="list-add-symbolic" onClicked={addNote} />
+                            <GtkButton
+                                iconName="list-add-symbolic"
+                                tooltipText="New Note (Ctrl+N)"
+                                onClicked={addNote}
+                            />
                         </AdwHeaderBar.PackStart>
                         <AdwHeaderBar.PackEnd>
-                            <GtkMenuButton iconName="open-menu-symbolic">
+                            <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
                                 <GtkMenuButton.MenuItem
                                     id="new"
                                     label="New Note"
@@ -195,15 +208,17 @@ export default function App() {
                                 />
                                 <GtkMenuButton.MenuSection>
                                     <GtkMenuButton.MenuItem
+                                        id="preferences"
+                                        label="Preferences"
+                                        onActivate={() => setShowPreferences(true)}
+                                        accels="<Control>comma"
+                                    />
+                                </GtkMenuButton.MenuSection>
+                                <GtkMenuButton.MenuSection>
+                                    <GtkMenuButton.MenuItem
                                         id="about"
                                         label="About Notes"
                                         onActivate={() => setShowAbout(true)}
-                                    />
-                                    <GtkMenuButton.MenuItem
-                                        id="quit"
-                                        label="Quit"
-                                        onActivate={quit}
-                                        accels="<Control>q"
                                     />
                                 </GtkMenuButton.MenuSection>
                             </GtkMenuButton>

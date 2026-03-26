@@ -59,6 +59,7 @@ const deleteNote = (note: Note) => {
 const confirmDelete = () => {
     if (noteToDelete) {
         setNotes(notes.filter((n) => n.id !== noteToDelete.id));
+        if (selectedId === noteToDelete.id) setSelectedId(null);
         setNoteToDelete(null);
     }
 };
@@ -104,14 +105,15 @@ Wrap a widget with `AdwTimedAnimation` to animate its properties over a fixed du
 
 ```tsx
 import { AdwTimedAnimation, GtkBox } from "@gtkx/react";
-import { Easing } from "@gtkx/ffi/adw";
+import * as Adw from "@gtkx/ffi/adw";
 
 const NoteCard = ({ note }: { note: Note }) => (
     <AdwTimedAnimation
         initial={{ opacity: 0, translateY: -10 }}
         animate={{ opacity: 1, translateY: 0 }}
+        exit={{ opacity: 0, translateX: -50 }}
         duration={200}
-        easing={Easing.EASE_OUT_CUBIC}
+        easing={Adw.Easing.EASE_OUT_CUBIC}
         animateOnMount
     >
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4} cssClasses={[noteCard]}>
@@ -218,6 +220,90 @@ Monitor animation lifecycle:
 >
     <GtkButton label="Animated" />
 </AdwSpringAnimation>
+```
+
+## Toast Notifications
+
+After a destructive action like deleting a note, show a toast notification with an undo option. Wrap the content area in `AdwToastOverlay` and create `Adw.Toast` objects imperatively:
+
+```tsx
+import * as Adw from "@gtkx/ffi/adw";
+import { AdwToastOverlay } from "@gtkx/react";
+import { useRef } from "react";
+
+const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
+
+const confirmDelete = () => {
+    if (!noteToDelete) return;
+
+    const deletedNote = noteToDelete;
+    const deletedIndex = notes.indexOf(deletedNote);
+    setNotes(notes.filter((n) => n.id !== deletedNote.id));
+    setNoteToDelete(null);
+
+    const toast = new Adw.Toast(`"${deletedNote.title}" deleted`);
+    toast.buttonLabel = "Undo";
+    toast.connect("button-clicked", () => {
+        setNotes((prev) => {
+            const restored = [...prev];
+            restored.splice(deletedIndex, 0, deletedNote);
+            return restored;
+        });
+    });
+    toastOverlayRef.current?.addToast(toast);
+};
+
+// In JSX — wrap your content area:
+<AdwToastOverlay ref={toastOverlayRef}>
+    {/* ... notes list and empty state */}
+</AdwToastOverlay>
+```
+
+::: tip When to Use Toasts
+The GNOME HIG recommends toasts for short-lived event messages and one-time notifications. For persistent states (like "offline mode"), use `AdwBanner` instead. Toasts with an undo button are the preferred pattern for destructive actions — they let users recover from mistakes without a confirmation dialog slowing them down.
+:::
+
+## About Dialog
+
+Every GNOME app should have an About dialog, accessible from the primary menu. Use `AdwAboutDialog` to display app name, version, credits, and license:
+
+```tsx
+import * as Gtk from "@gtkx/ffi/gtk";
+import { AdwAboutDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
+
+const About = ({ onClose }: { onClose: () => void }) => {
+    const app = useApplication();
+    const activeWindow = useProperty(app, "activeWindow");
+
+    if (!activeWindow) return null;
+
+    return createPortal(
+        <AdwAboutDialog
+            applicationName="Notes"
+            applicationIcon="document-edit-symbolic"
+            version="0.1.0"
+            developerName="GTKX Tutorial"
+            website="https://gtkx.dev"
+            copyright="© 2026 GTKX Contributors"
+            licenseType={Gtk.License.MIT_X11}
+            developers={["GTKX Contributors"]}
+            onClosed={onClose}
+        />,
+        activeWindow,
+    );
+};
+```
+
+Then wire it up from your menu:
+
+```tsx
+const [showAbout, setShowAbout] = useState(false);
+
+// In your menu:
+<GtkMenuButton.MenuItem id="about" label="About Notes" onActivate={() => setShowAbout(true)} />
+
+// In your JSX:
+{showAbout && <About onClose={() => setShowAbout(false)} />}
 ```
 
 ## Next

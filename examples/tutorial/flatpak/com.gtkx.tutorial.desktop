@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=GTKX Tutorial
+Comment=Notes app from the GTKX tutorial
+Exec=gtkx-tutorial
+Icon=com.gtkx.tutorial
+Terminal=false
+Type=Application
+Categories=Utility;
+StartupNotify=true

@@ -60,27 +60,31 @@ Add category navigation using `GtkListBox` with Adwaita action rows:
 import {
     AdwActionRow,
     GtkImage,
+    GtkLabel,
     GtkListBox,
     GtkScrolledWindow,
 } from "@gtkx/react";
-import * as Gtk from "@gtkx/ffi/gtk";
-import { useState } from "react";
 
 interface Category {
     id: string;
     title: string;
     icon: string;
-    count: number;
 }
 
 const categories: Category[] = [
-    { id: "all", title: "All Notes", icon: "document-edit-symbolic", count: 12 },
-    { id: "favorites", title: "Favorites", icon: "starred-symbolic", count: 3 },
-    { id: "recent", title: "Recent", icon: "document-open-recent-symbolic", count: 5 },
-    { id: "trash", title: "Trash", icon: "user-trash-symbolic", count: 1 },
+    { id: "all", title: "All Notes", icon: "document-edit-symbolic" },
+    { id: "favorites", title: "Favorites", icon: "starred-symbolic" },
+    { id: "recent", title: "Recent", icon: "document-open-recent-symbolic" },
+    { id: "trash", title: "Trash", icon: "user-trash-symbolic" },
 ];
 
-const Sidebar = ({ onCategoryChanged }: { onCategoryChanged: (id: string) => void }) => (
+const Sidebar = ({
+    noteCounts,
+    onCategoryChanged,
+}: {
+    noteCounts: Record<string, number>;
+    onCategoryChanged: (id: string) => void;
+}) => (
     <GtkScrolledWindow vexpand>
         <GtkListBox
             cssClasses={["navigation-sidebar"]}
@@ -96,7 +100,7 @@ const Sidebar = ({ onCategoryChanged }: { onCategoryChanged: (id: string) => voi
                         <GtkImage iconName={cat.icon} />
                     </AdwActionRow.AddPrefix>
                     <AdwActionRow.AddSuffix>
-                        <GtkLabel label={String(cat.count)} cssClasses={["dim-label"]} />
+                        <GtkLabel label={String(noteCounts[cat.id] ?? 0)} cssClasses={["dim-label"]} />
                     </AdwActionRow.AddSuffix>
                 </AdwActionRow>
             ))}
@@ -194,8 +198,18 @@ Here's how the pieces fit together:
 
 ```tsx
 export default function App() {
+    const [notes] = useState<Note[]>([ /* ... */ ]);
     const [category, setCategory] = useState("all");
     const [selectedId, setSelectedId] = useState<string | null>(null);
+
+    const selectedNote = notes.find((n) => n.id === selectedId);
+
+    const categoryTitles: Record<string, string> = {
+        all: "All Notes",
+        favorites: "Favorites",
+        recent: "Recent",
+        trash: "Trash",
+    };
 
     return (
         <AdwApplicationWindow title="Notes" defaultWidth={900} defaultHeight={600} onClose={quit}>
@@ -209,20 +223,26 @@ export default function App() {
                         <AdwToolbarView.AddTopBar>
                             <AdwHeaderBar>
                                 <AdwHeaderBar.PackStart>
-                                    <GtkButton iconName="list-add-symbolic" onClicked={addNote} />
+                                    <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" onClicked={addNote} />
                                 </AdwHeaderBar.PackStart>
                             </AdwHeaderBar>
                         </AdwToolbarView.AddTopBar>
-                        <Sidebar onCategoryChanged={setCategory} />
+                        <Sidebar
+                            noteCounts={{ all: notes.length, favorites: 0, recent: notes.length, trash: 0 }}
+                            onCategoryChanged={setCategory}
+                        />
                     </AdwToolbarView>
                 </AdwNavigationSplitView.Page>
 
-                <AdwNavigationSplitView.Page id="content" title={selectedNote?.title ?? "Notes"}>
+                <AdwNavigationSplitView.Page
+                    id="content"
+                    title={selectedNote?.title ?? categoryTitles[category] ?? "Notes"}
+                >
                     <AdwToolbarView>
                         <AdwToolbarView.AddTopBar>
                             <AdwHeaderBar>
                                 <AdwHeaderBar.PackEnd>
-                                    <GtkMenuButton iconName="open-menu-symbolic">
+                                    <GtkMenuButton iconName="open-menu-symbolic" tooltipText="Main Menu">
                                         {/* ... menu items */}
                                     </GtkMenuButton>
                                 </AdwHeaderBar.PackEnd>
@@ -235,6 +255,65 @@ export default function App() {
         </AdwApplicationWindow>
     );
 }
+```
+
+## Search
+
+Most content-centric GNOME apps provide search. `GtkSearchBar` slides into view when activated and connects to a `GtkSearchEntry`:
+
+```tsx
+import { GtkButton, GtkSearchBar, GtkSearchEntry } from "@gtkx/react";
+import * as Gtk from "@gtkx/ffi/gtk";
+import { useRef, useState } from "react";
+
+const [searchMode, setSearchMode] = useState(false);
+const [searchQuery, setSearchQuery] = useState("");
+const searchEntryRef = useRef<Gtk.SearchEntry | null>(null);
+
+// Add a search button to the header bar:
+<AdwHeaderBar.PackStart>
+    <GtkButton
+        iconName="system-search-symbolic"
+        tooltipText="Search (Ctrl+F)"
+        onClicked={() => setSearchMode(!searchMode)}
+    />
+</AdwHeaderBar.PackStart>
+
+// Place the search bar below the header bar, inside the content area:
+<GtkSearchBar
+    searchModeEnabled={searchMode}
+    onSearchModeChanged={setSearchMode}
+    keyCaptureWidget={searchEntryRef.current}
+>
+    <GtkSearchEntry
+        ref={searchEntryRef}
+        placeholderText="Search notes…"
+        onSearchChanged={(self) => setSearchQuery(self.text ?? "")}
+    />
+</GtkSearchBar>
+```
+
+Then filter your data based on `searchQuery`:
+
+```tsx
+const filteredNotes = searchQuery
+    ? notes.filter(
+          (n) =>
+              n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              n.body.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : notes;
+```
+
+When the list is empty, show a search-specific `AdwStatusPage`:
+
+```tsx
+<AdwStatusPage
+    vexpand
+    iconName={searchQuery ? "system-search-symbolic" : "document-edit-symbolic"}
+    title={searchQuery ? "No Results Found" : "No Notes Yet"}
+    description={searchQuery ? `No notes match "${searchQuery}"` : "Press + or Ctrl+N to create your first note"}
+/>
 ```
 
 ## Next

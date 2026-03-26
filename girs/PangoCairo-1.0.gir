@@ -55,14 +55,14 @@ font technology Cairo was compiled to use.</doc>
               version="1.18">
         <doc xml:space="preserve"
              filename="pango/pangocairo-font.c"
-             line="138">Gets the `cairo_scaled_font_t` used by @font.
+             line="617">Gets the `cairo_scaled_font_t` used by @font.
 The scaled font can be referenced and kept using
 cairo_scaled_font_reference().</doc>
         <source-position filename="pango/pangocairo.h" line="133"/>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve"
                filename="pango/pangocairo-font.c"
-               line="146">the `cairo_scaled_font_t`
+               line="625">the `cairo_scaled_font_t`
   used by @font</doc>
           <type name="cairo.ScaledFont" c:type="cairo_scaled_font_t*"/>
         </return-value>
@@ -73,7 +73,7 @@ cairo_scaled_font_reference().</doc>
                               allow-none="1">
             <doc xml:space="preserve"
                  filename="pango/pangocairo-font.c"
-                 line="140">a `PangoFont` from a `PangoCairoFontMap`</doc>
+                 line="619">a `PangoFont` from a `PangoCairoFontMap`</doc>
             <type name="Font" c:type="PangoCairoFont*"/>
           </instance-parameter>
         </parameters>
@@ -667,7 +667,7 @@ application that was laying out large amounts of text.</doc>
               version="1.14">
       <doc xml:space="preserve"
            filename="pango/pangocairo-render.c"
-           line="1244">Add a squiggly line to the current path in the specified cairo context that
+           line="1457">Add a squiggly line to the current path in the specified cairo context that
 approximately covers the given rectangle in the style of an underline used
 to indicate a spelling error.
 
@@ -681,31 +681,31 @@ segments and the resulting rectangle is centered in the original rectangle.</doc
         <parameter name="cr" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1246">a Cairo context</doc>
+               line="1459">a Cairo context</doc>
           <type name="cairo.Context" c:type="cairo_t*"/>
         </parameter>
         <parameter name="x" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1247">The X coordinate of one corner of the rectangle</doc>
+               line="1460">The X coordinate of one corner of the rectangle</doc>
           <type name="gdouble" c:type="double"/>
         </parameter>
         <parameter name="y" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1248">The Y coordinate of one corner of the rectangle</doc>
+               line="1461">The Y coordinate of one corner of the rectangle</doc>
           <type name="gdouble" c:type="double"/>
         </parameter>
         <parameter name="width" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1249">Non-negative width of the rectangle</doc>
+               line="1462">Non-negative width of the rectangle</doc>
           <type name="gdouble" c:type="double"/>
         </parameter>
         <parameter name="height" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1250">Non-negative height of the rectangle</doc>
+               line="1463">Non-negative height of the rectangle</doc>
           <type name="gdouble" c:type="double"/>
         </parameter>
       </parameters>
@@ -809,7 +809,7 @@ in fact in most of those cases, just use [func@PangoCairo.FontMap.get_default].<
               version="1.10">
       <doc xml:space="preserve"
            filename="pango/pangocairo-render.c"
-           line="1173">Adds the glyphs in @glyphs to the current path in the specified
+           line="1386">Adds the glyphs in @glyphs to the current path in the specified
 cairo context.
 
 The origin of the glyphs (the left edge of the baseline)
@@ -822,19 +822,19 @@ will be at the current point of the cairo context.</doc>
         <parameter name="cr" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1175">a Cairo context</doc>
+               line="1388">a Cairo context</doc>
           <type name="cairo.Context" c:type="cairo_t*"/>
         </parameter>
         <parameter name="font" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1176">a `PangoFont` from a `PangoCairoFontMap`</doc>
+               line="1389">a `PangoFont` from a `PangoCairoFontMap`</doc>
           <type name="Pango.Font" c:type="PangoFont*"/>
         </parameter>
         <parameter name="glyphs" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1177">a `PangoGlyphString`</doc>
+               line="1390">a `PangoGlyphString`</doc>
           <type name="Pango.GlyphString" c:type="PangoGlyphString*"/>
         </parameter>
       </parameters>
@@ -844,7 +844,7 @@ will be at the current point of the cairo context.</doc>
               version="1.10">
       <doc xml:space="preserve"
            filename="pango/pangocairo-render.c"
-           line="1198">Adds the text in `PangoLayoutLine` to the current path in the
+           line="1411">Adds the text in `PangoLayoutLine` to the current path in the
 specified cairo context.
 
 The origin of the glyphs (the left edge of the line) will be
@@ -857,13 +857,13 @@ at the current point of the cairo context.</doc>
         <parameter name="cr" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1200">a Cairo context</doc>
+               line="1413">a Cairo context</doc>
           <type name="cairo.Context" c:type="cairo_t*"/>
         </parameter>
         <parameter name="line" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1201">a `PangoLayoutLine`</doc>
+               line="1414">a `PangoLayoutLine`</doc>
           <type name="Pango.LayoutLine" c:type="PangoLayoutLine*"/>
         </parameter>
       </parameters>
@@ -873,7 +873,7 @@ at the current point of the cairo context.</doc>
               version="1.10">
       <doc xml:space="preserve"
            filename="pango/pangocairo-render.c"
-           line="1221">Adds the text in a `PangoLayout` to the current path in the
+           line="1434">Adds the text in a `PangoLayout` to the current path in the
 specified cairo context.
 
 The top-left corner of the `PangoLayout` will be at the
@@ -886,13 +886,13 @@ current point of the cairo context.</doc>
         <parameter name="cr" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1223">a Cairo context</doc>
+               line="1436">a Cairo context</doc>
           <type name="cairo.Context" c:type="cairo_t*"/>
         </parameter>
         <parameter name="layout" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1224">a Pango layout</doc>
+               line="1437">a Pango layout</doc>
           <type name="Pango.Layout" c:type="PangoLayout*"/>
         </parameter>
       </parameters>
@@ -902,7 +902,7 @@ current point of the cairo context.</doc>
               version="1.14">
       <doc xml:space="preserve"
            filename="pango/pangocairo-render.c"
-           line="1142">Draw a squiggly line in the specified cairo context that approximately
+           line="1355">Draw a squiggly line in the specified cairo context that approximately
 covers the given rectangle in the style of an underline used to indicate a
 spelling error.
 
@@ -917,31 +917,31 @@ original rectangle.</doc>
         <parameter name="cr" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1144">a Cairo context</doc>
+               line="1357">a Cairo context</doc>
           <type name="cairo.Context" c:type="cairo_t*"/>
         </parameter>
         <parameter name="x" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1145">The X coordinate of one corner of the rectangle</doc>
+               line="1358">The X coordinate of one corner of the rectangle</doc>
           <type name="gdouble" c:type="double"/>
         </parameter>
         <parameter name="y" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1146">The Y coordinate of one corner of the rectangle</doc>
+               line="1359">The Y coordinate of one corner of the rectangle</doc>
           <type name="gdouble" c:type="double"/>
         </parameter>
         <parameter name="width" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1147">Non-negative width of the rectangle</doc>
+               line="1360">Non-negative width of the rectangle</doc>
           <type name="gdouble" c:type="double"/>
         </parameter>
         <parameter name="height" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1148">Non-negative height of the rectangle</doc>
+               line="1361">Non-negative height of the rectangle</doc>
           <type name="gdouble" c:type="double"/>
         </parameter>
       </parameters>
@@ -951,7 +951,7 @@ original rectangle.</doc>
               version="1.22">
       <doc xml:space="preserve"
            filename="pango/pangocairo-render.c"
-           line="1066">Draws the glyphs in @glyph_item in the specified cairo context,
+           line="1279">Draws the glyphs in @glyph_item in the specified cairo context,
 
 embedding the text associated with the glyphs in the output if the
 output format supports it (PDF for example), otherwise it acts
@@ -970,19 +970,19 @@ indexed by `glyph_item-&gt;item-&gt;offset`.</doc>
         <parameter name="cr" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1068">a Cairo context</doc>
+               line="1281">a Cairo context</doc>
           <type name="cairo.Context" c:type="cairo_t*"/>
         </parameter>
         <parameter name="text" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1069">the UTF-8 text that @glyph_item refers to</doc>
+               line="1282">the UTF-8 text that @glyph_item refers to</doc>
           <type name="utf8" c:type="const char*"/>
         </parameter>
         <parameter name="glyph_item" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1070">a `PangoGlyphItem`</doc>
+               line="1283">a `PangoGlyphItem`</doc>
           <type name="Pango.GlyphItem" c:type="PangoGlyphItem*"/>
         </parameter>
       </parameters>
@@ -992,7 +992,7 @@ indexed by `glyph_item-&gt;item-&gt;offset`.</doc>
               version="1.10">
       <doc xml:space="preserve"
            filename="pango/pangocairo-render.c"
-           line="1041">Draws the glyphs in @glyphs in the specified cairo context.
+           line="1254">Draws the glyphs in @glyphs in the specified cairo context.
 
 The origin of the glyphs (the left edge of the baseline) will
 be drawn at the current point of the cairo context.</doc>
@@ -1004,19 +1004,19 @@ be drawn at the current point of the cairo context.</doc>
         <parameter name="cr" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1043">a Cairo context</doc>
+               line="1256">a Cairo context</doc>
           <type name="cairo.Context" c:type="cairo_t*"/>
         </parameter>
         <parameter name="font" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1044">a `PangoFont` from a `PangoCairoFontMap`</doc>
+               line="1257">a `PangoFont` from a `PangoCairoFontMap`</doc>
           <type name="Pango.Font" c:type="PangoFont*"/>
         </parameter>
         <parameter name="glyphs" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1045">a `PangoGlyphString`</doc>
+               line="1258">a `PangoGlyphString`</doc>
           <type name="Pango.GlyphString" c:type="PangoGlyphString*"/>
         </parameter>
       </parameters>
@@ -1026,7 +1026,7 @@ be drawn at the current point of the cairo context.</doc>
               version="1.10">
       <doc xml:space="preserve"
            filename="pango/pangocairo-render.c"
-           line="1120">Draws a `PangoLayout` in the specified cairo context.
+           line="1333">Draws a `PangoLayout` in the specified cairo context.
 
 The top-left corner of the `PangoLayout` will be drawn
 at the current point of the cairo context.</doc>
@@ -1038,13 +1038,13 @@ at the current point of the cairo context.</doc>
         <parameter name="cr" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1122">a Cairo context</doc>
+               line="1335">a Cairo context</doc>
           <type name="cairo.Context" c:type="cairo_t*"/>
         </parameter>
         <parameter name="layout" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1123">a Pango layout</doc>
+               line="1336">a Pango layout</doc>
           <type name="Pango.Layout" c:type="PangoLayout*"/>
         </parameter>
       </parameters>
@@ -1054,7 +1054,7 @@ at the current point of the cairo context.</doc>
               version="1.10">
       <doc xml:space="preserve"
            filename="pango/pangocairo-render.c"
-           line="1098">Draws a `PangoLayoutLine` in the specified cairo context.
+           line="1311">Draws a `PangoLayoutLine` in the specified cairo context.
 
 The origin of the glyphs (the left edge of the line) will
 be drawn at the current point of the cairo context.</doc>
@@ -1066,13 +1066,13 @@ be drawn at the current point of the cairo context.</doc>
         <parameter name="cr" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1100">a Cairo context</doc>
+               line="1313">a Cairo context</doc>
           <type name="cairo.Context" c:type="cairo_t*"/>
         </parameter>
         <parameter name="line" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="pango/pangocairo-render.c"
-               line="1101">a `PangoLayoutLine`</doc>
+               line="1314">a `PangoLayoutLine`</doc>
           <type name="Pango.LayoutLine" c:type="PangoLayoutLine*"/>
         </parameter>
       </parameters>

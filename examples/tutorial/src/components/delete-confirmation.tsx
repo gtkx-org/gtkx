@@ -18,7 +18,7 @@ export const DeleteConfirmation = ({
     return createPortal(
         <AdwAlertDialog
             heading="Delete Note?"
-            body={`"${noteTitle}" will be permanently deleted.`}
+            body={`\u201c${noteTitle}\u201d will be permanently deleted.`}
             responses={[
                 { id: "cancel", label: "Cancel" },
                 { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },

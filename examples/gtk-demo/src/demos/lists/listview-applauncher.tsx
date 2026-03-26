@@ -1,6 +1,5 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
-import "@gtkx/ffi/giounix";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
