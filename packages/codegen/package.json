@@ -40,6 +40,6 @@
         "@clack/prompts": "^1.1.0",
         "@gtkx/gir": "workspace:*",
         "@gtkx/native": "workspace:*",
-        "citty": "^0.2.1"
+        "citty": "^0.2.2"
     }
 }
