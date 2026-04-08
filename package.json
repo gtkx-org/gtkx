@@ -22,7 +22,7 @@
         "@gtkx/codegen": "workspace:*",
         "@types/node": "^25.5.2",
         "@types/react": "^19.2.14",
-        "react": "^19.2.4",
+        "react": "^19.2.5",
         "tsx": "^4.21.0",
         "turbo": "^2.9.4",
         "typescript": "^6.0.2",
