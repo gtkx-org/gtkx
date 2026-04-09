@@ -21,6 +21,6 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
-        "vite": "^8.0.7"
+        "vite": "^8.0.8"
     }
 }
