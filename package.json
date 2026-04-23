@@ -18,7 +18,7 @@
         "typecheck": "turbo typecheck --filter=!website --filter=!gtkx"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.4.12",
+        "@biomejs/biome": "^2.4.13",
         "@gtkx/codegen": "workspace:*",
         "@types/node": "^25.6.0",
         "@types/react": "^19.2.14",
