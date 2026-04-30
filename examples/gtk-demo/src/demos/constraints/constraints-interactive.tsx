@@ -1,4 +1,3 @@
-import { createRef } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton } from "@gtkx/react";
 import { useLayoutEffect, useRef } from "react";
@@ -169,12 +168,8 @@ const ConstraintsInteractiveDemo = () => {
         drag.connect("drag-update", (_gesture: Gtk.GestureDrag, offsetX: number, _offsetY: number) => {
             if (!layoutRef.current || !guideRef.current) return;
 
-            const startXRef = createRef(0);
-            const startYRef = createRef(0);
-            const success = drag.getStartPoint(startXRef, startYRef);
+            const [success, startX] = drag.getStartPoint();
             if (!success) return;
-
-            const startX = startXRef.value;
 
             if (constraintRef.current) {
                 layoutRef.current.removeConstraint(constraintRef.current);

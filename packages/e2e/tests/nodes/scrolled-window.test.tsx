@@ -1,4 +1,3 @@
-import { createRef as createNativeRef } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -6,10 +5,7 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 const getPolicy = (scrolledWindow: Gtk.ScrolledWindow): [Gtk.PolicyType, Gtk.PolicyType] => {
-    const hPolicy = createNativeRef<Gtk.PolicyType>(Gtk.PolicyType.AUTOMATIC);
-    const vPolicy = createNativeRef<Gtk.PolicyType>(Gtk.PolicyType.AUTOMATIC);
-    scrolledWindow.getPolicy(hPolicy, vPolicy);
-    return [hPolicy.value, vPolicy.value];
+    return scrolledWindow.getPolicy();
 };
 
 describe("render - ScrolledWindow", () => {

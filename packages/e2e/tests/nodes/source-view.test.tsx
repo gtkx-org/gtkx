@@ -1,4 +1,3 @@
-import * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkSource from "@gtkx/ffi/gtksource";
 import { GtkSourceView } from "@gtkx/react";
 import { render, waitFor } from "@gtkx/testing";
@@ -6,12 +5,8 @@ import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const getBufferText = (buffer: GtkSource.Buffer): string => {
-    const startIter = new Gtk.TextIter();
-    const endIter = new Gtk.TextIter();
-
-    buffer.getStartIter(startIter);
-    buffer.getEndIter(endIter);
-
+    const startIter = buffer.getStartIter();
+    const endIter = buffer.getEndIter();
     return buffer.getText(startIter, endIter, true);
 };
 
@@ -323,8 +318,7 @@ describe("render - SourceView", () => {
             );
 
             const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
-            const iter = new Gtk.TextIter();
-            buffer.getIterAtOffset(iter, 5);
+            const iter = buffer.getIterAtOffset(5);
             buffer.placeCursor(iter);
 
             await waitFor(() => {

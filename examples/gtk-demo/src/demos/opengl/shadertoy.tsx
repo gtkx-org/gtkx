@@ -1560,10 +1560,8 @@ const ShadertoyDemo = () => {
         const view = sourceViewRef.current;
         if (!view) return;
         const buffer = view.getBuffer();
-        const start = new Gtk.TextIter();
-        const end = new Gtk.TextIter();
-        buffer.getStartIter(start);
-        buffer.getEndIter(end);
+        const start = buffer.getStartIter();
+        const end = buffer.getEndIter();
         setCompiledCode(buffer.getText(start, end, false));
     }, []);
 

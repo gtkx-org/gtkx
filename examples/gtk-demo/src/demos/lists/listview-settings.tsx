@@ -1,4 +1,3 @@
-import { createRef } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -68,11 +67,9 @@ function loadSchemaTree(): SchemaTreeNode[] {
     const source = Gio.SettingsSchemaSource.getDefault();
     if (!source) return [];
 
-    const nonRelocatable = createRef<string[]>([]);
-    const relocatable = createRef<string[]>([]);
-    source.listSchemas(true, nonRelocatable, relocatable);
+    const [nonRelocatable] = source.listSchemas(true);
 
-    return nonRelocatable.value.sort().map((id) => {
+    return nonRelocatable.sort().map((id) => {
         const settings = new Gio.Settings(id);
         return buildNodeFromSettings(settings, id);
     });

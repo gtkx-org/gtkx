@@ -1,4 +1,3 @@
-import { createRef } from "@gtkx/ffi";
 import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { tick } from "./timing.js";
@@ -40,8 +39,7 @@ const captureSnapshot = (widget: Gtk.Widget): ScreenshotResult => {
     try {
         const texture = renderer.renderTexture(renderNode);
         const pngBytes = texture.saveToPngBytes();
-        const sizeRef = createRef(0);
-        const data = pngBytes.getData(sizeRef);
+        const data = pngBytes.getData();
 
         if (!data) {
             throw new Error("Failed to serialize screenshot to PNG");

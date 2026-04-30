@@ -1,4 +1,3 @@
-import { createRef } from "@gtkx/ffi";
 import type { Context } from "@gtkx/ffi/cairo";
 import { LinearPattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -71,16 +70,15 @@ const GesturesDemo = () => {
         const zoom = zoomRef.current;
 
         if (rotate?.isRecognized() || zoom?.isRecognized()) {
-            const xRef = createRef(0);
-            const yRef = createRef(0);
             const rectSize = 200;
 
             let centerX = width / 2;
             let centerY = height / 2;
 
-            if (zoom?.getBoundingBoxCenter(xRef, yRef)) {
-                centerX = xRef.value;
-                centerY = yRef.value;
+            const center = zoom?.getBoundingBoxCenter();
+            if (center?.[0]) {
+                centerX = center[1];
+                centerY = center[2];
             }
 
             const angle = rotate?.getAngleDelta() ?? 0;

@@ -33,10 +33,8 @@ export const NoteEditor = ({
                 cssClasses={[bodyView]}
                 enableUndo
                 onBufferChanged={(buffer) => {
-                    const start = new Gtk.TextIter();
-                    const end = new Gtk.TextIter();
-                    buffer.getStartIter(start);
-                    buffer.getEndIter(end);
+                    const start = buffer.getStartIter();
+                    const end = buffer.getEndIter();
                     onUpdate({ body: buffer.getText(start, end, false) ?? "" });
                 }}
             >

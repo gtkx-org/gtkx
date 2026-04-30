@@ -140,7 +140,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
     private findPositionIn(parentMenu: Gio.Menu): number {
         for (let i = 0; i < parentMenu.getNItems(); i++) {
             if (this.type === "item") {
-                const actionName = parentMenu.getItemAttributeValue(i, "action")?.getString();
+                const actionName = parentMenu.getItemAttributeValue(i, "action")?.getString()[0];
 
                 if (actionName === this.getActionName()) {
                     return i;

@@ -1,5 +1,4 @@
 import { css } from "@gtkx/css";
-import { createRef } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -447,12 +446,10 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
 
         const attrList = new Pango.AttrList();
 
-        const startRef = createRef<number>(0);
-        const endRef = createRef<number>(0);
-        const hasSelection = label.getSelectionBounds(startRef, endRef);
+        const [hasSelection, selStart, selEnd] = label.getSelectionBounds();
 
-        const startIndex = hasSelection ? startRef.value : 0;
-        const endIndex = hasSelection ? endRef.value : 0xffffffff;
+        const startIndex = hasSelection ? selStart : 0;
+        const endIndex = hasSelection ? selEnd : 0xffffffff;
 
         const attr = Pango.attrFontFeaturesNew(pangoFontFeaturesString);
         attr.startIndex = startIndex;

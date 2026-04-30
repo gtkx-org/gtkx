@@ -5,10 +5,15 @@
  * Extracts common patterns from RecordGenerator, InterfaceGenerator, ClassGenerator.
  */
 
-import type { GirConstructor, GirFunction, GirMethod, GirParameter } from "@gtkx/gir";
+import type { GirConstructor, GirFunction, GirMethod, GirParameter, GirType } from "@gtkx/gir";
 import type { Writer } from "../../builders/writer.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
-import type { FfiTypeDescriptor, MappedType, SelfTypeDescriptor } from "../type-system/ffi-types.js";
+import {
+    FFI_VOID,
+    type FfiTypeDescriptor,
+    type MappedType,
+    type SelfTypeDescriptor,
+} from "../type-system/ffi-types.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { hasVarargs, isVararg } from "../utils/filtering.js";
 import { createWrappedName, toCamelCase, toKebabCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
@@ -19,6 +24,13 @@ import {
     CallExpressionBuilder,
     type CallExpressionOptions,
 } from "./call-expression-builder.js";
+import {
+    buildCallableShape,
+    type CallableShape,
+    type HiddenOut,
+    type ParamMapping,
+    type ShapeCallArg,
+} from "./callable-shape.js";
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
 import { ParamWrapWriter } from "./param-wrap-writer.js";
@@ -33,21 +45,7 @@ export type ImportCollector = {
     addNamespaceImport(specifier: string, alias: string): void;
 };
 
-/**
- * Information about a Ref parameter that GTK allocates.
- */
-type GtkAllocatedRef = {
-    paramName: string;
-    innerType: string;
-    nullable: boolean;
-    isBoxed: boolean;
-    isInterface: boolean;
-    boxedTypeName: string | undefined;
-    isArray: boolean;
-    arrayItemType: string | undefined;
-    arrayItemIsBoxed: boolean;
-    arrayItemIsInterface: boolean;
-};
+const VOID_RETURN_MAPPING: MappedType = { ts: "void", ffi: FFI_VOID, imports: [] };
 
 /**
  * Options for building instance method body statements.
@@ -82,12 +80,10 @@ type CallableBodyOptions = {
     sharedLibrary: string;
     /** C identifier for the FFI call */
     cIdentifier: string;
-    /** Parameters for the callable */
+    /** Pre-computed callable shape covering signature/hidden/tuple decisions. */
+    shape: CallableShape;
+    /** Original GIR parameters — required for resolving callback wrappers. */
     parameters: readonly GirParameter[];
-    /** Return type info */
-    returnType: { nullable?: boolean };
-    /** Mapped return type info */
-    returnTypeMapping: MappedType;
     /** Whether the callable can throw */
     throws?: boolean;
     /** Self options for instance methods */
@@ -159,7 +155,7 @@ export type ConstructorSelection = {
  * Centralizes common patterns used across generators:
  * - Parameter filtering and validation
  * - Call argument generation (via buildCallArgumentsArray)
- * - Ref parameter handling
+ * - Out/inout parameter handling via {@link CallableShape}
  * - Return value wrapping decisions
  *
  * @example
@@ -205,13 +201,6 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Checks if any parameter is a Ref type.
-     */
-    hasRefParameter(params: readonly GirParameter[]): boolean {
-        return params.some((p) => this.ffiMapper.mapParameter(p).ts.startsWith("Ref<"));
-    }
-
-    /**
      * Checks if any parameter has an unsupported callback type.
      */
     hasUnsupportedCallbacks(params: readonly GirParameter[]): boolean {
@@ -220,25 +209,6 @@ export class MethodBodyWriter {
 
     /**
      * Selects supported constructors and identifies the main constructor.
-     *
-     * Filters out constructors with unsupported callbacks and identifies
-     * the "main" constructor as the first non-vararg constructor.
-     *
-     * @param constructors - The constructors to analyze
-     * @returns Object with supported constructors and the main constructor (if any)
-     *
-     * @example
-     * ```typescript
-     * const { supported, main } = builder.selectConstructors(cls.constructors);
-     * if (main) {
-     *   // Use main constructor for class constructor
-     * }
-     * for (const ctor of supported) {
-     *   if (ctor !== main) {
-     *     // Generate static factory method
-     *   }
-     * }
-     * ```
      */
     selectConstructors(constructors: readonly GirConstructor[]): ConstructorSelection {
         const supported = constructors.filter((c) => !c.shadowedBy && !this.hasUnsupportedCallbacks(c.parameters));
@@ -260,69 +230,6 @@ export class MethodBodyWriter {
         const dynamicRename = methodRenames.get(method.cIdentifier);
         const camelName = toCamelCase(method.name);
         return dynamicRename ?? camelName;
-    }
-
-    /**
-     * Identifies Ref parameters where GTK allocates the referenced object.
-     * These need to be rewrapped after the call.
-     */
-    identifyGtkAllocatedRefs(parameters: readonly GirParameter[]): GtkAllocatedRef[] {
-        const filtered = this.filterParameters(parameters);
-
-        return filtered
-            .map((param): GtkAllocatedRef | null => {
-                const mapped = this.ffiMapper.mapParameter(param);
-                if (mapped.ffi.type !== "ref" || typeof mapped.ffi.innerType !== "object" || !mapped.innerTsType) {
-                    return null;
-                }
-
-                const innerFfi = mapped.ffi.innerType;
-
-                if (innerFfi.type === "boxed" || innerFfi.type === "gobject" || innerFfi.type === "fundamental") {
-                    const isBoxed = innerFfi.type === "boxed";
-                    const isInterface = mapped.kind === "interface";
-                    const boxedTypeName = isBoxed ? (innerFfi as { innerType?: string }).innerType : undefined;
-                    return {
-                        paramName: this.toJsParamName(param),
-                        innerType: mapped.innerTsType,
-                        nullable: this.ffiMapper.isNullable(param),
-                        isBoxed,
-                        isInterface,
-                        boxedTypeName,
-                        isArray: false,
-                        arrayItemType: undefined,
-                        arrayItemIsBoxed: false,
-                        arrayItemIsInterface: false,
-                    };
-                }
-
-                if (
-                    innerFfi.type === "array" &&
-                    innerFfi.itemType &&
-                    (innerFfi.itemType.type === "gobject" ||
-                        innerFfi.itemType.type === "boxed" ||
-                        innerFfi.itemType.type === "fundamental")
-                ) {
-                    const arrayItemType = mapped.innerTsType.replace(/\[\]$/, "");
-                    const arrayItemIsBoxed = innerFfi.itemType.type === "boxed";
-                    const arrayItemIsInterface = mapped.itemKind === "interface";
-                    return {
-                        paramName: this.toJsParamName(param),
-                        innerType: mapped.innerTsType,
-                        nullable: this.ffiMapper.isNullable(param),
-                        isBoxed: false,
-                        isInterface: false,
-                        boxedTypeName: undefined,
-                        isArray: true,
-                        arrayItemType,
-                        arrayItemIsBoxed,
-                        arrayItemIsInterface,
-                    };
-                }
-
-                return null;
-            })
-            .filter((x): x is GtkAllocatedRef => x !== null);
     }
 
     /**
@@ -403,47 +310,56 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Builds a parameter list for method declarations.
+     * Builds a callable shape from raw parameters.
      *
-     * @param parameters - The normalized parameters
-     * @returns Array of parameter structures
-     *
-     * @example
-     * ```typescript
-     * const params = builder.buildParameterList(method.parameters);
-     * ```
+     * Computes signature visibility, hidden allocations, and the
+     * return-tuple plan in a single pass. Imports collected by the shape
+     * are forwarded to the import collector.
      */
-    buildParameterList(
+    buildShape(
         parameters: readonly GirParameter[],
+        returnType: GirType | undefined,
+        sizeParamOffset: number,
+    ): CallableShape {
+        const returnMapping =
+            returnType !== undefined
+                ? this.ffiMapper.mapType(returnType, true, returnType.transferOwnership, sizeParamOffset)
+                : VOID_RETURN_MAPPING;
+
+        const shape = buildCallableShape({
+            parameters,
+            returnTypeMapping: returnMapping,
+            returnNullable: returnType?.nullable === true,
+            sizeParamOffset,
+            ffiMapper: this.ffiMapper,
+        });
+
+        for (const imp of shape.imports) {
+            this.addTypeImport(imp);
+        }
+        for (const mapping of shape.paramMappings) {
+            if (mapping.mapped.ffi.type === "ref") {
+                this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+            }
+        }
+        return shape;
+    }
+
+    /**
+     * Builds parameter list entries for a method declaration from a shape.
+     */
+    buildSignatureParameters(
+        shape: CallableShape,
+        hasVarargsFlag: boolean,
     ): Array<{ name: string; type: string; optional?: boolean; isRestParameter?: boolean }> {
-        const filteredParams = this.filterParameters(parameters);
-
-        const required = filteredParams.filter((p) => !p.optional && !p.nullable);
-        const omittable = filteredParams.filter((p) => p.optional || p.nullable);
-        const reordered = [...required, ...omittable];
-
         const result: Array<{ name: string; type: string; optional?: boolean; isRestParameter?: boolean }> =
-            reordered.map((param) => {
-                const mapped = this.ffiMapper.mapParameter(param);
-                this.addTypeImportsFromMapping(mapped);
-                if (mapped.ffi.type === "ref") {
-                    this.imports.addImport("@gtkx/native", ["Ref"]);
-                }
+            shape.signatureParams.map((p) => ({
+                name: p.name,
+                type: p.tsType,
+                optional: p.optional,
+            }));
 
-                const paramName = this.toJsParamName(param);
-                const isOmittable = param.optional || param.nullable;
-
-                const isCallback = mapped.ffi.type === "callback";
-                const nullableType = isCallback ? `(${mapped.ts}) | null` : `${mapped.ts} | null`;
-
-                return {
-                    name: paramName,
-                    type: param.nullable ? nullableType : mapped.ts,
-                    optional: isOmittable,
-                };
-            });
-
-        if (hasVarargs(parameters)) {
+        if (hasVarargsFlag) {
             this.imports.addTypeImport("@gtkx/native", ["Arg"]);
             result.push({
                 name: "args",
@@ -451,79 +367,45 @@ export class MethodBodyWriter {
                 isRestParameter: true,
             });
         }
-
         return result;
     }
 
     /**
-     * Builds a complete MethodStructure for method declarations.
+     * Builds a parameter list for method declarations from raw parameters.
      *
-     * Consolidates the common pattern used across RecordGenerator, InterfaceGenerator,
-     * and MethodBuilder for building method structures.
-     *
-     * @param method - The normalized method definition
-     * @param options - Configuration options
-     * @returns MethodStructure for generators
-     *
-     * @example
-     * ```typescript
-     * const structure = builder.buildMethodStructure(method, {
-     *   methodName: "onClick",
-     *   selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
-     *   sharedLibrary: "libgtk-4.so.1",
-     *   namespace: "Gtk",
-     * });
-     * ```
+     * Used by callers that don't construct a shape themselves
+     * (e.g., async wrapper generation, where there are no out/inout params).
      */
-    buildMethodStructure(method: GirMethod, options: MethodStructureOptions): MethodStructure {
-        const params = this.buildParameterList(method.parameters);
-        const returnTypeMapping = this.ffiMapper.mapType(
-            method.returnType,
-            true,
-            method.returnType.transferOwnership,
-            1,
-        );
-        this.addTypeImportsFromMapping(returnTypeMapping);
-
-        const tsReturnType = formatNullableReturn(returnTypeMapping.ts, method.returnType.nullable === true);
-
-        return {
-            name: options.methodName,
-            parameters: params,
-            returnType: tsReturnType === "void" ? undefined : tsReturnType,
-            docs: buildJsDocStructure(method.doc, options.namespace),
-            statements: this.writeMethodBody(method, returnTypeMapping, {
-                sharedLibrary: options.sharedLibrary,
-                selfTypeDescriptor: options.selfTypeDescriptor,
-                className: options.className,
-            }),
-        };
+    buildParameterList(
+        parameters: readonly GirParameter[],
+    ): Array<{ name: string; type: string; optional?: boolean; isRestParameter?: boolean }> {
+        const shape = this.buildShape(parameters, undefined, 0);
+        return this.buildSignatureParameters(shape, hasVarargs(parameters));
     }
 
-    buildStaticFunctionStructure(func: GirFunction, options: StaticFunctionStructureOptions): MethodStructure {
-        const funcName = toValidMemberName(toCamelCase(func.name));
-        const params = this.buildParameterList(func.parameters);
-        const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true, func.returnType.transferOwnership);
-        this.addTypeImportsFromMapping(returnTypeMapping);
-
-        const returnTypeName = func.returnType.name as string | undefined;
-        const returnsOwnClass =
-            returnTypeName === options.originalClassName || returnTypeName?.endsWith(`.${options.originalClassName}`);
-        const baseReturnType = returnsOwnClass ? options.className : returnTypeMapping.ts;
-        const tsReturnType = formatNullableReturn(baseReturnType, func.returnType.nullable === true);
-
-        return {
-            name: funcName,
-            isStatic: true,
-            parameters: params,
-            returnType: tsReturnType === "void" ? undefined : tsReturnType,
-            docs: buildJsDocStructure(func.doc, options.namespace),
-            statements: this.writeFunctionBody(func, returnTypeMapping, {
-                sharedLibrary: options.sharedLibrary,
-                className: options.className,
-                returnsOwnClass,
-            }),
-        };
+    /**
+     * Computes the public TypeScript return type for a callable based on its shape.
+     */
+    computeReturnTypeString(shape: CallableShape, ownClassName: string | undefined): string {
+        if (shape.returnTupleEntries.length === 0) {
+            const base = ownClassName ?? shape.originalReturnTsType;
+            return formatNullableReturn(base, shape.originalReturnNullable);
+        }
+        if (shape.returnTupleEntries.length === 1 && !shape.hasOriginalReturn) {
+            const entry = shape.returnTupleEntries[0];
+            if (!entry) {
+                return "void";
+            }
+            return entry.nullable ? `${entry.tsType} | null` : entry.tsType;
+        }
+        const parts = shape.returnTupleEntries.map((entry) => {
+            if (entry.kind === "original-return") {
+                const base = ownClassName ?? entry.tsType;
+                return entry.nullable ? `${base} | null` : base;
+            }
+            return entry.nullable ? `${entry.tsType} | null` : entry.tsType;
+        });
+        return `[${parts.join(", ")}]`;
     }
 
     /**
@@ -555,30 +437,507 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Builds call arguments as an array of CallArgument objects.
-     * Used with CallExpressionBuilder.toWriter() for code generation.
+     * Builds CallArgument entries from a callable shape.
      *
-     * @param parameters - The parameters to build arguments for
-     * @param sizeParamOffset - Offset to add to sizeParamIndex for sized arrays (1 for instance methods, 0 for static)
+     * Resolves callback wrappers and translates {@link ShapeCallArg} into
+     * the {@link CallArgument} form consumed by {@link CallExpressionBuilder}.
+     */
+    buildShapeCallArguments(shape: CallableShape, parameters: readonly GirParameter[]): CallArgument[] {
+        return shape.callArgs.map((arg) => this.toCallArgument(arg, parameters, shape));
+    }
+
+    /**
+     * Builds call arguments from raw parameters (compatibility entry point).
+     *
+     * Async wrapper generation calls this directly; it has no out/inout
+     * params so the shape's tuple is empty.
      */
     buildCallArgumentsArray(parameters: readonly GirParameter[], sizeParamOffset = 0): CallArgument[] {
-        const filtered = this.filterParameters(parameters);
+        const shape = this.buildShape(parameters, undefined, sizeParamOffset);
+        return this.buildShapeCallArguments(shape, parameters);
+    }
 
-        return filtered.map((param) => {
-            const mapped = this.ffiMapper.mapParameter(param, sizeParamOffset);
-            const jsParamName = this.toJsParamName(param);
-            const isOptional = this.ffiMapper.isNullable(param);
-            const valueName = this.callExpression.buildValueExpression(jsParamName, mapped, isOptional);
+    /**
+     * Builds a complete MethodStructure for method declarations.
+     */
+    buildMethodStructure(method: GirMethod, options: MethodStructureOptions): MethodStructure {
+        const shape = this.buildShape(method.parameters, method.returnType, 1);
+        const params = this.buildSignatureParameters(shape, hasVarargs(method.parameters));
+        this.addTypeImportsFromMapping(shape.returnTypeMapping);
 
-            const callbackWrapper = this.buildCallbackWrapper(param, jsParamName, isOptional);
+        const tsReturnType = this.computeReturnTypeString(shape, undefined);
 
-            return {
-                type: mapped.ffi,
-                value: callbackWrapper ? callbackWrapper.wrappedName : valueName,
-                optional: isOptional,
-                callbackWrapper,
-            };
+        return {
+            name: options.methodName,
+            parameters: params,
+            returnType: tsReturnType === "void" ? undefined : tsReturnType,
+            docs: buildJsDocStructure(method.doc, options.namespace),
+            statements: this.writeMethodBody(method, shape, {
+                sharedLibrary: options.sharedLibrary,
+                selfTypeDescriptor: options.selfTypeDescriptor,
+                className: options.className,
+            }),
+        };
+    }
+
+    buildStaticFunctionStructure(func: GirFunction, options: StaticFunctionStructureOptions): MethodStructure {
+        const funcName = toValidMemberName(toCamelCase(func.name));
+        const shape = this.buildShape(func.parameters, func.returnType, 0);
+        const params = this.buildSignatureParameters(shape, hasVarargs(func.parameters));
+        this.addTypeImportsFromMapping(shape.returnTypeMapping);
+
+        const returnTypeName = func.returnType.name as string | undefined;
+        const returnsOwnClass =
+            returnTypeName === options.originalClassName || returnTypeName?.endsWith(`.${options.originalClassName}`);
+        const ownClassName = returnsOwnClass ? options.className : undefined;
+        const tsReturnType = this.computeReturnTypeString(shape, ownClassName);
+
+        return {
+            name: funcName,
+            isStatic: true,
+            parameters: params,
+            returnType: tsReturnType === "void" ? undefined : tsReturnType,
+            docs: buildJsDocStructure(func.doc, options.namespace),
+            statements: this.writeFunctionBody(func, shape, {
+                sharedLibrary: options.sharedLibrary,
+                className: options.className,
+                returnsOwnClass,
+            }),
+        };
+    }
+
+    /**
+     * Writes method body using the precomputed shape.
+     */
+    writeMethodBody(
+        method: GirMethod,
+        shape: CallableShape,
+        options: MethodBodyStatementsOptions,
+    ): (writer: Writer) => void {
+        return this.writeCallableBody({
+            sharedLibrary: options.sharedLibrary,
+            cIdentifier: method.cIdentifier,
+            shape,
+            parameters: method.parameters,
+            throws: method.throws,
+            self: { type: options.selfTypeDescriptor, value: "this.handle" },
+            hasVarargs: hasVarargs(method.parameters),
         });
+    }
+
+    /**
+     * Writes function body using the precomputed shape.
+     */
+    writeFunctionBody(
+        func: GirFunction,
+        shape: CallableShape,
+        options: FunctionBodyStatementsOptions,
+    ): (writer: Writer) => void {
+        return this.writeCallableBody({
+            sharedLibrary: options.sharedLibrary,
+            cIdentifier: func.cIdentifier,
+            shape,
+            parameters: func.parameters,
+            throws: func.throws,
+            ownClassName: options.returnsOwnClass ? options.className : undefined,
+            hasVarargs: hasVarargs(func.parameters),
+        });
+    }
+
+    private writeCallableBody(options: CallableBodyOptions): (writer: Writer) => void {
+        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
+
+        const { shape } = options;
+        const ownClassName = options.ownClassName;
+        const wrapInfo = this.needsObjectWrap(shape.returnTypeMapping);
+        const hasReturnValue = shape.hasOriginalReturn;
+        const hasOwnClassReturn = ownClassName !== undefined;
+        const hasObjectWrapReturn = wrapInfo.needsWrap && hasReturnValue;
+        const hasRefHandleHidden = shape.hiddenOuts.some((h) => h.kind === "ref-handle");
+
+        if (options.throws) {
+            this.imports.addImport("@gtkx/native", ["createRef"]);
+            this.setupGErrorImports();
+        }
+
+        if (
+            hasOwnClassReturn ||
+            hasObjectWrapReturn ||
+            (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) ||
+            hasRefHandleHidden
+        ) {
+            this.imports.addImport("../../registry.js", ["getNativeObject"]);
+        }
+
+        if (shape.hiddenOuts.length > 0) {
+            this.imports.addImport("@gtkx/native", ["createRef"]);
+        }
+
+        return (writer) => {
+            const callArguments = this.buildShapeCallArguments(shape, options.parameters);
+
+            this.writeCallbackWrapperDeclarations(writer, callArguments);
+
+            if (options.throws) {
+                writer.writeLine("const error = createRef<NativeHandle | null>(null);");
+            }
+
+            for (const hidden of shape.hiddenOuts) {
+                this.writeHiddenOutDeclaration(writer, hidden);
+            }
+
+            if (options.throws) {
+                callArguments.push({
+                    type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(),
+                    value: "error",
+                });
+            }
+
+            const returnTupleNeedsBuild = shape.returnTupleEntries.length > 0;
+            const writeCall = (target: string | null, cast: string | null) => {
+                if (target !== null) {
+                    writer.write(`const ${target} = `);
+                } else {
+                    writer.write("return ");
+                }
+                this.callExpression.toWriter({
+                    sharedLibrary: options.sharedLibrary,
+                    cIdentifier: options.cIdentifier,
+                    args: callArguments,
+                    returnType: shape.returnTypeMapping.ffi,
+                    selfArg: options.self,
+                    hasVarargs: options.hasVarargs,
+                })(writer);
+                if (cast !== null) {
+                    writer.write(` as ${cast}`);
+                }
+                writer.write(";");
+                writer.newLine();
+            };
+
+            const rawReturnType = shape.originalReturnTsType;
+            const baseReturnType = ownClassName ?? rawReturnType;
+            const tsReturnType = formatNullableReturn(baseReturnType, shape.originalReturnNullable);
+
+            if (returnTupleNeedsBuild || options.throws || shape.hiddenOuts.some((h) => h.kind === "ref-handle")) {
+                this.emitTupleReturningBody(writer, options, shape, callArguments, wrapInfo, ownClassName);
+                return;
+            }
+
+            if (hasOwnClassReturn || hasObjectWrapReturn) {
+                writeCall("ptr", null);
+                this.writeRefHandleRewrap(writer, shape);
+                if (hasOwnClassReturn) {
+                    writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${ownClassName});`);
+                } else {
+                    if (shape.originalReturnNullable) {
+                        writer.writeLine("if (ptr === null) return null;");
+                    }
+                    if (
+                        wrapInfo.needsBoxedWrap ||
+                        wrapInfo.needsFundamentalWrap ||
+                        wrapInfo.needsStructWrap ||
+                        wrapInfo.needsInterfaceWrap
+                    ) {
+                        writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${baseReturnType});`);
+                    } else {
+                        writer.writeLine(`return getNativeObject(ptr as NativeHandle) as ${baseReturnType};`);
+                    }
+                }
+                return;
+            }
+
+            if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
+                writeCall("arr", "unknown[]");
+                this.writeRefHandleRewrap(writer, shape);
+                if (wrapInfo.arrayItemIsInterface) {
+                    writer.writeLine(
+                        `return arr.map((item) => getNativeObject(item as NativeHandle, ${wrapInfo.arrayItemType}));`,
+                    );
+                } else {
+                    writer.writeLine(
+                        `return arr.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType});`,
+                    );
+                }
+                return;
+            }
+
+            if (wrapInfo.needsHashTableWrap) {
+                writeCall("tuples", "[unknown, unknown][]");
+                this.writeRefHandleRewrap(writer, shape);
+                if (shape.originalReturnNullable) {
+                    writer.writeLine("if (tuples === null) return null;");
+                }
+                writer.writeLine(`return new Map(tuples) as ${tsReturnType};`);
+                return;
+            }
+
+            const needsCast = rawReturnType !== "void" && rawReturnType !== "unknown";
+            if (hasReturnValue) {
+                writer.write("return ");
+            }
+            this.callExpression.toWriter({
+                sharedLibrary: options.sharedLibrary,
+                cIdentifier: options.cIdentifier,
+                args: callArguments,
+                returnType: shape.returnTypeMapping.ffi,
+                selfArg: options.self,
+                hasVarargs: options.hasVarargs,
+            })(writer);
+            if (hasReturnValue && needsCast) {
+                writer.write(` as ${tsReturnType}`);
+            }
+            writer.write(";");
+            writer.newLine();
+        };
+    }
+
+    private emitTupleReturningBody(
+        writer: Writer,
+        options: CallableBodyOptions,
+        shape: CallableShape,
+        callArguments: CallArgument[],
+        wrapInfo: ReturnType<MethodBodyWriter["needsObjectWrap"]>,
+        ownClassName: string | undefined,
+    ): void {
+        const baseReturnType = ownClassName ?? shape.originalReturnTsType;
+        const tsReturnType = formatNullableReturn(baseReturnType, shape.originalReturnNullable);
+        const hasReturnValue = shape.hasOriginalReturn;
+        const hasOwnClassReturn = ownClassName !== undefined;
+        const needsResultPtr = hasReturnValue && (wrapInfo.needsWrap || hasOwnClassReturn);
+        const needsArrayWrapVar = hasReturnValue && wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType;
+        const needsHashTableVar = hasReturnValue && wrapInfo.needsHashTableWrap;
+
+        let resultExpression: string | null = null;
+
+        if (hasReturnValue) {
+            const baseVar = this.uniqueResultVarName(shape, "result");
+            const suffix = needsResultPtr ? "Ptr" : needsArrayWrapVar ? "Arr" : needsHashTableVar ? "Tuples" : "";
+            resultExpression = `${baseVar}${suffix}`;
+            writer.write(`const ${resultExpression} = `);
+            this.callExpression.toWriter({
+                sharedLibrary: options.sharedLibrary,
+                cIdentifier: options.cIdentifier,
+                args: callArguments,
+                returnType: shape.returnTypeMapping.ffi,
+                selfArg: options.self,
+                hasVarargs: options.hasVarargs,
+            })(writer);
+            if (needsArrayWrapVar) {
+                writer.write(" as unknown[]");
+            } else if (needsHashTableVar) {
+                writer.write(" as [unknown, unknown][]");
+            } else if (!needsResultPtr) {
+                writer.write(` as ${tsReturnType}`);
+            }
+            writer.write(";");
+            writer.newLine();
+        } else {
+            this.callExpression.toWriter({
+                sharedLibrary: options.sharedLibrary,
+                cIdentifier: options.cIdentifier,
+                args: callArguments,
+                returnType: shape.returnTypeMapping.ffi,
+                selfArg: options.self,
+                hasVarargs: options.hasVarargs,
+            })(writer);
+            writer.write(";");
+            writer.newLine();
+        }
+
+        if (options.throws) {
+            this.writeErrorCheck(writer);
+        }
+
+        const rewrapBindings = this.writeRefHandleRewrap(writer, shape);
+
+        let originalReturnExpression: string | null = null;
+        if (hasReturnValue && resultExpression !== null) {
+            if (hasOwnClassReturn) {
+                originalReturnExpression = `getNativeObject(${resultExpression} as NativeHandle, ${ownClassName})`;
+            } else if (wrapInfo.needsWrap) {
+                if (shape.originalReturnNullable) {
+                    writer.writeLine(
+                        `const ${resultExpression}Wrapped = ${resultExpression} === null ? null : ${this.formatObjectWrap(resultExpression, baseReturnType, wrapInfo)};`,
+                    );
+                    originalReturnExpression = `${resultExpression}Wrapped`;
+                } else {
+                    originalReturnExpression = this.formatObjectWrap(resultExpression, baseReturnType, wrapInfo);
+                }
+            } else if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
+                if (wrapInfo.arrayItemIsInterface) {
+                    originalReturnExpression = `${resultExpression}.map((item) => getNativeObject(item as NativeHandle, ${wrapInfo.arrayItemType}))`;
+                } else {
+                    originalReturnExpression = `${resultExpression}.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType})`;
+                }
+            } else if (wrapInfo.needsHashTableWrap) {
+                originalReturnExpression = shape.originalReturnNullable
+                    ? `(${resultExpression} === null ? null : new Map(${resultExpression}) as ${baseReturnType})`
+                    : `(new Map(${resultExpression}) as ${baseReturnType})`;
+            } else {
+                originalReturnExpression = resultExpression;
+            }
+        }
+
+        if (shape.returnTupleEntries.length === 0) {
+            if (originalReturnExpression !== null) {
+                writer.writeLine(`return ${originalReturnExpression};`);
+            }
+            return;
+        }
+
+        const tupleParamMappings = shape.paramMappings.filter((m) => m.isOut && !m.isLengthParam);
+        const tupleExprs: string[] = [];
+        let outIndex = 0;
+        for (const entry of shape.returnTupleEntries) {
+            if (entry.kind === "original-return") {
+                tupleExprs.push(originalReturnExpression ?? "undefined");
+                continue;
+            }
+            const mapping = tupleParamMappings[outIndex];
+            tupleExprs.push(this.expressionForOutMapping(shape, mapping, rewrapBindings));
+            outIndex++;
+        }
+
+        if (shape.returnTupleEntries.length === 1 && !shape.hasOriginalReturn) {
+            writer.writeLine(`return ${tupleExprs[0]};`);
+        } else {
+            writer.writeLine(`return [${tupleExprs.join(", ")}];`);
+        }
+    }
+
+    private expressionForOutMapping(
+        shape: CallableShape,
+        mapping: ParamMapping | undefined,
+        rewrapBindings: Map<string, string>,
+    ): string {
+        if (!mapping) return "undefined";
+
+        if (mapping.hiddenOutIndex === null) {
+            return mapping.nullable || mapping.optional ? `(${mapping.jsName} ?? null)` : mapping.jsName;
+        }
+
+        const hidden = shape.hiddenOuts[mapping.hiddenOutIndex];
+        if (!hidden) return "undefined";
+
+        if (hidden.kind === "alloc-struct") {
+            return hidden.varName;
+        }
+        if (hidden.kind === "ref-handle") {
+            return rewrapBindings.get(hidden.varName) ?? `${hidden.varName}.value`;
+        }
+        return `${hidden.varName}.value as ${hidden.tsType}`;
+    }
+
+    private uniqueResultVarName(shape: CallableShape, base: string): string {
+        const usedNames = new Set<string>();
+        for (const param of shape.signatureParams) {
+            usedNames.add(param.name);
+        }
+        for (const hidden of shape.hiddenOuts) {
+            usedNames.add(hidden.varName);
+        }
+        if (!usedNames.has(base)) return base;
+        let suffix = 2;
+        while (usedNames.has(`${base}${suffix}`)) suffix++;
+        return `${base}${suffix}`;
+    }
+
+    /**
+     * Public alias for the hidden-out declaration emitter.
+     * Used by the constructor builder to seed factory bodies.
+     */
+    writeHiddenOutDeclarationFor(writer: Writer, hidden: HiddenOut): void {
+        this.writeHiddenOutDeclaration(writer, hidden);
+    }
+
+    private writeHiddenOutDeclaration(writer: Writer, hidden: HiddenOut): void {
+        if (hidden.kind === "alloc-struct") {
+            if (hidden.wrapClassName) {
+                writer.writeLine(`const ${hidden.varName} = new ${hidden.wrapClassName}();`);
+            } else {
+                writer.writeLine(`const ${hidden.varName} = createRef<NativeHandle | null>(null);`);
+            }
+            return;
+        }
+        if (hidden.kind === "ref-handle") {
+            writer.writeLine(`const ${hidden.varName} = createRef<NativeHandle | null>(null);`);
+            return;
+        }
+        const innerType = hidden.tsType;
+        writer.writeLine(`const ${hidden.varName} = createRef<${innerType}>(${hidden.initialValue});`);
+    }
+
+    private writeRefHandleRewrap(writer: Writer, shape: CallableShape): Map<string, string> {
+        const bindings = new Map<string, string>();
+        for (const hidden of shape.hiddenOuts) {
+            if (hidden.kind !== "ref-handle") continue;
+            const wrappedName = `${hidden.varName}Wrapped`;
+            bindings.set(hidden.varName, wrappedName);
+            const className = hidden.wrapClassName;
+            if (!className) {
+                writer.writeLine(`const ${wrappedName} = ${hidden.varName}.value as unknown as ${hidden.tsType};`);
+                continue;
+            }
+            if (hidden.nullable) {
+                writer.writeLine(
+                    `const ${wrappedName} = ${hidden.varName}.value === null ? null : ${
+                        hidden.wrapAsBoxed
+                            ? `getNativeObject(${hidden.varName}.value as NativeHandle, ${className})`
+                            : `getNativeObject(${hidden.varName}.value as NativeHandle) as ${className}`
+                    };`,
+                );
+            } else {
+                writer.writeLine(
+                    `const ${wrappedName} = ${
+                        hidden.wrapAsBoxed
+                            ? `getNativeObject(${hidden.varName}.value as NativeHandle, ${className})`
+                            : `getNativeObject(${hidden.varName}.value as NativeHandle) as ${className}`
+                    };`,
+                );
+            }
+        }
+        return bindings;
+    }
+
+    private formatObjectWrap(
+        ptrExpr: string,
+        baseReturnType: string,
+        wrapInfo: ReturnType<MethodBodyWriter["needsObjectWrap"]>,
+    ): string {
+        if (
+            wrapInfo.needsBoxedWrap ||
+            wrapInfo.needsFundamentalWrap ||
+            wrapInfo.needsStructWrap ||
+            wrapInfo.needsInterfaceWrap
+        ) {
+            return `getNativeObject(${ptrExpr} as NativeHandle, ${baseReturnType})`;
+        }
+        return `getNativeObject(${ptrExpr} as NativeHandle) as ${baseReturnType}`;
+    }
+
+    private toCallArgument(arg: ShapeCallArg, parameters: readonly GirParameter[], shape: CallableShape): CallArgument {
+        if (arg.sourceParamIndex !== null) {
+            const filtered = parameters.length > 0 ? this.filterParameters(parameters) : [];
+            const param = filtered[arg.sourceParamIndex];
+            if (param) {
+                const mapping = shape.paramMappings.find((m) => m.girIndex === arg.sourceParamIndex);
+                if (mapping?.isSignatureParam && !mapping.isOut) {
+                    const callbackWrapper = this.buildCallbackWrapper(param, mapping.jsName, mapping.nullable);
+                    return {
+                        type: arg.ffi,
+                        value: callbackWrapper ? callbackWrapper.wrappedName : arg.value,
+                        optional: arg.optional,
+                        callbackWrapper,
+                    };
+                }
+            }
+        }
+        return {
+            type: arg.ffi,
+            value: arg.value,
+            optional: arg.optional,
+        };
     }
 
     private buildCallbackWrapper(
@@ -627,241 +986,7 @@ export class MethodBodyWriter {
     }
 
     /**
-     * Writes method body using our Writer.
-     *
-     * @param method - The normalized method definition
-     * @param returnTypeMapping - The mapped return type
-     * @param options - Configuration options
-     * @returns Function that writes the method body
-     *
-     * @example
-     * ```typescript
-     * const bodyFn = builder.writeMethodBody(method, returnTypeMapping, options);
-     * bodyFn(writer);
-     * ```
-     */
-    writeMethodBody(
-        method: GirMethod,
-        returnTypeMapping: MappedType,
-        options: MethodBodyStatementsOptions,
-    ): (writer: Writer) => void {
-        return this.writeCallableBody({
-            sharedLibrary: options.sharedLibrary,
-            cIdentifier: method.cIdentifier,
-            parameters: method.parameters,
-            returnType: method.returnType,
-            returnTypeMapping,
-            throws: method.throws,
-            self: { type: options.selfTypeDescriptor, value: "this.handle" },
-            hasVarargs: hasVarargs(method.parameters),
-        });
-    }
-
-    /**
-     * Writes function body using our Writer.
-     *
-     * @param func - The normalized function definition
-     * @param returnTypeMapping - The mapped return type
-     * @param options - Configuration options
-     * @returns Function that writes the function body
-     *
-     * @example
-     * ```typescript
-     * const bodyFn = builder.writeFunctionBody(func, returnTypeMapping, options);
-     * bodyFn(writer);
-     * ```
-     */
-    writeFunctionBody(
-        func: GirFunction,
-        returnTypeMapping: MappedType,
-        options: FunctionBodyStatementsOptions,
-    ): (writer: Writer) => void {
-        return this.writeCallableBody({
-            sharedLibrary: options.sharedLibrary,
-            cIdentifier: func.cIdentifier,
-            parameters: func.parameters,
-            returnType: func.returnType,
-            returnTypeMapping,
-            throws: func.throws,
-            ownClassName: options.returnsOwnClass ? options.className : undefined,
-            hasVarargs: hasVarargs(func.parameters),
-        });
-    }
-
-    private writeCallableBody(options: CallableBodyOptions): (writer: Writer) => void {
-        this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
-        this.imports.addImport("../../registry.js", ["getNativeObject"]);
-
-        const isNullable = options.returnType.nullable === true;
-        const rawReturnType = options.returnTypeMapping.ts;
-        const baseReturnType = options.ownClassName ?? rawReturnType;
-        const wrapInfo = this.needsObjectWrap(options.returnTypeMapping);
-        const hasReturnValue = baseReturnType !== "void";
-        const hasOwnClassReturn = options.ownClassName !== undefined;
-        const hasObjectWrapReturn = wrapInfo.needsWrap && hasReturnValue;
-
-        if (options.throws) {
-            this.imports.addImport("@gtkx/native", ["createRef"]);
-            this.setupGErrorImports();
-        }
-
-        if (hasOwnClassReturn || hasObjectWrapReturn || (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType)) {
-            this.imports.addImport("../../registry.js", ["getNativeObject"]);
-        }
-
-        const gtkAllocatesRefs = this.identifyGtkAllocatedRefs(options.parameters);
-        if (gtkAllocatesRefs.length > 0) {
-            this.imports.addImport("../../registry.js", ["getNativeObject"]);
-        }
-
-        return (writer) => {
-            const tsReturnType = formatNullableReturn(baseReturnType, isNullable);
-            const resultVarName = this.getResultVarName(options.parameters);
-
-            if (options.throws) {
-                writer.writeLine("const error = createRef<NativeHandle | null>(null);");
-            }
-
-            const sizeParamOffset = options.self ? 1 : 0;
-            const args = this.buildCallArgumentsArray(options.parameters, sizeParamOffset);
-
-            this.writeCallbackWrapperDeclarations(writer, args);
-
-            if (options.throws) {
-                args.push({
-                    type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(),
-                    value: "error",
-                });
-            }
-
-            if (hasOwnClassReturn || hasObjectWrapReturn) {
-                writer.write("const ptr = ");
-                this.callExpression.toWriter({
-                    sharedLibrary: options.sharedLibrary,
-                    cIdentifier: options.cIdentifier,
-                    args,
-                    returnType: options.returnTypeMapping.ffi,
-                    selfArg: options.self,
-                    hasVarargs: options.hasVarargs,
-                })(writer);
-                writer.write(";");
-                writer.newLine();
-
-                if (options.throws) {
-                    this.writeErrorCheck(writer);
-                }
-                this.writeRefRewrap(writer, gtkAllocatesRefs);
-
-                if (hasOwnClassReturn) {
-                    writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${options.ownClassName});`);
-                } else {
-                    if (isNullable) {
-                        writer.writeLine("if (ptr === null) return null;");
-                    }
-                    if (
-                        wrapInfo.needsBoxedWrap ||
-                        wrapInfo.needsFundamentalWrap ||
-                        wrapInfo.needsStructWrap ||
-                        wrapInfo.needsInterfaceWrap
-                    ) {
-                        writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${baseReturnType});`);
-                    } else {
-                        writer.writeLine(`return getNativeObject(ptr as NativeHandle) as ${baseReturnType};`);
-                    }
-                }
-            } else if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
-                writer.write("const arr = ");
-                this.callExpression.toWriter({
-                    sharedLibrary: options.sharedLibrary,
-                    cIdentifier: options.cIdentifier,
-                    args,
-                    returnType: options.returnTypeMapping.ffi,
-                    selfArg: options.self,
-                    hasVarargs: options.hasVarargs,
-                })(writer);
-                writer.write(" as unknown[];");
-                writer.newLine();
-
-                if (options.throws) {
-                    this.writeErrorCheck(writer);
-                }
-                this.writeRefRewrap(writer, gtkAllocatesRefs);
-
-                if (wrapInfo.arrayItemIsInterface) {
-                    writer.writeLine(
-                        `return arr.map((item) => getNativeObject(item as NativeHandle, ${wrapInfo.arrayItemType}));`,
-                    );
-                } else {
-                    writer.writeLine(
-                        `return arr.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType});`,
-                    );
-                }
-            } else if (wrapInfo.needsHashTableWrap) {
-                writer.write("const tuples = ");
-                this.callExpression.toWriter({
-                    sharedLibrary: options.sharedLibrary,
-                    cIdentifier: options.cIdentifier,
-                    args,
-                    returnType: options.returnTypeMapping.ffi,
-                    selfArg: options.self,
-                    hasVarargs: options.hasVarargs,
-                })(writer);
-                writer.write(" as [unknown, unknown][];");
-                writer.newLine();
-
-                if (options.throws) {
-                    this.writeErrorCheck(writer);
-                }
-                this.writeRefRewrap(writer, gtkAllocatesRefs);
-
-                if (isNullable) {
-                    writer.writeLine("if (tuples === null) return null;");
-                }
-                writer.writeLine(`return new Map(tuples) as ${tsReturnType};`);
-            } else {
-                const hasRefRewrap = gtkAllocatesRefs.length > 0;
-                const needsResultVar = options.throws || hasRefRewrap;
-                const needsCast = rawReturnType !== "void" && rawReturnType !== "unknown";
-
-                if (needsResultVar && hasReturnValue) {
-                    writer.write(`const ${resultVarName} = `);
-                } else if (hasReturnValue) {
-                    writer.write("return ");
-                }
-
-                this.callExpression.toWriter({
-                    sharedLibrary: options.sharedLibrary,
-                    cIdentifier: options.cIdentifier,
-                    args,
-                    returnType: options.returnTypeMapping.ffi,
-                    selfArg: options.self,
-                    hasVarargs: options.hasVarargs,
-                })(writer);
-
-                if (needsCast) {
-                    writer.write(` as ${tsReturnType}`);
-                }
-                writer.write(";");
-                writer.newLine();
-
-                if (options.throws) {
-                    this.writeErrorCheck(writer);
-                }
-                this.writeRefRewrap(writer, gtkAllocatesRefs);
-
-                if (needsResultVar && hasReturnValue) {
-                    writer.writeLine(`return ${resultVarName};`);
-                }
-            }
-        };
-    }
-
-    /**
      * Sets up GError import tracking and returns the appropriate GError reference.
-     * Call this when generating error handling code that uses getNativeObject with GError.
-     *
-     * @param currentNamespace - The current namespace being generated
-     * @returns The GError class reference to use (e.g., "GLib.GError" or "GError")
      */
     setupGErrorImports(currentNamespace?: string): string {
         this.imports.addImport("../../native.js", ["NativeError"]);
@@ -889,51 +1014,13 @@ export class MethodBodyWriter {
         writer.writeLine("}");
     }
 
-    private writeRefRewrap(writer: Writer, refs: GtkAllocatedRef[]): void {
-        for (const ref of refs) {
-            if (ref.isArray && ref.arrayItemType) {
-                if (ref.arrayItemIsBoxed || ref.arrayItemIsInterface) {
-                    writer.writeLine(
-                        `if (${ref.paramName}) ${ref.paramName}.value = (${ref.paramName}.value as unknown as NativeHandle[]).map((item) => getNativeObject(item, ${ref.arrayItemType}));`,
-                    );
-                } else {
-                    writer.writeLine(
-                        `if (${ref.paramName}) ${ref.paramName}.value = (${ref.paramName}.value as unknown as NativeHandle[]).map((item) => getNativeObject(item) as ${ref.arrayItemType});`,
-                    );
-                }
-            } else if (ref.isBoxed || ref.isInterface) {
-                writer.writeLine(
-                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as NativeHandle, ${ref.innerType});`,
-                );
-            } else {
-                writer.writeLine(
-                    `if (${ref.paramName}) ${ref.paramName}.value = getNativeObject(${ref.paramName}.value as unknown as NativeHandle) as ${ref.innerType};`,
-                );
-            }
-        }
-    }
-
     /**
      * Writes a static factory method body.
      *
-     * Consolidates the common pattern used by ConstructorBuilder (GObject) and
-     * RecordGenerator (boxed) for generating static factory methods.
-     *
-     * @param options - Configuration for the factory method body
-     * @returns Function that writes the factory method body
-     *
-     * @example
-     * ```typescript
-     * const body = builder.writeFactoryMethodBody({
-     *   sharedLibrary: "libgtk-4.so.1",
-     *   cIdentifier: "gtk_button_new_with_label",
-     *   args: callArgs,
-     *   returnTypeDescriptor: { type: "gobject", ownership: "full" },
-     *   wrapClassName: "Button",
-     *   throws: false,
-     *   useClassInWrap: false,
-     * });
-     * ```
+     * Out and inout parameters from the original GIR signature are hidden
+     * behind internal allocations (passed via {@link hiddenOuts}); their
+     * post-call values are discarded — factory methods always return the
+     * constructed object.
      */
     writeFactoryMethodBody(options: {
         sharedLibrary: string;
@@ -942,17 +1029,21 @@ export class MethodBodyWriter {
         returnTypeDescriptor: FfiTypeDescriptor;
         wrapClassName: string;
         throws: boolean;
-        /** If true, pass the class to getNativeObject. Used for boxed types. */
         useClassInWrap: boolean;
+        hiddenOuts?: readonly HiddenOut[];
     }): (writer: Writer) => void {
         this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
         const { sharedLibrary, cIdentifier, args, returnTypeDescriptor, wrapClassName, throws, useClassInWrap } =
             options;
+        const hiddenOuts = options.hiddenOuts ?? [];
 
         if (throws) {
             this.imports.addImport("@gtkx/native", ["createRef"]);
             this.setupGErrorImports();
+        }
+        if (hiddenOuts.length > 0) {
+            this.imports.addImport("@gtkx/native", ["createRef"]);
         }
 
         const allArgs = throws
@@ -971,6 +1062,10 @@ export class MethodBodyWriter {
 
             if (throws) {
                 writer.writeLine("const error = createRef<NativeHandle | null>(null);");
+            }
+
+            for (const hidden of hiddenOuts) {
+                this.writeHiddenOutDeclaration(writer, hidden);
             }
 
             writer.write("const ptr = ");
@@ -1003,29 +1098,33 @@ export class MethodBodyWriter {
         return this.ffiMapper;
     }
 
+    private addTypeImport(imp: import("../type-system/ffi-types.js").TypeImport): void {
+        if (!imp.isExternal && this.selfNames.has(imp.transformedName)) return;
+        if (imp.isExternal) {
+            this.imports.addNamespaceImport(`../${imp.namespace.toLowerCase()}/index.js`, imp.namespace);
+            return;
+        }
+        switch (imp.kind) {
+            case "enum":
+            case "flags":
+                this.imports.addImport("./enums.js", [imp.transformedName]);
+                break;
+            case "record":
+            case "class":
+            case "interface":
+                this.imports.addImport(`./${toKebabCase(imp.name)}.js`, [imp.transformedName]);
+                break;
+            case "callback":
+                break;
+        }
+    }
+
     /**
      * Processes type imports from a MappedType, adding them via the ImportCollector.
      */
     private addTypeImportsFromMapping(mapped: MappedType): void {
         for (const imp of mapped.imports) {
-            if (!imp.isExternal && this.selfNames.has(imp.transformedName)) continue;
-            if (imp.isExternal) {
-                this.imports.addNamespaceImport(`../${imp.namespace.toLowerCase()}/index.js`, imp.namespace);
-            } else {
-                switch (imp.kind) {
-                    case "enum":
-                    case "flags":
-                        this.imports.addImport("./enums.js", [imp.transformedName]);
-                        break;
-                    case "record":
-                    case "class":
-                    case "interface":
-                        this.imports.addImport(`./${toKebabCase(imp.name)}.js`, [imp.transformedName]);
-                        break;
-                    case "callback":
-                        break;
-                }
-            }
+            this.addTypeImport(imp);
         }
     }
 }

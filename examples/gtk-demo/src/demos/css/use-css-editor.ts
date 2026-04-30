@@ -16,10 +16,8 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
     const warningTagRef = useRef<Gtk.TextTag | null>(null);
 
     const clearTags = useCallback((buffer: Gtk.TextBuffer) => {
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-        buffer.getStartIter(startIter);
-        buffer.getEndIter(endIter);
+        const startIter = buffer.getStartIter();
+        const endIter = buffer.getEndIter();
         buffer.removeAllTags(startIter, endIter);
     }, []);
 
@@ -34,11 +32,8 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
             const startLocation = section.getStartLocation();
             const endLocation = section.getEndLocation();
 
-            const startIter = new Gtk.TextIter();
-            const endIter = new Gtk.TextIter();
-
-            buffer.getIterAtLineIndex(startIter, startLocation.lines, startLocation.lineBytes);
-            buffer.getIterAtLineIndex(endIter, endLocation.lines, endLocation.lineBytes);
+            const [, startIter] = buffer.getIterAtLineIndex(startLocation.lines, startLocation.lineBytes);
+            const [, endIter] = buffer.getIterAtLineIndex(endLocation.lines, endLocation.lineBytes);
 
             const isWarning = error.domain === cssParserWarningQuark();
             const tag = isWarning ? warningTagRef.current : errorTagRef.current;
@@ -54,10 +49,8 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
         (buffer: Gtk.TextBuffer) => {
             clearTags(buffer);
 
-            const startIter = new Gtk.TextIter();
-            const endIter = new Gtk.TextIter();
-            buffer.getStartIter(startIter);
-            buffer.getEndIter(endIter);
+            const startIter = buffer.getStartIter();
+            const endIter = buffer.getEndIter();
             const text = buffer.getText(startIter, endIter, false);
 
             if (providerRef.current) {

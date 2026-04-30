@@ -54,8 +54,7 @@ function createNuclearTexture(): Gdk.Texture {
 
 function findChildAnchors(buffer: Gtk.TextBuffer): Gtk.TextChildAnchor[] {
     const anchors: Gtk.TextChildAnchor[] = [];
-    const iter = new Gtk.TextIter();
-    buffer.getStartIter(iter);
+    const iter = buffer.getStartIter();
     do {
         const anchor = iter.getChildAnchor();
         if (anchor) anchors.push(anchor);
@@ -114,8 +113,7 @@ function handleEasterEgg(sourceView: Gtk.TextView) {
     }
 
     const buffer = new Gtk.TextBuffer();
-    const iter = new Gtk.TextIter();
-    buffer.getStartIter(iter);
+    const iter = buffer.getStartIter();
     buffer.insert(iter, "This buffer is shared by a set of nested text views.\n Nested view:\n", -1);
     const anchor = buffer.createChildAnchor(iter);
     buffer.insert(iter, "\nDon't do this in real applications, please.\n", -1);

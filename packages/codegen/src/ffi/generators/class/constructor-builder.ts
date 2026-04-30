@@ -95,7 +95,8 @@ export class ConstructorBuilder {
     }
 
     private buildConstructorParameters(ctor: GirConstructor): Param[] {
-        const baseParams = this.methodBody.buildParameterList(ctor.parameters);
+        const shape = this.methodBody.buildShape(ctor.parameters, undefined, 0);
+        const baseParams = this.methodBody.buildSignatureParameters(shape, false);
 
         return baseParams.map((param) => {
             const defaultValue = this.getDefaultForParameter(param.name);
@@ -221,7 +222,8 @@ export class ConstructorBuilder {
     }
 
     private writeConstructorBody(ctor: GirConstructor, ownership: string, params: Param[]): (writer: Writer) => void {
-        const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
+        const shape = this.methodBody.buildShape(ctor.parameters, undefined, 0);
+        const args = this.methodBody.buildShapeCallArguments(shape, ctor.parameters);
         const firstParamName = params.length > 0 ? (params[0]?.name ?? "handle") : "handle";
 
         const forceOptionalNames = new Set(
@@ -246,6 +248,9 @@ export class ConstructorBuilder {
             writer.writeLine("} else {");
             writer.withIndent(() => {
                 this.methodBody.writeCallbackWrapperDeclarations(writer, args);
+                for (const hidden of shape.hiddenOuts) {
+                    this.methodBody.writeHiddenOutDeclarationFor(writer, hidden);
+                }
                 this.writeCallToVariable(writer, ctor.cIdentifier, args, ownership);
                 writer.writeLine("super(__handle);");
                 writer.writeLine("registerNativeObject(this);");
@@ -434,7 +439,8 @@ export class ConstructorBuilder {
 
     private buildStaticFactoryMethodStructure(ctor: GirConstructor): MethodStructure {
         const methodName = toCamelCase(ctor.name);
-        const params = this.methodBody.buildParameterList(ctor.parameters);
+        const shape = this.methodBody.buildShape(ctor.parameters, undefined, 0);
+        const params = this.methodBody.buildSignatureParameters(shape, false);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
 
         return {
@@ -448,7 +454,8 @@ export class ConstructorBuilder {
     }
 
     private writeStaticFactoryMethodBody(ctor: GirConstructor): (writer: Writer) => void {
-        const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
+        const shape = this.methodBody.buildShape(ctor.parameters, undefined, 0);
+        const args = this.methodBody.buildShapeCallArguments(shape, ctor.parameters);
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
         return this.methodBody.writeFactoryMethodBody({
@@ -459,6 +466,7 @@ export class ConstructorBuilder {
             wrapClassName: this.className,
             throws: ctor.throws,
             useClassInWrap: false,
+            hiddenOuts: shape.hiddenOuts,
         });
     }
 }

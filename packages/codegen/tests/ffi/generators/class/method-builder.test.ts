@@ -284,52 +284,6 @@ describe("MethodBuilder", () => {
         });
     });
 
-    describe("hasRefParameter", () => {
-        it("returns false when no ref parameters", () => {
-            const { builder } = createTestSetup();
-            const parameters = [
-                createNormalizedParameter({
-                    name: "value",
-                    type: createNormalizedType({ name: "gint" }),
-                }),
-            ];
-
-            const result = builder.hasRefParameter(parameters);
-
-            expect(result).toBe(false);
-        });
-
-        it("returns true when out parameter present", () => {
-            const { builder } = createTestSetup();
-            const parameters = [
-                createNormalizedParameter({
-                    name: "out_value",
-                    type: createNormalizedType({ name: "gint" }),
-                    direction: "out",
-                }),
-            ];
-
-            const result = builder.hasRefParameter(parameters);
-
-            expect(result).toBe(true);
-        });
-
-        it("returns true when inout parameter present", () => {
-            const { builder } = createTestSetup();
-            const parameters = [
-                createNormalizedParameter({
-                    name: "inout_value",
-                    type: createNormalizedType({ name: "gint" }),
-                    direction: "inout",
-                }),
-            ];
-
-            const result = builder.hasRefParameter(parameters);
-
-            expect(result).toBe(true);
-        });
-    });
-
     describe("hasUnsupportedCallbacks", () => {
         it("returns false when no callbacks", () => {
             const { builder } = createTestSetup();

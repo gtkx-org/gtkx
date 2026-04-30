@@ -1,4 +1,3 @@
-import { createRef as createNativeRef } from "@gtkx/ffi";
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { AdwApplicationWindow, GtkApplicationWindow, GtkLabel } from "@gtkx/react";
@@ -36,11 +35,9 @@ describe("render - Window", () => {
 
             await render(<GtkApplicationWindow ref={ref} defaultWidth={300} defaultHeight={200} />);
 
-            const widthRef = createNativeRef(0);
-            const heightRef = createNativeRef(0);
-            ref.current?.getDefaultSize(widthRef, heightRef);
-            expect(widthRef.value).toBeGreaterThanOrEqual(300);
-            expect(heightRef.value).toBeGreaterThanOrEqual(200);
+            const [width, height] = ref.current?.getDefaultSize() ?? [0, 0];
+            expect(width).toBeGreaterThanOrEqual(300);
+            expect(height).toBeGreaterThanOrEqual(200);
         });
 
         it("updates default size when props change", async () => {
@@ -52,17 +49,13 @@ describe("render - Window", () => {
 
             await render(<App width={200} height={150} />);
 
-            const widthRef = createNativeRef(0);
-            const heightRef = createNativeRef(0);
-            ref.current?.getDefaultSize(widthRef, heightRef);
-            const initialWidth = widthRef.value;
-            const initialHeight = heightRef.value;
+            const [initialWidth, initialHeight] = ref.current?.getDefaultSize() ?? [0, 0];
 
             await render(<App width={400} height={300} />);
 
-            ref.current?.getDefaultSize(widthRef, heightRef);
-            expect(widthRef.value).toBeGreaterThanOrEqual(initialWidth);
-            expect(heightRef.value).toBeGreaterThanOrEqual(initialHeight);
+            const [updatedWidth, updatedHeight] = ref.current?.getDefaultSize() ?? [0, 0];
+            expect(updatedWidth).toBeGreaterThanOrEqual(initialWidth);
+            expect(updatedHeight).toBeGreaterThanOrEqual(initialHeight);
         });
 
         it("handles partial size (only width)", async () => {
@@ -70,9 +63,8 @@ describe("render - Window", () => {
 
             await render(<GtkApplicationWindow ref={ref} defaultWidth={300} />);
 
-            const widthRef = createNativeRef(0);
-            ref.current?.getDefaultSize(widthRef);
-            expect(widthRef.value).toBeGreaterThanOrEqual(300);
+            const [width] = ref.current?.getDefaultSize() ?? [0, 0];
+            expect(width).toBeGreaterThanOrEqual(300);
         });
 
         it("handles partial size (only height)", async () => {
@@ -80,9 +72,8 @@ describe("render - Window", () => {
 
             await render(<GtkApplicationWindow ref={ref} defaultHeight={200} />);
 
-            const heightRef = createNativeRef(0);
-            ref.current?.getDefaultSize(undefined, heightRef);
-            expect(heightRef.value).toBeGreaterThanOrEqual(200);
+            const [, height] = ref.current?.getDefaultSize() ?? [0, 0];
+            expect(height).toBeGreaterThanOrEqual(200);
         });
     });
 

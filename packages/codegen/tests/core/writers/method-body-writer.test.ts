@@ -7,6 +7,7 @@ import { isVararg } from "../../../src/core/utils/filtering.js";
 import { FfiTypeWriter } from "../../../src/core/writers/ffi-type-writer.js";
 import { MethodBodyWriter } from "../../../src/core/writers/method-body-writer.js";
 import {
+    createNormalizedClass,
     createNormalizedConstructor,
     createNormalizedMethod,
     createNormalizedNamespace,
@@ -90,30 +91,6 @@ describe("MethodBodyWriter", () => {
             const filtered = writer.filterParameters([]);
 
             expect(filtered).toHaveLength(0);
-        });
-    });
-
-    describe("hasRefParameter", () => {
-        it("returns false for parameters without Ref type", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
-            const params = [createNormalizedParameter({ name: "label", type: createNormalizedType({ name: "utf8" }) })];
-
-            expect(writer.hasRefParameter(params)).toBe(false);
-        });
-
-        it("returns true for out parameters (Ref type)", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
-            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
-            const params = [
-                createNormalizedParameter({
-                    name: "out_value",
-                    type: createNormalizedType({ name: "gint" }),
-                    direction: "out",
-                }),
-            ];
-
-            expect(writer.hasRefParameter(params)).toBe(true);
         });
     });
 
@@ -441,7 +418,7 @@ describe("MethodBodyWriter", () => {
             expect(result[1].isRestParameter).toBe(true);
         });
 
-        it("sets usesRef flag for Ref parameters", () => {
+        it("hides out parameters from the signature", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const params = [
@@ -454,7 +431,24 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildParameterList(params);
 
+            expect(result).toHaveLength(0);
+        });
+
+        it("keeps inout primitive parameters in the signature as plain values", () => {
+            const ns = createNormalizedNamespace({ name: "Gtk" });
+            const { writer } = createTestSetup(new Map([["Gtk", ns]]));
+            const params = [
+                createNormalizedParameter({
+                    name: "value",
+                    type: createNormalizedType({ name: "gint" }),
+                    direction: "inout",
+                }),
+            ];
+
+            const result = writer.buildParameterList(params);
+
             expect(result).toHaveLength(1);
+            expect(result[0].type).toBe("number");
         });
     });
 
@@ -594,13 +588,10 @@ describe("MethodBodyWriter", () => {
                 cIdentifier: "gtk_button_get_label",
                 returnType: createNormalizedType({ name: "utf8" }),
             });
-            const returnTypeMapping: MappedType = {
-                ts: "string",
-                ffi: { type: "string", ownership: "full" },
-            };
+            const shape = writer.buildShape(method.parameters, method.returnType, 1);
 
             const w = new Writer();
-            writer.writeMethodBody(method, returnTypeMapping, {
+            writer.writeMethodBody(method, shape, {
                 sharedLibrary: "libgtk-4.so.1",
                 selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
             })(w);
@@ -620,13 +611,10 @@ describe("MethodBodyWriter", () => {
                 cIdentifier: "gtk_widget_show",
                 returnType: createNormalizedType({ name: "none" }),
             });
-            const returnTypeMapping: MappedType = {
-                ts: "void",
-                ffi: { type: "void" },
-            };
+            const shape = writer.buildShape(method.parameters, method.returnType, 1);
 
             const w = new Writer();
-            writer.writeMethodBody(method, returnTypeMapping, {
+            writer.writeMethodBody(method, shape, {
                 sharedLibrary: "libgtk-4.so.1",
                 selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
             })(w);
@@ -644,13 +632,10 @@ describe("MethodBodyWriter", () => {
                 returnType: createNormalizedType({ name: "gboolean" }),
                 throws: true,
             });
-            const returnTypeMapping: MappedType = {
-                ts: "boolean",
-                ffi: { type: "boolean" },
-            };
+            const shape = writer.buildShape(method.parameters, method.returnType, 1);
 
             const w = new Writer();
-            writer.writeMethodBody(method, returnTypeMapping, {
+            writer.writeMethodBody(method, shape, {
                 sharedLibrary: "libgtk-4.so.1",
                 selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
             })(w);
@@ -662,20 +647,20 @@ describe("MethodBodyWriter", () => {
         });
 
         it("wraps gobject return values", () => {
-            const ns = createNormalizedNamespace({ name: "Gtk" });
+            const ns = createNormalizedNamespace({
+                name: "Gtk",
+                classes: new Map([["Widget", createNormalizedClass({ name: "Widget", glibTypeName: "GtkWidget" })]]),
+            });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const method = createNormalizedMethod({
                 name: "get_parent",
                 cIdentifier: "gtk_widget_get_parent",
-                returnType: createNormalizedType({ name: "Gtk.Widget" }),
+                returnType: createNormalizedType({ name: "Widget" }),
             });
-            const returnTypeMapping: MappedType = {
-                ts: "Widget",
-                ffi: { type: "gobject", ownership: "borrowed" },
-            };
+            const shape = writer.buildShape(method.parameters, method.returnType, 1);
 
             const w = new Writer();
-            writer.writeMethodBody(method, returnTypeMapping, {
+            writer.writeMethodBody(method, shape, {
                 sharedLibrary: "libgtk-4.so.1",
                 selfTypeDescriptor: { type: "gobject", ownership: "borrowed" },
             })(w);
@@ -696,13 +681,10 @@ describe("MethodBodyWriter", () => {
                 parameters: [],
                 throws: false,
             };
-            const returnTypeMapping: MappedType = {
-                ts: "void",
-                ffi: { type: "void" },
-            };
+            const shape = writer.buildShape(func.parameters, func.returnType, 0);
 
             const w = new Writer();
-            writer.writeFunctionBody(func, returnTypeMapping, {
+            writer.writeFunctionBody(func, shape, {
                 sharedLibrary: "libgtk-4.so.1",
             })(w);
 

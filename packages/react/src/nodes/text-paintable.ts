@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { TextPaintableProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { TEXT_OBJECT_REPLACEMENT, type TextContentParent } from "./text-content.js";
@@ -39,8 +39,7 @@ export class TextPaintableNode extends VirtualNode<TextPaintableProps, Node & Te
 
     private insertPaintable(): void {
         if (!this.buffer || !this.props.paintable) return;
-        const iter = new Gtk.TextIter();
-        this.buffer.getIterAtOffset(iter, this.bufferOffset);
+        const iter = this.buffer.getIterAtOffset(this.bufferOffset);
         this.buffer.insertPaintable(iter, this.props.paintable);
     }
 

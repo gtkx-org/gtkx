@@ -1,4 +1,3 @@
-import { createRef as createNativeRef } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkLevelBar } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -30,15 +29,13 @@ describe("render - LevelBar", () => {
 
             expect(ref.current).not.toBeNull();
 
-            const lowValue = createNativeRef(0);
-            const hasLow = ref.current?.getOffsetValue(lowValue, "low");
+            const [hasLow, lowValue] = ref.current?.getOffsetValue("low") ?? [false, 0];
             expect(hasLow).toBe(true);
-            expect(lowValue.value).toBe(0.25);
+            expect(lowValue).toBe(0.25);
 
-            const highValue = createNativeRef(0);
-            const hasHigh = ref.current?.getOffsetValue(highValue, "high");
+            const [hasHigh, highValue] = ref.current?.getOffsetValue("high") ?? [false, 0];
             expect(hasHigh).toBe(true);
-            expect(highValue.value).toBe(0.75);
+            expect(highValue).toBe(0.75);
         });
 
         it("updates offset value", async () => {
@@ -50,14 +47,11 @@ describe("render - LevelBar", () => {
 
             await render(<App value={0.5} />);
 
-            const valueRef = createNativeRef(0);
-            ref.current?.getOffsetValue(valueRef, "threshold");
-            expect(valueRef.value).toBe(0.5);
+            expect(ref.current?.getOffsetValue("threshold")?.[1]).toBe(0.5);
 
             await render(<App value={0.75} />);
 
-            ref.current?.getOffsetValue(valueRef, "threshold");
-            expect(valueRef.value).toBe(0.75);
+            expect(ref.current?.getOffsetValue("threshold")?.[1]).toBe(0.75);
         });
 
         it("updates offset name", async () => {
@@ -69,14 +63,13 @@ describe("render - LevelBar", () => {
 
             await render(<App name="old-name" />);
 
-            const valueRef = createNativeRef(0);
-            expect(ref.current?.getOffsetValue(valueRef, "old-name")).toBe(true);
-            expect(ref.current?.getOffsetValue(valueRef, "new-name")).toBe(false);
+            expect(ref.current?.getOffsetValue("old-name")?.[0]).toBe(true);
+            expect(ref.current?.getOffsetValue("new-name")?.[0]).toBe(false);
 
             await render(<App name="new-name" />);
 
-            expect(ref.current?.getOffsetValue(valueRef, "old-name")).toBe(false);
-            expect(ref.current?.getOffsetValue(valueRef, "new-name")).toBe(true);
+            expect(ref.current?.getOffsetValue("old-name")?.[0]).toBe(false);
+            expect(ref.current?.getOffsetValue("new-name")?.[0]).toBe(true);
         });
 
         it("removes offsets when array changes", async () => {
@@ -94,14 +87,13 @@ describe("render - LevelBar", () => {
 
             await render(<App showExtra={true} />);
 
-            const valueRef = createNativeRef(0);
-            expect(ref.current?.getOffsetValue(valueRef, "always")).toBe(true);
-            expect(ref.current?.getOffsetValue(valueRef, "extra")).toBe(true);
+            expect(ref.current?.getOffsetValue("always")?.[0]).toBe(true);
+            expect(ref.current?.getOffsetValue("extra")?.[0]).toBe(true);
 
             await render(<App showExtra={false} />);
 
-            expect(ref.current?.getOffsetValue(valueRef, "always")).toBe(true);
-            expect(ref.current?.getOffsetValue(valueRef, "extra")).toBe(false);
+            expect(ref.current?.getOffsetValue("always")?.[0]).toBe(true);
+            expect(ref.current?.getOffsetValue("extra")?.[0]).toBe(false);
         });
     });
 });

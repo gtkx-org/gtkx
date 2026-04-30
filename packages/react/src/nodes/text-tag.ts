@@ -247,11 +247,8 @@ export class TextTagNode
         const length = this.getLength();
         if (length === 0) return;
 
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-
-        buffer.getIterAtOffset(startIter, this.bufferOffset);
-        buffer.getIterAtOffset(endIter, this.bufferOffset + length);
+        const startIter = buffer.getIterAtOffset(this.bufferOffset);
+        const endIter = buffer.getIterAtOffset(this.bufferOffset + length);
 
         buffer.applyTag(tag, startIter, endIter);
     }
@@ -261,11 +258,8 @@ export class TextTagNode
         const tag = this.tag;
         if (!buffer || !tag) return;
 
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-
-        buffer.getStartIter(startIter);
-        buffer.getEndIter(endIter);
+        const startIter = buffer.getStartIter();
+        const endIter = buffer.getEndIter();
 
         buffer.removeTag(tag, startIter, endIter);
     }

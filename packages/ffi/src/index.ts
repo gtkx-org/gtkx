@@ -1,12 +1,4 @@
-export {
-    Arg,
-    createRef,
-    type FfiValue,
-    getNativeId,
-    type NativeHandle,
-    Ref,
-    Type,
-} from "@gtkx/native";
+export { Arg, type FfiValue, getNativeId, type NativeHandle, Type } from "@gtkx/native";
 export * from "./lifecycle.js";
 export * from "./native.js";
 export * from "./registry.js";

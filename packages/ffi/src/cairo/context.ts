@@ -87,7 +87,7 @@ declare module "../generated/cairo/context.js" {
         getLineJoin(): LineJoin;
         setDash(dashes: number[], offset: number): void;
         getDashCount(): number;
-        getDash(): { dashes: number[]; offset: number };
+        getDash(): [number[], number];
         setMiterLimit(limit: number): void;
         getMiterLimit(): number;
         setTolerance(tolerance: number): void;
@@ -122,13 +122,13 @@ declare module "../generated/cairo/context.js" {
         getTarget(): Surface;
         setSourceSurface(surface: Surface, x: number, y: number): void;
         hasCurrentPoint(): boolean;
-        getCurrentPoint(): { x: number; y: number } | null;
+        getCurrentPoint(): [number, number] | null;
         getSource(): Pattern;
 
-        strokeExtents(): { x1: number; y1: number; x2: number; y2: number };
-        fillExtents(): { x1: number; y1: number; x2: number; y2: number };
-        clipExtents(): { x1: number; y1: number; x2: number; y2: number };
-        pathExtents(): { x1: number; y1: number; x2: number; y2: number };
+        strokeExtents(): [number, number, number, number];
+        fillExtents(): [number, number, number, number];
+        clipExtents(): [number, number, number, number];
+        pathExtents(): [number, number, number, number];
         inStroke(x: number, y: number): boolean;
         inFill(x: number, y: number): boolean;
         inClip(x: number, y: number): boolean;
@@ -141,10 +141,10 @@ declare module "../generated/cairo/context.js" {
         getMatrix(): Matrix;
         transform(matrix: Matrix): void;
         identityMatrix(): void;
-        userToDevice(x: number, y: number): { x: number; y: number };
-        userToDeviceDistance(dx: number, dy: number): { dx: number; dy: number };
-        deviceToUser(x: number, y: number): { x: number; y: number };
-        deviceToUserDistance(dx: number, dy: number): { dx: number; dy: number };
+        userToDevice(x: number, y: number): [number, number];
+        userToDeviceDistance(dx: number, dy: number): [number, number];
+        deviceToUser(x: number, y: number): [number, number];
+        deviceToUserDistance(dx: number, dy: number): [number, number];
 
         status(): Status;
     }
@@ -459,10 +459,10 @@ Context.prototype.getDashCount = function (): number {
     return call(LIB, "cairo_get_dash_count", [{ type: CAIRO_T, value: this.handle }], INT_TYPE) as number;
 };
 
-Context.prototype.getDash = function (): { dashes: number[]; offset: number } {
+Context.prototype.getDash = function (): [number[], number] {
     const count = this.getDashCount();
     if (count === 0) {
-        return { dashes: [], offset: 0 };
+        return [[], 0];
     }
     const dashBuf = alloc(count * 8, "double[]", LIB);
     const offsetRef = createRef(0.0);
@@ -480,7 +480,7 @@ Context.prototype.getDash = function (): { dashes: number[]; offset: number } {
     for (let i = 0; i < count; i++) {
         dashes.push(read(dashBuf, DOUBLE_TYPE, i * 8) as number);
     }
-    return { dashes, offset: offsetRef.value };
+    return [dashes, offsetRef.value];
 };
 
 Context.prototype.setMiterLimit = function (limit: number): void {
@@ -755,7 +755,7 @@ Context.prototype.hasCurrentPoint = function (): boolean {
     }) as boolean;
 };
 
-Context.prototype.getCurrentPoint = function (): { x: number; y: number } | null {
+Context.prototype.getCurrentPoint = function (): [number, number] | null {
     const hasPoint = this.hasCurrentPoint();
 
     if (!hasPoint) {
@@ -776,10 +776,7 @@ Context.prototype.getCurrentPoint = function (): { x: number; y: number } | null
         { type: "void" },
     );
 
-    return {
-        x: xRef.value,
-        y: yRef.value,
-    };
+    return [xRef.value, yRef.value];
 };
 
 Context.prototype.getSource = function (): Pattern {
@@ -787,7 +784,7 @@ Context.prototype.getSource = function (): Pattern {
     return getNativeObject(ptr, Pattern) as Pattern;
 };
 
-const getExtents = (ctx: Context, fn: string): { x1: number; y1: number; x2: number; y2: number } => {
+const getExtents = (ctx: Context, fn: string): [number, number, number, number] => {
     const x1Ref = createRef(0.0);
     const y1Ref = createRef(0.0);
     const x2Ref = createRef(0.0);
@@ -804,22 +801,22 @@ const getExtents = (ctx: Context, fn: string): { x1: number; y1: number; x2: num
         ],
         { type: "void" },
     );
-    return { x1: x1Ref.value, y1: y1Ref.value, x2: x2Ref.value, y2: y2Ref.value };
+    return [x1Ref.value, y1Ref.value, x2Ref.value, y2Ref.value];
 };
 
-Context.prototype.strokeExtents = function (): { x1: number; y1: number; x2: number; y2: number } {
+Context.prototype.strokeExtents = function (): [number, number, number, number] {
     return getExtents(this, "cairo_stroke_extents");
 };
 
-Context.prototype.fillExtents = function (): { x1: number; y1: number; x2: number; y2: number } {
+Context.prototype.fillExtents = function (): [number, number, number, number] {
     return getExtents(this, "cairo_fill_extents");
 };
 
-Context.prototype.clipExtents = function (): { x1: number; y1: number; x2: number; y2: number } {
+Context.prototype.clipExtents = function (): [number, number, number, number] {
     return getExtents(this, "cairo_clip_extents");
 };
 
-Context.prototype.pathExtents = function (): { x1: number; y1: number; x2: number; y2: number } {
+Context.prototype.pathExtents = function (): [number, number, number, number] {
     return getExtents(this, "cairo_path_extents");
 };
 
@@ -982,7 +979,7 @@ Context.prototype.identityMatrix = function (): void {
     call(LIB, "cairo_identity_matrix", [{ type: CAIRO_T, value: this.handle }], { type: "void" });
 };
 
-const coordTransform = (ctx: Context, fn: string, a: number, b: number): { a: number; b: number } => {
+const coordTransform = (ctx: Context, fn: string, a: number, b: number): [number, number] => {
     const aRef = createRef(a);
     const bRef = createRef(b);
     call(
@@ -995,27 +992,23 @@ const coordTransform = (ctx: Context, fn: string, a: number, b: number): { a: nu
         ],
         { type: "void" },
     );
-    return { a: aRef.value, b: bRef.value };
+    return [aRef.value, bRef.value];
 };
 
-Context.prototype.userToDevice = function (x: number, y: number): { x: number; y: number } {
-    const r = coordTransform(this, "cairo_user_to_device", x, y);
-    return { x: r.a, y: r.b };
+Context.prototype.userToDevice = function (x: number, y: number): [number, number] {
+    return coordTransform(this, "cairo_user_to_device", x, y);
 };
 
-Context.prototype.userToDeviceDistance = function (dx: number, dy: number): { dx: number; dy: number } {
-    const r = coordTransform(this, "cairo_user_to_device_distance", dx, dy);
-    return { dx: r.a, dy: r.b };
+Context.prototype.userToDeviceDistance = function (dx: number, dy: number): [number, number] {
+    return coordTransform(this, "cairo_user_to_device_distance", dx, dy);
 };
 
-Context.prototype.deviceToUser = function (x: number, y: number): { x: number; y: number } {
-    const r = coordTransform(this, "cairo_device_to_user", x, y);
-    return { x: r.a, y: r.b };
+Context.prototype.deviceToUser = function (x: number, y: number): [number, number] {
+    return coordTransform(this, "cairo_device_to_user", x, y);
 };
 
-Context.prototype.deviceToUserDistance = function (dx: number, dy: number): { dx: number; dy: number } {
-    const r = coordTransform(this, "cairo_device_to_user_distance", dx, dy);
-    return { dx: r.a, dy: r.b };
+Context.prototype.deviceToUserDistance = function (dx: number, dy: number): [number, number] {
+    return coordTransform(this, "cairo_device_to_user_distance", dx, dy);
 };
 
 Context.prototype.status = function (): Status {

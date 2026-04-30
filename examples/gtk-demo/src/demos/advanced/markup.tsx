@@ -23,14 +23,12 @@ const MarkupDemo = () => {
 
         buffer.beginIrreversibleAction();
 
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-        buffer.getStartIter(startIter);
-        buffer.getEndIter(endIter);
+        const startIter = buffer.getStartIter();
+        const endIter = buffer.getEndIter();
         buffer.delete(startIter, endIter);
 
-        buffer.getStartIter(startIter);
-        buffer.insertMarkup(startIter, markupRef.current, -1);
+        const insertIter = buffer.getStartIter();
+        buffer.insertMarkup(insertIter, markupRef.current, -1);
 
         buffer.endIrreversibleAction();
     }, []);
@@ -54,10 +52,8 @@ const MarkupDemo = () => {
                 if (sourceView) {
                     const buffer = sourceView.getBuffer();
                     if (buffer) {
-                        const startIter = new Gtk.TextIter();
-                        const endIter = new Gtk.TextIter();
-                        buffer.getStartIter(startIter);
-                        buffer.getEndIter(endIter);
+                        const startIter = buffer.getStartIter();
+                        const endIter = buffer.getEndIter();
                         markupRef.current = buffer.getText(startIter, endIter, false);
                     }
                 }

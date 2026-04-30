@@ -9,9 +9,8 @@ import { type FileBuilder, variableStatement, type Writer } from "../../builders
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { formatJsDoc } from "../../core/utils/doc-formatter.js";
-import { filterSupportedFunctions } from "../../core/utils/filtering.js";
+import { filterSupportedFunctions, hasVarargs } from "../../core/utils/filtering.js";
 import { toCamelCase, toValidIdentifier } from "../../core/utils/naming.js";
-import { formatNullableReturn } from "../../core/utils/type-qualification.js";
 import { addTypeImports, createMethodBodyWriter, type MethodBodyWriter } from "../../core/writers/index.js";
 
 /**
@@ -27,7 +26,7 @@ export class FunctionGenerator {
     private readonly methodBody: MethodBodyWriter;
 
     constructor(
-        private readonly ffiMapper: FfiMapper,
+        ffiMapper: FfiMapper,
         private readonly file: FileBuilder,
         private readonly options: FfiGeneratorOptions,
     ) {
@@ -57,12 +56,12 @@ export class FunctionGenerator {
 
     private addFunction(func: GirFunction): void {
         const funcName = toValidIdentifier(toCamelCase(func.name));
-        const params = this.methodBody.buildParameterList(func.parameters);
-        const returnTypeMapping = this.ffiMapper.mapType(func.returnType, true, func.returnType.transferOwnership);
-        addTypeImports(this.file, returnTypeMapping.imports);
-        const fullReturnType = formatNullableReturn(returnTypeMapping.ts, func.returnType.nullable === true);
+        const shape = this.methodBody.buildShape(func.parameters, func.returnType, 0);
+        const params = this.methodBody.buildSignatureParameters(shape, hasVarargs(func.parameters));
+        addTypeImports(this.file, shape.returnTypeMapping.imports);
+        const fullReturnType = this.methodBody.computeReturnTypeString(shape, undefined);
 
-        const bodyWriter = this.methodBody.writeFunctionBody(func, returnTypeMapping, {
+        const bodyWriter = this.methodBody.writeFunctionBody(func, shape, {
             sharedLibrary: this.options.sharedLibrary,
         });
 

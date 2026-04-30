@@ -1,4 +1,3 @@
-import { createRef as createNativeRef } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkFixed, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -15,10 +14,8 @@ function getChildPosition(fixed: Gtk.Fixed, child: Gtk.Widget): { x: number; y: 
     if (!transform) {
         return { x: 0, y: 0 };
     }
-    const xRef = createNativeRef(0);
-    const yRef = createNativeRef(0);
-    transform.toTranslate(xRef, yRef);
-    return { x: xRef.value, y: yRef.value };
+    const [x, y] = transform.toTranslate();
+    return { x, y };
 }
 
 describe("render - FixedChild", () => {

@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import { createRef } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
@@ -238,23 +237,16 @@ const HypertextDemo = () => {
             if (!textView) return;
 
             const buffer = textView.getBuffer();
-            const startIter = new Gtk.TextIter();
-            const endIter = new Gtk.TextIter();
-            buffer.getSelectionBounds(startIter, endIter);
+            const [, startIter, endIter] = buffer.getSelectionBounds();
             if (startIter.getOffset() !== endIter.getOffset()) return;
 
-            const bufferX = createRef(0);
-            const bufferY = createRef(0);
-            textView.windowToBufferCoords(
+            const [bufferX, bufferY] = textView.windowToBufferCoords(
                 Gtk.TextWindowType.WIDGET,
                 Math.trunc(clickX),
                 Math.trunc(clickY),
-                bufferX,
-                bufferY,
             );
 
-            const iter = new Gtk.TextIter();
-            const result = textView.getIterAtPosition(iter, bufferX.value, bufferY.value);
+            const [result, iter] = textView.getIterAtPosition(bufferX, bufferY);
             if (!result) return;
 
             const targetPage = findLinkAtOffset(iter.getOffset());
@@ -272,18 +264,13 @@ const HypertextDemo = () => {
             const textView = textViewRef.current;
             if (!textView) return;
 
-            const bufferX = createRef(0);
-            const bufferY = createRef(0);
-            textView.windowToBufferCoords(
+            const [bufferX, bufferY] = textView.windowToBufferCoords(
                 Gtk.TextWindowType.WIDGET,
                 Math.trunc(motionX),
                 Math.trunc(motionY),
-                bufferX,
-                bufferY,
             );
 
-            const iter = new Gtk.TextIter();
-            const result = textView.getIterAtPosition(iter, bufferX.value, bufferY.value);
+            const [result, iter] = textView.getIterAtPosition(bufferX, bufferY);
             if (!result) {
                 if (hoveringRef.current) {
                     textView.setCursor(Gdk.Cursor.newFromName("text"));
@@ -308,8 +295,7 @@ const HypertextDemo = () => {
                 if (!textView) return false;
 
                 const buffer = textView.getBuffer();
-                const iter = new Gtk.TextIter();
-                buffer.getIterAtMark(iter, buffer.getInsert());
+                const iter = buffer.getIterAtMark(buffer.getInsert());
 
                 const targetPage = findLinkAtOffset(iter.getOffset());
                 if (targetPage !== null) {

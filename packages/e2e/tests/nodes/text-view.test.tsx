@@ -6,12 +6,8 @@ import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const getBufferText = (buffer: Gtk.TextBuffer): string => {
-    const startIter = new Gtk.TextIter();
-    const endIter = new Gtk.TextIter();
-
-    buffer.getStartIter(startIter);
-    buffer.getEndIter(endIter);
-
+    const startIter = buffer.getStartIter();
+    const endIter = buffer.getEndIter();
     return buffer.getText(startIter, endIter, true);
 };
 
@@ -20,8 +16,7 @@ const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number)
     const tag = tagTable.lookup(tagName);
     if (!tag) return false;
 
-    const iter = new Gtk.TextIter();
-    buffer.getIterAtOffset(iter, offset);
+    const iter = buffer.getIterAtOffset(offset);
     return iter.hasTag(tag);
 };
 

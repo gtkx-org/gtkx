@@ -199,7 +199,8 @@ export class RecordGenerator {
             this.file.addImport("@gtkx/native", ["isNativeHandle"]);
             this.file.addTypeImport("../../object.js", ["NativeHandle"]);
             const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
-            const args = this.methodBody.buildCallArgumentsArray(mainConstructor.parameters);
+            const ctorShape = this.methodBody.buildShape(mainConstructor.parameters, undefined, 0);
+            const args = this.methodBody.buildShapeCallArguments(ctorShape, mainConstructor.parameters);
             const glibTypeName = record.glibTypeName ?? record.cType;
             const glibGetType = record.glibGetType;
 
@@ -220,7 +221,7 @@ export class RecordGenerator {
                     }),
                 );
             } else {
-                const params = this.methodBody.buildParameterList(mainConstructor.parameters);
+                const params = this.methodBody.buildSignatureParameters(ctorShape, false);
                 const firstParam = params[0] ?? { name: "arg0", type: "unknown" };
                 const baseType = firstParam.type.includes("=>") ? `(${firstParam.type})` : firstParam.type;
                 const implParams = params.map((p, i) =>
@@ -360,7 +361,8 @@ export class RecordGenerator {
         copyFunction?: string,
         freeFunction?: string,
     ): (writer: Writer) => void {
-        const params = this.methodBody.buildParameterList(mainConstructor.parameters);
+        const shape = this.methodBody.buildShape(mainConstructor.parameters, undefined, 0);
+        const params = this.methodBody.buildSignatureParameters(shape, false);
         const forceOptionalNames = new Set(
             params
                 .slice(1)
@@ -382,6 +384,9 @@ export class RecordGenerator {
             });
             writer.writeLine("} else {");
             writer.withIndent(() => {
+                for (const hidden of shape.hiddenOuts) {
+                    this.methodBody.writeHiddenOutDeclarationFor(writer, hidden);
+                }
                 this.writeCallExpression(
                     writer,
                     mainConstructor,
@@ -425,7 +430,8 @@ export class RecordGenerator {
         freeFunction?: string,
     ): MethodStructure {
         const methodName = toCamelCase(ctor.name);
-        const params = this.methodBody.buildParameterList(ctor.parameters);
+        const shape = this.methodBody.buildShape(ctor.parameters, undefined, 0);
+        const params = this.methodBody.buildSignatureParameters(shape, false);
         this.file.addImport("../../registry.js", ["getNativeObject"]);
 
         return {
@@ -453,7 +459,8 @@ export class RecordGenerator {
         copyFunction?: string,
         freeFunction?: string,
     ): (writer: Writer) => void {
-        const args = this.methodBody.buildCallArgumentsArray(ctor.parameters);
+        const shape = this.methodBody.buildShape(ctor.parameters, undefined, 0);
+        const args = this.methodBody.buildShapeCallArguments(shape, ctor.parameters);
         const innerType = glibTypeName ?? recordName;
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
@@ -482,6 +489,7 @@ export class RecordGenerator {
             wrapClassName: recordName,
             throws: ctor.throws,
             useClassInWrap: true,
+            hiddenOuts: shape.hiddenOuts,
         });
     }
 

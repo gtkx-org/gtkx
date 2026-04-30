@@ -48,15 +48,14 @@ const PrintingDemo = ({ window, onClose }: DemoProps) => {
             headerLayout.setFontDescription(Pango.FontDescription.fromString("sans 14"));
             headerLayout.setText("printing.tsx", -1);
 
-            const logicalRect = new Pango.Rectangle();
-            headerLayout.getPixelExtents(undefined, logicalRect);
+            let [, logicalRect] = headerLayout.getPixelExtents();
             let textWidth = logicalRect.width;
             let textHeight = logicalRect.height;
 
             if (textWidth > width) {
                 headerLayout.setWidth(Math.floor(width));
                 headerLayout.setEllipsize(Pango.EllipsizeMode.START);
-                headerLayout.getPixelExtents(undefined, logicalRect);
+                [, logicalRect] = headerLayout.getPixelExtents();
                 textWidth = logicalRect.width;
                 textHeight = logicalRect.height;
             }
@@ -67,7 +66,7 @@ const PrintingDemo = ({ window, onClose }: DemoProps) => {
             const pageStr = `${pageNr + 1}/${numPages}`;
             headerLayout.setText(pageStr, -1);
             headerLayout.setWidth(-1);
-            headerLayout.getPixelExtents(undefined, logicalRect);
+            [, logicalRect] = headerLayout.getPixelExtents();
             cr.moveTo(width - logicalRect.width - 4, (HEADER_HEIGHT - logicalRect.height) / 2);
             PangoCairo.showLayout(cr, headerLayout);
 

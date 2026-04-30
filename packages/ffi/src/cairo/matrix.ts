@@ -17,8 +17,8 @@ declare module "../generated/cairo/matrix.js" {
         rotate(radians: number): void;
         invert(): Status;
         multiply(other: Matrix): Matrix;
-        transformPoint(x: number, y: number): { x: number; y: number };
-        transformDistance(dx: number, dy: number): { dx: number; dy: number };
+        transformPoint(x: number, y: number): [number, number];
+        transformDistance(dx: number, dy: number): [number, number];
     }
 }
 
@@ -202,7 +202,7 @@ Matrix.prototype.multiply = function (other: Matrix): Matrix {
     return obj;
 };
 
-Matrix.prototype.transformPoint = function (x: number, y: number): { x: number; y: number } {
+Matrix.prototype.transformPoint = function (x: number, y: number): [number, number] {
     const xRef = createRef(x);
     const yRef = createRef(y);
     call(
@@ -215,10 +215,10 @@ Matrix.prototype.transformPoint = function (x: number, y: number): { x: number; 
         ],
         { type: "void" },
     );
-    return { x: xRef.value, y: yRef.value };
+    return [xRef.value, yRef.value];
 };
 
-Matrix.prototype.transformDistance = function (dx: number, dy: number): { dx: number; dy: number } {
+Matrix.prototype.transformDistance = function (dx: number, dy: number): [number, number] {
     const dxRef = createRef(dx);
     const dyRef = createRef(dy);
     call(
@@ -231,5 +231,5 @@ Matrix.prototype.transformDistance = function (dx: number, dy: number): { dx: nu
         ],
         { type: "void" },
     );
-    return { dx: dxRef.value, dy: dyRef.value };
+    return [dxRef.value, dyRef.value];
 };

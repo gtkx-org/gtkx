@@ -98,14 +98,6 @@ export class MethodBuilder {
     }
 
     /**
-     * Checks if a parameter list has ref parameters.
-     * Delegates to MethodBodyWriter.
-     */
-    hasRefParameter(parameters: readonly GirParameter[]): boolean {
-        return this.methodBody.hasRefParameter(parameters);
-    }
-
-    /**
      * Checks if a parameter list has unsupported callbacks.
      * Delegates to MethodBodyWriter.
      */
@@ -225,10 +217,18 @@ export class MethodBuilder {
             this.imports.addImport("../../registry.js", ["getNativeObject"]);
         }
 
+        const asyncShape = this.methodBody.buildShape(asyncParams, undefined, 1);
+        if (asyncShape.hiddenOuts.length > 0) {
+            this.imports.addImport("@gtkx/native", ["createRef"]);
+        }
+
         return (writer) => {
             const rejectParam = finishMethod.throws ? "reject" : "_reject";
             writer.writeLine(`return new Promise((resolve, ${rejectParam}) => {`);
             writer.withIndent(() => {
+                for (const hidden of asyncShape.hiddenOuts) {
+                    this.methodBody.writeHiddenOutDeclarationFor(writer, hidden);
+                }
                 writer.writeLine("call(");
                 writer.withIndent(() => {
                     writer.writeLine(`"${this.options.sharedLibrary}",`);
@@ -239,7 +239,7 @@ export class MethodBuilder {
                         writer.write(JSON.stringify(selfTypeDescriptor));
                         writer.writeLine(", value: this.handle },");
 
-                        const asyncArgs = this.methodBody.buildCallArgumentsArray(asyncParams, 1);
+                        const asyncArgs = this.methodBody.buildShapeCallArguments(asyncShape, asyncParams);
                         this.methodBody.writeArgumentsToWriter(writer, asyncArgs);
 
                         writer.writeLine("{");

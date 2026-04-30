@@ -1,4 +1,3 @@
-import { createRef } from "@gtkx/ffi";
 import type { Context } from "@gtkx/ffi/cairo";
 import { LinearPattern } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -80,7 +79,7 @@ const RotatedTextDemo = () => {
     const fancyShapeRenderer = useCallback((cr: Context, attr: Pango.AttrShape, doPath: boolean) => {
         const currentPoint = cr.getCurrentPoint();
         if (currentPoint) {
-            cr.translate(currentPoint.x, currentPoint.y);
+            cr.translate(currentPoint[0], currentPoint[1]);
         }
 
         cr.scale(attr.inkRect.width / Pango.SCALE, attr.inkRect.height / Pango.SCALE);
@@ -114,10 +113,7 @@ const RotatedTextDemo = () => {
             for (let i = 0; i < N_WORDS; i++) {
                 PangoCairo.updateLayout(cr, layout);
 
-                const widthRef = createRef(0);
-                const heightRef = createRef(0);
-                layout.getPixelSize(widthRef, heightRef);
-                const layoutWidth = widthRef.value;
+                const [layoutWidth] = layout.getPixelSize();
 
                 cr.moveTo(-layoutWidth / 2, -RADIUS * 0.9);
                 PangoCairo.showLayout(cr, layout);

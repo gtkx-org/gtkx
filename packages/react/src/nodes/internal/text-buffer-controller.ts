@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkTextViewProps } from "../../jsx.js";
 import type { Node } from "../../node.js";
 import { TextAnchorNode } from "../text-anchor.js";
@@ -283,8 +283,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         const buffer = this.buffer;
         if (!buffer || text.length === 0) return;
 
-        const iter = new Gtk.TextIter();
-        buffer.getIterAtOffset(iter, offset);
+        const iter = buffer.getIterAtOffset(offset);
         buffer.insert(iter, text, -1);
     }
 
@@ -292,11 +291,8 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         const buffer = this.buffer;
         if (!buffer || start >= end) return;
 
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-
-        buffer.getIterAtOffset(startIter, start);
-        buffer.getIterAtOffset(endIter, end);
+        const startIter = buffer.getIterAtOffset(start);
+        const endIter = buffer.getIterAtOffset(end);
         buffer.delete(startIter, endIter);
     }
 

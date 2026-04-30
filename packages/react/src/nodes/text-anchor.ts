@@ -47,8 +47,7 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node & TextCont
     private setupAnchor(): void {
         if (!this.textView || !this.buffer) return;
 
-        const iter = new Gtk.TextIter();
-        this.buffer.getIterAtOffset(iter, this.bufferOffset);
+        const iter = this.buffer.getIterAtOffset(this.bufferOffset);
 
         if (this.props.replacementChar) {
             this.anchor = Gtk.TextChildAnchor.newWithReplacement(this.props.replacementChar);

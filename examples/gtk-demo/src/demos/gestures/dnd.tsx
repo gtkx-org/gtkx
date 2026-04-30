@@ -244,9 +244,8 @@ const DndDemo = ({ window }: DemoProps) => {
         for (const item of items) {
             const button = buttonRefs.current.get(item.id);
             if (button) {
-                const bounds = new Graphene.Rect();
-                bounds.init(0, 0, 0, 0);
-                if (button.computeBounds(button, bounds)) {
+                const [ok, bounds] = button.computeBounds(button);
+                if (ok) {
                     const halfW = bounds.getWidth() / 2;
                     const halfH = bounds.getHeight() / 2;
                     const r = Math.sqrt(halfW * halfW + halfH * halfH);

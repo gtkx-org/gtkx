@@ -113,22 +113,22 @@ describe("Matrix", () => {
         const c = a.multiply(b);
         expect(c).toBeInstanceOf(Matrix);
         const p = c.transformPoint(5, 5);
-        expect(p.x).toBeCloseTo(20);
-        expect(p.y).toBeCloseTo(20);
+        expect(p[0]).toBeCloseTo(20);
+        expect(p[1]).toBeCloseTo(20);
     });
 
     it("transforms a point", () => {
         const m = Matrix.createTranslate(10, 20);
         const p = m.transformPoint(5, 5);
-        expect(p.x).toBeCloseTo(15);
-        expect(p.y).toBeCloseTo(25);
+        expect(p[0]).toBeCloseTo(15);
+        expect(p[1]).toBeCloseTo(25);
     });
 
     it("transforms a distance", () => {
         const m = Matrix.createScale(3, 4);
         const d = m.transformDistance(2, 3);
-        expect(d.dx).toBeCloseTo(6);
-        expect(d.dy).toBeCloseTo(12);
+        expect(d[0]).toBeCloseTo(6);
+        expect(d[1]).toBeCloseTo(12);
     });
 });
 
@@ -139,8 +139,8 @@ describe("Context", () => {
             ctx.moveTo(10, 20);
             const point = ctx.getCurrentPoint();
             expect(point).not.toBeNull();
-            expect(point?.x).toBeCloseTo(10);
-            expect(point?.y).toBeCloseTo(20);
+            expect(point?.[0]).toBeCloseTo(10);
+            expect(point?.[1]).toBeCloseTo(20);
         });
 
         it("draws a line to a point", () => {
@@ -148,8 +148,8 @@ describe("Context", () => {
             ctx.moveTo(0, 0);
             ctx.lineTo(50, 50);
             const point = ctx.getCurrentPoint();
-            expect(point?.x).toBeCloseTo(50);
-            expect(point?.y).toBeCloseTo(50);
+            expect(point?.[0]).toBeCloseTo(50);
+            expect(point?.[1]).toBeCloseTo(50);
         });
 
         it("performs relative move", () => {
@@ -157,8 +157,8 @@ describe("Context", () => {
             ctx.moveTo(10, 10);
             ctx.relMoveTo(5, 5);
             const point = ctx.getCurrentPoint();
-            expect(point?.x).toBeCloseTo(15);
-            expect(point?.y).toBeCloseTo(15);
+            expect(point?.[0]).toBeCloseTo(15);
+            expect(point?.[1]).toBeCloseTo(15);
         });
 
         it("performs relative line", () => {
@@ -166,8 +166,8 @@ describe("Context", () => {
             ctx.moveTo(10, 10);
             ctx.relLineTo(20, 30);
             const point = ctx.getCurrentPoint();
-            expect(point?.x).toBeCloseTo(30);
-            expect(point?.y).toBeCloseTo(40);
+            expect(point?.[0]).toBeCloseTo(30);
+            expect(point?.[1]).toBeCloseTo(40);
         });
 
         it("draws a curve", () => {
@@ -175,8 +175,8 @@ describe("Context", () => {
             ctx.moveTo(0, 0);
             ctx.curveTo(10, 10, 20, 20, 30, 30);
             const point = ctx.getCurrentPoint();
-            expect(point?.x).toBeCloseTo(30);
-            expect(point?.y).toBeCloseTo(30);
+            expect(point?.[0]).toBeCloseTo(30);
+            expect(point?.[1]).toBeCloseTo(30);
         });
 
         it("draws a relative curve", () => {
@@ -184,8 +184,8 @@ describe("Context", () => {
             ctx.moveTo(0, 0);
             ctx.relCurveTo(10, 10, 20, 20, 30, 30);
             const point = ctx.getCurrentPoint();
-            expect(point?.x).toBeCloseTo(30);
-            expect(point?.y).toBeCloseTo(30);
+            expect(point?.[0]).toBeCloseTo(30);
+            expect(point?.[1]).toBeCloseTo(30);
         });
 
         it("draws an arc", () => {
@@ -216,8 +216,8 @@ describe("Context", () => {
             ctx.lineTo(100, 0);
             ctx.closePath();
             const point = ctx.getCurrentPoint();
-            expect(point?.x).toBeCloseTo(0);
-            expect(point?.y).toBeCloseTo(0);
+            expect(point?.[0]).toBeCloseTo(0);
+            expect(point?.[1]).toBeCloseTo(0);
         });
 
         it("creates a new path", () => {
@@ -247,7 +247,7 @@ describe("Context", () => {
             const ctx = createTestContext();
             ctx.moveTo(42, 84);
             const point = ctx.getCurrentPoint();
-            expect(point).toEqual({ x: 42, y: 84 });
+            expect(point).toEqual([42, 84]);
         });
     });
 
@@ -357,11 +357,11 @@ describe("Context", () => {
             ctx.setDash([5, 3, 2], 1.5);
             expect(ctx.getDashCount()).toBe(3);
             const dash = ctx.getDash();
-            expect(dash.dashes).toHaveLength(3);
-            expect(dash.dashes[0]).toBeCloseTo(5);
-            expect(dash.dashes[1]).toBeCloseTo(3);
-            expect(dash.dashes[2]).toBeCloseTo(2);
-            expect(dash.offset).toBeCloseTo(1.5);
+            expect(dash[0]).toHaveLength(3);
+            expect(dash[0][0]).toBeCloseTo(5);
+            expect(dash[0][1]).toBeCloseTo(3);
+            expect(dash[0][2]).toBeCloseTo(2);
+            expect(dash[1]).toBeCloseTo(1.5);
         });
 
         it("returns empty dash when none set", () => {
@@ -369,8 +369,8 @@ describe("Context", () => {
             ctx.setDash([], 0);
             expect(ctx.getDashCount()).toBe(0);
             const dash = ctx.getDash();
-            expect(dash.dashes).toHaveLength(0);
-            expect(dash.offset).toBe(0);
+            expect(dash[0]).toHaveLength(0);
+            expect(dash[1]).toBe(0);
         });
 
         it("sets and gets miter limit", () => {
@@ -402,8 +402,8 @@ describe("Context", () => {
             ctx.restore();
             ctx.moveTo(0, 0);
             const point = ctx.getCurrentPoint();
-            expect(point?.x).toBeCloseTo(0);
-            expect(point?.y).toBeCloseTo(0);
+            expect(point?.[0]).toBeCloseTo(0);
+            expect(point?.[1]).toBeCloseTo(0);
         });
 
         it("translates the coordinate system", () => {
@@ -534,35 +534,35 @@ describe("Context", () => {
             ctx.setLineWidth(2);
             ctx.rectangle(10, 10, 80, 60);
             const ext = ctx.strokeExtents();
-            expect(ext.x1).toBeLessThan(ext.x2);
-            expect(ext.y1).toBeLessThan(ext.y2);
+            expect(ext[0]).toBeLessThan(ext[2]);
+            expect(ext[1]).toBeLessThan(ext[3]);
         });
 
         it("gets fill extents", () => {
             const ctx = createTestContext();
             ctx.rectangle(10, 20, 80, 60);
             const ext = ctx.fillExtents();
-            expect(ext.x1).toBeCloseTo(10);
-            expect(ext.y1).toBeCloseTo(20);
-            expect(ext.x2).toBeCloseTo(90);
-            expect(ext.y2).toBeCloseTo(80);
+            expect(ext[0]).toBeCloseTo(10);
+            expect(ext[1]).toBeCloseTo(20);
+            expect(ext[2]).toBeCloseTo(90);
+            expect(ext[3]).toBeCloseTo(80);
         });
 
         it("gets clip extents", () => {
             const ctx = createTestContext();
             const ext = ctx.clipExtents();
-            expect(ext.x2).toBeGreaterThan(ext.x1);
-            expect(ext.y2).toBeGreaterThan(ext.y1);
+            expect(ext[2]).toBeGreaterThan(ext[0]);
+            expect(ext[3]).toBeGreaterThan(ext[1]);
         });
 
         it("gets path extents", () => {
             const ctx = createTestContext();
             ctx.rectangle(5, 5, 50, 50);
             const ext = ctx.pathExtents();
-            expect(ext.x1).toBeCloseTo(5);
-            expect(ext.y1).toBeCloseTo(5);
-            expect(ext.x2).toBeCloseTo(55);
-            expect(ext.y2).toBeCloseTo(55);
+            expect(ext[0]).toBeCloseTo(5);
+            expect(ext[1]).toBeCloseTo(5);
+            expect(ext[2]).toBeCloseTo(55);
+            expect(ext[3]).toBeCloseTo(55);
         });
     });
 
@@ -642,32 +642,32 @@ describe("Context", () => {
             const ctx = createTestContext();
             ctx.translate(10, 20);
             const p = ctx.userToDevice(5, 5);
-            expect(p.x).toBeCloseTo(15);
-            expect(p.y).toBeCloseTo(25);
+            expect(p[0]).toBeCloseTo(15);
+            expect(p[1]).toBeCloseTo(25);
         });
 
         it("converts user to device distance", () => {
             const ctx = createTestContext();
             ctx.scale(2, 3);
             const d = ctx.userToDeviceDistance(5, 5);
-            expect(d.dx).toBeCloseTo(10);
-            expect(d.dy).toBeCloseTo(15);
+            expect(d[0]).toBeCloseTo(10);
+            expect(d[1]).toBeCloseTo(15);
         });
 
         it("converts device to user coordinates", () => {
             const ctx = createTestContext();
             ctx.translate(10, 20);
             const p = ctx.deviceToUser(15, 25);
-            expect(p.x).toBeCloseTo(5);
-            expect(p.y).toBeCloseTo(5);
+            expect(p[0]).toBeCloseTo(5);
+            expect(p[1]).toBeCloseTo(5);
         });
 
         it("converts device to user distance", () => {
             const ctx = createTestContext();
             ctx.scale(2, 3);
             const d = ctx.deviceToUserDistance(10, 15);
-            expect(d.dx).toBeCloseTo(5);
-            expect(d.dy).toBeCloseTo(5);
+            expect(d[0]).toBeCloseTo(5);
+            expect(d[1]).toBeCloseTo(5);
         });
     });
 

@@ -1,4 +1,3 @@
-import { createRef } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -40,11 +39,9 @@ function loadAllSchemaKeys(): SchemaKeys[] {
     const source = Gio.SettingsSchemaSource.getDefault();
     if (!source) return [];
 
-    const nonRelocatable = createRef<string[]>([]);
-    const relocatable = createRef<string[]>([]);
-    source.listSchemas(true, nonRelocatable, relocatable);
+    const [nonRelocatable] = source.listSchemas(true);
 
-    const schemaIds = nonRelocatable.value.slice().sort();
+    const schemaIds = nonRelocatable.slice().sort();
     const result: SchemaKeys[] = [];
 
     for (const schemaId of schemaIds) {

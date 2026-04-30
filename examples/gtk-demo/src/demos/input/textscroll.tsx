@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
@@ -16,8 +16,7 @@ const AutoScrollTextView = ({ scrollToEnd }: { scrollToEnd: boolean }) => {
         if (!buffer) return;
 
         const markName = scrollToEnd ? "end" : "scroll";
-        const endIter = new Gtk.TextIter();
-        buffer.getEndIter(endIter);
+        const endIter = buffer.getEndIter();
         buffer.createMark(endIter, scrollToEnd, markName);
 
         const timeoutId = setInterval(
@@ -28,15 +27,13 @@ const AutoScrollTextView = ({ scrollToEnd }: { scrollToEnd: boolean }) => {
                     ? `Scroll to end scroll to end scroll to end scroll to end ${count}`
                     : `Scroll to bottom scroll to bottom scroll to bottom scroll to bottom ${count}`;
 
-                const iter = new Gtk.TextIter();
-                buffer.getEndIter(iter);
+                const iter = buffer.getEndIter();
                 buffer.insert(iter, `\n${spaces}${text}`, -1);
 
                 const mark = buffer.getMark(markName);
                 if (mark) {
                     if (!scrollToEnd) {
-                        const endIter2 = new Gtk.TextIter();
-                        buffer.getEndIter(endIter2);
+                        const endIter2 = buffer.getEndIter();
                         endIter2.setLineOffset(0);
                         buffer.moveMark(mark, endIter2);
                     }

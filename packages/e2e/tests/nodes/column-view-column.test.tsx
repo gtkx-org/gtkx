@@ -591,12 +591,12 @@ describe("render - ColumnViewColumn", () => {
             const nameSection = nameMenu?.getItemLink(0, "section");
             expect(nameSection).not.toBeNull();
             expect(nameSection?.getNItems()).toBe(3);
-            expect(nameSection?.getItemAttributeValue(0, "label")?.getString()).toBe("Sort Ascending");
-            expect(nameSection?.getItemAttributeValue(0, "action")?.getString()).toBe("name.sort-asc");
-            expect(nameSection?.getItemAttributeValue(1, "label")?.getString()).toBe("Sort Descending");
-            expect(nameSection?.getItemAttributeValue(1, "action")?.getString()).toBe("name.sort-desc");
-            expect(nameSection?.getItemAttributeValue(2, "label")?.getString()).toBe("Clear Sort");
-            expect(nameSection?.getItemAttributeValue(2, "action")?.getString()).toBe("name.sort-clear");
+            expect(nameSection?.getItemAttributeValue(0, "label")?.getString()[0]).toBe("Sort Ascending");
+            expect(nameSection?.getItemAttributeValue(0, "action")?.getString()[0]).toBe("name.sort-asc");
+            expect(nameSection?.getItemAttributeValue(1, "label")?.getString()[0]).toBe("Sort Descending");
+            expect(nameSection?.getItemAttributeValue(1, "action")?.getString()[0]).toBe("name.sort-desc");
+            expect(nameSection?.getItemAttributeValue(2, "label")?.getString()[0]).toBe("Clear Sort");
+            expect(nameSection?.getItemAttributeValue(2, "action")?.getString()[0]).toBe("name.sort-clear");
 
             const roleMenu = roleCol.getHeaderMenu();
             expect(roleMenu).not.toBeNull();
@@ -605,14 +605,14 @@ describe("render - ColumnViewColumn", () => {
             const roleSection1 = roleMenu?.getItemLink(0, "section");
             expect(roleSection1).not.toBeNull();
             expect(roleSection1?.getNItems()).toBe(1);
-            expect(roleSection1?.getItemAttributeValue(0, "label")?.getString()).toBe("Sort Ascending");
-            expect(roleSection1?.getItemAttributeValue(0, "action")?.getString()).toBe("role.sort-asc");
+            expect(roleSection1?.getItemAttributeValue(0, "label")?.getString()[0]).toBe("Sort Ascending");
+            expect(roleSection1?.getItemAttributeValue(0, "action")?.getString()[0]).toBe("role.sort-asc");
 
             const roleSection2 = roleMenu?.getItemLink(1, "section");
             expect(roleSection2).not.toBeNull();
             expect(roleSection2?.getNItems()).toBe(1);
-            expect(roleSection2?.getItemAttributeValue(0, "label")?.getString()).toBe("Hide Column");
-            expect(roleSection2?.getItemAttributeValue(0, "action")?.getString()).toBe("role.hide");
+            expect(roleSection2?.getItemAttributeValue(0, "label")?.getString()[0]).toBe("Hide Column");
+            expect(roleSection2?.getItemAttributeValue(0, "action")?.getString()[0]).toBe("role.hide");
         });
     });
 });

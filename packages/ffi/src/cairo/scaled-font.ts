@@ -215,11 +215,7 @@ ScaledFont.prototype.getType = function (): FontType {
 
 declare module "../generated/cairo/scaled-font.js" {
     interface ScaledFont {
-        textToGlyphs(
-            x: number,
-            y: number,
-            text: string,
-        ): { glyphs: CairoGlyph[]; clusters: CairoTextCluster[]; clusterFlags: TextClusterFlags };
+        textToGlyphs(x: number, y: number, text: string): [CairoGlyph[], CairoTextCluster[], TextClusterFlags];
         ftLockFace(): NativeHandle;
         ftUnlockFace(): void;
     }
@@ -229,7 +225,7 @@ ScaledFont.prototype.textToGlyphs = function (
     x: number,
     y: number,
     text: string,
-): { glyphs: CairoGlyph[]; clusters: CairoTextCluster[]; clusterFlags: TextClusterFlags } {
+): [CairoGlyph[], CairoTextCluster[], TextClusterFlags] {
     const encoder = new TextEncoder();
     const utf8 = encoder.encode(text);
 
@@ -291,11 +287,7 @@ ScaledFont.prototype.textToGlyphs = function (
         });
     }
 
-    return {
-        glyphs,
-        clusters,
-        clusterFlags: clusterFlagsRef.value as TextClusterFlags,
-    };
+    return [glyphs, clusters, clusterFlagsRef.value as TextClusterFlags];
 };
 
 ScaledFont.prototype.ftLockFace = function (): NativeHandle {

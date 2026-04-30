@@ -167,9 +167,7 @@ const FontRenderingDemo = () => {
             layout.setFontDescription(fontDesc);
             layout.setText(text || " ", -1);
 
-            const inkRect = new Pango.Rectangle();
-            const logicalRect = new Pango.Rectangle();
-            layout.getExtents(inkRect, logicalRect);
+            const [inkRect, logicalRect] = layout.getExtents();
             const baseline = layout.getBaseline();
 
             const inkPixel = {
@@ -325,8 +323,7 @@ const FontRenderingDemo = () => {
             layout.setFontDescription(fontDesc);
             layout.setText(glyphText, -1);
 
-            const logicalRect = new Pango.Rectangle();
-            layout.getPixelExtents(undefined, logicalRect);
+            let [, logicalRect] = layout.getPixelExtents();
 
             const iter = layout.getIter();
             if (!iter) return;
@@ -340,7 +337,7 @@ const FontRenderingDemo = () => {
             if (glyphString.numGlyphs < 8) {
                 ch = "a";
                 layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
-                layout.getPixelExtents(undefined, logicalRect);
+                [, logicalRect] = layout.getPixelExtents();
             }
 
             const glyphs = readGlyphsArray(glyphString);
@@ -367,8 +364,7 @@ const FontRenderingDemo = () => {
             const smallGlyphText = `${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`;
             smallLayout.setText(smallGlyphText, -1);
 
-            const smallLogical = new Pango.Rectangle();
-            smallLayout.getPixelExtents(undefined, smallLogical);
+            let [, smallLogical] = smallLayout.getPixelExtents();
 
             const smallIter = smallLayout.getIter();
             if (!smallIter) return;
@@ -380,7 +376,7 @@ const FontRenderingDemo = () => {
 
             if (smallGlyphString.numGlyphs < 8) {
                 smallLayout.setText(`a${ZWNJ}a${ZWNJ}a${ZWNJ}a`, -1);
-                smallLayout.getPixelExtents(undefined, smallLogical);
+                [, smallLogical] = smallLayout.getPixelExtents();
             }
 
             const smallGlyphs = readGlyphsArray(smallGlyphString);

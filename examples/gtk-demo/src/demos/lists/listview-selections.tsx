@@ -1,7 +1,5 @@
 import { readdirSync, statSync } from "node:fs";
-import { createRef } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import {
     GtkBox,
@@ -101,10 +99,8 @@ const destinationWords = ["app-mockups", "settings-mockups", "os-mockups", "soft
 
 function loadFontFamilies(): string[] {
     const fontMap = PangoCairo.fontMapGetDefault();
-    const familiesRef = createRef<Pango.FontFamily[]>([]);
-    const countRef = createRef(0);
-    fontMap.listFamilies(familiesRef, countRef);
-    return familiesRef.value.map((f) => f.getName()).sort((a, b) => a.localeCompare(b));
+    const families = fontMap.listFamilies();
+    return families.map((f) => f.getName()).sort((a, b) => a.localeCompare(b));
 }
 
 let fontFamilies: string[] | undefined;
