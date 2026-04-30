@@ -5,13 +5,11 @@ import { dndDemo } from "./dnd.js";
 import { gesturesDemo } from "./gestures.js";
 import { linksDemo } from "./links.js";
 import { shortcutTriggersDemo } from "./shortcut-triggers.js";
-import { shortcutsDemo } from "./shortcuts.js";
 
 export const gesturesDemos: Demo[] = [
     gesturesDemo,
     dndDemo,
     clipboardDemo,
-    shortcutsDemo,
     shortcutTriggersDemo,
     linksDemo,
     cursorsDemo,
