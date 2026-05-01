@@ -114,13 +114,13 @@ function applyDef(widget: Gtk.Widget, def: AccessiblePropDef, newValue: unknown)
 
     switch (def.kind) {
         case "property":
-            widget.updatePropertyValue(1, [def.enumValue], [gvalue]);
+            widget.updatePropertyValue([def.enumValue], [gvalue]);
             break;
         case "state":
-            widget.updateStateValue(1, [def.enumValue], [gvalue]);
+            widget.updateStateValue([def.enumValue], [gvalue]);
             break;
         case "relation":
-            widget.updateRelationValue(1, [def.enumValue], [gvalue]);
+            widget.updateRelationValue([def.enumValue], [gvalue]);
             break;
     }
 }

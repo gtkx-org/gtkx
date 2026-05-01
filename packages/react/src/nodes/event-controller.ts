@@ -83,7 +83,7 @@ export class EventControllerNode<
     private setProperty(name: string, value: unknown): void {
         if (name === "types" && this.container instanceof Gtk.DropTarget) {
             const types = value as number[];
-            this.container.setGtypes(types.length, types);
+            this.container.setGtypes(types);
             return;
         }
 

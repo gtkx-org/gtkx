@@ -42,7 +42,7 @@ function createNuclearTexture(): Gdk.Texture {
 
     const pixelData = surface.getData();
     const stride = surface.getStride();
-    const bytes = new GLib.Bytes(pixelData.length, [...pixelData]);
+    const bytes = new GLib.Bytes([...pixelData]);
     const builder = new Gdk.MemoryTextureBuilder();
     builder.setBytes(bytes);
     builder.setWidth(size);

@@ -40,7 +40,7 @@ const ConstraintsVflDemo = () => {
         ]);
 
         try {
-            layout.addConstraintsFromDescriptionv(VFL_CONSTRAINTS, VFL_CONSTRAINTS.length, 8, 8, views);
+            layout.addConstraintsFromDescriptionv(VFL_CONSTRAINTS, 8, 8, views);
         } catch (e) {
             console.error("VFL parsing error:", e);
         }

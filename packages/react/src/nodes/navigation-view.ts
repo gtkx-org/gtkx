@@ -34,7 +34,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
         const newHistory = newProps.history;
 
         if (newHistory && !primitiveArrayEqual(oldHistory, newHistory)) {
-            this.container.replaceWithTags(newHistory, newHistory.length);
+            this.container.replaceWithTags(newHistory);
         }
 
         if (hasChanged(oldProps, newProps, "onHistoryChanged")) {
