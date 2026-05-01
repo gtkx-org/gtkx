@@ -1,6 +1,6 @@
 import type { NativeHandle } from "@gtkx/native";
 import { Object as GObject } from "../generated/gobject/object.js";
-import { Value } from "../generated/gobject/value.js";
+import type { Value } from "../generated/gobject/value.js";
 import { call } from "../native.js";
 import { getNativeObject } from "../registry.js";
 
@@ -19,7 +19,6 @@ declare module "../generated/gobject/object.js" {
          * @param values - The values of each property to be set
          * @returns A new instance of the specified type
          */
-        // biome-ignore lint/complexity/noBannedTypes: Refers to GObject.Object class, not global Object
         function newWithProperties(objectType: number, names: string[], values: Value[]): Object;
     }
 
@@ -64,7 +63,6 @@ declare module "../generated/gobject/object.js" {
          */
         // biome-ignore lint/suspicious/noExplicitAny: handler signature is per-signal
         off(signal: string, handler: (...args: any[]) => any): this;
-
     }
 }
 
@@ -163,12 +161,7 @@ GObject.prototype.disconnect = function disconnect(handlerId: number): void {
     );
 };
 
-GObject.prototype.on = function on<T extends GObject>(
-    this: T,
-    signal: string,
-    handler: Listener,
-    after?: boolean,
-): T {
+GObject.prototype.on = function on<T extends GObject>(this: T, signal: string, handler: Listener, after?: boolean): T {
     const handlerId = (this as GObject).connect(signal, handler, after);
     trackListener(this, signal, handler, handlerId);
     return this;

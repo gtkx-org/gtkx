@@ -513,7 +513,10 @@ export class MethodBodyWriter {
         };
     }
 
-    private shouldStripBooleanReturn(callable: { throws?: boolean; returnType: GirType }, shape: CallableShape): boolean {
+    private shouldStripBooleanReturn(
+        callable: { throws?: boolean; returnType: GirType },
+        shape: CallableShape,
+    ): boolean {
         if (!callable.throws) return false;
         if (!shape.hasOriginalReturn) return false;
         return callable.returnType.name === "gboolean";

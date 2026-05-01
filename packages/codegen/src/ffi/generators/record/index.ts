@@ -217,9 +217,7 @@ export class RecordGenerator {
                                 { params: [param("handle", "NativeHandle")] },
                                 { params: [param("init", `${recordName}Init`, { optional: true })] },
                             ],
-                            params: [
-                                param("init", `${recordName}Init | NativeHandle`, { defaultValue: "{}" }),
-                            ],
+                            params: [param("init", `${recordName}Init | NativeHandle`, { defaultValue: "{}" })],
                             body: this.writeConstructorWithCallAndInitOverloaded(
                                 mainConstructor,
                                 args,

@@ -146,8 +146,7 @@ export class ConstructorBuilder {
         let constructorData: ConstructorOverloads | null = null;
 
         const mainTakesParams =
-            mainConstructor !== undefined &&
-            this.methodBody.filterParameters(mainConstructor.parameters).length > 0;
+            mainConstructor !== undefined && this.methodBody.filterParameters(mainConstructor.parameters).length > 0;
         const useGObjectNewPath =
             hasParent && this.cls.glibGetType !== undefined && !this.cls.abstract && !mainTakesParams;
 
@@ -332,9 +331,7 @@ export class ConstructorBuilder {
             writer.withIndent(() => {
                 writer.writeLine('{ type: { type: "uint64" }, value: gtype, optional: false },');
                 if (props.length > 0) {
-                    writer.writeLine(
-                        '{ type: { type: "uint32" }, value: __names.length, optional: false },',
-                    );
+                    writer.writeLine('{ type: { type: "uint32" }, value: __names.length, optional: false },');
                     writer.writeLine(
                         '{ type: { type: "array", itemType: { type: "string", ownership: "borrowed" }, kind: "sized", sizeParamIndex: 1, ownership: "borrowed" }, value: __names, optional: false },',
                     );
