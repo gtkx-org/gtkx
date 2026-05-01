@@ -40,6 +40,28 @@ import {
 } from "../../../core/writers/index.js";
 import { FieldBuilder } from "./field-builder.js";
 
+type RecordTypeMeta = {
+    glibTypeName?: string;
+    glibGetType?: string;
+    copyFunction?: string;
+    freeFunction?: string;
+};
+
+function writeNativeHandleBranch(
+    writer: Writer,
+    handleVar: string,
+    elseBody: () => void,
+    superCall: string = `super(${handleVar})`,
+): void {
+    writer.writeLine(`if (isNativeHandle(${handleVar})) {`);
+    writer.withIndent(() => {
+        writer.writeLine(`${superCall};`);
+    });
+    writer.writeLine("} else {");
+    writer.withIndent(elseBody);
+    writer.writeLine("}");
+}
+
 /**
  * Generates record (struct/boxed type) classes.
  */
@@ -86,13 +108,12 @@ export class RecordGenerator {
         methodStructures.push(...this.buildStaticFunctionStructures(record.staticFunctions, recordName, record.name));
 
         methodStructures.push(
-            ...this.buildMethodStructures(
-                record.methods,
-                record.glibTypeName,
-                record.glibGetType,
-                record.copyFunction,
-                record.freeFunction,
-            ),
+            ...this.buildMethodStructures(record.methods, {
+                glibTypeName: record.glibTypeName,
+                glibGetType: record.glibGetType,
+                copyFunction: record.copyFunction,
+                freeFunction: record.freeFunction,
+            }),
         );
 
         for (const struct of methodStructures) {
@@ -189,8 +210,12 @@ export class RecordGenerator {
             const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
             const ctorShape = this.methodBody.buildShape(mainConstructor.parameters, undefined, 0);
             const args = this.methodBody.buildShapeCallArguments(ctorShape, mainConstructor.parameters);
-            const glibTypeName = record.glibTypeName ?? record.cType;
-            const glibGetType = record.glibGetType;
+            const meta: RecordTypeMeta = {
+                glibTypeName: record.glibTypeName ?? record.cType,
+                glibGetType: record.glibGetType,
+                copyFunction: record.copyFunction,
+                freeFunction: record.freeFunction,
+            };
 
             if (filteredParams.length === 0) {
                 const initFields = this.fieldBuilder.getInitializableFields(record.fields);
@@ -206,11 +231,8 @@ export class RecordGenerator {
                             body: this.writeConstructorWithCallAndInitOverloaded(
                                 mainConstructor,
                                 args,
-                                glibTypeName,
-                                glibGetType,
+                                meta,
                                 record.fields,
-                                record.copyFunction,
-                                record.freeFunction,
                             ),
                         }),
                     );
@@ -219,15 +241,7 @@ export class RecordGenerator {
                         constructorDecl({
                             overloads: [{ params: [param("handle", "NativeHandle")] }, { params: [] }],
                             params: [param("handle", "NativeHandle", { optional: true })],
-                            body: this.writeConstructorWithCallOverloaded(
-                                "handle",
-                                mainConstructor,
-                                args,
-                                glibTypeName,
-                                glibGetType,
-                                record.copyFunction,
-                                record.freeFunction,
-                            ),
+                            body: this.writeConstructorWithCallOverloaded("handle", mainConstructor, args, meta),
                         }),
                     );
                 }
@@ -249,31 +263,20 @@ export class RecordGenerator {
                             },
                         ],
                         params: implParams,
-                        body: this.writeConstructorWithCallOverloaded(
-                            firstParam.name,
-                            mainConstructor,
-                            args,
-                            glibTypeName,
-                            glibGetType,
-                            record.copyFunction,
-                            record.freeFunction,
-                        ),
+                        body: this.writeConstructorWithCallOverloaded(firstParam.name, mainConstructor, args, meta),
                     }),
                 );
             }
 
+            const factoryMeta: RecordTypeMeta = {
+                glibTypeName: record.glibTypeName,
+                glibGetType: record.glibGetType,
+                copyFunction: record.copyFunction,
+                freeFunction: record.freeFunction,
+            };
             for (const ctor of supportedConstructors) {
                 if (ctor !== mainConstructor) {
-                    methodStructures.push(
-                        this.buildStaticFactoryMethodStructure(
-                            ctor,
-                            recordName,
-                            record.glibTypeName,
-                            record.glibGetType,
-                            record.copyFunction,
-                            record.freeFunction,
-                        ),
-                    );
+                    methodStructures.push(this.buildStaticFactoryMethodStructure(ctor, recordName, factoryMeta));
                 }
             }
         } else {
@@ -323,34 +326,40 @@ export class RecordGenerator {
         }
     }
 
+    private buildRecordReturnDescriptor(
+        meta: RecordTypeMeta,
+        ownership: "full" | "borrowed",
+        fallbackInnerType?: string,
+    ): FfiTypeDescriptor {
+        const { glibTypeName, glibGetType, copyFunction, freeFunction } = meta;
+        if (copyFunction && freeFunction) {
+            return {
+                type: "fundamental",
+                ownership,
+                library: this.options.sharedLibrary,
+                refFn: copyFunction,
+                unrefFn: freeFunction,
+            };
+        }
+        return {
+            type: "boxed",
+            ownership,
+            innerType: glibTypeName ?? fallbackInnerType,
+            library: this.options.sharedLibrary,
+            ...(glibGetType ? { getTypeFn: glibGetType } : {}),
+        };
+    }
+
     private writeCallExpression(
         writer: Writer,
         mainConstructor: GirConstructor,
         args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
-        glibTypeName: string | undefined,
-        glibGetType: string | undefined,
-        copyFunction?: string,
-        freeFunction?: string,
+        meta: RecordTypeMeta,
     ): void {
         const ownership: "full" | "borrowed" =
             mainConstructor.returnType.transferOwnership === "full" ? "full" : "borrowed";
 
-        const returnType: FfiTypeDescriptor =
-            copyFunction && freeFunction
-                ? {
-                      type: "fundamental",
-                      ownership,
-                      library: this.options.sharedLibrary,
-                      refFn: copyFunction,
-                      unrefFn: freeFunction,
-                  }
-                : {
-                      type: "boxed",
-                      ownership,
-                      innerType: glibTypeName,
-                      library: this.options.sharedLibrary,
-                      ...(glibGetType ? { getTypeFn: glibGetType } : {}),
-                  };
+        const returnType = this.buildRecordReturnDescriptor(meta, ownership);
 
         const callWriter = this.methodBody.buildCallWriter({
             sharedLibrary: this.options.sharedLibrary,
@@ -367,10 +376,7 @@ export class RecordGenerator {
         firstParamName: string,
         mainConstructor: GirConstructor,
         args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
-        glibTypeName: string | undefined,
-        glibGetType: string | undefined,
-        copyFunction?: string,
-        freeFunction?: string,
+        meta: RecordTypeMeta,
     ): (writer: Writer) => void {
         const shape = this.methodBody.buildShape(mainConstructor.parameters, undefined, 0);
         const params = this.methodBody.buildSignatureParameters(shape, false);
@@ -383,27 +389,13 @@ export class RecordGenerator {
         );
 
         return (writer) => {
-            writer.writeLine(`if (isNativeHandle(${firstParamName})) {`);
-            writer.withIndent(() => {
-                writer.writeLine(`super(${firstParamName});`);
-            });
-            writer.writeLine("} else {");
-            writer.withIndent(() => {
+            writeNativeHandleBranch(writer, firstParamName, () => {
                 for (const hidden of shape.hiddenOuts) {
                     this.methodBody.writeHiddenOutDeclarationFor(writer, hidden);
                 }
-                this.writeCallExpression(
-                    writer,
-                    mainConstructor,
-                    args,
-                    glibTypeName,
-                    glibGetType,
-                    copyFunction,
-                    freeFunction,
-                );
+                this.writeCallExpression(writer, mainConstructor, args, meta);
                 writer.writeLine("super(__handle);");
             });
-            writer.writeLine("}");
         };
     }
 
@@ -412,59 +404,33 @@ export class RecordGenerator {
         fields: readonly GirField[],
     ): (writer: Writer) => void {
         return (writer) => {
-            writer.writeLine("if (isNativeHandle(init)) {");
-            writer.withIndent(() => {
-                writer.writeLine("super(init);");
-            });
-            writer.writeLine("} else {");
-            writer.withIndent(() => {
+            writeNativeHandleBranch(writer, "init", () => {
                 writer.writeLine(`const __handle = ${allocFn} as NativeHandle;`);
                 writer.writeLine("super(__handle);");
                 this.fieldBuilder.writeFieldWrites(fields)(writer);
             });
-            writer.writeLine("}");
         };
     }
 
     private writeConstructorWithCallAndInitOverloaded(
         mainConstructor: GirConstructor,
         args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
-        glibTypeName: string | undefined,
-        glibGetType: string | undefined,
+        meta: RecordTypeMeta,
         fields: readonly GirField[],
-        copyFunction?: string,
-        freeFunction?: string,
     ): (writer: Writer) => void {
         return (writer) => {
-            writer.writeLine("if (isNativeHandle(init)) {");
-            writer.withIndent(() => {
-                writer.writeLine("super(init);");
-            });
-            writer.writeLine("} else {");
-            writer.withIndent(() => {
-                this.writeCallExpression(
-                    writer,
-                    mainConstructor,
-                    args,
-                    glibTypeName,
-                    glibGetType,
-                    copyFunction,
-                    freeFunction,
-                );
+            writeNativeHandleBranch(writer, "init", () => {
+                this.writeCallExpression(writer, mainConstructor, args, meta);
                 writer.writeLine("super(__handle);");
                 this.fieldBuilder.writeFieldWrites(fields)(writer);
             });
-            writer.writeLine("}");
         };
     }
 
     private buildStaticFactoryMethodStructure(
         ctor: GirConstructor,
         recordName: string,
-        glibTypeName?: string,
-        glibGetType?: string,
-        copyFunction?: string,
-        freeFunction?: string,
+        meta: RecordTypeMeta,
     ): MethodStructure {
         const methodName = toCamelCase(ctor.name);
         const shape = this.methodBody.buildShape(ctor.parameters, undefined, 0);
@@ -477,46 +443,19 @@ export class RecordGenerator {
             parameters: params,
             returnType: recordName,
             docs: buildJsDocStructure(ctor.doc, this.options.namespace),
-            statements: this.writeStaticFactoryMethodBody(
-                ctor,
-                recordName,
-                glibTypeName,
-                glibGetType,
-                copyFunction,
-                freeFunction,
-            ),
+            statements: this.writeStaticFactoryMethodBody(ctor, recordName, meta),
         };
     }
 
     private writeStaticFactoryMethodBody(
         ctor: GirConstructor,
         recordName: string,
-        glibTypeName?: string,
-        glibGetType?: string,
-        copyFunction?: string,
-        freeFunction?: string,
+        meta: RecordTypeMeta,
     ): (writer: Writer) => void {
         const shape = this.methodBody.buildShape(ctor.parameters, undefined, 0);
         const args = this.methodBody.buildShapeCallArguments(shape, ctor.parameters);
-        const innerType = glibTypeName ?? recordName;
         const ownership = ctor.returnType.transferOwnership === "full" ? "full" : "borrowed";
-
-        const returnTypeDescriptor: FfiTypeDescriptor =
-            copyFunction && freeFunction
-                ? {
-                      type: "fundamental",
-                      ownership,
-                      library: this.options.sharedLibrary,
-                      refFn: copyFunction,
-                      unrefFn: freeFunction,
-                  }
-                : {
-                      type: "boxed",
-                      ownership,
-                      innerType,
-                      library: this.options.sharedLibrary,
-                      ...(glibGetType && { getTypeFn: glibGetType }),
-                  };
+        const returnTypeDescriptor = this.buildRecordReturnDescriptor(meta, ownership, recordName);
 
         return this.methodBody.writeFactoryMethodBody({
             sharedLibrary: this.options.sharedLibrary,
@@ -554,42 +493,29 @@ export class RecordGenerator {
         });
     }
 
-    private buildMethodStructures(
-        methods: readonly GirMethod[],
-        glibTypeName: string | undefined,
-        glibGetType: string | undefined,
-        copyFunction?: string,
-        freeFunction?: string,
-    ): MethodStructure[] {
+    private buildMethodStructures(methods: readonly GirMethod[], meta: RecordTypeMeta): MethodStructure[] {
         const supportedMethods = filterSupportedMethods(methods, (params) =>
             this.methodBody.hasUnsupportedCallbacks(params),
         );
-        return supportedMethods.map((method) =>
-            this.buildMethodStructure(method, glibTypeName, glibGetType, copyFunction, freeFunction),
-        );
+        return supportedMethods.map((method) => this.buildMethodStructure(method, meta));
     }
 
-    private buildMethodStructure(
-        m: GirMethod,
-        className: string | undefined,
-        glibGetType: string | undefined,
-        copyFunction?: string,
-        freeFunction?: string,
-    ): MethodStructure {
+    private buildMethodStructure(m: GirMethod, meta: RecordTypeMeta): MethodStructure {
         const methodName = toCamelCase(m.name);
         const instanceOwnership = m.instanceParameter?.transferOwnership === "full" ? "full" : "borrowed";
+        const className = meta.glibTypeName;
         let selfTypeDescriptor: SelfTypeDescriptor;
         if (className) {
             selfTypeDescriptor =
-                copyFunction && freeFunction
+                meta.copyFunction && meta.freeFunction
                     ? fundamentalSelfType(
                           this.options.sharedLibrary,
-                          copyFunction,
-                          freeFunction,
+                          meta.copyFunction,
+                          meta.freeFunction,
                           instanceOwnership,
                           className,
                       )
-                    : boxedSelfType(className, this.options.sharedLibrary, glibGetType, instanceOwnership);
+                    : boxedSelfType(className, this.options.sharedLibrary, meta.glibGetType, instanceOwnership);
         } else {
             selfTypeDescriptor = SELF_TYPE_GOBJECT;
         }
