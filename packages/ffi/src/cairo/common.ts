@@ -1,4 +1,4 @@
-import type { NativeHandle } from "@gtkx/native";
+import { type Arg, createRef, type NativeHandle } from "@gtkx/native";
 import { PathDataType } from "../generated/cairo/enums.js";
 import { alloc, call, read, write } from "../native.js";
 
@@ -64,6 +64,37 @@ export const SURFACE_T_NONE = {
 export const DOUBLE_TYPE = { type: "float64" } as const;
 export const INT_TYPE = { type: "int32" } as const;
 export const ULONG_TYPE = { type: "uint64" } as const;
+
+const DOUBLE_REF = { type: "ref", innerType: DOUBLE_TYPE } as const;
+
+/**
+ * Calls a Cairo function returning two `double*` out-params and yields `{ x, y }`.
+ */
+export const callGetXY = (fnName: string, selfArg: Arg): { x: number; y: number } => {
+    const xRef = createRef(0.0);
+    const yRef = createRef(0.0);
+    call(LIB, fnName, [selfArg, { type: DOUBLE_REF, value: xRef }, { type: DOUBLE_REF, value: yRef }], {
+        type: "void",
+    });
+    return { x: xRef.value, y: yRef.value };
+};
+
+/**
+ * Calls a Cairo file-surface constructor (e.g. `cairo_pdf_surface_create`)
+ * and returns the resulting `cairo_surface_t*`.
+ */
+export const createFileSurface = (fnName: string, filename: string, width: number, height: number): NativeHandle => {
+    return call(
+        LIB,
+        fnName,
+        [
+            { type: { type: "string", ownership: "full" }, value: filename },
+            { type: DOUBLE_TYPE, value: width },
+            { type: DOUBLE_TYPE, value: height },
+        ],
+        SURFACE_T,
+    ) as NativeHandle;
+};
 
 export const FONT_FACE_T = {
     type: "boxed",

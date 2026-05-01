@@ -20,20 +20,11 @@ export class ClassDeclarationBuilder implements Builder {
     private readonly accessors: AccessorBuilder[] = [];
     private readonly methods: MethodBuilder[] = [];
     private ctor: ConstructorBuilder | null = null;
-    private exported: boolean;
 
     constructor(
         readonly name: string,
         private readonly opts: ClassOptions = {},
-    ) {
-        this.exported = opts.exported ?? false;
-    }
-
-    /** Mark this class as exported. */
-    export(): this {
-        this.exported = true;
-        return this;
-    }
+    ) {}
 
     /** Set the class constructor. */
     setConstructor(ctor: ConstructorBuilder): this {
@@ -62,7 +53,7 @@ export class ClassDeclarationBuilder implements Builder {
     /** @inheritdoc */
     write(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
-        if (this.exported) writer.write("export ");
+        if (this.opts.exported) writer.write("export ");
         if (this.opts.abstract) writer.write("abstract ");
         writer.write(`class ${this.name}`);
         if (this.opts.extends) {

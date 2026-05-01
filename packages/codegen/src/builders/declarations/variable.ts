@@ -17,25 +17,15 @@ export type VariableOptions = {
 
 /** Builder that emits a variable statement (`const`/`let`) with optional type annotation and initializer. */
 export class VariableStatementBuilder implements Builder {
-    private exported: boolean;
-
     constructor(
         readonly name: string,
         private readonly opts: VariableOptions = {},
-    ) {
-        this.exported = opts.exported ?? false;
-    }
-
-    /** Mark this variable as exported. */
-    export(): this {
-        this.exported = true;
-        return this;
-    }
+    ) {}
 
     /** @inheritdoc */
     write(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
-        if (this.exported) writer.write("export ");
+        if (this.opts.exported) writer.write("export ");
         writer.write(`${this.opts.kind ?? "const"} ${this.name}`);
         if (this.opts.type) {
             writer.write(": ");

@@ -56,6 +56,34 @@ impl NeonContextExt for FunctionContext<'_> {
     }
 }
 
+/// Shared parser for the `argTypes` and `returnType` properties used by both
+/// `CallbackType` and `TrampolineType`. Returns the parsed argument types and
+/// return type or throws a JS type error referencing `kind` (e.g. `"callback"`).
+pub(crate) fn parse_callback_arg_and_return_types(
+    cx: &mut FunctionContext,
+    obj: Handle<JsObject>,
+    kind: &str,
+) -> NeonResult<(Vec<Type>, Box<Type>)> {
+    let arg_types_prop: Handle<'_, JsValue> = obj.prop(cx, "argTypes").get()?;
+    let arg_types_arr = arg_types_prop.downcast::<JsArray, _>(cx).or_else(|_| {
+        cx.throw_type_error(format!("'argTypes' property is required for {kind} types"))
+    })?;
+    let arg_types_vec = arg_types_arr.to_vec(cx)?;
+    let mut arg_types = Vec::with_capacity(arg_types_vec.len());
+    for item in arg_types_vec {
+        arg_types.push(Type::from_js_value(cx, item)?);
+    }
+
+    let return_type_prop: Handle<'_, JsValue> = obj.prop(cx, "returnType").get()?;
+    let return_type = Box::new(Type::from_js_value(cx, return_type_prop).or_else(|_| {
+        cx.throw_type_error(format!(
+            "'returnType' property is required for {kind} types"
+        ))
+    })?);
+
+    Ok((arg_types, return_type))
+}
+
 mod array;
 mod boolean;
 mod boxed;
@@ -201,9 +229,13 @@ pub trait FfiDecoder {
 
 #[enum_dispatch]
 pub trait RawPtrCodec {
+    /// Reads a value from a `*const T**` (a pointer-to-pointer location), by
+    /// dereferencing once and delegating to [`ptr_to_value`]. Pointer-typed
+    /// codecs (string/gobject/boxed/struct/fundamental) inherit this default;
+    /// scalar codecs override with a direct read.
     fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let _ = (ptr, context);
-        bail!("This type cannot be read from a raw pointer")
+        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
+        self.ptr_to_value(inner_ptr, context)
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {

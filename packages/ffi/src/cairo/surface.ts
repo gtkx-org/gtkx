@@ -5,7 +5,17 @@ import type { RectangleInt } from "../generated/cairo/rectangle-int.js";
 import { Surface } from "../generated/cairo/surface.js";
 import { alloc, call, read, write } from "../native.js";
 import { getNativeObject } from "../registry.js";
-import { DEVICE_T, DOUBLE_TYPE, INT_TYPE, LIB, RECT_INT_T, SURFACE_T, SURFACE_T_NONE, ULONG_TYPE } from "./common.js";
+import {
+    callGetXY,
+    DEVICE_T,
+    DOUBLE_TYPE,
+    INT_TYPE,
+    LIB,
+    RECT_INT_T,
+    SURFACE_T,
+    SURFACE_T_NONE,
+    ULONG_TYPE,
+} from "./common.js";
 import { ImageSurface } from "./image-surface.js";
 
 declare module "../generated/cairo/surface.js" {
@@ -146,19 +156,7 @@ Surface.prototype.setDeviceOffset = function (xOffset: number, yOffset: number):
 };
 
 Surface.prototype.getDeviceOffset = function (): { x: number; y: number } {
-    const xRef = createRef(0.0);
-    const yRef = createRef(0.0);
-    call(
-        LIB,
-        "cairo_surface_get_device_offset",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
-        ],
-        { type: "void" },
-    );
-    return { x: xRef.value, y: yRef.value };
+    return callGetXY("cairo_surface_get_device_offset", { type: SURFACE_T_NONE, value: this.handle });
 };
 
 Surface.prototype.setDeviceScale = function (xScale: number, yScale: number): void {
@@ -175,19 +173,7 @@ Surface.prototype.setDeviceScale = function (xScale: number, yScale: number): vo
 };
 
 Surface.prototype.getDeviceScale = function (): { x: number; y: number } {
-    const xRef = createRef(0.0);
-    const yRef = createRef(0.0);
-    call(
-        LIB,
-        "cairo_surface_get_device_scale",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
-        ],
-        { type: "void" },
-    );
-    return { x: xRef.value, y: yRef.value };
+    return callGetXY("cairo_surface_get_device_scale", { type: SURFACE_T_NONE, value: this.handle });
 };
 
 Surface.prototype.setFallbackResolution = function (xPpi: number, yPpi: number): void {
@@ -204,19 +190,7 @@ Surface.prototype.setFallbackResolution = function (xPpi: number, yPpi: number):
 };
 
 Surface.prototype.getFallbackResolution = function (): { x: number; y: number } {
-    const xRef = createRef(0.0);
-    const yRef = createRef(0.0);
-    call(
-        LIB,
-        "cairo_surface_get_fallback_resolution",
-        [
-            { type: SURFACE_T_NONE, value: this.handle },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: xRef },
-            { type: { type: "ref", innerType: DOUBLE_TYPE }, value: yRef },
-        ],
-        { type: "void" },
-    );
-    return { x: xRef.value, y: yRef.value };
+    return callGetXY("cairo_surface_get_fallback_resolution", { type: SURFACE_T_NONE, value: this.handle });
 };
 
 Surface.prototype.markDirtyRectangle = function (x: number, y: number, width: number, height: number): void {

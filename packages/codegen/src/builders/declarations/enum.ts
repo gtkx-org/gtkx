@@ -19,20 +19,11 @@ export type EnumOptions = {
 /** Builder that emits a TypeScript enum declaration with named members. */
 export class EnumDeclarationBuilder implements Builder {
     private readonly members: EnumMember[] = [];
-    private exported: boolean;
 
     constructor(
         readonly name: string,
         private readonly opts: EnumOptions = {},
-    ) {
-        this.exported = opts.exported ?? false;
-    }
-
-    /** Mark this enum as exported. */
-    export(): this {
-        this.exported = true;
-        return this;
-    }
+    ) {}
 
     /** Add a member to the enum body. */
     addMember(member: EnumMember): this {
@@ -43,7 +34,7 @@ export class EnumDeclarationBuilder implements Builder {
     /** @inheritdoc */
     write(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
-        if (this.exported) writer.write("export ");
+        if (this.opts.exported) writer.write("export ");
         if (this.opts.const) writer.write("const ");
         writer.write(`enum ${this.name} `);
         writer.writeBlock(() => {

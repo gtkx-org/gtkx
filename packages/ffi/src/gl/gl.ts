@@ -155,25 +155,15 @@ export function getShaderiv(shader: number, pname: number): number {
     return params.value;
 }
 
-/**
- * Gets the information log for a shader object.
- * @param shader - The shader object ID
- * @returns The shader info log string
- */
-export function getShaderInfoLog(shader: number): string {
-    const logLength = getShaderiv(shader, INFO_LOG_LENGTH);
-    if (logLength <= 0) {
-        return "";
-    }
-
+function readInfoLog(fnName: string, id: number, logLength: number): string {
     const infoLogRef = createRef("");
     const lengthRef = createRef(0);
 
     call(
         LIB,
-        "glGetShaderInfoLog",
+        fnName,
         [
-            { type: { type: "uint32" }, value: shader },
+            { type: { type: "uint32" }, value: id },
             { type: { type: "int32" }, value: logLength },
             { type: { type: "ref", innerType: { type: "int32" } }, value: lengthRef },
             {
@@ -185,6 +175,16 @@ export function getShaderInfoLog(shader: number): string {
     );
 
     return infoLogRef.value;
+}
+
+/**
+ * Gets the information log for a shader object.
+ * @param shader - The shader object ID
+ * @returns The shader info log string
+ */
+export function getShaderInfoLog(shader: number): string {
+    const logLength = getShaderiv(shader, INFO_LOG_LENGTH);
+    return logLength <= 0 ? "" : readInfoLog("glGetShaderInfoLog", shader, logLength);
 }
 
 /**
@@ -282,29 +282,7 @@ export function getProgramiv(program: number, pname: number): number {
  */
 export function getProgramInfoLog(program: number): string {
     const logLength = getProgramiv(program, INFO_LOG_LENGTH);
-    if (logLength <= 0) {
-        return "";
-    }
-
-    const infoLogRef = createRef("");
-    const lengthRef = createRef(0);
-
-    call(
-        LIB,
-        "glGetProgramInfoLog",
-        [
-            { type: { type: "uint32" }, value: program },
-            { type: { type: "int32" }, value: logLength },
-            { type: { type: "ref", innerType: { type: "int32" } }, value: lengthRef },
-            {
-                type: { type: "ref", innerType: { type: "string", ownership: "borrowed", length: logLength } },
-                value: infoLogRef,
-            },
-        ],
-        { type: "void" },
-    );
-
-    return infoLogRef.value;
+    return logLength <= 0 ? "" : readInfoLog("glGetProgramInfoLog", program, logLength);
 }
 
 /**

@@ -15,6 +15,7 @@ import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { normalizeClassName, toCamelCase, toKebabCase, toValidIdentifier } from "../../../core/utils/naming.js";
 import {
     addTypeImports,
+    applyForcedNonNullArgs,
     createMethodBodyWriter,
     type ImportCollector,
     type MethodBodyWriter,
@@ -241,19 +242,13 @@ export class ConstructorBuilder {
         const args = this.methodBody.buildShapeCallArguments(shape, ctor.parameters);
         const firstParamName = params.length > 0 ? (params[0]?.name ?? "handle") : "handle";
 
-        const forceOptionalNames = new Set(
+        applyForcedNonNullArgs(
+            args,
             params
                 .slice(1)
                 .filter((p) => !p.optional && !p.initializer)
                 .map((p) => p.name),
         );
-        for (const arg of args) {
-            for (const name of forceOptionalNames) {
-                if (arg.value.startsWith(`${name}.`)) {
-                    arg.value = arg.value.replace(`${name}.`, `${name}!.`);
-                }
-            }
-        }
 
         return (writer) => {
             writer.writeLine(`if (isNativeHandle(${firstParamName})) {`);

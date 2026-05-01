@@ -32,20 +32,11 @@ export type InterfaceOptions = {
 export class InterfaceDeclarationBuilder implements Builder {
     private readonly properties: InterfacePropertySignature[] = [];
     private readonly methods: InterfaceMethodSignature[] = [];
-    private exported: boolean;
 
     constructor(
         readonly name: string,
         private readonly opts: InterfaceOptions = {},
-    ) {
-        this.exported = opts.exported ?? false;
-    }
-
-    /** Mark this interface as exported. */
-    export(): this {
-        this.exported = true;
-        return this;
-    }
+    ) {}
 
     /** Add a property signature to the interface body. */
     addProperty(sig: InterfacePropertySignature): this {
@@ -62,7 +53,7 @@ export class InterfaceDeclarationBuilder implements Builder {
     /** @inheritdoc */
     write(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
-        if (this.exported) writer.write("export ");
+        if (this.opts.exported) writer.write("export ");
         writer.write(`interface ${this.name}`);
         if (this.opts.extends && this.opts.extends.length > 0) {
             writer.write(` extends ${this.opts.extends.join(", ")}`);

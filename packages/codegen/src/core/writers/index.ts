@@ -95,3 +95,19 @@ export const createMethodBodyWriter = (
     }
     return writer;
 };
+
+/**
+ * Rewrites argument expressions for parameters that follow a NativeHandle-or-overload
+ * first argument: any access of `name.foo` is rewritten to `name!.foo` so the codegen
+ * output asserts non-null in the constructor branch where TypeScript narrowed the
+ * parameter via the `isNativeHandle` overload check.
+ */
+export const applyForcedNonNullArgs = (args: { value: string }[], forcedNames: Iterable<string>): void => {
+    for (const arg of args) {
+        for (const name of forcedNames) {
+            if (arg.value.startsWith(`${name}.`)) {
+                arg.value = arg.value.replace(`${name}.`, `${name}!.`);
+            }
+        }
+    }
+};

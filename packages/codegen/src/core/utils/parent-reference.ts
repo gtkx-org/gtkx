@@ -4,7 +4,7 @@
  * Shared logic for parsing parent class references from qualified names.
  */
 
-import { normalizeClassName, toKebabCase } from "./naming.js";
+import { normalizeClassName } from "./naming.js";
 import { splitQualifiedName } from "./qualified-name.js";
 
 /**
@@ -21,8 +21,6 @@ export type ParentInfo = {
     className: string;
     /** Original parent name (for file path generation) */
     originalName: string;
-    /** Import statement (for same-namespace parents) */
-    importStatement?: string;
     /** Extends clause for class declaration */
     extendsClause: string;
 };
@@ -75,6 +73,5 @@ export const parseParentReference = (parent: string | null | undefined, currentN
         className: normalizedClass,
         originalName,
         extendsClause: ` extends ${normalizedClass}`,
-        importStatement: `import { ${normalizedClass} } from "./${toKebabCase(originalName)}.js";`,
     };
 };

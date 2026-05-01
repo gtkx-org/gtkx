@@ -78,11 +78,6 @@ impl RawPtrCodec for StringType {
         Ok(value::Value::String(c_str.to_string_lossy().into_owned()))
     }
 
-    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        self.ptr_to_value(inner_ptr, context)
-    }
-
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = match value {
             Ok(value::Value::String(s)) => CString::new(s.as_bytes())

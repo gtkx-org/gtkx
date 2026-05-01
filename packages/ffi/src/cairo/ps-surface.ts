@@ -1,7 +1,6 @@
-import type { NativeHandle } from "@gtkx/native";
 import { Surface } from "../generated/cairo/surface.js";
 import { call } from "../native.js";
-import { DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T, SURFACE_T_NONE } from "./common.js";
+import { createFileSurface, DOUBLE_TYPE, INT_TYPE, LIB, SURFACE_T_NONE } from "./common.js";
 import { enumToString, getEnumList } from "./enum-helpers.js";
 
 export enum PsLevel {
@@ -13,18 +12,7 @@ export class PsSurface extends Surface {
     static override readonly glibTypeName: string = "CairoSurface";
 
     constructor(filename: string, widthInPoints: number, heightInPoints: number) {
-        super(
-            call(
-                LIB,
-                "cairo_ps_surface_create",
-                [
-                    { type: { type: "string", ownership: "full" }, value: filename },
-                    { type: DOUBLE_TYPE, value: widthInPoints },
-                    { type: DOUBLE_TYPE, value: heightInPoints },
-                ],
-                SURFACE_T,
-            ) as NativeHandle,
-        );
+        super(createFileSurface("cairo_ps_surface_create", filename, widthInPoints, heightInPoints));
     }
 
     setSize(widthInPoints: number, heightInPoints: number): void {

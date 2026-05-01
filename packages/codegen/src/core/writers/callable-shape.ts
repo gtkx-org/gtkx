@@ -14,6 +14,7 @@ import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { FfiTypeDescriptor, MappedType, TypeImport } from "../type-system/ffi-types.js";
 import { isVararg } from "../utils/filtering.js";
 import { toCamelCase, toValidIdentifier } from "../utils/naming.js";
+import { isHandleBackedType } from "./call-expression-builder.js";
 
 /**
  * A parameter that appears in the public TypeScript signature.
@@ -587,22 +588,13 @@ const buildInputValueExpression = (valueName: string, mapped: MappedType, nullab
     }
 
     if (mapped.ffi.type === "array" && mapped.ffi.itemType) {
-        const itemType = mapped.ffi.itemType.type;
-        const itemNeedsPtr =
-            itemType === "gobject" || itemType === "boxed" || itemType === "struct" || itemType === "fundamental";
-        if (itemNeedsPtr) {
+        if (isHandleBackedType(mapped.ffi.itemType.type)) {
             return nullable ? `${valueName}?.map(item => item.handle)` : `${valueName}.map(item => item.handle)`;
         }
     }
 
     if (mapped.ffi.type === "hashtable") {
-        const innerValueType = mapped.ffi.valueType?.type;
-        const valueNeedsPtr =
-            innerValueType === "gobject" ||
-            innerValueType === "boxed" ||
-            innerValueType === "struct" ||
-            innerValueType === "fundamental";
-        if (valueNeedsPtr) {
+        if (isHandleBackedType(mapped.ffi.valueType?.type)) {
             return `${valueName} ? Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
         }
         return `${valueName} ? Array.from(${valueName}) : null`;

@@ -11,26 +11,16 @@ export type TypeAliasOptions = {
 
 /** Builder that emits a `type Name = ...` type alias declaration. */
 export class TypeDeclarationBuilder implements Builder {
-    private exported: boolean;
-
     constructor(
         readonly name: string,
         private readonly type: Writable,
         private readonly opts: TypeAliasOptions = {},
-    ) {
-        this.exported = opts.exported ?? false;
-    }
-
-    /** Mark this type alias as exported. */
-    export(): this {
-        this.exported = true;
-        return this;
-    }
+    ) {}
 
     /** @inheritdoc */
     write(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
-        if (this.exported) writer.write("export ");
+        if (this.opts.exported) writer.write("export ");
         writer.write(`type ${this.name} = `);
         writeWritable(writer, this.type);
         writer.writeLine(";");

@@ -13,6 +13,13 @@ import type { FfiTypeDescriptor, MappedType } from "../type-system/ffi-types.js"
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 
 /**
+ * Whether a value of `ffiTypeName` requires unwrapping to its native `.handle` pointer
+ * when passed across the FFI boundary (rather than being marshaled as a primitive).
+ */
+export const isHandleBackedType = (ffiTypeName: string | undefined): boolean =>
+    ffiTypeName === "gobject" || ffiTypeName === "boxed" || ffiTypeName === "struct" || ffiTypeName === "fundamental";
+
+/**
  * Minimal interface satisfied by {@link FileBuilder}-style import collectors.
  * Re-declared here to avoid pulling in a heavier dependency just for the type.
  */
@@ -185,24 +192,13 @@ export class CallExpressionBuilder {
         }
 
         if (mappedType.ffi.type === "array" && mappedType.ffi.itemType) {
-            const itemType = mappedType.ffi.itemType.type;
-            const itemNeedsPtr =
-                itemType === "gobject" || itemType === "boxed" || itemType === "struct" || itemType === "fundamental";
-
-            if (itemNeedsPtr) {
+            if (isHandleBackedType(mappedType.ffi.itemType.type)) {
                 return nullable ? `${valueName}?.map(item => item.handle)` : `${valueName}.map(item => item.handle)`;
             }
         }
 
         if (mappedType.ffi.type === "hashtable") {
-            const valueType = mappedType.ffi.valueType?.type;
-            const valueNeedsPtr =
-                valueType === "gobject" ||
-                valueType === "boxed" ||
-                valueType === "struct" ||
-                valueType === "fundamental";
-
-            if (valueNeedsPtr) {
+            if (isHandleBackedType(mappedType.ffi.valueType?.type)) {
                 return `${valueName} ? Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
             }
             return `${valueName} ? Array.from(${valueName}) : null`;

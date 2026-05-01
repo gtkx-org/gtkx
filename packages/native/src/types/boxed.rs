@@ -159,11 +159,6 @@ impl RawPtrCodec for BoxedType {
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
     }
 
-    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        self.ptr_to_value(inner_ptr, context)
-    }
-
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = value::Value::result_to_ptr(value);
         let ptr = if !ptr.is_null() {
@@ -310,11 +305,6 @@ impl RawPtrCodec for StructType {
         }
         let boxed = Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))?;
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-    }
-
-    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        self.ptr_to_value(inner_ptr, context)
     }
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {

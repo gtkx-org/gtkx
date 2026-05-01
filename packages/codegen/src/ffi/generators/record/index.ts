@@ -33,6 +33,7 @@ import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../cor
 import {
     addMethodStructure,
     addTypeImports,
+    applyForcedNonNullArgs,
     createMethodBodyWriter,
     type MethodBodyWriter,
     type MethodStructure,
@@ -373,19 +374,13 @@ export class RecordGenerator {
     ): (writer: Writer) => void {
         const shape = this.methodBody.buildShape(mainConstructor.parameters, undefined, 0);
         const params = this.methodBody.buildSignatureParameters(shape, false);
-        const forceOptionalNames = new Set(
+        applyForcedNonNullArgs(
+            args,
             params
                 .slice(1)
                 .filter((p) => !p.optional)
                 .map((p) => p.name),
         );
-        for (const arg of args) {
-            for (const name of forceOptionalNames) {
-                if (arg.value.startsWith(`${name}.`)) {
-                    arg.value = arg.value.replace(`${name}.`, `${name}!.`);
-                }
-            }
-        }
 
         return (writer) => {
             writer.writeLine(`if (isNativeHandle(${firstParamName})) {`);

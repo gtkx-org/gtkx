@@ -98,6 +98,14 @@ declare module "../generated/gobject/object.js" {
 const LIB = "libgobject-2.0.so.0";
 const GVALUE_SIZE = 24;
 
+const GVALUE_BORROWED_TYPE = {
+    type: "boxed",
+    ownership: "borrowed",
+    innerType: "GValue",
+    library: LIB,
+    getTypeFn: "g_value_get_type",
+} as const;
+
 type ObjectStatic = {
     newWithProperties(objectType: number, names: string[], values: Value[]): GObject;
 };
@@ -253,16 +261,7 @@ GObject.prototype.getProperty = function getProperty(propertyName: string): unkn
         [
             { type: { type: "gobject", ownership: "borrowed" }, value: this.handle },
             { type: { type: "string", ownership: "borrowed" }, value: propertyName },
-            {
-                type: {
-                    type: "boxed",
-                    ownership: "borrowed",
-                    innerType: "GValue",
-                    library: LIB,
-                    getTypeFn: "g_value_get_type",
-                },
-                value: gvalue.handle,
-            },
+            { type: GVALUE_BORROWED_TYPE, value: gvalue.handle },
         ],
         { type: "void" },
     );
@@ -278,16 +277,7 @@ GObject.prototype.setProperty = function setProperty(propertyName: string, value
         [
             { type: { type: "gobject", ownership: "borrowed" }, value: this.handle },
             { type: { type: "string", ownership: "borrowed" }, value: propertyName },
-            {
-                type: {
-                    type: "boxed",
-                    ownership: "borrowed",
-                    innerType: "GValue",
-                    library: LIB,
-                    getTypeFn: "g_value_get_type",
-                },
-                value: gvalue.handle,
-            },
+            { type: GVALUE_BORROWED_TYPE, value: gvalue.handle },
         ],
         { type: "void" },
     );

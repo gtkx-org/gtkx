@@ -37,7 +37,7 @@ export class MethodBuilder implements Builder {
     write(writer: Writer): void {
         if (this.opts.overloads) {
             for (const overload of this.opts.overloads) {
-                this.writeSignature(writer, this.name, overload.params, overload.returnType, false);
+                this.writeSignature(writer, this.name, overload.params, overload.returnType);
                 writer.writeLine(";");
             }
         }
@@ -75,7 +75,6 @@ export class MethodBuilder implements Builder {
         name: string,
         params: ParameterBuilder[],
         returnType: Writable | undefined,
-        _withBody: boolean,
     ): void {
         if (this.opts.isStatic) writer.write("static ");
         writer.write(`${name}(`);

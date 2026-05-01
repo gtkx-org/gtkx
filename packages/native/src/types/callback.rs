@@ -152,22 +152,8 @@ pub struct CallbackType {
 impl CallbackType {
     pub fn from_js_value(cx: &mut FunctionContext, value: Handle<JsValue>) -> NeonResult<Self> {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
-
-        let arg_types_prop: Handle<'_, JsValue> = obj.prop(cx, "argTypes").get()?;
-        let arg_types_arr = arg_types_prop.downcast::<JsArray, _>(cx).or_else(|_| {
-            cx.throw_type_error("'argTypes' property is required for callback types")
-        })?;
-        let arg_types_vec = arg_types_arr.to_vec(cx)?;
-        let mut arg_types = Vec::with_capacity(arg_types_vec.len());
-        for item in arg_types_vec {
-            arg_types.push(Type::from_js_value(cx, item)?);
-        }
-
-        let return_type_prop: Handle<'_, JsValue> = obj.prop(cx, "returnType").get()?;
-        let return_type = Box::new(Type::from_js_value(cx, return_type_prop).or_else(|_| {
-            cx.throw_type_error("'returnType' property is required for callback types")
-        })?);
-
+        let (arg_types, return_type) =
+            super::parse_callback_arg_and_return_types(cx, obj, "callback")?;
         Ok(CallbackType {
             arg_types,
             return_type,

@@ -86,11 +86,6 @@ impl RawPtrCodec for GObjectType {
         Ok(value::Value::Object(NativeValue::GObject(object).into()))
     }
 
-    fn read_from_raw_ptr(&self, ptr: *const c_void, context: &str) -> anyhow::Result<value::Value> {
-        let inner_ptr = unsafe { *(ptr as *const *mut c_void) };
-        self.ptr_to_value(inner_ptr, context)
-    }
-
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = value::Value::result_to_ptr(value);
         if !ptr.is_null() {
