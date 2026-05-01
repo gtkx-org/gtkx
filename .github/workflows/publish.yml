@@ -35,7 +35,7 @@ jobs:
           cache-pnpm: "true"
 
       - name: Upload native binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-linux-${{ matrix.arch }}
           path: packages/native-linux-${{ matrix.arch }}/index.node
@@ -48,13 +48,13 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download x64 binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: native-linux-x64
           path: packages/native-linux-x64
 
       - name: Download arm64 binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: native-linux-arm64
           path: packages/native-linux-arm64
