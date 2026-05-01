@@ -120,6 +120,12 @@
             "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
             "outputLogs": "new-only"
         },
+        "@gtkx/ffi#coverage": {
+            "dependsOn": ["^build", "native-coverage", "//#codegen:run"],
+            "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
+            "outputs": ["coverage/**"],
+            "outputLogs": "new-only"
+        },
         "@gtkx/ffi#build": {
             "dependsOn": ["^build", "//#codegen:run"],
             "inputs": ["package.json", "src/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
