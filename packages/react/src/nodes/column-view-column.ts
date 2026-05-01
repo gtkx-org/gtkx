@@ -1,18 +1,15 @@
-import { getNativeId } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
-import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ColumnViewColumnProps, ListItem } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import type { BoundItem } from "./internal/bound-item.js";
+import { connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
 import { hasChanged } from "./internal/props.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
-
-const UNBOUND_POSITION = -1;
 
 export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, WidgetNode, MenuNode> {
     private column: Gtk.ColumnViewColumn | null = null;
@@ -105,35 +102,17 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
 
     private setupFactory(): void {
         this.columnFactory = new Gtk.SignalListItemFactory();
-
-        this.columnFactory.connect("setup", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            const key = String(getNativeId(listItem.handle));
-            const placeholder = new Gtk.Box();
-            const { width, height } = this.getParentEstimatedItemSize();
-            placeholder.setSizeRequest(width, height);
-            listItem.setChild(placeholder);
-            this.containers.set(listItem, UNBOUND_POSITION);
-            this.containerKeys.set(listItem, key);
-        });
-
-        this.columnFactory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            this.containers.set(listItem, listItem.getPosition());
-            this.scheduleParentUpdate();
-        });
-
-        this.columnFactory.connect("unbind", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            this.containers.set(listItem, UNBOUND_POSITION);
-            this.scheduleParentUpdate();
-        });
-
-        this.columnFactory.connect("teardown", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            this.containers.delete(listItem);
-            this.containerKeys.delete(listItem);
-            listItem.setChild(null);
+        connectFactoryLifecycle(this.columnFactory, {
+            containers: this.containers,
+            containerKeys: this.containerKeys,
+            getPosition: (item) => item.getPosition(),
+            onBoundItemsChanged: () => this.scheduleParentUpdate(),
+            onSetup: (item) => {
+                const placeholder = new Gtk.Box();
+                const { width, height } = this.getParentEstimatedItemSize();
+                placeholder.setSizeRequest(width, height);
+                item.setChild(placeholder);
+            },
         });
     }
 

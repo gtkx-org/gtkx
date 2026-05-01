@@ -11,6 +11,7 @@ import { ColumnViewColumnNode } from "./column-view-column.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
 import type { BoundItem } from "./internal/bound-item.js";
+import { connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
 import { filterProps, hasChanged } from "./internal/props.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
@@ -48,8 +49,6 @@ const OWN_PROPS = [
     "__rerender",
     "__headerBoundItemsRef",
 ] as const;
-
-const UNBOUND_POSITION = -1;
 
 type ListChild = ColumnViewColumnNode | EventControllerNode | SlotNode | ContainerSlotNode;
 
@@ -329,59 +328,23 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
     private setupListFactory(): void {
         this.listFactory = new Gtk.SignalListItemFactory();
-
-        this.listFactory.connect("setup", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            this.listContainers.set(listItem, UNBOUND_POSITION);
-            this.listContainerKeys.set(listItem, String(getNativeId(listItem.handle)));
-        });
-
-        this.listFactory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            this.listContainers.set(listItem, listItem.getPosition());
-            this.scheduleBoundItemsUpdate();
-        });
-
-        this.listFactory.connect("unbind", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            this.listContainers.set(listItem, UNBOUND_POSITION);
-            this.scheduleBoundItemsUpdate();
-        });
-
-        this.listFactory.connect("teardown", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            this.listContainers.delete(listItem);
-            this.listContainerKeys.delete(listItem);
-            listItem.setChild(null);
+        connectFactoryLifecycle(this.listFactory, {
+            containers: this.listContainers,
+            containerKeys: this.listContainerKeys,
+            getPosition: (item) => item.getPosition(),
+            onBoundItemsChanged: () => this.scheduleBoundItemsUpdate(),
+            isDisposed: () => this.disposed,
         });
     }
 
     private setupHeaderFactory(): void {
         this.headerFactory = new Gtk.SignalListItemFactory();
-
-        this.headerFactory.connect("setup", (_self: GObject.Object, obj: GObject.Object) => {
-            const listHeader = obj as unknown as Gtk.ListHeader;
-            this.headerContainers.set(listHeader, UNBOUND_POSITION);
-            this.headerContainerKeys.set(listHeader, String(getNativeId(listHeader.handle)));
-        });
-
-        this.headerFactory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
-            const listHeader = obj as unknown as Gtk.ListHeader;
-            this.headerContainers.set(listHeader, listHeader.getStart());
-            this.scheduleBoundItemsUpdate();
-        });
-
-        this.headerFactory.connect("unbind", (_self: GObject.Object, obj: GObject.Object) => {
-            const listHeader = obj as unknown as Gtk.ListHeader;
-            this.headerContainers.set(listHeader, UNBOUND_POSITION);
-            this.scheduleBoundItemsUpdate();
-        });
-
-        this.headerFactory.connect("teardown", (_self: GObject.Object, obj: GObject.Object) => {
-            const listHeader = obj as unknown as Gtk.ListHeader;
-            this.headerContainers.delete(listHeader);
-            this.headerContainerKeys.delete(listHeader);
-            listHeader.setChild(null);
+        connectFactoryLifecycle(this.headerFactory, {
+            containers: this.headerContainers,
+            containerKeys: this.headerContainerKeys,
+            getPosition: (item) => item.getStart(),
+            onBoundItemsChanged: () => this.scheduleBoundItemsUpdate(),
+            isDisposed: () => this.disposed,
         });
     }
 
