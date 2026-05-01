@@ -69,93 +69,80 @@ export class InternalGenerator {
     }
 
     private generateConstructionMeta(file: FileBuilder, items: readonly ClassItem[]): void {
-        const entries: Array<{ jsxName: string; propEntries: Array<[string, string]> }> = [];
-
-        for (const item of items) {
-            const propEntries: Array<[string, string]> = [];
-
-            for (const prop of item.properties) {
-                if (!prop.isWritable || !prop.ffiType) continue;
-                const base = `{ girName: "${prop.name}", ffiType: ${JSON.stringify(prop.ffiType)}`;
-                const value = prop.isConstructOnly ? `${base}, constructOnly: true as const }` : `${base} }`;
-                propEntries.push([`"${prop.camelName}"`, value]);
-            }
-
-            if (propEntries.length > 0) {
-                entries.push({ jsxName: item.jsxName, propEntries });
-            }
-        }
-
-        file.add(
-            variableStatement("CONSTRUCTION_META", {
-                exported: true,
-                kind: "const",
-                type: "Record<string, Record<string, { girName: string; ffiType: Type; constructOnly?: true }>>",
-                initializer: (writer: Writer) => {
-                    writeNestedObject(writer, entries);
-                },
-                doc: "Construction metadata for all writable properties. Used by the reconciler to create widgets via g_object_new_with_properties.",
-            }),
-        );
+        this.emitMap(file, "CONSTRUCTION_META", {
+            type: "Record<string, Record<string, { girName: string; ffiType: Type; constructOnly?: true }>>",
+            doc: "Construction metadata for all writable properties. Used by the reconciler to create widgets via g_object_new_with_properties.",
+            items,
+            collect: (item) => {
+                const entries: Array<[string, string]> = [];
+                for (const prop of item.properties) {
+                    if (!prop.isWritable || !prop.ffiType) continue;
+                    const base = `{ girName: "${prop.name}", ffiType: ${JSON.stringify(prop.ffiType)}`;
+                    const value = prop.isConstructOnly ? `${base}, constructOnly: true as const }` : `${base} }`;
+                    entries.push([`"${prop.camelName}"`, value]);
+                }
+                return entries;
+            },
+        });
     }
 
     private generatePropsMap(file: FileBuilder, items: readonly ClassItem[]): void {
+        this.emitMap(file, "PROPS", {
+            type: "Record<string, Record<string, string>>",
+            items,
+            skipIf: (item) => item.properties.length === 0,
+            collect: (item) => {
+                const entries: Array<[string, string]> = [];
+                for (const prop of item.properties) {
+                    if (!prop.isWritable || (!prop.setter && !prop.isConstructOnly)) continue;
+                    entries.push([`"${prop.camelName}"`, `"${prop.camelName}"`]);
+                }
+                return entries;
+            },
+        });
+    }
+
+    private generateSignalsMap(file: FileBuilder, items: readonly ClassItem[]): void {
+        this.emitMap(file, "SIGNALS", {
+            type: "Record<string, Record<string, string>>",
+            doc: "Signal handler prop name to GTK signal name mapping for widgets and controllers.",
+            items,
+            skipIf: (item) => item.signals.length === 0,
+            collect: (item) =>
+                item.signals.map((signal) => [`"${signal.handlerName}"`, `"${signal.name}"`] as [string, string]),
+        });
+    }
+
+    private emitMap(
+        file: FileBuilder,
+        name: string,
+        opts: {
+            type: string;
+            doc?: string;
+            items: readonly ClassItem[];
+            skipIf?: (item: ClassItem) => boolean;
+            collect: (item: ClassItem) => Array<[string, string]>;
+        },
+    ): void {
         const entries: Array<{ jsxName: string; propEntries: Array<[string, string]> }> = [];
 
-        for (const item of items) {
-            if (item.properties.length === 0) continue;
-
-            const propEntries: Array<[string, string]> = [];
-
-            for (const prop of item.properties) {
-                if (!prop.isWritable || (!prop.setter && !prop.isConstructOnly)) continue;
-
-                propEntries.push([`"${prop.camelName}"`, `"${prop.camelName}"`]);
-            }
-
+        for (const item of opts.items) {
+            if (opts.skipIf?.(item)) continue;
+            const propEntries = opts.collect(item);
             if (propEntries.length > 0) {
                 entries.push({ jsxName: item.jsxName, propEntries });
             }
         }
 
         file.add(
-            variableStatement("PROPS", {
+            variableStatement(name, {
                 exported: true,
                 kind: "const",
-                type: "Record<string, Record<string, string>>",
+                type: opts.type,
                 initializer: (writer: Writer) => {
                     writeNestedObject(writer, entries);
                 },
-            }),
-        );
-    }
-
-    private generateSignalsMap(file: FileBuilder, items: readonly ClassItem[]): void {
-        const entries: Array<{ jsxName: string; propEntries: Array<[string, string]> }> = [];
-
-        for (const item of items) {
-            if (item.signals.length === 0) continue;
-
-            const signalEntries: Array<[string, string]> = [];
-
-            for (const signal of item.signals) {
-                signalEntries.push([`"${signal.handlerName}"`, `"${signal.name}"`]);
-            }
-
-            if (signalEntries.length > 0) {
-                entries.push({ jsxName: item.jsxName, propEntries: signalEntries });
-            }
-        }
-
-        file.add(
-            variableStatement("SIGNALS", {
-                exported: true,
-                kind: "const",
-                type: "Record<string, Record<string, string>>",
-                initializer: (writer: Writer) => {
-                    writeNestedObject(writer, entries);
-                },
-                doc: "Signal handler prop name to GTK signal name mapping for widgets and controllers.",
+                doc: opts.doc,
             }),
         );
     }

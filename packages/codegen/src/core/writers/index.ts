@@ -1,12 +1,37 @@
+import { type ClassDeclarationBuilder, method, param } from "../../builders/index.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
 import type { TypeImport } from "../type-system/ffi-types.js";
 import { toKebabCase } from "../utils/naming.js";
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
-import { type ImportCollector, MethodBodyWriter } from "./method-body-writer.js";
+import { type ImportCollector, MethodBodyWriter, type MethodStructure } from "./method-body-writer.js";
 
 export type { MethodStructure } from "./method-body-writer.js";
 export type { ImportCollector, MethodBodyWriter };
+
+/**
+ * Adds a built MethodStructure to a class as a generated method.
+ *
+ * Centralizes the MethodStructure → MethodBuilder conversion that is shared
+ * between class, record, interface, and standalone-function generators.
+ */
+export const addMethodStructure = (cls: ClassDeclarationBuilder, struct: MethodStructure): void => {
+    cls.addMethod(
+        method(struct.name, {
+            params: struct.parameters.map((p) =>
+                param(p.name, p.type, { optional: p.optional, rest: p.isRestParameter }),
+            ),
+            returnType: struct.returnType,
+            body: struct.statements,
+            isStatic: struct.isStatic,
+            doc: struct.docs?.[0]?.description,
+            overloads: struct.overloads?.map((o) => ({
+                params: o.params.map((p) => param(p.name, p.type, { optional: p.optional, rest: p.isRestParameter })),
+                returnType: o.returnType,
+            })),
+        }),
+    );
+};
 
 /**
  * Adds the necessary imports for a list of TypeImport entries.

@@ -31,29 +31,13 @@ import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { filterSupportedFunctions, filterSupportedMethods } from "../../../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../core/utils/naming.js";
 import {
+    addMethodStructure,
     addTypeImports,
     createMethodBodyWriter,
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../core/writers/index.js";
 import { FieldBuilder } from "./field-builder.js";
-
-/**
- * Converts a MethodStructure to a builder-API MethodBuilder and adds it to a class.
- */
-function addMethodStructure(cls: ClassDeclarationBuilder, struct: MethodStructure): void {
-    cls.addMethod(
-        method(struct.name, {
-            params: struct.parameters.map((p) =>
-                param(p.name, p.type, { optional: p.optional, rest: p.isRestParameter }),
-            ),
-            returnType: struct.returnType,
-            body: struct.statements,
-            isStatic: struct.isStatic,
-            doc: struct.docs?.[0]?.description,
-        }),
-    );
-}
 
 /**
  * Generates record (struct/boxed type) classes.
@@ -735,11 +719,17 @@ export class RecordGenerator {
         const isReadable = field.readable !== false && !methodNames.has(fieldName);
         const isWritable = field.writable !== false && !methodNames.has(fieldName);
 
-        const writableFields = nestedLayout.filter(
-            (item) =>
-                this.fieldBuilder.isGeneratableFieldType(String(item.field.type.name)) &&
-                this.fieldBuilder.isWritableType(item.field.type),
-        );
+        const writableFields = nestedLayout
+            .filter(
+                (item) =>
+                    this.fieldBuilder.isGeneratableFieldType(String(item.field.type.name)) &&
+                    this.fieldBuilder.isWritableType(item.field.type),
+            )
+            .map((item) => ({
+                fieldName: toValidMemberName(toCamelCase(item.field.name)),
+                offset: baseOffset + item.offset,
+                mapping: this.ffiMapper.mapType(item.field.type, false, item.field.type.transferOwnership),
+            }));
 
         if (!isReadable) return;
 
@@ -749,19 +739,10 @@ export class RecordGenerator {
         const getBody = (writer: Writer) => {
             writer.writeLine(`return new ${tsTypeName}({`);
             writer.withIndent(() => {
-                for (const nestedItem of writableFields) {
-                    const nestedField = nestedItem.field;
-                    const nestedOffset = baseOffset + nestedItem.offset;
-                    const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
-                    const nestedTypeMapping = this.ffiMapper.mapType(
-                        nestedField.type,
-                        false,
-                        nestedField.type.transferOwnership,
-                    );
-
-                    writer.write(`${nestedFieldName}: read(this.handle, `);
-                    writer.write(JSON.stringify(nestedTypeMapping.ffi));
-                    writer.writeLine(`, ${nestedOffset}) as ${nestedTypeMapping.ts},`);
+                for (const nested of writableFields) {
+                    writer.write(`${nested.fieldName}: read(this.handle, `);
+                    writer.write(JSON.stringify(nested.mapping.ffi));
+                    writer.writeLine(`, ${nested.offset}) as ${nested.mapping.ts},`);
                 }
             });
             writer.writeLine(`});`);
@@ -771,19 +752,10 @@ export class RecordGenerator {
         if (isWritable && writableFields.length > 0) {
             this.file.addImport("../../native.js", ["write"]);
             setBody = (writer) => {
-                for (const nestedItem of writableFields) {
-                    const nestedField = nestedItem.field;
-                    const nestedOffset = baseOffset + nestedItem.offset;
-                    const nestedFieldName = toValidMemberName(toCamelCase(nestedField.name));
-                    const nestedTypeMapping = this.ffiMapper.mapType(
-                        nestedField.type,
-                        false,
-                        nestedField.type.transferOwnership,
-                    );
-
+                for (const nested of writableFields) {
                     writer.write(`write(this.handle, `);
-                    writer.write(JSON.stringify(nestedTypeMapping.ffi));
-                    writer.writeLine(`, ${nestedOffset}, value.${nestedFieldName});`);
+                    writer.write(JSON.stringify(nested.mapping.ffi));
+                    writer.writeLine(`, ${nested.offset}, value.${nested.fieldName});`);
                 }
             };
         }

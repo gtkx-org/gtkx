@@ -62,6 +62,7 @@ import {
 export class FfiMapper {
     private skippedClasses = new Set<string>();
     private structSizeCache = new Map<string, number>();
+    private structAlignmentCache = new Map<string, number>();
 
     constructor(
         private repo: GirRepository,
@@ -333,17 +334,14 @@ export class FfiMapper {
         return false;
     }
 
+    private resolveCallbackForParam(param: GirParameter): GirCallback | null {
+        if (!this.isCallback(param.type.name)) return null;
+        return this.repo.resolveCallback(this.qualifyTypeName(param.type.name)) ?? null;
+    }
+
     getCallbackParamMappings(param: GirParameter): Array<{ name: string; mapped: MappedType }> | null {
-        if (!this.isCallback(param.type.name)) {
-            return null;
-        }
-
-        const qualifiedName = this.qualifyTypeName(param.type.name);
-
-        const callback = this.repo.resolveCallback(qualifiedName);
-        if (!callback) {
-            return null;
-        }
+        const callback = this.resolveCallbackForParam(param);
+        if (!callback) return null;
 
         return callback.parameters
             .filter((p) => p.name !== "user_data" && p.name !== "data")
@@ -354,16 +352,8 @@ export class FfiMapper {
     }
 
     getCallbackReturnType(param: GirParameter): MappedType | null {
-        if (!this.isCallback(param.type.name)) {
-            return null;
-        }
-
-        const qualifiedName = this.qualifyTypeName(param.type.name);
-
-        const callback = this.repo.resolveCallback(qualifiedName);
-        if (!callback) {
-            return null;
-        }
+        const callback = this.resolveCallbackForParam(param);
+        if (!callback) return null;
 
         return this.mapType(callback.returnType, true, callback.returnType.transferOwnership);
     }
@@ -885,6 +875,10 @@ export class FfiMapper {
 
         const resolvedName = typeName.includes(".") ? typeName : `${namespace}.${typeName}`;
         const parts = splitQualifiedName(resolvedName);
+        const cacheKey = `${parts.namespace}.${parts.name}`;
+        const cached = this.structAlignmentCache.get(cacheKey);
+        if (cached !== undefined) return cached;
+
         const ns = this.repo.getNamespace(parts.namespace);
         const record = ns?.records.get(parts.name);
         if (record && !record.opaque && !record.disguised && record.fields.length > 0) {
@@ -892,9 +886,11 @@ export class FfiMapper {
             for (const f of record.fields) {
                 maxAlign = Math.max(maxAlign, this.getFieldAlignment(f, parts.namespace));
             }
+            this.structAlignmentCache.set(cacheKey, maxAlign);
             return maxAlign;
         }
 
+        this.structAlignmentCache.set(cacheKey, 8);
         return 8;
     }
 

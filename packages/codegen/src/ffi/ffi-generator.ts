@@ -7,7 +7,7 @@
 
 import type { GirClass, GirNamespace, GirRecord, GirRepository } from "@gtkx/gir";
 import { type FileBuilder, fileBuilder } from "../builders/file-builder.js";
-import { classDecl, method, param, property } from "../builders/index.js";
+import { classDecl, property } from "../builders/index.js";
 import { stringify } from "../builders/stringify.js";
 import { CodegenMetadata } from "../core/codegen-metadata.js";
 import type { GeneratedFile } from "../core/generated-file-set.js";
@@ -17,7 +17,7 @@ import { boxedSelfType, isPrimitiveFieldType } from "../core/type-system/ffi-typ
 import { filterSupportedMethods } from "../core/utils/filtering.js";
 import { normalizeClassName, toCamelCase, toKebabCase, toPascalCase, toValidMemberName } from "../core/utils/naming.js";
 import { splitQualifiedName } from "../core/utils/qualified-name.js";
-import { createMethodBodyWriter } from "../core/writers/index.js";
+import { addMethodStructure, createMethodBodyWriter } from "../core/writers/index.js";
 import { ClassGenerator } from "./generators/class/index.js";
 import { ConstantGenerator } from "./generators/constant.js";
 import { EnumGenerator } from "./generators/enum.js";
@@ -267,17 +267,7 @@ export class FfiGenerator {
                         className: record.cType,
                     });
 
-                    cls.addMethod(
-                        method(struct.name, {
-                            params: struct.parameters.map((p) =>
-                                param(p.name, p.type, { optional: p.optional, rest: p.isRestParameter }),
-                            ),
-                            returnType: struct.returnType,
-                            body: struct.statements,
-                            isStatic: struct.isStatic,
-                            doc: struct.docs?.[0]?.description,
-                        }),
-                    );
+                    addMethodStructure(cls, struct);
                 }
             }
         }

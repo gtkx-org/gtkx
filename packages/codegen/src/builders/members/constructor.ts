@@ -1,12 +1,13 @@
 import type { Builder } from "../types.js";
 import type { Writer } from "../writer.js";
+import { type BodyContent, writeBody } from "./body.js";
 import type { OverloadSignature } from "./method.js";
 import type { ParameterBuilder } from "./parameter.js";
 
 /** Configuration options for a class constructor declaration. */
 export type ConstructorOptions = {
     params?: ParameterBuilder[];
-    body?: string[] | ((writer: Writer) => void);
+    body?: BodyContent;
     overloads?: OverloadSignature[];
 };
 
@@ -32,15 +33,7 @@ export class ConstructorBuilder implements Builder {
             writer.writeJoined(", ", this.opts.params);
         }
         writer.write(") ");
-        writer.writeBlock(() => {
-            if (typeof this.opts.body === "function") {
-                this.opts.body(writer);
-            } else if (this.opts.body) {
-                for (const line of this.opts.body) {
-                    writer.writeLine(line);
-                }
-            }
-        });
+        writeBody(writer, this.opts.body);
         writer.newLine();
     }
 }

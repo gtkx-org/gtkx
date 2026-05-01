@@ -1,6 +1,7 @@
 import type { Builder, Writable } from "../types.js";
 import { writeWritable } from "../types.js";
 import type { Writer } from "../writer.js";
+import { type BodyContent, writeBody } from "./body.js";
 import { writeJsDoc } from "./doc.js";
 import type { ParameterBuilder } from "./parameter.js";
 
@@ -14,7 +15,7 @@ export type OverloadSignature = {
 export type MethodOptions = {
     params?: ParameterBuilder[];
     returnType?: Writable;
-    body?: string[] | ((writer: Writer) => void);
+    body?: BodyContent;
     isStatic?: boolean;
     override?: boolean;
     abstract?: boolean;
@@ -65,15 +66,7 @@ export class MethodBuilder implements Builder {
         }
 
         writer.write(" ");
-        writer.writeBlock(() => {
-            if (typeof this.opts.body === "function") {
-                this.opts.body(writer);
-            } else if (this.opts.body) {
-                for (const line of this.opts.body) {
-                    writer.writeLine(line);
-                }
-            }
-        });
+        writeBody(writer, this.opts.body);
         writer.newLine();
     }
 

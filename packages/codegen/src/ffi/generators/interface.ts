@@ -7,7 +7,7 @@
 
 import type { GirInterface, GirMethod, GirRepository } from "@gtkx/gir";
 import type { FileBuilder } from "../../builders/file-builder.js";
-import { classDecl, method, param, property } from "../../builders/index.js";
+import { classDecl, property } from "../../builders/index.js";
 import type { FfiGeneratorOptions } from "../../core/generator-types.js";
 import type { FfiMapper } from "../../core/type-system/ffi-mapper.js";
 import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
@@ -15,7 +15,12 @@ import { collectGObjectMethodNames } from "../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
 import { filterSupportedMethods } from "../../core/utils/filtering.js";
 import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
-import { createMethodBodyWriter, type MethodBodyWriter, type MethodStructure } from "../../core/writers/index.js";
+import {
+    addMethodStructure,
+    createMethodBodyWriter,
+    type MethodBodyWriter,
+    type MethodStructure,
+} from "../../core/writers/index.js";
 
 /**
  * Generates interface classes.
@@ -92,17 +97,7 @@ export class InterfaceGenerator {
         methodStructures.push(...this.buildMethodStructures(prerequisiteMethods, iface.name, gobjectMethodNames));
 
         for (const struct of methodStructures) {
-            cls.addMethod(
-                method(struct.name, {
-                    params: struct.parameters.map((p) =>
-                        param(p.name, p.type, { optional: p.optional, rest: p.isRestParameter }),
-                    ),
-                    returnType: struct.returnType,
-                    body: struct.statements,
-                    isStatic: struct.isStatic,
-                    doc: struct.docs?.[0]?.description,
-                }),
-            );
+            addMethodStructure(cls, struct);
         }
 
         this.file.add(cls);

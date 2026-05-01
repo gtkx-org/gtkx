@@ -1,14 +1,15 @@
 import type { Builder, Writable } from "../types.js";
 import { writeWritable } from "../types.js";
 import type { Writer } from "../writer.js";
+import { type BodyContent, writeBody } from "./body.js";
 import { writeJsDoc } from "./doc.js";
 
 /** Configuration options for a class accessor (ES6 get/set) declaration. */
 export type AccessorOptions = {
     type: Writable;
     setType?: Writable;
-    getBody: string[] | ((writer: Writer) => void);
-    setBody?: string[] | ((writer: Writer) => void);
+    getBody: BodyContent;
+    setBody?: BodyContent;
     doc?: string;
 };
 
@@ -28,30 +29,14 @@ export class AccessorBuilder implements Builder {
         writer.write(`get ${this.name}(): `);
         writeWritable(writer, this.opts.type);
         writer.write(" ");
-        writer.writeBlock(() => {
-            if (typeof this.opts.getBody === "function") {
-                this.opts.getBody(writer);
-            } else {
-                for (const line of this.opts.getBody) {
-                    writer.writeLine(line);
-                }
-            }
-        });
+        writeBody(writer, this.opts.getBody);
         writer.newLine();
 
         if (this.opts.setBody) {
             writer.write(`set ${this.name}(value: `);
             writeWritable(writer, this.opts.setType ?? this.opts.type);
             writer.write(") ");
-            writer.writeBlock(() => {
-                if (typeof this.opts.setBody === "function") {
-                    this.opts.setBody(writer);
-                } else if (this.opts.setBody) {
-                    for (const line of this.opts.setBody) {
-                        writer.writeLine(line);
-                    }
-                }
-            });
+            writeBody(writer, this.opts.setBody);
             writer.newLine();
         }
     }

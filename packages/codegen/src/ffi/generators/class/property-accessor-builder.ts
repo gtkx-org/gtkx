@@ -35,6 +35,7 @@ import { addTypeImports, type ImportCollector } from "../../../core/writers/inde
 
 export class PropertyAccessorBuilder {
     private readonly existingMethodNames: Set<string>;
+    private readonly parentMethodNames: ReadonlySet<string>;
     private readonly callExpression: CallExpressionBuilder;
 
     constructor(
@@ -45,8 +46,9 @@ export class PropertyAccessorBuilder {
         private readonly options: FfiGeneratorOptions,
         private readonly selfNames: ReadonlySet<string> = new Set(),
     ) {
+        this.parentMethodNames = collectParentMethodNames(cls, repository);
         this.existingMethodNames = collectOwnAndInterfaceMethodNames(cls, repository, toCamelCase);
-        for (const name of collectParentMethodNames(cls, repository)) {
+        for (const name of this.parentMethodNames) {
             this.existingMethodNames.add(toCamelCase(name));
         }
         const descriptors = (imports as { descriptors?: FfiDescriptorRegistry }).descriptors;
@@ -150,8 +152,7 @@ export class PropertyAccessorBuilder {
     private resolveNonConflictingMethodName(accessorId: string): { methodName: string; method: GirMethod } | null {
         const method = this.resolveOwnMethod(accessorId);
         if (!method) return null;
-        const parentMethods = collectParentMethodNames(this.cls, this.repository);
-        if (parentMethods.has(method.name)) return null;
+        if (this.parentMethodNames.has(method.name)) return null;
         return { methodName: toCamelCase(method.name), method };
     }
 

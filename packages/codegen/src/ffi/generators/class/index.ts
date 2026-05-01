@@ -11,7 +11,6 @@ import {
     type ClassDeclarationBuilder,
     classDecl,
     constructorDecl,
-    method,
     param,
     property,
     typeAlias,
@@ -32,7 +31,7 @@ import { buildJsDocStructure } from "../../../core/utils/doc-formatter.js";
 import { isMethodSuppressed } from "../../../core/utils/method-suppression.js";
 import { generateConflictingMethodName, normalizeClassName, toKebabCase } from "../../../core/utils/naming.js";
 import { type ParentInfo, parseParentReference } from "../../../core/utils/parent-reference.js";
-import type { MethodStructure } from "../../../core/writers/index.js";
+import { addMethodStructure, type MethodStructure } from "../../../core/writers/index.js";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
 import { ConstructorBuilder } from "./constructor-builder.js";
 import { MethodBuilder } from "./method-builder.js";
@@ -48,24 +47,6 @@ type ClassGenerationResult = {
     widgetMeta?: CodegenWidgetMeta | null;
     controllerMeta?: CodegenControllerMeta | null;
 };
-
-/**
- * Converts a MethodStructure to a builder-API MethodBuilder and adds it to a class.
- */
-function addMethodStructure(cls: ClassDeclarationBuilder, struct: MethodStructure): void {
-    const m = method(struct.name, {
-        params: struct.parameters.map((p) => param(p.name, p.type, { optional: p.optional, rest: p.isRestParameter })),
-        returnType: struct.returnType,
-        body: struct.statements,
-        isStatic: struct.isStatic,
-        doc: struct.docs?.[0]?.description,
-        overloads: struct.overloads?.map((o) => ({
-            params: o.params.map((p) => param(p.name, p.type, { optional: p.optional, rest: p.isRestParameter })),
-            returnType: o.returnType,
-        })),
-    });
-    cls.addMethod(m);
-}
 
 /**
  * Generates a complete class module file.
