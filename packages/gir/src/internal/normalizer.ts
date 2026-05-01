@@ -140,74 +140,32 @@ export class GirNormalizer {
     private normalizeNamespace(raw: RawNamespace): GirNamespaceIntermediate {
         const nsName = raw.name;
 
-        const classes = new Map<string, GirClassData>();
-        for (const rawClass of raw.classes) {
-            const data = this.normalizeClass(rawClass, nsName);
-            classes.set(data.name, data);
-        }
-
-        const interfaces = new Map<string, GirInterfaceData>();
-        for (const rawIface of raw.interfaces) {
-            const data = this.normalizeInterface(rawIface, nsName);
-            interfaces.set(data.name, data);
-        }
-
-        const records = new Map<string, GirRecord>();
-        for (const rawRecord of raw.records) {
-            const record = this.normalizeRecord(rawRecord, nsName);
-            records.set(record.name, record);
-        }
-
-        const enumerations = new Map<string, GirEnumeration>();
-        for (const rawEnum of raw.enumerations) {
-            const enumeration = this.normalizeEnumeration(rawEnum, nsName);
-            enumerations.set(enumeration.name, enumeration);
-        }
-
-        const bitfields = new Map<string, GirEnumeration>();
-        for (const rawBitfield of raw.bitfields) {
-            const bitfield = this.normalizeEnumeration(rawBitfield, nsName);
-            bitfields.set(bitfield.name, bitfield);
-        }
-
-        const callbacks = new Map<string, GirCallback>();
-        for (const rawCb of raw.callbacks) {
-            const cb = this.normalizeCallback(rawCb, nsName);
-            callbacks.set(cb.name, cb);
-        }
-
-        const functions = new Map<string, GirFunction>();
-        for (const rawFunc of raw.functions) {
-            const func = this.normalizeFunction(rawFunc, nsName);
-            functions.set(func.name, func);
-        }
-
-        const constants = new Map<string, GirConstant>();
-        for (const rawConst of raw.constants) {
-            const constant = this.normalizeConstant(rawConst, nsName);
-            constants.set(constant.name, constant);
-        }
-
-        const aliases = new Map<string, GirAlias>();
-        for (const rawAlias of raw.aliases) {
-            const alias = this.normalizeAlias(rawAlias, nsName);
-            aliases.set(alias.name, alias);
-        }
+        const indexBy = <Raw, Resolved extends { name: string }>(
+            items: readonly Raw[],
+            normalize: (raw: Raw, ns: string) => Resolved,
+        ): Map<string, Resolved> => {
+            const result = new Map<string, Resolved>();
+            for (const item of items) {
+                const resolved = normalize(item, nsName);
+                result.set(resolved.name, resolved);
+            }
+            return result;
+        };
 
         return {
             name: raw.name,
             version: raw.version,
             sharedLibrary: raw.sharedLibrary,
             cPrefix: raw.cPrefix,
-            classes,
-            interfaces,
-            records,
-            enumerations,
-            bitfields,
-            callbacks,
-            functions,
-            constants,
-            aliases,
+            classes: indexBy(raw.classes, (r, ns) => this.normalizeClass(r, ns)),
+            interfaces: indexBy(raw.interfaces, (r, ns) => this.normalizeInterface(r, ns)),
+            records: indexBy(raw.records, (r, ns) => this.normalizeRecord(r, ns)),
+            enumerations: indexBy(raw.enumerations, (r, ns) => this.normalizeEnumeration(r, ns)),
+            bitfields: indexBy(raw.bitfields, (r, ns) => this.normalizeEnumeration(r, ns)),
+            callbacks: indexBy(raw.callbacks, (r, ns) => this.normalizeCallback(r, ns)),
+            functions: indexBy(raw.functions, (r, ns) => this.normalizeFunction(r, ns)),
+            constants: indexBy(raw.constants, (r, ns) => this.normalizeConstant(r, ns)),
+            aliases: indexBy(raw.aliases, (r, ns) => this.normalizeAlias(r, ns)),
             doc: raw.doc,
         };
     }
