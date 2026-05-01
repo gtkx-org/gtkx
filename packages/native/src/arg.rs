@@ -27,7 +27,7 @@ pub struct Arg {
 impl Arg {
     #[must_use]
     pub fn new(ty: Type, value: Value) -> Self {
-        Arg {
+        Self {
             ty,
             value,
             optional: false,
@@ -57,10 +57,9 @@ impl Arg {
 
         let optional = obj
             .get_opt::<JsBoolean, _, _>(cx, "optional")?
-            .map(|v| v.value(cx))
-            .unwrap_or(false);
+            .is_some_and(|v| v.value(cx));
 
-        Ok(Arg {
+        Ok(Self {
             ty,
             value,
             optional,

@@ -1,7 +1,7 @@
 //! Fundamental type handling for FFI.
 //!
-//! GLib fundamental types are custom reference-counted types that don't
-//! derive from GObject. Examples include `GParamSpec` and Pango layout types.
+//! `GLib` fundamental types are custom reference-counted types that don't
+//! derive from `GObject`. Examples include `GParamSpec` and Pango layout types.
 //! They have custom ref/unref functions rather than using `g_object_ref/unref`.
 
 use std::ffi::c_void;
@@ -139,13 +139,13 @@ impl RawPtrCodec for FundamentalType {
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = value::Value::result_to_ptr(value);
-        let ptr = if !ptr.is_null() {
+        let ptr = if ptr.is_null() {
+            ptr
+        } else {
             match self.lookup_fns() {
                 Ok((Some(ref_fn), _)) => unsafe { ref_fn(ptr) },
                 _ => ptr,
             }
-        } else {
-            ptr
         };
         unsafe { *(ret as *mut *mut c_void) = ptr };
     }
@@ -182,7 +182,7 @@ impl GlibValueCodec for FundamentalType {
                     .cast::<c_void>()
             }
         } else {
-            bail!("Unsupported fundamental type in GValue: {:?}", gvalue_type)
+            bail!("Unsupported fundamental type in GValue: {gvalue_type:?}")
         };
         if ptr.is_null() {
             return Ok(value::Value::Null);

@@ -460,7 +460,7 @@ fn from_glib_value_gobject_transfer_none() {
     let obj_ptr = obj.as_ptr();
     let initial_ref = get_gobject_refcount(obj_ptr);
 
-    let gvalue: glib::Value = obj.clone().into();
+    let gvalue: glib::Value = obj.into();
 
     let gobject_type = GObjectType {
         ownership: Ownership::Borrowed,
@@ -597,7 +597,7 @@ fn from_glib_value_u8() {
 fn from_glib_value_i64() {
     common::ensure_gtk_init();
 
-    let gvalue: glib::Value = (-999999i64).into();
+    let gvalue: glib::Value = (-999_999_i64).into();
 
     let int_kind = native::types::IntegerKind::I64;
     let type_ = Type::Integer(int_kind);
@@ -606,7 +606,7 @@ fn from_glib_value_i64() {
 
     assert!(result.is_ok());
     if let Value::Number(n) = result.unwrap() {
-        assert_eq!(n, -999999.0);
+        assert_eq!(n, -999_999.0);
     } else {
         panic!("Expected Value::Number");
     }
@@ -616,7 +616,7 @@ fn from_glib_value_i64() {
 fn from_glib_value_u64() {
     common::ensure_gtk_init();
 
-    let gvalue: glib::Value = 9999999999u64.into();
+    let gvalue: glib::Value = 9_999_999_999_u64.into();
 
     let int_kind = native::types::IntegerKind::U64;
     let type_ = Type::Integer(int_kind);
@@ -625,7 +625,7 @@ fn from_glib_value_u64() {
 
     assert!(result.is_ok());
     if let Value::Number(n) = result.unwrap() {
-        assert_eq!(n, 9999999999.0);
+        assert_eq!(n, 9_999_999_999.0);
     } else {
         panic!("Expected Value::Number");
     }

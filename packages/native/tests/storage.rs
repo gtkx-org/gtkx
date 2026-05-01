@@ -7,6 +7,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
+use glib::translate::ToGlibPtr as _;
 use gtk4::glib;
 use native::ffi::{FfiStorage, FfiStorageKind, HashTableData};
 
@@ -14,8 +15,6 @@ fn create_test_closure() -> NonNull<glib::gobject_ffi::GClosure> {
     common::ensure_gtk_init();
 
     let closure = glib::Closure::new(move |_| None::<glib::Value>);
-
-    use glib::translate::ToGlibPtr as _;
     let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
     std::mem::forget(closure);
     NonNull::new(ptr).expect("closure pointer should not be null")
@@ -28,8 +27,6 @@ fn create_test_closure_with_flag(flag: Arc<AtomicBool>) -> NonNull<glib::gobject
         flag.store(true, Ordering::SeqCst);
         None::<glib::Value>
     });
-
-    use glib::translate::ToGlibPtr as _;
     let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
     std::mem::forget(closure);
     NonNull::new(ptr).expect("closure pointer should not be null")

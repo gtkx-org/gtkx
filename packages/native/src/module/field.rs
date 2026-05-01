@@ -20,7 +20,7 @@
 //! - `Integer` (all sizes and signs)
 //! - `Float` (f32, f64)
 //! - `Boolean`
-//! - `String` (copies via g_strdup)
+//! - `String` (copies via `g_strdup`)
 //! - `GObject` / `Boxed` / `Struct` / `Fundamental` (writes pointer value)
 
 use std::ffi::c_void;

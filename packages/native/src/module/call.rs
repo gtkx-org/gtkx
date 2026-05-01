@@ -1,7 +1,7 @@
 //! FFI function call execution.
 //!
 //! This module implements [`call`], which executes native function calls via
-//! libffi. This is the core mechanism for invoking GTK and GLib functions from
+//! libffi. This is the core mechanism for invoking GTK and `GLib` functions from
 //! JavaScript.
 //!
 //! ## Call Flow
@@ -16,11 +16,11 @@
 //!
 //! ## Callbacks
 //!
-//! Special handling is required for callback arguments (AsyncReady, Destroy,
-//! DrawFunc). These expand to multiple FFI arguments: the callback function
+//! Special handling is required for callback arguments (`AsyncReady`, Destroy,
+//! `DrawFunc`). These expand to multiple FFI arguments: the callback function
 //! pointer, user data, and optionally a destroy notify.
 
-use std::{ffi::c_void, ops::Deref, sync::Arc};
+use std::{ffi::c_void, sync::Arc};
 
 use anyhow::Context as _;
 use libffi::middle as libffi;
@@ -98,7 +98,7 @@ impl ModuleRequest for CallRequest {
                 let symbol =
                     library.get::<unsafe extern "C" fn() -> ()>(self.symbol_name.as_bytes())?;
 
-                let ptr = *symbol.deref() as *mut c_void;
+                let ptr = *symbol as *mut c_void;
                 Ok(libffi::CodePtr(ptr))
             })?
         };

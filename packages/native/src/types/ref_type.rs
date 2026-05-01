@@ -26,7 +26,7 @@ pub struct RefType {
 impl RefType {
     #[must_use]
     pub fn new(inner_type: Type) -> Self {
-        RefType {
+        Self {
             inner_type: Box::new(inner_type),
         }
     }
@@ -47,7 +47,7 @@ impl FfiEncoder for RefType {
             value::Value::Null | value::Value::Undefined => {
                 return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected a Ref for ref type, got {:?}", val),
+            _ => bail!("Expected a Ref for ref type, got {val:?}"),
         };
 
         match &*self.inner_type {
@@ -148,10 +148,7 @@ impl FfiDecoder for RefType {
         let storage = match ffi_value {
             ffi::FfiValue::Storage(s) => s,
             ffi::FfiValue::Ptr(ptr) if ptr.is_null() => return Ok(value::Value::Null),
-            _ => bail!(
-                "Expected a Storage ffi::FfiValue for Ref, got {:?}",
-                ffi_value
-            ),
+            _ => bail!("Expected a Storage ffi::FfiValue for Ref, got {ffi_value:?}"),
         };
 
         match &*self.inner_type {
@@ -236,7 +233,7 @@ impl FfiDecoder for RefType {
                 let number = float_kind.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
             }
-            Type::String(string_type) => self.decode_ref_string(storage, string_type),
+            Type::String(string_type) => Ok(Self::decode_ref_string(storage, string_type)),
             Type::Array(_) => {
                 bail!("Ref<Array> requires decode_with_context to get size from another parameter")
             }
@@ -253,7 +250,7 @@ impl FfiDecoder for RefType {
         ffi_args: &[ffi::FfiValue],
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
-        RefType::decode_with_context(self, ffi_value, ffi_args, args)
+        Self::decode_with_context(self, ffi_value, ffi_args, args)
     }
 }
 
@@ -318,10 +315,7 @@ impl RefType {
             let storage = match ffi_value {
                 ffi::FfiValue::Storage(s) => s,
                 ffi::FfiValue::Ptr(ptr) if ptr.is_null() => return Ok(value::Value::Null),
-                _ => bail!(
-                    "Expected a Storage ffi::FfiValue for Ref<Array>, got {:?}",
-                    ffi_value
-                ),
+                _ => bail!("Expected a Storage ffi::FfiValue for Ref<Array>, got {ffi_value:?}"),
             };
 
             let actual_ptr = match storage.kind() {
@@ -355,36 +349,28 @@ impl RefType {
         self.decode(ffi_value)
     }
 
-    fn decode_ref_string(
-        &self,
-        storage: &FfiStorage,
-        string_type: &super::StringType,
-    ) -> anyhow::Result<value::Value> {
+    fn decode_ref_string(storage: &FfiStorage, string_type: &super::StringType) -> value::Value {
         if storage.ptr().is_null() {
-            return Ok(value::Value::Null);
+            return value::Value::Null;
         }
 
-        match storage.kind() {
-            FfiStorageKind::Buffer(_) => {
-                let c_str = unsafe { CStr::from_ptr(storage.ptr() as *const c_char) };
-                let string = c_str.to_string_lossy().into_owned();
-                Ok(value::Value::String(string))
+        if let FfiStorageKind::Buffer(_) = storage.kind() {
+            let c_str = unsafe { CStr::from_ptr(storage.ptr() as *const c_char) };
+            let string = c_str.to_string_lossy().into_owned();
+            value::Value::String(string)
+        } else {
+            let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
+            if str_ptr.is_null() {
+                return value::Value::Null;
             }
-            _ => {
-                let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
-                if str_ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let c_str = unsafe { CStr::from_ptr(str_ptr) };
-                let string = c_str.to_string_lossy().into_owned();
+            let c_str = unsafe { CStr::from_ptr(str_ptr) };
+            let string = c_str.to_string_lossy().into_owned();
 
-                if string_type.ownership.is_full() {
-                    // SAFETY: str_ptr was allocated by GLib and we have owned ownership
-                    unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };
-                }
-
-                Ok(value::Value::String(string))
+            if string_type.ownership.is_full() {
+                unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };
             }
+
+            value::Value::String(string)
         }
     }
 }

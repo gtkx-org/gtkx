@@ -12,7 +12,7 @@ static REPORTER: OnceLock<NativeErrorReporter> = OnceLock::new();
 
 impl NativeErrorReporter {
     pub fn global() -> &'static Self {
-        REPORTER.get_or_init(|| NativeErrorReporter {
+        REPORTER.get_or_init(|| Self {
             channel: Mutex::new(None),
         })
     }

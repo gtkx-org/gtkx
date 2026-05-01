@@ -1,12 +1,12 @@
 //! GTK application initialization and thread spawning.
 //!
 //! The [`start`] function creates a GTK `Application`, spawns a dedicated
-//! GLib thread, and waits for the application to activate before returning.
+//! `GLib` thread, and waits for the application to activate before returning.
 //!
 //! ## Startup Sequence
 //!
 //! 1. Parse application ID and optional flags from JavaScript
-//! 2. Spawn a new OS thread that runs the GLib main loop
+//! 2. Spawn a new OS thread that runs the `GLib` main loop
 //! 3. Create the `GtkApplication` and connect the activate signal
 //! 4. Acquire an application hold guard to prevent auto-shutdown
 //! 5. Start the main loop with `app.run_with_args`
@@ -42,9 +42,10 @@ impl JsThreadCommand for StartCommand {
                 .map(|n| n.value(cx) as u32)
         });
 
-        let flags = flags_value
-            .map(ApplicationFlags::from_bits_truncate)
-            .unwrap_or(ApplicationFlags::FLAGS_NONE);
+        let flags = flags_value.map_or(
+            ApplicationFlags::FLAGS_NONE,
+            ApplicationFlags::from_bits_truncate,
+        );
 
         Ok(Self { app_id, flags })
     }

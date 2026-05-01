@@ -1,4 +1,4 @@
-//! FFI type system for describing GTK and GLib types.
+//! FFI type system for describing GTK and `GLib` types.
 //!
 //! This module defines the [`Type`] enum and associated types that describe
 //! all values that can flow through the FFI boundary. Types are parsed from
@@ -125,13 +125,13 @@ impl Ownership {
     #[inline]
     #[must_use]
     pub fn is_full(self) -> bool {
-        matches!(self, Ownership::Full)
+        matches!(self, Self::Full)
     }
 
     #[inline]
     #[must_use]
     pub fn is_borrowed(self) -> bool {
-        matches!(self, Ownership::Borrowed)
+        matches!(self, Self::Borrowed)
     }
 }
 
@@ -147,8 +147,7 @@ impl Ownership {
             .downcast::<JsString, _>(cx)
             .or_else(|_| {
                 cx.throw_type_error(format!(
-                    "'ownership' property is required for {} types",
-                    type_name
+                    "'ownership' property is required for {type_name} types"
                 ))
             })?
             .value(cx);
@@ -160,8 +159,8 @@ impl Ownership {
 impl std::fmt::Display for Ownership {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Ownership::Borrowed => write!(f, "borrowed"),
-            Ownership::Full => write!(f, "full"),
+            Self::Borrowed => write!(f, "borrowed"),
+            Self::Full => write!(f, "full"),
         }
     }
 }
@@ -171,11 +170,10 @@ impl std::str::FromStr for Ownership {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "full" => Ok(Ownership::Full),
-            "borrowed" => Ok(Ownership::Borrowed),
+            "full" => Ok(Self::Full),
+            "borrowed" => Ok(Self::Borrowed),
             other => Err(format!(
-                "'ownership' must be 'full' or 'borrowed', got '{}'",
-                other
+                "'ownership' must be 'full' or 'borrowed', got '{other}'"
             )),
         }
     }
@@ -297,23 +295,23 @@ pub enum Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Integer(kind) => write!(f, "Integer({:?})", kind),
-            Type::Float(kind) => write!(f, "Float({:?})", kind),
-            Type::Enum(t) => write!(f, "Enum({})", t.tagged.get_type_fn),
-            Type::Flags(t) => write!(f, "Flags({})", t.tagged.get_type_fn),
-            Type::String(_) => write!(f, "String"),
-            Type::Void(_) => write!(f, "Void"),
-            Type::Boolean(_) => write!(f, "Boolean"),
-            Type::GObject(_) => write!(f, "GObject"),
-            Type::Boxed(t) => write!(f, "Boxed({})", t.type_name),
-            Type::Struct(t) => write!(f, "Struct({})", t.type_name),
-            Type::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
-            Type::Array(_) => write!(f, "Array"),
-            Type::HashTable(_) => write!(f, "HashTable"),
-            Type::Callback(_) => write!(f, "Callback"),
-            Type::Trampoline(_) => write!(f, "Trampoline"),
-            Type::Ref(t) => write!(f, "Ref({})", t.inner_type),
-            Type::Unichar(_) => write!(f, "Unichar"),
+            Self::Integer(kind) => write!(f, "Integer({kind:?})"),
+            Self::Float(kind) => write!(f, "Float({kind:?})"),
+            Self::Enum(t) => write!(f, "Enum({})", t.tagged.get_type_fn),
+            Self::Flags(t) => write!(f, "Flags({})", t.tagged.get_type_fn),
+            Self::String(_) => write!(f, "String"),
+            Self::Void(_) => write!(f, "Void"),
+            Self::Boolean(_) => write!(f, "Boolean"),
+            Self::GObject(_) => write!(f, "GObject"),
+            Self::Boxed(t) => write!(f, "Boxed({})", t.type_name),
+            Self::Struct(t) => write!(f, "Struct({})", t.type_name),
+            Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
+            Self::Array(_) => write!(f, "Array"),
+            Self::HashTable(_) => write!(f, "HashTable"),
+            Self::Callback(_) => write!(f, "Callback"),
+            Self::Trampoline(_) => write!(f, "Trampoline"),
+            Self::Ref(t) => write!(f, "Ref({})", t.inner_type),
+            Self::Unichar(_) => write!(f, "Unichar"),
         }
     }
 }
@@ -329,34 +327,34 @@ impl Type {
             .value(cx);
 
         match ty.as_str() {
-            "int8" => Ok(Type::Integer(IntegerKind::I8)),
-            "uint8" => Ok(Type::Integer(IntegerKind::U8)),
-            "int16" => Ok(Type::Integer(IntegerKind::I16)),
-            "uint16" => Ok(Type::Integer(IntegerKind::U16)),
-            "int32" => Ok(Type::Integer(IntegerKind::I32)),
-            "uint32" => Ok(Type::Integer(IntegerKind::U32)),
-            "int64" => Ok(Type::Integer(IntegerKind::I64)),
-            "uint64" => Ok(Type::Integer(IntegerKind::U64)),
-            "float32" => Ok(Type::Float(FloatKind::F32)),
-            "float64" => Ok(Type::Float(FloatKind::F64)),
-            "enum" => Ok(Type::Enum(EnumType::from_js_value(cx, value)?)),
-            "flags" => Ok(Type::Flags(FlagsType::from_js_value(cx, value)?)),
-            "string" => Ok(Type::String(StringType::from_js_value(cx, value)?)),
-            "boolean" => Ok(Type::Boolean(BooleanType)),
-            "void" => Ok(Type::Void(VoidType)),
-            "gobject" => Ok(Type::GObject(GObjectType::from_js_value(cx, value)?)),
-            "boxed" => Ok(Type::Boxed(BoxedType::from_js_value(cx, value)?)),
-            "struct" => Ok(Type::Struct(StructType::from_js_value(cx, value)?)),
-            "array" => Ok(Type::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
-            "hashtable" => Ok(Type::HashTable(HashTableType::from_js_value(cx, value)?)),
-            "callback" => Ok(Type::Callback(CallbackType::from_js_value(cx, value)?)),
-            "trampoline" => Ok(Type::Trampoline(TrampolineType::from_js_value(cx, value)?)),
-            "ref" => Ok(Type::Ref(RefType::from_js_value(cx, obj.upcast())?)),
-            "unichar" => Ok(Type::Unichar(UnicharType)),
-            "fundamental" => Ok(Type::Fundamental(FundamentalType::from_js_value(
+            "int8" => Ok(Self::Integer(IntegerKind::I8)),
+            "uint8" => Ok(Self::Integer(IntegerKind::U8)),
+            "int16" => Ok(Self::Integer(IntegerKind::I16)),
+            "uint16" => Ok(Self::Integer(IntegerKind::U16)),
+            "int32" => Ok(Self::Integer(IntegerKind::I32)),
+            "uint32" => Ok(Self::Integer(IntegerKind::U32)),
+            "int64" => Ok(Self::Integer(IntegerKind::I64)),
+            "uint64" => Ok(Self::Integer(IntegerKind::U64)),
+            "float32" => Ok(Self::Float(FloatKind::F32)),
+            "float64" => Ok(Self::Float(FloatKind::F64)),
+            "enum" => Ok(Self::Enum(EnumType::from_js_value(cx, value)?)),
+            "flags" => Ok(Self::Flags(FlagsType::from_js_value(cx, value)?)),
+            "string" => Ok(Self::String(StringType::from_js_value(cx, value)?)),
+            "boolean" => Ok(Self::Boolean(BooleanType)),
+            "void" => Ok(Self::Void(VoidType)),
+            "gobject" => Ok(Self::GObject(GObjectType::from_js_value(cx, value)?)),
+            "boxed" => Ok(Self::Boxed(BoxedType::from_js_value(cx, value)?)),
+            "struct" => Ok(Self::Struct(StructType::from_js_value(cx, value)?)),
+            "array" => Ok(Self::Array(ArrayType::from_js_value(cx, obj.upcast())?)),
+            "hashtable" => Ok(Self::HashTable(HashTableType::from_js_value(cx, value)?)),
+            "callback" => Ok(Self::Callback(CallbackType::from_js_value(cx, value)?)),
+            "trampoline" => Ok(Self::Trampoline(TrampolineType::from_js_value(cx, value)?)),
+            "ref" => Ok(Self::Ref(RefType::from_js_value(cx, obj.upcast())?)),
+            "unichar" => Ok(Self::Unichar(UnicharType)),
+            "fundamental" => Ok(Self::Fundamental(FundamentalType::from_js_value(
                 cx, value,
             )?)),
-            _ => cx.throw_type_error(format!("Unknown type: {}", ty)),
+            _ => cx.throw_type_error(format!("Unknown type: {ty}")),
         }
     }
 }

@@ -1,28 +1,28 @@
 //! Managed object wrappers and reference tracking.
 //!
-//! This module provides wrappers for GObject, Boxed, and Fundamental instances
+//! This module provides wrappers for `GObject`, Boxed, and Fundamental instances
 //! that need to cross the FFI boundary. Each [`NativeHandle`] owns its underlying
 //! [`NativeValue`] directly via [`SendWrapper`], so the JavaScript-facing handle
 //! and the native value share one allocation.
 //!
 //! ## Key Types
 //!
-//! - [`NativeValue`]: Enum wrapping GObject, Boxed, or Fundamental instances
+//! - [`NativeValue`]: Enum wrapping `GObject`, Boxed, or Fundamental instances
 //! - [`NativeHandle`]: Owned handle returned to JavaScript, implements [`Finalize`]
-//! - [`Boxed`]: GObject boxed type wrapper with copy/free semantics
-//! - [`Fundamental`]: GLib fundamental type wrapper with ref/unref semantics
+//! - [`Boxed`]: `GObject` boxed type wrapper with copy/free semantics
+//! - [`Fundamental`]: `GLib` fundamental type wrapper with ref/unref semantics
 //!
 //! ## Lifecycle
 //!
-//! 1. Native code creates a [`NativeValue`] on the GLib thread.
+//! 1. Native code creates a [`NativeValue`] on the `GLib` thread.
 //! 2. [`NativeValue`] is wrapped in [`NativeHandle`] via `From`, capturing the
 //!    raw pointer and storing the value in a [`SendWrapper`] anchored to the
-//!    GLib thread.
+//!    `GLib` thread.
 //! 3. [`NativeHandle`] is moved into a `JsBox` and returned to JavaScript.
 //! 4. When JS garbage collects the box, [`Finalize::finalize`] takes ownership
-//!    of the handle and routes its drop back to the GLib thread.
-//! 5. The handle's [`Drop`] runs on the GLib thread, releasing the underlying
-//!    GObject ref / boxed copy / fundamental unref.
+//!    of the handle and routes its drop back to the `GLib` thread.
+//! 5. The handle's [`Drop`] runs on the `GLib` thread, releasing the underlying
+//!    `GObject` ref / boxed copy / fundamental unref.
 //!
 //! At shutdown ([`Mailbox::is_stopped`]) the handle's value is intentionally
 //! leaked via [`std::mem::forget`] to avoid post-shutdown teardown crashes,
@@ -46,7 +46,7 @@ use crate::dispatch::Mailbox;
 ///
 /// Wraps either an owned [`NativeValue`] (constructed via `From<NativeValue>`)
 /// or a borrowed pointer reference (constructed via [`NativeHandle::borrowed`]).
-/// An owned handle is anchored to the GLib thread via [`SendWrapper`] and routes
+/// An owned handle is anchored to the `GLib` thread via [`SendWrapper`] and routes
 /// its drop back to that thread automatically; a borrowed handle carries only
 /// the pointer and is safe to clone or drop on any thread.
 pub struct NativeHandle {
@@ -79,7 +79,7 @@ impl From<NativeValue> for NativeHandle {
             NativeValue::Boxed(boxed) => boxed.as_ptr(),
             NativeValue::Fundamental(fundamental) => fundamental.as_ptr(),
         };
-        NativeHandle {
+        Self {
             ptr,
             inner: Some(SendWrapper::new(value)),
         }
@@ -96,7 +96,7 @@ impl Clone for NativeHandle {
     /// (created via [`NativeHandle::borrowed`]) carry no thread affinity and
     /// can be cloned freely.
     fn clone(&self) -> Self {
-        NativeHandle {
+        Self {
             ptr: self.ptr,
             inner: self.inner.clone(),
         }
@@ -152,7 +152,7 @@ impl Drop for NativeHandle {
 
 impl Finalize for NativeHandle {
     /// No-op: routing is handled by the custom [`Drop`] impl, which schedules
-    /// off-origin drops back to the GLib thread and leaks via
+    /// off-origin drops back to the `GLib` thread and leaks via
     /// [`std::mem::forget`] when the mailbox is stopped.
     fn finalize<'a, C: Context<'a>>(self, _cx: &mut C) {}
 }
@@ -165,7 +165,7 @@ impl Finalize for NativeHandle {
 /// `Boxed` and `Fundamental` use custom wrappers because they require type-specific
 /// lifecycle management:
 /// - `Boxed`: Uses `g_boxed_copy`/`g_boxed_free` for GType-registered types,
-///   or `g_malloc0`/`g_free` for plain structs without GType
+///   or `g_malloc0`/`g_free` for plain structs without `GType`
 /// - `Fundamental`: Uses custom ref/unref functions that must be looked up dynamically
 #[derive(Debug, Clone)]
 pub enum NativeValue {

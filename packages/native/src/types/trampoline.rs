@@ -26,13 +26,12 @@ impl std::str::FromStr for TrampolineScope {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "call" => Ok(TrampolineScope::Call),
-            "notified" => Ok(TrampolineScope::Notified),
-            "async" => Ok(TrampolineScope::Async),
-            "forever" => Ok(TrampolineScope::Forever),
+            "call" => Ok(Self::Call),
+            "notified" => Ok(Self::Notified),
+            "async" => Ok(Self::Async),
+            "forever" => Ok(Self::Forever),
             other => Err(format!(
-                "'scope' must be 'call', 'notified', 'async', or 'forever'; got '{}'",
-                other
+                "'scope' must be 'call', 'notified', 'async', or 'forever'; got '{other}'"
             )),
         }
     }
@@ -76,7 +75,7 @@ impl TrampolineType {
             }
         };
 
-        Ok(TrampolineType {
+        Ok(Self {
             arg_types,
             return_type,
             has_destroy,
@@ -112,7 +111,7 @@ impl FfiEncoder for TrampolineType {
             value::Value::Null | value::Value::Undefined if optional => {
                 return Ok(self.build_null_ffi_value());
             }
-            _ => bail!("Expected a Callback for trampoline type, got {:?}", val),
+            _ => bail!("Expected a Callback for trampoline type, got {val:?}"),
         };
 
         let is_oneshot = self.scope == TrampolineScope::Async;

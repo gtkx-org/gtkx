@@ -101,13 +101,13 @@ fn try_from_integer_u8() {
 fn try_from_integer_i32() {
     let arg = Arg::new(
         Type::Integer(IntegerKind::I32),
-        value::Value::Number(-123456.0),
+        value::Value::Number(-123_456.0),
     );
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
     if let FfiValue::I32(v) = result.unwrap() {
-        assert_eq!(v, -123456);
+        assert_eq!(v, -123_456);
     } else {
         panic!("Expected FfiValue::I32");
     }
@@ -117,13 +117,13 @@ fn try_from_integer_i32() {
 fn try_from_integer_u64() {
     let arg = Arg::new(
         Type::Integer(IntegerKind::U64),
-        value::Value::Number(9999999999.0),
+        value::Value::Number(9_999_999_999.0),
     );
 
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
     if let FfiValue::U64(v) = result.unwrap() {
-        assert_eq!(v, 9999999999);
+        assert_eq!(v, 9_999_999_999);
     } else {
         panic!("Expected FfiValue::U64");
     }
@@ -166,7 +166,7 @@ fn try_from_float_f64() {
     let result = FfiValue::try_from(arg);
     assert!(result.is_ok());
     if let FfiValue::F64(v) = result.unwrap() {
-        assert!((v - 2.625).abs() < 0.0000001);
+        assert!((v - 2.625).abs() < 0.000_000_1);
     } else {
         panic!("Expected FfiValue::F64");
     }
@@ -432,14 +432,15 @@ fn try_from_array_boolean() {
 }
 
 #[test]
+#[allow(clippy::similar_names)]
 fn value_as_ptr_integer_types_fail() {
-    let v_u8 = FfiValue::U8(42);
-    let v_i32 = FfiValue::I32(-100);
-    let v_u64 = FfiValue::U64(999);
+    let val_u8 = FfiValue::U8(42);
+    let val_i32 = FfiValue::I32(-100);
+    let val_u64 = FfiValue::U64(999);
 
-    assert!(v_u8.as_ptr("test").is_err());
-    assert!(v_i32.as_ptr("test").is_err());
-    assert!(v_u64.as_ptr("test").is_err());
+    assert!(val_u8.as_ptr("test").is_err());
+    assert!(val_i32.as_ptr("test").is_err());
+    assert!(val_u64.as_ptr("test").is_err());
 }
 
 #[test]

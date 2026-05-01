@@ -12,7 +12,7 @@ impl FfiEncoder for BooleanType {
     fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let boolean = match value {
             value::Value::Boolean(b) => *b,
-            _ => anyhow::bail!("Expected a Boolean for boolean type, got {:?}", value),
+            _ => anyhow::bail!("Expected a Boolean for boolean type, got {value:?}"),
         };
         Ok(ffi::FfiValue::I32(i32::from(boolean)))
     }
@@ -35,7 +35,7 @@ impl FfiDecoder for BooleanType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let b = match ffi_value {
             ffi::FfiValue::I32(v) => *v != 0,
-            _ => anyhow::bail!("Expected a boolean ffi::FfiValue, got {:?}", ffi_value),
+            _ => anyhow::bail!("Expected a boolean ffi::FfiValue, got {ffi_value:?}"),
         };
         Ok(value::Value::Boolean(b))
     }
@@ -62,10 +62,7 @@ impl RawPtrCodec for BooleanType {
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
         let value::Value::Boolean(b) = value else {
-            anyhow::bail!(
-                "Expected a Boolean for boolean field write, got {:?}",
-                value
-            );
+            anyhow::bail!("Expected a Boolean for boolean field write, got {value:?}");
         };
         unsafe { *(ptr as *mut i32) = i32::from(*b) };
         Ok(())
@@ -83,7 +80,7 @@ impl GlibValueCodec for BooleanType {
     fn from_glib_value(&self, gvalue: &gtk4::glib::Value) -> anyhow::Result<value::Value> {
         let boolean: bool = gvalue
             .get()
-            .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to get bool from GValue: {e}"))?;
         Ok(value::Value::Boolean(boolean))
     }
 }

@@ -29,17 +29,16 @@ impl std::str::FromStr for ArrayKind {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "array" => Ok(ArrayKind::Array),
-            "glist" => Ok(ArrayKind::GList),
-            "gslist" => Ok(ArrayKind::GSList),
-            "gptrarray" => Ok(ArrayKind::GPtrArray),
-            "garray" => Ok(ArrayKind::GArray),
-            "gbytearray" => Ok(ArrayKind::GByteArray),
-            "sized" => Ok(ArrayKind::Sized { size_index: 0 }),
-            "fixed" => Ok(ArrayKind::Fixed { size: 0 }),
+            "array" => Ok(Self::Array),
+            "glist" => Ok(Self::GList),
+            "gslist" => Ok(Self::GSList),
+            "gptrarray" => Ok(Self::GPtrArray),
+            "garray" => Ok(Self::GArray),
+            "gbytearray" => Ok(Self::GByteArray),
+            "sized" => Ok(Self::Sized { size_index: 0 }),
+            "fixed" => Ok(Self::Fixed { size: 0 }),
             _ => Err(format!(
-                "'kind' must be 'array', 'glist', 'gslist', 'gptrarray', 'garray', 'gbytearray', 'sized', or 'fixed'; got '{}'",
-                s
+                "'kind' must be 'array', 'glist', 'gslist', 'gptrarray', 'garray', 'gbytearray', 'sized', or 'fixed'; got '{s}'"
             )),
         }
     }
@@ -98,7 +97,7 @@ impl ArrayType {
 
         let ownership = Ownership::from_js_value(cx, obj, "array")?;
 
-        Ok(ArrayType {
+        Ok(Self {
             item_type: Box::new(item_type),
             kind,
             ownership,
@@ -109,13 +108,13 @@ impl ArrayType {
 
 impl FfiEncoder for ArrayType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
-        ArrayType::encode(self, value, optional)
+        Self::encode(self, value, optional)
     }
 }
 
 impl FfiDecoder for ArrayType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        ArrayType::decode(self, ffi_value)
+        Self::decode(self, ffi_value)
     }
 
     fn decode_with_context(
@@ -124,7 +123,7 @@ impl FfiDecoder for ArrayType {
         ffi_args: &[ffi::FfiValue],
         args: &[crate::arg::Arg],
     ) -> anyhow::Result<value::Value> {
-        ArrayType::decode_with_context(self, ffi_value, ffi_args, args)
+        Self::decode_with_context(self, ffi_value, ffi_args, args)
     }
 }
 
@@ -135,7 +134,7 @@ impl RawPtrCodec for ArrayType {
         ptr: *mut std::ffi::c_void,
         _context: &str,
     ) -> anyhow::Result<value::Value> {
-        unsafe { ArrayType::ptr_to_value(self, ptr) }
+        unsafe { Self::ptr_to_value(self, ptr) }
     }
 }
 
@@ -204,7 +203,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                     .enumerate()
                     .map(|(i, &v)| {
                         if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
-                            bail!("Array element {}: value {} is out of range for f32", i, v);
+                            bail!("Array element {i}: value {v} is out of range for f32");
                         }
                         Ok(v as f32)
                     })
@@ -300,7 +299,7 @@ impl ArrayKindEncoder for GListEncoder {
                     .enumerate()
                     .map(|(i, &v)| {
                         if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
-                            bail!("Array element {}: value {} is out of range for f32", i, v);
+                            bail!("Array element {i}: value {v} is out of range for f32");
                         }
                         Ok(v as f32)
                     })
@@ -400,7 +399,7 @@ impl ArrayKindEncoder for GSListEncoder {
                     .enumerate()
                     .map(|(i, &v)| {
                         if v.is_finite() && (v > f32::MAX as f64 || v < -(f32::MAX as f64)) {
-                            bail!("Array element {}: value {} is out of range for f32", i, v);
+                            bail!("Array element {i}: value {v} is out of range for f32");
                         }
                         Ok(v as f32)
                     })
@@ -479,7 +478,7 @@ impl ArrayType {
             .iter()
             .map(|v| match v {
                 value::Value::Number(n) => Ok(*n),
-                _ => bail!("Expected a Number, got {:?}", v),
+                _ => bail!("Expected a Number, got {v:?}"),
             })
             .collect()
     }
@@ -489,7 +488,7 @@ impl ArrayType {
             .iter()
             .map(|v| match v {
                 value::Value::Boolean(b) => Ok(i32::from(*b)),
-                _ => bail!("Expected a Boolean, got {:?}", v),
+                _ => bail!("Expected a Boolean, got {v:?}"),
             })
             .collect()
     }
@@ -499,7 +498,7 @@ impl ArrayType {
             .iter()
             .map(|v| match v {
                 value::Value::String(s) => Ok(CString::new(s.as_bytes())?),
-                _ => bail!("Expected a String, got {:?}", v),
+                _ => bail!("Expected a String, got {v:?}"),
             })
             .collect()
     }
@@ -511,7 +510,7 @@ impl ArrayType {
             .iter()
             .map(|v| match v {
                 value::Value::Object(handle) => Ok(handle.clone()),
-                _ => bail!("Expected an Object, got {:?}", v),
+                _ => bail!("Expected an Object, got {v:?}"),
             })
             .collect()
     }
@@ -545,7 +544,7 @@ impl ArrayType {
             value::Value::Null | value::Value::Undefined if optional => {
                 return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!("Expected an Array for array type, got {:?}", val),
+            _ => bail!("Expected an Array for array type, got {val:?}"),
         };
 
         if self.kind == ArrayKind::GByteArray {
@@ -634,15 +633,11 @@ impl ArrayType {
             .map(|(i, v)| match v {
                 value::Value::Number(n) => {
                     if !n.is_finite() || n.fract() != 0.0 || *n < 0.0 || *n > 255.0 {
-                        bail!(
-                            "GByteArray element {}: value {} is out of range for u8 [0, 255]",
-                            i,
-                            n
-                        );
+                        bail!("GByteArray element {i}: value {n} is out of range for u8 [0, 255]");
                     }
                     Ok(*n as u8)
                 }
-                _ => bail!("Expected a Number for GByteArray element, got {:?}", v),
+                _ => bail!("Expected a Number for GByteArray element, got {v:?}"),
             })
             .collect::<anyhow::Result<Vec<u8>>>()?;
 
@@ -662,6 +657,7 @@ impl ArrayType {
         )))
     }
 
+    #[allow(clippy::too_many_lines)]
     fn encode_garray(&self, array: &[value::Value]) -> anyhow::Result<ffi::FfiValue> {
         let element_size = self
             .element_size
@@ -803,18 +799,14 @@ impl ArrayType {
             }
 
             if matches!(&*self.item_type, Type::String(_)) {
-                return self.decode_null_terminated_string_array(*ptr);
+                return Ok(self.decode_null_terminated_string_array(*ptr));
             }
 
             return self.decode_null_terminated_ptr_array(*ptr);
         }
 
-        let storage = match ffi_value {
-            ffi::FfiValue::Storage(s) => s,
-            _ => bail!(
-                "Expected a Storage ffi::FfiValue for Array, got {:?}",
-                ffi_value
-            ),
+        let ffi::FfiValue::Storage(storage) = ffi_value else {
+            bail!("Expected a Storage ffi::FfiValue for Array, got {ffi_value:?}")
         };
 
         self.decode_storage(storage)
@@ -828,7 +820,7 @@ impl ArrayType {
     ) -> anyhow::Result<value::Value> {
         match &self.kind {
             ArrayKind::Sized { size_index } => {
-                let length = self.size_from_args(ffi_args, args, *size_index)?;
+                let length = Self::size_from_args(ffi_args, args, *size_index)?;
 
                 if let ffi::FfiValue::Ptr(ptr) = ffi_value {
                     if ptr.is_null() {
@@ -1040,10 +1032,7 @@ impl ArrayType {
         Ok(value::Value::Array(values))
     }
 
-    fn decode_null_terminated_string_array(
-        &self,
-        ptr: *mut c_void,
-    ) -> anyhow::Result<value::Value> {
+    fn decode_null_terminated_string_array(&self, ptr: *mut c_void) -> value::Value {
         let mut values = Vec::new();
         let str_array = ptr as *const *const c_char;
         let mut i = 0;
@@ -1061,7 +1050,7 @@ impl ArrayType {
             unsafe { glib::ffi::g_strfreev(ptr as *mut *mut c_char) };
         }
 
-        Ok(value::Value::Array(values))
+        value::Value::Array(values)
     }
 
     fn decode_storage(&self, storage: &FfiStorage) -> anyhow::Result<value::Value> {
@@ -1129,16 +1118,16 @@ impl ArrayType {
 
     fn decode_sized_array(&self, ptr: *mut c_void, length: usize) -> anyhow::Result<value::Value> {
         match &*self.item_type {
-            Type::Integer(int_type) => Self::decode_sized_byte_array(ptr, length, int_type),
-            Type::Float(float_kind) => Self::decode_sized_float_array(ptr, length, *float_kind),
-            Type::Boolean(_) => Self::decode_sized_bool_array(ptr, length),
+            Type::Integer(int_type) => Ok(Self::decode_sized_byte_array(ptr, length, int_type)),
+            Type::Float(float_kind) => Ok(Self::decode_sized_float_array(ptr, length, *float_kind)),
+            Type::Boolean(_) => Ok(Self::decode_sized_bool_array(ptr, length)),
             Type::GObject(_)
             | Type::Boxed(_)
             | Type::Struct(_)
             | Type::String(_)
             | Type::Fundamental(_) => self.decode_sized_ptr_array(ptr, length),
-            Type::Enum(e) => Self::decode_sized_byte_array(ptr, length, &e.storage),
-            Type::Flags(f) => Self::decode_sized_byte_array(ptr, length, &f.storage),
+            Type::Enum(e) => Ok(Self::decode_sized_byte_array(ptr, length, &e.storage)),
+            Type::Flags(f) => Ok(Self::decode_sized_byte_array(ptr, length, &f.storage)),
             Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
@@ -1171,9 +1160,9 @@ impl ArrayType {
         ptr: *mut c_void,
         length: usize,
         float_kind: super::FloatKind,
-    ) -> anyhow::Result<value::Value> {
+    ) -> value::Value {
         if ptr.is_null() {
-            return Ok(value::Value::Array(vec![]));
+            return value::Value::Array(vec![]);
         }
 
         let values = match float_kind {
@@ -1191,12 +1180,12 @@ impl ArrayType {
             },
         };
 
-        Ok(value::Value::Array(values))
+        value::Value::Array(values)
     }
 
-    fn decode_sized_bool_array(ptr: *mut c_void, length: usize) -> anyhow::Result<value::Value> {
+    fn decode_sized_bool_array(ptr: *mut c_void, length: usize) -> value::Value {
         if ptr.is_null() {
-            return Ok(value::Value::Array(vec![]));
+            return value::Value::Array(vec![]);
         }
 
         let values = unsafe {
@@ -1206,22 +1195,22 @@ impl ArrayType {
                 .collect()
         };
 
-        Ok(value::Value::Array(values))
+        value::Value::Array(values)
     }
 
     fn decode_sized_byte_array(
         ptr: *mut c_void,
         length: usize,
         int_kind: &super::IntegerKind,
-    ) -> anyhow::Result<value::Value> {
+    ) -> value::Value {
         if ptr.is_null() {
-            return Ok(value::Value::Array(vec![]));
+            return value::Value::Array(vec![]);
         }
 
         let f64_values = int_kind.read_slice(ptr as *const u8, length);
         let values = f64_values.into_iter().map(value::Value::Number).collect();
 
-        Ok(value::Value::Array(values))
+        value::Value::Array(values)
     }
 
     /// # Safety
@@ -1264,17 +1253,12 @@ impl ArrayType {
 
     fn validated_size(size: f64, param_index: usize) -> anyhow::Result<usize> {
         if size < 0.0 || !size.is_finite() {
-            bail!(
-                "Array size parameter at index {} has invalid value: {}",
-                param_index,
-                size
-            );
+            bail!("Array size parameter at index {param_index} has invalid value: {size}");
         }
         Ok(size as usize)
     }
 
     fn size_from_args(
-        &self,
         ffi_args: &[ffi::FfiValue],
         args: &[Arg],
         size_index: usize,

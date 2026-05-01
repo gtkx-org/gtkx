@@ -76,14 +76,14 @@ fn borrowed_handle_carries_pointer_without_ownership() {
 
     assert_eq!(handle.ptr(), raw);
     assert_eq!(handle.ptr_as_usize(), raw as usize);
-    let cloned = handle.clone();
+    let cloned = handle;
     assert_eq!(cloned.ptr(), raw);
 }
 
 #[test]
 fn object_gobject_clone_shares_reference() {
     let obj = create_test_gobject();
-    let object = NativeValue::GObject(obj.clone());
+    let object = NativeValue::GObject(obj);
     let cloned = object.clone();
 
     let ptr1 = match &object {

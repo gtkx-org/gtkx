@@ -1,10 +1,10 @@
-//! Cross-thread message dispatch between the JavaScript and GLib threads.
+//! Cross-thread message dispatch between the JavaScript and `GLib` threads.
 //!
 //! This module owns the JS↔GLib bridge as a single [`Mailbox`] singleton that
 //! exposes two queues:
 //!
-//! - `glib_inbox`: tasks pushed by the JS thread for execution on the GLib thread.
-//! - `node_inbox`: callbacks pushed by the GLib thread for execution in the JS context.
+//! - `glib_inbox`: tasks pushed by the JS thread for execution on the `GLib` thread.
+//! - `node_inbox`: callbacks pushed by the `GLib` thread for execution in the JS context.
 //!
 //! Each thread parks on its own wake signal while waiting for a response.
 //! Re-entrance falls out of the call stack: while a thread is parked waiting for
@@ -16,14 +16,14 @@
 //! ## Freeze mode
 //!
 //! React's commit phase brackets a batch of mutations with [`Mailbox::freeze`] /
-//! [`Mailbox::unfreeze`]. While frozen, the GLib thread runs a tight loop
-//! (`run_freeze_loop`) that drains incoming tasks without yielding to the GLib
+//! [`Mailbox::unfreeze`]. While frozen, the `GLib` thread runs a tight loop
+//! (`run_freeze_loop`) that drains incoming tasks without yielding to the `GLib`
 //! main loop, ensuring the frame clock cannot fire mid-commit. Nested freeze
 //! pairs are no-ops; only the outermost pair starts and stops the loop.
 //!
 //! ## Lifecycle
 //!
-//! [`Mailbox::mark_started`] is set once the GLib thread is up and the
+//! [`Mailbox::mark_started`] is set once the `GLib` thread is up and the
 //! application has activated. [`Mailbox::mark_stopped`] is set when the
 //! application hold guard is released. After stopped, new tasks are silently
 //! dropped to allow clean shutdown.
@@ -48,9 +48,9 @@ struct NodeCallback {
     result_tx: mpsc::Sender<anyhow::Result<Value>>,
 }
 
-/// Bidirectional message queues coordinating the JS and GLib threads.
+/// Bidirectional message queues coordinating the JS and `GLib` threads.
 ///
-/// Holds two inboxes — one for tasks bound for the GLib thread, one for
+/// Holds two inboxes — one for tasks bound for the `GLib` thread, one for
 /// callbacks bound for the JS thread — plus the wake primitives that park
 /// each thread when its inbox is empty.
 pub struct Mailbox {
@@ -76,7 +76,7 @@ impl std::fmt::Debug for Mailbox {
             .field("started", &self.started)
             .field("stopped", &self.stopped)
             .field("freeze_depth", &self.freeze_depth)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -84,8 +84,8 @@ static MAILBOX: OnceLock<Mailbox> = OnceLock::new();
 
 impl Mailbox {
     /// Returns the global mailbox singleton, initializing it on first access.
-    pub fn global() -> &'static Mailbox {
-        MAILBOX.get_or_init(Mailbox::new)
+    pub fn global() -> &'static Self {
+        MAILBOX.get_or_init(Self::new)
     }
 
     fn new() -> Self {
@@ -103,13 +103,13 @@ impl Mailbox {
         }
     }
 
-    /// Marks the GLib thread as ready to receive tasks.
+    /// Marks the `GLib` thread as ready to receive tasks.
     pub fn mark_started(&self) {
         self.stopped.store(false, Ordering::Release);
         self.started.store(true, Ordering::Release);
     }
 
-    /// Returns whether the GLib thread is currently accepting tasks.
+    /// Returns whether the `GLib` thread is currently accepting tasks.
     pub fn is_started(&self) -> bool {
         self.started.load(Ordering::Acquire)
     }
@@ -139,9 +139,9 @@ impl Mailbox {
         }
     }
 
-    /// Drains all currently-queued GLib tasks until [`Self::unfreeze`] resets
-    /// the freeze depth to zero. Runs on the GLib thread without yielding to
-    /// the GLib main loop, preventing the frame clock from firing between
+    /// Drains all currently-queued `GLib` tasks until [`Self::unfreeze`] resets
+    /// the freeze depth to zero. Runs on the `GLib` thread without yielding to
+    /// the `GLib` main loop, preventing the frame clock from firing between
     /// individual mutations during a React commit.
     pub fn run_freeze_loop(&self) {
         self.freeze_loop_active.store(true, Ordering::Release);
@@ -189,8 +189,8 @@ impl Mailbox {
             .pop_front()
     }
 
-    /// Pushes a fire-and-forget task onto the GLib inbox. The task runs on the
-    /// GLib thread the next time the inbox is drained — either by the GLib
+    /// Pushes a fire-and-forget task onto the `GLib` inbox. The task runs on the
+    /// `GLib` thread the next time the inbox is drained — either by the `GLib`
     /// main loop's idle source, by the freeze loop, or by another thread's
     /// wait loop dispatching pending tasks.
     pub fn schedule_glib<F>(&self, task: F)
@@ -221,7 +221,7 @@ impl Mailbox {
 
     /// Wakes the JS thread if it is parked in [`Self::wait_for_glib_result`].
     ///
-    /// Callers running long-lived GLib tasks (e.g. the freeze loop, which does
+    /// Callers running long-lived `GLib` tasks (e.g. the freeze loop, which does
     /// not return until [`Self::unfreeze`] is called) must invoke this after
     /// signalling their `Receiver` so the JS thread observes the value rather
     /// than blocking forever — the standard wake-after-drain in
@@ -230,8 +230,8 @@ impl Mailbox {
         self.wake_js.notify();
     }
 
-    /// Drains all queued GLib tasks. Returns whether any were executed.
-    /// Intended to run on the GLib thread.
+    /// Drains all queued `GLib` tasks. Returns whether any were executed.
+    /// Intended to run on the `GLib` thread.
     pub fn dispatch_pending(&self) -> bool {
         self.dispatch_scheduled.store(false, Ordering::Release);
         let mut dispatched = false;
@@ -248,7 +248,7 @@ impl Mailbox {
         dispatched
     }
 
-    /// Schedules a task on the GLib thread and blocks the JS thread until the
+    /// Schedules a task on the `GLib` thread and blocks the JS thread until the
     /// task completes. While blocked, drains any callbacks pushed onto the
     /// node inbox so re-entrant `GLib → JS → GLib` calls progress.
     pub fn dispatch_to_glib_and_wait<'a, R, C, F>(
@@ -274,7 +274,7 @@ impl Mailbox {
     /// Blocks the JS thread until the receiver yields a value, draining any
     /// pending node callbacks along the way. Useful when callers schedule
     /// tasks via [`Self::schedule_glib`] and want fine-grained control over
-    /// what value the GLib task signals back through (for example, the
+    /// what value the `GLib` task signals back through (for example, the
     /// freeze loop signals readiness mid-execution).
     pub fn wait_for_glib_result<'a, R, C: Context<'a>>(
         &self,
@@ -292,7 +292,7 @@ impl Mailbox {
         }
     }
 
-    /// Pushes a JS callback onto the node inbox and blocks the GLib thread
+    /// Pushes a JS callback onto the node inbox and blocks the `GLib` thread
     /// until JS produces a result. While blocked, drains GLib-bound tasks
     /// pushed by the executing JS callback so re-entrant `JS → GLib → JS`
     /// calls progress.
@@ -410,7 +410,7 @@ impl Mailbox {
 
 /// Returned by [`Mailbox::dispatch_to_glib_and_wait`] when the underlying
 /// result channel is dropped before producing a value, typically because the
-/// GLib thread is shutting down.
+/// `GLib` thread is shutting down.
 #[derive(Debug, Clone, Copy)]
 pub struct GlibDisconnectedError;
 

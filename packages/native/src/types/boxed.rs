@@ -1,7 +1,7 @@
 //! Boxed and struct type handling for FFI.
 //!
-//! GLib boxed types are heap-allocated structures with reference counting
-//! managed by GLib. Struct types are similar but may be stack-allocated
+//! `GLib` boxed types are heap-allocated structures with reference counting
+//! managed by `GLib`. Struct types are similar but may be stack-allocated
 //! or have fixed sizes. This module provides [`BoxedType`] and [`StructType`]
 //! descriptors that handle encoding/decoding these types for FFI calls.
 
@@ -161,15 +161,12 @@ impl RawPtrCodec for BoxedType {
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let ptr = value::Value::result_to_ptr(value);
-        let ptr = if !ptr.is_null() {
-            match self.gtype() {
-                Some(gtype) => unsafe {
-                    glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
-                },
-                None => ptr,
-            }
-        } else {
+        let ptr = if ptr.is_null() {
             ptr
+        } else {
+            self.gtype().map_or(ptr, |gtype| unsafe {
+                glib::gobject_ffi::g_boxed_copy(gtype.into_glib(), ptr as *const _)
+            })
         };
         unsafe { *(ret as *mut *mut c_void) = ptr };
     }
@@ -183,11 +180,10 @@ impl RawPtrCodec for BoxedType {
 
 impl GlibValueCodec for BoxedType {
     fn to_glib_value(&self, val: &value::Value) -> anyhow::Result<Option<glib::Value>> {
-        let ptr = match val {
-            value::Value::Object(handle) => handle.ptr(),
-            value::Value::Null | value::Value::Undefined => return Ok(None),
-            _ => return Ok(None),
+        let value::Value::Object(handle) = val else {
+            return Ok(None);
         };
+        let ptr = handle.ptr();
         if ptr.is_null() {
             return Ok(None);
         }
@@ -207,7 +203,7 @@ impl GlibValueCodec for BoxedType {
         if gvalue_type == glib::Type::STRING {
             let string: String = gvalue
                 .get()
-                .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {e}"))?;
             return Ok(value::Value::String(string));
         }
 

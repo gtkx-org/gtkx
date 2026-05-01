@@ -140,7 +140,7 @@ fn ptr_to_value_boolean_true() {
 
     match value {
         Value::Boolean(true) => (),
-        other => panic!("Expected Boolean(true), got {:?}", other),
+        other => panic!("Expected Boolean(true), got {other:?}"),
     }
 }
 
@@ -155,7 +155,7 @@ fn ptr_to_value_boolean_false() {
 
     match value {
         Value::Boolean(false) => (),
-        other => panic!("Expected Boolean(false), got {:?}", other),
+        other => panic!("Expected Boolean(false), got {other:?}"),
     }
 }
 
@@ -170,7 +170,7 @@ fn ptr_to_value_boolean_nonzero_is_true() {
 
     match value {
         Value::Boolean(true) => (),
-        other => panic!("Expected Boolean(true), got {:?}", other),
+        other => panic!("Expected Boolean(true), got {other:?}"),
     }
 }
 
@@ -190,7 +190,7 @@ fn ptr_to_value_float() {
 
     match value {
         Value::Number(n) => assert!((n - std::f64::consts::E).abs() < f64::EPSILON),
-        other => panic!("Expected Number, got {:?}", other),
+        other => panic!("Expected Number, got {other:?}"),
     }
 
     unsafe { glib::ffi::g_free(ptr) };
@@ -210,7 +210,7 @@ fn ptr_to_value_struct_null() {
 
     match value {
         Value::Null => (),
-        other => panic!("Expected Null, got {:?}", other),
+        other => panic!("Expected Null, got {other:?}"),
     }
 }
 
@@ -232,7 +232,7 @@ fn ptr_to_value_struct_non_null() {
 
     match value {
         Value::Object(_) => (),
-        other => panic!("Expected Object, got {:?}", other),
+        other => panic!("Expected Object, got {other:?}"),
     }
 
     unsafe { glib::ffi::g_free(ptr) };
@@ -541,18 +541,16 @@ fn boolean_roundtrip_preserves_values() {
         .expect("encoding should succeed");
     let decoded = ht_type.decode(&encoded).expect("decoding should succeed");
 
-    let pairs = match decoded {
-        Value::Array(p) => p,
-        _ => panic!("Expected array"),
+    let Value::Array(pairs) = decoded else {
+        panic!("Expected array")
     };
 
     let mut found_true = false;
     let mut found_false = false;
 
     for pair in pairs {
-        let kv = match pair {
-            Value::Array(v) => v,
-            _ => panic!("Expected array pair"),
+        let Value::Array(kv) = pair else {
+            panic!("Expected array pair")
         };
         match &kv[1] {
             Value::Boolean(true) => found_true = true,

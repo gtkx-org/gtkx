@@ -22,11 +22,13 @@ impl WaitSignal {
     }
 
     pub fn notify(&self) {
-        let mut notified = self
-            .state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        *notified = true;
+        {
+            let mut notified = self
+                .state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            *notified = true;
+        }
         self.condvar.notify_one();
     }
 

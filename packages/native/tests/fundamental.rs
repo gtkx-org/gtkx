@@ -138,7 +138,7 @@ fn clone_null_ptr_safe() {
         )
     };
 
-    let cloned = fundamental.clone();
+    let cloned = fundamental;
 
     assert!(cloned.as_ptr().is_null());
 }

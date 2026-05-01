@@ -80,7 +80,7 @@ fn boxed_clone_null_remains_null() {
     let gtype = gtk4::gdk::RGBA::static_type();
     let boxed = Boxed::from_glib_none(Some(gtype), std::ptr::null_mut()).unwrap();
 
-    let cloned = boxed.clone();
+    let cloned = boxed;
 
     assert!(cloned.as_ptr().is_null());
     assert!(!cloned.is_owned());

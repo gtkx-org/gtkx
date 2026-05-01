@@ -43,10 +43,7 @@ impl Fundamental {
             };
         }
 
-        let owned_ptr = match ref_fn {
-            Some(do_ref) => unsafe { do_ref(ptr) },
-            None => ptr,
-        };
+        let owned_ptr = ref_fn.map_or(ptr, |do_ref| unsafe { do_ref(ptr) });
 
         Self {
             ptr: owned_ptr,
@@ -80,11 +77,9 @@ impl Clone for Fundamental {
             };
         }
 
-        let cloned_ptr = if let Some(ref_fn) = self.ref_fn {
-            unsafe { ref_fn(self.ptr) }
-        } else {
-            self.ptr
-        };
+        let cloned_ptr = self
+            .ref_fn
+            .map_or(self.ptr, |ref_fn| unsafe { ref_fn(self.ptr) });
 
         Self {
             ptr: cloned_ptr,

@@ -98,7 +98,7 @@ fn float_dispatch_read_ptr_f64() {
     let ptr = &value as *const f64 as *const u8;
 
     let result = FloatKind::F64.read_ptr(ptr);
-    assert!((result - std::f64::consts::E).abs() < 0.0000001);
+    assert!((result - std::f64::consts::E).abs() < 0.000_000_1);
 }
 
 #[test]
@@ -116,7 +116,7 @@ fn float_dispatch_write_ptr_f64() {
     let ptr = &mut value as *mut f64 as *mut u8;
 
     FloatKind::F64.write_ptr(ptr, std::f64::consts::PI);
-    assert!((value - std::f64::consts::PI).abs() < 0.0000001);
+    assert!((value - std::f64::consts::PI).abs() < 0.000_000_1);
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn float_dispatch_to_ffi_value_f32() {
 fn float_dispatch_to_ffi_value_f64() {
     let result = FloatKind::F64.to_ffi_value(std::f64::consts::E);
     if let ffi::FfiValue::F64(v) = result {
-        assert!((v - std::f64::consts::E).abs() < 0.0000001);
+        assert!((v - std::f64::consts::E).abs() < 0.000_000_1);
     } else {
         panic!("Expected FfiValue::F64");
     }

@@ -3,7 +3,7 @@
 //! The [`get_native_id`] function returns the raw pointer value for a managed
 //! object. This is primarily used for object-identity comparisons in JavaScript.
 //! With pointer-bearing handles, the read is purely synchronous and never
-//! crosses the GLib thread boundary.
+//! crosses the `GLib` thread boundary.
 
 use neon::prelude::*;
 

@@ -6,9 +6,9 @@
 //!
 //! ## Allocation Modes
 //!
-//! - **Boxed types** (with type_name): Memory is wrapped with GType info for
+//! - **Boxed types** (with `type_name)`: Memory is wrapped with `GType` info for
 //!   proper `g_boxed_free` cleanup.
-//! - **Plain structs** (without type_name): Memory is allocated with `g_malloc0`
+//! - **Plain structs** (without `type_name)`: Memory is allocated with `g_malloc0`
 //!   and freed with `g_free` on drop.
 
 use gtk4::glib;
@@ -43,7 +43,7 @@ impl ModuleRequest for AllocRequest {
 
         if ptr.is_null() {
             let type_desc = self.type_name.as_deref().unwrap_or("plain struct");
-            anyhow::bail!("Failed to allocate memory for {}", type_desc);
+            anyhow::bail!("Failed to allocate memory for {type_desc}");
         }
 
         let gtype = self.type_name.as_ref().and_then(glib::Type::from_name);

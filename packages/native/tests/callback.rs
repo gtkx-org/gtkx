@@ -5,8 +5,8 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
+use glib::translate::ToGlibPtr as _;
 use gtk4::glib;
-
 use native::callback::ClosureGuard;
 
 fn create_test_closure_with_flag(
@@ -18,8 +18,6 @@ fn create_test_closure_with_flag(
         flag.store(true, Ordering::SeqCst);
         None::<glib::Value>
     });
-
-    use glib::translate::ToGlibPtr as _;
     let ptr: *mut glib::gobject_ffi::GClosure = closure.to_glib_full();
     std::mem::forget(closure);
     std::ptr::NonNull::new(ptr).expect("closure pointer should not be null")

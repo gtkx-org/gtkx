@@ -7,7 +7,7 @@
 //!
 //! The [`Value`] enum supports all types that can be passed through the FFI:
 //! - Primitives: numbers, strings, booleans
-//! - Objects: GObjects, boxed types, structs
+//! - Objects: `GObjects`, boxed types, structs
 //! - Callbacks: JavaScript functions invocable from native code
 //! - Arrays and references
 
@@ -25,7 +25,7 @@ use neon::{handle::Root, object::Object as _, prelude::*};
 
 use crate::error_reporter::NativeErrorReporter;
 use crate::managed::NativeHandle;
-use crate::types::*;
+use crate::types::{FfiDecoder, GlibValueCodec, Type};
 use crate::{arg::Arg, ffi};
 
 #[derive(Debug, Clone)]
@@ -37,7 +37,7 @@ pub struct Callback {
 impl Callback {
     #[must_use]
     pub fn new(js_func: Arc<Root<JsFunction>>, channel: Channel) -> Self {
-        Callback { js_func, channel }
+        Self { js_func, channel }
     }
 
     pub fn from_js_value<'a, C: Context<'a>>(
@@ -50,7 +50,7 @@ impl Callback {
 
         channel.unref(cx);
 
-        Ok(Callback::new(Arc::new(js_func_root), channel))
+        Ok(Self::new(Arc::new(js_func_root), channel))
     }
 
     pub fn to_js_value<'a, C: Context<'a>>(&self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
@@ -68,7 +68,7 @@ pub struct Ref {
 impl Ref {
     #[must_use]
     pub fn new(value: Value, js_obj: Arc<Root<JsObject>>) -> Self {
-        Ref {
+        Self {
             value: Box::new(value),
             js_obj,
         }
@@ -83,7 +83,7 @@ impl Ref {
         let value_prop: Handle<JsValue> = obj.get(cx, "value")?;
         let value = Value::from_js_value(cx, value_prop)?;
 
-        Ok(Ref::new(value, Arc::new(js_obj_root)))
+        Ok(Self::new(value, Arc::new(js_obj_root)))
     }
 }
 
@@ -96,7 +96,7 @@ pub enum Value {
     Object(NativeHandle),
     Null,
     Undefined,
-    Array(Vec<Value>),
+    Array(Vec<Self>),
     Callback(Callback),
     Ref(Ref),
 }
@@ -105,22 +105,22 @@ impl Value {
     #[must_use]
     pub fn result_to_ptr(result: &Result<Self, ()>) -> *mut c_void {
         match result {
-            Ok(Value::Object(handle)) => handle.ptr(),
+            Ok(Self::Object(handle)) => handle.ptr(),
             _ => std::ptr::null_mut(),
         }
     }
 
     pub fn object_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
-            Value::Object(handle) => Ok(handle.ptr()),
-            Value::Null | Value::Undefined => Ok(std::ptr::null_mut()),
-            Value::Number(_)
-            | Value::String(_)
-            | Value::Boolean(_)
-            | Value::Array(_)
-            | Value::Callback(_)
-            | Value::Ref(_) => {
-                anyhow::bail!("Expected an Object for {} type, got {:?}", type_name, self)
+            Self::Object(handle) => Ok(handle.ptr()),
+            Self::Null | Self::Undefined => Ok(std::ptr::null_mut()),
+            Self::Number(_)
+            | Self::String(_)
+            | Self::Boolean(_)
+            | Self::Array(_)
+            | Self::Callback(_)
+            | Self::Ref(_) => {
+                anyhow::bail!("Expected an Object for {type_name} type, got {self:?}")
             }
         }
     }
@@ -141,14 +141,14 @@ impl Value {
     #[must_use]
     pub fn into_glib_value_with_default(self, return_type: Option<&Type>) -> Option<glib::Value> {
         match &self {
-            Value::Undefined => {
+            Self::Undefined => {
                 let ty = return_type?;
                 let default = match ty {
-                    Type::Boolean(_) => Value::Boolean(false),
-                    Type::Integer(_) | Type::Enum(_) | Type::Flags(_) => Value::Number(0.0),
-                    Type::Float(_) => Value::Number(0.0),
-                    Type::String(_) | Type::GObject(_) => Value::Null,
-                    Type::Void(_) => return None,
+                    Type::Boolean(_) => Self::Boolean(false),
+                    Type::Integer(_) | Type::Enum(_) | Type::Flags(_) | Type::Float(_) => {
+                        Self::Number(0.0)
+                    }
+                    Type::String(_) | Type::GObject(_) => Self::Null,
                     _ => return None,
                 };
                 match ty.to_glib_value(&default) {
@@ -160,14 +160,14 @@ impl Value {
                     }
                 }
             }
-            Value::Number(_)
-            | Value::String(_)
-            | Value::Boolean(_)
-            | Value::Object(_)
-            | Value::Null
-            | Value::Array(_)
-            | Value::Callback(_)
-            | Value::Ref(_) => match self.to_glib_value_typed(return_type) {
+            Self::Number(_)
+            | Self::String(_)
+            | Self::Boolean(_)
+            | Self::Object(_)
+            | Self::Null
+            | Self::Array(_)
+            | Self::Callback(_)
+            | Self::Ref(_) => match self.to_glib_value_typed(return_type) {
                 Ok(v) => Some(v),
                 Err(e) => {
                     NativeErrorReporter::global()
@@ -189,10 +189,10 @@ impl Value {
             return Ok(gvalue);
         }
         match self {
-            Value::Number(n) => Ok(n.into()),
-            Value::String(s) => Ok(s.into()),
-            Value::Boolean(b) => Ok(b.into()),
-            Value::Object(handle) => {
+            Self::Number(n) => Ok(n.into()),
+            Self::String(s) => Ok(s.into()),
+            Self::Boolean(b) => Ok(b.into()),
+            Self::Object(handle) => {
                 let ptr = handle.ptr();
                 if ptr.is_null() {
                     Ok(Option::<glib::Object>::None.to_value())
@@ -210,13 +210,12 @@ impl Value {
                     Ok(value)
                 }
             }
-            Value::Null | Value::Undefined => {
+            Self::Null | Self::Undefined => {
                 bail!("Cannot convert Null/Undefined to glib::Value without a type hint")
             }
-            Value::Array(_) | Value::Callback(_) | Value::Ref(_) => bail!(
-                "Unsupported Value type for glib::Value conversion: {:?}",
-                self
-            ),
+            Self::Array(_) | Self::Callback(_) | Self::Ref(_) => {
+                bail!("Unsupported Value type for glib::Value conversion: {self:?}")
+            }
         }
     }
 
@@ -225,33 +224,33 @@ impl Value {
         value: Handle<JsValue>,
     ) -> NeonResult<Self> {
         if let Ok(number) = value.downcast::<JsNumber, _>(cx) {
-            return Ok(Value::Number(number.value(cx)));
+            return Ok(Self::Number(number.value(cx)));
         }
 
         if let Ok(string) = value.downcast::<JsString, _>(cx) {
-            return Ok(Value::String(string.value(cx)));
+            return Ok(Self::String(string.value(cx)));
         }
 
         if let Ok(boolean) = value.downcast::<JsBoolean, _>(cx) {
-            return Ok(Value::Boolean(boolean.value(cx)));
+            return Ok(Self::Boolean(boolean.value(cx)));
         }
 
         if value.downcast::<JsNull, _>(cx).is_ok() {
-            return Ok(Value::Null);
+            return Ok(Self::Null);
         }
 
         if value.downcast::<JsUndefined, _>(cx).is_ok() {
-            return Ok(Value::Undefined);
+            return Ok(Self::Undefined);
         }
 
         if let Ok(handle) = value.downcast::<JsBox<NativeHandle>, _>(cx) {
-            return Ok(Value::Object(NativeHandle::borrowed(
+            return Ok(Self::Object(NativeHandle::borrowed(
                 handle.as_inner().ptr(),
             )));
         }
 
         if let Ok(callback) = value.downcast::<JsFunction, _>(cx) {
-            return Ok(Value::Callback(Callback::from_js_value(
+            return Ok(Self::Callback(Callback::from_js_value(
                 cx,
                 callback.upcast(),
             )?));
@@ -264,11 +263,11 @@ impl Value {
                 .map(|item| Self::from_js_value(cx, item))
                 .collect::<NeonResult<Vec<_>>>()?;
 
-            return Ok(Value::Array(vec_values));
+            return Ok(Self::Array(vec_values));
         }
 
         if let Ok(obj) = value.downcast::<JsObject, _>(cx) {
-            return Ok(Value::Ref(Ref::from_js_value(cx, obj.upcast())?));
+            return Ok(Self::Ref(Ref::from_js_value(cx, obj.upcast())?));
         }
 
         cx.throw_type_error(format!("Unsupported JS value type: {:?}", *value))
@@ -276,11 +275,11 @@ impl Value {
 
     pub fn to_js_value<'a, C: Context<'a>>(self, cx: &mut C) -> NeonResult<Handle<'a, JsValue>> {
         match self {
-            Value::Number(n) => Ok(cx.number(n).upcast()),
-            Value::String(s) => Ok(cx.string(s).upcast()),
-            Value::Boolean(b) => Ok(cx.boolean(b).upcast()),
-            Value::Object(handle) => Ok(cx.boxed(handle).upcast()),
-            Value::Array(arr) => {
+            Self::Number(n) => Ok(cx.number(n).upcast()),
+            Self::String(s) => Ok(cx.string(s).upcast()),
+            Self::Boolean(b) => Ok(cx.boolean(b).upcast()),
+            Self::Object(handle) => Ok(cx.boxed(handle).upcast()),
+            Self::Array(arr) => {
                 let js_array = cx.empty_array();
 
                 for (i, item) in arr.into_iter().enumerate() {
@@ -290,11 +289,10 @@ impl Value {
 
                 Ok(js_array.upcast())
             }
-            Value::Null => Ok(cx.null().upcast()),
-            Value::Undefined => Ok(cx.undefined().upcast()),
-            Value::Callback(_) | Value::Ref(_) => cx.throw_type_error(format!(
-                "Unsupported Value type for JS conversion: {:?}",
-                self
+            Self::Null => Ok(cx.null().upcast()),
+            Self::Undefined => Ok(cx.undefined().upcast()),
+            Self::Callback(_) | Self::Ref(_) => cx.throw_type_error(format!(
+                "Unsupported Value type for JS conversion: {self:?}"
             )),
         }
     }

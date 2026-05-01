@@ -12,10 +12,10 @@ pub struct UnicharType;
 impl FfiEncoder for UnicharType {
     fn encode(&self, value: &value::Value, optional: bool) -> anyhow::Result<ffi::FfiValue> {
         let cp = match value {
-            value::Value::String(s) => s.chars().next().map(|c| c as u32).unwrap_or(0),
+            value::Value::String(s) => s.chars().next().map_or(0, |c| c as u32),
             value::Value::Number(n) => *n as u32,
             value::Value::Null | value::Value::Undefined if optional => 0,
-            _ => anyhow::bail!("Expected a string for unichar type, got {:?}", value),
+            _ => anyhow::bail!("Expected a string for unichar type, got {value:?}"),
         };
         Ok(ffi::FfiValue::U32(cp))
     }
@@ -38,10 +38,10 @@ impl FfiDecoder for UnicharType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let cp = match ffi_value {
             ffi::FfiValue::U32(v) => *v,
-            _ => anyhow::bail!("Expected FfiValue::U32 for unichar, got {:?}", ffi_value),
+            _ => anyhow::bail!("Expected FfiValue::U32 for unichar, got {ffi_value:?}"),
         };
         let ch = char::from_u32(cp)
-            .ok_or_else(|| anyhow::anyhow!("Invalid Unicode codepoint: 0x{:X}", cp))?;
+            .ok_or_else(|| anyhow::anyhow!("Invalid Unicode codepoint: 0x{cp:X}"))?;
         Ok(value::Value::String(ch.to_string()))
     }
 }
@@ -65,7 +65,7 @@ impl RawPtrCodec for UnicharType {
 
     fn write_return_to_raw_ptr(&self, ret: *mut c_void, value: &Result<value::Value, ()>) {
         let val = match value {
-            Ok(value::Value::String(s)) => s.chars().next().map(|c| c as u32).unwrap_or(0),
+            Ok(value::Value::String(s)) => s.chars().next().map_or(0, |c| c as u32),
             Ok(value::Value::Number(n)) => *n as u32,
             _ => 0,
         };

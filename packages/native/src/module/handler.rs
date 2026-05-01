@@ -8,23 +8,23 @@ use crate::dispatch;
 use crate::managed::NativeHandle;
 use crate::value::Value;
 
-pub(crate) trait ModuleRequest: Sized + Send + 'static {
+pub trait ModuleRequest: Sized + Send + 'static {
     type Output: ModuleResponse + Send + 'static;
     fn from_js(cx: &mut FunctionContext) -> NeonResult<Self>;
     fn execute(self) -> anyhow::Result<Self::Output>;
     fn error_context() -> &'static str;
 }
 
-pub(crate) trait ModuleResponse {
+pub trait ModuleResponse {
     fn to_js_response<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue>;
 }
 
-pub(crate) trait JsThreadCommand: Sized {
+pub trait JsThreadCommand: Sized {
     fn from_js(cx: &mut FunctionContext) -> NeonResult<Self>;
     fn execute<'a>(self, cx: &mut FunctionContext<'a>) -> JsResult<'a, JsValue>;
 }
 
-pub(crate) fn dispatch_request<'a, R: ModuleRequest>(
+pub fn dispatch_request<'a, R: ModuleRequest>(
     cx: &mut FunctionContext<'a>,
 ) -> JsResult<'a, JsValue> {
     let mailbox = dispatch::Mailbox::global();
@@ -41,7 +41,7 @@ pub(crate) fn dispatch_request<'a, R: ModuleRequest>(
     result.to_js_response(cx)
 }
 
-pub(crate) fn execute_js_command<'a, C: JsThreadCommand>(
+pub fn execute_js_command<'a, C: JsThreadCommand>(
     cx: &mut FunctionContext<'a>,
 ) -> JsResult<'a, JsValue> {
     let command = C::from_js(cx)?;

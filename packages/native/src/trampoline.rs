@@ -31,12 +31,12 @@ impl std::fmt::Debug for TrampolineData {
             .field("return_type", &self.return_type)
             .field("user_data_index", &self.user_data_index)
             .field("is_oneshot", &self.is_oneshot)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 pub struct TrampolineState {
-    _closure: ManuallyDrop<libffi::Closure<'static>>,
+    closure: ManuallyDrop<libffi::Closure<'static>>,
     pub code_ptr: *mut c_void,
     data: ManuallyDrop<Box<TrampolineData>>,
 }
@@ -45,17 +45,18 @@ impl std::fmt::Debug for TrampolineState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TrampolineState")
             .field("code_ptr", &self.code_ptr)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 impl Drop for TrampolineState {
     fn drop(&mut self) {
-        unsafe { ManuallyDrop::drop(&mut self._closure) };
+        unsafe { ManuallyDrop::drop(&mut self.closure) };
         unsafe { ManuallyDrop::drop(&mut self.data) };
     }
 }
 
+#[allow(clippy::non_send_fields_in_send_ty)]
 unsafe impl Send for TrampolineState {}
 
 impl TrampolineState {
@@ -80,8 +81,8 @@ impl TrampolineState {
         let closure = libffi::Closure::new(cif, trampoline_handler, data_ref);
         let code_ptr = *closure.code_ptr() as *mut c_void;
 
-        TrampolineState {
-            _closure: ManuallyDrop::new(closure),
+        Self {
+            closure: ManuallyDrop::new(closure),
             code_ptr,
             data,
         }
@@ -94,7 +95,7 @@ impl TrampolineState {
     /// or null.
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         if !user_data.is_null() {
-            drop(unsafe { Box::from_raw(user_data as *mut TrampolineState) });
+            drop(unsafe { Box::from_raw(user_data as *mut Self) });
         }
     }
 }

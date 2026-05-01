@@ -75,9 +75,8 @@ impl HashTableEntryEncoder {
     pub fn encode(&self, val: &value::Value) -> anyhow::Result<*mut c_void> {
         match self {
             Self::String => {
-                let s = match val {
-                    value::Value::String(s) => s,
-                    _ => bail!("Expected string in GHashTable, got {:?}", val),
+                let value::Value::String(s) = val else {
+                    bail!("Expected string in GHashTable, got {val:?}")
                 };
                 let cstr = CString::new(s.as_bytes())?;
                 let ptr = unsafe { glib::ffi::g_strdup(cstr.as_ptr()) };
@@ -85,11 +84,11 @@ impl HashTableEntryEncoder {
             }
             Self::Integer => match val {
                 value::Value::Number(n) => Ok(*n as isize as *mut c_void),
-                _ => bail!("Expected number in GHashTable, got {:?}", val),
+                _ => bail!("Expected number in GHashTable, got {val:?}"),
             },
             Self::Boolean => match val {
                 value::Value::Boolean(b) => Ok(*b as isize as *mut c_void),
-                _ => bail!("Expected boolean in GHashTable, got {:?}", val),
+                _ => bail!("Expected boolean in GHashTable, got {val:?}"),
             },
             Self::Float => match val {
                 value::Value::Number(n) => {
@@ -100,24 +99,23 @@ impl HashTableEntryEncoder {
                     };
                     Ok(ptr)
                 }
-                _ => bail!("Expected number in GHashTable for float, got {:?}", val),
+                _ => bail!("Expected number in GHashTable for float, got {val:?}"),
             },
             Self::NativeHandle => match val {
                 value::Value::Object(handle) => Ok(handle.ptr()),
                 value::Value::Null | value::Value::Undefined => Ok(std::ptr::null_mut()),
-                _ => bail!("Expected native object in GHashTable, got {:?}", val),
+                _ => bail!("Expected native object in GHashTable, got {val:?}"),
             },
             Self::PtrArray(_item_type) => {
-                let items = match val {
-                    value::Value::Array(arr) => arr,
-                    _ => bail!("Expected Array for GPtrArray in GHashTable, got {:?}", val),
+                let value::Value::Array(items) = val else {
+                    bail!("Expected Array for GPtrArray in GHashTable, got {val:?}")
                 };
                 let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
                 for item in items {
                     let item_ptr = match item {
                         value::Value::Object(handle) => handle.ptr(),
                         value::Value::Null | value::Value::Undefined => std::ptr::null_mut(),
-                        _ => bail!("Expected Object in GPtrArray, got {:?}", item),
+                        _ => bail!("Expected Object in GPtrArray, got {item:?}"),
                     };
                     unsafe { glib::ffi::g_ptr_array_add(ptr_array, item_ptr) };
                 }
@@ -152,7 +150,7 @@ impl HashTableType {
 
         let ownership = Ownership::from_js_value(cx, obj, "hashtable")?;
 
-        Ok(HashTableType {
+        Ok(Self {
             key_type: Box::new(key_type),
             value_type: Box::new(value_type),
             ownership,
@@ -162,7 +160,7 @@ impl HashTableType {
     fn tuple(value: &value::Value) -> anyhow::Result<(&value::Value, &value::Value)> {
         match value {
             value::Value::Array(arr) if arr.len() == 2 => Ok((&arr[0], &arr[1])),
-            _ => bail!("Expected [key, value] tuple in GHashTable, got {:?}", value),
+            _ => bail!("Expected [key, value] tuple in GHashTable, got {value:?}"),
         }
     }
 
@@ -211,10 +209,7 @@ impl FfiEncoder for HashTableType {
             value::Value::Null | value::Value::Undefined if optional => {
                 return Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()));
             }
-            _ => bail!(
-                "Expected an Array of tuples for GHashTable type, got {:?}",
-                val
-            ),
+            _ => bail!("Expected an Array of tuples for GHashTable type, got {val:?}"),
         };
 
         let key_encoder = HashTableEntryEncoder::from_type(&self.key_type).ok_or_else(|| {

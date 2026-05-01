@@ -154,7 +154,7 @@ impl CallbackType {
         let obj = value.downcast::<JsObject, _>(cx).or_throw(cx)?;
         let (arg_types, return_type) =
             super::parse_callback_arg_and_return_types(cx, obj, "callback")?;
-        Ok(CallbackType {
+        Ok(Self {
             arg_types,
             return_type,
         })
@@ -168,7 +168,7 @@ impl CallbackType {
         ffi::FfiValue::Storage(FfiStorage::closure(closure_ptr))
     }
 
-    fn build_null_ffi_value(&self) -> ffi::FfiValue {
+    fn build_null_ffi_value() -> ffi::FfiValue {
         ffi::FfiValue::Storage(FfiStorage::new(
             std::ptr::null_mut(),
             ffi::FfiStorageKind::Unit,
@@ -183,9 +183,9 @@ impl FfiEncoder for CallbackType {
         let callback = match val {
             value::Value::Callback(callback) => callback,
             value::Value::Null | value::Value::Undefined if optional => {
-                return Ok(self.build_null_ffi_value());
+                return Ok(Self::build_null_ffi_value());
             }
-            _ => bail!("Expected a Callback for callback type, got {:?}", val),
+            _ => bail!("Expected a Callback for callback type, got {val:?}"),
         };
 
         Ok(self.build_ffi_value(callback))

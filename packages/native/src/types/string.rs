@@ -24,7 +24,7 @@ impl StringType {
             .map(|n| n.value(cx) as usize)
             .ok();
 
-        Ok(StringType { ownership, length })
+        Ok(Self { ownership, length })
     }
 }
 
@@ -47,7 +47,7 @@ impl FfiEncoder for StringType {
             value::Value::Null | value::Value::Undefined => {
                 Ok(ffi::FfiValue::Ptr(std::ptr::null_mut()))
             }
-            _ => bail!("Expected a String for string type, got {:?}", value),
+            _ => bail!("Expected a String for string type, got {value:?}"),
         }
     }
 }
@@ -82,8 +82,9 @@ impl RawPtrCodec for StringType {
         let ptr = match value {
             Ok(value::Value::String(s)) => CString::new(s.as_bytes())
                 .ok()
-                .map(|cs| unsafe { glib::ffi::g_strdup(cs.as_ptr()) as *mut c_void })
-                .unwrap_or(std::ptr::null_mut()),
+                .map_or(std::ptr::null_mut(), |cs| unsafe {
+                    glib::ffi::g_strdup(cs.as_ptr()) as *mut c_void
+                }),
             _ => std::ptr::null_mut(),
         };
         unsafe { *(ret as *mut *mut c_void) = ptr };
@@ -99,7 +100,7 @@ impl RawPtrCodec for StringType {
             value::Value::Null | value::Value::Undefined => unsafe {
                 (ptr as *mut *const c_char).write_unaligned(std::ptr::null());
             },
-            _ => bail!("Expected a String for string field write, got {:?}", value),
+            _ => bail!("Expected a String for string field write, got {value:?}"),
         }
         Ok(())
     }
@@ -117,7 +118,7 @@ impl GlibValueCodec for StringType {
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let string: String = gvalue
             .get()
-            .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to get String from GValue: {e}"))?;
         Ok(value::Value::String(string))
     }
 }

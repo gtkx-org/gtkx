@@ -32,7 +32,7 @@ static GTK_THREAD: OnceLock<GtkThread> = OnceLock::new();
 
 impl GtkThread {
     pub fn global() -> &'static Self {
-        GTK_THREAD.get_or_init(|| GtkThread {
+        GTK_THREAD.get_or_init(|| Self {
             handle: Mutex::new(None),
         })
     }
@@ -66,8 +66,8 @@ impl GtkThread {
 }
 
 pub struct LibraryCache {
-    /// Wrapped in ManuallyDrop because libraries like WebKit spawn threads with
-    /// TLS destructors — calling dlclose() while those threads exist causes
+    /// Wrapped in `ManuallyDrop` because libraries like `WebKit` spawn threads with
+    /// TLS destructors — calling `dlclose()` while those threads exist causes
     /// segfaults. Libraries are reclaimed at process exit.
     libraries: ManuallyDrop<HashMap<String, Library>>,
 }
@@ -108,9 +108,9 @@ impl LibraryCache {
                 }
 
                 match last_error {
-                    Some(err) => anyhow::bail!("Failed to load library '{}': {}", name, err),
+                    Some(err) => anyhow::bail!("Failed to load library '{name}': {err}"),
                     None => {
-                        anyhow::bail!("Failed to load library '{}': no libraries specified", name)
+                        anyhow::bail!("Failed to load library '{name}': no libraries specified")
                     }
                 }
             }
@@ -124,15 +124,13 @@ impl LibraryCache {
     ) -> anyhow::Result<gtk4::glib::Type> {
         use gtk4::glib::translate::FromGlib as _;
 
-        let lib = self.get_or_load(lib_name)?;
-
         type GetTypeFn = unsafe extern "C" fn() -> gtk4::glib::ffi::GType;
+
+        let lib = self.get_or_load(lib_name)?;
 
         let func = unsafe {
             lib.get::<GetTypeFn>(get_type_fn_name.as_bytes())
-                .map_err(|e| {
-                    anyhow::anyhow!("Failed to find symbol '{}': {}", get_type_fn_name, e)
-                })?
+                .map_err(|e| anyhow::anyhow!("Failed to find symbol '{get_type_fn_name}': {e}"))?
         };
 
         let gtype_raw = unsafe { func() };
@@ -229,14 +227,14 @@ impl std::fmt::Debug for GtkThreadState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GtkThreadState")
             .field("libraries_len", &self.libs.len())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 impl GtkThreadState {
     pub fn with<F, R>(f: F) -> R
     where
-        F: FnOnce(&mut GtkThreadState) -> R,
+        F: FnOnce(&mut Self) -> R,
     {
         GTK_THREAD_STATE.with_borrow_mut(f)
     }

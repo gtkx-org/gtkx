@@ -124,11 +124,6 @@ fn drop_frees_owned_memory() {
 fn drop_does_not_free_transfer_none_memory() {
     use std::ffi::c_void;
 
-    common::ensure_gtk_init();
-
-    let gtype = gdk::RGBA::static_type();
-    let ptr = common::allocate_test_boxed(gtype);
-
     struct TestBoxed {
         ptr: *mut c_void,
         ty: Option<glib::Type>,
@@ -151,6 +146,11 @@ fn drop_does_not_free_transfer_none_memory() {
             }
         }
     }
+
+    common::ensure_gtk_init();
+
+    let gtype = gdk::RGBA::static_type();
+    let ptr = common::allocate_test_boxed(gtype);
 
     let boxed = TestBoxed {
         ptr,
@@ -210,10 +210,6 @@ fn drop_plain_struct_null_ptr_safe() {
 fn plain_struct_not_owned_does_not_free() {
     use std::ffi::c_void;
 
-    common::ensure_gtk_init();
-
-    let ptr = unsafe { glib::ffi::g_malloc0(16) };
-
     struct TestBoxed {
         ptr: *mut c_void,
         ty: Option<glib::Type>,
@@ -236,6 +232,10 @@ fn plain_struct_not_owned_does_not_free() {
             }
         }
     }
+
+    common::ensure_gtk_init();
+
+    let ptr = unsafe { glib::ffi::g_malloc0(16) };
 
     let boxed = TestBoxed {
         ptr,
@@ -277,7 +277,7 @@ fn plain_struct_debug_format() {
     let ptr = unsafe { glib::ffi::g_malloc0(8) };
     let boxed = Boxed::from_glib_full(None, ptr);
 
-    let debug_str = format!("{:?}", boxed);
+    let debug_str = format!("{boxed:?}");
     assert!(debug_str.contains("Boxed"));
     assert!(debug_str.contains("owned: true"));
 }

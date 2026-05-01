@@ -131,13 +131,7 @@ impl IntegerKind {
             Self::U64 => (0.0, MAX_SAFE_INTEGER, "u64"),
         };
         if !value.is_finite() || value.fract() != 0.0 || value < min || value > max {
-            bail!(
-                "Value {} is out of range for {} [{}, {}]",
-                value,
-                name,
-                min,
-                max
-            );
+            bail!("Value {value} is out of range for {name} [{min}, {max}]");
         }
         Ok(())
     }
@@ -150,7 +144,7 @@ impl IntegerKind {
     pub fn checked_to_ffi_storage(self, values: &[f64]) -> anyhow::Result<ffi::FfiStorage> {
         for (i, &v) in values.iter().enumerate() {
             if let Err(e) = self.checked_to_ffi_value(v) {
-                bail!("Array element {}: {}", i, e);
+                bail!("Array element {i}: {e}");
             }
         }
         Ok(self.to_ffi_storage(values))
@@ -162,12 +156,12 @@ impl IntegerKind {
 
     pub fn ptr_to_value_raw(self, ptr: *mut c_void) -> value::Value {
         let number = match self {
-            IntegerKind::I8 | IntegerKind::I16 => ptr as isize as f64,
-            IntegerKind::U8 | IntegerKind::U16 => ptr as usize as f64,
-            IntegerKind::I32 => ptr as i32 as f64,
-            IntegerKind::U32 => ptr as u32 as f64,
-            IntegerKind::I64 => ptr as i64 as f64,
-            IntegerKind::U64 => ptr as u64 as f64,
+            Self::I8 | Self::I16 => ptr as isize as f64,
+            Self::U8 | Self::U16 => ptr as usize as f64,
+            Self::I32 => ptr as i32 as f64,
+            Self::U32 => ptr as u32 as f64,
+            Self::I64 => ptr as i64 as f64,
+            Self::U64 => ptr as u64 as f64,
         };
         value::Value::Number(number)
     }
@@ -179,7 +173,7 @@ impl FfiEncoder for IntegerKind {
             value::Value::Number(n) => *n,
             value::Value::Object(handle) => handle.ptr_as_usize() as f64,
             value::Value::Null | value::Value::Undefined if optional => 0.0,
-            _ => bail!("Expected a Number for integer type, got {:?}", value),
+            _ => bail!("Expected a Number for integer type, got {value:?}"),
         };
         self.checked_to_ffi_value(number)
     }
@@ -194,7 +188,7 @@ impl FfiEncoder for IntegerKind {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(unsafe { IntegerKind::call_cif_raw(*self, cif, ptr, args) })
+        Ok(unsafe { Self::call_cif_raw(*self, cif, ptr, args) })
     }
 }
 
@@ -206,7 +200,7 @@ impl FfiDecoder for IntegerKind {
 
 impl RawPtrCodec for IntegerKind {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
-        Ok(IntegerKind::ptr_to_value_raw(*self, ptr))
+        Ok(Self::ptr_to_value_raw(*self, ptr))
     }
 
     fn read_from_raw_ptr(
@@ -227,7 +221,7 @@ impl RawPtrCodec for IntegerKind {
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
         let value::Value::Number(n) = value else {
-            bail!("Expected a Number for integer field write, got {:?}", value);
+            bail!("Expected a Number for integer field write, got {value:?}");
         };
         self.write_ptr(ptr as *mut u8, *n);
         Ok(())
@@ -240,51 +234,51 @@ impl GlibValueCodec for IntegerKind {
             return Ok(None);
         };
         let gvalue = match self {
-            IntegerKind::I8 => (*n as i8).into(),
-            IntegerKind::U8 => (*n as u8).into(),
-            IntegerKind::I16 => (*n as i16 as i32).into(),
-            IntegerKind::U16 => (*n as u16 as u32).into(),
-            IntegerKind::I32 => (*n as i32).into(),
-            IntegerKind::U32 => (*n as u32).into(),
-            IntegerKind::I64 => (*n as i64).into(),
-            IntegerKind::U64 => (*n as u64).into(),
+            Self::I8 => (*n as i8).into(),
+            Self::U8 => (*n as u8).into(),
+            Self::I16 => (*n as i16 as i32).into(),
+            Self::U16 => (*n as u16 as u32).into(),
+            Self::I32 => (*n as i32).into(),
+            Self::U32 => (*n as u32).into(),
+            Self::I64 => (*n as i64).into(),
+            Self::U64 => (*n as u64).into(),
         };
         Ok(Some(gvalue))
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let number = match self {
-            IntegerKind::I8 => gvalue
+            Self::I8 => gvalue
                 .get::<i8>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i8 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get i8 from GValue: {e}"))?
                 as f64,
-            IntegerKind::U8 => gvalue
+            Self::U8 => gvalue
                 .get::<u8>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u8 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get u8 from GValue: {e}"))?
                 as f64,
-            IntegerKind::I16 => gvalue
+            Self::I16 => gvalue
                 .get::<i32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i32 (as i16) from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get i32 (as i16) from GValue: {e}"))?
                 as i16 as f64,
-            IntegerKind::U16 => gvalue
+            Self::U16 => gvalue
                 .get::<u32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u32 (as u16) from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get u32 (as u16) from GValue: {e}"))?
                 as u16 as f64,
-            IntegerKind::I32 => gvalue
+            Self::I32 => gvalue
                 .get::<i32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i32 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get i32 from GValue: {e}"))?
                 as f64,
-            IntegerKind::U32 => gvalue
+            Self::U32 => gvalue
                 .get::<u32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u32 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get u32 from GValue: {e}"))?
                 as f64,
-            IntegerKind::I64 => gvalue
+            Self::I64 => gvalue
                 .get::<i64>()
-                .map_err(|e| anyhow::anyhow!("Failed to get i64 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get i64 from GValue: {e}"))?
                 as f64,
-            IntegerKind::U64 => gvalue
+            Self::U64 => gvalue
                 .get::<u64>()
-                .map_err(|e| anyhow::anyhow!("Failed to get u64 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get u64 from GValue: {e}"))?
                 as f64,
         };
         Ok(value::Value::Number(number))
@@ -310,7 +304,7 @@ impl TaggedType {
         let library: Handle<JsString> = obj.prop(cx, "library").get()?;
         let get_type_fn: Handle<JsString> = obj.prop(cx, "getTypeFn").get()?;
 
-        Ok(TaggedType {
+        Ok(Self {
             library: library.value(cx),
             get_type_fn: get_type_fn.value(cx),
         })
@@ -356,7 +350,7 @@ impl FloatKind {
         match self {
             Self::F32 => {
                 if value.is_finite() && (value > f32::MAX as f64 || value < -(f32::MAX as f64)) {
-                    bail!("Value {} is out of range for f32", value);
+                    bail!("Value {value} is out of range for f32");
                 }
                 Ok(ffi::FfiValue::F32(value as f32))
             }
@@ -399,7 +393,7 @@ impl FfiEncoder for FloatKind {
         let number = match value {
             value::Value::Number(n) => *n,
             value::Value::Null | value::Value::Undefined if optional => 0.0,
-            _ => bail!("Expected a Number for float type, got {:?}", value),
+            _ => bail!("Expected a Number for float type, got {value:?}"),
         };
         self.checked_to_ffi_value(number)
     }
@@ -414,7 +408,7 @@ impl FfiEncoder for FloatKind {
         ptr: libffi::CodePtr,
         args: &[libffi::Arg],
     ) -> anyhow::Result<ffi::FfiValue> {
-        Ok(unsafe { FloatKind::call_cif_raw(*self, cif, ptr, args) })
+        Ok(unsafe { Self::call_cif_raw(*self, cif, ptr, args) })
     }
 }
 
@@ -430,8 +424,8 @@ impl RawPtrCodec for FloatKind {
             return Ok(value::Value::Number(0.0));
         }
         let val = match self {
-            FloatKind::F32 => (unsafe { *(ptr as *const f32) }) as f64,
-            FloatKind::F64 => unsafe { *(ptr as *const f64) },
+            Self::F32 => (unsafe { *(ptr as *const f32) }) as f64,
+            Self::F64 => unsafe { *(ptr as *const f64) },
         };
         Ok(value::Value::Number(val))
     }
@@ -454,7 +448,7 @@ impl RawPtrCodec for FloatKind {
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
         let value::Value::Number(n) = value else {
-            bail!("Expected a Number for float field write, got {:?}", value);
+            bail!("Expected a Number for float field write, got {value:?}");
         };
         self.write_ptr(ptr as *mut u8, *n);
         Ok(())
@@ -467,21 +461,21 @@ impl GlibValueCodec for FloatKind {
             return Ok(None);
         };
         let gvalue = match self {
-            FloatKind::F32 => (*n as f32).into(),
-            FloatKind::F64 => (*n).into(),
+            Self::F32 => (*n as f32).into(),
+            Self::F64 => (*n).into(),
         };
         Ok(Some(gvalue))
     }
 
     fn from_glib_value(&self, gvalue: &glib::Value) -> anyhow::Result<value::Value> {
         let number = match self {
-            FloatKind::F32 => gvalue
+            Self::F32 => gvalue
                 .get::<f32>()
-                .map_err(|e| anyhow::anyhow!("Failed to get f32 from GValue: {}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to get f32 from GValue: {e}"))?
                 as f64,
-            FloatKind::F64 => gvalue
+            Self::F64 => gvalue
                 .get::<f64>()
-                .map_err(|e| anyhow::anyhow!("Failed to get f64 from GValue: {}", e))?,
+                .map_err(|e| anyhow::anyhow!("Failed to get f64 from GValue: {e}"))?,
         };
         Ok(value::Value::Number(number))
     }
@@ -509,7 +503,7 @@ impl EnumType {
         } else {
             IntegerKind::U32
         };
-        Ok(EnumType { tagged, storage })
+        Ok(Self { tagged, storage })
     }
 }
 
@@ -628,7 +622,7 @@ impl FlagsType {
         } else {
             IntegerKind::U32
         };
-        Ok(FlagsType { tagged, storage })
+        Ok(Self { tagged, storage })
     }
 }
 

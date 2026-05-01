@@ -7,8 +7,8 @@
 //!
 //! | Function | Purpose |
 //! |----------|---------|
-//! | `start` | Initialize the GLib main loop and spawn its thread |
-//! | `stop` | Shutdown the GLib main loop and join its thread |
+//! | `start` | Initialize the `GLib` main loop and spawn its thread |
+//! | `stop` | Shutdown the `GLib` main loop and join its thread |
 //! | `call` | Execute FFI function call to native library |
 //! | `alloc` | Allocate memory for boxed types |
 //! | `read` | Read field from boxed/struct memory |
@@ -19,10 +19,10 @@
 //!
 //! ## Architecture
 //!
-//! Two-thread model for GLib's single-threaded main loop requirements:
+//! Two-thread model for `GLib`'s single-threaded main loop requirements:
 //!
 //! - **Neon/JS thread**: Handles JavaScript calls, argument conversion, callback dispatch
-//! - **GLib thread**: Runs the GLib main loop, executes all native operations
+//! - **`GLib` thread**: Runs the `GLib` main loop, executes all native operations
 //!
 //! Communication flows through `dispatch::Mailbox`, a single bidirectional bridge
 //! that exposes a GLib-bound inbox and a JS-bound inbox. Cross-boundary calls
@@ -32,8 +32,8 @@
 //!
 //! ## Core Types
 //!
-//! - `Value`: Central data interchange type (JS ↔ CIF ↔ GLib)
-//! - `NativeValue`: Managed wrapper for GObject, Boxed, and Fundamental instances
+//! - `Value`: Central data interchange type (JS ↔ CIF ↔ `GLib`)
+//! - `NativeValue`: Managed wrapper for `GObject`, Boxed, and Fundamental instances
 //! - `Type`: Type system describing all FFI-compatible types
 //! - `ffi::FfiValue`: Low-level libffi argument representation
 

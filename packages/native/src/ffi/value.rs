@@ -69,7 +69,7 @@ impl std::fmt::Debug for TrampolineValue {
             .field("fn_ptr", &self.fn_ptr)
             .field("state_ptr", &self.state_ptr)
             .field("destroy_ptr", &self.destroy_ptr)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -77,47 +77,45 @@ impl FfiValue {
     #[must_use]
     pub fn as_raw_ptr(&self) -> *mut c_void {
         match self {
-            FfiValue::U8(value) => value as *const u8 as *mut c_void,
-            FfiValue::I8(value) => value as *const i8 as *mut c_void,
-            FfiValue::U16(value) => value as *const u16 as *mut c_void,
-            FfiValue::I16(value) => value as *const i16 as *mut c_void,
-            FfiValue::U32(value) => value as *const u32 as *mut c_void,
-            FfiValue::I32(value) => value as *const i32 as *mut c_void,
-            FfiValue::U64(value) => value as *const u64 as *mut c_void,
-            FfiValue::I64(value) => value as *const i64 as *mut c_void,
-            FfiValue::F32(value) => value as *const f32 as *mut c_void,
-            FfiValue::F64(value) => value as *const f64 as *mut c_void,
-            FfiValue::Ptr(ptr) => ptr as *const *mut c_void as *mut c_void,
-            FfiValue::Storage(storage) => storage.ptr(),
-            FfiValue::Trampoline(_) => {
+            Self::U8(value) => value as *const u8 as *mut c_void,
+            Self::I8(value) => value as *const i8 as *mut c_void,
+            Self::U16(value) => value as *const u16 as *mut c_void,
+            Self::I16(value) => value as *const i16 as *mut c_void,
+            Self::U32(value) => value as *const u32 as *mut c_void,
+            Self::I32(value) => value as *const i32 as *mut c_void,
+            Self::U64(value) => value as *const u64 as *mut c_void,
+            Self::I64(value) => value as *const i64 as *mut c_void,
+            Self::F32(value) => value as *const f32 as *mut c_void,
+            Self::F64(value) => value as *const f64 as *mut c_void,
+            Self::Ptr(ptr) => ptr as *const *mut c_void as *mut c_void,
+            Self::Storage(storage) => storage.ptr(),
+            Self::Trampoline(_) => {
                 unreachable!(
                     "Trampoline should not be converted to a single pointer - it requires special handling via append_libffi_args"
                 )
             }
-            FfiValue::Void => std::ptr::null_mut(),
+            Self::Void => std::ptr::null_mut(),
         }
     }
 
     pub fn as_ptr(&self, type_name: &str) -> anyhow::Result<*mut c_void> {
         match self {
-            FfiValue::Ptr(ptr) => Ok(*ptr),
-            FfiValue::Storage(storage) => Ok(storage.ptr()),
-            FfiValue::U8(_)
-            | FfiValue::I8(_)
-            | FfiValue::U16(_)
-            | FfiValue::I16(_)
-            | FfiValue::U32(_)
-            | FfiValue::I32(_)
-            | FfiValue::U64(_)
-            | FfiValue::I64(_)
-            | FfiValue::F32(_)
-            | FfiValue::F64(_)
-            | FfiValue::Trampoline(_)
-            | FfiValue::Void => anyhow::bail!(
-                "Expected a pointer FfiValue for {}, got {:?}",
-                type_name,
-                self
-            ),
+            Self::Ptr(ptr) => Ok(*ptr),
+            Self::Storage(storage) => Ok(storage.ptr()),
+            Self::U8(_)
+            | Self::I8(_)
+            | Self::U16(_)
+            | Self::I16(_)
+            | Self::U32(_)
+            | Self::I32(_)
+            | Self::U64(_)
+            | Self::I64(_)
+            | Self::F32(_)
+            | Self::F64(_)
+            | Self::Trampoline(_)
+            | Self::Void => {
+                anyhow::bail!("Expected a pointer FfiValue for {type_name}, got {self:?}")
+            }
         }
     }
 
@@ -128,51 +126,51 @@ impl FfiValue {
 
     pub fn to_number(&self) -> anyhow::Result<f64> {
         match self {
-            FfiValue::I8(v) => Ok(*v as f64),
-            FfiValue::U8(v) => Ok(*v as f64),
-            FfiValue::I16(v) => Ok(*v as f64),
-            FfiValue::U16(v) => Ok(*v as f64),
-            FfiValue::I32(v) => Ok(*v as f64),
-            FfiValue::U32(v) => Ok(*v as f64),
-            FfiValue::I64(v) => Ok(*v as f64),
-            FfiValue::U64(v) => Ok(*v as f64),
-            FfiValue::F32(v) => Ok(*v as f64),
-            FfiValue::F64(v) => Ok(*v),
-            FfiValue::Ptr(_) | FfiValue::Storage(_) | FfiValue::Trampoline(_) | FfiValue::Void => {
-                anyhow::bail!("Expected a numeric FfiValue, got {:?}", self)
+            Self::I8(v) => Ok(*v as f64),
+            Self::U8(v) => Ok(*v as f64),
+            Self::I16(v) => Ok(*v as f64),
+            Self::U16(v) => Ok(*v as f64),
+            Self::I32(v) => Ok(*v as f64),
+            Self::U32(v) => Ok(*v as f64),
+            Self::I64(v) => Ok(*v as f64),
+            Self::U64(v) => Ok(*v as f64),
+            Self::F32(v) => Ok(*v as f64),
+            Self::F64(v) => Ok(*v),
+            Self::Ptr(_) | Self::Storage(_) | Self::Trampoline(_) | Self::Void => {
+                anyhow::bail!("Expected a numeric FfiValue, got {self:?}")
             }
         }
     }
 
     pub fn append_libffi_args<'a>(&'a self, args: &mut Vec<libffi::Arg<'a>>) {
         match self {
-            FfiValue::Trampoline(tv) => {
+            Self::Trampoline(tv) => {
                 args.push(libffi::arg(&tv.fn_ptr));
                 args.push(libffi::arg(&tv.state_ptr));
                 if let Some(destroy_ptr) = &tv.destroy_ptr {
                     args.push(libffi::arg(destroy_ptr));
                 }
             }
-            FfiValue::U8(_)
-            | FfiValue::I8(_)
-            | FfiValue::U16(_)
-            | FfiValue::I16(_)
-            | FfiValue::U32(_)
-            | FfiValue::I32(_)
-            | FfiValue::U64(_)
-            | FfiValue::I64(_)
-            | FfiValue::F32(_)
-            | FfiValue::F64(_)
-            | FfiValue::Ptr(_)
-            | FfiValue::Storage(_)
-            | FfiValue::Void => args.push(self.into()),
+            Self::U8(_)
+            | Self::I8(_)
+            | Self::U16(_)
+            | Self::I16(_)
+            | Self::U32(_)
+            | Self::I32(_)
+            | Self::U64(_)
+            | Self::I64(_)
+            | Self::F32(_)
+            | Self::F64(_)
+            | Self::Ptr(_)
+            | Self::Storage(_)
+            | Self::Void => args.push(self.into()),
         }
     }
 
     #[must_use]
     pub fn storage(&self) -> Option<&FfiStorage> {
         match self {
-            FfiValue::Storage(storage) => Some(storage),
+            Self::Storage(storage) => Some(storage),
             _ => None,
         }
     }

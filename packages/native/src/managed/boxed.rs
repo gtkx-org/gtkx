@@ -72,10 +72,8 @@ impl Boxed {
                 } else {
                     let name = type_name.unwrap_or("unknown");
                     bail!(
-                        "Cannot copy boxed type '{}': no size or GType available. \
-                         Pointer {:p} may become dangling if the source is freed",
-                        name,
-                        ptr
+                        "Cannot copy boxed type '{name}': no size or GType available. \
+                         Pointer {ptr:p} may become dangling if the source is freed"
                     )
                 }
             }
@@ -110,8 +108,13 @@ impl Clone for Boxed {
             };
         }
 
-        match self.gtype {
-            Some(gt) => {
+        self.gtype.map_or_else(
+            || Self {
+                ptr: self.ptr,
+                owned: false,
+                gtype: None,
+            },
+            |gt| {
                 let cloned_ptr = unsafe {
                     glib::gobject_ffi::g_boxed_copy(gt.into_glib(), self.ptr as *const _)
                 };
@@ -120,13 +123,8 @@ impl Clone for Boxed {
                     owned: true,
                     gtype: self.gtype,
                 }
-            }
-            None => Self {
-                ptr: self.ptr,
-                owned: false,
-                gtype: None,
             },
-        }
+        )
     }
 }
 
