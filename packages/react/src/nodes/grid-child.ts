@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { GridChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { isRemovable } from "./internal/predicates.js";
 import { hasChanged } from "./internal/props.js";
+import { removeChildFromParent, unparentWidget } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -17,7 +17,7 @@ export class GridChildNode extends VirtualNode<GridChildProps, WidgetNode<Gtk.Gr
 
     public override setParent(parent: WidgetNode<Gtk.Grid> | null): void {
         if (!parent && this.parent && this.children[0]) {
-            this.detachFromParent(this.parent.container, this.children[0].container);
+            removeChildFromParent(this.parent.container, this.children[0].container);
         }
 
         super.setParent(parent);
@@ -31,14 +31,14 @@ export class GridChildNode extends VirtualNode<GridChildProps, WidgetNode<Gtk.Gr
         super.appendChild(child);
 
         if (this.parent) {
-            this.detachFromGtkParent(child.container);
+            unparentWidget(child.container);
             this.attachToParent(this.parent.container, child.container);
         }
     }
 
     public override removeChild(child: WidgetNode): void {
         if (this.parent) {
-            this.detachFromParent(this.parent.container, child.container);
+            removeChildFromParent(this.parent.container, child.container);
         }
 
         super.removeChild(child);
@@ -60,7 +60,7 @@ export class GridChildNode extends VirtualNode<GridChildProps, WidgetNode<Gtk.Gr
 
     public override detachDeletedInstance(): void {
         if (this.parent && this.children[0]) {
-            this.detachFromParent(this.parent.container, this.children[0].container);
+            removeChildFromParent(this.parent.container, this.children[0].container);
         }
         super.detachDeletedInstance();
     }
@@ -77,24 +77,6 @@ export class GridChildNode extends VirtualNode<GridChildProps, WidgetNode<Gtk.Gr
         }
 
         parent.attach(child, column, row, columnSpan, rowSpan);
-    }
-
-    private detachFromParent(parent: Gtk.Grid, child: Gtk.Widget): void {
-        const childParent = child.getParent();
-        if (childParent && childParent === parent) {
-            parent.remove(child);
-        }
-    }
-
-    private detachFromGtkParent(child: Gtk.Widget): void {
-        const currentParent = child.getParent();
-        if (currentParent !== null) {
-            if (isRemovable(currentParent)) {
-                currentParent.remove(child);
-            } else {
-                child.unparent();
-            }
-        }
     }
 
     private reattachChild(): void {

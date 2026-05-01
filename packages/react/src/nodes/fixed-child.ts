@@ -3,8 +3,8 @@ import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { FixedChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { isRemovable } from "./internal/predicates.js";
 import { hasChanged } from "./internal/props.js";
+import { removeChildFromParent, unparentWidget } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -19,7 +19,7 @@ export class FixedChildNode extends VirtualNode<FixedChildProps, WidgetNode<Gtk.
 
     public override setParent(parent: WidgetNode<Gtk.Fixed> | null): void {
         if (!parent && this.parent && this.children[0]) {
-            this.detachFromParent(this.parent.container, this.children[0].container);
+            removeChildFromParent(this.parent.container, this.children[0].container);
         }
 
         super.setParent(parent);
@@ -34,7 +34,7 @@ export class FixedChildNode extends VirtualNode<FixedChildProps, WidgetNode<Gtk.
         super.appendChild(child);
 
         if (this.parent) {
-            this.detachFromGtkParent(child.container);
+            unparentWidget(child.container);
             this.attachToParent(this.parent.container, child.container);
             this.applyLayoutTransform();
         }
@@ -42,7 +42,7 @@ export class FixedChildNode extends VirtualNode<FixedChildProps, WidgetNode<Gtk.
 
     public override removeChild(child: WidgetNode): void {
         if (this.parent) {
-            this.detachFromParent(this.parent.container, child.container);
+            removeChildFromParent(this.parent.container, child.container);
         }
 
         super.removeChild(child);
@@ -66,7 +66,7 @@ export class FixedChildNode extends VirtualNode<FixedChildProps, WidgetNode<Gtk.
 
     public override detachDeletedInstance(): void {
         if (this.parent && this.children[0]) {
-            this.detachFromParent(this.parent.container, this.children[0].container);
+            removeChildFromParent(this.parent.container, this.children[0].container);
         }
         super.detachDeletedInstance();
     }
@@ -75,24 +75,6 @@ export class FixedChildNode extends VirtualNode<FixedChildProps, WidgetNode<Gtk.
         const x = this.props.x ?? 0;
         const y = this.props.y ?? 0;
         parent.put(child, x, y);
-    }
-
-    private detachFromParent(parent: Gtk.Fixed, child: Gtk.Widget): void {
-        const childParent = child.getParent();
-        if (childParent && childParent === parent) {
-            parent.remove(child);
-        }
-    }
-
-    private detachFromGtkParent(child: Gtk.Widget): void {
-        const currentParent = child.getParent();
-        if (currentParent !== null) {
-            if (isRemovable(currentParent)) {
-                currentParent.remove(child);
-            } else {
-                child.unparent();
-            }
-        }
     }
 
     private applyLayoutTransform(): void {

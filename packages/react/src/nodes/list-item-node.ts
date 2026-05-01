@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
-import { isRemovable } from "./internal/predicates.js";
+import { unparentWidget } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
 
 export class ListItemNode extends Node<Gtk.ListItem | Gtk.ListHeader, Props, Node, Node> {
@@ -13,7 +13,7 @@ export class ListItemNode extends Node<Gtk.ListItem | Gtk.ListHeader, Props, Nod
         super.appendChild(child);
 
         if (child instanceof WidgetNode) {
-            this.detachFromGtkParent(child);
+            unparentWidget(child.container);
             this.container.setChild(child.container);
         }
     }
@@ -30,20 +30,8 @@ export class ListItemNode extends Node<Gtk.ListItem | Gtk.ListHeader, Props, Nod
         super.insertBefore(child, before);
 
         if (child instanceof WidgetNode) {
-            this.detachFromGtkParent(child);
+            unparentWidget(child.container);
             this.container.setChild(child.container);
-        }
-    }
-
-    private detachFromGtkParent(child: Node): void {
-        if (!(child instanceof WidgetNode)) return;
-        const currentParent = child.container.getParent();
-        if (currentParent !== null) {
-            if (isRemovable(currentParent)) {
-                currentParent.remove(child.container);
-            } else {
-                child.container.unparent();
-            }
         }
     }
 

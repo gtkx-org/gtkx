@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { isRemovable } from "./internal/predicates.js";
 import { hasChanged } from "./internal/props.js";
+import { unparentWidget } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -95,14 +95,10 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
 
     private detachFromGtkParent(child: WidgetNode): void {
         const currentParent = child.container.getParent();
-        if (currentParent !== null) {
-            if (currentParent instanceof Gtk.Overlay) {
-                currentParent.removeOverlay(child.container);
-            } else if (isRemovable(currentParent)) {
-                currentParent.remove(child.container);
-            } else {
-                child.container.unparent();
-            }
+        if (currentParent instanceof Gtk.Overlay) {
+            currentParent.removeOverlay(child.container);
+        } else {
+            unparentWidget(child.container);
         }
     }
 
@@ -121,8 +117,7 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
 
     private detachAllChildren(parent: Gtk.Overlay): void {
         for (const child of this.children) {
-            const currentParent = child.container.getParent();
-            if (currentParent && currentParent === parent) {
+            if (child.container.getParent() === parent) {
                 parent.removeOverlay(child.container);
             }
         }

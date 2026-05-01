@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { ContainerSlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { isRemovable } from "./internal/predicates.js";
+import { unparentWidget } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -32,7 +32,7 @@ export class ContainerSlotNode extends VirtualNode<ContainerSlotProps, WidgetNod
         super.appendChild(child);
 
         if (this.parent) {
-            this.detachFromGtkParent(child);
+            unparentWidget(child.container);
             this.attachToParent(this.parent.container, child.container);
         }
     }
@@ -46,7 +46,7 @@ export class ContainerSlotNode extends VirtualNode<ContainerSlotProps, WidgetNod
     }
 
     public override removeChild(child: WidgetNode): void {
-        this.detachFromGtkParent(child);
+        unparentWidget(child.container);
         super.removeChild(child);
     }
 
@@ -68,23 +68,12 @@ export class ContainerSlotNode extends VirtualNode<ContainerSlotProps, WidgetNod
         (method as (child: Gtk.Widget) => void).call(parent, child);
     }
 
-    private detachFromGtkParent(child: WidgetNode): void {
-        const currentParent = child.container.getParent();
-        if (currentParent !== null) {
-            if (isRemovable(currentParent)) {
-                currentParent.remove(child.container);
-            } else {
-                child.container.unparent();
-            }
-        }
-    }
-
     private reinsertAllChildren(): void {
         if (!this.parent) return;
         const parent = this.parent.container;
 
         for (const child of this.children) {
-            this.detachFromGtkParent(child);
+            unparentWidget(child.container);
         }
 
         for (const child of this.children) {
@@ -94,7 +83,7 @@ export class ContainerSlotNode extends VirtualNode<ContainerSlotProps, WidgetNod
 
     private detachAllFromGtkParent(): void {
         for (const child of this.children) {
-            this.detachFromGtkParent(child);
+            unparentWidget(child.container);
         }
     }
 }

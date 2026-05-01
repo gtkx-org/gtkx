@@ -4,6 +4,7 @@ import type { StackPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { StackWidget } from "../registry.js";
 import { hasChanged } from "./internal/props.js";
+import { removeChildFromParent } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -155,16 +156,7 @@ export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode<StackW
     }
 
     private removePage(oldChild: Gtk.Widget | null): void {
-        const parent = this.getParentWidget();
-
-        if (!oldChild) {
-            return;
-        }
-
-        const currentParent = oldChild.getParent();
-
-        if (currentParent && currentParent === parent) {
-            parent.remove(oldChild);
-        }
+        if (!oldChild) return;
+        removeChildFromParent(this.getParentWidget(), oldChild);
     }
 }

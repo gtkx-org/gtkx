@@ -29,7 +29,7 @@ import {
 } from "./internal/predicates.js";
 import { filterProps } from "./internal/props.js";
 import type { SignalHandler } from "./internal/signal-store.js";
-import { attachChild, detachChild } from "./internal/widget.js";
+import { attachChild, detachChild, unparentWidget } from "./internal/widget.js";
 
 const EXCLUDED_PROPS = ["children"];
 
@@ -176,7 +176,7 @@ export class WidgetNode<
             if (this.isChildAutowrapped(child)) {
                 this.detachAutowrappedChild(child);
             } else {
-                detachChildFromParent(child);
+                unparentWidget(child.container);
             }
         }
         attachChild(child.container, this.container);
@@ -317,13 +317,13 @@ export class WidgetNode<
         if (isChildOfThisContainer) {
             container.reorderChildAfter(child.container, previousSibling);
         } else {
-            detachChildFromParent(child);
+            unparentWidget(child.container);
             container.insertChildAfter(child.container, previousSibling);
         }
     }
 
     private insertBeforeInsertable(container: InsertableWidget, child: WidgetNode, before: WidgetNode): void {
-        detachChildFromParent(child);
+        unparentWidget(child.container);
         const position = this.findInsertPosition(before);
         container.insert(child.container, position);
     }
@@ -354,16 +354,5 @@ export class WidgetNode<
         }
 
         throw new Error(`Cannot find 'before' child position in '${this.typeName}'`);
-    }
-}
-
-function detachChildFromParent(child: WidgetNode): void {
-    const currentParent = child.container.getParent();
-    if (currentParent !== null) {
-        if (isRemovable(currentParent)) {
-            currentParent.remove(child.container);
-        } else {
-            child.container.unparent();
-        }
     }
 }

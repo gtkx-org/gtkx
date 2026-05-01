@@ -39,6 +39,25 @@ export function isAttachedTo(child: Gtk.Widget | null, parent: Gtk.Widget | null
     return childParent !== null && childParent === parent;
 }
 
+export function unparentWidget(widget: Gtk.Widget): void {
+    const currentParent = widget.getParent();
+    if (currentParent === null) return;
+    if (isRemovable(currentParent)) {
+        currentParent.remove(widget);
+    } else {
+        widget.unparent();
+    }
+}
+
+export function removeChildFromParent(
+    parent: Gtk.Widget & { remove: (child: Gtk.Widget) => void },
+    child: Gtk.Widget,
+): void {
+    if (child.getParent() === parent) {
+        parent.remove(child);
+    }
+}
+
 export function getFocusWidget(widget: Gtk.Widget): Gtk.Widget | null {
     const root = widget.getRoot();
     return root?.getFocus?.() ?? null;
