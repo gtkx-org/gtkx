@@ -209,12 +209,7 @@ function readInfoLog(symbol: string, id: number, logLength: number): string {
     fn(
         LIB,
         symbol,
-        [
-            { type: U32 },
-            { type: I32 },
-            { type: REF_I32 },
-            { type: { type: "ref", innerType: { type: "string", ownership: "borrowed", length: logLength } } },
-        ],
+        [{ type: U32 }, { type: I32 }, { type: REF_I32 }, { type: t.ref(t.string("borrowed", logLength)) }],
         VOID,
     )(id, logLength, lengthRef, infoLogRef);
     return infoLogRef.value;

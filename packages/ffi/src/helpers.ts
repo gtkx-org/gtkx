@@ -2,11 +2,14 @@ import { type Arg, call as nativeCall, type Type } from "@gtkx/native";
 
 export { alloc, call, freeze, read, unfreeze, write } from "@gtkx/native";
 
-type Ownership = "full" | "borrowed";
+/** Whether the caller takes ownership of a returned native value (`"full"`) or only borrows it (`"borrowed"`). */
+export type Ownership = "full" | "borrowed";
 
-type ArrayKind = "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
+/** Container shape for array-like FFI types. */
+export type ArrayKind = "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
 
-type TrampolineScope = "call" | "notified" | "async" | "forever";
+/** Lifetime of a callback trampoline. */
+export type TrampolineScope = "call" | "notified" | "async" | "forever";
 
 /**
  * Binds a native function symbol once and returns a callable that dispatches it.
@@ -116,9 +119,13 @@ const flagsT = (library: string, getTypeFn: string, signed: boolean): Type => ({
     signed,
 });
 
-type ArrayOptions = {
+/** Optional sizing metadata for array-like FFI descriptors. */
+export type ArrayOptions = {
+    /** Size of each element in bytes (used for `garray`). */
     elementSize?: number;
+    /** Index of the parameter carrying the array length (used for `sized`). */
     sizeParamIndex?: number;
+    /** Compile-time known length (used for `fixed`). */
     fixedSize?: number;
 };
 
@@ -159,9 +166,13 @@ const callbackT = (argTypes: Type[], returnType: Type): Type => ({
     returnType,
 });
 
-type TrampolineOptions = {
+/** Optional configuration for a trampoline FFI descriptor. */
+export type TrampolineOptions = {
+    /** Whether the call has a paired destroy-notify parameter. */
     hasDestroy?: boolean;
+    /** Index of the user-data parameter passed to the callback. */
     userDataIndex?: number;
+    /** Lifetime of the callback. */
     scope?: TrampolineScope;
 };
 

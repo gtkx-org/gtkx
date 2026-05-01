@@ -13,7 +13,7 @@ const packages = [
         tsconfig: resolve(root, "packages/react/tsconfig.lib.json"),
         excludeInternal: true,
         intentionallyNotExported: [
-            "Reconciler",
+            "ReconcilerInstance",
             "AnimationBaseProps",
             "BaseListViewProps",
             "GtkColumnViewBase",

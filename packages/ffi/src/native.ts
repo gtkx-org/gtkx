@@ -4,6 +4,8 @@
  * at module load time, which would hit a TDZ error if `helpers.js` were
  * evaluated after the generated modules in our import-graph cycle.
  */
+
+export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, read, t, unfreeze, write } from "./helpers.js";
 
 import type { GError } from "./generated/glib/error.js";

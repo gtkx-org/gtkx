@@ -4,7 +4,7 @@ import { Object as GObject } from "../generated/gobject/object.js";
 import { ObjectClass } from "../generated/gobject/object-class.js";
 import { TypeInstance } from "../generated/gobject/type-instance.js";
 import { Value } from "../generated/gobject/value.js";
-import { call } from "../native.js";
+import { call, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 
 declare module "../generated/gobject/object.js" {
@@ -98,13 +98,8 @@ declare module "../generated/gobject/object.js" {
 const LIB = "libgobject-2.0.so.0";
 const GVALUE_SIZE = 24;
 
-const GVALUE_BORROWED_TYPE = {
-    type: "boxed",
-    ownership: "borrowed",
-    innerType: "GValue",
-    library: LIB,
-    getTypeFn: "g_value_get_type",
-} as const;
+const GVALUE_BORROWED_TYPE = t.boxed("GValue", "borrowed", LIB, "g_value_get_type");
+const GOBJECT_BORROWED = t.object("borrowed");
 
 type ObjectStatic = {
     newWithProperties(objectType: number, names: string[], values: Value[]): GObject;
@@ -117,43 +112,18 @@ ObjectWithStatics.newWithProperties = (objectType: number, names: string[], valu
         LIB,
         "g_object_new_with_properties",
         [
+            { type: t.uint64, value: objectType },
+            { type: t.uint32, value: names.length },
+            { type: t.sizedArray(t.string("borrowed"), 1), value: names },
             {
-                type: { type: "uint64" },
-                value: objectType,
-            },
-            {
-                type: { type: "uint32" },
-                value: names.length,
-            },
-            {
-                type: {
-                    type: "array",
-                    itemType: { type: "string", ownership: "borrowed" },
-                    kind: "sized",
-                    sizeParamIndex: 1,
-                    ownership: "borrowed",
-                },
-                value: names,
-            },
-            {
-                type: {
-                    type: "array",
-                    itemType: {
-                        type: "boxed",
-                        ownership: "borrowed",
-                        innerType: "GValue",
-                        library: LIB,
-                        getTypeFn: "g_value_get_type",
-                    },
-                    kind: "sized",
+                type: t.array(GVALUE_BORROWED_TYPE, "sized", "borrowed", {
                     sizeParamIndex: 1,
                     elementSize: GVALUE_SIZE,
-                    ownership: "borrowed",
-                },
+                }),
                 value: values.map((v) => v.handle),
             },
         ],
-        { type: "gobject", ownership: "borrowed" },
+        GOBJECT_BORROWED,
     );
     return getNativeObject(ptr as NativeHandle) as GObject;
 };
@@ -191,10 +161,10 @@ GObject.prototype.disconnect = function disconnect(handlerId: number): void {
         LIB,
         "g_signal_handler_disconnect",
         [
-            { type: { type: "gobject", ownership: "borrowed" }, value: this.handle },
-            { type: { type: "uint64" }, value: handlerId },
+            { type: GOBJECT_BORROWED, value: this.handle },
+            { type: t.uint64, value: handlerId },
         ],
-        { type: "void" },
+        t.void,
     );
 };
 
@@ -259,11 +229,11 @@ GObject.prototype.getProperty = function getProperty(propertyName: string): unkn
         LIB,
         "g_object_get_property",
         [
-            { type: { type: "gobject", ownership: "borrowed" }, value: this.handle },
-            { type: { type: "string", ownership: "borrowed" }, value: propertyName },
+            { type: GOBJECT_BORROWED, value: this.handle },
+            { type: t.string("borrowed"), value: propertyName },
             { type: GVALUE_BORROWED_TYPE, value: gvalue.handle },
         ],
-        { type: "void" },
+        t.void,
     );
     return gvalue.toJS();
 };
@@ -275,10 +245,10 @@ GObject.prototype.setProperty = function setProperty(propertyName: string, value
         LIB,
         "g_object_set_property",
         [
-            { type: { type: "gobject", ownership: "borrowed" }, value: this.handle },
-            { type: { type: "string", ownership: "borrowed" }, value: propertyName },
+            { type: GOBJECT_BORROWED, value: this.handle },
+            { type: t.string("borrowed"), value: propertyName },
             { type: GVALUE_BORROWED_TYPE, value: gvalue.handle },
         ],
-        { type: "void" },
+        t.void,
     );
 };

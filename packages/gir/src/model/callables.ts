@@ -30,7 +30,7 @@ abstract class GirCallable {
     readonly shadows?: string;
     readonly shadowedBy?: string;
 
-    protected constructor(data: GirCallableData) {
+    constructor(data: GirCallableData) {
         this.name = data.name;
         this.cIdentifier = data.cIdentifier;
         this.returnType = data.returnType;
@@ -103,17 +103,9 @@ export class GirMethod extends GirCallable {
 /**
  * Constructor for a class or record.
  */
-export class GirConstructor extends GirCallable {
-    constructor(data: GirCallableData) {
-        super(data);
-    }
-}
+export class GirConstructor extends GirCallable {}
 
 /**
  * Standalone function or static method.
  */
-export class GirFunction extends GirCallable {
-    constructor(data: GirCallableData) {
-        super(data);
-    }
-}
+export class GirFunction extends GirCallable {}
