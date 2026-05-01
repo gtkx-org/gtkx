@@ -184,7 +184,12 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
 
     const filteredParams = parameters.filter((p) => !isVararg(p) && !ffiMapper.isClosureTarget(p, parameters));
 
-    const lengthIndices = collectLengthParamIndices(filteredParams, returnTypeMapping, ffiMapper, sizeParamOffset);
+    const { lengthIndices, lengthToDataIndex } = collectLengthParamIndices(
+        filteredParams,
+        returnTypeMapping,
+        ffiMapper,
+        sizeParamOffset,
+    );
 
     const imports: TypeImport[] = [];
     const paramMappings: ParamMapping[] = [];
@@ -234,6 +239,20 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
         };
 
         if (!isOut) {
+            if (isLengthParam) {
+                const dataIndex = lengthToDataIndex.get(girIndex);
+                const dataParam = dataIndex !== undefined ? filteredParams[dataIndex] : undefined;
+                const dataMapped = dataParam ? ffiMapper.mapParameter(dataParam, sizeParamOffset) : undefined;
+                const dataJsName = dataParam ? toValidIdentifier(toCamelCase(dataParam.name)) : undefined;
+                callArgs.push({
+                    ffi: mapped.ffi,
+                    value: buildLengthExpression(dataJsName, dataMapped, dataParam),
+                    optional: false,
+                    sourceParamIndex: girIndex,
+                });
+                pushSignatureMapping(false, null);
+                return;
+            }
             signatureParams.push({ name: jsName, tsType, optional: isOptional });
             callArgs.push({
                 ffi: mapped.ffi,
@@ -405,32 +424,44 @@ const collectLengthParamIndices = (
     returnTypeMapping: MappedType,
     ffiMapper: FfiMapper,
     sizeParamOffset: number,
-): Set<number> => {
-    const indices = new Set<number>();
+): { lengthIndices: Set<number>; lengthToDataIndex: Map<number, number> } => {
+    const lengthIndices = new Set<number>();
+    const lengthToDataIndex = new Map<number, number>();
 
-    const recordSizeParam = (sizeParamIndex: number | undefined) => {
+    const recordSizeParam = (
+        sizeParamIndex: number | undefined,
+        dataLocalIndex: number | null,
+        dataIsInput: boolean,
+    ): void => {
         if (sizeParamIndex === undefined) return;
         const localIndex = sizeParamIndex - sizeParamOffset;
         if (localIndex < 0 || localIndex >= filteredParams.length) return;
         const target = filteredParams[localIndex];
         if (!target) return;
-        if (target.direction !== "out" && target.direction !== "inout") return;
-        indices.add(localIndex);
+        const targetIsOut = target.direction === "out" || target.direction === "inout";
+        if (!targetIsOut && !dataIsInput) {
+            return;
+        }
+        lengthIndices.add(localIndex);
+        if (dataLocalIndex !== null) {
+            lengthToDataIndex.set(localIndex, dataLocalIndex);
+        }
     };
 
     if (returnTypeMapping.ffi.type === "array") {
-        recordSizeParam(returnTypeMapping.ffi.sizeParamIndex);
+        recordSizeParam(returnTypeMapping.ffi.sizeParamIndex, null, false);
     }
 
-    filteredParams.forEach((param) => {
+    filteredParams.forEach((param, dataLocalIndex) => {
         const mapped = ffiMapper.mapParameter(param, sizeParamOffset);
         const ffi = unwrapRefIfPresent(mapped.ffi);
         if (ffi.type === "array") {
-            recordSizeParam(ffi.sizeParamIndex);
+            const dataIsInput = param.direction !== "out" && param.direction !== "inout";
+            recordSizeParam(ffi.sizeParamIndex, dataLocalIndex, dataIsInput);
         }
     });
 
-    return indices;
+    return { lengthIndices, lengthToDataIndex };
 };
 
 const unwrapRefIfPresent = (ffi: FfiTypeDescriptor): FfiTypeDescriptor => {
@@ -505,6 +536,30 @@ const reorderOptionalLast = (params: SignatureParam[]): SignatureParam[] => {
     const required = params.filter((p) => !p.optional);
     const optional = params.filter((p) => p.optional);
     return [...required, ...optional];
+};
+
+/**
+ * Synthesizes the runtime expression for a length parameter that has been
+ * stripped from the public signature. Falls back to `0` when the paired
+ * data param is missing or its type is unknown.
+ */
+const buildLengthExpression = (
+    dataJsName: string | undefined,
+    dataMapped: MappedType | undefined,
+    dataParam: GirParameter | undefined,
+): string => {
+    if (!dataJsName || !dataMapped) return "0";
+    const dataNullable = dataParam?.nullable || dataParam?.optional || false;
+    const optChain = dataNullable ? "?." : ".";
+    if (dataMapped.ffi.type === "array") {
+        return dataNullable ? `(${dataJsName}?.length ?? 0)` : `${dataJsName}.length`;
+    }
+    if (dataMapped.ffi.type === "string") {
+        return dataNullable
+            ? `(${dataJsName} === undefined || ${dataJsName} === null ? 0 : Buffer.byteLength(${dataJsName}, "utf8"))`
+            : `Buffer.byteLength(${dataJsName}, "utf8")`;
+    }
+    return `${dataJsName}${optChain}length ?? 0`;
 };
 
 /**
