@@ -127,7 +127,10 @@ export class RecordGenerator {
     private generateInitInterface(record: GirRecord, recordName: string): void {
         const { main: mainConstructor } = this.methodBody.selectConstructors(record.constructors);
 
-        if (mainConstructor) return;
+        if (mainConstructor) {
+            const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
+            if (filteredParams.length > 0) return;
+        }
 
         const initFields = this.fieldBuilder.getInitializableFields(record.fields);
         if (initFields.length === 0) return;
@@ -205,21 +208,46 @@ export class RecordGenerator {
             const glibGetType = record.glibGetType;
 
             if (filteredParams.length === 0) {
-                cls.setConstructor(
-                    constructorDecl({
-                        overloads: [{ params: [param("handle", "NativeHandle")] }, { params: [] }],
-                        params: [param("handle", "NativeHandle", { optional: true })],
-                        body: this.writeConstructorWithCallOverloaded(
-                            "handle",
-                            mainConstructor,
-                            args,
-                            glibTypeName,
-                            glibGetType,
-                            record.copyFunction,
-                            record.freeFunction,
-                        ),
-                    }),
-                );
+                const initFields = this.fieldBuilder.getInitializableFields(record.fields);
+                if (initFields.length > 0) {
+                    this.file.addImport("../../native.js", ["write"]);
+                    cls.setConstructor(
+                        constructorDecl({
+                            overloads: [
+                                { params: [param("handle", "NativeHandle")] },
+                                { params: [param("init", `${recordName}Init`, { optional: true })] },
+                            ],
+                            params: [
+                                param("init", `${recordName}Init | NativeHandle`, { defaultValue: "{}" }),
+                            ],
+                            body: this.writeConstructorWithCallAndInitOverloaded(
+                                mainConstructor,
+                                args,
+                                glibTypeName,
+                                glibGetType,
+                                record.fields,
+                                record.copyFunction,
+                                record.freeFunction,
+                            ),
+                        }),
+                    );
+                } else {
+                    cls.setConstructor(
+                        constructorDecl({
+                            overloads: [{ params: [param("handle", "NativeHandle")] }, { params: [] }],
+                            params: [param("handle", "NativeHandle", { optional: true })],
+                            body: this.writeConstructorWithCallOverloaded(
+                                "handle",
+                                mainConstructor,
+                                args,
+                                glibTypeName,
+                                glibGetType,
+                                record.copyFunction,
+                                record.freeFunction,
+                            ),
+                        }),
+                    );
+                }
             } else {
                 const params = this.methodBody.buildSignatureParameters(ctorShape, false);
                 const firstParam = params[0] ?? { name: "arg0", type: "unknown" };
@@ -414,6 +442,38 @@ export class RecordGenerator {
             writer.writeLine("} else {");
             writer.withIndent(() => {
                 writer.writeLine(`const __handle = ${allocFn} as NativeHandle;`);
+                writer.writeLine("super(__handle);");
+                this.fieldBuilder.writeFieldWrites(fields)(writer);
+            });
+            writer.writeLine("}");
+        };
+    }
+
+    private writeConstructorWithCallAndInitOverloaded(
+        mainConstructor: GirConstructor,
+        args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
+        glibTypeName: string | undefined,
+        glibGetType: string | undefined,
+        fields: readonly GirField[],
+        copyFunction?: string,
+        freeFunction?: string,
+    ): (writer: Writer) => void {
+        return (writer) => {
+            writer.writeLine("if (isNativeHandle(init)) {");
+            writer.withIndent(() => {
+                writer.writeLine("super(init);");
+            });
+            writer.writeLine("} else {");
+            writer.withIndent(() => {
+                this.writeCallExpression(
+                    writer,
+                    mainConstructor,
+                    args,
+                    glibTypeName,
+                    glibGetType,
+                    copyFunction,
+                    freeFunction,
+                );
                 writer.writeLine("super(__handle);");
                 this.fieldBuilder.writeFieldWrites(fields)(writer);
             });

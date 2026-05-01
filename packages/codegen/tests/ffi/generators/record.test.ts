@@ -439,7 +439,7 @@ describe("RecordGenerator", () => {
             expect(code).toContain("y?:");
         });
 
-        it("does not generate init interface when main constructor exists", () => {
+        it("generates init interface when main constructor takes no parameters and fields are writable", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -449,6 +449,41 @@ describe("RecordGenerator", () => {
                         cIdentifier: "gdk_rectangle_new",
                         returnType: createNormalizedType({ name: "Gdk.Rectangle" }),
                         parameters: [],
+                    }),
+                ],
+                fields: [
+                    createNormalizedField({
+                        name: "x",
+                        type: createNormalizedType({ name: "gint" }),
+                        readable: true,
+                        writable: true,
+                    }),
+                ],
+            });
+
+            generator.generate(record);
+
+            const code = stringify(file);
+            expect(code).toContain("export type RectangleInit");
+            expect(code).toContain("constructor(init?: RectangleInit)");
+        });
+
+        it("does not generate init interface when main constructor takes parameters", () => {
+            const { generator, file } = createTestSetup();
+            const record = createNormalizedRecord({
+                name: "Rectangle",
+                constructors: [
+                    createNormalizedConstructor({
+                        name: "new",
+                        cIdentifier: "gdk_rectangle_new",
+                        returnType: createNormalizedType({ name: "Gdk.Rectangle" }),
+                        parameters: [
+                            createNormalizedParameter({
+                                name: "x",
+                                type: createNormalizedType({ name: "gint" }),
+                                direction: "in",
+                            }),
+                        ],
                     }),
                 ],
                 fields: [
