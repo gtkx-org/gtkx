@@ -5,11 +5,11 @@ import type { NavigationPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { ContainerClass } from "../types.js";
 import { hasChanged } from "./internal/props.js";
+import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { getFocusWidget, isDescendantOf, resolvePropertySetter } from "./internal/widget.js";
-import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetNode, WidgetNode> {
+export class NavigationPageNode extends SingleChildVirtualNode<NavigationPageProps, WidgetNode, WidgetNode> {
     private wrappedPage: Adw.NavigationPage | null = null;
 
     public override isValidChild(child: Node): boolean {
@@ -20,58 +20,20 @@ export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetN
         return parent instanceof WidgetNode;
     }
 
-    public override setParent(parent: WidgetNode | null): void {
-        if (!parent && this.parent && this.wrappedPage) {
-            const parentWidget = this.getParentWidget();
-            if (parentWidget instanceof Adw.NavigationView) {
-                parentWidget.remove(this.wrappedPage);
-            } else {
-                this.applySlotChild(parentWidget, this.wrappedPage);
-            }
-            this.wrappedPage = null;
-        }
-
-        super.setParent(parent);
-
-        if (parent && this.children[0]) {
-            this.onChildChange(null);
-        }
-    }
-
-    public override appendChild(child: WidgetNode): void {
-        const oldChildWidget = this.children[0]?.container ?? null;
-        super.appendChild(child);
-
-        if (this.parent) {
-            this.onChildChange(oldChildWidget);
-        }
-    }
-
-    public override removeChild(child: WidgetNode): void {
-        const oldChildWidget = child.container;
-        super.removeChild(child);
-
-        if (this.parent && oldChildWidget) {
-            this.onChildChange(oldChildWidget);
-        }
-    }
-
     public override commitUpdate(oldProps: NavigationPageProps | null, newProps: NavigationPageProps): void {
         super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
     }
 
-    public override detachDeletedInstance(): void {
-        if (this.parent && this.wrappedPage) {
-            const parentWidget = this.getParentWidget();
-            if (parentWidget instanceof Adw.NavigationView) {
-                parentWidget.remove(this.wrappedPage);
-            } else {
-                this.applySlotChild(parentWidget, this.wrappedPage);
-            }
+    protected override onDetach(_oldChild: Gtk.Widget | null): void {
+        if (!this.wrappedPage) return;
+        const parentWidget = this.getParentWidget();
+        if (parentWidget instanceof Adw.NavigationView) {
+            parentWidget.remove(this.wrappedPage);
+        } else {
+            this.applySlotChild(parentWidget, this.wrappedPage);
         }
         this.wrappedPage = null;
-        super.detachDeletedInstance();
     }
 
     private applyOwnProps(oldProps: NavigationPageProps | null, newProps: NavigationPageProps): void {
@@ -92,7 +54,7 @@ export class NavigationPageNode extends VirtualNode<NavigationPageProps, WidgetN
         }
     }
 
-    private onChildChange(oldChild: Gtk.Widget | null): void {
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const parentWidget = this.getParentWidget();
         const title = this.props.title ?? "";
         const childWidget = this.children[0]?.container ?? null;

@@ -4,8 +4,8 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { AdwSpringAnimationProps, AdwTimedAnimationProps, AnimatableProperties, AnimationProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
+import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { attachChild, detachChild, isAttachedTo } from "./internal/widget.js";
-import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
 type SetChildContainer = { setChild: (child: Gtk.Widget | null) => void };
@@ -21,7 +21,7 @@ const DEFAULT_SPRING_DAMPING = 1;
 const DEFAULT_SPRING_MASS = 1;
 const DEFAULT_SPRING_STIFFNESS = 100;
 
-export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode> {
+export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, WidgetNode> {
     private className: string;
     private provider: Gtk.CssProvider | null = null;
     private display: Gdk.Display | null = null;
@@ -44,35 +44,9 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
         return true;
     }
 
-    public override setParent(parent: Node | null): void {
-        if (!parent && this.parent) {
-            this.detachedParentContainer = this.parent.container;
-        }
-
-        super.setParent(parent);
-
-        if (parent && this.children[0]) {
-            this.onChildChange(null);
-        }
-    }
-
-    public override appendChild(child: WidgetNode): void {
-        const oldChildWidget = this.children[0]?.container ?? null;
-
-        super.appendChild(child);
-
+    protected override onDetach(_oldChild: Gtk.Widget | null): void {
         if (this.parent) {
-            this.onChildChange(oldChildWidget);
-        }
-    }
-
-    public override removeChild(child: WidgetNode): void {
-        const oldChildWidget = child.container;
-
-        super.removeChild(child);
-
-        if (this.parent && oldChildWidget) {
-            this.onChildChange(oldChildWidget);
+            this.detachedParentContainer = this.parent.container;
         }
     }
 
@@ -124,7 +98,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
         }
     }
 
-    private onChildChange(oldChild: Gtk.Widget | null): void {
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const parentContainer = this.parent?.container ?? null;
         const childWidget = this.children[0]?.container ?? null;
 

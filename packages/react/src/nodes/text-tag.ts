@@ -1,12 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { TextTagProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { BufferOffsetNode } from "./internal/buffer-offset-node.js";
 import { hasChanged } from "./internal/props.js";
 import { TextAnchorNode } from "./text-anchor.js";
 import type { TextContentChild, TextContentParent } from "./text-content.js";
 import { TextPaintableNode } from "./text-paintable.js";
 import { isTextContentParent, TextSegmentNode } from "./text-segment.js";
-import { VirtualNode } from "./virtual.js";
 
 const STYLE_PROPS: Partial<Record<keyof TextTagProps, keyof Gtk.TextTag | string>> = {
     background: "setBackground",
@@ -52,21 +52,11 @@ const STYLE_PROPS: Partial<Record<keyof TextTagProps, keyof Gtk.TextTag | string
 type TextTagParent = Node & TextContentParent;
 
 export class TextTagNode
-    extends VirtualNode<TextTagProps, TextTagParent, TextContentChild>
+    extends BufferOffsetNode<TextTagProps, TextTagParent, TextContentChild>
     implements TextContentParent
 {
     private buffer: Gtk.TextBuffer | null = null;
     private tag: Gtk.TextTag | null = null;
-
-    private bufferOffset = 0;
-
-    public getBufferOffset(): number {
-        return this.bufferOffset;
-    }
-
-    public setBufferOffset(offset: number): void {
-        this.bufferOffset = offset;
-    }
 
     public override isValidChild(child: Node): boolean {
         return this.isTextContentChild(child);
@@ -247,8 +237,8 @@ export class TextTagNode
         const length = this.getLength();
         if (length === 0) return;
 
-        const startIter = buffer.getIterAtOffset(this.bufferOffset);
-        const endIter = buffer.getIterAtOffset(this.bufferOffset + length);
+        const startIter = buffer.getIterAtOffset(this.getBufferOffset());
+        const endIter = buffer.getIterAtOffset(this.getBufferOffset() + length);
 
         buffer.applyTag(tag, startIter, endIter);
     }
@@ -265,7 +255,7 @@ export class TextTagNode
     }
 
     private updateChildOffsets(startIndex: number): void {
-        let offset = this.bufferOffset;
+        let offset = this.getBufferOffset();
 
         for (let i = 0; i < startIndex; i++) {
             const child = this.children[i];

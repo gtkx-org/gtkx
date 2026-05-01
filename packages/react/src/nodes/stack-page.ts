@@ -4,11 +4,11 @@ import type { StackPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { StackWidget } from "../registry.js";
 import { hasChanged } from "./internal/props.js";
+import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { removeChildFromParent } from "./internal/widget.js";
-import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode<StackWidget>, WidgetNode> {
+export class StackPageNode extends SingleChildVirtualNode<StackPageProps, WidgetNode<StackWidget>, WidgetNode> {
     private page: Gtk.StackPage | Adw.ViewStackPage | null = null;
 
     public override isValidChild(child: Node): boolean {
@@ -22,54 +22,9 @@ export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode<StackW
         );
     }
 
-    public override setParent(parent: WidgetNode<StackWidget> | null): void {
-        const previousParent = this.parent;
-
-        if (previousParent && !parent) {
-            const childWidget = this.children[0]?.container ?? null;
-            if (childWidget) {
-                this.removePage(childWidget);
-            }
-            this.page = null;
-        }
-
-        super.setParent(parent);
-
-        if (parent && this.children[0]) {
-            this.onChildChange(null);
-        }
-    }
-
-    public override appendChild(child: WidgetNode): void {
-        const oldChildWidget = this.children[0]?.container ?? null;
-        super.appendChild(child);
-
-        if (this.parent) {
-            this.onChildChange(oldChildWidget);
-        }
-    }
-
-    public override removeChild(child: WidgetNode): void {
-        const oldChildWidget = child.container;
-        super.removeChild(child);
-
-        if (this.parent && oldChildWidget) {
-            this.onChildChange(oldChildWidget);
-        }
-    }
-
     public override commitUpdate(oldProps: StackPageProps | null, newProps: StackPageProps): void {
         super.commitUpdate(oldProps, newProps);
         this.applyOwnProps(oldProps, newProps);
-    }
-
-    public override detachDeletedInstance(): void {
-        const childWidget = this.children[0]?.container ?? null;
-        if (childWidget && this.parent) {
-            this.removePage(childWidget);
-        }
-        this.page = null;
-        super.detachDeletedInstance();
     }
 
     private getChildWidget(): Gtk.Widget {
@@ -117,12 +72,17 @@ export class StackPageNode extends VirtualNode<StackPageProps, WidgetNode<StackW
         }
     }
 
-    private onChildChange(oldChild: Gtk.Widget | null): void {
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
         this.removePage(oldChild);
 
         if (this.children[0]) {
             this.addPage();
         }
+    }
+
+    protected override onDetach(oldChild: Gtk.Widget | null): void {
+        if (oldChild) this.removePage(oldChild);
+        this.page = null;
     }
 
     private addPage(): void {

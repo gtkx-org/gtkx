@@ -1,11 +1,11 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type { TextPaintableProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { BufferOffsetNode } from "./internal/buffer-offset-node.js";
 import { TEXT_OBJECT_REPLACEMENT, type TextContentParent } from "./text-content.js";
 import { isTextContentParent } from "./text-segment.js";
-import { VirtualNode } from "./virtual.js";
 
-export class TextPaintableNode extends VirtualNode<TextPaintableProps, Node & TextContentParent, never> {
+export class TextPaintableNode extends BufferOffsetNode<TextPaintableProps, Node & TextContentParent, never> {
     public override isValidChild(_child: Node): boolean {
         return false;
     }
@@ -13,16 +13,8 @@ export class TextPaintableNode extends VirtualNode<TextPaintableProps, Node & Te
     public override isValidParent(parent: Node): boolean {
         return isTextContentParent(parent);
     }
+
     private buffer: Gtk.TextBuffer | null = null;
-    private bufferOffset = 0;
-
-    public getBufferOffset(): number {
-        return this.bufferOffset;
-    }
-
-    public setBufferOffset(offset: number): void {
-        this.bufferOffset = offset;
-    }
 
     public getLength(): number {
         return 1;
@@ -39,7 +31,7 @@ export class TextPaintableNode extends VirtualNode<TextPaintableProps, Node & Te
 
     private insertPaintable(): void {
         if (!this.buffer || !this.props.paintable) return;
-        const iter = this.buffer.getIterAtOffset(this.bufferOffset);
+        const iter = this.buffer.getIterAtOffset(this.getBufferOffset());
         this.buffer.insertPaintable(iter, this.props.paintable);
     }
 

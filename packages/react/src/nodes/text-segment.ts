@@ -1,22 +1,12 @@
 import type { TextSegmentProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { BufferOffsetNode } from "./internal/buffer-offset-node.js";
 import { hasChanged } from "./internal/props.js";
 import type { TextContentParent } from "./text-content.js";
-import { VirtualNode } from "./virtual.js";
 
 type TextSegmentParent = Node & TextContentParent;
 
-export class TextSegmentNode extends VirtualNode<TextSegmentProps, TextSegmentParent, never> {
-    private bufferOffset = 0;
-
-    public getBufferOffset(): number {
-        return this.bufferOffset;
-    }
-
-    public setBufferOffset(offset: number): void {
-        this.bufferOffset = offset;
-    }
-
+export class TextSegmentNode extends BufferOffsetNode<TextSegmentProps, TextSegmentParent, never> {
     public override isValidChild(_child: Node): boolean {
         return false;
     }

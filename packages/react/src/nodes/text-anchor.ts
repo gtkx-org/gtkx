@@ -1,26 +1,16 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { TextAnchorProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { BufferOffsetNode } from "./internal/buffer-offset-node.js";
 import { unparentWidget } from "./internal/widget.js";
 import { TEXT_OBJECT_REPLACEMENT, type TextContentParent } from "./text-content.js";
 import { isTextContentParent } from "./text-segment.js";
-import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node & TextContentParent, WidgetNode> {
+export class TextAnchorNode extends BufferOffsetNode<TextAnchorProps, Node & TextContentParent, WidgetNode> {
     private textView: Gtk.TextView | null = null;
     private buffer: Gtk.TextBuffer | null = null;
     private anchor: Gtk.TextChildAnchor | null = null;
-
-    private bufferOffset = 0;
-
-    public getBufferOffset(): number {
-        return this.bufferOffset;
-    }
-
-    public setBufferOffset(offset: number): void {
-        this.bufferOffset = offset;
-    }
 
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
@@ -47,7 +37,7 @@ export class TextAnchorNode extends VirtualNode<TextAnchorProps, Node & TextCont
     private setupAnchor(): void {
         if (!this.textView || !this.buffer) return;
 
-        const iter = this.buffer.getIterAtOffset(this.bufferOffset);
+        const iter = this.buffer.getIterAtOffset(this.getBufferOffset());
 
         if (this.props.replacementChar) {
             this.anchor = Gtk.TextChildAnchor.newWithReplacement(this.props.replacementChar);
