@@ -405,7 +405,7 @@ export class ConstructorBuilder {
 
         const overloads: OverloadSignature[] = [
             { params: [paramBuilder("handle", "NativeHandle")] },
-            ...(hasProps ? [{ params: [paramBuilder("props", propsTypeName, { optional: true })] }] : []),
+            hasProps ? { params: [paramBuilder("props", propsTypeName, { optional: true })] } : { params: [] },
         ];
 
         const implParams: Param[] = hasProps
