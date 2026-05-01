@@ -17,11 +17,8 @@ const packages = [
             "AnimationBaseProps",
             "BaseListViewProps",
             "GtkColumnViewBase",
-            "MenuChildren",
-            "TextChildren",
             "Container",
-            "NavigationSplitViewPageProps",
-            "NavigationViewPageProps",
+            "SettingTypeMap",
         ],
     },
     {
