@@ -6,7 +6,18 @@
     "cacheDir": ".turbo",
     "tasks": {
         "//#lint:all": {
-            "dependsOn": ["^build"],
+            "dependsOn": [
+                "@gtkx/cli#build",
+                "@gtkx/codegen#build",
+                "@gtkx/css#build",
+                "@gtkx/ffi#build",
+                "@gtkx/gir#build",
+                "@gtkx/mcp#build",
+                "@gtkx/native#build",
+                "@gtkx/react#build",
+                "@gtkx/testing#build",
+                "@gtkx/vitest#build"
+            ],
             "inputs": ["**/*.ts", "**/*.tsx", "**/package.json", "biome.json", "knip.json"],
             "outputs": [],
             "outputLogs": "new-only"
