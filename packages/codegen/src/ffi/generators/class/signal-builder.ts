@@ -64,8 +64,9 @@ export class SignalBuilder {
         }
 
         const overloads = this.buildOverloads(ownSignals);
+        const isRootGObject = this.options.namespace === "GObject" && this.cls.name === "Object";
 
-        return [
+        const structures: MethodStructure[] = [
             {
                 name: "connect",
                 parameters: [
@@ -83,6 +84,111 @@ export class SignalBuilder {
                 overloads,
             },
         ];
+
+        if (!isRootGObject) {
+            const onOverloads = this.buildAliasOverloads(ownSignals, "this", { withAfter: true });
+            const offOverloads = this.buildAliasOverloads(ownSignals, "this", { withAfter: false });
+
+            structures.push(
+                {
+                    name: "on",
+                    parameters: [
+                        { name: "signal", type: "string" },
+                        { name: "handler", type: "(...args: any[]) => any" },
+                        { name: "after", type: "boolean", optional: true },
+                    ],
+                    returnType: "this",
+                    docs: [
+                        {
+                            description: `Connects a callback to a signal on this ${this.className}, tracked for later removal via off().\n\n@param signal - The signal name\n@param handler - Callback function\n@param after - If true, run after the default handler\n@returns This object, for chaining`,
+                        },
+                    ],
+                    statements: (writer) => {
+                        writer.writeLine("return super.on(signal, handler, after);");
+                    },
+                    overloads: onOverloads,
+                },
+                {
+                    name: "once",
+                    parameters: [
+                        { name: "signal", type: "string" },
+                        { name: "handler", type: "(...args: any[]) => any" },
+                        { name: "after", type: "boolean", optional: true },
+                    ],
+                    returnType: "this",
+                    docs: [
+                        {
+                            description: `Connects a one-shot callback to a signal on this ${this.className}.\n\n@param signal - The signal name\n@param handler - Callback function\n@param after - If true, run after the default handler\n@returns This object, for chaining`,
+                        },
+                    ],
+                    statements: (writer) => {
+                        writer.writeLine("return super.once(signal, handler, after);");
+                    },
+                    overloads: onOverloads,
+                },
+                {
+                    name: "off",
+                    parameters: [
+                        { name: "signal", type: "string" },
+                        { name: "handler", type: "(...args: any[]) => any" },
+                    ],
+                    returnType: "this",
+                    docs: [
+                        {
+                            description: `Disconnects a callback previously registered with on() or once() on this ${this.className}.\n\n@param signal - The signal name\n@param handler - The exact callback reference\n@returns This object, for chaining`,
+                        },
+                    ],
+                    statements: (writer) => {
+                        writer.writeLine("return super.off(signal, handler);");
+                    },
+                    overloads: offOverloads,
+                },
+            );
+        }
+
+        return structures;
+    }
+
+    private buildAliasOverloads(
+        allSignals: GirSignal[],
+        returnType: string,
+        opts: { withAfter: boolean },
+    ): NonNullable<MethodStructure["overloads"]> {
+        const overloads: NonNullable<MethodStructure["overloads"]> = [];
+        for (const signal of allSignals) {
+            const params = this.buildHandlerParams(signal);
+            let signalReturnType = "void";
+            if (signal.returnType) {
+                const mapped = this.ffiMapper.mapType(signal.returnType, true, signal.returnType.transferOwnership);
+                addTypeImports(this.imports, mapped.imports, this.selfNames);
+                signalReturnType = mapped.ts;
+            }
+            const overloadParams = [
+                { name: "signal", type: `"${signal.name}"` },
+                { name: "handler", type: `(${params}) => ${signalReturnType}` },
+            ];
+            if (opts.withAfter) {
+                overloadParams.push({ name: "after", type: "boolean", optional: true } as {
+                    name: string;
+                    type: string;
+                    optional?: boolean;
+                });
+            }
+            overloads.push({ params: overloadParams, returnType });
+        }
+        const fallbackParams = [
+            { name: "signal", type: "string" },
+            { name: "handler", type: "(...args: any[]) => any" },
+        ];
+        if (opts.withAfter) {
+            fallbackParams.push({ name: "after", type: "boolean", optional: true } as {
+                name: string;
+                type: string;
+                optional?: boolean;
+            });
+        }
+        overloads.push({ params: fallbackParams, returnType });
+        return overloads;
     }
 
     collectOwnSignals(): GirSignal[] {

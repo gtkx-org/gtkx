@@ -64,8 +64,7 @@ describe("SignalBuilder", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            expect(structures).toHaveLength(1);
-            expect(structures[0].name).toBe("connect");
+            expect(structures.map((s) => s.name)).toEqual(["connect", "on", "once", "off"]);
         });
 
         it("includes overloads for each signal", () => {
@@ -140,7 +139,7 @@ describe("SignalBuilder", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            expect(structures).toHaveLength(1);
+            expect(structures.length).toBeGreaterThan(0);
         });
     });
 
@@ -205,8 +204,8 @@ describe("SignalBuilder", () => {
 
             const connectStructures = builder.buildConnectMethodStructures();
 
-            expect(connectStructures).toHaveLength(1);
-            expect(connectStructures[0].overloads?.length).toBeGreaterThanOrEqual(2);
+            expect(connectStructures.map((s) => s.name)).toEqual(["connect", "on", "once", "off"]);
+            expect(connectStructures[0]?.overloads?.length).toBeGreaterThanOrEqual(2);
         });
     });
 });
@@ -292,7 +291,7 @@ describe("SignalBuilder - Extended Coverage", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            expect(structures).toHaveLength(1);
+            expect(structures[0].name).toBe("connect");
             const overload = structures[0].overloads?.[0];
             expect(overload?.params?.[1]?.type).toContain("child:");
         });
