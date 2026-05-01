@@ -14,7 +14,7 @@
         "docs": "turbo build --filter=website",
         "circular": "dpdm --no-warning --no-tree --transform -T --skip-dynamic-imports circular --exit-code circular:1 --exclude '(node_modules|dist|generated|out-tsc)' 'packages/{cli,codegen,css,e2e,ffi,gir,mcp,react,testing,vitest}/src/**/*.{ts,tsx}'",
         "knip": "knip",
-        "lint": "turbo lint:all && turbo lint --filter=!website --filter=!gtkx",
+        "lint": "turbo build --filter=!website --filter=!gtkx && turbo lint:all && turbo lint --filter=!website --filter=!gtkx",
         "lint:all": "biome check . && knip && pnpm circular",
         "test": "turbo test --filter=!website --filter=!gtkx --concurrency=1",
         "typecheck": "turbo typecheck --filter=!website --filter=!gtkx"
