@@ -19,7 +19,8 @@
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
-            "project": ["src/**/*.ts", "!src/generated/**", "tests/**/*.{ts,tsx}"]
+            "entry": ["src/generated/*/index.ts"],
+            "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
         },
         "packages/gir": {
             "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
@@ -34,8 +35,7 @@
             "ignoreDependencies": ["@neon-rs/cli"]
         },
         "packages/react": {
-            "entry": ["src/components/slot-widget.tsx"],
-            "project": ["src/**/*.{ts,tsx}", "!src/generated/**"]
+            "project": ["src/**/*.{ts,tsx}"]
         },
         "packages/testing": {
             "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
