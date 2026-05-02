@@ -56,9 +56,6 @@ impl Drop for TrampolineState {
     }
 }
 
-#[allow(clippy::non_send_fields_in_send_ty)]
-unsafe impl Send for TrampolineState {}
-
 impl TrampolineState {
     #[must_use]
     pub fn data_ref(&self) -> &TrampolineData {
