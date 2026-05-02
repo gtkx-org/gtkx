@@ -17,44 +17,29 @@ if (!globalThis.__GTKX_CONTAINER_NODE_CACHE__) {
 
 const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__ as WeakMap<Container, Node>;
 
-type TextInstance = Node;
-type SuspenseInstance = never;
-type HydratableInstance = never;
 type PublicInstance = Gtk.Widget | Gtk.Application;
 type HostContext = {
     insideTextBuffer?: boolean;
 };
-type ChildSet = never;
-type TimeoutHandle = number;
-type NoTimeout = -1;
-type TransitionStatus = number;
-type FormInstance = never;
 
 type HostConfig = ReactReconciler.HostConfig<
     string,
     Props,
     Container,
     Node,
-    TextInstance,
-    SuspenseInstance,
-    HydratableInstance,
-    FormInstance,
+    Node,
+    never,
+    never,
+    never,
     PublicInstance,
     HostContext,
-    ChildSet,
-    TimeoutHandle,
-    NoTimeout,
-    TransitionStatus
+    never,
+    number,
+    -1,
+    number
 >;
 
-export type ReconcilerInstance = ReactReconciler.Reconciler<
-    Container,
-    Node,
-    TextInstance,
-    SuspenseInstance,
-    FormInstance,
-    PublicInstance
->;
+export type ReconcilerInstance = ReactReconciler.Reconciler<Container, Node, Node, never, never, PublicInstance>;
 
 const getOrCreateContainerNode = (container: Container): Node => {
     let node = containerNodeCache.get(container);
@@ -187,7 +172,7 @@ export function createHostConfig(): HostConfig {
     };
 }
 
-function createReconcilerContext(value: TransitionStatus): ReactReconciler.ReactContext<TransitionStatus> {
-    const context = React.createContext<TransitionStatus>(value);
-    return context as unknown as ReactReconciler.ReactContext<TransitionStatus>;
+function createReconcilerContext(value: number): ReactReconciler.ReactContext<number> {
+    const context = React.createContext<number>(value);
+    return context as unknown as ReactReconciler.ReactContext<number>;
 }

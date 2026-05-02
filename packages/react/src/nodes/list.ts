@@ -394,9 +394,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             const dropDownModel = this.hasSections()
                 ? (this.flattenModel as Gio.ListModel)
                 : (this.model as Gio.ListModel);
-            if (widget instanceof Gtk.DropDown) {
-                widget.setModel(dropDownModel);
-            } else if (widget instanceof Adw.ComboRow) {
+            if (widget instanceof Gtk.DropDown || widget instanceof Adw.ComboRow) {
                 widget.setModel(dropDownModel);
             }
             return;
@@ -404,11 +402,11 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         if (!this.selectionModel) return;
 
-        if (widget instanceof Gtk.ListView) {
-            widget.setModel(this.selectionModel);
-        } else if (widget instanceof Gtk.GridView) {
-            widget.setModel(this.selectionModel);
-        } else if (widget instanceof Gtk.ColumnView) {
+        if (
+            widget instanceof Gtk.ListView ||
+            widget instanceof Gtk.GridView ||
+            widget instanceof Gtk.ColumnView
+        ) {
             widget.setModel(this.selectionModel);
         }
     }

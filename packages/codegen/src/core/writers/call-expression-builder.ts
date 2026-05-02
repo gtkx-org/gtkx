@@ -113,7 +113,7 @@ export class CallExpressionBuilder {
     toWriter(options: CallExpressionOptions): (writer: Writer) => void {
         const binding = this.registry?.register(options);
 
-        if (binding && binding.varargs === false) {
+        if (binding?.varargs === false) {
             this.imports?.addImport("../../native.js", ["t"]);
             return this.curriedWriter(options, binding.name);
         }

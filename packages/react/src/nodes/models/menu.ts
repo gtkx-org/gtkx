@@ -18,7 +18,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
     private actionPrefix: string;
     private readonly menu: Gio.Menu;
     private readonly type: MenuType;
-    private application: Gtk.Application | null = null;
+    private readonly application: Gtk.Application | null = null;
     private action: Gio.SimpleAction | null = null;
 
     constructor(
@@ -290,7 +290,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
             return;
         }
 
-        if (!oldProps || oldProps.label !== newProps.label) {
+        if (oldProps?.label !== newProps.label) {
             const parentMenu = this.parent.getMenu();
             const position = this.findPositionIn(parentMenu);
 

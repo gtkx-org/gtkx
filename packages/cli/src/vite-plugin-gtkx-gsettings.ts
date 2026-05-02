@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import type { Plugin } from "vite";
 
-const SCHEMA_RE = /\.gschema\.xml$/;
+const SCHEMA_SUFFIX = ".gschema.xml";
 const SCHEMA_ID_RE = /<schema\s+id="([^"]+)"/g;
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
 const VIRTUAL_INIT = "\0gtkx-gsettings-init";
@@ -65,7 +65,7 @@ export function gtkxGSettings(): Plugin {
 
         async resolveId(source, importer, options) {
             if (source === VIRTUAL_INIT) return VIRTUAL_INIT;
-            if (!SCHEMA_RE.test(source)) return;
+            if (!source.endsWith(SCHEMA_SUFFIX)) return;
 
             const resolved = await this.resolve(source, importer, {
                 ...options,

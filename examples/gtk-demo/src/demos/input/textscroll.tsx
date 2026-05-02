@@ -40,9 +40,7 @@ const AutoScrollTextView = ({ scrollToEnd }: { scrollToEnd: boolean }) => {
                     textView.scrollMarkOnscreen(mark);
                 }
 
-                if (scrollToEnd && count > 150) {
-                    countRef.current = 0;
-                } else if (!scrollToEnd && count > 40) {
+                if ((scrollToEnd && count > 150) || (!scrollToEnd && count > 40)) {
                     countRef.current = 0;
                 }
             },

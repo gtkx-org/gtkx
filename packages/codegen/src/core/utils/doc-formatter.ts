@@ -97,7 +97,7 @@ function parseGirLink(type: string, reference: string): GirLink | null {
     if (parts.length === 2) {
         const first = parts[0] ?? "";
         const second = parts[1] ?? "";
-        const isNamespace = first.length > 0 && first[0] === first[0]?.toUpperCase();
+        const isNamespace = /^[A-Z]/.test(first);
 
         if (linkType === "func" || linkType === "const") {
             return {

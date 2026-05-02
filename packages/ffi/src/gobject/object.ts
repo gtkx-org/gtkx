@@ -153,7 +153,7 @@ const untrackListener = (instance: GObject, signal: string, handler: Listener): 
     const bySignal = listenerTable.get(instance);
     const byHandler = bySignal?.get(signal);
     byHandler?.delete(handler);
-    if (byHandler && byHandler.size === 0) bySignal?.delete(signal);
+    if (byHandler?.size === 0) bySignal?.delete(signal);
 };
 
 GObject.prototype.disconnect = function disconnect(handlerId: number): void {
