@@ -155,7 +155,10 @@ export class CompoundsGenerator {
         }
 
         if (manualPropsTypes.size > 0) {
-            file.addTypeImport("../jsx.js", [...manualPropsTypes].sort((a, b) => a.localeCompare(b)));
+            file.addTypeImport(
+                "../jsx.js",
+                [...manualPropsTypes].sort((a, b) => a.localeCompare(b)),
+            );
         }
     }
 

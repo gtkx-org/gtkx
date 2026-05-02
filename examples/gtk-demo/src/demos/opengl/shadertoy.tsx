@@ -1109,9 +1109,7 @@ const SHADER_PRESETS = [
     { name: "Glowing Stars", code: GLOWING_STARS_SHADER },
 ];
 
-const QUAD_VERTICES = [
-    -1, -1, 0, 1, -1, 1, 0, 1, 1, 1, 0, 1, -1, -1, 0, 1, 1, 1, 0, 1, 1, -1, 0, 1,
-];
+const QUAD_VERTICES = [-1, -1, 0, 1, -1, 1, 0, 1, 1, 1, 0, 1, -1, -1, 0, 1, 1, 1, 0, 1, 1, -1, 0, 1];
 
 interface GLState {
     program: number;

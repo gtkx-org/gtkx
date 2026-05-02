@@ -34,7 +34,7 @@ export function useProperty<T extends GObject.Object, K extends ReadableKey<T>>(
     obj: T | null | undefined,
     propertyName: K,
 ): T[K] | undefined {
-    const [value, setValue] = useState<T[K] | undefined>(() => (obj ? (obj[propertyName]) : undefined));
+    const [value, setValue] = useState<T[K] | undefined>(() => (obj ? obj[propertyName] : undefined));
 
     useEffect(() => {
         if (!obj) {
