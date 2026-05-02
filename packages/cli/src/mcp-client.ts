@@ -449,7 +449,7 @@ class McpClient {
     private async executeMethod(method: IpcMethod, params: unknown): Promise<unknown> {
         const defaultApp = Gio.Application.getDefault();
         if (!(defaultApp instanceof Gtk.Application)) {
-            throw new Error("Application not initialized");
+            throw new TypeError("Application not initialized");
         }
         const app = defaultApp;
 

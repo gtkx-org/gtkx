@@ -95,7 +95,7 @@ const setupGridLayout = (
     fontDesc: Pango.FontDescription,
     text: string,
 ): { logicalRect: Pango.Rectangle; ch: string; iter: Pango.LayoutIter } | null => {
-    let ch = text.length > 0 && text[0] !== undefined ? text[0] : " ";
+    let ch = text[0] ?? " ";
     const layout = new Pango.Layout(context);
     layout.setFontDescription(fontDesc);
     layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);

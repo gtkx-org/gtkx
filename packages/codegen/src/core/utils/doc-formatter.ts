@@ -305,9 +305,12 @@ function escapeXmlStyleTags(text: string): string {
 }
 
 function cleanupWhitespace(text: string): string {
-    let result = text.replaceAll(/\n{3,}/g, "\n\n");
-    result = result.replaceAll(/[ \t]+$/gm, "");
-    return result.trim();
+    const collapsed = text.replaceAll(/\n{3,}/g, "\n\n");
+    const trimmedLines = collapsed
+        .split("\n")
+        .map((line) => line.trimEnd())
+        .join("\n");
+    return trimmedLines.trim();
 }
 
 interface SanitizeDocOptions {

@@ -11,6 +11,7 @@ export type { NativeHandle } from "@gtkx/native";
 export abstract class NativeObject {
     static readonly glibTypeName: string;
     static readonly objectType: "gobject" | "interface" | "boxed" | "struct" | "fundamental";
+    declare ["constructor"]: NativeClass;
     handle: NativeHandle;
 
     constructor(handle: NativeHandle) {

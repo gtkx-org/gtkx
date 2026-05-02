@@ -5,7 +5,7 @@ import type ReactReconciler from "react-reconciler";
 import { createNode, resolveContainerClass } from "./factory.js";
 import type { Node } from "./node.js";
 import { isBuffered } from "./nodes/internal/predicates.js";
-import type { Container, ContainerClass, Props } from "./types.js";
+import type { Container, Props } from "./types.js";
 
 declare global {
     var __GTKX_CONTAINER_NODE_CACHE__: WeakMap<Container, Node> | undefined;
@@ -43,8 +43,7 @@ const getOrCreateContainerNode = (container: Container): Node => {
     let node = containerNodeCache.get(container);
 
     if (!node) {
-        const ctor = container.constructor as ContainerClass;
-        node = createNode(ctor.glibTypeName, {}, container, container);
+        node = createNode(container.constructor.glibTypeName, {}, container, container);
         containerNodeCache.set(container, node);
     }
 

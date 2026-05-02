@@ -3,7 +3,6 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { toCamelCase } from "@gtkx/gir";
 import type { NavigationPageProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import type { ContainerClass } from "../types.js";
 import { hasChanged } from "./internal/props.js";
 import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { getFocusWidget, isDescendantOf, resolvePropertySetter } from "./internal/widget.js";
@@ -92,8 +91,9 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
         const setter = resolvePropertySetter(parentWidget, propId);
 
         if (!setter) {
-            const parentCtor = parentWidget.constructor as ContainerClass;
-            throw new Error(`Unable to find property for slot '${propId}' on type '${parentCtor.glibTypeName}'`);
+            throw new Error(
+                `Unable to find property for slot '${propId}' on type '${parentWidget.constructor.glibTypeName}'`,
+            );
         }
 
         if (oldChild && !this.wrappedPage) {

@@ -327,14 +327,23 @@ function getCompareFn(mode: SortMode): ((a: ColorItem, b: ColorItem) => number) 
     }
 }
 
-function mergeRange(
+function copyDefined(src: ColorItem[], dst: ColorItem[], from: number, to: number, dstStart: number): number {
+    let k = dstStart;
+    for (let i = from; i < to; i++) {
+        const value = src[i];
+        if (value !== undefined) dst[k++] = value;
+    }
+    return k;
+}
+
+function mergeInterleave(
     arr: ColorItem[],
     tmp: ColorItem[],
     cmp: (a: ColorItem, b: ColorItem) => number,
     start: number,
     mid: number,
     end: number,
-): void {
+): { i: number; j: number; k: number } {
     let i = start;
     let j = mid;
     let k = start;
@@ -350,18 +359,21 @@ function mergeRange(
             j++;
         }
     }
-    while (i < mid) {
-        const value = arr[i++];
-        if (value !== undefined) tmp[k++] = value;
-    }
-    while (j < end) {
-        const value = arr[j++];
-        if (value !== undefined) tmp[k++] = value;
-    }
-    for (let idx = start; idx < end; idx++) {
-        const value = tmp[idx];
-        if (value !== undefined) arr[idx] = value;
-    }
+    return { i, j, k };
+}
+
+function mergeRange(
+    arr: ColorItem[],
+    tmp: ColorItem[],
+    cmp: (a: ColorItem, b: ColorItem) => number,
+    start: number,
+    mid: number,
+    end: number,
+): void {
+    const { i, j, k } = mergeInterleave(arr, tmp, cmp, start, mid, end);
+    const afterLeftTail = copyDefined(arr, tmp, i, mid, k);
+    copyDefined(arr, tmp, j, end, afterLeftTail);
+    copyDefined(tmp, arr, start, end, start);
 }
 
 function mergeSort(

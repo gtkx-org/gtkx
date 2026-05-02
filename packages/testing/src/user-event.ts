@@ -1,5 +1,5 @@
 import * as Gdk from "@gtkx/ffi/gdk";
-import { type Object as GObject, signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
+import { signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { fireEvent } from "./fire-event.js";
 import { tick } from "./timing.js";
@@ -207,7 +207,7 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
 };
 
 const getSignalId = (target: Gtk.EventController, signalName: string): number => {
-    const ctor = target.constructor as typeof GObject;
+    const ctor = target.constructor;
     const gtype = typeFromName(ctor.glibTypeName);
     return signalLookup(signalName, gtype);
 };

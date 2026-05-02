@@ -101,13 +101,13 @@ export const screen = {
         if (selector === undefined) {
             const [first] = windows;
             if (!(first instanceof Gtk.Window)) {
-                throw new Error("First toplevel is not a Window");
+                throw new TypeError("First toplevel is not a Window");
             }
             targetWindow = first;
         } else if (typeof selector === "number") {
             const indexed = windows[selector];
             if (!(indexed instanceof Gtk.Window)) {
-                throw new Error(`Window at index ${selector} not found`);
+                throw new TypeError(`Window at index ${selector} not found`);
             }
             targetWindow = indexed;
         } else {

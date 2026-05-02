@@ -1037,25 +1037,42 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         for (const [container, position] of containers) {
             if (position === UNBOUND_POSITION) continue;
-
             const key = containerKeys.get(container);
             if (!key) continue;
 
             if (isTree) {
-                const expander = container as Gtk.TreeExpander;
-                const row = expander.getListRow() ?? null;
-                if (!row) continue;
-                const item = this.resolveTreeItem(row);
-                if (!item) continue;
-                const content = renderFn(item.value, row);
-                out.push([content, container, key]);
+                this.appendTreeBoundItem(container, key, renderFn, out);
             } else {
-                const item = flatItems[position];
-                if (!item) continue;
-                const content = renderFn(item.value);
-                out.push([content, container, key]);
+                this.appendFlatBoundItem(container, position, key, flatItems, renderFn, out);
             }
         }
+    }
+
+    private appendTreeBoundItem(
+        container: Container,
+        key: string,
+        renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode,
+        out: BoundItem[],
+    ): void {
+        const expander = container as Gtk.TreeExpander;
+        const row = expander.getListRow() ?? null;
+        if (!row) return;
+        const item = this.resolveTreeItem(row);
+        if (!item) return;
+        out.push([renderFn(item.value, row), container, key]);
+    }
+
+    private appendFlatBoundItem(
+        container: Container,
+        position: number,
+        key: string,
+        flatItems: ListItem[],
+        renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode,
+        out: BoundItem[],
+    ): void {
+        const item = flatItems[position];
+        if (!item) return;
+        out.push([renderFn(item.value), container, key]);
     }
 
     public getEstimatedItemSize(): { width: number; height: number } {

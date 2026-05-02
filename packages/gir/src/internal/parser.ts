@@ -22,7 +22,7 @@ import type {
     RawType,
 } from "./raw-types.js";
 
-type ImplementsSource = Record<string, unknown>[] | Record<string, unknown> | undefined;
+type XmlElements = Record<string, unknown>[] | Record<string, unknown> | undefined;
 
 const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.class",
@@ -184,7 +184,7 @@ export class GirParser {
             fundamental: cls["@_glib:fundamental"] === "1",
             refFunc: attrStringOrUndefined(cls["@_glib:ref-func"]),
             unrefFunc: attrStringOrUndefined(cls["@_glib:unref-func"]),
-            implements: this.parseImplements(cls.implements as ImplementsSource),
+            implements: this.parseImplements(cls.implements as XmlElements),
             methods: this.parseMethods(ensureArray(cls.method)),
             constructors: this.parseConstructors(ensureArray(cls._constructor)),
             functions: this.parseFunctions(ensureArray(cls.function)),
@@ -194,7 +194,7 @@ export class GirParser {
         }));
     }
 
-    private parseImplements(implements_: Record<string, unknown>[] | Record<string, unknown> | undefined): string[] {
+    private parseImplements(implements_: XmlElements): string[] {
         if (!implements_) return [];
         const arr = Array.isArray(implements_) ? implements_ : [implements_];
         return arr.map((impl) => attrString(impl["@_name"])).filter(Boolean);
@@ -206,9 +206,7 @@ export class GirParser {
             name: attrString(iface["@_name"]),
             cType: attrString(iface["@_c:type"], attrString(iface["@_glib:type-name"])),
             glibTypeName: attrStringOrUndefined(iface["@_glib:type-name"]),
-            prerequisites: this.parsePrerequisites(
-                iface.prerequisite as Record<string, unknown>[] | Record<string, unknown> | undefined,
-            ),
+            prerequisites: this.parsePrerequisites(iface.prerequisite as XmlElements),
             methods: this.parseMethods(ensureArray(iface.method)),
             properties: this.parseProperties(ensureArray(iface.property)),
             signals: this.parseSignals(ensureArray(iface["glib:signal"])),
@@ -216,9 +214,7 @@ export class GirParser {
         }));
     }
 
-    private parsePrerequisites(
-        prerequisites: Record<string, unknown>[] | Record<string, unknown> | undefined,
-    ): string[] {
+    private parsePrerequisites(prerequisites: XmlElements): string[] {
         if (!prerequisites) return [];
         const arr = Array.isArray(prerequisites) ? prerequisites : [prerequisites];
         return arr.map((prereq) => attrString(prereq["@_name"])).filter(Boolean);
@@ -371,7 +367,7 @@ export class GirParser {
             let getter = attrStringOrUndefined(prop["@_getter"]);
             let setter = attrStringOrUndefined(prop["@_setter"]);
 
-            const attributes = prop.attribute as Record<string, unknown>[] | Record<string, unknown> | undefined;
+            const attributes = prop.attribute as XmlElements;
             if (attributes) {
                 const attrList = Array.isArray(attributes) ? attributes : [attributes];
                 for (const attr of attrList) {

@@ -44,11 +44,11 @@ export const renderHook = async <Result, Props>(
     callback: (props: Props) => Result,
     options?: RenderHookOptions<Props>,
 ): Promise<RenderHookResult<Result, Props>> => {
-    const resultRef = { current: undefined as Result };
-    let currentProps = options?.initialProps as Props;
+    const resultRef: { current: Result | undefined } = { current: undefined };
+    let currentProps: Props | undefined = options?.initialProps;
 
-    const TestComponent = ({ props }: { props: Props }): null => {
-        const result = callback(props);
+    const TestComponent = ({ props }: { props: Props | undefined }): null => {
+        const result = callback(props as Props);
         const ref = useRef(resultRef);
         ref.current.current = result;
         return null;
@@ -59,7 +59,7 @@ export const renderHook = async <Result, Props>(
     });
 
     return {
-        result: resultRef,
+        result: resultRef as { current: Result },
         rerender: async (newProps?: Props) => {
             if (newProps !== undefined) {
                 currentProps = newProps;

@@ -41,9 +41,8 @@ const memoize = <T>(
         perCtor = new Map();
         cache.set(ctor, perCtor);
     }
-    if (perCtor.has(key)) {
-        return perCtor.get(key) as T;
-    }
+    const cached = perCtor.get(key);
+    if (cached !== undefined) return cached;
     const result = compute(collectTypeNameChain(ctor));
     perCtor.set(key, result);
     return result;

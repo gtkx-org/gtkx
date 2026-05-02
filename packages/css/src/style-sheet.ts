@@ -107,5 +107,12 @@ export class StyleSheet {
         this.updateScheduled = false;
     }
 
+    /**
+     * No-op stub for emotion-style API compatibility.
+     *
+     * Hydration applies to server-rendered HTML, which has no equivalent in
+     * GTK applications. Provided so that consumers written for browser-based
+     * style-sheet APIs can call it safely.
+     */
     hydrate(_elements: unknown[]): void {}
 }

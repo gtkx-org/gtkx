@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
-import type { Arg, CallbackType, FfiValue, NativeHandle, Ref, Type } from "./types.js";
+import type { Arg, FfiValue, NativeHandle, Ref, Type } from "./types.js";
 
 const require = createRequire(import.meta.url);
 

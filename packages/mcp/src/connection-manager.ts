@@ -144,7 +144,6 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
                 clearTimeout(timeout);
                 this.pendingRequests.delete(requestId);
                 reject(appNotFoundError(app.info.appId));
-                return;
             }
         });
     }

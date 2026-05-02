@@ -2,7 +2,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { toCamelCase } from "@gtkx/gir";
 import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import type { ContainerClass, Props } from "../types.js";
+import type { Props } from "../types.js";
 import { getFocusWidget, isDescendantOf, resolvePropertySetter } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
@@ -108,8 +108,9 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
         const setter = this.resolveChildSetter(parent);
 
         if (!setter) {
-            const parentCtor = parent.constructor as ContainerClass;
-            throw new Error(`Unable to find property for Slot '${this.getId()}' on type '${parentCtor.glibTypeName}'`);
+            throw new Error(
+                `Unable to find property for Slot '${this.getId()}' on type '${parent.constructor.glibTypeName}'`,
+            );
         }
 
         this.cachedSetter = setter;
