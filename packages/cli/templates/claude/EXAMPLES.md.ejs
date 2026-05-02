@@ -6,7 +6,7 @@
 
 ```tsx
 // src/index.tsx
-import { GtkApplicationWindow, GtkLabel, quit } from "@gtkx/react";
+import { GtkApplicationWindow, GtkLabel, render, quit } from "@gtkx/react";
 
 const App = () => (
     <GtkApplicationWindow title="Hello" defaultWidth={400} defaultHeight={300} onClose={quit}>
@@ -14,10 +14,10 @@ const App = () => (
     </GtkApplicationWindow>
 );
 
-export default App;
+render(<App />, "com.example.hello");
 ```
 
-`gtkx dev` and `gtkx build` import this entry and call `render` automatically using the `appId` declared in `gtkx.config.ts`.
+The entry calls `render` directly (similar to `createRoot().render()` in `react-dom`). `gtkx dev` restarts the Node process on entry-level changes so the top-level call only runs once per process life.
 
 ### Modern Adwaita App
 

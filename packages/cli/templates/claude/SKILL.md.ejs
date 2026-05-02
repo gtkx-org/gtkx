@@ -11,7 +11,7 @@ GTKX renders React components as native GTK4 widgets through a Rust FFI bridge.
 
 ```tsx
 // src/index.tsx
-import { GtkApplicationWindow, GtkBox, GtkButton, quit } from "@gtkx/react";
+import { GtkApplicationWindow, GtkBox, GtkButton, render, quit } from "@gtkx/react";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 const App = () => (
@@ -23,10 +23,10 @@ const App = () => (
     </GtkApplicationWindow>
 );
 
-export default App;
+render(<App />, "com.example.myapp");
 ```
 
-The application identifier (and any optional `appFlags`) live in `gtkx.config.ts`; `gtkx dev` and `gtkx build` import the entry's default export and call `render` for you.
+`render` is called once at module top-level — analogous to `createRoot().render()` in `react-dom`. In dev, `gtkx dev` restarts the Node process whenever a non-component file changes, so this top-level call only ever runs once per process life.
 
 ## Essential Patterns
 

@@ -1,44 +1,62 @@
 #!/usr/bin/env node
 
-import "./refresh-runtime.js";
-
+import { type ChildProcess, fork } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
-import { events } from "@gtkx/ffi";
-import { render } from "@gtkx/react";
+import { fileURLToPath } from "node:url";
 import { defineCommand, runMain } from "citty";
-import { resolveApplicationFlags } from "./app-flags.js";
 import { build } from "./builder.js";
-import { loadGtkxConfig } from "./codegen/config-loader.js";
 import { preflightCodegen, runCodegen } from "./codegen/run-codegen.js";
-import type { GtkxConfig } from "./config.js";
 import { createApp } from "./create.js";
-import { createDevServer } from "./dev-server.js";
-import { startMcpClient, stopMcpClient } from "./mcp-client.js";
+import { RELOAD_EXIT_CODE } from "./dev-protocol.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
-type AppModule = {
-    default: () => React.ReactNode;
-};
+const DEV_RUNNER_URL = new URL("./dev-runner.js", import.meta.url);
 
-type RuntimeConfig = {
-    appId: string | undefined;
-    appFlags: number | undefined;
-};
-
-const readRuntimeConfig = async (cwd: string): Promise<RuntimeConfig> => {
-    let config: GtkxConfig | undefined;
-    try {
-        ({ config } = await loadGtkxConfig(cwd));
-    } catch {
-        return { appId: undefined, appFlags: undefined };
+const forwardSignal = (child: ChildProcess, signal: NodeJS.Signals): void => {
+    if (!child.killed) {
+        child.kill(signal);
     }
-    return {
-        appId: config.appId,
-        appFlags: resolveApplicationFlags(config.appFlags),
+};
+
+const runDevSupervisor = async (entryPath: string): Promise<never> => {
+    const runnerPath = fileURLToPath(DEV_RUNNER_URL);
+    let child: ChildProcess | null = null;
+    let shuttingDown = false;
+
+    const launch = (): void => {
+        child = fork(runnerPath, [entryPath], { stdio: "inherit" });
+        child.on("exit", (code, signal) => {
+            child = null;
+            if (shuttingDown) return;
+            if (code === RELOAD_EXIT_CODE) {
+                console.log("[gtkx] Restarting dev runner...");
+                launch();
+                return;
+            }
+            process.exit(code ?? (signal ? 128 + (signal === "SIGINT" ? 2 : 15) : 0));
+        });
     };
+
+    const onSignal = (signal: NodeJS.Signals): void => {
+        shuttingDown = true;
+        if (child) {
+            forwardSignal(child, signal);
+        } else {
+            process.exit(0);
+        }
+    };
+
+    process.on("SIGINT", () => onSignal("SIGINT"));
+    process.on("SIGTERM", () => onSignal("SIGTERM"));
+
+    launch();
+
+    return new Promise<never>(() => {
+        // Supervisor lives until the child exits non-reloadably and triggers process.exit above.
+    });
 };
 
 const dev = defineCommand({
@@ -56,37 +74,10 @@ const dev = defineCommand({
     async run({ args }) {
         const cwd = process.cwd();
         const entryPath = resolve(cwd, args.entry ?? "src/index.tsx");
-        console.log(`[gtkx] Starting dev server for ${entryPath}`);
 
         await preflightCodegen(cwd);
 
-        const { appId: configAppId, appFlags } = await readRuntimeConfig(cwd);
-        const appId = configAppId ?? "org.gtkx.dev";
-
-        const server = await createDevServer({
-            entry: entryPath,
-            vite: {
-                root: cwd,
-            },
-        });
-
-        const mod = (await server.ssrLoadModule(entryPath)) as AppModule;
-        const App = mod.default;
-
-        if (typeof App !== "function") {
-            console.error("[gtkx] Entry file must export a default function component");
-            process.exit(1);
-        }
-
-        console.log(`[gtkx] Rendering app with ID: ${appId}`);
-        render(<App />, appId, appFlags);
-
-        await startMcpClient(appId);
-        events.on("stop", () => {
-            stopMcpClient();
-        });
-
-        console.log("[gtkx] HMR enabled - watching for changes...");
+        await runDevSupervisor(entryPath);
     },
 });
 
@@ -113,18 +104,9 @@ const buildCmd = defineCommand({
 
         await preflightCodegen(cwd);
 
-        const { appId, appFlags } = await readRuntimeConfig(cwd);
-
-        if (appId === undefined) {
-            console.error("[gtkx] Build requires `appId` in gtkx.config.ts (reverse-DNS, e.g. com.example.myapp).");
-            process.exit(1);
-        }
-
         await build({
             entry,
             assetBase: args["asset-base"],
-            appId,
-            appFlags,
             vite: {
                 root: cwd,
             },

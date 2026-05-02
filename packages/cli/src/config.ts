@@ -1,33 +1,4 @@
 /**
- * Names of the flags exposed by GLib's `GApplicationFlags` enum.
- *
- * Mirrors the variants of `Gio.ApplicationFlags` so users can declare them
- * in `gtkx.config.ts` without importing from generated FFI bindings (which
- * would create a chicken-and-egg dependency on first `gtkx codegen` run).
- *
- * The CLI maps each name to its numeric value via `Gio.ApplicationFlags`
- * at dev/build time and OR-combines them into the final bitmask.
- */
-export const APPLICATION_FLAG_NAMES = [
-    "DEFAULT_FLAGS",
-    "IS_SERVICE",
-    "IS_LAUNCHER",
-    "HANDLES_OPEN",
-    "HANDLES_COMMAND_LINE",
-    "SEND_ENVIRONMENT",
-    "NON_UNIQUE",
-    "CAN_OVERRIDE_APP_ID",
-    "ALLOW_REPLACEMENT",
-    "REPLACE",
-] as const;
-
-/**
- * Union of valid `GApplicationFlags` variant names accepted in
- * {@link GtkxConfig.appFlags}.
- */
-export type ApplicationFlagName = (typeof APPLICATION_FLAG_NAMES)[number];
-
-/**
  * User-facing configuration for a GTKX project.
  *
  * Authored in `gtkx.config.ts` at the project root. Loaded by the
@@ -38,9 +9,7 @@ export type ApplicationFlagName = (typeof APPLICATION_FLAG_NAMES)[number];
  * import { defineConfig } from "@gtkx/cli";
  *
  * export default defineConfig({
- *     appId: "com.example.myapp",
  *     libraries: ["Gtk-4.0", "Adw-1"],
- *     appFlags: ["NON_UNIQUE"],
  * });
  * ```
  */
@@ -63,24 +32,6 @@ export type GtkxConfig = {
      * Paths are resolved relative to the project root.
      */
     girPath?: string[];
-
-    /**
-     * GLib application identifier in reverse-DNS form, e.g. `"com.example.myapp"`.
-     *
-     * Required by `gtkx build`. `gtkx dev` falls back to `"org.gtkx.dev"` when
-     * omitted, so quick prototypes work without a config file.
-     */
-    appId?: string;
-
-    /**
-     * `GApplicationFlags` to register the GTK application with, expressed as
-     * an array of variant names. The CLI OR-combines them into a single
-     * bitmask before passing it to the GTK runtime.
-     *
-     * Examples: `["NON_UNIQUE"]`, `["IS_LAUNCHER", "HANDLES_OPEN"]`. When
-     * omitted, the runtime applies its default flags.
-     */
-    appFlags?: ApplicationFlagName[];
 };
 
 /**
@@ -98,7 +49,6 @@ export type GtkxConfig = {
  * import { defineConfig } from "@gtkx/cli";
  *
  * export default defineConfig({
- *     appId: "com.example.myapp",
  *     libraries: ["Gtk-4.0", "Adw-1"],
  *     girPath: ["/opt/custom/share/gir-1.0"],
  * });
@@ -119,25 +69,6 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
 
     if (config.girPath !== undefined && !Array.isArray(config.girPath)) {
         throw new Error("gtkx.config.ts: `girPath` must be an array of strings if provided");
-    }
-
-    if (config.appId !== undefined && !isValidAppId(config.appId)) {
-        throw new Error(
-            `gtkx.config.ts: invalid appId "${config.appId}" — must be a D-Bus well-known name (reverse-DNS, e.g. "com.example.my-app", up to 255 characters)`,
-        );
-    }
-
-    if (config.appFlags !== undefined) {
-        if (!Array.isArray(config.appFlags)) {
-            throw new Error("gtkx.config.ts: `appFlags` must be an array of strings if provided");
-        }
-        for (const flag of config.appFlags) {
-            if (!APPLICATION_FLAG_NAMES.includes(flag)) {
-                throw new Error(
-                    `gtkx.config.ts: invalid appFlag "${flag}" — must be one of ${APPLICATION_FLAG_NAMES.join(", ")}`,
-                );
-            }
-        }
     }
 
     return config;

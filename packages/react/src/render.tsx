@@ -51,39 +51,25 @@ export const useApplication = (): Gtk.Application => {
 };
 
 let container: unknown = null;
-let app: Gtk.Application | null = null;
-let isHotReloading = false;
-
-/**
- * Sets the hot reloading state.
- *
- * Used internally by the dev server to prevent quit() from closing
- * the application during HMR updates.
- *
- * @internal
- */
-export const setHotReloading = (value: boolean): void => {
-    isHotReloading = value;
-};
 
 /**
  * Renders a React element tree into a GTK4 application window.
  *
- * This is the main entry point for GTKX applications. It initializes the GTK4
- * runtime, creates an application container, and begins the React reconciliation
- * process.
+ * Initializes the GTK4 runtime, creates an application container, and begins
+ * the React reconciliation process. Mirrors the role of `createRoot().render()`
+ * in `react-dom`: call once at module top-level in your entry file.
  *
- * In a project scaffolded by `gtkx`, the CLI calls this function for you using
- * the `appId` and `appFlags` declared in `gtkx.config.ts`; user code only needs
- * to export a default component. Calling `render` directly is reserved for
- * advanced embedding scenarios.
+ * In the dev server, the entry module runs once per process. Component-level
+ * edits are applied via React Refresh; edits that propagate up to the entry
+ * trigger a process restart so this function still runs at most once per life.
  *
  * @param element - The root React element to render
  * @param appId - Application ID in reverse-DNS notation (e.g. `"com.example.myapp"`)
- * @param flags - Optional GIO application flags for customizing behavior
+ * @param flags - Optional GIO application flags
  *
  * @example
  * ```tsx
+ * import * as Gio from "@gtkx/ffi/gio";
  * import { render, quit } from "@gtkx/react";
  *
  * const App = () => (
@@ -92,15 +78,13 @@ export const setHotReloading = (value: boolean): void => {
  * </GtkApplicationWindow>
  * );
  *
- * render(<App />, "com.example.myapp");
+ * render(<App />, "com.example.myapp", Gio.ApplicationFlags.NON_UNIQUE);
  * ```
  *
  * @see {@link quit} for shutting down the application
- * @see {@link update} for hot-reloading the rendered tree
  */
 export const render = (element: ReactNode, appId: string, flags?: Gio.ApplicationFlags): void => {
     const application = start(appId, flags);
-    app = application;
 
     container = reconciler.createContainer(
         application,
@@ -130,38 +114,6 @@ export const render = (element: ReactNode, appId: string, flags?: Gio.Applicatio
 };
 
 /**
- * Updates the rendered React element tree.
- *
- * Used primarily for hot module replacement (HMR) during development.
- * Replaces the current component tree with a new element without
- * reinitializing the GTK application.
- *
- * @param element - The new root React element to render
- *
- * @example
- * ```tsx
- * // In HMR handler
- * if (import.meta.hot) {
- * import.meta.hot.accept(() => {
- * update(<App />);
- * });
- * }
- * ```
- *
- * @see {@link render} for initial rendering
- */
-export const update = (element: ReactNode): Promise<void> => {
-    return new Promise((resolve) => {
-        reconciler.updateContainer(
-            <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
-            container,
-            null,
-            resolve,
-        );
-    });
-};
-
-/**
  * Gracefully shuts down the GTK application.
  *
  * Unmounts the React component tree and stops the GTK main loop.
@@ -181,10 +133,6 @@ export const update = (element: ReactNode): Promise<void> => {
  * @see {@link render} for starting the application
  */
 export const quit = (): void => {
-    if (isHotReloading) {
-        return;
-    }
-
     reconciler.updateContainer(null, container, null, () => {
         setTimeout(() => {
             stop();

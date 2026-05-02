@@ -1,1 +1,4 @@
-export { App as default } from "./app.js";
+import { render } from "@gtkx/react";
+import { App } from "./app.js";
+
+render(<App />, "org.gtkx.gtk-demo");

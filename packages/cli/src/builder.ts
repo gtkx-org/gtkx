@@ -3,7 +3,6 @@ import { gtkxAssets } from "./vite-plugin-gtkx-assets.js";
 import { gtkxBuiltUrl } from "./vite-plugin-gtkx-built-url.js";
 import { gtkxGSettings } from "./vite-plugin-gtkx-gsettings.js";
 import { gtkxNative } from "./vite-plugin-gtkx-native.js";
-import { GTKX_RUNNER_ID, gtkxRunner } from "./vite-plugin-gtkx-runner.js";
 
 /**
  * Options for building a GTKX application for production.
@@ -33,17 +32,6 @@ export type BuildOptions = {
      * ```
      */
     assetBase?: string;
-    /**
-     * Application ID (reverse-DNS, e.g. `"com.example.myapp"`) baked into
-     * the bundle's runner. The bundle imports the user entry's default
-     * export and calls `render(<App />, appId, appFlags)` on startup.
-     */
-    appId: string;
-    /**
-     * Optional `Gio.ApplicationFlags` bitmask baked into the bundle's
-     * runner.
-     */
-    appFlags?: number;
     /** Additional Vite configuration */
     vite?: InlineConfig;
 };
@@ -56,9 +44,9 @@ export type BuildOptions = {
  * output directory as `gtkx.node`, making the bundle fully self-contained
  * with no `node_modules` dependency at runtime.
  *
- * The bundle's entry is a generated runner module that imports the user
- * entry's default export and invokes `@gtkx/react`'s `render` with the
- * supplied `appId` and `appFlags`.
+ * The user entry is the bundle's only entry point: it is expected to call
+ * `render(<App />, appId, flags?)` at top level, mirroring the
+ * `createRoot().render()` pattern used in `react-dom`.
  *
  * @param options - Build configuration including entry point and Vite options
  *
@@ -68,7 +56,6 @@ export type BuildOptions = {
  *
  * await build({
  *     entry: "./src/index.tsx",
- *     appId: "com.example.myapp",
  *     vite: { root: process.cwd() },
  * });
  * ```
@@ -76,7 +63,7 @@ export type BuildOptions = {
  * @see {@link BuildOptions} for configuration options
  */
 export const build = async (options: BuildOptions): Promise<void> => {
-    const { entry, assetBase, appId, appFlags, vite: viteConfig } = options;
+    const { entry, assetBase, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
 
     await viteBuild({
@@ -87,11 +74,10 @@ export const build = async (options: BuildOptions): Promise<void> => {
             gtkxAssets(),
             gtkxBuiltUrl(assetBase),
             gtkxNative(root),
-            gtkxRunner({ userEntry: entry, appId, appFlags }),
         ],
         build: {
             ...viteConfig?.build,
-            ssr: true,
+            ssr: entry,
             ssrEmitAssets: true,
             assetsInlineLimit: 0,
             outDir: viteConfig?.build?.outDir ?? "dist",
@@ -99,7 +85,6 @@ export const build = async (options: BuildOptions): Promise<void> => {
             cssMinify: false,
             rollupOptions: {
                 ...viteConfig?.build?.rollupOptions,
-                input: GTKX_RUNNER_ID,
                 output: {
                     ...((viteConfig?.build?.rollupOptions?.output ?? {}) as Record<string, unknown>),
                     entryFileNames: "bundle.js",

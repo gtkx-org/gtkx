@@ -104,8 +104,7 @@ After `gtkx create`, your `package.json` includes:
 You can also use the CLI functions programmatically:
 
 ```typescript
-import { createApp, createDevServer } from "@gtkx/cli";
-import { build } from "@gtkx/cli/builder";
+import { build, createApp } from "@gtkx/cli";
 
 // Create a new project
 await createApp({
@@ -115,11 +114,8 @@ await createApp({
     testing: "vitest",
 });
 
-// Start dev server
-const server = await createDevServer({
-    entry: "src/index.tsx",
-});
-
 // Production build
-await build({ entry: "./src/index.tsx", appId: "com.example.myapp", vite: { root: process.cwd() } });
+await build({ entry: "./src/index.tsx", vite: { root: process.cwd() } });
 ```
+
+The dev server runs as a forked worker; invoke it via the `gtkx dev` CLI rather than constructing it programmatically.

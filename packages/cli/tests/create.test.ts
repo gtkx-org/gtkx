@@ -291,7 +291,7 @@ describe("createApp", () => {
         expect(content.scripts.test).toContain("vitest");
     });
 
-    it("creates gtkx.config.ts with appId and default libraries", async () => {
+    it("creates gtkx.config.ts with the default libraries", async () => {
         const { createApp } = await import("../src/create.js");
         await createApp({
             name: "test-app",
@@ -304,8 +304,8 @@ describe("createApp", () => {
         const content = vol.readFileSync(`${testDir}/test-app/gtkx.config.ts`, "utf-8") as string;
 
         expect(content).toContain('import { defineConfig } from "@gtkx/cli"');
-        expect(content).toContain('appId: "com.example.test"');
         expect(content).toContain('libraries: ["Gtk-4.0", "Adw-1"]');
+        expect(content).not.toContain("appId");
     });
 
     it("creates tsconfig.json", async () => {
@@ -341,7 +341,7 @@ describe("createApp", () => {
         expect(content).not.toContain("appId");
     });
 
-    it("creates index.tsx entry point that re-exports the default App component", async () => {
+    it("creates index.tsx entry point that calls render with the configured appId", async () => {
         const { createApp } = await import("../src/create.js");
         await createApp({
             name: "test-app",
@@ -353,8 +353,9 @@ describe("createApp", () => {
 
         const content = vol.readFileSync(`${testDir}/test-app/src/index.tsx`, "utf-8") as string;
 
-        expect(content).toContain("export { default } from");
-        expect(content).not.toContain("render(");
+        expect(content).toContain("import { render }");
+        expect(content).toContain("import { App }");
+        expect(content).toContain('render(<App />, "org.test.app")');
         expect(content).not.toContain("pkg.gtkx.appId");
     });
 
