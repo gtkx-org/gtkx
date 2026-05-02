@@ -915,69 +915,88 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         });
     }
 
+    private collectColumnViewBoundItems(flatItems: ListItem[]): BoundItem[] {
+        const items: BoundItem[] = [];
+        for (const child of this.children) {
+            if (child instanceof ColumnViewColumnNode) {
+                items.push(...child.collectBoundItems(flatItems));
+            }
+        }
+        return items;
+    }
+
+    private collectStandardBoundItems(
+        flatItems: ListItem[],
+        renderItem: ListProps["renderItem"],
+        renderListItem: ListProps["renderListItem"],
+    ): BoundItem[] {
+        const newBoundItems: BoundItem[] = [];
+        const renderFn = renderItem ?? (this.isDropDown() ? (item: unknown) => String(item ?? "") : null);
+
+        if (renderFn) {
+            this.collectContainerBoundItems(
+                this.containers,
+                this.containerKeys,
+                flatItems,
+                renderFn,
+                newBoundItems,
+            );
+        }
+
+        if (renderListItem && this.isDropDown()) {
+            this.collectContainerBoundItems(
+                this.listContainers,
+                this.listContainerKeys,
+                flatItems,
+                renderListItem,
+                newBoundItems,
+            );
+        }
+
+        return newBoundItems;
+    }
+
+    private collectHeaderBoundItemsForSection(
+        section: ListItem,
+        sectionStart: number,
+        renderHeader: NonNullable<ListProps["renderHeader"]>,
+        out: BoundItem[],
+    ): void {
+        for (const [container, position] of this.headerContainers) {
+            if (position === UNBOUND_POSITION || position !== sectionStart) continue;
+            const key = this.headerContainerKeys.get(container);
+            if (!key) continue;
+            out.push([renderHeader(section.value), container, key]);
+        }
+    }
+
+    private collectAllHeaderBoundItems(renderHeader: NonNullable<ListProps["renderHeader"]>): BoundItem[] {
+        const sections = this.collectSections();
+        const headerBoundItems: BoundItem[] = [];
+        let sectionStart = 0;
+
+        for (const section of sections) {
+            this.collectHeaderBoundItemsForSection(section, sectionStart, renderHeader, headerBoundItems);
+            sectionStart += section.children?.length ?? 0;
+        }
+
+        return headerBoundItems;
+    }
+
     private rebuildBoundItems(): void {
         const { __boundItemsRef, __rerender, __headerBoundItemsRef, renderItem, renderListItem, renderHeader } =
             this.props;
         if (!__boundItemsRef || !__rerender) return;
 
         const flatItems = this.collectFlatItems();
-        const newBoundItems: BoundItem[] = [];
-
-        if (this.isColumnView()) {
-            for (const child of this.children) {
-                if (child instanceof ColumnViewColumnNode) {
-                    newBoundItems.push(...child.collectBoundItems(flatItems));
-                }
-            }
-        } else {
-            const renderFn = renderItem ?? (this.isDropDown() ? (item: unknown) => String(item ?? "") : null);
-
-            if (renderFn) {
-                this.collectContainerBoundItems(
-                    this.containers,
-                    this.containerKeys,
-                    flatItems,
-                    renderFn,
-                    newBoundItems,
-                );
-            }
-
-            if (renderListItem && this.isDropDown()) {
-                this.collectContainerBoundItems(
-                    this.listContainers,
-                    this.listContainerKeys,
-                    flatItems,
-                    renderListItem,
-                    newBoundItems,
-                );
-            }
-        }
+        const newBoundItems = this.isColumnView()
+            ? this.collectColumnViewBoundItems(flatItems)
+            : this.collectStandardBoundItems(flatItems, renderItem, renderListItem);
 
         __boundItemsRef.current = newBoundItems;
 
         if (__headerBoundItemsRef && renderHeader && this.sectionStore !== null) {
-            const sections = this.collectSections();
-            const headerBoundItems: BoundItem[] = [];
-            let sectionStart = 0;
-
-            for (let i = 0; i < sections.length; i++) {
-                const section = sections[i] as ListItem;
-
-                for (const [container, position] of this.headerContainers) {
-                    if (position === UNBOUND_POSITION) continue;
-                    if (position === sectionStart) {
-                        const key = this.headerContainerKeys.get(container);
-                        if (key) {
-                            const content = renderHeader(section.value);
-                            headerBoundItems.push([content, container, key]);
-                        }
-                    }
-                }
-
-                sectionStart += section.children?.length ?? 0;
-            }
-
-            __headerBoundItemsRef.current = headerBoundItems;
+            __headerBoundItemsRef.current = this.collectAllHeaderBoundItems(renderHeader);
         }
 
         __rerender();
