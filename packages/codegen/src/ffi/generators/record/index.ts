@@ -17,6 +17,7 @@ import {
     property,
     typeAlias,
 } from "../../../builders/index.js";
+import type { ConstructorBuilder } from "../../../builders/members/constructor.js";
 import type { Writer } from "../../../builders/writer.js";
 import type { FfiGeneratorOptions } from "../../../core/generator-types.js";
 import type { FfiMapper } from "../../../core/type-system/ffi-mapper.js";
@@ -196,6 +197,146 @@ export class RecordGenerator {
         return cls;
     }
 
+    private buildRecordMeta(record: GirRecord): RecordTypeMeta {
+        return {
+            glibTypeName: record.glibTypeName ?? record.cType,
+            glibGetType: record.glibGetType,
+            copyFunction: record.copyFunction,
+            freeFunction: record.freeFunction,
+        };
+    }
+
+    private buildEmptyParamConstructor(
+        record: GirRecord,
+        recordName: string,
+        mainConstructor: GirConstructor,
+        args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
+        meta: RecordTypeMeta,
+    ): ConstructorBuilder {
+        const initFields = this.fieldBuilder.getInitializableFields(record.fields);
+        if (initFields.length > 0) {
+            this.file.addImport("../../native.js", ["t", "write"]);
+            return constructorDecl({
+                overloads: [
+                    { params: [param("handle", "NativeHandle")] },
+                    { params: [param("init", `${recordName}Init`, { optional: true })] },
+                ],
+                params: [param("init", `${recordName}Init | NativeHandle`, { defaultValue: "{}" })],
+                body: this.writeConstructorWithCallAndInitOverloaded(mainConstructor, args, meta, record.fields),
+            });
+        }
+
+        return constructorDecl({
+            overloads: [{ params: [param("handle", "NativeHandle")] }, { params: [] }],
+            params: [param("handle", "NativeHandle", { optional: true })],
+            body: this.writeConstructorWithCallOverloaded("handle", mainConstructor, args, meta),
+        });
+    }
+
+    private buildParameterizedConstructor(
+        ctorShape: ReturnType<MethodBodyWriter["buildShape"]>,
+        mainConstructor: GirConstructor,
+        args: { type: FfiTypeDescriptor; value: string; optional?: boolean }[],
+        meta: RecordTypeMeta,
+    ): ConstructorBuilder {
+        const params = this.methodBody.buildSignatureParameters(ctorShape, false);
+        const firstParam = params[0] ?? { name: "arg0", type: "unknown" };
+        const baseType = firstParam.type.includes("=>") ? `(${firstParam.type})` : firstParam.type;
+        const implParams = params.map((p, i) =>
+            i === 0
+                ? param(p.name, `${baseType} | NativeHandle`, { optional: p.optional })
+                : param(p.name, p.type, { optional: true }),
+        );
+        return constructorDecl({
+            overloads: [
+                { params: [param("handle", "NativeHandle")] },
+                { params: params.map((p) => param(p.name, p.type, { optional: p.optional })) },
+            ],
+            params: implParams,
+            body: this.writeConstructorWithCallOverloaded(firstParam.name, mainConstructor, args, meta),
+        });
+    }
+
+    private buildAllocConstructor(
+        record: GirRecord,
+        recordName: string,
+        allocFn: string,
+    ): ConstructorBuilder {
+        const initFields = this.fieldBuilder.getInitializableFields(record.fields);
+        if (initFields.length > 0) {
+            this.file.addImport("../../native.js", ["t", "write"]);
+            return constructorDecl({
+                overloads: [
+                    { params: [param("handle", "NativeHandle")] },
+                    { params: [param("init", `${recordName}Init`, { optional: true })] },
+                ],
+                params: [param("init", `${recordName}Init | NativeHandle`, { defaultValue: "{}" })],
+                body: this.writeConstructorWithAllocOverloaded(allocFn, record.fields),
+            });
+        }
+
+        return constructorDecl({
+            overloads: [{ params: [param("handle", "NativeHandle")] }, { params: [] }],
+            params: [param("handle", "NativeHandle", { optional: true })],
+            body: (writer) => {
+                writer.writeLine("if (isNativeHandle(handle)) {");
+                writer.withIndent(() => writer.writeLine("super(handle);"));
+                writer.writeLine("} else {");
+                writer.withIndent(() => writer.writeLine(`super(${allocFn} as NativeHandle);`));
+                writer.writeLine("}");
+            },
+        });
+    }
+
+    private setupMainConstructor(
+        record: GirRecord,
+        recordName: string,
+        cls: ClassDeclarationBuilder,
+        mainConstructor: GirConstructor,
+        supportedConstructors: GirConstructor[],
+        methodStructures: MethodStructure[],
+    ): void {
+        this.file.addImport("@gtkx/native", ["isNativeHandle"]);
+        this.file.addTypeImport("../../object.js", ["NativeHandle"]);
+        const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
+        const ctorShape = this.methodBody.buildShape(mainConstructor.parameters, undefined, 0);
+        const args = this.methodBody.buildShapeCallArguments(ctorShape, mainConstructor.parameters);
+        const meta = this.buildRecordMeta(record);
+
+        cls.setConstructor(
+            filteredParams.length === 0
+                ? this.buildEmptyParamConstructor(record, recordName, mainConstructor, args, meta)
+                : this.buildParameterizedConstructor(ctorShape, mainConstructor, args, meta),
+        );
+
+        const factoryMeta: RecordTypeMeta = {
+            glibTypeName: record.glibTypeName,
+            glibGetType: record.glibGetType,
+            copyFunction: record.copyFunction,
+            freeFunction: record.freeFunction,
+        };
+        for (const ctor of supportedConstructors) {
+            if (ctor !== mainConstructor) {
+                methodStructures.push(this.buildStaticFactoryMethodStructure(ctor, recordName, factoryMeta));
+            }
+        }
+    }
+
+    private setupAllocConstructor(record: GirRecord, recordName: string, cls: ClassDeclarationBuilder): void {
+        if (record.fields.length === 0) return;
+
+        this.file.addImport("@gtkx/native", ["isNativeHandle"]);
+        this.file.addTypeImport("../../object.js", ["NativeHandle"]);
+        const structSize = this.fieldBuilder.calculateStructSize(record.fields);
+        this.file.addImport("../../native.js", ["alloc"]);
+
+        const allocFn = record.glibTypeName
+            ? `alloc(${structSize}, "${record.glibTypeName}", "${this.options.sharedLibrary}")`
+            : `alloc(${structSize})`;
+
+        cls.setConstructor(this.buildAllocConstructor(record, recordName, allocFn));
+    }
+
     private generateConstructors(
         record: GirRecord,
         recordName: string,
@@ -207,124 +348,9 @@ export class RecordGenerator {
         );
 
         if (mainConstructor) {
-            this.file.addImport("@gtkx/native", ["isNativeHandle"]);
-            this.file.addTypeImport("../../object.js", ["NativeHandle"]);
-            const filteredParams = this.methodBody.filterParameters(mainConstructor.parameters);
-            const ctorShape = this.methodBody.buildShape(mainConstructor.parameters, undefined, 0);
-            const args = this.methodBody.buildShapeCallArguments(ctorShape, mainConstructor.parameters);
-            const meta: RecordTypeMeta = {
-                glibTypeName: record.glibTypeName ?? record.cType,
-                glibGetType: record.glibGetType,
-                copyFunction: record.copyFunction,
-                freeFunction: record.freeFunction,
-            };
-
-            if (filteredParams.length === 0) {
-                const initFields = this.fieldBuilder.getInitializableFields(record.fields);
-                if (initFields.length > 0) {
-                    this.file.addImport("../../native.js", ["t", "write"]);
-                    cls.setConstructor(
-                        constructorDecl({
-                            overloads: [
-                                { params: [param("handle", "NativeHandle")] },
-                                { params: [param("init", `${recordName}Init`, { optional: true })] },
-                            ],
-                            params: [param("init", `${recordName}Init | NativeHandle`, { defaultValue: "{}" })],
-                            body: this.writeConstructorWithCallAndInitOverloaded(
-                                mainConstructor,
-                                args,
-                                meta,
-                                record.fields,
-                            ),
-                        }),
-                    );
-                } else {
-                    cls.setConstructor(
-                        constructorDecl({
-                            overloads: [{ params: [param("handle", "NativeHandle")] }, { params: [] }],
-                            params: [param("handle", "NativeHandle", { optional: true })],
-                            body: this.writeConstructorWithCallOverloaded("handle", mainConstructor, args, meta),
-                        }),
-                    );
-                }
-            } else {
-                const params = this.methodBody.buildSignatureParameters(ctorShape, false);
-                const firstParam = params[0] ?? { name: "arg0", type: "unknown" };
-                const baseType = firstParam.type.includes("=>") ? `(${firstParam.type})` : firstParam.type;
-                const implParams = params.map((p, i) =>
-                    i === 0
-                        ? param(p.name, `${baseType} | NativeHandle`, { optional: p.optional })
-                        : param(p.name, p.type, { optional: true }),
-                );
-                cls.setConstructor(
-                    constructorDecl({
-                        overloads: [
-                            { params: [param("handle", "NativeHandle")] },
-                            {
-                                params: params.map((p) => param(p.name, p.type, { optional: p.optional })),
-                            },
-                        ],
-                        params: implParams,
-                        body: this.writeConstructorWithCallOverloaded(firstParam.name, mainConstructor, args, meta),
-                    }),
-                );
-            }
-
-            const factoryMeta: RecordTypeMeta = {
-                glibTypeName: record.glibTypeName,
-                glibGetType: record.glibGetType,
-                copyFunction: record.copyFunction,
-                freeFunction: record.freeFunction,
-            };
-            for (const ctor of supportedConstructors) {
-                if (ctor !== mainConstructor) {
-                    methodStructures.push(this.buildStaticFactoryMethodStructure(ctor, recordName, factoryMeta));
-                }
-            }
+            this.setupMainConstructor(record, recordName, cls, mainConstructor, supportedConstructors, methodStructures);
         } else {
-            const initFields = this.fieldBuilder.getInitializableFields(record.fields);
-            if (record.fields.length > 0) {
-                this.file.addImport("@gtkx/native", ["isNativeHandle"]);
-                this.file.addTypeImport("../../object.js", ["NativeHandle"]);
-                const structSize = this.fieldBuilder.calculateStructSize(record.fields);
-                this.file.addImport("../../native.js", ["alloc"]);
-
-                const allocFn = record.glibTypeName
-                    ? `alloc(${structSize}, "${record.glibTypeName}", "${this.options.sharedLibrary}")`
-                    : `alloc(${structSize})`;
-
-                if (initFields.length > 0) {
-                    this.file.addImport("../../native.js", ["t", "write"]);
-                    cls.setConstructor(
-                        constructorDecl({
-                            overloads: [
-                                { params: [param("handle", "NativeHandle")] },
-                                { params: [param("init", `${recordName}Init`, { optional: true })] },
-                            ],
-                            params: [param("init", `${recordName}Init | NativeHandle`, { defaultValue: "{}" })],
-                            body: this.writeConstructorWithAllocOverloaded(allocFn, record.fields),
-                        }),
-                    );
-                } else {
-                    cls.setConstructor(
-                        constructorDecl({
-                            overloads: [{ params: [param("handle", "NativeHandle")] }, { params: [] }],
-                            params: [param("handle", "NativeHandle", { optional: true })],
-                            body: (writer) => {
-                                writer.writeLine("if (isNativeHandle(handle)) {");
-                                writer.withIndent(() => {
-                                    writer.writeLine("super(handle);");
-                                });
-                                writer.writeLine("} else {");
-                                writer.withIndent(() => {
-                                    writer.writeLine(`super(${allocFn} as NativeHandle);`);
-                                });
-                                writer.writeLine("}");
-                            },
-                        }),
-                    );
-                }
-            }
+            this.setupAllocConstructor(record, recordName, cls);
         }
     }
 
