@@ -99,93 +99,61 @@ export class FfiMapper {
      * @param sizeParamOffset - Offset to add to sizeParamIndex for sized arrays (e.g., 1 for instance methods)
      * @returns Mapped type with TypeScript string, FFI descriptor, and required imports
      */
-    mapType(type: GirType, isReturn = false, parentTransferOwnership?: string, sizeParamOffset = 0): MappedType {
-        const imports: TypeImport[] = [];
+    private mapHashTableType(
+        type: GirType,
+        isReturn: boolean,
+        parentTransferOwnership: string | undefined,
+        imports: TypeImport[],
+    ): MappedType {
+        const keyType = type.getKeyType();
+        const valueType = type.getValueType();
+        const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
 
-        if (type.isHashTable()) {
-            const keyType = type.getKeyType();
-            const valueType = type.getValueType();
-            const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
-
-            if (keyType && valueType) {
-                const elementTransfer = this.deriveElementTransfer(type.transferOwnership ?? parentTransferOwnership);
-                const keyResult = this.mapType(keyType, isReturn, elementTransfer);
-                const valueResult = this.mapType(valueType, isReturn, elementTransfer);
-                imports.push(...keyResult.imports, ...valueResult.imports);
-
-                return {
-                    ts: `Map<${keyResult.ts}, ${valueResult.ts}>`,
-                    ffi: hashTableType(keyResult.ffi, valueResult.ffi, transferFull),
-                    imports,
-                };
-            }
+        if (keyType && valueType) {
+            const elementTransfer = this.deriveElementTransfer(type.transferOwnership ?? parentTransferOwnership);
+            const keyResult = this.mapType(keyType, isReturn, elementTransfer);
+            const valueResult = this.mapType(valueType, isReturn, elementTransfer);
+            imports.push(...keyResult.imports, ...valueResult.imports);
 
             return {
-                ts: "Map<unknown, unknown>",
-                ffi: hashTableType(FFI_POINTER, FFI_POINTER, transferFull),
+                ts: `Map<${keyResult.ts}, ${valueResult.ts}>`,
+                ffi: hashTableType(keyResult.ffi, valueResult.ffi, transferFull),
                 imports,
             };
         }
 
-        if (type.isPtrArray() || type.isGArray() || type.isByteArray()) {
-            return this.mapGLibArrayContainer(type, isReturn, parentTransferOwnership, imports);
-        }
+        return {
+            ts: "Map<unknown, unknown>",
+            ffi: hashTableType(FFI_POINTER, FFI_POINTER, transferFull),
+            imports,
+        };
+    }
 
-        if (type.isArray) {
-            const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
+    private resolveArrayListType(type: GirType): "glist" | "gslist" | "sized" | "fixed" | undefined {
+        if (type.fixedSize !== undefined) return "fixed";
+        const isSizedArray =
+            type.sizeParamIndex !== undefined &&
+            (type.zeroTerminated === false || type.zeroTerminated === undefined);
+        if (isSizedArray) return "sized";
+        if (type.isList()) return type.containerType as "glist" | "gslist";
+        if (type.cType?.includes("GSList")) return "gslist";
+        if (type.cType?.includes("GList")) return "glist";
+        return undefined;
+    }
 
-            const isSizedArray =
-                type.sizeParamIndex !== undefined &&
-                (type.zeroTerminated === false || type.zeroTerminated === undefined);
+    private mapArrayType(
+        type: GirType,
+        isReturn: boolean,
+        parentTransferOwnership: string | undefined,
+        sizeParamOffset: number,
+        imports: TypeImport[],
+    ): MappedType {
+        const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
+        const listType = this.resolveArrayListType(type);
+        const adjustedSizeParamIndex =
+            type.sizeParamIndex !== undefined ? type.sizeParamIndex + sizeParamOffset : undefined;
 
-            const isFixedSizeArray = type.fixedSize !== undefined;
-
-            let listType: "glist" | "gslist" | "sized" | "fixed" | undefined = type.isList()
-                ? (type.containerType as "glist" | "gslist")
-                : type.cType?.includes("GSList")
-                  ? "gslist"
-                  : type.cType?.includes("GList")
-                    ? "glist"
-                    : undefined;
-
-            if (isFixedSizeArray) {
-                listType = "fixed";
-            } else if (isSizedArray) {
-                listType = "sized";
-            }
-
-            const adjustedSizeParamIndex =
-                type.sizeParamIndex !== undefined ? type.sizeParamIndex + sizeParamOffset : undefined;
-
-            if (type.elementType) {
-                const elementTransferOwnership = this.deriveElementTransfer(
-                    type.transferOwnership ?? parentTransferOwnership,
-                );
-                const elementResult = this.mapType(
-                    type.elementType,
-                    isReturn,
-                    elementTransferOwnership,
-                    sizeParamOffset,
-                );
-                imports.push(...elementResult.imports);
-
-                const elementSize = STRUCT_ELEMENT_SIZES.get(type.elementType.name);
-
-                return {
-                    ts: `${elementResult.ts}[]`,
-                    ffi: arrayType(
-                        elementResult.ffi,
-                        listType,
-                        transferFull,
-                        adjustedSizeParamIndex,
-                        type.fixedSize,
-                        elementSize,
-                    ),
-                    imports,
-                    itemKind: elementResult.kind,
-                };
-            }
-
+        if (!type.elementType) {
             return {
                 ts: "unknown[]",
                 ffi: arrayType(FFI_VOID, listType, transferFull, adjustedSizeParamIndex, type.fixedSize),
@@ -193,12 +161,48 @@ export class FfiMapper {
             };
         }
 
+        const elementTransferOwnership = this.deriveElementTransfer(
+            type.transferOwnership ?? parentTransferOwnership,
+        );
+        const elementResult = this.mapType(type.elementType, isReturn, elementTransferOwnership, sizeParamOffset);
+        imports.push(...elementResult.imports);
+        const elementSize = STRUCT_ELEMENT_SIZES.get(type.elementType.name);
+
+        return {
+            ts: `${elementResult.ts}[]`,
+            ffi: arrayType(
+                elementResult.ffi,
+                listType,
+                transferFull,
+                adjustedSizeParamIndex,
+                type.fixedSize,
+                elementSize,
+            ),
+            imports,
+            itemKind: elementResult.kind,
+        };
+    }
+
+    mapType(type: GirType, isReturn = false, parentTransferOwnership?: string, sizeParamOffset = 0): MappedType {
+        const imports: TypeImport[] = [];
+
+        if (type.isHashTable()) {
+            return this.mapHashTableType(type, isReturn, parentTransferOwnership, imports);
+        }
+
+        if (type.isPtrArray() || type.isGArray() || type.isByteArray()) {
+            return this.mapGLibArrayContainer(type, isReturn, parentTransferOwnership, imports);
+        }
+
+        if (type.isArray) {
+            return this.mapArrayType(type, isReturn, parentTransferOwnership, sizeParamOffset, imports);
+        }
+
         if (isStringType(type.name)) {
             const effectiveTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
-            const transferFull = effectiveTransferOwnership !== "none";
             return {
                 ts: "string",
-                ffi: stringType(transferFull),
+                ffi: stringType(effectiveTransferOwnership !== "none"),
                 imports,
             };
         }
@@ -208,8 +212,7 @@ export class FfiMapper {
             return { ...primitive, imports };
         }
 
-        const typeName = type.name;
-        const resolved = this.resolveType(typeName);
+        const resolved = this.resolveType(type.name);
         if (resolved) {
             const effectiveTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
             return this.mapResolvedType(resolved, isReturn, imports, effectiveTransferOwnership);
@@ -231,37 +234,68 @@ export class FfiMapper {
      * @param param - The parameter to map
      * @param sizeParamOffset - Offset to add to sizeParamIndex for sized arrays (e.g., 1 for instance methods)
      */
+    private mapOutOrInoutParameter(param: GirParameter, sizeParamOffset: number, imports: TypeImport[]): MappedType {
+        const innerType = this.mapType(param.type, false, param.transferOwnership, sizeParamOffset);
+        imports.push(...innerType.imports);
+
+        const isBoxedOrGObjectOrStruct =
+            innerType.ffi.type === "boxed" || innerType.ffi.type === "gobject" || innerType.ffi.type === "struct";
+
+        const passHandleDirectly =
+            (param.callerAllocates && isBoxedOrGObjectOrStruct) ||
+            (param.direction === "inout" && isBoxedOrGObjectOrStruct);
+
+        if (passHandleDirectly) {
+            return {
+                ts: innerType.ts,
+                ffi: { ...innerType.ffi, ownership: "borrowed" as const },
+                imports,
+                kind: innerType.kind,
+            };
+        }
+
+        return {
+            ts: `Ref<${innerType.ts}>`,
+            ffi: refType(innerType.ffi),
+            imports,
+            kind: innerType.kind,
+            itemKind: innerType.itemKind,
+            innerTsType: innerType.ts,
+        };
+    }
+
+    private adjustObjectOwnershipForParam(mapped: MappedType, param: GirParameter): MappedType {
+        const isObjectType = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
+        if (!isObjectType) return mapped;
+
+        const isTransferFull = param.transferOwnership === "full" || param.transferOwnership === "container";
+        if (isTransferFull) {
+            return {
+                ts: mapped.ts,
+                ffi: { ...mapped.ffi, ownership: "full" as const },
+                imports: mapped.imports,
+                kind: mapped.kind,
+            };
+        }
+
+        const isTransferNone = param.transferOwnership === "none" || param.transferOwnership === undefined;
+        if (isTransferNone) {
+            return {
+                ts: mapped.ts,
+                ffi: { ...mapped.ffi, ownership: "borrowed" as const },
+                imports: mapped.imports,
+                kind: mapped.kind,
+            };
+        }
+
+        return mapped;
+    }
+
     mapParameter(param: GirParameter, sizeParamOffset = 0): MappedType {
         const imports: TypeImport[] = [];
 
         if (param.direction === "out" || param.direction === "inout") {
-            const innerType = this.mapType(param.type, false, param.transferOwnership, sizeParamOffset);
-            imports.push(...innerType.imports);
-
-            const isBoxedOrGObjectOrStruct =
-                innerType.ffi.type === "boxed" || innerType.ffi.type === "gobject" || innerType.ffi.type === "struct";
-
-            const passHandleDirectly =
-                (param.callerAllocates && isBoxedOrGObjectOrStruct) ||
-                (param.direction === "inout" && isBoxedOrGObjectOrStruct);
-
-            if (passHandleDirectly) {
-                return {
-                    ts: innerType.ts,
-                    ffi: { ...innerType.ffi, ownership: "borrowed" as const },
-                    imports,
-                    kind: innerType.kind,
-                };
-            }
-
-            return {
-                ts: `Ref<${innerType.ts}>`,
-                ffi: refType(innerType.ffi),
-                imports,
-                kind: innerType.kind,
-                itemKind: innerType.itemKind,
-                innerTsType: innerType.ts,
-            };
+            return this.mapOutOrInoutParameter(param, sizeParamOffset, imports);
         }
 
         const qualifiedCallbackName = this.qualifyTypeName(param.type.name);
@@ -285,29 +319,7 @@ export class FfiMapper {
         }
 
         const mapped = this.mapType(param.type, false, param.transferOwnership, sizeParamOffset);
-        const isObjectType = mapped.ffi.type === "gobject" || mapped.ffi.type === "boxed";
-        const isTransferFull = param.transferOwnership === "full" || param.transferOwnership === "container";
-        const isTransferNone = param.transferOwnership === "none" || param.transferOwnership === undefined;
-
-        if (isObjectType && isTransferFull) {
-            return {
-                ts: mapped.ts,
-                ffi: { ...mapped.ffi, ownership: "full" as const },
-                imports: mapped.imports,
-                kind: mapped.kind,
-            };
-        }
-
-        if (isObjectType && isTransferNone) {
-            return {
-                ts: mapped.ts,
-                ffi: { ...mapped.ffi, ownership: "borrowed" as const },
-                imports: mapped.imports,
-                kind: mapped.kind,
-            };
-        }
-
-        return mapped;
+        return this.adjustObjectOwnershipForParam(mapped, param);
     }
 
     /**
@@ -573,6 +585,100 @@ export class FfiMapper {
         return parentTransfer;
     }
 
+    private mapEnumOrFlagsResolved(
+        resolved: ResolvedType,
+        qualifiedName: string,
+        imports: TypeImport[],
+    ): MappedType {
+        const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
+        const signed = resolved.signed ?? false;
+        const factory = resolved.kind === "enum" ? enumType : flagsType;
+        return {
+            ts: qualifiedName,
+            ffi:
+                resolved.glibGetType && sharedLib
+                    ? factory(sharedLib, resolved.glibGetType, signed)
+                    : signedFallback(signed),
+            imports,
+            kind: resolved.kind,
+        };
+    }
+
+    private mapRecordResolved(
+        resolved: ResolvedType,
+        qualifiedName: string,
+        transferFull: boolean,
+        imports: TypeImport[],
+    ): MappedType {
+        if (resolved.isFundamental && resolved.copyFunction && resolved.freeFunction) {
+            const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
+            if (sharedLib) {
+                return {
+                    ts: qualifiedName,
+                    ffi: fundamentalType(
+                        sharedLib,
+                        resolved.copyFunction,
+                        resolved.freeFunction,
+                        transferFull,
+                        resolved.glibTypeName,
+                    ),
+                    imports,
+                    kind: "record",
+                };
+            }
+        }
+
+        const { glibTypeName, glibGetType } = resolved;
+        if (!glibTypeName || !glibGetType) {
+            return {
+                ts: qualifiedName,
+                ffi: structType(resolved.transformedName, transferFull),
+                imports,
+                kind: "record",
+            };
+        }
+
+        const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
+        return {
+            ts: qualifiedName,
+            ffi: boxedType(glibTypeName, transferFull, sharedLib, glibGetType),
+            imports,
+            kind: "record",
+        };
+    }
+
+    private mapClassOrInterfaceResolved(
+        resolved: ResolvedType,
+        qualifiedName: string,
+        transferFull: boolean,
+        imports: TypeImport[],
+    ): MappedType {
+        if (resolved.isFundamental && resolved.refFunc && resolved.unrefFunc) {
+            const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
+            if (sharedLib) {
+                return {
+                    ts: qualifiedName,
+                    ffi: fundamentalType(
+                        sharedLib,
+                        resolved.refFunc,
+                        resolved.unrefFunc,
+                        transferFull,
+                        resolved.glibTypeName,
+                    ),
+                    imports,
+                    kind: resolved.kind,
+                };
+            }
+        }
+
+        return {
+            ts: qualifiedName,
+            ffi: gobjectType(transferFull),
+            imports,
+            kind: resolved.kind,
+        };
+    }
+
     private mapResolvedType(
         resolved: ResolvedType,
         isReturn: boolean,
@@ -600,73 +706,17 @@ export class FfiMapper {
         });
 
         switch (resolved.kind) {
-            case "enum": {
-                const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
-                const signed = resolved.signed ?? false;
-                return {
-                    ts: qualifiedName,
-                    ffi:
-                        resolved.glibGetType && sharedLib
-                            ? enumType(sharedLib, resolved.glibGetType, signed)
-                            : signedFallback(signed),
+            case "enum":
+            case "flags":
+                return this.mapEnumOrFlagsResolved(resolved, qualifiedName, imports);
+
+            case "record":
+                return this.mapRecordResolved(
+                    resolved,
+                    qualifiedName,
+                    this.computeTransferFull(isReturn, transferOwnership),
                     imports,
-                    kind: "enum",
-                };
-            }
-
-            case "flags": {
-                const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
-                const signed = resolved.signed ?? false;
-                return {
-                    ts: qualifiedName,
-                    ffi:
-                        resolved.glibGetType && sharedLib
-                            ? flagsType(sharedLib, resolved.glibGetType, signed)
-                            : signedFallback(signed),
-                    imports,
-                    kind: "flags",
-                };
-            }
-
-            case "record": {
-                const transferFull = this.computeTransferFull(isReturn, transferOwnership);
-
-                if (resolved.isFundamental && resolved.copyFunction && resolved.freeFunction) {
-                    const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
-                    if (sharedLib) {
-                        return {
-                            ts: qualifiedName,
-                            ffi: fundamentalType(
-                                sharedLib,
-                                resolved.copyFunction,
-                                resolved.freeFunction,
-                                transferFull,
-                                resolved.glibTypeName,
-                            ),
-                            imports,
-                            kind: "record",
-                        };
-                    }
-                }
-
-                const { glibTypeName, glibGetType } = resolved;
-                if (!glibTypeName || !glibGetType) {
-                    return {
-                        ts: qualifiedName,
-                        ffi: structType(resolved.transformedName, transferFull),
-                        imports,
-                        kind: "record",
-                    };
-                }
-
-                const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
-                return {
-                    ts: qualifiedName,
-                    ffi: boxedType(glibTypeName, transferFull, sharedLib, glibGetType),
-                    imports,
-                    kind: "record",
-                };
-            }
+                );
 
             case "callback":
                 return {
@@ -677,34 +727,13 @@ export class FfiMapper {
                 };
 
             case "class":
-            case "interface": {
-                const transferFull = this.computeTransferFull(isReturn, transferOwnership);
-
-                if (resolved.isFundamental && resolved.refFunc && resolved.unrefFunc) {
-                    const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
-                    if (sharedLib) {
-                        return {
-                            ts: qualifiedName,
-                            ffi: fundamentalType(
-                                sharedLib,
-                                resolved.refFunc,
-                                resolved.unrefFunc,
-                                transferFull,
-                                resolved.glibTypeName,
-                            ),
-                            imports,
-                            kind: resolved.kind,
-                        };
-                    }
-                }
-
-                return {
-                    ts: qualifiedName,
-                    ffi: gobjectType(transferFull),
+            case "interface":
+                return this.mapClassOrInterfaceResolved(
+                    resolved,
+                    qualifiedName,
+                    this.computeTransferFull(isReturn, transferOwnership),
                     imports,
-                    kind: resolved.kind,
-                };
-            }
+                );
         }
     }
 

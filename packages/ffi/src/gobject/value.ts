@@ -240,52 +240,58 @@ Value.prototype.getStrv = function (): string[] {
     return (g_value_get_boxed_strv(this.handle) as string[] | null) ?? [];
 };
 
+const valueFromFundamental = (value: Value, fundamental: number): unknown => {
+    if (fundamental === Type.BOOLEAN) return value.getBoolean();
+    if (fundamental === Type.INT) return value.getInt();
+    if (fundamental === Type.UINT) return value.getUint();
+    if (fundamental === Type.LONG) return value.getLong();
+    if (fundamental === Type.ULONG) return value.getUlong();
+    if (fundamental === Type.INT64) return value.getInt64();
+    if (fundamental === Type.UINT64) return value.getUint64();
+    if (fundamental === Type.FLOAT) return value.getFloat();
+    if (fundamental === Type.DOUBLE) return value.getDouble();
+    if (fundamental === Type.CHAR) return value.getSchar();
+    if (fundamental === Type.UCHAR) return value.getUchar();
+    if (fundamental === Type.STRING) return value.getString();
+    if (fundamental === Type.ENUM) return value.getEnum();
+    if (fundamental === Type.FLAGS) return value.getFlags();
+    if (fundamental === Type.OBJECT) return value.getObject();
+    if (fundamental === Type.VARIANT) return value.getVariant();
+    if (fundamental === Type.PARAM) return value.getParam();
+    return undefined;
+};
+
+const readPointerValue = (handle: NativeHandle): null => {
+    const ptr = read(handle, t.uint64, 8) as number;
+    if (ptr !== 0) {
+        throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
+    }
+    return null;
+};
+
+const readBoxedValue = (value: Value, gtype: number): unknown => {
+    const concreteName = typeName(gtype);
+    if (!concreteName) {
+        throw new Error(`Cannot resolve type name for boxed GType ${gtype}`);
+    }
+    const cls = findNativeClass(concreteName, false);
+    if (!cls) {
+        throw new Error(`No registered class for boxed GType '${concreteName}'`);
+    }
+    return value.getBoxed(cls);
+};
+
 Value.prototype.toJS = function (): unknown {
     const gtype = this.getType();
 
-    if (gtype === getStrvGType()) {
-        return this.getStrv();
-    }
+    if (gtype === getStrvGType()) return this.getStrv();
 
     const fundamental = typeFundamental(gtype);
+    const fundamentalValue = valueFromFundamental(this, fundamental);
+    if (fundamentalValue !== undefined) return fundamentalValue;
 
-    if (fundamental === Type.BOOLEAN) return this.getBoolean();
-    if (fundamental === Type.INT) return this.getInt();
-    if (fundamental === Type.UINT) return this.getUint();
-    if (fundamental === Type.LONG) return this.getLong();
-    if (fundamental === Type.ULONG) return this.getUlong();
-    if (fundamental === Type.INT64) return this.getInt64();
-    if (fundamental === Type.UINT64) return this.getUint64();
-    if (fundamental === Type.FLOAT) return this.getFloat();
-    if (fundamental === Type.DOUBLE) return this.getDouble();
-    if (fundamental === Type.CHAR) return this.getSchar();
-    if (fundamental === Type.UCHAR) return this.getUchar();
-    if (fundamental === Type.STRING) return this.getString();
-    if (fundamental === Type.ENUM) return this.getEnum();
-    if (fundamental === Type.FLAGS) return this.getFlags();
-    if (fundamental === Type.OBJECT) return this.getObject();
-    if (fundamental === Type.VARIANT) return this.getVariant();
-    if (fundamental === Type.PARAM) return this.getParam();
-
-    if (fundamental === Type.POINTER) {
-        const ptr = read(this.handle, t.uint64, 8) as number;
-        if (ptr !== 0) {
-            throw new Error("G_TYPE_POINTER non-null values cannot be marshalled to JS");
-        }
-        return null;
-    }
-
-    if (fundamental === Type.BOXED) {
-        const concreteName = typeName(gtype);
-        if (!concreteName) {
-            throw new Error(`Cannot resolve type name for boxed GType ${gtype}`);
-        }
-        const cls = findNativeClass(concreteName, false);
-        if (!cls) {
-            throw new Error(`No registered class for boxed GType '${concreteName}'`);
-        }
-        return this.getBoxed(cls);
-    }
+    if (fundamental === Type.POINTER) return readPointerValue(this.handle);
+    if (fundamental === Type.BOXED) return readBoxedValue(this, gtype);
 
     throw new Error(`Unsupported GType for Value.toJS: ${typeName(gtype) ?? gtype}`);
 };
@@ -420,18 +426,42 @@ ValueWithStatics.newFrom = (ffiType: FfiType, value: unknown): Value => {
     }
 };
 
-ValueWithStatics.fromJS = (gtype: number, value: unknown): Value => {
-    if (gtype === getStrvGType()) {
-        if (value === null || value === undefined) {
-            const v = new Value();
-            v.init(gtype);
-            return v;
-        }
-        return Value.newFromStrv(value as string[]);
+const newCharValue = (gtype: number, fundamental: number, value: unknown): Value => {
+    const v = new Value();
+    v.init(gtype);
+    if (fundamental === Type.CHAR) v.setSchar(value as number);
+    else v.setUchar(value as number);
+    return v;
+};
+
+const newPointerValue = (gtype: number, value: unknown): Value => {
+    if (value !== null && value !== undefined) {
+        throw new Error("G_TYPE_POINTER properties cannot be set from a non-null JS value");
     }
+    const v = new Value();
+    v.init(gtype);
+    return v;
+};
 
-    const fundamental = typeFundamental(gtype);
+const newBoxedValue = (gtype: number, value: unknown): Value => {
+    if (value === null || value === undefined) {
+        const v = new Value();
+        v.init(gtype);
+        return v;
+    }
+    return Value.newFromBoxed(value as NativeObject);
+};
 
+const newStrvValue = (gtype: number, value: unknown): Value => {
+    if (value === null || value === undefined) {
+        const v = new Value();
+        v.init(gtype);
+        return v;
+    }
+    return Value.newFromStrv(value as string[]);
+};
+
+const valueFromFundamentalFactory = (gtype: number, fundamental: number, value: unknown): Value | null => {
     if (fundamental === Type.BOOLEAN) return Value.newFromBoolean(value as boolean);
     if (fundamental === Type.INT) return Value.newFromInt(value as number);
     if (fundamental === Type.UINT) return Value.newFromUint(value as number);
@@ -446,13 +476,18 @@ ValueWithStatics.fromJS = (gtype: number, value: unknown): Value => {
     if (fundamental === Type.FLAGS) return Value.newFromFlags(gtype, value as number);
     if (fundamental === Type.OBJECT) return Value.newFromObject(value as GObject | null);
     if (fundamental === Type.VARIANT) return Value.newFromVariant(value as NativeObject);
+    return null;
+};
+
+ValueWithStatics.fromJS = (gtype: number, value: unknown): Value => {
+    if (gtype === getStrvGType()) return newStrvValue(gtype, value);
+
+    const fundamental = typeFundamental(gtype);
+    const fundamentalValue = valueFromFundamentalFactory(gtype, fundamental, value);
+    if (fundamentalValue) return fundamentalValue;
 
     if (fundamental === Type.CHAR || fundamental === Type.UCHAR) {
-        const v = new Value();
-        v.init(gtype);
-        if (fundamental === Type.CHAR) v.setSchar(value as number);
-        else v.setUchar(value as number);
-        return v;
+        return newCharValue(gtype, fundamental, value);
     }
 
     if (fundamental === Type.PARAM) {
@@ -462,23 +497,8 @@ ValueWithStatics.fromJS = (gtype: number, value: unknown): Value => {
         return v;
     }
 
-    if (fundamental === Type.POINTER) {
-        if (value !== null && value !== undefined) {
-            throw new Error("G_TYPE_POINTER properties cannot be set from a non-null JS value");
-        }
-        const v = new Value();
-        v.init(gtype);
-        return v;
-    }
-
-    if (fundamental === Type.BOXED) {
-        if (value === null || value === undefined) {
-            const v = new Value();
-            v.init(gtype);
-            return v;
-        }
-        return Value.newFromBoxed(value as NativeObject);
-    }
+    if (fundamental === Type.POINTER) return newPointerValue(gtype, value);
+    if (fundamental === Type.BOXED) return newBoxedValue(gtype, value);
 
     throw new Error(`Unsupported GType for Value.fromJS: ${typeName(gtype) ?? gtype}`);
 };
