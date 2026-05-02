@@ -39,25 +39,19 @@ interface PastedContent {
 
 let gdkRgbaTypeCache: number | null = null;
 const getGdkRgbaType = () => {
-    if (gdkRgbaTypeCache === null) {
-        gdkRgbaTypeCache = GObject.typeFromName("GdkRGBA");
-    }
+    gdkRgbaTypeCache ??= GObject.typeFromName("GdkRGBA");
     return gdkRgbaTypeCache;
 };
 
 let gdkPaintableTypeCache: number | null = null;
 const getGdkPaintableType = () => {
-    if (gdkPaintableTypeCache === null) {
-        gdkPaintableTypeCache = GObject.typeFromName("GdkPaintable");
-    }
+    gdkPaintableTypeCache ??= GObject.typeFromName("GdkPaintable");
     return gdkPaintableTypeCache;
 };
 
 let gFileTypeCache: number | null = null;
 const getGFileType = () => {
-    if (gFileTypeCache === null) {
-        gFileTypeCache = GObject.typeFromName("GFile");
-    }
+    gFileTypeCache ??= GObject.typeFromName("GFile");
     return gFileTypeCache;
 };
 

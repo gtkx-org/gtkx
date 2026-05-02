@@ -17,9 +17,7 @@ import sourceCode from "./pickers.tsx?raw";
 
 let gFileTypeCache: number | null = null;
 const getGFileType = () => {
-    if (gFileTypeCache === null) {
-        gFileTypeCache = GObject.typeFromName("GFile");
-    }
+    gFileTypeCache ??= GObject.typeFromName("GFile");
     return gFileTypeCache;
 };
 

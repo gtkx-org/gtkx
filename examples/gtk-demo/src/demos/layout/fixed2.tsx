@@ -17,9 +17,7 @@ const Fixed2Demo = () => {
     const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
         const now = frameClock.getFrameTime();
 
-        if (startTimeRef.current === null) {
-            startTimeRef.current = now;
-        }
+        startTimeRef.current ??= now;
 
         const duration = (now - startTimeRef.current) / 1_000_000;
         const angle = duration * 90;

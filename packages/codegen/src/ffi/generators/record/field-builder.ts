@@ -173,8 +173,8 @@ export class FieldBuilder {
     /**
      * Checks if a type can be written to memory.
      */
-    isWritableType(type: { name: string | unknown; cType?: string }): boolean {
-        return isMemoryWritableType(String(type.name));
+    isWritableType(type: { name: unknown; cType?: string }): boolean {
+        return isMemoryWritableType(typeof type.name === "string" ? type.name : "");
     }
 
     /**
@@ -256,10 +256,10 @@ export class FieldBuilder {
     }
 
     private getFieldSize(type: {
-        name: string | unknown;
+        name: unknown;
         cType?: string;
         isArray?: boolean;
-        elementType?: { name: string | unknown; cType?: string } | null;
+        elementType?: { name: unknown; cType?: string } | null;
         fixedSize?: number;
     }): number {
         if (type.cType?.includes("*")) {
@@ -295,10 +295,10 @@ export class FieldBuilder {
 
     private getFieldAlignment(
         type: {
-            name: string | unknown;
+            name: unknown;
             cType?: string;
             isArray?: boolean;
-            elementType?: { name: string | unknown; cType?: string } | null;
+            elementType?: { name: unknown; cType?: string } | null;
             fixedSize?: number;
         },
         visited = new Set<string>(),

@@ -109,9 +109,7 @@ interface CanvasItem {
 
 let gdkRgbaTypeCache: number | null = null;
 function getGdkRgbaType(): number {
-    if (gdkRgbaTypeCache === null) {
-        gdkRgbaTypeCache = GObject.typeFromName("GdkRGBA");
-    }
+    gdkRgbaTypeCache ??= GObject.typeFromName("GdkRGBA");
     return gdkRgbaTypeCache;
 }
 
