@@ -1,10 +1,4 @@
-/**
- * Opaque handle for a native value.
- *
- * Wraps GObject, Boxed, and Fundamental type instances.
- * This branded type ensures type safety for native object references.
- */
-export type NativeHandle = { readonly __brand: "NativeHandle" };
+import type { NativeHandle } from "./index.js";
 
 /**
  * Union of all possible FFI return value types.
@@ -50,7 +44,7 @@ type FundamentalType = {
     typeName?: string;
 };
 
-type ArrayType = {
+export type ArrayType = {
     type: "array";
     itemType: Type;
     kind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
@@ -60,14 +54,14 @@ type ArrayType = {
     fixedSize?: number;
 };
 
-type HashTableType = {
+export type HashTableType = {
     type: "hashtable";
     keyType: Type;
     valueType: Type;
     ownership: Ownership;
 };
 
-type RefType = { type: "ref"; innerType: Type };
+export type RefType = { type: "ref"; innerType: Type };
 
 type UnicharType = { type: "unichar" };
 

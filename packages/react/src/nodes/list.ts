@@ -1,4 +1,3 @@
-import { getNativeId } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
@@ -249,7 +248,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                 const expander = new Gtk.TreeExpander();
                 listItem.setChild(expander);
                 this.containers.set(expander, UNBOUND_POSITION);
-                this.containerKeys.set(expander, String(getNativeId(expander.handle)));
+                this.containerKeys.set(expander, String(expander.handle.id));
                 this.treeExpanders.set(listItem, expander);
             } else {
                 const { width, height } = this.getEstimatedItemSize();
@@ -259,7 +258,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                     listItem.setChild(placeholder);
                 }
                 this.containers.set(listItem, UNBOUND_POSITION);
-                this.containerKeys.set(listItem, String(getNativeId(listItem.handle)));
+                this.containerKeys.set(listItem, String(listItem.handle.id));
             }
         });
 

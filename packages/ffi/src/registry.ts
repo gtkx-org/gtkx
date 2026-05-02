@@ -1,4 +1,4 @@
-import { getNativeId, type NativeHandle } from "@gtkx/native";
+import type { NativeHandle } from "@gtkx/native";
 import { typeFromName, typeName, typeNameFromInstance, typeParent } from "./generated/gobject/functions.js";
 import { TypeInstance } from "./generated/gobject/type-instance.js";
 import type { NativeClass, NativeObject } from "./object.js";
@@ -89,7 +89,7 @@ const cleanupObjectRegistry = new FinalizationRegistry<number>((pointerId) => {
  * @param obj - The native object wrapper to register
  */
 export function registerNativeObject(obj: NativeObject): void {
-    const pointerId = getNativeId(obj.handle);
+    const pointerId = obj.handle.id;
     objectRegistry.set(pointerId, new WeakRef(obj));
     cleanupObjectRegistry.register(obj, pointerId, obj);
 }
@@ -105,7 +105,7 @@ export function registerNativeObject(obj: NativeObject): void {
  * @returns The existing wrapper, or null if not found
  */
 export function findNativeObject(handle: NativeHandle): NativeObject | null {
-    const pointerId = getNativeId(handle);
+    const pointerId = handle.id;
     const ref = objectRegistry.get(pointerId);
 
     if (!ref) return null;

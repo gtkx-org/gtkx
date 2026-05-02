@@ -357,7 +357,7 @@ ValueWithStatics.newFromObject = (value: GObject | null): Value => {
 
 ValueWithStatics.newFromBoxed = (value: NativeObject): Value => {
     const ctor = value.constructor as typeof NativeObject;
-    return initValue(typeFromName(ctor.glibTypeName), (v) => v.setBoxed(value.handle as unknown as number));
+    return initValue(typeFromName(ctor.glibTypeName), (v) => v.setBoxed(value.handle.id));
 };
 
 ValueWithStatics.newFromStrv = (value: string[]): Value =>
