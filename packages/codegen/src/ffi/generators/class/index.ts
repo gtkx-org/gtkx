@@ -266,6 +266,34 @@ export class ClassGenerator {
         return false;
     }
 
+    private resolveInterfaceNamespace(ifaceQualifiedName: string): string {
+        if (!ifaceQualifiedName.includes(".")) return this.options.namespace;
+        return ifaceQualifiedName.split(".")[0] ?? this.options.namespace;
+    }
+
+    private collectMethodsForInterface(
+        method: GirMethod,
+        ifaceName: string,
+        sourceNamespace: string,
+        classMethodNames: Set<string>,
+        parentMethodNames: Set<string>,
+        seenInterfaceMethodNames: Set<string>,
+        interfaceMethodsByNamespace: Map<string, GirMethod[]>,
+    ): void {
+        if (classMethodNames.has(method.name) || parentMethodNames.has(method.name)) return;
+
+        if (seenInterfaceMethodNames.has(method.name)) {
+            this.handleInterfaceMethodRename(method, ifaceName);
+        } else {
+            seenInterfaceMethodNames.add(method.name);
+        }
+
+        if (!interfaceMethodsByNamespace.has(sourceNamespace)) {
+            interfaceMethodsByNamespace.set(sourceNamespace, []);
+        }
+        interfaceMethodsByNamespace.get(sourceNamespace)?.push(method);
+    }
+
     private collectInterfaceMethods(parentMethodNames: Set<string>): {
         interfaceMethods: GirMethod[];
         interfaceMethodsByNamespace: Map<string, GirMethod[]>;
@@ -278,25 +306,18 @@ export class ClassGenerator {
             const iface = this.repository.resolveInterface(ifaceQualifiedName);
             if (!iface) continue;
 
-            const sourceNamespace = ifaceQualifiedName.includes(".")
-                ? (ifaceQualifiedName.split(".")[0] ?? this.options.namespace)
-                : this.options.namespace;
+            const sourceNamespace = this.resolveInterfaceNamespace(ifaceQualifiedName);
 
             for (const method of iface.methods) {
-                if (classMethodNames.has(method.name) || parentMethodNames.has(method.name)) {
-                    continue;
-                }
-
-                if (seenInterfaceMethodNames.has(method.name)) {
-                    this.handleInterfaceMethodRename(method, iface.name);
-                } else {
-                    seenInterfaceMethodNames.add(method.name);
-                }
-
-                if (!interfaceMethodsByNamespace.has(sourceNamespace)) {
-                    interfaceMethodsByNamespace.set(sourceNamespace, []);
-                }
-                interfaceMethodsByNamespace.get(sourceNamespace)?.push(method);
+                this.collectMethodsForInterface(
+                    method,
+                    iface.name,
+                    sourceNamespace,
+                    classMethodNames,
+                    parentMethodNames,
+                    seenInterfaceMethodNames,
+                    interfaceMethodsByNamespace,
+                );
             }
         }
 

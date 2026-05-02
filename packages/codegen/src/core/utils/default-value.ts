@@ -43,33 +43,31 @@ type EnumResolution = {
     namespace: string;
 };
 
+function findEnumMember(
+    container: { name: string; members: ReadonlyArray<{ name: string; cIdentifier: string }> },
+    cIdentifier: string,
+    namespace: string,
+): EnumResolution | null {
+    const member = container.members.find((m) => m.cIdentifier === cIdentifier);
+    if (!member) return null;
+    return {
+        enumName: toPascalCase(container.name),
+        memberName: toConstantCase(member.name),
+        namespace,
+    };
+}
+
 function resolveEnumByCIdentifier(cIdentifier: string, repo: GirRepository): EnumResolution | null {
     for (const [, ns] of repo.getAllNamespaces()) {
         for (const [, enumeration] of ns.enumerations) {
-            for (const member of enumeration.members) {
-                if (member.cIdentifier === cIdentifier) {
-                    return {
-                        enumName: toPascalCase(enumeration.name),
-                        memberName: toConstantCase(member.name),
-                        namespace: ns.name,
-                    };
-                }
-            }
+            const resolved = findEnumMember(enumeration, cIdentifier, ns.name);
+            if (resolved) return resolved;
         }
-
         for (const [, bitfield] of ns.bitfields) {
-            for (const member of bitfield.members) {
-                if (member.cIdentifier === cIdentifier) {
-                    return {
-                        enumName: toPascalCase(bitfield.name),
-                        memberName: toConstantCase(member.name),
-                        namespace: ns.name,
-                    };
-                }
-            }
+            const resolved = findEnumMember(bitfield, cIdentifier, ns.name);
+            if (resolved) return resolved;
         }
     }
-
     return null;
 }
 

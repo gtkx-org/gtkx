@@ -81,6 +81,22 @@ export class GirLoader {
     }
 
     private topologicalSort(graph: Map<string, { filePath: string; dependencies: string[] }>): string[] {
+        const { inDegree, dependents } = this.buildDependencyMaps(graph);
+        const queue = this.collectInitialQueue(inDegree);
+        const sorted = this.processQueue(queue, inDegree, dependents);
+
+        if (sorted.length !== graph.size) {
+            const remaining = [...graph.keys()].filter((k) => !sorted.includes(k));
+            throw new Error(`Circular GIR dependency detected involving: ${remaining.join(", ")}`);
+        }
+
+        return sorted;
+    }
+
+    private buildDependencyMaps(graph: Map<string, { filePath: string; dependencies: string[] }>): {
+        inDegree: Map<string, number>;
+        dependents: Map<string, string[]>;
+    } {
         const inDegree = new Map<string, number>();
         const dependents = new Map<string, string[]>();
 
@@ -95,13 +111,22 @@ export class GirLoader {
             }
         }
 
+        return { inDegree, dependents };
+    }
+
+    private collectInitialQueue(inDegree: Map<string, number>): string[] {
         const queue: string[] = [];
         for (const [key, degree] of inDegree) {
-            if (degree === 0) {
-                queue.push(key);
-            }
+            if (degree === 0) queue.push(key);
         }
+        return queue;
+    }
 
+    private processQueue(
+        queue: string[],
+        inDegree: Map<string, number>,
+        dependents: Map<string, string[]>,
+    ): string[] {
         const sorted: string[] = [];
         while (queue.length > 0) {
             const key = queue.shift();
@@ -111,17 +136,9 @@ export class GirLoader {
             for (const dependent of dependents.get(key) ?? []) {
                 const newDegree = (inDegree.get(dependent) ?? 0) - 1;
                 inDegree.set(dependent, newDegree);
-                if (newDegree === 0) {
-                    queue.push(dependent);
-                }
+                if (newDegree === 0) queue.push(dependent);
             }
         }
-
-        if (sorted.length !== graph.size) {
-            const remaining = [...graph.keys()].filter((k) => !sorted.includes(k));
-            throw new Error(`Circular GIR dependency detected involving: ${remaining.join(", ")}`);
-        }
-
         return sorted;
     }
 }

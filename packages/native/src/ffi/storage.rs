@@ -173,18 +173,46 @@ impl FfiStorage {
     }
 }
 
+impl FfiStorage {
+    fn drop_gclosure(&self) {
+        if !self.ptr.is_null() {
+            unsafe {
+                glib::gobject_ffi::g_closure_unref(self.ptr as *mut glib::gobject_ffi::GClosure);
+            };
+        }
+    }
+
+    fn drop_string_glist(data: &StringGListData) {
+        if !(data.should_free && !data.list_ptr.is_null()) {
+            return;
+        }
+        if data.elements_duped {
+            unsafe {
+                glib::ffi::g_list_free_full(data.list_ptr, Some(glib::ffi::g_free));
+            }
+        } else {
+            unsafe { glib::ffi::g_list_free(data.list_ptr) };
+        }
+    }
+
+    fn drop_string_gslist(data: &StringGSListData) {
+        if !(data.should_free && !data.list_ptr.is_null()) {
+            return;
+        }
+        if data.elements_duped {
+            unsafe {
+                glib::ffi::g_slist_free_full(data.list_ptr, Some(glib::ffi::g_free));
+            }
+        } else {
+            unsafe { glib::ffi::g_slist_free(data.list_ptr) };
+        }
+    }
+}
+
 impl Drop for FfiStorage {
     fn drop(&mut self) {
         match &self.kind {
-            FfiStorageKind::GClosure => {
-                if !self.ptr.is_null() {
-                    unsafe {
-                        glib::gobject_ffi::g_closure_unref(
-                            self.ptr as *mut glib::gobject_ffi::GClosure,
-                        );
-                    };
-                }
-            }
+            FfiStorageKind::GClosure => self.drop_gclosure(),
             FfiStorageKind::HashTable(data) => {
                 if data.should_free && !data.handle.is_null() {
                     unsafe { glib::ffi::g_hash_table_unref(data.handle) };
@@ -210,28 +238,8 @@ impl Drop for FfiStorage {
                     unsafe { glib::ffi::g_byte_array_unref(data.array_ptr) };
                 }
             }
-            FfiStorageKind::StringGList(data) => {
-                if data.should_free && !data.list_ptr.is_null() {
-                    if data.elements_duped {
-                        unsafe {
-                            glib::ffi::g_list_free_full(data.list_ptr, Some(glib::ffi::g_free));
-                        }
-                    } else {
-                        unsafe { glib::ffi::g_list_free(data.list_ptr) };
-                    }
-                }
-            }
-            FfiStorageKind::StringGSList(data) => {
-                if data.should_free && !data.list_ptr.is_null() {
-                    if data.elements_duped {
-                        unsafe {
-                            glib::ffi::g_slist_free_full(data.list_ptr, Some(glib::ffi::g_free));
-                        }
-                    } else {
-                        unsafe { glib::ffi::g_slist_free(data.list_ptr) };
-                    }
-                }
-            }
+            FfiStorageKind::StringGList(data) => Self::drop_string_glist(data),
+            FfiStorageKind::StringGSList(data) => Self::drop_string_gslist(data),
             FfiStorageKind::Unit
             | FfiStorageKind::U8Vec(_)
             | FfiStorageKind::I8Vec(_)

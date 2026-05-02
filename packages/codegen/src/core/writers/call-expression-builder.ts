@@ -181,6 +181,23 @@ export class CallExpressionBuilder {
      * For hashtable types, generates: `Array.from(value)` to convert Map to array of tuples.
      * For primitives, just returns the value name.
      */
+    private buildHandleAccessExpression(valueName: string, mappedType: MappedType, nullable: boolean): string {
+        const isUnknownType = mappedType.ts === "unknown";
+        if (isUnknownType) {
+            return nullable
+                ? `(${valueName} as { handle: NativeHandle } | null)?.handle`
+                : `(${valueName} as { handle: NativeHandle }).handle`;
+        }
+        return nullable ? `${valueName}?.handle` : `${valueName}.handle`;
+    }
+
+    private buildHashTableExpression(valueName: string, mappedType: MappedType): string {
+        if (isHandleBackedType(mappedType.ffi.valueType?.type)) {
+            return `${valueName} ? Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
+        }
+        return `${valueName} ? Array.from(${valueName}) : null`;
+    }
+
     buildValueExpression(valueName: string, mappedType: MappedType, nullable = false): string {
         const needsPtr =
             mappedType.ffi.type === "gobject" ||
@@ -189,26 +206,19 @@ export class CallExpressionBuilder {
             mappedType.ffi.type === "fundamental";
 
         if (needsPtr) {
-            const isUnknownType = mappedType.ts === "unknown";
-            if (isUnknownType) {
-                return nullable
-                    ? `(${valueName} as { handle: NativeHandle } | null)?.handle`
-                    : `(${valueName} as { handle: NativeHandle }).handle`;
-            }
-            return nullable ? `${valueName}?.handle` : `${valueName}.handle`;
+            return this.buildHandleAccessExpression(valueName, mappedType, nullable);
         }
 
-        if (mappedType.ffi.type === "array" && mappedType.ffi.itemType) {
-            if (isHandleBackedType(mappedType.ffi.itemType.type)) {
-                return nullable ? `${valueName}?.map(item => item.handle)` : `${valueName}.map(item => item.handle)`;
-            }
+        if (
+            mappedType.ffi.type === "array" &&
+            mappedType.ffi.itemType &&
+            isHandleBackedType(mappedType.ffi.itemType.type)
+        ) {
+            return nullable ? `${valueName}?.map(item => item.handle)` : `${valueName}.map(item => item.handle)`;
         }
 
         if (mappedType.ffi.type === "hashtable") {
-            if (isHandleBackedType(mappedType.ffi.valueType?.type)) {
-                return `${valueName} ? Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
-            }
-            return `${valueName} ? Array.from(${valueName}) : null`;
+            return this.buildHashTableExpression(valueName, mappedType);
         }
 
         return valueName;

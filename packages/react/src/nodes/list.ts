@@ -418,32 +418,26 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         if (widget instanceof Gtk.ListView) {
             widget.setFactory(this.factory);
-            if (this.headerFactory) {
-                widget.setHeaderFactory(this.headerFactory);
-            }
+            this.applyHeaderFactory(widget);
         } else if (widget instanceof Gtk.ColumnView) {
-            if (this.headerFactory) {
-                widget.setHeaderFactory(this.headerFactory);
-            }
+            this.applyHeaderFactory(widget);
         } else if (widget instanceof Gtk.GridView) {
             widget.setFactory(this.factory);
-        } else if (widget instanceof Gtk.DropDown) {
+        } else if (widget instanceof Gtk.DropDown || widget instanceof Adw.ComboRow) {
             widget.setFactory(this.factory);
-            if (this.listFactory) {
-                widget.setListFactory(this.listFactory);
-            }
-            if (this.headerFactory) {
-                widget.setHeaderFactory(this.headerFactory);
-            }
-        } else if (widget instanceof Adw.ComboRow) {
-            widget.setFactory(this.factory);
-            if (this.listFactory) {
-                widget.setListFactory(this.listFactory);
-            }
-            if (this.headerFactory) {
-                widget.setHeaderFactory(this.headerFactory);
-            }
+            this.applyListAndHeaderFactories(widget);
         }
+    }
+
+    private applyHeaderFactory(widget: Gtk.ListView | Gtk.ColumnView): void {
+        if (this.headerFactory) {
+            widget.setHeaderFactory(this.headerFactory);
+        }
+    }
+
+    private applyListAndHeaderFactories(widget: Gtk.DropDown | Adw.ComboRow): void {
+        if (this.listFactory) widget.setListFactory(this.listFactory);
+        if (this.headerFactory) widget.setHeaderFactory(this.headerFactory);
     }
 
     private syncModel(): void {
@@ -467,31 +461,24 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         this.scheduleBoundItemsUpdate();
     }
 
-    private syncTreeModel(): void {
+    private initializeTreeModel(rootItems: ListItem[], newSize: number): void {
         if (!this.model) return;
+        this.model.splice(0, this.model.getNItems(), new Array(newSize).fill(""));
+        this.rootItemIds = rootItems.map((item) => item.id);
 
-        const rootItems = this.collectRootItems();
-        const newSize = rootItems.length;
+        this.treeModel = new Gtk.TreeListModel(
+            this.model as Gio.ListModel,
+            false,
+            this.props.autoexpand ?? false,
+            (_item: GObject.Object) => this.createChildModel(_item),
+        );
 
-        if (!this.treeModel) {
-            this.model.splice(0, this.model.getNItems(), new Array(newSize).fill(""));
-            this.rootItemIds = rootItems.map((item) => item.id);
+        this.assignBaseModelToSelection(this.treeModel);
+        this.scheduleBoundItemsUpdate();
+    }
 
-            this.treeModel = new Gtk.TreeListModel(
-                this.model as Gio.ListModel,
-                false,
-                this.props.autoexpand ?? false,
-                (_item: GObject.Object) => this.createChildModel(_item),
-            );
-
-            this.assignBaseModelToSelection(this.treeModel);
-
-            this.scheduleBoundItemsUpdate();
-            return;
-        }
-
-        const oldSize = this.model.getNItems();
-        const overlap = Math.min(oldSize, newSize);
+    private collectOverlapTransitions(rootItems: ListItem[], overlap: number): number[] {
+        if (!this.model) return [];
         const transitionPositions: number[] = [];
 
         for (let i = 0; i < overlap; i++) {
@@ -518,6 +505,11 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             }
         }
 
+        return transitionPositions;
+    }
+
+    private clearRemovedTreeItems(overlap: number, oldSize: number): void {
+        if (!this.model) return;
         for (let i = overlap; i < oldSize; i++) {
             const obj = this.model.getObject(i);
             if (obj) {
@@ -525,19 +517,39 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                 this.queriedLeaves.delete(obj.handle);
             }
         }
+    }
 
-        resizeStringList(this.model, newSize);
-
+    private applyTransitionResets(transitionPositions: number[], newSize: number): void {
+        if (!this.model) return;
         for (const pos of transitionPositions) {
-            if (pos < newSize) {
-                const oldObj = this.model.getObject(pos);
-                if (oldObj) {
-                    this.queriedLeaves.delete(oldObj.handle);
-                    this.treeChildModels.delete(oldObj.handle);
-                }
-                this.model.splice(pos, 1, [""]);
+            if (pos >= newSize) continue;
+            const oldObj = this.model.getObject(pos);
+            if (oldObj) {
+                this.queriedLeaves.delete(oldObj.handle);
+                this.treeChildModels.delete(oldObj.handle);
             }
+            this.model.splice(pos, 1, [""]);
         }
+    }
+
+    private syncTreeModel(): void {
+        if (!this.model) return;
+
+        const rootItems = this.collectRootItems();
+        const newSize = rootItems.length;
+
+        if (!this.treeModel) {
+            this.initializeTreeModel(rootItems, newSize);
+            return;
+        }
+
+        const oldSize = this.model.getNItems();
+        const overlap = Math.min(oldSize, newSize);
+
+        const transitionPositions = this.collectOverlapTransitions(rootItems, overlap);
+        this.clearRemovedTreeItems(overlap, oldSize);
+        resizeStringList(this.model, newSize);
+        this.applyTransitionResets(transitionPositions, newSize);
 
         this.rootItemIds = rootItems.map((item) => item.id);
         this.scheduleBoundItemsUpdate();

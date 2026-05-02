@@ -139,9 +139,12 @@ function resetDef(widget: Gtk.Widget, def: AccessiblePropDef): void {
     }
 }
 
-export const applyAccessibleProps = (widget: Gtk.Widget, oldProps: Props | null, newProps: Props): void => {
-    const seen = new Set<string>();
-
+const applyChangedAccessibleProps = (
+    widget: Gtk.Widget,
+    oldProps: Props | null,
+    newProps: Props,
+    seen: Set<string>,
+): void => {
     for (const name in newProps) {
         const def = ACCESSIBLE_PROP_MAP[name];
         if (!def) continue;
@@ -156,9 +159,9 @@ export const applyAccessibleProps = (widget: Gtk.Widget, oldProps: Props | null,
             applyDef(widget, def, newValue);
         }
     }
+};
 
-    if (!oldProps) return;
-
+const resetRemovedAccessibleProps = (widget: Gtk.Widget, oldProps: Props, seen: Set<string>): void => {
     for (const name in oldProps) {
         if (seen.has(name)) continue;
         const def = ACCESSIBLE_PROP_MAP[name];
@@ -167,4 +170,10 @@ export const applyAccessibleProps = (widget: Gtk.Widget, oldProps: Props | null,
             resetDef(widget, def);
         }
     }
+};
+
+export const applyAccessibleProps = (widget: Gtk.Widget, oldProps: Props | null, newProps: Props): void => {
+    const seen = new Set<string>();
+    applyChangedAccessibleProps(widget, oldProps, newProps, seen);
+    if (oldProps) resetRemovedAccessibleProps(widget, oldProps, seen);
 };

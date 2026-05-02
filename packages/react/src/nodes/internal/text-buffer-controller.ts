@@ -82,50 +82,33 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         }
     }
 
+    private buildBufferSignalHandlers(buffer: TBuffer, callbacks: BufferCallbackProps) {
+        const { onBufferChanged, onTextInserted, onTextDeleted, onCanUndoChanged, onCanRedoChanged } = callbacks;
+        return {
+            changed: onBufferChanged ? () => onBufferChanged(buffer) : null,
+            insertText: onTextInserted
+                ? (location: Gtk.TextIter, text: string) => onTextInserted(buffer, location.getOffset(), text)
+                : null,
+            deleteRange: onTextDeleted
+                ? (start: Gtk.TextIter, end: Gtk.TextIter) =>
+                      onTextDeleted(buffer, start.getOffset(), end.getOffset())
+                : null,
+            canUndo: onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null,
+            canRedo: onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null,
+        };
+    }
+
     private setSignalHandlersChanged(callbacks: BufferCallbackProps): void {
         if (!this.buffer) return;
 
         const buffer = this.buffer;
-        const { onBufferChanged, onTextInserted, onTextDeleted, onCanUndoChanged, onCanRedoChanged } = callbacks;
+        const handlers = this.buildBufferSignalHandlers(buffer, callbacks);
 
-        this.owner.signalStore.set(
-            this.owner,
-            buffer,
-            "changed",
-            onBufferChanged ? () => onBufferChanged(buffer) : null,
-        );
-
-        this.owner.signalStore.set(
-            this.owner,
-            buffer,
-            "insert-text",
-            onTextInserted
-                ? (location: Gtk.TextIter, text: string) => onTextInserted(buffer, location.getOffset(), text)
-                : null,
-        );
-
-        this.owner.signalStore.set(
-            this.owner,
-            buffer,
-            "delete-range",
-            onTextDeleted
-                ? (start: Gtk.TextIter, end: Gtk.TextIter) => onTextDeleted(buffer, start.getOffset(), end.getOffset())
-                : null,
-        );
-
-        this.owner.signalStore.set(
-            this.owner,
-            buffer,
-            "notify::can-undo",
-            onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null,
-        );
-
-        this.owner.signalStore.set(
-            this.owner,
-            buffer,
-            "notify::can-redo",
-            onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null,
-        );
+        this.owner.signalStore.set(this.owner, buffer, "changed", handlers.changed);
+        this.owner.signalStore.set(this.owner, buffer, "insert-text", handlers.insertText);
+        this.owner.signalStore.set(this.owner, buffer, "delete-range", handlers.deleteRange);
+        this.owner.signalStore.set(this.owner, buffer, "notify::can-undo", handlers.canUndo);
+        this.owner.signalStore.set(this.owner, buffer, "notify::can-redo", handlers.canRedo);
     }
 
     isTextContentChild(child: Node): child is TextContentChild {

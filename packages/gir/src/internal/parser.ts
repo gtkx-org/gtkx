@@ -539,53 +539,74 @@ export class GirParser {
         typeNode: Record<string, unknown>,
         cType: string | undefined,
     ): RawType | null {
-        if (typeName === "GLib.HashTable") {
-            const typeParams = this.extractTypeParameters(typeNode);
-            return {
-                name: "GLib.HashTable",
-                cType,
-                isArray: false,
-                containerType: "ghashtable" as ContainerType,
-                typeParameters: typeParams.length >= 2 ? typeParams : undefined,
-                elementType: typeParams[1],
-            };
+        switch (typeName) {
+            case "GLib.HashTable":
+                return this.buildHashTableType(typeNode, cType);
+            case "GLib.PtrArray":
+            case "GLib.Array":
+                return this.buildPtrArrayType(typeName, typeNode, cType);
+            case "GLib.ByteArray":
+                return this.buildByteArrayType(cType);
+            case "GLib.List":
+            case "GLib.SList":
+                return this.buildListType(typeName, typeNode, cType);
+            default:
+                return null;
         }
+    }
 
-        if (typeName === "GLib.PtrArray" || typeName === "GLib.Array") {
-            const typeParams = this.extractTypeParameters(typeNode);
-            return {
-                name: typeName,
-                cType,
-                isArray: true,
-                containerType: (typeName === "GLib.PtrArray" ? "gptrarray" : "garray") as ContainerType,
-                typeParameters: typeParams.length > 0 ? typeParams : undefined,
-                elementType: typeParams[0],
-            };
-        }
+    private buildHashTableType(typeNode: Record<string, unknown>, cType: string | undefined): RawType {
+        const typeParams = this.extractTypeParameters(typeNode);
+        return {
+            name: "GLib.HashTable",
+            cType,
+            isArray: false,
+            containerType: "ghashtable" as ContainerType,
+            typeParameters: typeParams.length >= 2 ? typeParams : undefined,
+            elementType: typeParams[1],
+        };
+    }
 
-        if (typeName === "GLib.ByteArray") {
-            return {
-                name: typeName,
-                cType,
-                isArray: true,
-                containerType: "gbytearray" as ContainerType,
-                elementType: { name: "guint8", cType: "guint8" },
-            };
-        }
+    private buildPtrArrayType(
+        typeName: "GLib.PtrArray" | "GLib.Array",
+        typeNode: Record<string, unknown>,
+        cType: string | undefined,
+    ): RawType {
+        const typeParams = this.extractTypeParameters(typeNode);
+        return {
+            name: typeName,
+            cType,
+            isArray: true,
+            containerType: (typeName === "GLib.PtrArray" ? "gptrarray" : "garray") as ContainerType,
+            typeParameters: typeParams.length > 0 ? typeParams : undefined,
+            elementType: typeParams[0],
+        };
+    }
 
-        if (typeName === "GLib.List" || typeName === "GLib.SList") {
-            const innerType = (typeNode.type ?? typeNode.array) as Record<string, unknown> | undefined;
-            const elementType = innerType ? this.parseType(innerType) : undefined;
-            return {
-                name: "array",
-                cType,
-                isArray: true,
-                containerType: (typeName === "GLib.List" ? "glist" : "gslist") as ContainerType,
-                typeParameters: elementType ? [elementType] : undefined,
-                elementType,
-            };
-        }
+    private buildByteArrayType(cType: string | undefined): RawType {
+        return {
+            name: "GLib.ByteArray",
+            cType,
+            isArray: true,
+            containerType: "gbytearray" as ContainerType,
+            elementType: { name: "guint8", cType: "guint8" },
+        };
+    }
 
-        return null;
+    private buildListType(
+        typeName: "GLib.List" | "GLib.SList",
+        typeNode: Record<string, unknown>,
+        cType: string | undefined,
+    ): RawType {
+        const innerType = (typeNode.type ?? typeNode.array) as Record<string, unknown> | undefined;
+        const elementType = innerType ? this.parseType(innerType) : undefined;
+        return {
+            name: "array",
+            cType,
+            isArray: true,
+            containerType: (typeName === "GLib.List" ? "glist" : "gslist") as ContainerType,
+            typeParameters: elementType ? [elementType] : undefined,
+            elementType,
+        };
     }
 }

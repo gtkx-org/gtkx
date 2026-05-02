@@ -657,7 +657,138 @@ impl ArrayType {
         )))
     }
 
-    #[allow(clippy::too_many_lines)]
+    fn append_integer_values_to_garray(
+        g_array: *mut glib::ffi::GArray,
+        int_type: &super::IntegerKind,
+        array: &[value::Value],
+    ) -> anyhow::Result<()> {
+        for n in Self::extract_numbers(array)? {
+            let mut buf = vec![0u8; int_type.byte_size()];
+            int_type.write_ptr(buf.as_mut_ptr(), n);
+            unsafe {
+                glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
+            }
+        }
+        Ok(())
+    }
+
+    fn append_float_values_to_garray(
+        g_array: *mut glib::ffi::GArray,
+        float_kind: &super::FloatKind,
+        array: &[value::Value],
+    ) -> anyhow::Result<()> {
+        for n in Self::extract_numbers(array)? {
+            match float_kind {
+                super::FloatKind::F32 => {
+                    let v = n as f32;
+                    unsafe {
+                        glib::ffi::g_array_append_vals(
+                            g_array,
+                            &v as *const f32 as *const c_void,
+                            1,
+                        );
+                    }
+                }
+                super::FloatKind::F64 => unsafe {
+                    glib::ffi::g_array_append_vals(g_array, &n as *const f64 as *const c_void, 1);
+                },
+            }
+        }
+        Ok(())
+    }
+
+    fn append_handle_values_to_garray(
+        &self,
+        g_array: *mut glib::ffi::GArray,
+        array: &[value::Value],
+    ) -> anyhow::Result<()> {
+        for handle in Self::extract_handles(array)? {
+            let ptr = handle.ptr();
+            if ptr.is_null() {
+                anyhow::bail!("Object in GArray has a null pointer");
+            }
+            let ptr = self.item_type.ref_for_transfer(ptr)?;
+            unsafe {
+                glib::ffi::g_array_append_vals(
+                    g_array,
+                    &ptr as *const *mut c_void as *const c_void,
+                    1,
+                );
+            }
+        }
+        Ok(())
+    }
+
+    fn append_enum_like_values_to_garray(
+        g_array: *mut glib::ffi::GArray,
+        storage: &super::IntegerKind,
+        array: &[value::Value],
+    ) -> anyhow::Result<()> {
+        for n in Self::extract_numbers(array)? {
+            let mut buf = vec![0u8; storage.byte_size()];
+            storage.write_ptr(buf.as_mut_ptr(), n);
+            unsafe {
+                glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
+            }
+        }
+        Ok(())
+    }
+
+    fn append_items_to_garray(
+        &self,
+        g_array: *mut glib::ffi::GArray,
+        array: &[value::Value],
+    ) -> anyhow::Result<()> {
+        match &*self.item_type {
+            Type::Integer(int_type) => {
+                Self::append_integer_values_to_garray(g_array, int_type, array)
+            }
+            Type::Float(float_kind) => {
+                Self::append_float_values_to_garray(g_array, float_kind, array)
+            }
+            Type::Boolean(_) => {
+                for b in Self::extract_booleans(array)? {
+                    unsafe {
+                        glib::ffi::g_array_append_vals(
+                            g_array,
+                            &b as *const i32 as *const c_void,
+                            1,
+                        );
+                    }
+                }
+                Ok(())
+            }
+            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
+                self.append_handle_values_to_garray(g_array, array)
+            }
+            Type::String(_) => {
+                for cstr in Self::extract_strings(array)? {
+                    let dup = unsafe { glib::ffi::g_strdup(cstr.as_ptr()) };
+                    unsafe {
+                        glib::ffi::g_array_append_vals(
+                            g_array,
+                            &dup as *const *mut c_char as *const c_void,
+                            1,
+                        );
+                    }
+                }
+                Ok(())
+            }
+            Type::Enum(e) => Self::append_enum_like_values_to_garray(g_array, &e.storage, array),
+            Type::Flags(f) => Self::append_enum_like_values_to_garray(g_array, &f.storage, array),
+            Type::Void(_)
+            | Type::Array(_)
+            | Type::HashTable(_)
+            | Type::Callback(_)
+            | Type::Trampoline(_)
+            | Type::Ref(_)
+            | Type::Unichar(_) => {
+                unsafe { glib::ffi::g_array_unref(g_array) };
+                bail!("Unsupported GArray item type: {:?}", self.item_type);
+            }
+        }
+    }
+
     fn encode_garray(&self, array: &[value::Value]) -> anyhow::Result<ffi::FfiValue> {
         let element_size = self
             .element_size
@@ -672,107 +803,7 @@ impl ArrayType {
         let g_array =
             unsafe { glib::ffi::g_array_sized_new(0, 0, element_size as u32, array.len() as u32) };
 
-        match &*self.item_type {
-            Type::Integer(int_type) => {
-                for n in Self::extract_numbers(array)? {
-                    let mut buf = vec![0u8; int_type.byte_size()];
-                    int_type.write_ptr(buf.as_mut_ptr(), n);
-                    unsafe {
-                        glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
-                    }
-                }
-            }
-            Type::Float(float_kind) => {
-                for n in Self::extract_numbers(array)? {
-                    match float_kind {
-                        super::FloatKind::F32 => {
-                            let v = n as f32;
-                            unsafe {
-                                glib::ffi::g_array_append_vals(
-                                    g_array,
-                                    &v as *const f32 as *const c_void,
-                                    1,
-                                );
-                            }
-                        }
-                        super::FloatKind::F64 => unsafe {
-                            glib::ffi::g_array_append_vals(
-                                g_array,
-                                &n as *const f64 as *const c_void,
-                                1,
-                            );
-                        },
-                    }
-                }
-            }
-            Type::Boolean(_) => {
-                for b in Self::extract_booleans(array)? {
-                    unsafe {
-                        glib::ffi::g_array_append_vals(
-                            g_array,
-                            &b as *const i32 as *const c_void,
-                            1,
-                        );
-                    }
-                }
-            }
-            Type::GObject(_) | Type::Boxed(_) | Type::Struct(_) | Type::Fundamental(_) => {
-                for handle in Self::extract_handles(array)? {
-                    let ptr = handle.ptr();
-                    if ptr.is_null() {
-                        anyhow::bail!("Object in GArray has a null pointer");
-                    }
-                    let ptr = self.item_type.ref_for_transfer(ptr)?;
-                    unsafe {
-                        glib::ffi::g_array_append_vals(
-                            g_array,
-                            &ptr as *const *mut c_void as *const c_void,
-                            1,
-                        );
-                    }
-                }
-            }
-            Type::String(_) => {
-                for cstr in Self::extract_strings(array)? {
-                    let dup = unsafe { glib::ffi::g_strdup(cstr.as_ptr()) };
-                    unsafe {
-                        glib::ffi::g_array_append_vals(
-                            g_array,
-                            &dup as *const *mut c_char as *const c_void,
-                            1,
-                        );
-                    }
-                }
-            }
-            Type::Enum(e) => {
-                for n in Self::extract_numbers(array)? {
-                    let mut buf = vec![0u8; e.storage.byte_size()];
-                    e.storage.write_ptr(buf.as_mut_ptr(), n);
-                    unsafe {
-                        glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
-                    }
-                }
-            }
-            Type::Flags(f) => {
-                for n in Self::extract_numbers(array)? {
-                    let mut buf = vec![0u8; f.storage.byte_size()];
-                    f.storage.write_ptr(buf.as_mut_ptr(), n);
-                    unsafe {
-                        glib::ffi::g_array_append_vals(g_array, buf.as_ptr() as *const c_void, 1);
-                    }
-                }
-            }
-            Type::Void(_)
-            | Type::Array(_)
-            | Type::HashTable(_)
-            | Type::Callback(_)
-            | Type::Trampoline(_)
-            | Type::Ref(_)
-            | Type::Unichar(_) => {
-                unsafe { glib::ffi::g_array_unref(g_array) };
-                bail!("Unsupported GArray item type: {:?}", self.item_type);
-            }
-        }
+        self.append_items_to_garray(g_array, array)?;
 
         let should_free = self.ownership.is_borrowed();
         Ok(ffi::FfiValue::Storage(FfiStorage::new(

@@ -55,39 +55,16 @@ export function writeFfiTypeExpression(writer: Writer, descriptor: FfiTypeDescri
             writer.write(`t.object(${ownership(descriptor)})`);
             return;
 
-        case "boxed": {
-            const inner = typeof descriptor.innerType === "string" ? descriptor.innerType : "";
-            writer.write(`t.boxed(${stringify(inner)}, ${ownership(descriptor)}`);
-            if (descriptor.library !== undefined) {
-                writer.write(`, ${stringify(descriptor.library)}`);
-                if (descriptor.getTypeFn !== undefined) {
-                    writer.write(`, ${stringify(descriptor.getTypeFn)}`);
-                }
-            } else if (descriptor.getTypeFn !== undefined) {
-                writer.write(`, undefined, ${stringify(descriptor.getTypeFn)}`);
-            }
-            writer.write(")");
+        case "boxed":
+            writeBoxedExpression(writer, descriptor);
             return;
-        }
 
-        case "struct": {
-            const inner = typeof descriptor.innerType === "string" ? descriptor.innerType : "";
-            writer.write(`t.struct(${stringify(inner)}, ${ownership(descriptor)}`);
-            if (descriptor.size !== undefined) {
-                writer.write(`, ${descriptor.size}`);
-            }
-            writer.write(")");
+        case "struct":
+            writeStructExpression(writer, descriptor);
             return;
-        }
 
         case "fundamental":
-            writer.write(
-                `t.fundamental(${stringify(descriptor.library ?? "")}, ${stringify(descriptor.refFn ?? "")}, ${stringify(descriptor.unrefFn ?? "")}, ${ownership(descriptor)}`,
-            );
-            if (descriptor.typeName !== undefined) {
-                writer.write(`, ${stringify(descriptor.typeName)}`);
-            }
-            writer.write(")");
+            writeFundamentalExpression(writer, descriptor);
             return;
 
         case "ref":
@@ -135,6 +112,39 @@ export function writeFfiTypeExpression(writer: Writer, descriptor: FfiTypeDescri
         default:
             writer.write(JSON.stringify(descriptor));
     }
+}
+
+function writeBoxedExpression(writer: Writer, descriptor: FfiTypeDescriptor): void {
+    const inner = typeof descriptor.innerType === "string" ? descriptor.innerType : "";
+    writer.write(`t.boxed(${stringify(inner)}, ${ownership(descriptor)}`);
+    if (descriptor.library !== undefined) {
+        writer.write(`, ${stringify(descriptor.library)}`);
+        if (descriptor.getTypeFn !== undefined) {
+            writer.write(`, ${stringify(descriptor.getTypeFn)}`);
+        }
+    } else if (descriptor.getTypeFn !== undefined) {
+        writer.write(`, undefined, ${stringify(descriptor.getTypeFn)}`);
+    }
+    writer.write(")");
+}
+
+function writeStructExpression(writer: Writer, descriptor: FfiTypeDescriptor): void {
+    const inner = typeof descriptor.innerType === "string" ? descriptor.innerType : "";
+    writer.write(`t.struct(${stringify(inner)}, ${ownership(descriptor)}`);
+    if (descriptor.size !== undefined) {
+        writer.write(`, ${descriptor.size}`);
+    }
+    writer.write(")");
+}
+
+function writeFundamentalExpression(writer: Writer, descriptor: FfiTypeDescriptor): void {
+    writer.write(
+        `t.fundamental(${stringify(descriptor.library ?? "")}, ${stringify(descriptor.refFn ?? "")}, ${stringify(descriptor.unrefFn ?? "")}, ${ownership(descriptor)}`,
+    );
+    if (descriptor.typeName !== undefined) {
+        writer.write(`, ${stringify(descriptor.typeName)}`);
+    }
+    writer.write(")");
 }
 
 function writeArrayExpression(writer: Writer, descriptor: FfiTypeDescriptor): void {

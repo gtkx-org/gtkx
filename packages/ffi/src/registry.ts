@@ -150,6 +150,35 @@ type GetNativeObjectResult<
  * const button = getNativeObject(buttonHandle, Gtk.Button);
  * ```
  */
+function instantiateNonInterface<TClass extends NativeClass>(
+    handle: NativeHandle,
+    targetType: TClass,
+): InstanceType<TClass> {
+    const isIdentityType = targetType.objectType === "gobject" || targetType.objectType === "fundamental";
+
+    if (isIdentityType) {
+        const existing = findNativeObject(handle);
+        if (existing) return existing as InstanceType<TClass>;
+    }
+
+    const instance = new targetType(handle) as InstanceType<TClass>;
+    if (isIdentityType) {
+        registerNativeObject(instance);
+    }
+    return instance;
+}
+
+function instantiateForInterface<TClass extends NativeClass>(
+    handle: NativeHandle,
+    targetType: TClass,
+    runtimeTypeName: string,
+): InstanceType<TClass> {
+    const cls = findNativeClass(runtimeTypeName, false);
+    const instance = (cls ? new cls(handle) : new targetType(handle)) as InstanceType<TClass>;
+    registerNativeObject(instance);
+    return instance;
+}
+
 export function getNativeObject<
     T extends NativeHandle | null | undefined,
     TClass extends NativeClass | undefined = undefined,
@@ -161,46 +190,20 @@ export function getNativeObject<
     }
 
     if (targetType && targetType.objectType !== "interface") {
-        const isIdentityType = targetType.objectType === "gobject" || targetType.objectType === "fundamental";
-
-        if (isIdentityType) {
-            const existing = findNativeObject(handle);
-            if (existing) {
-                return existing as Result;
-            }
-        }
-
-        const instance = new targetType(handle);
-
-        if (isIdentityType) {
-            registerNativeObject(instance);
-        }
-
-        return instance as Result;
+        return instantiateNonInterface(handle, targetType) as Result;
     }
 
     const existing = findNativeObject(handle);
-    if (existing) {
-        return existing as Result;
-    }
+    if (existing) return existing as Result;
 
     const typeInstance = new TypeInstance(handle);
     const runtimeTypeName = typeNameFromInstance(typeInstance);
 
     if (targetType && targetType.objectType === "interface") {
-        const cls = findNativeClass(runtimeTypeName, false);
-        if (cls) {
-            const instance = new cls(handle);
-            registerNativeObject(instance);
-            return instance as Result;
-        }
-        const instance = new targetType(handle);
-        registerNativeObject(instance);
-        return instance as Result;
+        return instantiateForInterface(handle, targetType, runtimeTypeName) as Result;
     }
 
     const cls = findNativeClass(runtimeTypeName);
-
     if (!cls) {
         throw new Error(`Expected registered GLib type, got '${runtimeTypeName}'`);
     }

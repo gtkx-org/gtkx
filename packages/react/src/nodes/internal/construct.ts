@@ -9,6 +9,25 @@ type ConstructionPropMeta = {
     constructOnly?: true;
 };
 
+function collectMetaPropsForType(
+    meta: Record<string, ConstructionPropMeta>,
+    props: Props,
+    seen: Set<string>,
+    result: Array<{ girName: string; ffiType: Type; value: unknown }>,
+): void {
+    for (const [camelName, propMeta] of Object.entries(meta)) {
+        if (seen.has(camelName)) continue;
+        seen.add(camelName);
+        if (props[camelName] !== undefined) {
+            result.push({
+                girName: propMeta.girName,
+                ffiType: propMeta.ffiType,
+                value: props[camelName],
+            });
+        }
+    }
+}
+
 function collectConstructionProps(
     containerClass: ContainerClass,
     props: Props,
@@ -24,17 +43,7 @@ function collectConstructionProps(
 
         const meta: Record<string, ConstructionPropMeta> | undefined = CONSTRUCTION_META[typeName];
         if (meta) {
-            for (const [camelName, propMeta] of Object.entries(meta)) {
-                if (seen.has(camelName)) continue;
-                seen.add(camelName);
-                if (props[camelName] !== undefined) {
-                    result.push({
-                        girName: propMeta.girName,
-                        ffiType: propMeta.ffiType,
-                        value: props[camelName],
-                    });
-                }
-            }
+            collectMetaPropsForType(meta, props, seen, result);
         }
 
         current = Object.getPrototypeOf(current);

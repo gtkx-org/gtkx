@@ -570,6 +570,23 @@ const buildLengthExpression = (
  * values pass `.handle`; arrays of objects map to handles; hashtables
  * convert maps to entry arrays. Primitives pass through verbatim.
  */
+const buildHandleExpression = (valueName: string, mapped: MappedType, nullable: boolean): string => {
+    const isUnknownType = mapped.ts === "unknown";
+    if (isUnknownType) {
+        return nullable
+            ? `(${valueName} as { handle: NativeHandle } | null)?.handle`
+            : `(${valueName} as { handle: NativeHandle }).handle`;
+    }
+    return nullable ? `${valueName}?.handle` : `${valueName}.handle`;
+};
+
+const buildHashTableInputExpression = (valueName: string, mapped: MappedType): string => {
+    if (isHandleBackedType(mapped.ffi.valueType?.type)) {
+        return `${valueName} ? Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
+    }
+    return `${valueName} ? Array.from(${valueName}) : null`;
+};
+
 const buildInputValueExpression = (valueName: string, mapped: MappedType, nullable: boolean): string => {
     const needsPtr =
         mapped.ffi.type === "gobject" ||
@@ -578,26 +595,15 @@ const buildInputValueExpression = (valueName: string, mapped: MappedType, nullab
         mapped.ffi.type === "fundamental";
 
     if (needsPtr) {
-        const isUnknownType = mapped.ts === "unknown";
-        if (isUnknownType) {
-            return nullable
-                ? `(${valueName} as { handle: NativeHandle } | null)?.handle`
-                : `(${valueName} as { handle: NativeHandle }).handle`;
-        }
-        return nullable ? `${valueName}?.handle` : `${valueName}.handle`;
+        return buildHandleExpression(valueName, mapped, nullable);
     }
 
-    if (mapped.ffi.type === "array" && mapped.ffi.itemType) {
-        if (isHandleBackedType(mapped.ffi.itemType.type)) {
-            return nullable ? `${valueName}?.map(item => item.handle)` : `${valueName}.map(item => item.handle)`;
-        }
+    if (mapped.ffi.type === "array" && mapped.ffi.itemType && isHandleBackedType(mapped.ffi.itemType.type)) {
+        return nullable ? `${valueName}?.map(item => item.handle)` : `${valueName}.map(item => item.handle)`;
     }
 
     if (mapped.ffi.type === "hashtable") {
-        if (isHandleBackedType(mapped.ffi.valueType?.type)) {
-            return `${valueName} ? Array.from(${valueName}).map(([k, v]) => [k, v?.handle]) : null`;
-        }
-        return `${valueName} ? Array.from(${valueName}) : null`;
+        return buildHashTableInputExpression(valueName, mapped);
     }
 
     return valueName;

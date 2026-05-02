@@ -143,6 +143,84 @@ impl FfiEncoder for RefType {
     }
 }
 
+impl RefType {
+    fn decode_gobject_inner(
+        gobject_type: &super::GObjectType,
+        storage: &FfiStorage,
+    ) -> anyhow::Result<value::Value> {
+        let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
+        if actual_ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let object = if gobject_type.ownership.is_full() {
+            unsafe { glib::Object::from_glib_full(actual_ptr as *mut glib::gobject_ffi::GObject) }
+        } else {
+            unsafe { glib::Object::from_glib_none(actual_ptr as *mut glib::gobject_ffi::GObject) }
+        };
+        Ok(value::Value::Object(NativeValue::GObject(object).into()))
+    }
+
+    fn decode_boxed_inner(
+        boxed_type: &super::BoxedType,
+        storage: &FfiStorage,
+    ) -> anyhow::Result<value::Value> {
+        let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
+        if actual_ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let gtype = boxed_type.gtype();
+        let boxed = if boxed_type.ownership.is_full() {
+            Boxed::from_glib_full(gtype, actual_ptr)
+        } else {
+            Boxed::from_glib_none(gtype, actual_ptr)?
+        };
+        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+    }
+
+    fn decode_fundamental_inner(
+        fundamental_type: &super::FundamentalType,
+        storage: &FfiStorage,
+    ) -> anyhow::Result<value::Value> {
+        let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
+        if actual_ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let (ref_fn, unref_fn) = fundamental_type.lookup_fns()?;
+        let fundamental = if fundamental_type.ownership.is_full() {
+            Fundamental::from_glib_full(actual_ptr, ref_fn, unref_fn)
+        } else {
+            unsafe { Fundamental::from_glib_none(actual_ptr, ref_fn, unref_fn) }
+        };
+        Ok(value::Value::Object(
+            NativeValue::Fundamental(fundamental).into(),
+        ))
+    }
+
+    fn decode_struct_inner(
+        struct_type: &super::StructType,
+        storage: &FfiStorage,
+    ) -> anyhow::Result<value::Value> {
+        let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
+        if actual_ptr.is_null() {
+            return Ok(value::Value::Null);
+        }
+        let boxed = if struct_type.ownership.is_full() {
+            Boxed::from_glib_full(None, actual_ptr)
+        } else {
+            match struct_type.size {
+                Some(_) => Boxed::from_glib_none_with_size(
+                    None,
+                    actual_ptr,
+                    struct_type.size,
+                    Some(&struct_type.type_name),
+                )?,
+                None => Boxed::from_ptr_unowned(actual_ptr),
+            }
+        };
+        Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
+    }
+}
+
 impl FfiDecoder for RefType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
         let storage = match ffi_value {
@@ -152,71 +230,12 @@ impl FfiDecoder for RefType {
         };
 
         match &*self.inner_type {
-            Type::GObject(gobject_type) => {
-                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                if actual_ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let object = if gobject_type.ownership.is_full() {
-                    unsafe {
-                        glib::Object::from_glib_full(actual_ptr as *mut glib::gobject_ffi::GObject)
-                    }
-                } else {
-                    unsafe {
-                        glib::Object::from_glib_none(actual_ptr as *mut glib::gobject_ffi::GObject)
-                    }
-                };
-                Ok(value::Value::Object(NativeValue::GObject(object).into()))
-            }
-            Type::Boxed(boxed_type) => {
-                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                if actual_ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let gtype = boxed_type.gtype();
-                let boxed = if boxed_type.ownership.is_full() {
-                    Boxed::from_glib_full(gtype, actual_ptr)
-                } else {
-                    Boxed::from_glib_none(gtype, actual_ptr)?
-                };
-                Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-            }
+            Type::GObject(gobject_type) => Self::decode_gobject_inner(gobject_type, storage),
+            Type::Boxed(boxed_type) => Self::decode_boxed_inner(boxed_type, storage),
             Type::Fundamental(fundamental_type) => {
-                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                if actual_ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-
-                let (ref_fn, unref_fn) = fundamental_type.lookup_fns()?;
-                let fundamental = if fundamental_type.ownership.is_full() {
-                    Fundamental::from_glib_full(actual_ptr, ref_fn, unref_fn)
-                } else {
-                    unsafe { Fundamental::from_glib_none(actual_ptr, ref_fn, unref_fn) }
-                };
-                Ok(value::Value::Object(
-                    NativeValue::Fundamental(fundamental).into(),
-                ))
+                Self::decode_fundamental_inner(fundamental_type, storage)
             }
-            Type::Struct(struct_type) => {
-                let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
-                if actual_ptr.is_null() {
-                    return Ok(value::Value::Null);
-                }
-                let boxed = if struct_type.ownership.is_full() {
-                    Boxed::from_glib_full(None, actual_ptr)
-                } else {
-                    match struct_type.size {
-                        Some(_) => Boxed::from_glib_none_with_size(
-                            None,
-                            actual_ptr,
-                            struct_type.size,
-                            Some(&struct_type.type_name),
-                        )?,
-                        None => Boxed::from_ptr_unowned(actual_ptr),
-                    }
-                };
-                Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
-            }
+            Type::Struct(struct_type) => Self::decode_struct_inner(struct_type, storage),
             Type::Integer(int_type) => {
                 let number = int_type.read_ptr(storage.ptr() as *const u8);
                 Ok(value::Value::Number(number))
