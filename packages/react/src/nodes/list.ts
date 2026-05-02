@@ -402,11 +402,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         if (!this.selectionModel) return;
 
-        if (
-            widget instanceof Gtk.ListView ||
-            widget instanceof Gtk.GridView ||
-            widget instanceof Gtk.ColumnView
-        ) {
+        if (widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView) {
             widget.setModel(this.selectionModel);
         }
     }

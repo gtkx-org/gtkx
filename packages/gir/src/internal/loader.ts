@@ -122,11 +122,7 @@ export class GirLoader {
         return queue;
     }
 
-    private processQueue(
-        queue: string[],
-        inDegree: Map<string, number>,
-        dependents: Map<string, string[]>,
-    ): string[] {
+    private processQueue(queue: string[], inDegree: Map<string, number>, dependents: Map<string, string[]>): string[] {
         const sorted: string[] = [];
         while (queue.length > 0) {
             const key = queue.shift();

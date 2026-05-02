@@ -257,11 +257,7 @@ export class RecordGenerator {
         });
     }
 
-    private buildAllocConstructor(
-        record: GirRecord,
-        recordName: string,
-        allocFn: string,
-    ): ConstructorBuilder {
+    private buildAllocConstructor(record: GirRecord, recordName: string, allocFn: string): ConstructorBuilder {
         const initFields = this.fieldBuilder.getInitializableFields(record.fields);
         if (initFields.length > 0) {
             this.file.addImport("../../native.js", ["t", "write"]);
@@ -348,7 +344,14 @@ export class RecordGenerator {
         );
 
         if (mainConstructor) {
-            this.setupMainConstructor(record, recordName, cls, mainConstructor, supportedConstructors, methodStructures);
+            this.setupMainConstructor(
+                record,
+                recordName,
+                cls,
+                mainConstructor,
+                supportedConstructors,
+                methodStructures,
+            );
         } else {
             this.setupAllocConstructor(record, recordName, cls);
         }

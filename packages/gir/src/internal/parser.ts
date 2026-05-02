@@ -77,6 +77,14 @@ function ensureArray(value: unknown): Record<string, unknown>[] {
     return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
 }
 
+function attrString(value: unknown, fallback = ""): string {
+    return typeof value === "string" ? value : fallback;
+}
+
+function attrStringOrUndefined(value: unknown): string | undefined {
+    return typeof value === "string" ? value : undefined;
+}
+
 /**
  * Parser for GObject Introspection XML (GIR) files.
  *
@@ -164,16 +172,16 @@ export class GirParser {
 
     private parseClasses(classes: Record<string, unknown>[]): RawClass[] {
         return classes.map((cls) => ({
-            name: String(cls["@_name"] ?? ""),
-            cType: String(cls["@_c:type"] ?? cls["@_glib:type-name"] ?? ""),
-            parent: cls["@_parent"] ? String(cls["@_parent"]) : undefined,
+            name: attrString(cls["@_name"]),
+            cType: attrString(cls["@_c:type"], attrString(cls["@_glib:type-name"])),
+            parent: attrStringOrUndefined(cls["@_parent"]),
             abstract: cls["@_abstract"] === "1",
-            glibTypeName: cls["@_glib:type-name"] ? String(cls["@_glib:type-name"]) : undefined,
-            glibGetType: cls["@_glib:get-type"] ? String(cls["@_glib:get-type"]) : undefined,
-            cSymbolPrefix: cls["@_c:symbol-prefix"] ? String(cls["@_c:symbol-prefix"]) : undefined,
+            glibTypeName: attrStringOrUndefined(cls["@_glib:type-name"]),
+            glibGetType: attrStringOrUndefined(cls["@_glib:get-type"]),
+            cSymbolPrefix: attrStringOrUndefined(cls["@_c:symbol-prefix"]),
             fundamental: cls["@_glib:fundamental"] === "1",
-            refFunc: cls["@_glib:ref-func"] ? String(cls["@_glib:ref-func"]) : undefined,
-            unrefFunc: cls["@_glib:unref-func"] ? String(cls["@_glib:unref-func"]) : undefined,
+            refFunc: attrStringOrUndefined(cls["@_glib:ref-func"]),
+            unrefFunc: attrStringOrUndefined(cls["@_glib:unref-func"]),
             implements: this.parseImplements(
                 cls.implements as Record<string, unknown>[] | Record<string, unknown> | undefined,
             ),
@@ -189,15 +197,15 @@ export class GirParser {
     private parseImplements(implements_: Record<string, unknown>[] | Record<string, unknown> | undefined): string[] {
         if (!implements_) return [];
         const arr = Array.isArray(implements_) ? implements_ : [implements_];
-        return arr.map((impl) => String(impl["@_name"] ?? "")).filter(Boolean);
+        return arr.map((impl) => attrString(impl["@_name"])).filter(Boolean);
     }
 
     private parseInterfaces(interfaces: Record<string, unknown>[]): RawInterface[] {
         if (!interfaces || !Array.isArray(interfaces)) return [];
         return interfaces.map((iface) => ({
-            name: String(iface["@_name"] ?? ""),
-            cType: String(iface["@_c:type"] ?? iface["@_glib:type-name"] ?? ""),
-            glibTypeName: iface["@_glib:type-name"] ? String(iface["@_glib:type-name"]) : undefined,
+            name: attrString(iface["@_name"]),
+            cType: attrString(iface["@_c:type"], attrString(iface["@_glib:type-name"])),
+            glibTypeName: attrStringOrUndefined(iface["@_glib:type-name"]),
             prerequisites: this.parsePrerequisites(
                 iface.prerequisite as Record<string, unknown>[] | Record<string, unknown> | undefined,
             ),
@@ -213,7 +221,7 @@ export class GirParser {
     ): string[] {
         if (!prerequisites) return [];
         const arr = Array.isArray(prerequisites) ? prerequisites : [prerequisites];
-        return arr.map((prereq) => String(prereq["@_name"] ?? "")).filter(Boolean);
+        return arr.map((prereq) => attrString(prereq["@_name"])).filter(Boolean);
     }
 
     private parseMethods(methods: Record<string, unknown>[]): RawMethod[] {
@@ -224,8 +232,8 @@ export class GirParser {
                 const returnValue = method["return-value"] as Record<string, unknown> | undefined;
                 const parametersNode = this.extractParametersNode(method);
                 return {
-                    name: String(method["@_name"] ?? ""),
-                    cIdentifier: String(method["@_c:identifier"] ?? ""),
+                    name: attrString(method["@_name"]),
+                    cIdentifier: attrString(method["@_c:identifier"]),
                     returnType: this.parseReturnType(returnValue),
                     parameters: this.parseParameters(parametersNode),
                     instanceParameter: this.parseInstanceParameter(parametersNode),
@@ -246,8 +254,8 @@ export class GirParser {
             .map((ctor) => {
                 const returnValue = ctor["return-value"] as Record<string, unknown> | undefined;
                 return {
-                    name: String(ctor["@_name"] ?? ""),
-                    cIdentifier: String(ctor["@_c:identifier"] ?? ""),
+                    name: attrString(ctor["@_name"]),
+                    cIdentifier: attrString(ctor["@_c:identifier"]),
                     returnType: this.parseReturnType(returnValue),
                     parameters: this.parseParameters(this.extractParametersNode(ctor)),
                     throws: ctor["@_throws"] === "1",
@@ -266,8 +274,8 @@ export class GirParser {
             .map((func) => {
                 const returnValue = func["return-value"] as Record<string, unknown> | undefined;
                 return {
-                    name: String(func["@_name"] ?? ""),
-                    cIdentifier: String(func["@_c:identifier"] ?? ""),
+                    name: attrString(func["@_name"]),
+                    cIdentifier: attrString(func["@_c:identifier"]),
                     returnType: this.parseReturnType(returnValue),
                     parameters: this.parseParameters(this.extractParametersNode(func)),
                     throws: func["@_throws"] === "1",
@@ -284,8 +292,8 @@ export class GirParser {
         return callbacks
             .filter((cb) => cb["@_introspectable"] !== "0")
             .map((cb) => ({
-                name: String(cb["@_name"] ?? ""),
-                cType: String(cb["@_c:type"] ?? ""),
+                name: attrString(cb["@_name"]),
+                cType: attrString(cb["@_c:type"]),
                 returnType: this.parseReturnType(cb["return-value"] as Record<string, unknown> | undefined),
                 parameters: this.parseParameters(this.extractParametersNode(cb)),
                 doc: extractDoc(cb),
@@ -295,17 +303,17 @@ export class GirParser {
     private parseRecords(records: Record<string, unknown>[]): RawRecord[] {
         if (!records || !Array.isArray(records)) return [];
         return records.map((record) => ({
-            name: String(record["@_name"] ?? ""),
-            cType: String(record["@_c:type"] ?? record["@_glib:type-name"] ?? ""),
+            name: attrString(record["@_name"]),
+            cType: attrString(record["@_c:type"], attrString(record["@_glib:type-name"])),
             opaque: record["@_opaque"] === "1",
             disguised: record["@_disguised"] === "1",
-            glibTypeName: record["@_glib:type-name"] ? String(record["@_glib:type-name"]) : undefined,
-            glibGetType: record["@_glib:get-type"] ? String(record["@_glib:get-type"]) : undefined,
+            glibTypeName: attrStringOrUndefined(record["@_glib:type-name"]),
+            glibGetType: attrStringOrUndefined(record["@_glib:get-type"]),
             isGtypeStructFor: record["@_glib:is-gtype-struct-for"]
-                ? String(record["@_glib:is-gtype-struct-for"])
+                ? attrString(record["@_glib:is-gtype-struct-for"])
                 : undefined,
-            copyFunction: record["@_copy-function"] ? String(record["@_copy-function"]) : undefined,
-            freeFunction: record["@_free-function"] ? String(record["@_free-function"]) : undefined,
+            copyFunction: attrStringOrUndefined(record["@_copy-function"]),
+            freeFunction: attrStringOrUndefined(record["@_free-function"]),
             fields: this.parseFields(ensureArray(record.field)),
             methods: this.parseMethods(ensureArray(record.method)),
             constructors: this.parseConstructors(ensureArray(record._constructor)),
@@ -317,8 +325,8 @@ export class GirParser {
     private parseEnumerations(enumerations: Record<string, unknown>[]): RawEnumeration[] {
         if (!enumerations || !Array.isArray(enumerations)) return [];
         return enumerations.map((enumeration) => ({
-            name: String(enumeration["@_name"] ?? ""),
-            cType: String(enumeration["@_c:type"] ?? ""),
+            name: attrString(enumeration["@_name"]),
+            cType: attrString(enumeration["@_c:type"]),
             members: this.parseEnumerationMembers(ensureArray(enumeration.member)),
             glibGetType:
                 typeof enumeration["@_glib:get-type"] === "string" ? enumeration["@_glib:get-type"] : undefined,
@@ -329,9 +337,9 @@ export class GirParser {
     private parseEnumerationMembers(members: Record<string, unknown>[]): RawEnumerationMember[] {
         if (!members || !Array.isArray(members)) return [];
         return members.map((member) => ({
-            name: String(member["@_name"] ?? ""),
-            value: String(member["@_value"] ?? ""),
-            cIdentifier: String(member["@_c:identifier"] ?? ""),
+            name: attrString(member["@_name"]),
+            value: attrString(member["@_value"]),
+            cIdentifier: attrString(member["@_c:identifier"]),
             doc: extractDoc(member),
         }));
     }
@@ -339,9 +347,9 @@ export class GirParser {
     private parseConstants(constants: Record<string, unknown>[]): RawConstant[] {
         if (!constants || !Array.isArray(constants)) return [];
         return constants.map((constant) => ({
-            name: String(constant["@_name"] ?? ""),
-            cType: String(constant["@_c:type"] ?? ""),
-            value: String(constant["@_value"] ?? ""),
+            name: attrString(constant["@_name"]),
+            cType: attrString(constant["@_c:type"]),
+            value: attrString(constant["@_value"]),
             type: this.parseType((constant.type ?? constant.array) as Record<string, unknown> | undefined),
             doc: extractDoc(constant),
         }));
@@ -350,8 +358,8 @@ export class GirParser {
     private parseAliases(aliases: Record<string, unknown>[]): RawAlias[] {
         if (!aliases || !Array.isArray(aliases)) return [];
         return aliases.map((alias) => ({
-            name: String(alias["@_name"] ?? ""),
-            cType: String(alias["@_c:type"] ?? ""),
+            name: attrString(alias["@_name"]),
+            cType: attrString(alias["@_c:type"]),
             targetType: this.parseType(alias.type as Record<string, unknown> | undefined),
             doc: extractDoc(alias),
         }));
@@ -360,28 +368,29 @@ export class GirParser {
     private parseProperties(properties: Record<string, unknown>[]): RawProperty[] {
         if (!properties || !Array.isArray(properties)) return [];
         return properties.map((prop) => {
-            let getter = prop["@_getter"] ? String(prop["@_getter"]) : undefined;
-            let setter = prop["@_setter"] ? String(prop["@_setter"]) : undefined;
+            let getter = attrStringOrUndefined(prop["@_getter"]);
+            let setter = attrStringOrUndefined(prop["@_setter"]);
 
             const attributes = prop.attribute as Record<string, unknown>[] | Record<string, unknown> | undefined;
             if (attributes) {
                 const attrList = Array.isArray(attributes) ? attributes : [attributes];
                 for (const attr of attrList) {
                     if (attr["@_name"] === "org.gtk.Property.get" && attr["@_value"]) {
-                        getter = String(attr["@_value"]);
+                        getter = attrString(attr["@_value"]);
                     } else if (attr["@_name"] === "org.gtk.Property.set" && attr["@_value"]) {
-                        setter = String(attr["@_value"]);
+                        setter = attrString(attr["@_value"]);
                     }
                 }
             }
 
             return {
-                name: String(prop["@_name"] ?? ""),
+                name: attrString(prop["@_name"]),
                 type: this.parseType((prop.type ?? prop.array) as Record<string, unknown> | undefined),
                 readable: prop["@_readable"] !== "0",
                 writable: prop["@_writable"] === "1",
                 constructOnly: prop["@_construct-only"] === "1",
-                defaultValueRaw: prop["@_default-value"] === undefined ? undefined : String(prop["@_default-value"]),
+                defaultValueRaw:
+                    prop["@_default-value"] === undefined ? undefined : attrString(prop["@_default-value"]),
                 getter,
                 setter,
                 doc: extractDoc(prop),
@@ -392,10 +401,10 @@ export class GirParser {
     private parseSignals(signals: Record<string, unknown>[]): RawSignal[] {
         if (!signals || !Array.isArray(signals)) return [];
         return signals.map((signal) => {
-            const whenValue = String(signal["@_when"] ?? "last");
+            const whenValue = attrString(signal["@_when"], "last");
             const validWhen = whenValue === "first" || whenValue === "last" || whenValue === "cleanup";
             return {
-                name: String(signal["@_name"] ?? ""),
+                name: attrString(signal["@_name"]),
                 when: validWhen ? (whenValue as "first" | "last" | "cleanup") : "last",
                 returnType: signal["return-value"]
                     ? this.parseReturnType(signal["return-value"] as Record<string, unknown>)
@@ -414,7 +423,7 @@ export class GirParser {
         return fields
             .filter((field) => field.callback === undefined)
             .map((field) => ({
-                name: String(field["@_name"] ?? ""),
+                name: attrString(field["@_name"]),
                 type: this.parseType((field.type ?? field.array) as Record<string, unknown> | undefined),
                 writable: field["@_writable"] === "1",
                 readable: field["@_readable"] !== "0",
@@ -448,9 +457,9 @@ export class GirParser {
         const transferOwnership = param["@_transfer-ownership"] as string | undefined;
         const callerAllocates = param["@_caller-allocates"] as string | undefined;
         return {
-            name: String(param["@_name"] ?? ""),
+            name: attrString(param["@_name"]),
             type: this.parseType((param.type ?? param.array) as Record<string, unknown> | undefined),
-            direction: (String(param["@_direction"] ?? "in") as "in" | "out" | "inout") || "in",
+            direction: (attrString(param["@_direction"], "in") as "in" | "out" | "inout") || "in",
             callerAllocates: callerAllocates === "1",
             nullable: param["@_nullable"] === "1",
             optional: param["@_allow-none"] === "1" || param["@_optional"] === "1",
@@ -481,8 +490,8 @@ export class GirParser {
     private parseType(typeNode: Record<string, unknown> | undefined): RawType {
         if (!typeNode) return { name: "void" };
 
-        const typeName = typeNode["@_name"] ? String(typeNode["@_name"]) : undefined;
-        const cType = typeNode["@_c:type"] ? String(typeNode["@_c:type"]) : undefined;
+        const typeName = attrStringOrUndefined(typeNode["@_name"]);
+        const cType = attrStringOrUndefined(typeNode["@_c:type"]);
 
         const containerResult = this.parseGLibContainerType(typeName, typeNode, cType);
         if (containerResult) return containerResult;

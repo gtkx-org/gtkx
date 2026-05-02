@@ -132,8 +132,7 @@ export class FfiMapper {
     private resolveArrayListType(type: GirType): "glist" | "gslist" | "sized" | "fixed" | undefined {
         if (type.fixedSize !== undefined) return "fixed";
         const isSizedArray =
-            type.sizeParamIndex !== undefined &&
-            (type.zeroTerminated === false || type.zeroTerminated === undefined);
+            type.sizeParamIndex !== undefined && (type.zeroTerminated === false || type.zeroTerminated === undefined);
         if (isSizedArray) return "sized";
         if (type.isList()) return type.containerType as "glist" | "gslist";
         if (type.cType?.includes("GSList")) return "gslist";
@@ -161,9 +160,7 @@ export class FfiMapper {
             };
         }
 
-        const elementTransferOwnership = this.deriveElementTransfer(
-            type.transferOwnership ?? parentTransferOwnership,
-        );
+        const elementTransferOwnership = this.deriveElementTransfer(type.transferOwnership ?? parentTransferOwnership);
         const elementResult = this.mapType(type.elementType, isReturn, elementTransferOwnership, sizeParamOffset);
         imports.push(...elementResult.imports);
         const elementSize = STRUCT_ELEMENT_SIZES.get(type.elementType.name);
@@ -585,11 +582,7 @@ export class FfiMapper {
         return parentTransfer;
     }
 
-    private mapEnumOrFlagsResolved(
-        resolved: ResolvedType,
-        qualifiedName: string,
-        imports: TypeImport[],
-    ): MappedType {
+    private mapEnumOrFlagsResolved(resolved: ResolvedType, qualifiedName: string, imports: TypeImport[]): MappedType {
         const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
         const signed = resolved.signed ?? false;
         const factory = resolved.kind === "enum" ? enumType : flagsType;

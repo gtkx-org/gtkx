@@ -90,8 +90,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
                 ? (location: Gtk.TextIter, text: string) => onTextInserted(buffer, location.getOffset(), text)
                 : null,
             deleteRange: onTextDeleted
-                ? (start: Gtk.TextIter, end: Gtk.TextIter) =>
-                      onTextDeleted(buffer, start.getOffset(), end.getOffset())
+                ? (start: Gtk.TextIter, end: Gtk.TextIter) => onTextDeleted(buffer, start.getOffset(), end.getOffset())
                 : null,
             canUndo: onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null,
             canRedo: onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null,
