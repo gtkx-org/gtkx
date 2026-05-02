@@ -66,35 +66,23 @@ const matchText = (
         : normalizedActual.toLowerCase().includes(normalizedExpected.toLowerCase());
 };
 
+const matchAccessibleName = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
+    if (options.name === undefined) return true;
+    const text = getWidgetAccessibleName(widget);
+    return matchText(text, options.name, widget, options);
+};
+
+const matchAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions): boolean => {
+    if (options.checked !== undefined && getWidgetCheckedState(widget) !== options.checked) return false;
+    if (options.pressed !== undefined && getWidgetPressedState(widget) !== options.pressed) return false;
+    if (options.expanded !== undefined && getWidgetExpandedState(widget) !== options.expanded) return false;
+    if (options.selected !== undefined && getWidgetSelectedState(widget) !== options.selected) return false;
+    return true;
+};
+
 const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {
     if (!options) return true;
-
-    if (options.name !== undefined) {
-        const text = getWidgetAccessibleName(widget);
-        if (!matchText(text, options.name, widget, options)) return false;
-    }
-
-    if (options.checked !== undefined) {
-        const checked = getWidgetCheckedState(widget);
-        if (checked !== options.checked) return false;
-    }
-
-    if (options.pressed !== undefined) {
-        const pressed = getWidgetPressedState(widget);
-        if (pressed !== options.pressed) return false;
-    }
-
-    if (options.expanded !== undefined) {
-        const expanded = getWidgetExpandedState(widget);
-        if (expanded !== options.expanded) return false;
-    }
-
-    if (options.selected !== undefined) {
-        const selected = getWidgetSelectedState(widget);
-        if (selected !== options.selected) return false;
-    }
-
-    return true;
+    return matchAccessibleName(widget, options) && matchAccessibleStates(widget, options);
 };
 
 /**

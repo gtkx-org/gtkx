@@ -108,6 +108,27 @@ const isListView = (widget: Gtk.Widget): widget is Gtk.ListView | Gtk.GridView |
     return widget instanceof Gtk.ListView || widget instanceof Gtk.GridView || widget instanceof Gtk.ColumnView;
 };
 
+const selectComboBoxOption = (element: Gtk.Widget, values: number | number[], valueArray: number[]): void => {
+    if (Array.isArray(values) && values.length > 1) {
+        throw new Error("Cannot select multiple options: ComboBox only supports single selection");
+    }
+    if (element instanceof Gtk.DropDown) {
+        element.setSelected(valueArray[0] as number);
+    } else {
+        (element as Gtk.ComboBox).setActive(valueArray[0] as number);
+    }
+};
+
+const selectListBoxOptions = (element: Gtk.ListBox, valueArray: number[]): void => {
+    for (const value of valueArray) {
+        const row = element.getRowAtIndex(value);
+        if (row) {
+            element.selectRow(row);
+            row.activate();
+        }
+    }
+};
+
 const selectOptions = async (element: Gtk.Widget, values: number | number[]): Promise<void> => {
     const valueArray = Array.isArray(values) ? values : [values];
 
@@ -124,27 +145,10 @@ const selectOptions = async (element: Gtk.Widget, values: number | number[]): Pr
     }
 
     const role = element.getAccessibleRole();
-
     if (role === Gtk.AccessibleRole.COMBO_BOX) {
-        if (Array.isArray(values) && values.length > 1) {
-            throw new Error("Cannot select multiple options: ComboBox only supports single selection");
-        }
-        if (element instanceof Gtk.DropDown) {
-            (element as Gtk.DropDown).setSelected(valueArray[0] as number);
-        } else {
-            (element as Gtk.ComboBox).setActive(valueArray[0] as number);
-        }
+        selectComboBoxOption(element, values, valueArray);
     } else if (role === Gtk.AccessibleRole.LIST) {
-        const listBox = element as Gtk.ListBox;
-
-        for (const value of valueArray) {
-            const row = listBox.getRowAtIndex(value);
-
-            if (row) {
-                listBox.selectRow(row);
-                row.activate();
-            }
-        }
+        selectListBoxOptions(element as Gtk.ListBox, valueArray);
     }
 
     await tick();
@@ -241,41 +245,49 @@ const KEY_MAP: Record<string, number> = {
     Meta: Gdk.KEY_Meta_L,
 };
 
-const parseKeyboardInput = (input: string): Array<{ keyval: number; press: boolean }> => {
-    const actions: Array<{ keyval: number; press: boolean }> = [];
+type KeyAction = { keyval: number; press: boolean };
+
+const parseKeyToken = (token: string): { keyval: number; press: boolean; release: boolean } => {
+    let keyName = token;
+    let press = true;
+    let release = true;
+
+    if (keyName.startsWith("/")) {
+        keyName = keyName.slice(1);
+        press = false;
+    } else if (keyName.endsWith(">")) {
+        keyName = keyName.slice(0, -1);
+        release = false;
+    }
+
+    const keyval = KEY_MAP[keyName];
+    if (keyval === undefined) {
+        throw new Error(`Unknown key: {${keyName}}`);
+    }
+    return { keyval, press, release };
+};
+
+const parseKeyboardInput = (input: string): KeyAction[] => {
+    const actions: KeyAction[] = [];
     let i = 0;
 
     while (i < input.length) {
-        if (input[i] === "{") {
-            const endBrace = input.indexOf("}", i);
-            if (endBrace === -1) break;
-
-            let keyName = input.slice(i + 1, endBrace);
-            let press = true;
-            let release = true;
-
-            if (keyName.startsWith("/")) {
-                keyName = keyName.slice(1);
-                press = false;
-            } else if (keyName.endsWith(">")) {
-                keyName = keyName.slice(0, -1);
-                release = false;
-            }
-
-            const keyval = KEY_MAP[keyName];
-            if (keyval === undefined) {
-                throw new Error(`Unknown key: {${keyName}}`);
-            }
-            if (press) actions.push({ keyval, press: true });
-            if (release) actions.push({ keyval, press: false });
-
-            i = endBrace + 1;
-        } else {
+        if (input[i] !== "{") {
             const keyval = input.charCodeAt(i);
             actions.push({ keyval, press: true });
             actions.push({ keyval, press: false });
             i++;
+            continue;
         }
+
+        const endBrace = input.indexOf("}", i);
+        if (endBrace === -1) break;
+
+        const { keyval, press, release } = parseKeyToken(input.slice(i + 1, endBrace));
+        if (press) actions.push({ keyval, press: true });
+        if (release) actions.push({ keyval, press: false });
+
+        i = endBrace + 1;
     }
 
     return actions;
