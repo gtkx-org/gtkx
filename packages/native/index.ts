@@ -16,7 +16,7 @@ function loadNativeBinding() {
         throw new Error(`Unsupported architecture: ${currentArch}, only x64 and arm64 are supported`);
     }
 
-    const packageName = `@gtkx/native-linux-${currentArch}`;
+    const packageName = `@gtkx/native-linux-${currentArch}-gnu`;
 
     try {
         return require(packageName);

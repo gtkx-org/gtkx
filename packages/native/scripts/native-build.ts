@@ -9,7 +9,7 @@ try {
     await exec("cargo build --message-format=json-render-diagnostics --release > cargo.log");
     await exec("neon dist < cargo.log");
 
-    const dest = `../native-linux-${arch()}/index.node`;
+    const dest = `../native-linux-${arch()}-gnu/index.node`;
     const tmp = `${dest}.tmp`;
     await copyFile("index.node", tmp);
     await rename(tmp, dest);

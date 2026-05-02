@@ -68,8 +68,8 @@
             "inputs": ["Cargo.toml", "Cargo.lock", "src/**/*.rs"],
             "outputs": [
                 "index.node",
-                "$TURBO_ROOT$/packages/native-linux-arm64/index.node",
-                "$TURBO_ROOT$/packages/native-linux-x64/index.node"
+                "$TURBO_ROOT$/packages/native-linux-arm64-gnu/index.node",
+                "$TURBO_ROOT$/packages/native-linux-x64-gnu/index.node"
             ],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]

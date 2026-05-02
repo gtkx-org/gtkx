@@ -38,8 +38,8 @@ jobs:
       - name: Upload native binary
         uses: actions/upload-artifact@v7
         with:
-          name: native-linux-${{ matrix.arch }}
-          path: packages/native-linux-${{ matrix.arch }}/index.node
+          name: native-linux-${{ matrix.arch }}-gnu
+          path: packages/native-linux-${{ matrix.arch }}-gnu/index.node
 
   publish:
     needs: build-native
@@ -54,14 +54,14 @@ jobs:
       - name: Download x64 binary
         uses: actions/download-artifact@v8
         with:
-          name: native-linux-x64
-          path: packages/native-linux-x64
+          name: native-linux-x64-gnu
+          path: packages/native-linux-x64-gnu
 
       - name: Download arm64 binary
         uses: actions/download-artifact@v8
         with:
-          name: native-linux-arm64
-          path: packages/native-linux-arm64
+          name: native-linux-arm64-gnu
+          path: packages/native-linux-arm64-gnu
 
       - name: Build and publish
         uses: ./.github/actions/run-in-container

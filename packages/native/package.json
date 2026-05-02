@@ -48,8 +48,8 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "optionalDependencies": {
-        "@gtkx/native-linux-arm64": "workspace:*",
-        "@gtkx/native-linux-x64": "workspace:*"
+        "@gtkx/native-linux-arm64-gnu": "workspace:*",
+        "@gtkx/native-linux-x64-gnu": "workspace:*"
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
