@@ -37,8 +37,9 @@ export function gtkxBuiltUrl(assetBase?: string): Plugin {
                             };
                         }
 
+                        const filenameLiteral = JSON.stringify(`./${filename}`);
                         return {
-                            runtime: `new URL(${JSON.stringify(`./${filename}`)}, import.meta.url).pathname`,
+                            runtime: `new URL(${filenameLiteral}, import.meta.url).pathname`,
                         };
                     },
                 },

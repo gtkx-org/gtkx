@@ -123,7 +123,6 @@ export class JsxTypesGenerator {
             "Gtk",
             widgetMeta.meta.properties,
             widgetMeta.meta.signals,
-            undefined,
         );
 
         file.add(iface);

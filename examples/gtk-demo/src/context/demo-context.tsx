@@ -131,19 +131,18 @@ export const DemoProvider = ({ demos, children }: DemoProviderProps) => {
         [treeItems, searchQuery],
     );
 
-    return (
-        <DemoContext.Provider
-            value={{
-                demos,
-                treeItems,
-                currentDemo,
-                setCurrentDemo,
-                searchQuery,
-                setSearchQuery,
-                filteredTreeItems,
-            }}
-        >
-            {children}
-        </DemoContext.Provider>
+    const contextValue = useMemo(
+        () => ({
+            demos,
+            treeItems,
+            currentDemo,
+            setCurrentDemo,
+            searchQuery,
+            setSearchQuery,
+            filteredTreeItems,
+        }),
+        [demos, treeItems, currentDemo, searchQuery, filteredTreeItems],
     );
+
+    return <DemoContext.Provider value={contextValue}>{children}</DemoContext.Provider>;
 };

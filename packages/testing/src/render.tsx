@@ -59,9 +59,9 @@ const DefaultWrapper: WrapperComponent = ({ children, ref }) => (
 );
 
 const findFirstWidget = (root: Container): Gtk.Widget | null => {
+    if (!isApplication(root)) return root;
     for (const widget of traverse(root)) {
-        if (isApplication(root)) return widget;
-        return root;
+        return widget;
     }
     return null;
 };

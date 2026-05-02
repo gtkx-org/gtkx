@@ -440,12 +440,14 @@ export class ConstructorBuilder {
             ? [{ name: "props", type: `${propsTypeName} | NativeHandle`, initializer: "{}" }]
             : [{ name: "handle", type: "NativeHandle", optional: true }];
 
-        const propsTypeAlias = hasProps
-            ? {
-                  name: propsTypeName,
-                  body: `{ ${settableProps.map((p) => `${p.paramName}?: ${p.tsType}`).join("; ")} }`,
-              }
-            : undefined;
+        let propsTypeAlias: { name: string; body: string } | undefined;
+        if (hasProps) {
+            const propsBody = settableProps.map((p) => `${p.paramName}?: ${p.tsType}`).join("; ");
+            propsTypeAlias = {
+                name: propsTypeName,
+                body: `{ ${propsBody} }`,
+            };
+        }
 
         return {
             overloads,

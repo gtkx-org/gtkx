@@ -362,7 +362,7 @@ export type ListItem<T = unknown, S = unknown> =
     | {
           id: string;
           value: T;
-          section?: false | undefined;
+          section?: false;
           children?: ListItem<T, S>[];
           hideExpander?: boolean;
           indentForDepth?: boolean;

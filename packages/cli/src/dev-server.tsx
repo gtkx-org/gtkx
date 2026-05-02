@@ -54,8 +54,6 @@ type AppModule = {
 export const createDevServer = async (options: DevServerOptions): Promise<ViteDevServer> => {
     const { entry, appId, vite: viteConfig } = options;
 
-    const moduleExports = new Map<string, Record<string, unknown>>();
-
     const server = await createServer({
         ...viteConfig,
         appType: "custom",
@@ -95,9 +93,7 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
     });
 
     const loadModule = async (): Promise<AppModule> => {
-        const mod = (await server.ssrLoadModule(entry)) as AppModule;
-        moduleExports.set(entry, { ...mod });
-        return mod;
+        return (await server.ssrLoadModule(entry)) as AppModule;
     };
 
     const invalidateAllModules = (): void => {
@@ -135,7 +131,6 @@ export const createDevServer = async (options: DevServerOptions): Promise<ViteDe
             invalidateModuleAndImporters(changedPath);
 
             const newMod = (await server.ssrLoadModule(changedPath)) as Record<string, unknown>;
-            moduleExports.set(changedPath, { ...newMod });
 
             if (isReactRefreshBoundary(newMod)) {
                 console.log("[gtkx] Fast refreshing...");

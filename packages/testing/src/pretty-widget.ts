@@ -102,12 +102,16 @@ const formatAttributes = (widget: Gtk.Widget, colors: HighlightColors, includeId
     if (attrs.length === 0) return "";
 
     return attrs
-        .sort(([a], [b]) => {
+        .toSorted(([a], [b]) => {
             if (a === "id") return -1;
             if (b === "id") return 1;
             return a.localeCompare(b);
         })
-        .map(([key, value]) => ` ${colors.attr(key)}=${colors.value(`"${escapeAttrValue(value)}"`)}`)
+        .map(([key, value]) => {
+            const escaped = escapeAttrValue(value);
+            const valueText = colors.value(`"${escaped}"`);
+            return ` ${colors.attr(key)}=${valueText}`;
+        })
         .join("");
 };
 

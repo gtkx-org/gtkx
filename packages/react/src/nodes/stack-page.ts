@@ -101,14 +101,12 @@ export class StackPageNode extends SingleChildVirtualNode<StackPageProps, Widget
             } else {
                 page = parent.add(child);
             }
+        } else if (this.props.title) {
+            page = parent.addTitled(child, this.props.title, this.props.id);
+        } else if (this.props.id) {
+            page = parent.addNamed(child, this.props.id);
         } else {
-            if (this.props.title) {
-                page = parent.addTitled(child, this.props.title, this.props.id);
-            } else if (this.props.id) {
-                page = parent.addNamed(child, this.props.id);
-            } else {
-                page = parent.addChild(child);
-            }
+            page = parent.addChild(child);
         }
 
         this.page = page;

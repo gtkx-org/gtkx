@@ -1,7 +1,30 @@
 import { readFileSync } from "node:fs";
 import type { Plugin } from "vite";
 
-const ASSET_RE = /\.(png|jpe?g|gif|svg|webp|webm|mp4|ogg|mp3|wav|flac|aac|woff2?|eot|ttf|otf|ico|avif|data)$/i;
+const ASSET_EXTENSIONS = [
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "svg",
+    "webp",
+    "webm",
+    "mp4",
+    "ogg",
+    "mp3",
+    "wav",
+    "flac",
+    "aac",
+    "woff",
+    "woff2",
+    "eot",
+    "ttf",
+    "otf",
+    "ico",
+    "avif",
+    "data",
+] as const;
+const ASSET_RE = new RegExp(`\\.(?:${ASSET_EXTENSIONS.join("|")})$`, "i");
 const CSS_RE = /\.css$/i;
 const VIRTUAL_PREFIX = "\0gtkx:";
 

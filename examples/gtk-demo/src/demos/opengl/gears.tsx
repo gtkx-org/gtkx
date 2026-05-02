@@ -324,17 +324,20 @@ function initGL(): GLState {
     return { program, vao, gearVbos, gearGeoms, uniforms };
 }
 
-function drawGear(
-    uniforms: GLState["uniforms"],
-    projection: number[],
-    transform: number[],
-    gear: GearGeometry,
-    vbo: number,
-    x: number,
-    y: number,
-    angle: number,
-    color: number[],
-) {
+interface DrawGearParams {
+    uniforms: GLState["uniforms"];
+    projection: number[];
+    transform: number[];
+    gear: GearGeometry;
+    vbo: number;
+    x: number;
+    y: number;
+    angle: number;
+    color: number[];
+}
+
+function drawGear(params: DrawGearParams) {
+    const { uniforms, projection, transform, gear, vbo, x, y, angle, color } = params;
     let modelView = mat4Translate(transform, x, y, 0);
     modelView = mat4Rotate(modelView, (2 * Math.PI * angle) / 360, 0, 0, 1);
 
@@ -514,21 +517,51 @@ const GearsDemo = () => {
         const vbo0 = state.gearVbos[0];
         const color0 = GEAR_COLORS[0];
         if (gear0 !== undefined && vbo0 !== undefined && color0) {
-            drawGear(state.uniforms, projection, transform, gear0, vbo0, -3, -2, angle, color0);
+            drawGear({
+                uniforms: state.uniforms,
+                projection,
+                transform,
+                gear: gear0,
+                vbo: vbo0,
+                x: -3,
+                y: -2,
+                angle,
+                color: color0,
+            });
         }
 
         const gear1 = state.gearGeoms[1];
         const vbo1 = state.gearVbos[1];
         const color1 = GEAR_COLORS[1];
         if (gear1 !== undefined && vbo1 !== undefined && color1) {
-            drawGear(state.uniforms, projection, transform, gear1, vbo1, 3.1, -2, -2 * angle - 9, color1);
+            drawGear({
+                uniforms: state.uniforms,
+                projection,
+                transform,
+                gear: gear1,
+                vbo: vbo1,
+                x: 3.1,
+                y: -2,
+                angle: -2 * angle - 9,
+                color: color1,
+            });
         }
 
         const gear2 = state.gearGeoms[2];
         const vbo2 = state.gearVbos[2];
         const color2 = GEAR_COLORS[2];
         if (gear2 !== undefined && vbo2 !== undefined && color2) {
-            drawGear(state.uniforms, projection, transform, gear2, vbo2, -3.1, 4.2, -2 * angle - 25, color2);
+            drawGear({
+                uniforms: state.uniforms,
+                projection,
+                transform,
+                gear: gear2,
+                vbo: vbo2,
+                x: -3.1,
+                y: 4.2,
+                angle: -2 * angle - 25,
+                color: color2,
+            });
         }
 
         // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
