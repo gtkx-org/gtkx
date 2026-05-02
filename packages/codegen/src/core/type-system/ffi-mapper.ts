@@ -62,13 +62,13 @@ import {
 const signedFallback = (signed: boolean) => (signed ? FFI_INT32 : FFI_UINT32);
 
 export class FfiMapper {
-    private skippedClasses = new Set<string>();
+    private readonly skippedClasses = new Set<string>();
     private readonly structSizeCache = new Map<string, number>();
     private readonly structAlignmentCache = new Map<string, number>();
 
     constructor(
-        private repo: GirRepository,
-        private currentNamespace: string,
+        private readonly repo: GirRepository,
+        private readonly currentNamespace: string,
     ) {}
 
     /**

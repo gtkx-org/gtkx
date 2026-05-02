@@ -49,6 +49,34 @@ export function writeWrapExpression(argName: string, wrapInfo: ParamWrapInfo): s
     return `getNativeObject(${argName} as NativeHandle) as ${wrapInfo.tsType}`;
 }
 
+function writeUnwrappedCallbackBody(
+    writer: Writer,
+    jsParamName: string,
+    wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>,
+): void {
+    writer.write("{");
+    writer.newLine();
+    writer.withIndent(() => {
+        writer.write(`const _result = ${jsParamName}(`);
+        writer.newLine();
+        writer.withIndent(() => writeWrapExpressionsList(wrapInfos, writer));
+        writer.writeLine(");");
+        writer.writeLine("return _result?.handle ?? null;");
+    });
+    writer.write("}");
+}
+
+function writeDirectCallbackBody(
+    writer: Writer,
+    jsParamName: string,
+    wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>,
+): void {
+    writer.write(`${jsParamName}(`);
+    writer.newLine();
+    writer.withIndent(() => writeWrapExpressionsList(wrapInfos, writer));
+    writer.write(")");
+}
+
 export function buildCallbackWrapperExpression(
     jsParamName: string,
     wrapInfos: Array<{ wrapInfo: ParamWrapInfo }>,
@@ -60,21 +88,9 @@ export function buildCallbackWrapperExpression(
         writer.withIndent(() => {
             writer.write("? (...args: unknown[]) => ");
             if (returnUnwrapInfo?.needsUnwrap) {
-                writer.write("{");
-                writer.newLine();
-                writer.withIndent(() => {
-                    writer.write(`const _result = ${jsParamName}(`);
-                    writer.newLine();
-                    writer.withIndent(() => writeWrapExpressionsList(wrapInfos, writer));
-                    writer.writeLine(");");
-                    writer.writeLine("return _result?.handle ?? null;");
-                });
-                writer.write("}");
+                writeUnwrappedCallbackBody(writer, jsParamName, wrapInfos);
             } else {
-                writer.write(`${jsParamName}(`);
-                writer.newLine();
-                writer.withIndent(() => writeWrapExpressionsList(wrapInfos, writer));
-                writer.write(")");
+                writeDirectCallbackBody(writer, jsParamName, wrapInfos);
             }
             writer.newLine();
             writer.write(": null");

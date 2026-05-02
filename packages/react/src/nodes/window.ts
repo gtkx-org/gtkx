@@ -34,7 +34,7 @@ type WindowChild =
     | WidgetNode;
 
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild> {
-    private menu: MenuModel;
+    private readonly menu: MenuModel;
 
     public static override createContainer(
         props: Props,

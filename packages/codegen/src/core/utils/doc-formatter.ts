@@ -183,7 +183,7 @@ function formatGirLinkForTsDoc(link: GirLink, options: LinkFormatOptions): strin
 }
 
 function convertGirLinks(text: string, options: LinkFormatOptions): string {
-    return text.replace(GIR_LINK_PATTERN, (_, type: string, reference: string) => {
+    return text.replaceAll(GIR_LINK_PATTERN, (_, type: string, reference: string) => {
         const link = parseGirLink(type, reference);
         if (!link) {
             return `\`${reference}\``;
@@ -220,7 +220,7 @@ function getDocsBaseUrl(namespace: string | undefined): string {
 function convertHtmlImageElements(text: string, baseUrl: string): string {
     let result = text;
 
-    result = result.replace(/<picture[^>]*>([\s\S]*?)<\/picture>/gi, (_, pictureContent: string) => {
+    result = result.replaceAll(/<picture[^>]*>([\s\S]*?)<\/picture>/gi, (_, pictureContent: string) => {
         const imgMatch = /<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*\/?>/i.exec(pictureContent);
         if (!imgMatch) {
             const imgMatch2 = /<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/i.exec(pictureContent);
@@ -236,34 +236,34 @@ function convertHtmlImageElements(text: string, baseUrl: string): string {
         return `![${alt}](${baseUrl}/${src})`;
     });
 
-    result = result.replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*\/?>/gi, (_, alt: string, src: string) => {
+    result = result.replaceAll(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*\/?>/gi, (_, alt: string, src: string) => {
         if (src.startsWith("http://") || src.startsWith("https://")) {
             return `![${alt}](${src})`;
         }
         return `![${alt}](${baseUrl}/${src})`;
     });
 
-    result = result.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/gi, (_, src: string, alt: string) => {
+    result = result.replaceAll(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/gi, (_, src: string, alt: string) => {
         if (src.startsWith("http://") || src.startsWith("https://")) {
             return `![${alt}](${src})`;
         }
         return `![${alt}](${baseUrl}/${src})`;
     });
 
-    result = result.replace(/<img[^>]*src="([^"]*)"[^>]*\/?>/gi, (_, src: string) => {
+    result = result.replaceAll(/<img[^>]*src="([^"]*)"[^>]*\/?>/gi, (_, src: string) => {
         if (src.startsWith("http://") || src.startsWith("https://")) {
             return `![](${src})`;
         }
         return `![](${baseUrl}/${src})`;
     });
 
-    result = result.replace(/<source[^>]*\/?>/gi, "");
+    result = result.replaceAll(/<source[^>]*\/?>/gi, "");
 
     return result;
 }
 
 function convertMarkdownImageUrls(text: string, baseUrl: string): string {
-    return text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt: string, src: string) => {
+    return text.replaceAll(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt: string, src: string) => {
         if (src.startsWith("http://") || src.startsWith("https://")) {
             return match;
         }
@@ -272,27 +272,30 @@ function convertMarkdownImageUrls(text: string, baseUrl: string): string {
 }
 
 function convertKbdElements(text: string): string {
-    return text.replace(/<kbd>([^<]*)<\/kbd>/gi, "`$1`");
+    return text.replaceAll(/<kbd>([^<]*)<\/kbd>/gi, "`$1`");
 }
 
 function stripHtmlLinks(text: string): string {
-    return text.replace(/\[([^\]]+)\]\([^)]+\.html[^)]*\)/gi, "$1");
+    return text.replaceAll(/\[([^\]]+)\]\([^)]+\.html[^)]*\)/gi, "$1");
 }
 
 function convertAtAnnotations(text: string): string {
-    return text.replace(/(?<!\{)@([a-zA-Z_][a-zA-Z0-9_]*)\b(?!\s*\{)/g, "`$1`");
+    return text.replaceAll(/(?<!\{)@([a-zA-Z_][a-zA-Z0-9_]*)\b(?!\s*\{)/g, "`$1`");
 }
 
 function escapeXmlStyleTags(text: string): string {
     const codeBlockPattern = /```[\s\S]*?```/g;
     const codeBlocks: string[] = [];
 
-    let processed = text.replace(codeBlockPattern, (match) => {
+    let processed = text.replaceAll(codeBlockPattern, (match) => {
         codeBlocks.push(match);
         return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
     });
 
-    processed = processed.replace(/<(\/?)(child|object|property|signal|template|style|item|attribute)>/gi, "`<$1$2>`");
+    processed = processed.replaceAll(
+        /<(\/?)(child|object|property|signal|template|style|item|attribute)>/gi,
+        "`<$1$2>`",
+    );
 
     for (let i = 0; i < codeBlocks.length; i++) {
         processed = processed.replace(`__CODE_BLOCK_${i}__`, codeBlocks[i] ?? "");
@@ -302,8 +305,8 @@ function escapeXmlStyleTags(text: string): string {
 }
 
 function cleanupWhitespace(text: string): string {
-    let result = text.replace(/\n{3,}/g, "\n\n");
-    result = result.replace(/[ \t]+$/gm, "");
+    let result = text.replaceAll(/\n{3,}/g, "\n\n");
+    result = result.replaceAll(/[ \t]+$/gm, "");
     return result.trim();
 }
 

@@ -6,12 +6,11 @@ import { VirtualNode } from "../virtual.js";
  * text-tag, text-anchor, and text-paintable to track their position inside a
  * Gtk.TextBuffer managed by `TextBufferController`.
  */
-export abstract class BufferOffsetNode<
+export abstract class BufferOffsetNode<TProps, TParent extends Node, TChild extends Node> extends VirtualNode<
     TProps,
-    TParent extends Node,
-    TChild extends Node,
-    // biome-ignore lint/suspicious/noExplicitAny: matches VirtualNode's loose bound
-> extends VirtualNode<TProps, TParent, TChild & any> {
+    TParent,
+    TChild
+> {
     private bufferOffset = 0;
 
     public getBufferOffset(): number {

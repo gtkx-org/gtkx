@@ -15,14 +15,14 @@ const FONT = "Serif 18";
 const HEART_CODEPOINT = 0x2665;
 
 const drawHeart = (cr: Context, doPath: boolean) => {
-    cr.moveTo(0.5, 0.0);
+    cr.moveTo(0.5, 0);
     cr.lineTo(0.9, -0.4);
     cr.curveTo(1.1, -0.8, 0.5, -0.9, 0.5, -0.5);
     cr.curveTo(0.5, -0.9, -0.1, -0.8, 0.1, -0.4);
     cr.closePath();
 
     if (!doPath) {
-        cr.setSourceRgb(1.0, 0.0, 0.0);
+        cr.setSourceRgb(1, 0, 0);
         cr.fill();
     }
 };
@@ -94,8 +94,8 @@ const RotatedTextDemo = () => {
             cr.scale(deviceRadius / RADIUS, deviceRadius / RADIUS);
 
             const gradient = new LinearPattern(-RADIUS, -RADIUS, RADIUS, RADIUS);
-            gradient.addColorStopRgb(0, 0.5, 0.0, 0.0);
-            gradient.addColorStopRgb(1, 0.0, 0.0, 0.5);
+            gradient.addColorStopRgb(0, 0.5, 0, 0);
+            gradient.addColorStopRgb(1, 0, 0, 0.5);
             cr.setSource(gradient);
 
             const context = drawingAreaRef.current?.createPangoContext();

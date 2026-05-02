@@ -71,7 +71,7 @@ const formatTagName = (widget: Gtk.Widget): string => {
 };
 
 const escapeAttrValue = (value: string): string => {
-    return value.replace(/"/g, "&quot;");
+    return value.replaceAll('"', "&quot;");
 };
 
 const formatAttributes = (widget: Gtk.Widget, colors: HighlightColors, includeIds: boolean): string => {

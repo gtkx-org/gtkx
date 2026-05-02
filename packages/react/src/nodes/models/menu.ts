@@ -16,8 +16,8 @@ export type MenuType = "root" | "item" | "section" | "submenu";
 export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel> {
     private actionMap: Gio.ActionMap | null = null;
     private actionPrefix: string;
-    private menu: Gio.Menu;
-    private type: MenuType;
+    private readonly menu: Gio.Menu;
+    private readonly type: MenuType;
     private application: Gtk.Application | null = null;
     private action: Gio.SimpleAction | null = null;
 

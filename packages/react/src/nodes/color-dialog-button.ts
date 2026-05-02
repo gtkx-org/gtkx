@@ -9,7 +9,7 @@ const OWN_PROPS = ["rgba", "onRgbaChanged", "title", "modal", "withAlpha"] as co
 type ColorDialogButtonProps = Pick<GtkColorDialogButtonProps, (typeof OWN_PROPS)[number]>;
 
 export class ColorDialogButtonNode extends WidgetNode<Gtk.ColorDialogButton, ColorDialogButtonProps> {
-    private dialog: Gtk.ColorDialog;
+    private readonly dialog: Gtk.ColorDialog;
 
     public static override createContainer(
         _props: ColorDialogButtonProps,

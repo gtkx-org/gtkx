@@ -214,8 +214,8 @@ export type ConstructorSelection = {
  * ```
  */
 export class MethodBodyWriter {
-    private ffiTypeWriter: FfiTypeWriter;
-    private callExpression: CallExpressionBuilder;
+    private readonly ffiTypeWriter: FfiTypeWriter;
+    private readonly callExpression: CallExpressionBuilder;
     private selfNames: ReadonlySet<string> = new Set();
 
     constructor(

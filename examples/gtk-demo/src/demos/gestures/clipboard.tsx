@@ -72,9 +72,7 @@ function drawColorSwatch(cr: Context, width: number, height: number, rgba: Gdk.R
 const ClipboardDemo = ({ window }: DemoProps) => {
     const [sourceType, setSourceType] = useState<SourceType>("Text");
     const [sourceText, setSourceText] = useState("Copy this!");
-    const [sourceColor, setSourceColor] = useState<Gdk.RGBA>(
-        new Gdk.RGBA({ red: 0.5, green: 0.0, blue: 0.5, alpha: 1.0 }),
-    );
+    const [sourceColor, setSourceColor] = useState<Gdk.RGBA>(new Gdk.RGBA({ red: 0.5, green: 0, blue: 0.5, alpha: 1 }));
     const [selectedImage, setSelectedImage] = useState(0);
     const [sourceFile, setSourceFile] = useState<Gio.File | null>(null);
     const [pastedContent, setPastedContent] = useState<PastedContent>({ type: "" });

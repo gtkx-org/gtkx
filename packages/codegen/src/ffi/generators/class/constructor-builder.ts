@@ -82,7 +82,7 @@ export class ConstructorBuilder {
     private readonly className: string;
     private readonly methodBody: MethodBodyWriter;
     private parentFactoryMethodNames: Set<string> = new Set();
-    private propertyDefaults: Map<string, GirProperty> = new Map();
+    private readonly propertyDefaults: Map<string, GirProperty> = new Map();
 
     constructor(
         private readonly cls: GirClass,

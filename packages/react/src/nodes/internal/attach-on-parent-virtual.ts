@@ -17,8 +17,7 @@ export abstract class AttachOnParentVirtualNode<
     TProps,
     TParent extends WidgetNode,
     TChild extends WidgetNode,
-    // biome-ignore lint/suspicious/noExplicitAny: matches VirtualNode's loose bound
-> extends VirtualNode<TProps, TParent, TChild & any> {
+> extends VirtualNode<TProps, TParent, TChild> {
     public override appendChild(child: TChild): void {
         super.appendChild(child);
         if (this.parent) {

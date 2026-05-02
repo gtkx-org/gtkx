@@ -136,12 +136,12 @@ const refreshWidgetRegistry = (): void => {
 class McpClient {
     private socket: net.Socket | null = null;
     private buffer = "";
-    private socketPath: string;
-    private appId: string;
+    private readonly socketPath: string;
+    private readonly appId: string;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private hasConnected = false;
     private isStopping = false;
-    private pendingRequests = new Map<string, PendingRequest>();
+    private readonly pendingRequests = new Map<string, PendingRequest>();
 
     constructor(options: McpClientOptions) {
         this.socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;

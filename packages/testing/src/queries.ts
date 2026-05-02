@@ -28,7 +28,7 @@ const buildNormalizer = (options?: TextMatchOptions): ((text: string) => string)
         }
 
         if (collapseWhitespace) {
-            result = result.replace(/\s+/g, " ");
+            result = result.replaceAll(/\s+/g, " ");
         }
 
         return result;

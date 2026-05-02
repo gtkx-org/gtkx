@@ -17,7 +17,7 @@ type BufferProps = Pick<GtkTextViewProps, "enableUndo"> & BufferCallbackProps;
 
 export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffer> {
     private buffer: TBuffer | null = null;
-    private textChildren: TextContentChild[] = [];
+    private readonly textChildren: TextContentChild[] = [];
     private initialMount = true;
     private irreversibleStarted = false;
 

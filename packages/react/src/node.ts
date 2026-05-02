@@ -99,7 +99,7 @@ export class Node<TContainer = any, TProps = any, TParent extends Node = any, TC
         this.props = newProps;
     }
 
-    public commitMount(): void {}
+    public commitMount?(): void;
 
     public detachDeletedInstance(): void {
         this.signalStore.clear(this);

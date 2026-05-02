@@ -107,5 +107,7 @@ export class StyleSheet {
         this.updateScheduled = false;
     }
 
-    hydrate(_elements: unknown[]): void {}
+    hydrate(elements: unknown[]): void {
+        void elements;
+    }
 }

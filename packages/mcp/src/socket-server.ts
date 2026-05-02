@@ -38,8 +38,8 @@ export type AppConnection = {
  */
 export class SocketServer extends EventEmitter<SocketServerEventMap> {
     private server: net.Server | null = null;
-    private connections: Map<string, AppConnection> = new Map();
-    private socketPath: string;
+    private readonly connections: Map<string, AppConnection> = new Map();
+    private readonly socketPath: string;
 
     constructor(socketPath: string = DEFAULT_SOCKET_PATH) {
         super();

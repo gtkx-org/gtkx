@@ -6,7 +6,7 @@ import { MenuModel } from "./models/menu.js";
 import { WindowNode } from "./window.js";
 
 export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
-    private menu: MenuModel;
+    private readonly menu: MenuModel;
 
     constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer: Container) {
         super(typeName, props, container, rootContainer);

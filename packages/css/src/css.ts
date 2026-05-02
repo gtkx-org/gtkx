@@ -10,7 +10,7 @@ type CSSClassName = string & { __brand: "css" };
 
 function expandNestedRules(styles: string, className: string): string {
     const selector = `.${className}`;
-    const expandedStyles = styles.replace(/&/g, selector);
+    const expandedStyles = styles.replaceAll("&", selector);
 
     const rules: string[] = [];
     let topLevelProperties = "";

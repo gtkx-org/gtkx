@@ -14,8 +14,7 @@ export abstract class SingleChildVirtualNode<
     TProps,
     TParent extends Node,
     TChild extends WidgetNode,
-    // biome-ignore lint/suspicious/noExplicitAny: matches VirtualNode's loose bound
-> extends VirtualNode<TProps, TParent, TChild & any> {
+> extends VirtualNode<TProps, TParent, TChild> {
     public override appendChild(child: TChild): void {
         const oldChildWidget = this.children[0]?.container ?? null;
         super.appendChild(child);

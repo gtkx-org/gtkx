@@ -31,7 +31,7 @@ type FfiTypeWriterOptions = {
  * ```
  */
 export class FfiTypeWriter {
-    private options: FfiTypeWriterOptions;
+    private readonly options: FfiTypeWriterOptions;
 
     constructor(options: FfiTypeWriterOptions = {}) {
         this.options = options;

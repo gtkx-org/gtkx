@@ -20,7 +20,7 @@ const OWN_PROPS = [
 type FontDialogButtonProps = Pick<GtkFontDialogButtonProps, (typeof OWN_PROPS)[number]>;
 
 export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontDialogButtonProps> {
-    private dialog: Gtk.FontDialog;
+    private readonly dialog: Gtk.FontDialog;
 
     public static override createContainer(
         _props: FontDialogButtonProps,

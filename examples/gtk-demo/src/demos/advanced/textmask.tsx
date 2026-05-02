@@ -32,8 +32,8 @@ const TextmaskDemo = () => {
         pattern.addColorStopRgb(0.4, 0, 1, 0);
         pattern.addColorStopRgb(0.6, 0, 1, 1);
         pattern.addColorStopRgb(0.7, 0, 0, 1);
-        pattern.addColorStopRgb(0.8, 1.0, 0.0, 1.0);
-        pattern.addColorStopRgb(1.0, 1.0, 0.0, 1.0);
+        pattern.addColorStopRgb(0.8, 1, 0, 1);
+        pattern.addColorStopRgb(1, 1, 0, 1);
 
         cr.setSource(pattern);
         cr.fillPreserve();

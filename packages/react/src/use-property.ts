@@ -6,7 +6,7 @@ type ReadableKey<T> = {
 }[keyof T];
 
 const toKebabCase = (str: string): string =>
-    str.replace(/[A-Z]/g, (c, i: number) => (i === 0 ? c.toLowerCase() : `-${c.toLowerCase()}`));
+    str.replaceAll(/[A-Z]/g, (c, i: number) => (i === 0 ? c.toLowerCase() : `-${c.toLowerCase()}`));
 
 /**
  * Subscribes to a GObject property and returns its current value as React state.

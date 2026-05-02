@@ -122,6 +122,10 @@ export function App() {
         if (selectedNote) setNoteToDelete(selectedNote);
     };
 
+    const restoreNote = useCallback((id: string) => {
+        setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, deleted: false } : n)));
+    }, []);
+
     const confirmDelete = useCallback(() => {
         if (!noteToDelete) return;
 
@@ -139,12 +143,10 @@ export function App() {
 
             const toast = new Adw.Toast(`\u201c${deletedNote.title}\u201d moved to Trash`);
             toast.buttonLabel = "Undo";
-            toast.connect("button-clicked", () => {
-                setNotes((prev) => prev.map((n) => (n.id === deletedNote.id ? { ...n, deleted: false } : n)));
-            });
+            toast.connect("button-clicked", () => restoreNote(deletedNote.id));
             toastOverlayRef.current?.addToast(toast);
         }
-    }, [noteToDelete, notes, selectedId]);
+    }, [noteToDelete, notes, selectedId, restoreNote]);
 
     const searchEntryRef = useRef<Gtk.SearchEntry | null>(null);
 

@@ -15,8 +15,8 @@ uniform mat4 uMvp;
 out vec4 vertexColor;
 
 void main() {
-    gl_Position = uMvp * vec4(aPos, 1.0);
-    vertexColor = vec4(aColor, 1.0);
+    gl_Position = uMvp * vec4(aPos, 1);
+    vertexColor = vec4(aColor, 1);
 }`;
 
 const FRAGMENT_SHADER = `#version 300 es
@@ -29,7 +29,7 @@ void main() {
     FragColor = vertexColor;
 }`;
 
-const TRIANGLE_DATA = [0.0, 0.5, 0.0, 1.0, 0.0, 0.0, -0.5, -0.366, 0.0, 0.0, 1.0, 0.0, 0.5, -0.366, 0.0, 0.0, 0.0, 1.0];
+const TRIANGLE_DATA = [0, 0.5, 0, 1, 0, 0, -0.5, -0.366, 0, 0, 1, 0, 0.5, -0.366, 0, 0, 0, 1];
 
 interface GLState {
     program: number;
@@ -148,36 +148,33 @@ const GLAreaDemo = ({ window }: DemoProps) => {
 
     const handleRender = useCallback(
         (_context: Gdk.GLContext, self: Gtk.GLArea) => {
-            if (!glStateRef.current) {
-                const glError = self.getError();
-                if (glError) {
-                    return true;
-                }
-
+            if (!glStateRef.current && !self.getError()) {
                 try {
                     glStateRef.current = initGL();
                 } catch {
-                    return true;
+                    glStateRef.current = null;
                 }
             }
 
             const state = glStateRef.current;
-            const mvp = createRotationMatrix(rotationX, rotationY, rotationZ);
+            if (state) {
+                const mvp = createRotationMatrix(rotationX, rotationY, rotationZ);
 
-            gl.clearColor(0.5, 0.5, 0.5, 1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.clearColor(0.5, 0.5, 0.5, 1);
+                gl.clear(gl.COLOR_BUFFER_BIT);
 
-            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
-            gl.useProgram(state.program);
-            gl.uniformMatrix4fv(state.mvpLocation, 1, false, mvp);
+                // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
+                gl.useProgram(state.program);
+                gl.uniformMatrix4fv(state.mvpLocation, 1, false, mvp);
 
-            gl.bindVertexArray(state.vao);
-            gl.drawArrays(gl.TRIANGLES, 0, 3);
-            gl.bindVertexArray(0);
+                gl.bindVertexArray(state.vao);
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
+                gl.bindVertexArray(0);
 
-            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
-            gl.useProgram(0);
-            gl.flush();
+                // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
+                gl.useProgram(0);
+                gl.flush();
+            }
 
             return true;
         },

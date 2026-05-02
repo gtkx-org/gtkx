@@ -68,24 +68,24 @@ const ThemesDemo = ({ window }: DemoProps) => {
         (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
             const settings = Gtk.Settings.getDefault();
             const styleManager = Adw.StyleManager.getDefault();
-            if (!settings || !styleManager) return true;
+            if (settings && styleManager) {
+                const theme = THEMES[themeIndexRef.current % THEMES.length];
+                if (theme) {
+                    settings.gtkThemeName = theme.name;
+                    styleManager.setColorScheme(theme.dark ? Adw.ColorScheme.FORCE_DARK : Adw.ColorScheme.FORCE_LIGHT);
 
-            const theme = THEMES[themeIndexRef.current % THEMES.length];
-            if (theme) {
-                settings.gtkThemeName = theme.name;
-                styleManager.setColorScheme(theme.dark ? Adw.ColorScheme.FORCE_DARK : Adw.ColorScheme.FORCE_LIGHT);
-
-                const win = window.current;
-                if (win) {
-                    const darkSuffix = theme.dark ? " (dark)" : "";
-                    win.setTitle(`${theme.name}${darkSuffix}`);
+                    const win = window.current;
+                    if (win) {
+                        const darkSuffix = theme.dark ? " (dark)" : "";
+                        win.setTitle(`${theme.name}${darkSuffix}`);
+                    }
                 }
+
+                themeIndexRef.current++;
+
+                const fpsValue = frameClock.getFps();
+                setFps(`${fpsValue.toFixed(2)} fps`);
             }
-
-            themeIndexRef.current++;
-
-            const fpsValue = frameClock.getFps();
-            setFps(`${fpsValue.toFixed(2)} fps`);
 
             return true;
         },

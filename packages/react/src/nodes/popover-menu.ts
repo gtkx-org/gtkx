@@ -13,7 +13,7 @@ import { WidgetNode } from "./widget.js";
 type PopoverMenuChild = MenuNode | SlotNode | ContainerSlotNode | EventControllerNode | WidgetNode;
 
 export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, PopoverMenuChild> {
-    private menu: MenuModel;
+    private readonly menu: MenuModel;
 
     public override isValidChild(child: Node): boolean {
         return (

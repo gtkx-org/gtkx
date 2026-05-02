@@ -34,13 +34,13 @@ type RegisteredApp = {
 export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     private static readonly DEFAULT_WAIT_TIMEOUT = 10000;
 
-    private apps: Map<string, RegisteredApp> = new Map();
-    private connectionToApp: Map<string, string> = new Map();
-    private pendingRequests: Map<string, PendingRequest> = new Map();
-    private requestTimeout: number;
+    private readonly apps: Map<string, RegisteredApp> = new Map();
+    private readonly connectionToApp: Map<string, string> = new Map();
+    private readonly pendingRequests: Map<string, PendingRequest> = new Map();
+    private readonly requestTimeout: number;
 
     constructor(
-        private socketServer: SocketServer,
+        private readonly socketServer: SocketServer,
         options: { requestTimeout?: number } = {},
     ) {
         super();

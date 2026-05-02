@@ -290,19 +290,19 @@ const HypertextDemo = () => {
 
     const handleKeyPress = useCallback(
         (keyval: number) => {
-            if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
-                const textView = textViewRef.current;
-                if (!textView) return false;
+            if (keyval !== Gdk.KEY_Return && keyval !== Gdk.KEY_KP_Enter) return false;
 
-                const buffer = textView.getBuffer();
-                const iter = buffer.getIterAtMark(buffer.getInsert());
+            const textView = textViewRef.current;
+            if (!textView) return false;
 
-                const targetPage = findLinkAtOffset(iter.getOffset());
-                if (targetPage !== null) {
-                    setCurrentPage(targetPage);
-                }
-            }
-            return false;
+            const buffer = textView.getBuffer();
+            const iter = buffer.getIterAtMark(buffer.getInsert());
+
+            const targetPage = findLinkAtOffset(iter.getOffset());
+            if (targetPage === null) return false;
+
+            setCurrentPage(targetPage);
+            return true;
         },
         [findLinkAtOffset],
     );

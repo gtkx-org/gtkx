@@ -3,7 +3,7 @@
  */
 
 /** Converts kebab-case or snake_case to camelCase */
-export const toCamelCase = (str: string): string => str.replace(/[-_]([a-z])/g, (_, letter) => letter.toUpperCase());
+export const toCamelCase = (str: string): string => str.replaceAll(/[-_]([a-z])/g, (_, letter) => letter.toUpperCase());
 
 /** Converts kebab-case or snake_case to PascalCase */
 export const toPascalCase = (str: string): string => {

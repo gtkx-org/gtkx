@@ -49,7 +49,7 @@ function findProperty(obj: NativeObject, key: string): GObject.ParamSpec | null 
         return perCtor.get(key) ?? null;
     }
 
-    const propertyName = key.replace(/([A-Z])/g, "-$1").toLowerCase();
+    const propertyName = key.replaceAll(/([A-Z])/g, "-$1").toLowerCase();
     const typeInstance = getNativeObject(obj.handle, TypeInstance);
     const typeName = typeNameFromInstance(typeInstance);
     const gtype = typeFromName(typeName);

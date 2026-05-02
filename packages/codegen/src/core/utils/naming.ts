@@ -57,11 +57,11 @@ const RESERVED_WORDS = new Set([
 ]);
 
 export const toCamelCase = (str: string): string =>
-    str.replace(/[-_]([a-z])/g, (_, letter) => letter.toUpperCase()).replace(/[-_](\d)/g, (_, digit) => digit);
+    str.replaceAll(/[-_]([a-z])/g, (_, letter) => letter.toUpperCase()).replaceAll(/[-_](\d)/g, (_, digit) => digit);
 
-export const kebabToSnake = (str: string): string => str.replace(/-/g, "_");
+export const kebabToSnake = (str: string): string => str.replaceAll("-", "_");
 
-export const snakeToKebab = (str: string): string => str.replace(/_/g, "-");
+export const snakeToKebab = (str: string): string => str.replaceAll("_", "-");
 
 const capitalize = (str: string): string => (str.length === 0 ? str : str.charAt(0).toUpperCase() + str.slice(1));
 
@@ -75,15 +75,15 @@ export const createWrappedName = (paramName: string): string => `wrapped${capita
 
 export const toKebabCase = (str: string): string =>
     str
-        .replace(/([a-z])([A-Z])/g, "$1-$2")
-        .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
-        .replace(/_/g, "-")
+        .replaceAll(/([a-z])([A-Z])/g, "$1-$2")
+        .replaceAll(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+        .replaceAll("_", "-")
         .toLowerCase();
 
-export const toConstantCase = (str: string): string => str.replace(/-/g, "_").toUpperCase();
+export const toConstantCase = (str: string): string => str.replaceAll("-", "_").toUpperCase();
 
 export const toValidMemberName = (str: string): string => {
-    let result = str.replace(/[^a-zA-Z0-9_$]/g, "_");
+    let result = str.replaceAll(/[^a-zA-Z0-9_$]/g, "_");
     if (/^\d/.test(result)) result = `_${result}`;
     return result;
 };

@@ -88,7 +88,7 @@ const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
     overlayCr.fill();
 
     const punchCr = new Context(punch);
-    draw3Circles(punchCr, xc, yc, radius, 1.0);
+    draw3Circles(punchCr, xc, yc, radius, 1);
 
     overlayCr.setOperator(Operator.DEST_OUT);
     overlayCr.setSourceSurface(punch, 0, 0);

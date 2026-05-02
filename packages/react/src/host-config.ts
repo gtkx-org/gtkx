@@ -116,7 +116,7 @@ export function createHostConfig(): HostConfig {
         commitUpdate: (instance, _type, oldProps, newProps) =>
             withSignalsBlocked(instance, () => instance.commitUpdate(oldProps, newProps)),
         commitMount: (instance) => {
-            instance.commitMount();
+            instance.commitMount?.();
         },
         appendChild: (parent, child) => {
             parent.appendChild(child);

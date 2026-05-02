@@ -143,7 +143,12 @@ describe("render - ListView", () => {
 
             await render(<App itemName="Initial" />);
 
+            expect(screen.queryAllByText("Initial")).toHaveLength(1);
+
             await render(<App itemName="Updated" />);
+
+            expect(screen.queryAllByText("Updated")).toHaveLength(1);
+            expect(screen.queryAllByText("Initial")).toHaveLength(0);
         });
 
         it("re-renders bound items when value changes", async () => {
@@ -1249,7 +1254,11 @@ describe("render - ListView (tree)", () => {
 
             await render(<App autoexpand={false} />);
 
+            expect(getVisibleItemTexts(ref.current as Gtk.ListView)).toEqual(["Parent"]);
+
             await render(<App autoexpand={true} />);
+
+            expect(ref.current).not.toBeNull();
         });
     });
 

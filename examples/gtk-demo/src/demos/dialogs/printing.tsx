@@ -7,7 +7,7 @@ import sourceCode from "./printing.tsx?raw";
 
 const HEADER_HEIGHT = (10 * 72) / 25.4;
 const HEADER_GAP = (3 * 72) / 25.4;
-const FONT_SIZE = 12.0;
+const FONT_SIZE = 12;
 
 const PrintingDemo = ({ window, onClose }: DemoProps) => {
     useEffect(() => {

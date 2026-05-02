@@ -337,14 +337,15 @@ const DndDemo = ({ window }: DemoProps) => {
         setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angle } : item)));
     }, []);
 
+    const updateItemAngleDelta = useCallback((itemId: string, angleDeltaDeg: number) => {
+        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angleDelta: angleDeltaDeg } : item)));
+    }, []);
+
     const handleRotateAngleChanged = useCallback(
         (itemId: string) => (_angle: number, angleDelta: number) => {
-            const angleDeltaDeg = (angleDelta * 180) / Math.PI;
-            setItems((prev) =>
-                prev.map((item) => (item.id === itemId ? { ...item, angleDelta: angleDeltaDeg } : item)),
-            );
+            updateItemAngleDelta(itemId, (angleDelta * 180) / Math.PI);
         },
-        [],
+        [updateItemAngleDelta],
     );
 
     const handleRotateEnd = useCallback((itemId: string) => {

@@ -96,13 +96,13 @@ const FontRenderingDemo = () => {
         showGrid: false,
     });
 
-    const [pixelAlpha, setPixelAlpha] = useState(1.0);
-    const [outlineAlpha, setOutlineAlpha] = useState(0.0);
+    const [pixelAlpha, setPixelAlpha] = useState(1);
+    const [outlineAlpha, setOutlineAlpha] = useState(0);
     const animationRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
-        const targetPixelAlpha = overlays.showPixels && overlays.showOutlines ? 0.5 : overlays.showPixels ? 1.0 : 0.0;
-        const targetOutlineAlpha = overlays.showOutlines ? 1.0 : 0.0;
+        const targetPixelAlpha = overlays.showPixels && overlays.showOutlines ? 0.5 : overlays.showPixels ? 1 : 0;
+        const targetOutlineAlpha = overlays.showOutlines ? 1 : 0;
 
         if (pixelAlpha === targetPixelAlpha && outlineAlpha === targetOutlineAlpha) return;
 

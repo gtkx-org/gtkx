@@ -112,7 +112,7 @@ function getFontFamilies() {
 }
 
 function escapeMarkup(text: string): string {
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
 function highlightMatch(word: string, query: string): string {

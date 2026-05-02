@@ -134,6 +134,23 @@ export class CallExpressionBuilder {
         };
     }
 
+    private writeCallArguments(
+        writer: Writer,
+        options: CallExpressionOptions,
+        allArgs: Array<{ type: FfiTypeDescriptor; value: string; optional?: boolean }>,
+    ): void {
+        allArgs.forEach((arg, index) => {
+            this.writeArgument(writer, arg);
+            if (index < allArgs.length - 1 || options.hasVarargs) {
+                writer.write(",");
+            }
+            writer.newLine();
+        });
+        if (options.hasVarargs) {
+            writer.writeLine("...args,");
+        }
+    }
+
     private inlineWriter(options: CallExpressionOptions): (writer: Writer) => void {
         return (writer) => {
             writer.write("call(");
@@ -146,18 +163,7 @@ export class CallExpressionBuilder {
                 const hasContent = allArgs.length > 0 || options.hasVarargs;
                 if (hasContent) {
                     writer.newLine();
-                    writer.withIndent(() => {
-                        allArgs.forEach((arg, index) => {
-                            this.writeArgument(writer, arg);
-                            if (index < allArgs.length - 1 || options.hasVarargs) {
-                                writer.write(",");
-                            }
-                            writer.newLine();
-                        });
-                        if (options.hasVarargs) {
-                            writer.writeLine("...args,");
-                        }
-                    });
+                    writer.withIndent(() => this.writeCallArguments(writer, options, allArgs));
                 }
                 writer.writeLine("],");
                 writeFfiTypeExpression(writer, options.returnType);

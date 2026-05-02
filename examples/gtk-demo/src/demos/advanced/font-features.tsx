@@ -261,7 +261,7 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
     const [bgColor, setBgColor] = useState<Gdk.RGBA>(createDefaultBgColor);
     const [size, setSize] = useState(14);
     const [letterSpacing, setLetterSpacing] = useState(0);
-    const [lineHeight, setLineHeight] = useState(1.0);
+    const [lineHeight, setLineHeight] = useState(1);
     const [viewMode, setViewMode] = useState<ViewMode>("plain");
     const [previewText, setPreviewText] = useState(PARAGRAPH_SAMPLES[0] ?? "");
     const sampleCounterRef = useRef(0);
@@ -432,7 +432,7 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
 
     const pangoFontFeaturesString = useMemo(() => {
         if (fontFeaturesString === "normal") return null;
-        return fontFeaturesString.replace(/"/g, "").replace(/ 1/g, "=1").replace(/ 0/g, "=0");
+        return fontFeaturesString.replaceAll('"', "").replaceAll(" 1", "=1").replaceAll(" 0", "=0");
     }, [fontFeaturesString]);
 
     const applySelectionAttributes = useCallback(() => {
