@@ -74,8 +74,6 @@ impl ModuleRequest for CallRequest {
             ffi_value.append_libffi_args(&mut ffi_args);
         }
 
-        // SAFETY: We're loading a symbol from a dynamic library and calling it via libffi.
-        // The library/symbol names come from the FFI binding definitions which are trusted.
         let symbol_ptr = unsafe {
             GtkThreadState::with::<_, anyhow::Result<libffi::CodePtr>>(|state| {
                 let library = state.library(&self.library_name)?;

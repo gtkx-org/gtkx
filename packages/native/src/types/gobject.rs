@@ -18,8 +18,8 @@ pub struct GObjectType {
 }
 
 impl GObjectType {
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_js_value(env, obj, "gobject")?;
+    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(obj, "gobject")?;
         Ok(Self { ownership })
     }
 }

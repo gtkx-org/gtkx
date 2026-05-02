@@ -108,7 +108,7 @@ impl ArrayType {
             .flatten()
             .map(|n| n as usize);
 
-        let ownership = Ownership::from_js_value(env, obj, "array")?;
+        let ownership = Ownership::from_js_value(obj, "array")?;
 
         Ok(Self {
             item_type: Box::new(item_type),

@@ -29,8 +29,8 @@ pub struct BoxedType {
 }
 
 impl BoxedType {
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_js_value(env, obj, "boxed")?;
+    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(obj, "boxed")?;
 
         let type_name: String = obj.get_named_property("innerType")?;
 
@@ -230,8 +230,8 @@ pub struct StructType {
 }
 
 impl StructType {
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_js_value(env, obj, "struct")?;
+    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(obj, "struct")?;
 
         let type_name: String = obj.get_named_property("innerType")?;
 

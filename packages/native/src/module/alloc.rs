@@ -29,7 +29,6 @@ impl ModuleRequest for AllocRequest {
     type Output = NativeHandle;
 
     fn execute(self) -> anyhow::Result<NativeHandle> {
-        // SAFETY: g_malloc0 is a safe GLib memory allocation function
         let ptr = unsafe { g_malloc0(self.size) };
 
         if ptr.is_null() {

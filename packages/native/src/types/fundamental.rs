@@ -25,8 +25,8 @@ pub struct FundamentalType {
 }
 
 impl FundamentalType {
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_js_value(env, obj, "fundamental")?;
+    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(obj, "fundamental")?;
 
         let library: String = obj.get_named_property("library")?;
         let ref_func: String = obj.get_named_property("refFn")?;

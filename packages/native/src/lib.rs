@@ -36,6 +36,15 @@
 //! - `NativeValue`: Managed wrapper for `GObject`, Boxed, and Fundamental instances
 //! - `Type`: Type system describing all FFI-compatible types
 //! - `ffi::FfiValue`: Low-level libffi argument representation
+//!
+//! ## napi-rs compatibility types
+//!
+//! Cross-thread JavaScript reference storage (`napi::Ref<JsFunction>`,
+//! `napi::Ref<JsObject>`) requires the v2-compatibility types
+//! `napi::JsFunction` and `napi::JsObject` rather than the lifetime-scoped
+//! `Function<'_>` / `Object<'_>` from `bindgen_prelude`. The crate-level
+//! `#![allow(deprecated)]` below permits their use until napi-rs offers a
+//! `Send + Sync` reference type for the typed surface.
 
 #![allow(deprecated)]
 

@@ -133,23 +133,19 @@ impl Ownership {
 }
 
 impl Ownership {
-    pub fn from_js_value(env: &Env, obj: &JsObject, type_name: &str) -> napi::Result<Self> {
+    pub fn from_js_value(obj: &JsObject, type_name: &str) -> napi::Result<Self> {
+        let missing = || {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                format!("'ownership' property is required for {type_name} types"),
+            )
+        };
+
         let ownership = obj
             .get_named_property::<Option<String>>("ownership")
-            .map_err(|_| {
-                napi::Error::new(
-                    napi::Status::InvalidArg,
-                    format!("'ownership' property is required for {type_name} types"),
-                )
-            })?
-            .ok_or_else(|| {
-                napi::Error::new(
-                    napi::Status::InvalidArg,
-                    format!("'ownership' property is required for {type_name} types"),
-                )
-            })?;
+            .map_err(|_| missing())?
+            .ok_or_else(missing)?;
 
-        let _ = env;
         ownership
             .parse()
             .map_err(|e: String| napi::Error::new(napi::Status::InvalidArg, e))

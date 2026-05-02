@@ -41,6 +41,12 @@ use send_wrapper::SendWrapper;
 
 use crate::dispatch::Mailbox;
 
+/// Sentinel value placed at the head of every [`NativeHandle`] so foreign
+/// `napi::External` instances cannot be mistaken for ours.
+///
+/// Verified by [`NativeHandle::is_ours`] before we trust the pointer payload.
+const NATIVE_HANDLE_MAGIC: u64 = 0x_47_54_4B_58_4E_41_54_56;
+
 /// Owned handle for a managed native value.
 ///
 /// Wraps either an owned [`NativeValue`] (constructed via `From<NativeValue>`)
@@ -48,7 +54,9 @@ use crate::dispatch::Mailbox;
 /// An owned handle is anchored to the `GLib` thread via [`SendWrapper`] and routes
 /// its drop back to that thread automatically; a borrowed handle carries only
 /// the pointer and is safe to clone or drop on any thread.
+#[repr(C)]
 pub struct NativeHandle {
+    magic: u64,
     ptr: *mut c_void,
     inner: Option<SendWrapper<NativeValue>>,
 }
@@ -67,7 +75,7 @@ impl std::fmt::Debug for NativeHandle {
         f.debug_struct("NativeHandle")
             .field("ptr", &self.ptr)
             .field("owned", &self.inner.is_some())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -79,6 +87,7 @@ impl From<NativeValue> for NativeHandle {
             NativeValue::Fundamental(fundamental) => fundamental.as_ptr(),
         };
         Self {
+            magic: NATIVE_HANDLE_MAGIC,
             ptr,
             inner: Some(SendWrapper::new(value)),
         }
@@ -96,6 +105,7 @@ impl Clone for NativeHandle {
     /// can be cloned freely.
     fn clone(&self) -> Self {
         Self {
+            magic: NATIVE_HANDLE_MAGIC,
             ptr: self.ptr,
             inner: self.inner.clone(),
         }
@@ -111,7 +121,22 @@ impl NativeHandle {
     /// [`SendWrapper`] and is therefore safe to clone or drop on any thread.
     #[must_use]
     pub fn borrowed(ptr: *mut c_void) -> Self {
-        Self { ptr, inner: None }
+        Self {
+            magic: NATIVE_HANDLE_MAGIC,
+            ptr,
+            inner: None,
+        }
+    }
+
+    /// Returns whether `self` carries the `NativeHandle` sentinel.
+    ///
+    /// Used to validate `napi::External` payloads before treating them as a
+    /// `NativeHandle`. Externals from foreign napi addons that happen to be
+    /// at least 8 bytes wide will read whatever value is at offset 0 of their
+    /// payload, which will not match [`NATIVE_HANDLE_MAGIC`].
+    #[must_use]
+    pub fn is_ours(&self) -> bool {
+        self.magic == NATIVE_HANDLE_MAGIC
     }
 
     /// Returns the raw native pointer.

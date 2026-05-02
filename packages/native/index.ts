@@ -126,14 +126,37 @@ export function getNativeId(handle: NativeHandle): number {
     return native.getNativeId(handle);
 }
 
+/**
+ * Checks whether a value is a native handle owned by this module.
+ *
+ * Verifies both that the value is a napi External and that it carries the
+ * GTKX-native handle sentinel, so externals from other native addons return
+ * `false`.
+ *
+ * @param value - Any JavaScript value
+ * @returns `true` if `value` is a `NativeHandle` produced by this module
+ */
 export function isNativeHandle(value: unknown): value is NativeHandle {
     return native.isNativeHandle(value);
 }
 
+/**
+ * Suspends GTK frame-clock dispatch while a batch of mutations is applied.
+ *
+ * Bracketed by [[unfreeze]] to release the GLib main loop. Calls nest: only
+ * the outermost `freeze` / `unfreeze` pair starts and stops the freeze loop.
+ *
+ * @internal Used by `@gtkx/react` around React commits.
+ */
 export function freeze(): void {
     native.freeze();
 }
 
+/**
+ * Resumes normal GTK frame-clock dispatch after a [[freeze]] block.
+ *
+ * @internal Used by `@gtkx/react` around React commits.
+ */
 export function unfreeze(): void {
     native.unfreeze();
 }

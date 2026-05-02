@@ -5,8 +5,8 @@
 //! With pointer-bearing handles, the read is purely synchronous and never
 //! crosses the `GLib` thread boundary.
 
-use napi::ValueType;
 use napi::bindgen_prelude::*;
+use napi::{Env, ValueType};
 use napi_derive::napi;
 
 use crate::managed::NativeHandle;
@@ -17,6 +17,16 @@ pub fn get_native_id(handle: &External<NativeHandle>) -> f64 {
 }
 
 #[napi]
-pub fn is_native_handle(value: Unknown<'_>) -> napi::Result<bool> {
-    Ok(value.get_type()? == ValueType::External)
+pub fn is_native_handle(env: &Env, value: Unknown<'_>) -> napi::Result<bool> {
+    if value.get_type()? != ValueType::External {
+        return Ok(false);
+    }
+
+    let Ok(handle) =
+        (unsafe { <&External<NativeHandle>>::from_napi_value(env.raw(), value.raw()) })
+    else {
+        return Ok(false);
+    };
+
+    Ok(handle.is_ours())
 }

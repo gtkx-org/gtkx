@@ -14,8 +14,8 @@ pub struct StringType {
 }
 
 impl StringType {
-    pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
-        let ownership = Ownership::from_js_value(env, obj, "string")?;
+    pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
+        let ownership = Ownership::from_js_value(obj, "string")?;
 
         let length: Option<usize> = obj
             .get_named_property::<Option<f64>>("length")

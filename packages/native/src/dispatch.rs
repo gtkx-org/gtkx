@@ -365,7 +365,6 @@ impl Mailbox {
         args: Vec<Value>,
         capture_result: bool,
     ) -> anyhow::Result<Value> {
-        use napi::NapiRaw as _;
         use napi::sys;
 
         let js_args: Vec<Unknown<'_>> = args
@@ -382,7 +381,8 @@ impl Mailbox {
             .get_value(&env)
             .map_err(|e| anyhow::anyhow!("retrieving callback function: {e}"))?;
 
-        let func_raw = unsafe { func.raw() };
+        let func_raw = unsafe { napi::NapiRaw::raw(&func) };
+
         let mut undef_this = std::ptr::null_mut();
         unsafe {
             sys::napi_get_undefined(env.raw(), &mut undef_this);
@@ -418,9 +418,8 @@ impl Mailbox {
 
         if capture_result {
             let unknown = unsafe { Unknown::from_raw_unchecked(env.raw(), return_value) };
-            let val = Value::from_js_value(&env, unknown)
-                .map_err(|e| anyhow::anyhow!("converting callback result: {e}"))?;
-            Ok(val)
+            Value::from_js_value(&env, unknown)
+                .map_err(|e| anyhow::anyhow!("converting callback result: {e}"))
         } else {
             Ok(Value::Undefined)
         }
@@ -431,10 +430,12 @@ impl Mailbox {
         exception: napi::sys::napi_value,
     ) -> String {
         use napi::sys;
+
         let mut value_type = sys::ValueType::napi_undefined;
         unsafe {
             sys::napi_typeof(env, exception, &mut value_type);
         }
+
         if value_type == sys::ValueType::napi_object {
             let mut message = std::ptr::null_mut();
             unsafe {
@@ -450,6 +451,7 @@ impl Mailbox {
         {
             return s;
         }
+
         "unknown exception".to_owned()
     }
 }
