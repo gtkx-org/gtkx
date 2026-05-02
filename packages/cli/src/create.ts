@@ -44,7 +44,8 @@ const createTemplateContext = (name: string, appId: string, testing: TestingOpti
 };
 
 export const getAddCommand = (pm: PackageManager, deps: string[], dev: boolean): string => {
-    const devFlag = dev ? (pm === "npm" ? "--save-dev" : "-D") : "";
+    let devFlag = "";
+    if (dev) devFlag = pm === "npm" ? "--save-dev" : "-D";
     const parts = [devFlag, ...deps].filter(Boolean).join(" ");
 
     switch (pm) {

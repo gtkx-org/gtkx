@@ -101,7 +101,10 @@ const FontRenderingDemo = () => {
     const animationRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
-        const targetPixelAlpha = overlays.showPixels && overlays.showOutlines ? 0.5 : overlays.showPixels ? 1 : 0;
+        let targetPixelAlpha: number;
+        if (overlays.showPixels && overlays.showOutlines) targetPixelAlpha = 0.5;
+        else if (overlays.showPixels) targetPixelAlpha = 1;
+        else targetPixelAlpha = 0;
         const targetOutlineAlpha = overlays.showOutlines ? 1 : 0;
 
         if (pixelAlpha === targetPixelAlpha && outlineAlpha === targetOutlineAlpha) return;

@@ -51,6 +51,58 @@ const getEmptyStateDescription = (searchQuery: string, category: string): string
     return "Press + or Ctrl+N to create your first note";
 };
 
+interface NoteListContentProps {
+    viewMode: string;
+    compactMode: boolean | undefined;
+    fontSize: number | undefined;
+    filteredNotes: Note[];
+    selectedId: string | null;
+    setSelectedId: (id: string | null) => void;
+}
+
+function NoteListContent({
+    viewMode,
+    compactMode,
+    fontSize,
+    filteredNotes,
+    selectedId,
+    setSelectedId,
+}: NoteListContentProps) {
+    const items = filteredNotes.map((note) => ({ id: note.id, value: note }));
+    const selected = selectedId ? [selectedId] : [];
+    const renderItem = (note: Note) => <NoteCard note={note} compact={compactMode} fontSize={fontSize} />;
+    const onSelectionChanged = (ids: string[]) => setSelectedId(ids[0] ?? null);
+
+    if (viewMode === "list") {
+        return (
+            <GtkScrolledWindow vexpand>
+                <GtkListView
+                    estimatedItemHeight={compactMode ? 50 : 80}
+                    selectionMode={Gtk.SelectionMode.SINGLE}
+                    selected={selected}
+                    onSelectionChanged={onSelectionChanged}
+                    items={items}
+                    renderItem={renderItem}
+                />
+            </GtkScrolledWindow>
+        );
+    }
+
+    return (
+        <GtkScrolledWindow vexpand>
+            <GtkGridView
+                minColumns={2}
+                maxColumns={4}
+                selectionMode={Gtk.SelectionMode.SINGLE}
+                selected={selected}
+                onSelectionChanged={onSelectionChanged}
+                items={items}
+                renderItem={renderItem}
+            />
+        </GtkScrolledWindow>
+    );
+}
+
 export function App() {
     const [compactMode] = useSetting(schemaId, "compact-mode", "boolean");
     const [fontSize] = useSetting(schemaId, "font-size", "int");
@@ -296,48 +348,14 @@ export function App() {
                                     </GtkSearchBar>
 
                                     {filteredNotes.length > 0 ? (
-                                        viewMode === "list" ? (
-                                            <GtkScrolledWindow vexpand>
-                                                <GtkListView
-                                                    estimatedItemHeight={compactMode ? 50 : 80}
-                                                    selectionMode={Gtk.SelectionMode.SINGLE}
-                                                    selected={selectedId ? [selectedId] : []}
-                                                    onSelectionChanged={(ids) => setSelectedId(ids[0] ?? null)}
-                                                    items={filteredNotes.map((note) => ({
-                                                        id: note.id,
-                                                        value: note,
-                                                    }))}
-                                                    renderItem={(note) => (
-                                                        <NoteCard
-                                                            note={note}
-                                                            compact={compactMode}
-                                                            fontSize={fontSize}
-                                                        />
-                                                    )}
-                                                />
-                                            </GtkScrolledWindow>
-                                        ) : (
-                                            <GtkScrolledWindow vexpand>
-                                                <GtkGridView
-                                                    minColumns={2}
-                                                    maxColumns={4}
-                                                    selectionMode={Gtk.SelectionMode.SINGLE}
-                                                    selected={selectedId ? [selectedId] : []}
-                                                    onSelectionChanged={(ids) => setSelectedId(ids[0] ?? null)}
-                                                    items={filteredNotes.map((note) => ({
-                                                        id: note.id,
-                                                        value: note,
-                                                    }))}
-                                                    renderItem={(note) => (
-                                                        <NoteCard
-                                                            note={note}
-                                                            compact={compactMode}
-                                                            fontSize={fontSize}
-                                                        />
-                                                    )}
-                                                />
-                                            </GtkScrolledWindow>
-                                        )
+                                        <NoteListContent
+                                            viewMode={viewMode}
+                                            compactMode={compactMode}
+                                            fontSize={fontSize}
+                                            filteredNotes={filteredNotes}
+                                            selectedId={selectedId}
+                                            setSelectedId={setSelectedId}
+                                        />
                                     ) : (
                                         <AdwStatusPage
                                             vexpand
