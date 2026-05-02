@@ -49,10 +49,10 @@
     },
     "scripts": {
         "artifacts": "napi artifacts",
-        "build": "tsc -b && cp ../../README.md .",
+        "build": "tsc -b && cp ../../README.md . && cp native-binding.cjs native-binding.d.cts dist/",
         "create-npm-dirs": "napi create-npm-dirs",
         "lint": "cargo fmt --check && cargo clippy -- -D warnings",
-        "native-build": "napi build --platform --release --js native-binding.cjs --dts native-binding.d.cts",
+        "native-build": "napi build --platform --release --js native-binding.cjs --dts native-binding.d.cts && cp native.linux-$(node -p \"process.arch\")-gnu.node ../native-linux-$(node -p \"process.arch\")-gnu/",
         "native-coverage": "mkdir -p coverage && xvfb-run -a cargo llvm-cov --lcov --output-path coverage/lcov.info -- --test-threads=1",
         "native-test": "xvfb-run -a cargo test -- --test-threads=1",
         "prepublishOnly": "napi prepublish -t npm",

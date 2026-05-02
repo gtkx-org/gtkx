@@ -65,11 +65,13 @@
             "outputLogs": "new-only"
         },
         "native-build": {
-            "inputs": ["Cargo.toml", "Cargo.lock", "src/**/*.rs"],
+            "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**/*.rs"],
             "outputs": [
-                "index.node",
-                "$TURBO_ROOT$/packages/native-linux-arm64-gnu/index.node",
-                "$TURBO_ROOT$/packages/native-linux-x64-gnu/index.node"
+                "*.node",
+                "native-binding.cjs",
+                "native-binding.d.cts",
+                "$TURBO_ROOT$/packages/native-linux-arm64-gnu/*.node",
+                "$TURBO_ROOT$/packages/native-linux-x64-gnu/*.node"
             ],
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN", "CARGO_INCREMENTAL", "CARGO_NET_RETRY"]
