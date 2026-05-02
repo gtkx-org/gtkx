@@ -24,6 +24,7 @@ import {
     boxedSelfType,
     type FfiTypeDescriptor,
     fundamentalSelfType,
+    type MappedType,
     SELF_TYPE_GOBJECT,
     type SelfTypeDescriptor,
 } from "../../../core/type-system/ffi-types.js";
@@ -530,6 +531,132 @@ export class RecordGenerator {
         });
     }
 
+    private resolveFieldName(field: GirField): string {
+        const fieldName = toValidMemberName(toCamelCase(field.name));
+        return fieldName === "id" ? "id_" : fieldName;
+    }
+
+    private tryGenerateArrayField(
+        field: GirField,
+        fieldName: string,
+        offset: number,
+        fields: readonly GirField[],
+        cls: ClassDeclarationBuilder,
+        methodNames: Set<string>,
+    ): boolean {
+        if (!field.type.isArray || !field.type.elementType) return false;
+
+        const elementTypeName = String(field.type.elementType.name);
+        if (this.fieldBuilder.isNestedStructType(elementTypeName)) {
+            this.generateArrayFieldAccessors(field, fieldName, offset, fields, cls, methodNames);
+        }
+        return true;
+    }
+
+    private buildPrimitiveFieldAccessor(
+        field: GirField,
+        fieldName: string,
+        offset: number,
+        isReadable: boolean,
+        isWritable: boolean,
+        cls: ClassDeclarationBuilder,
+    ): void {
+        const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        addTypeImports(this.file, typeMapping.imports, this.selfNames);
+
+        const needsObjectWrap =
+            typeMapping.ffi.type === "boxed" ||
+            typeMapping.ffi.type === "gobject" ||
+            typeMapping.ffi.type === "fundamental";
+
+        if (needsObjectWrap) {
+            this.file.addImport("../../registry.js", ["getNativeObject"]);
+            this.file.addImport("../../object.js", ["NativeHandle"]);
+        }
+
+        if (!isReadable) return;
+
+        this.file.addImport("../../native.js", ["read", "t"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
+
+        const getBody = this.buildFieldGetBody(typeMapping, offset, needsObjectWrap);
+        const setBody = isWritable ? this.buildFieldSetBody(typeMapping, offset, needsObjectWrap) : undefined;
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: needsObjectWrap ? `${typeMapping.ts} | null` : typeMapping.ts,
+                getBody,
+                setBody,
+                doc: doc?.[0]?.description,
+            }),
+        );
+    }
+
+    private buildFieldGetBody(
+        typeMapping: MappedType,
+        offset: number,
+        needsObjectWrap: boolean,
+    ): (writer: Writer) => void {
+        if (needsObjectWrap) {
+            return (writer: Writer) => {
+                writer.write("const ptr = read(this.handle, ");
+                writeFfiTypeExpression(writer, typeMapping.ffi);
+                writer.writeLine(`, ${offset});`);
+                writer.writeLine("if (ptr === null) return null;");
+                writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${typeMapping.ts});`);
+            };
+        }
+        return (writer: Writer) => {
+            writer.write("return read(this.handle, ");
+            writeFfiTypeExpression(writer, typeMapping.ffi);
+            writer.writeLine(`, ${offset}) as ${typeMapping.ts};`);
+        };
+    }
+
+    private buildFieldSetBody(
+        typeMapping: MappedType,
+        offset: number,
+        needsObjectWrap: boolean,
+    ): (writer: Writer) => void {
+        this.file.addImport("../../native.js", ["write", "t"]);
+        return (writer: Writer) => {
+            writer.write("write(this.handle, ");
+            writeFfiTypeExpression(writer, typeMapping.ffi);
+            if (needsObjectWrap) {
+                writer.writeLine(`, ${offset}, value?.handle ?? null);`);
+            } else {
+                writer.writeLine(`, ${offset}, value);`);
+            }
+        };
+    }
+
+    private generateField(
+        field: GirField,
+        offset: number,
+        fields: readonly GirField[],
+        cls: ClassDeclarationBuilder,
+        methodNames: Set<string>,
+    ): void {
+        const fieldName = this.resolveFieldName(field);
+
+        if (this.tryGenerateArrayField(field, fieldName, offset, fields, cls, methodNames)) return;
+
+        const typeName = String(field.type.name);
+        if (!this.fieldBuilder.isGeneratableFieldType(typeName)) return;
+
+        const isReadable = field.readable !== false && !methodNames.has(fieldName);
+        const isWritable = field.writable !== false && !methodNames.has(fieldName);
+
+        if (this.fieldBuilder.isInlineNestedStruct(field)) {
+            this.generateNestedStructAccessors(field, fieldName, offset, cls, methodNames);
+            return;
+        }
+
+        if (this.fieldBuilder.isNestedStructType(typeName)) return;
+
+        this.buildPrimitiveFieldAccessor(field, fieldName, offset, isReadable, isWritable, cls);
+    }
+
     private generateFields(
         fields: readonly GirField[],
         methods: readonly GirMethod[],
@@ -538,88 +665,9 @@ export class RecordGenerator {
         const layout = this.fieldBuilder.calculateLayout(fields);
         const methodNames = new Set(methods.map((m) => toCamelCase(m.name)));
 
-        for (let idx = 0; idx < layout.length; idx++) {
-            const layoutItem = layout[idx];
+        for (const layoutItem of layout) {
             if (!layoutItem) continue;
-            const { field, offset } = layoutItem;
-
-            let fieldName = toValidMemberName(toCamelCase(field.name));
-            if (fieldName === "id") fieldName = "id_";
-
-            if (field.type.isArray && field.type.elementType) {
-                const elementTypeName = String(field.type.elementType.name);
-                if (this.fieldBuilder.isNestedStructType(elementTypeName)) {
-                    this.generateArrayFieldAccessors(field, fieldName, offset, fields, cls, methodNames);
-                }
-                continue;
-            }
-
-            const isReadable = field.readable !== false && !methodNames.has(fieldName);
-            const isWritable = field.writable !== false && !methodNames.has(fieldName);
-
-            const typeName = String(field.type.name);
-            if (!this.fieldBuilder.isGeneratableFieldType(typeName)) continue;
-
-            const isInlineNestedStruct = this.fieldBuilder.isInlineNestedStruct(field);
-
-            if (isInlineNestedStruct) {
-                this.generateNestedStructAccessors(field, fieldName, offset, cls, methodNames);
-            } else if (!this.fieldBuilder.isNestedStructType(typeName)) {
-                const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                addTypeImports(this.file, typeMapping.imports, this.selfNames);
-
-                const needsObjectWrap =
-                    typeMapping.ffi.type === "boxed" ||
-                    typeMapping.ffi.type === "gobject" ||
-                    typeMapping.ffi.type === "fundamental";
-
-                if (needsObjectWrap) {
-                    this.file.addImport("../../registry.js", ["getNativeObject"]);
-                    this.file.addImport("../../object.js", ["NativeHandle"]);
-                }
-
-                if (!isReadable) continue;
-
-                this.file.addImport("../../native.js", ["read", "t"]);
-                const doc = buildJsDocStructure(field.doc, this.options.namespace);
-
-                const getBody = needsObjectWrap
-                    ? (writer: Writer) => {
-                          writer.write("const ptr = read(this.handle, ");
-                          writeFfiTypeExpression(writer, typeMapping.ffi);
-                          writer.writeLine(`, ${offset});`);
-                          writer.writeLine("if (ptr === null) return null;");
-                          writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${typeMapping.ts});`);
-                      }
-                    : (writer: Writer) => {
-                          writer.write("return read(this.handle, ");
-                          writeFfiTypeExpression(writer, typeMapping.ffi);
-                          writer.writeLine(`, ${offset}) as ${typeMapping.ts};`);
-                      };
-
-                let setBody: ((writer: Writer) => void) | undefined;
-                if (isWritable) {
-                    this.file.addImport("../../native.js", ["write", "t"]);
-                    setBody = (writer) => {
-                        writer.write("write(this.handle, ");
-                        writeFfiTypeExpression(writer, typeMapping.ffi);
-                        if (needsObjectWrap) {
-                            writer.writeLine(`, ${offset}, value?.handle ?? null);`);
-                        } else {
-                            writer.writeLine(`, ${offset}, value);`);
-                        }
-                    };
-                }
-
-                cls.addAccessor(
-                    accessor(fieldName, {
-                        type: needsObjectWrap ? `${typeMapping.ts} | null` : typeMapping.ts,
-                        getBody,
-                        setBody,
-                        doc: doc?.[0]?.description,
-                    }),
-                );
-            }
+            this.generateField(layoutItem.field, layoutItem.offset, fields, cls, methodNames);
         }
     }
 
