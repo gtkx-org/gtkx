@@ -5,7 +5,8 @@
 ### Minimal App
 
 ```tsx
-import { GtkApplicationWindow, GtkLabel, render, quit } from "@gtkx/react";
+// src/index.tsx
+import { GtkApplicationWindow, GtkLabel, quit } from "@gtkx/react";
 
 const App = () => (
     <GtkApplicationWindow title="Hello" defaultWidth={400} defaultHeight={300} onClose={quit}>
@@ -13,8 +14,10 @@ const App = () => (
     </GtkApplicationWindow>
 );
 
-render(<App />, "com.example.hello");
+export default App;
 ```
+
+`gtkx dev` and `gtkx build` import this entry and call `render` automatically using the `appId` declared in `gtkx.config.ts`.
 
 ### Modern Adwaita App
 

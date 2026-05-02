@@ -35,10 +35,10 @@ A new GTKX project has this structure:
 my-app/
 ├── src/
 │ ├── app.tsx # Main application component
-│ ├── dev.tsx # Development entry point
-│ └── index.tsx # Production entry point
+│ └── index.tsx # Default-export entry used by `gtkx dev` and `gtkx build`
 ├── tests/
 │ └── app.test.tsx # Example test
+├── gtkx.config.ts
 ├── package.json
 └── tsconfig.json
 ```
@@ -67,24 +67,21 @@ export default function App() {
 }
 ```
 
-**`src/index.tsx`** — Production entry point:
+**`src/index.tsx`** — Application entry consumed by both `gtkx dev` and `gtkx build`:
 
 ```tsx
-import { render } from "@gtkx/react";
-import pkg from "../package.json" with { type: "json" };
-import App from "./app.js";
-
-render(<App />, pkg.gtkx.appId);
+export { default } from "./app.js";
 ```
 
-**`package.json`** — Contains your app ID in the `gtkx` config:
+**`gtkx.config.ts`** — Project configuration including the application identifier and optional flags:
 
-```json
-{
-    "gtkx": {
-        "appId": "com.example.myapp"
-    }
-}
+```ts
+import { defineConfig } from "@gtkx/cli";
+
+export default defineConfig({
+    appId: "com.example.myapp",
+    libraries: ["Gtk-4.0", "Adw-1"],
+});
 ```
 
 ## Run the Development Server

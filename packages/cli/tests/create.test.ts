@@ -341,23 +341,7 @@ describe("createApp", () => {
         expect(content).not.toContain("appId");
     });
 
-    it("creates dev.tsx that re-exports App", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: false,
-        });
-
-        const content = vol.readFileSync(`${testDir}/test-app/src/dev.tsx`, "utf-8") as string;
-
-        expect(content).toContain("export { default } from");
-        expect(content).not.toContain("pkg.gtkx.appId");
-    });
-
-    it("creates index.tsx entry point that calls render with no appId (injected by gtkx build)", async () => {
+    it("creates index.tsx entry point that re-exports the default App component", async () => {
         const { createApp } = await import("../src/create.js");
         await createApp({
             name: "test-app",
@@ -369,10 +353,22 @@ describe("createApp", () => {
 
         const content = vol.readFileSync(`${testDir}/test-app/src/index.tsx`, "utf-8") as string;
 
-        expect(content).toContain("import { render }");
-        expect(content).toContain("import { App }");
-        expect(content).toContain("render(<App />)");
+        expect(content).toContain("export { default } from");
+        expect(content).not.toContain("render(");
         expect(content).not.toContain("pkg.gtkx.appId");
+    });
+
+    it("does not scaffold a dev.tsx entry", async () => {
+        const { createApp } = await import("../src/create.js");
+        await createApp({
+            name: "test-app",
+            appId: "org.test.app",
+            packageManager: "pnpm",
+            testing: "none",
+            claudeSkills: false,
+        });
+
+        expect(vol.existsSync(`${testDir}/test-app/src/dev.tsx`)).toBe(false);
     });
 
     it("creates .gitignore", async () => {

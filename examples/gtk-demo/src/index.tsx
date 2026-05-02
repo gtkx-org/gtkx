@@ -1,4 +1,1 @@
-import { render } from "@gtkx/react";
-import { App } from "./app.js";
-
-render(<App />);
+export { App as default } from "./app.js";

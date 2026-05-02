@@ -11,13 +11,8 @@ import { swcSsrRefresh } from "./vite-plugin-swc-ssr-refresh.js";
  * Options for the GTKX development server.
  */
 export type DevServerOptions = {
-    /** Path to the entry file (e.g., "src/dev.tsx") */
+    /** Path to the entry file (e.g., "src/index.tsx") */
     entry: string;
-    /**
-     * Application ID injected as `__GTKX_APP_ID__` for the dev SSR transform.
-     * Lets user code call `render(<App />)` without an explicit appId in dev.
-     */
-    appId?: string;
     /** Additional Vite configuration */
     vite?: InlineConfig;
 };
@@ -42,25 +37,21 @@ type AppModule = {
  * import { render } from "@gtkx/react";
  *
  * const server = await createDevServer({
- * entry: "./src/dev.tsx",
+ * entry: "./src/index.tsx",
  * });
  *
- * const mod = await server.ssrLoadModule("./src/dev.tsx");
- * render(<mod.default />, mod.appId);
+ * const mod = await server.ssrLoadModule("./src/index.tsx");
+ * render(<mod.default />, "com.example.app");
  * ```
  *
  * @see {@link DevServerOptions} for configuration options
  */
 export const createDevServer = async (options: DevServerOptions): Promise<ViteDevServer> => {
-    const { entry, appId, vite: viteConfig } = options;
+    const { entry, vite: viteConfig } = options;
 
     const server = await createServer({
         ...viteConfig,
         appType: "custom",
-        define: {
-            ...viteConfig?.define,
-            ...(appId === undefined ? {} : { __GTKX_APP_ID__: JSON.stringify(appId) }),
-        },
         plugins: [
             gtkxGSettings(),
             gtkxAssets(),

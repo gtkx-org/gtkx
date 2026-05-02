@@ -45,19 +45,19 @@
             "project": ["src/**/*.ts"]
         },
         "examples/browser": {
-            "entry": ["src/index.tsx", "src/dev.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
+            "entry": ["src/index.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
             "project": ["src/**/*.{ts,tsx}"]
         },
         "examples/gtk-demo": {
-            "entry": ["src/index.tsx", "src/dev.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
+            "entry": ["src/index.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
             "project": ["src/**/*.{ts,tsx}"]
         },
         "examples/hello-world": {
-            "entry": ["src/index.tsx", "src/dev.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
+            "entry": ["src/index.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
             "project": ["src/**/*.{ts,tsx}"]
         },
         "examples/tutorial": {
-            "entry": ["src/index.tsx", "src/dev.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
+            "entry": ["src/index.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
             "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"]
         },
         "website": {

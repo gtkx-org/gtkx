@@ -67,30 +67,20 @@ export const setHotReloading = (value: boolean): void => {
 };
 
 /**
- * Compile-time substitution for the application id.
- *
- * `gtkx build` and `gtkx dev` inject the `appId` from `gtkx.config.ts` here
- * via Vite's `define` so that user code can call `render(<App />)` with no
- * positional `appId` argument. When unbundled (e.g. unit tests, bare Node),
- * the `typeof` guard below resolves it to undefined safely.
- */
-declare const __GTKX_APP_ID__: string | undefined;
-
-/**
  * Renders a React element tree into a GTK4 application window.
  *
  * This is the main entry point for GTKX applications. It initializes the GTK4
  * runtime, creates an application container, and begins the React reconciliation
  * process.
  *
+ * In a project scaffolded by `gtkx`, the CLI calls this function for you using
+ * the `appId` and `appFlags` declared in `gtkx.config.ts`; user code only needs
+ * to export a default component. Calling `render` directly is reserved for
+ * advanced embedding scenarios.
+ *
  * @param element - The root React element to render
- * @param appId - Application ID in reverse-DNS notation (e.g. `"com.example.myapp"`).
- *     Optional when the bundle was produced by `gtkx build` or `gtkx dev` against
- *     a `gtkx.config.ts` that supplied `appId`; the CLI injects that value at
- *     build time and the explicit argument acts as an override.
+ * @param appId - Application ID in reverse-DNS notation (e.g. `"com.example.myapp"`)
  * @param flags - Optional GIO application flags for customizing behavior
- * @throws If no `appId` is available — neither the argument was provided nor a
- *     value was injected by the CLI from `gtkx.config.ts`
  *
  * @example
  * ```tsx
@@ -102,26 +92,14 @@ declare const __GTKX_APP_ID__: string | undefined;
  * </GtkApplicationWindow>
  * );
  *
- * // Built with `gtkx build` (appId injected from gtkx.config.ts):
- * render(<App />);
- *
- * // Or pass it explicitly:
  * render(<App />, "com.example.myapp");
  * ```
  *
  * @see {@link quit} for shutting down the application
  * @see {@link update} for hot-reloading the rendered tree
  */
-export const render = (element: ReactNode, appId?: string, flags?: Gio.ApplicationFlags): void => {
-    const injectedAppId = __GTKX_APP_ID__;
-    const resolvedAppId = appId ?? injectedAppId;
-    if (!resolvedAppId) {
-        throw new Error(
-            "render(): no appId was provided and no value was injected from gtkx.config.ts. " +
-                "Set `appId` in gtkx.config.ts (used by `gtkx build`/`gtkx dev`), or pass it as the second argument.",
-        );
-    }
-    const application = start(resolvedAppId, flags);
+export const render = (element: ReactNode, appId: string, flags?: Gio.ApplicationFlags): void => {
+    const application = start(appId, flags);
     app = application;
 
     container = reconciler.createContainer(

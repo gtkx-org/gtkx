@@ -5,8 +5,6 @@ const mockEvents = new EventEmitter();
 
 const mockModule = {
     default: vi.fn(() => null),
-    appId: "org.test.app",
-    appFlags: 0,
 };
 
 const mockModuleGraph = {
@@ -168,28 +166,6 @@ describe("createDevServer", () => {
 
         const loadedModule = await server.ssrLoadModule("/path/to/app.tsx");
         expect(typeof loadedModule.default).toBe("function");
-    });
-
-    it("provides module with optional appId export", async () => {
-        const { createDevServer } = await import("../src/dev-server.js");
-
-        const server = await createDevServer({
-            entry: "/path/to/app.tsx",
-        });
-
-        const loadedModule = await server.ssrLoadModule("/path/to/app.tsx");
-        expect(loadedModule.appId).toBe("org.test.app");
-    });
-
-    it("provides module with optional appFlags export", async () => {
-        const { createDevServer } = await import("../src/dev-server.js");
-
-        const server = await createDevServer({
-            entry: "/path/to/app.tsx",
-        });
-
-        const loadedModule = await server.ssrLoadModule("/path/to/app.tsx");
-        expect(loadedModule.appFlags).toBe(0);
     });
 
     it("ignores file change when file is not in module graph", async () => {

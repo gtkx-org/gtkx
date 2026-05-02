@@ -73,7 +73,7 @@ export function noAppConnectedError(): McpError {
     return new McpError(
         McpErrorCode.NO_APP_CONNECTED,
         "No GTKX application connected: start an app with 'gtkx dev' to connect",
-        { hint: "Run 'gtkx dev src/app.tsx' in your project directory" },
+        { hint: "Run 'gtkx dev' in your project directory" },
     );
 }
 

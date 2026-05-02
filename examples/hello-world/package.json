@@ -8,7 +8,7 @@
     "scripts": {
         "build": "gtkx build",
         "typecheck": "tsc -b --noEmit",
-        "dev": "gtkx dev src/dev.tsx",
+        "dev": "gtkx dev",
         "start": "node dist/bundle.js"
     },
     "dependencies": {

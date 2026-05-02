@@ -47,8 +47,7 @@ project/
 │ │ └── WIDGETS.md
 ├── src/
 │ ├── app.tsx # Main component
-│ ├── dev.tsx # Dev entry (imports app, used by dev server)
-│ └── index.tsx # Production entry (calls render())
+│ └── index.tsx # Default-export entry used by `gtkx dev` and `gtkx build`
 ├── tests/ # Example test (if testing enabled)
 │ └── app.test.tsx
 ├── package.json
@@ -61,13 +60,14 @@ project/
 Starts the development server with Hot Module Replacement.
 
 ```bash
-npx gtkx dev <entry-file>
+npx gtkx dev [entry-file]
 ```
 
 **Example:**
 
 ```bash
-npx gtkx dev src/dev.tsx
+npx gtkx dev          # uses src/index.tsx by default
+npx gtkx dev src/playground.tsx
 ```
 
 **Features:**
@@ -84,7 +84,7 @@ After `gtkx create`, your `package.json` includes:
 ```json
 {
     "scripts": {
-        "dev": "gtkx dev src/dev.tsx",
+        "dev": "gtkx dev",
         "build": "gtkx build",
         "start": "node dist/bundle.js",
         "test": "vitest"
@@ -117,9 +117,9 @@ await createApp({
 
 // Start dev server
 const server = await createDevServer({
-    entry: "src/dev.tsx",
+    entry: "src/index.tsx",
 });
 
 // Production build
-await build({ entry: "./src/index.tsx", vite: { root: process.cwd() } });
+await build({ entry: "./src/index.tsx", appId: "com.example.myapp", vite: { root: process.cwd() } });
 ```
