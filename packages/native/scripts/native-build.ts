@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 
 const exec = promisify(cp.exec);
 
-const main = async () => {
+try {
     await exec("cargo build --message-format=json-render-diagnostics --release > cargo.log");
     await exec("neon dist < cargo.log");
 
@@ -13,9 +13,7 @@ const main = async () => {
     const tmp = `${dest}.tmp`;
     await copyFile("index.node", tmp);
     await rename(tmp, dest);
-};
-
-main().catch((err) => {
+} catch (err) {
     console.error(err);
     process.exit(1);
-});
+}

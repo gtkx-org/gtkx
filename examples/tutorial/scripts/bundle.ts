@@ -48,7 +48,9 @@ async function bundle() {
     console.log("SEA bundle created: dist/bundle.cjs");
 }
 
-bundle().catch((err) => {
+try {
+    await bundle();
+} catch (err) {
     console.error("Bundle failed:", err);
     process.exit(1);
-});
+}

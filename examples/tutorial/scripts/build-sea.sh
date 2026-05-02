@@ -5,13 +5,13 @@ cd "$(dirname "$0")/.."
 
 echo "Building Single Executable Application..."
 
-if [ ! -f dist/bundle.cjs ]; then
-    echo "Error: dist/bundle.cjs not found. Run 'pnpm bundle' first."
+if [[ ! -f dist/bundle.cjs ]]; then
+    echo "Error: dist/bundle.cjs not found. Run 'pnpm bundle' first." >&2
     exit 1
 fi
 
-if [ ! -f vendor/postject.cjs ]; then
-    echo "Error: vendor/postject.cjs not found. Run 'pnpm bundle:postject' first."
+if [[ ! -f vendor/postject.cjs ]]; then
+    echo "Error: vendor/postject.cjs not found. Run 'pnpm bundle:postject' first." >&2
     exit 1
 fi
 

@@ -443,7 +443,9 @@ async function main() {
     process.on("SIGTERM", shutdown);
 }
 
-main().catch((error) => {
+try {
+    await main();
+} catch (error) {
     console.error("[gtkx] Fatal error:", error);
     process.exit(1);
-});
+}
