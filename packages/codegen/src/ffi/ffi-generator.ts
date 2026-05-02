@@ -106,54 +106,8 @@ export class FfiGenerator {
             files.push({ path: `${this.namespacePrefix}enums.ts`, content: stringify(file) });
         }
 
-        for (const [, record] of namespace.records) {
-            if (this.shouldGenerateRecord(record)) {
-                const file = fileBuilder();
-                const recordGenerator = new RecordGenerator(
-                    this.ffiMapper,
-                    file,
-                    generatorOptions,
-                    this.options.repository,
-                );
-                recordGenerator.generate(record);
-                const fileName = `${toKebabCase(record.name)}.ts`;
-                files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
-            } else if (this.isUsableStubRecord(record)) {
-                const file = this.generateStubRecord(record, namespace, generatorOptions);
-                if (file) {
-                    const fileName = `${toKebabCase(record.name)}.ts`;
-                    files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
-                }
-            }
-        }
-
-        const sortedClasses = this.topologicalSortClasses([...namespace.classes.values()]);
-        for (const cls of sortedClasses) {
-            const file = fileBuilder();
-            const classGenerator = new ClassGenerator(
-                cls,
-                this.ffiMapper,
-                file,
-                this.options.repository,
-                generatorOptions,
-            );
-
-            const result = classGenerator.generate();
-            if (result.success) {
-                const fileName = `${toKebabCase(cls.name)}.ts`;
-                const filePath = `${this.namespacePrefix}${fileName}`;
-                files.push({ path: filePath, content: stringify(file) });
-
-                if (result.widgetMeta) {
-                    this.metadata.addWidgetMeta(result.widgetMeta);
-                }
-                if (result.controllerMeta) {
-                    this.metadata.addControllerMeta(result.controllerMeta);
-                }
-            } else {
-                this.ffiMapper.registerSkippedClass(cls.name);
-            }
-        }
+        this.generateRecordFiles(namespace, generatorOptions, files);
+        this.generateClassFiles(namespace, generatorOptions, files);
 
         for (const [, iface] of namespace.interfaces) {
             const file = fileBuilder();
@@ -188,6 +142,67 @@ export class FfiGenerator {
         files.push({ path: `${this.namespacePrefix}index.ts`, content: indexContent });
 
         return { files, metadata: this.metadata };
+    }
+
+    private generateRecordFiles(
+        namespace: GirNamespace,
+        generatorOptions: FfiGeneratorOptions,
+        files: GeneratedFile[],
+    ): void {
+        for (const [, record] of namespace.records) {
+            if (this.shouldGenerateRecord(record)) {
+                const file = fileBuilder();
+                const recordGenerator = new RecordGenerator(
+                    this.ffiMapper,
+                    file,
+                    generatorOptions,
+                    this.options.repository,
+                );
+                recordGenerator.generate(record);
+                const fileName = `${toKebabCase(record.name)}.ts`;
+                files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
+            } else if (this.isUsableStubRecord(record)) {
+                const file = this.generateStubRecord(record, namespace, generatorOptions);
+                if (file) {
+                    const fileName = `${toKebabCase(record.name)}.ts`;
+                    files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
+                }
+            }
+        }
+    }
+
+    private generateClassFiles(
+        namespace: GirNamespace,
+        generatorOptions: FfiGeneratorOptions,
+        files: GeneratedFile[],
+    ): void {
+        const sortedClasses = this.topologicalSortClasses([...namespace.classes.values()]);
+        for (const cls of sortedClasses) {
+            const file = fileBuilder();
+            const classGenerator = new ClassGenerator(
+                cls,
+                this.ffiMapper,
+                file,
+                this.options.repository,
+                generatorOptions,
+            );
+
+            const result = classGenerator.generate();
+            if (!result.success) {
+                this.ffiMapper.registerSkippedClass(cls.name);
+                continue;
+            }
+
+            const fileName = `${toKebabCase(cls.name)}.ts`;
+            files.push({ path: `${this.namespacePrefix}${fileName}`, content: stringify(file) });
+
+            if (result.widgetMeta) {
+                this.metadata.addWidgetMeta(result.widgetMeta);
+            }
+            if (result.controllerMeta) {
+                this.metadata.addControllerMeta(result.controllerMeta);
+            }
+        }
     }
 
     private generateStubRecord(

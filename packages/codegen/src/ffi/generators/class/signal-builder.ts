@@ -224,46 +224,49 @@ export class SignalBuilder {
         });
     }
 
+    private addNewSignals(signals: readonly GirSignal[], seen: Set<string>, all: GirSignal[]): void {
+        for (const signal of signals) {
+            if (!seen.has(signal.name)) {
+                seen.add(signal.name);
+                all.push(signal);
+            }
+        }
+    }
+
+    private collectInterfaceSignals(seen: Set<string>, all: GirSignal[]): void {
+        for (const ifaceQualifiedName of this.cls.implements) {
+            const iface = this.repository.resolveInterface(ifaceQualifiedName);
+            if (!iface) continue;
+            this.addNewSignals(iface.signals, seen, all);
+        }
+    }
+
+    private collectParentSignals(seen: Set<string>, all: GirSignal[]): boolean {
+        let parent = this.cls.getParent();
+        while (parent) {
+            if (this.cls.parent?.includes(".")) {
+                const { namespace: parentNs } = splitQualifiedName(this.cls.parent);
+                if (parentNs !== this.options.namespace) {
+                    return true;
+                }
+            }
+            this.addNewSignals(parent.signals, seen, all);
+            parent = parent.getParent();
+        }
+        return false;
+    }
+
     collectAllSignals(): { allSignals: GirSignal[]; hasCrossNamespaceParent: boolean } {
         const allSignals: GirSignal[] = [];
         const seenSignals = new Set<string>();
-        let hasCrossNamespaceParent = false;
 
         for (const signal of this.cls.signals) {
             seenSignals.add(signal.name);
             allSignals.push(signal);
         }
 
-        for (const ifaceQualifiedName of this.cls.implements) {
-            const iface = this.repository.resolveInterface(ifaceQualifiedName);
-            if (!iface) continue;
-
-            for (const signal of iface.signals) {
-                if (!seenSignals.has(signal.name)) {
-                    seenSignals.add(signal.name);
-                    allSignals.push(signal);
-                }
-            }
-        }
-
-        let parent = this.cls.getParent();
-        while (parent) {
-            if (this.cls.parent?.includes(".")) {
-                const { namespace: parentNs } = splitQualifiedName(this.cls.parent);
-                if (parentNs !== this.options.namespace) {
-                    hasCrossNamespaceParent = true;
-                    break;
-                }
-            }
-
-            for (const signal of parent.signals) {
-                if (!seenSignals.has(signal.name)) {
-                    seenSignals.add(signal.name);
-                    allSignals.push(signal);
-                }
-            }
-            parent = parent.getParent();
-        }
+        this.collectInterfaceSignals(seenSignals, allSignals);
+        const hasCrossNamespaceParent = this.collectParentSignals(seenSignals, allSignals);
 
         return { allSignals, hasCrossNamespaceParent };
     }
@@ -355,69 +358,70 @@ export class SignalBuilder {
         });
     }
 
+    private writeRefDeclarations(writer: Writer, paramData: SignalParamData[]): void {
+        for (const [i, p] of paramData.entries()) {
+            if (p.mapped.ffi.type === "ref") {
+                const innerType = p.mapped.innerTsType ?? "unknown";
+                writer.writeLine(`const _ref${i} = { value: args[${i + 1}] as ${innerType} };`);
+            }
+        }
+    }
+
+    private writeHandlerArgs(writer: Writer, paramData: SignalParamData[], useRefVars: boolean): void {
+        writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
+        paramData.forEach((p, index) => {
+            if (useRefVars && p.mapped.ffi.type === "ref") {
+                writer.write(`_ref${index}`);
+            } else {
+                const argAccess = `args[${index + 1}]`;
+                writer.write(writeWrapExpression(argAccess, p.wrapInfo));
+            }
+            if (index < paramData.length - 1) {
+                writer.write(",");
+            }
+            writer.newLine();
+        });
+    }
+
+    private writeRefReturnTuple(writer: Writer, paramData: SignalParamData[], needsReturnUnwrap: boolean): void {
+        const returnExpr = needsReturnUnwrap ? "_result?.handle" : "_result";
+        writer.write(`return [${returnExpr}`);
+        for (const [i, p] of paramData.entries()) {
+            if (p.mapped.ffi.type === "ref") {
+                writer.write(`, _ref${i}.value`);
+            }
+        }
+        writer.writeLine("];");
+    }
+
+    private writeRefHandlerBody(writer: Writer, paramData: SignalParamData[], needsReturnUnwrap: boolean): void {
+        this.writeRefDeclarations(writer, paramData);
+        writer.write("const _result = handler(");
+        writer.newLine();
+        writer.withIndent(() => this.writeHandlerArgs(writer, paramData, true));
+        writer.writeLine(");");
+        this.writeRefReturnTuple(writer, paramData, needsReturnUnwrap);
+    }
+
+    private writeSimpleHandlerBody(writer: Writer, paramData: SignalParamData[], needsReturnUnwrap: boolean): void {
+        writer.write(needsReturnUnwrap ? "const _result = handler(" : "return handler(");
+        writer.newLine();
+        writer.withIndent(() => this.writeHandlerArgs(writer, paramData, false));
+        writer.writeLine(");");
+        if (needsReturnUnwrap) {
+            writer.writeLine("return _result?.handle;");
+        }
+    }
+
     private writeWrappedHandler(writer: Writer, paramData: SignalParamData[], needsReturnUnwrap: boolean): void {
         const hasRefParams = paramData.some((p) => p.mapped.ffi.type === "ref");
 
         writer.writeLine("const wrappedHandler = (...args: unknown[]) => {");
         writer.withIndent(() => {
             if (hasRefParams) {
-                for (const [i, p] of paramData.entries()) {
-                    if (p.mapped.ffi.type === "ref") {
-                        const innerType = p.mapped.innerTsType ?? "unknown";
-                        writer.writeLine(`const _ref${i} = { value: args[${i + 1}] as ${innerType} };`);
-                    }
-                }
-
-                writer.write("const _result = handler(");
-                writer.newLine();
-                writer.withIndent(() => {
-                    writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
-                    paramData.forEach((p, index) => {
-                        if (p.mapped.ffi.type === "ref") {
-                            writer.write(`_ref${index}`);
-                        } else {
-                            const argAccess = `args[${index + 1}]`;
-                            writer.write(writeWrapExpression(argAccess, p.wrapInfo));
-                        }
-                        if (index < paramData.length - 1) {
-                            writer.write(",");
-                        }
-                        writer.newLine();
-                    });
-                });
-                writer.writeLine(");");
-
-                const returnExpr = needsReturnUnwrap ? "_result?.handle" : "_result";
-                writer.write(`return [${returnExpr}`);
-                for (const [i, p] of paramData.entries()) {
-                    if (p.mapped.ffi.type === "ref") {
-                        writer.write(`, _ref${i}.value`);
-                    }
-                }
-                writer.writeLine("];");
+                this.writeRefHandlerBody(writer, paramData, needsReturnUnwrap);
             } else {
-                if (needsReturnUnwrap) {
-                    writer.write("const _result = handler(");
-                } else {
-                    writer.write("return handler(");
-                }
-                writer.newLine();
-                writer.withIndent(() => {
-                    writer.writeLine(`getNativeObject(args[0] as NativeHandle) as ${this.className},`);
-                    paramData.forEach((p, index) => {
-                        const argAccess = `args[${index + 1}]`;
-                        const expression = writeWrapExpression(argAccess, p.wrapInfo);
-                        writer.write(expression);
-                        if (index < paramData.length - 1) {
-                            writer.write(",");
-                        }
-                        writer.newLine();
-                    });
-                });
-                writer.writeLine(");");
-                if (needsReturnUnwrap) {
-                    writer.writeLine("return _result?.handle;");
-                }
+                this.writeSimpleHandlerBody(writer, paramData, needsReturnUnwrap);
             }
         });
         writer.writeLine("};");

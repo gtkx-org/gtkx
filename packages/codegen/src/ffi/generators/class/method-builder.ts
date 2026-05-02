@@ -52,14 +52,14 @@ export class MethodBuilder {
      * @param asyncAnalysis - Pre-computed async analysis (optional, computed if not provided)
      * @returns Array of method structures
      */
-    buildStructures(
+    private buildSyncMethodStructures(
         methods: readonly GirMethod[],
         selfTypeDescriptor: SelfTypeDescriptor,
-        asyncAnalysis?: AsyncMethodAnalysis,
+        asyncMethods: Set<string>,
+        finishMethods: Set<string>,
     ): MethodStructure[] {
         const seen = new Set<string>();
-        const { asyncMethods, finishMethods, asyncPairs } = asyncAnalysis ?? analyzeAsyncMethods(methods);
-        const methodStructures: MethodStructure[] = [];
+        const result: MethodStructure[] = [];
 
         for (const method of methods) {
             if (isMethodDuplicate(method.name, method.cIdentifier, seen)) continue;
@@ -68,24 +68,38 @@ export class MethodBuilder {
             if (finishMethods.has(method.name)) continue;
 
             const structure = this.buildMethodStructure(method, selfTypeDescriptor);
-            if (structure) {
-                methodStructures.push(structure);
-            }
+            if (structure) result.push(structure);
         }
 
+        return result;
+    }
+
+    private buildAsyncWrapperStructures(
+        methods: readonly GirMethod[],
+        selfTypeDescriptor: SelfTypeDescriptor,
+        asyncPairs: Map<string, string>,
+    ): MethodStructure[] {
+        const result: MethodStructure[] = [];
         for (const [asyncMethodName, finishMethodName] of asyncPairs) {
             const asyncMethod = methods.find((m) => m.name === asyncMethodName);
             const finishMethod = methods.find((m) => m.name === finishMethodName);
-
-            if (asyncMethod && finishMethod) {
-                const structure = this.buildAsyncWrapperStructure(asyncMethod, finishMethod, selfTypeDescriptor);
-                if (structure) {
-                    methodStructures.push(structure);
-                }
-            }
+            if (!asyncMethod || !finishMethod) continue;
+            const structure = this.buildAsyncWrapperStructure(asyncMethod, finishMethod, selfTypeDescriptor);
+            if (structure) result.push(structure);
         }
+        return result;
+    }
 
-        return methodStructures;
+    buildStructures(
+        methods: readonly GirMethod[],
+        selfTypeDescriptor: SelfTypeDescriptor,
+        asyncAnalysis?: AsyncMethodAnalysis,
+    ): MethodStructure[] {
+        const { asyncMethods, finishMethods, asyncPairs } = asyncAnalysis ?? analyzeAsyncMethods(methods);
+        return [
+            ...this.buildSyncMethodStructures(methods, selfTypeDescriptor, asyncMethods, finishMethods),
+            ...this.buildAsyncWrapperStructures(methods, selfTypeDescriptor, asyncPairs),
+        ];
     }
 
     private buildMethodStructure(method: GirMethod, selfTypeDescriptor: SelfTypeDescriptor): MethodStructure {
