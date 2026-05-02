@@ -240,26 +240,30 @@ ScaledFont.prototype.textToGlyphs = function (
     const numGlyphs = numGlyphsRef.value;
     const numClusters = numClustersRef.value;
 
-    const glyphsBuf = glyphsRef.value as NativeHandle;
-    const clustersBuf = clustersRef.value as NativeHandle;
+    const glyphsBuf = glyphsRef.value;
+    const clustersBuf = clustersRef.value;
 
     const glyphs: CairoGlyph[] = [];
-    for (let i = 0; i < numGlyphs; i++) {
-        const offset = i * 24;
-        glyphs.push({
-            index: read(glyphsBuf, ULONG_TYPE, offset) as number,
-            x: read(glyphsBuf, DOUBLE_TYPE, offset + 8) as number,
-            y: read(glyphsBuf, DOUBLE_TYPE, offset + 16) as number,
-        });
+    if (glyphsBuf !== null) {
+        for (let i = 0; i < numGlyphs; i++) {
+            const offset = i * 24;
+            glyphs.push({
+                index: read(glyphsBuf, ULONG_TYPE, offset) as number,
+                x: read(glyphsBuf, DOUBLE_TYPE, offset + 8) as number,
+                y: read(glyphsBuf, DOUBLE_TYPE, offset + 16) as number,
+            });
+        }
     }
 
     const clusters: CairoTextCluster[] = [];
-    for (let i = 0; i < numClusters; i++) {
-        const offset = i * 8;
-        clusters.push({
-            numBytes: read(clustersBuf, INT_TYPE, offset) as number,
-            numGlyphs: read(clustersBuf, INT_TYPE, offset + 4) as number,
-        });
+    if (clustersBuf !== null) {
+        for (let i = 0; i < numClusters; i++) {
+            const offset = i * 8;
+            clusters.push({
+                numBytes: read(clustersBuf, INT_TYPE, offset) as number,
+                numGlyphs: read(clustersBuf, INT_TYPE, offset + 4) as number,
+            });
+        }
     }
 
     if (glyphsRef.value !== null) {

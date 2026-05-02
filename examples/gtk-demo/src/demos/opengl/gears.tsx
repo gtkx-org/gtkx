@@ -79,7 +79,7 @@ function createGear(
     }
 
     function endStrip() {
-        const strip = strips[strips.length - 1];
+        const strip = strips.at(-1);
         if (strip) strip.count = vi - strip.first;
     }
 

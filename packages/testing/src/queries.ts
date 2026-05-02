@@ -269,7 +269,9 @@ const getByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByR
         throw buildMultipleFoundError(container, "role", { role, options }, matches.length);
     }
 
-    return matches[0] as Gtk.Widget;
+    const [first] = matches;
+    if (first === undefined) throw buildNotFoundError(container, "role", { role, options });
+    return first;
 };
 
 const getAllByLabelText = (container: Container, text: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
@@ -289,7 +291,9 @@ const getByLabelText = (container: Container, text: TextMatch, options?: TextMat
         throw buildMultipleFoundError(container, "labelText", { text, options }, matches.length);
     }
 
-    return matches[0] as Gtk.Widget;
+    const [first] = matches;
+    if (first === undefined) throw buildNotFoundError(container, "labelText", { text, options });
+    return first;
 };
 
 const getAllByText = (container: Container, text: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
@@ -309,7 +313,9 @@ const getByText = (container: Container, text: TextMatch, options?: TextMatchOpt
         throw buildMultipleFoundError(container, "text", { text, options }, matches.length);
     }
 
-    return matches[0] as Gtk.Widget;
+    const [first] = matches;
+    if (first === undefined) throw buildNotFoundError(container, "text", { text, options });
+    return first;
 };
 
 const getAllByName = (container: Container, name: TextMatch, options?: TextMatchOptions): Gtk.Widget[] => {
@@ -329,7 +335,9 @@ const getByName = (container: Container, name: TextMatch, options?: TextMatchOpt
         throw buildMultipleFoundError(container, "name", { name, options }, matches.length);
     }
 
-    return matches[0] as Gtk.Widget;
+    const [first] = matches;
+    if (first === undefined) throw buildNotFoundError(container, "name", { name, options });
+    return first;
 };
 
 /**

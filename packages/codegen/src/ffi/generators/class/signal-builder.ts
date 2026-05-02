@@ -62,10 +62,10 @@ export class SignalBuilder {
 
         this.imports.addTypeImport("../../object.js", ["NativeHandle"]);
         this.imports.addImport("../../registry.js", ["getNativeObject"]);
-        if (this.options.namespace !== "GObject") {
-            this.imports.addNamespaceImport("../gobject/index.js", "GObject");
-        } else {
+        if (this.options.namespace === "GObject") {
             this.imports.addImport("./param-spec.js", ["ParamSpec"]);
+        } else {
+            this.imports.addNamespaceImport("../gobject/index.js", "GObject");
         }
 
         const overloads = this.buildOverloads(ownSignals);

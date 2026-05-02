@@ -43,13 +43,13 @@ export abstract class AttachOnParentVirtualNode<
     public override setParent(parent: TParent | null): void {
         if (!parent && this.parent) {
             const currentParent = this.parent.container;
-            for (const child of this.children as TChild[]) {
+            for (const child of this.children) {
                 this.detachFromParent(currentParent, child.container);
             }
         }
         super.setParent(parent);
         if (parent) {
-            for (const child of this.children as TChild[]) {
+            for (const child of this.children) {
                 this.attachToParent(parent.container, child.container);
             }
         }
@@ -58,7 +58,7 @@ export abstract class AttachOnParentVirtualNode<
     public override detachDeletedInstance(): void {
         if (this.parent) {
             const currentParent = this.parent.container;
-            for (const child of this.children as TChild[]) {
+            for (const child of this.children) {
                 this.detachFromParent(currentParent, child.container);
             }
         }
@@ -68,10 +68,10 @@ export abstract class AttachOnParentVirtualNode<
     protected reinsertAllChildren(): void {
         if (!this.parent) return;
         const parent = this.parent.container;
-        for (const child of this.children as TChild[]) {
+        for (const child of this.children) {
             this.detachFromParent(parent, child.container);
         }
-        for (const child of this.children as TChild[]) {
+        for (const child of this.children) {
             this.attachToParent(parent, child.container);
         }
     }

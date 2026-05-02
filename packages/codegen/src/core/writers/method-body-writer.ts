@@ -195,6 +195,19 @@ export type ConstructorSelection = {
     main: GirConstructor | undefined;
 };
 
+type ObjectWrapInfo = {
+    needsWrap: boolean;
+    needsGObjectWrap: boolean;
+    needsBoxedWrap: boolean;
+    needsFundamentalWrap: boolean;
+    needsInterfaceWrap: boolean;
+    needsStructWrap: boolean;
+    needsArrayItemWrap: boolean;
+    arrayItemType: string | undefined;
+    arrayItemIsInterface: boolean;
+    needsHashTableWrap: boolean;
+};
+
 /**
  * Shared utilities for writing method/function bodies.
  *
@@ -279,18 +292,7 @@ export class MethodBodyWriter {
     /**
      * Determines if a return type needs object wrapping (getNativeObject call).
      */
-    needsObjectWrap(returnTypeMapping: MappedType): {
-        needsWrap: boolean;
-        needsGObjectWrap: boolean;
-        needsBoxedWrap: boolean;
-        needsFundamentalWrap: boolean;
-        needsInterfaceWrap: boolean;
-        needsStructWrap: boolean;
-        needsArrayItemWrap: boolean;
-        arrayItemType: string | undefined;
-        arrayItemIsInterface: boolean;
-        needsHashTableWrap: boolean;
-    } {
+    needsObjectWrap(returnTypeMapping: MappedType): ObjectWrapInfo {
         const baseReturnType = returnTypeMapping.ts === "void" ? "void" : returnTypeMapping.ts;
 
         const needsGObjectWrap =
@@ -644,106 +646,95 @@ export class MethodBodyWriter {
 
         return (writer) => {
             const callArguments = this.buildShapeCallArguments(shape, options.parameters);
+            this.writeCallableBodyContent(
+                writer,
+                options,
+                shape,
+                callArguments,
+                wrapInfo,
+                ownClassName,
+                hasReturnValue,
+            );
+        };
+    }
 
-            this.writeCallbackWrapperDeclarations(writer, callArguments);
+    private writeCallableBodyContent(
+        writer: Writer,
+        options: CallableBodyOptions,
+        shape: CallableShape,
+        callArguments: CallArgument[],
+        wrapInfo: ObjectWrapInfo,
+        ownClassName: string | undefined,
+        hasReturnValue: boolean,
+    ): void {
+        this.writeCallbackWrapperDeclarations(writer, callArguments);
 
-            if (options.throws) {
-                writer.writeLine("const error = createRef<NativeHandle | null>(null);");
+        if (options.throws) {
+            writer.writeLine("const error = createRef<NativeHandle | null>(null);");
+        }
+
+        for (const hidden of shape.hiddenOuts) {
+            this.writeHiddenOutDeclaration(writer, hidden);
+        }
+
+        if (options.throws) {
+            callArguments.push({
+                type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(),
+                value: "error",
+            });
+        }
+
+        const returnTupleNeedsBuild = shape.returnTupleEntries.length > 0;
+        const hasRefHandleHidden = shape.hiddenOuts.some((h) => h.kind === "ref-handle");
+        if (returnTupleNeedsBuild || options.throws || hasRefHandleHidden) {
+            this.emitTupleReturningBody(writer, options, shape, callArguments, wrapInfo, ownClassName);
+            return;
+        }
+
+        const writeCall = this.makeCallEmitter(writer, options, shape, callArguments);
+        const hasOwnClassReturn = ownClassName !== undefined;
+        const hasObjectWrapReturn = wrapInfo.needsWrap && hasReturnValue;
+
+        if (hasOwnClassReturn || hasObjectWrapReturn) {
+            writeCall("ptr", null);
+            this.writeObjectReturnFromPtr(writer, shape, wrapInfo, ownClassName);
+            return;
+        }
+
+        if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
+            writeCall("arr", "unknown[]");
+            this.writeArrayItemReturn(writer, shape, wrapInfo);
+            return;
+        }
+
+        if (wrapInfo.needsHashTableWrap) {
+            const tsReturnType = formatNullableReturn(
+                ownClassName ?? shape.originalReturnTsType,
+                shape.originalReturnNullable,
+            );
+            writeCall("tuples", "[unknown, unknown][]");
+            this.writeRefHandleRewrap(writer, shape);
+            if (shape.originalReturnNullable) {
+                writer.writeLine("if (tuples === null) return null;");
             }
+            writer.writeLine(`return new Map(tuples) as ${tsReturnType};`);
+            return;
+        }
 
-            for (const hidden of shape.hiddenOuts) {
-                this.writeHiddenOutDeclaration(writer, hidden);
-            }
+        this.writeSimpleCall(writer, options, shape, callArguments, ownClassName, hasReturnValue);
+    }
 
-            if (options.throws) {
-                callArguments.push({
-                    type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(),
-                    value: "error",
-                });
-            }
-
-            const returnTupleNeedsBuild = shape.returnTupleEntries.length > 0;
-            const writeCall = (target: string | null, cast: string | null) => {
-                if (target === null) {
-                    writer.write("return ");
-                } else {
-                    writer.write(`const ${target} = `);
-                }
-                this.callExpression.toWriter({
-                    sharedLibrary: options.sharedLibrary,
-                    cIdentifier: options.cIdentifier,
-                    args: callArguments,
-                    returnType: shape.returnTypeMapping.ffi,
-                    selfArg: options.self,
-                    hasVarargs: options.hasVarargs,
-                })(writer);
-                if (cast !== null) {
-                    writer.write(` as ${cast}`);
-                }
-                writer.write(";");
-                writer.newLine();
-            };
-
-            const rawReturnType = shape.originalReturnTsType;
-            const baseReturnType = ownClassName ?? rawReturnType;
-            const tsReturnType = formatNullableReturn(baseReturnType, shape.originalReturnNullable);
-
-            if (returnTupleNeedsBuild || options.throws || shape.hiddenOuts.some((h) => h.kind === "ref-handle")) {
-                this.emitTupleReturningBody(writer, options, shape, callArguments, wrapInfo, ownClassName);
-                return;
-            }
-
-            if (hasOwnClassReturn || hasObjectWrapReturn) {
-                writeCall("ptr", null);
-                this.writeRefHandleRewrap(writer, shape);
-                if (hasOwnClassReturn) {
-                    writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${ownClassName});`);
-                } else {
-                    if (shape.originalReturnNullable) {
-                        writer.writeLine("if (ptr === null) return null;");
-                    }
-                    if (
-                        wrapInfo.needsBoxedWrap ||
-                        wrapInfo.needsFundamentalWrap ||
-                        wrapInfo.needsStructWrap ||
-                        wrapInfo.needsInterfaceWrap
-                    ) {
-                        writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${baseReturnType});`);
-                    } else {
-                        writer.writeLine(`return getNativeObject(ptr as NativeHandle) as ${baseReturnType};`);
-                    }
-                }
-                return;
-            }
-
-            if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
-                writeCall("arr", "unknown[]");
-                this.writeRefHandleRewrap(writer, shape);
-                if (wrapInfo.arrayItemIsInterface) {
-                    writer.writeLine(
-                        `return arr.map((item) => getNativeObject(item as NativeHandle, ${wrapInfo.arrayItemType}));`,
-                    );
-                } else {
-                    writer.writeLine(
-                        `return arr.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType});`,
-                    );
-                }
-                return;
-            }
-
-            if (wrapInfo.needsHashTableWrap) {
-                writeCall("tuples", "[unknown, unknown][]");
-                this.writeRefHandleRewrap(writer, shape);
-                if (shape.originalReturnNullable) {
-                    writer.writeLine("if (tuples === null) return null;");
-                }
-                writer.writeLine(`return new Map(tuples) as ${tsReturnType};`);
-                return;
-            }
-
-            const needsCast = rawReturnType !== "void" && rawReturnType !== "unknown";
-            if (hasReturnValue) {
+    private makeCallEmitter(
+        writer: Writer,
+        options: CallableBodyOptions,
+        shape: CallableShape,
+        callArguments: CallArgument[],
+    ): (target: string | null, cast: string | null) => void {
+        return (target, cast) => {
+            if (target === null) {
                 writer.write("return ");
+            } else {
+                writer.write(`const ${target} = `);
             }
             this.callExpression.toWriter({
                 sharedLibrary: options.sharedLibrary,
@@ -753,12 +744,82 @@ export class MethodBodyWriter {
                 selfArg: options.self,
                 hasVarargs: options.hasVarargs,
             })(writer);
-            if (hasReturnValue && needsCast) {
-                writer.write(` as ${tsReturnType}`);
+            if (cast !== null) {
+                writer.write(` as ${cast}`);
             }
             writer.write(";");
             writer.newLine();
         };
+    }
+
+    private writeObjectReturnFromPtr(
+        writer: Writer,
+        shape: CallableShape,
+        wrapInfo: ObjectWrapInfo,
+        ownClassName: string | undefined,
+    ): void {
+        this.writeRefHandleRewrap(writer, shape);
+        if (ownClassName !== undefined) {
+            writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${ownClassName});`);
+            return;
+        }
+        const baseReturnType = shape.originalReturnTsType;
+        if (shape.originalReturnNullable) {
+            writer.writeLine("if (ptr === null) return null;");
+        }
+        const needsTypedWrap =
+            wrapInfo.needsBoxedWrap ||
+            wrapInfo.needsFundamentalWrap ||
+            wrapInfo.needsStructWrap ||
+            wrapInfo.needsInterfaceWrap;
+        if (needsTypedWrap) {
+            writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${baseReturnType});`);
+        } else {
+            writer.writeLine(`return getNativeObject(ptr as NativeHandle) as ${baseReturnType};`);
+        }
+    }
+
+    private writeArrayItemReturn(writer: Writer, shape: CallableShape, wrapInfo: ObjectWrapInfo): void {
+        this.writeRefHandleRewrap(writer, shape);
+        if (wrapInfo.arrayItemIsInterface) {
+            writer.writeLine(
+                `return arr.map((item) => getNativeObject(item as NativeHandle, ${wrapInfo.arrayItemType}));`,
+            );
+        } else {
+            writer.writeLine(
+                `return arr.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType});`,
+            );
+        }
+    }
+
+    private writeSimpleCall(
+        writer: Writer,
+        options: CallableBodyOptions,
+        shape: CallableShape,
+        callArguments: CallArgument[],
+        ownClassName: string | undefined,
+        hasReturnValue: boolean,
+    ): void {
+        const rawReturnType = shape.originalReturnTsType;
+        const baseReturnType = ownClassName ?? rawReturnType;
+        const tsReturnType = formatNullableReturn(baseReturnType, shape.originalReturnNullable);
+        const needsCast = rawReturnType !== "void" && rawReturnType !== "unknown";
+        if (hasReturnValue) {
+            writer.write("return ");
+        }
+        this.callExpression.toWriter({
+            sharedLibrary: options.sharedLibrary,
+            cIdentifier: options.cIdentifier,
+            args: callArguments,
+            returnType: shape.returnTypeMapping.ffi,
+            selfArg: options.self,
+            hasVarargs: options.hasVarargs,
+        })(writer);
+        if (hasReturnValue && needsCast) {
+            writer.write(` as ${tsReturnType}`);
+        }
+        writer.write(";");
+        writer.newLine();
     }
 
     private emitTupleReturningBody(
@@ -766,7 +827,7 @@ export class MethodBodyWriter {
         options: CallableBodyOptions,
         shape: CallableShape,
         callArguments: CallArgument[],
-        wrapInfo: ReturnType<MethodBodyWriter["needsObjectWrap"]>,
+        wrapInfo: ObjectWrapInfo,
         ownClassName: string | undefined,
     ): void {
         const baseReturnType = ownClassName ?? shape.originalReturnTsType;
@@ -774,45 +835,16 @@ export class MethodBodyWriter {
         const hasReturnValue = shape.hasOriginalReturn;
         const hasOwnClassReturn = ownClassName !== undefined;
         const needsResultPtr = hasReturnValue && (wrapInfo.needsWrap || hasOwnClassReturn);
-        const needsArrayWrapVar = hasReturnValue && wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType;
+        const needsArrayWrapVar = hasReturnValue && wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType !== undefined;
         const needsHashTableVar = hasReturnValue && wrapInfo.needsHashTableWrap;
 
-        let resultExpression: string | null = null;
-
-        if (hasReturnValue) {
-            const baseVar = this.uniqueResultVarName(shape, "result");
-            const suffix = computeResultSuffix(needsResultPtr, needsArrayWrapVar, needsHashTableVar);
-            resultExpression = `${baseVar}${suffix}`;
-            writer.write(`const ${resultExpression} = `);
-            this.callExpression.toWriter({
-                sharedLibrary: options.sharedLibrary,
-                cIdentifier: options.cIdentifier,
-                args: callArguments,
-                returnType: shape.returnTypeMapping.ffi,
-                selfArg: options.self,
-                hasVarargs: options.hasVarargs,
-            })(writer);
-            if (needsArrayWrapVar) {
-                writer.write(" as unknown[]");
-            } else if (needsHashTableVar) {
-                writer.write(" as [unknown, unknown][]");
-            } else if (!needsResultPtr) {
-                writer.write(` as ${tsReturnType}`);
-            }
-            writer.write(";");
-            writer.newLine();
-        } else {
-            this.callExpression.toWriter({
-                sharedLibrary: options.sharedLibrary,
-                cIdentifier: options.cIdentifier,
-                args: callArguments,
-                returnType: shape.returnTypeMapping.ffi,
-                selfArg: options.self,
-                hasVarargs: options.hasVarargs,
-            })(writer);
-            writer.write(";");
-            writer.newLine();
-        }
+        const resultExpression = this.emitTupleCallStatement(writer, options, shape, callArguments, {
+            hasReturnValue,
+            needsResultPtr,
+            needsArrayWrapVar,
+            needsHashTableVar,
+            tsReturnType,
+        });
 
         if (options.throws) {
             this.writeErrorCheck(writer);
@@ -820,33 +852,12 @@ export class MethodBodyWriter {
 
         const rewrapBindings = this.writeRefHandleRewrap(writer, shape);
 
-        let originalReturnExpression: string | null = null;
-        if (hasReturnValue && resultExpression !== null) {
-            if (hasOwnClassReturn) {
-                originalReturnExpression = `getNativeObject(${resultExpression} as NativeHandle, ${ownClassName})`;
-            } else if (wrapInfo.needsWrap) {
-                if (shape.originalReturnNullable) {
-                    writer.writeLine(
-                        `const ${resultExpression}Wrapped = ${resultExpression} === null ? null : ${this.formatObjectWrap(resultExpression, baseReturnType, wrapInfo)};`,
-                    );
-                    originalReturnExpression = `${resultExpression}Wrapped`;
-                } else {
-                    originalReturnExpression = this.formatObjectWrap(resultExpression, baseReturnType, wrapInfo);
-                }
-            } else if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
-                if (wrapInfo.arrayItemIsInterface) {
-                    originalReturnExpression = `${resultExpression}.map((item) => getNativeObject(item as NativeHandle, ${wrapInfo.arrayItemType}))`;
-                } else {
-                    originalReturnExpression = `${resultExpression}.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType})`;
-                }
-            } else if (wrapInfo.needsHashTableWrap) {
-                originalReturnExpression = shape.originalReturnNullable
-                    ? `(${resultExpression} === null ? null : new Map(${resultExpression}) as ${baseReturnType})`
-                    : `(new Map(${resultExpression}) as ${baseReturnType})`;
-            } else {
-                originalReturnExpression = resultExpression;
-            }
-        }
+        const originalReturnExpression = this.buildOriginalReturnExpression(writer, shape, wrapInfo, {
+            resultExpression,
+            hasReturnValue,
+            ownClassName,
+            baseReturnType,
+        });
 
         if (shape.returnTupleEntries.length === 0) {
             if (originalReturnExpression !== null) {
@@ -855,6 +866,107 @@ export class MethodBodyWriter {
             return;
         }
 
+        this.writeTupleReturn(writer, shape, originalReturnExpression, rewrapBindings);
+    }
+
+    private emitTupleCallStatement(
+        writer: Writer,
+        options: CallableBodyOptions,
+        shape: CallableShape,
+        callArguments: CallArgument[],
+        info: {
+            hasReturnValue: boolean;
+            needsResultPtr: boolean;
+            needsArrayWrapVar: boolean;
+            needsHashTableVar: boolean;
+            tsReturnType: string;
+        },
+    ): string | null {
+        const writeCall = () => {
+            this.callExpression.toWriter({
+                sharedLibrary: options.sharedLibrary,
+                cIdentifier: options.cIdentifier,
+                args: callArguments,
+                returnType: shape.returnTypeMapping.ffi,
+                selfArg: options.self,
+                hasVarargs: options.hasVarargs,
+            })(writer);
+        };
+
+        if (!info.hasReturnValue) {
+            writeCall();
+            writer.write(";");
+            writer.newLine();
+            return null;
+        }
+
+        const baseVar = this.uniqueResultVarName(shape, "result");
+        const suffix = computeResultSuffix(info.needsResultPtr, info.needsArrayWrapVar, info.needsHashTableVar);
+        const resultExpression = `${baseVar}${suffix}`;
+        writer.write(`const ${resultExpression} = `);
+        writeCall();
+        if (info.needsArrayWrapVar) {
+            writer.write(" as unknown[]");
+        } else if (info.needsHashTableVar) {
+            writer.write(" as [unknown, unknown][]");
+        } else if (!info.needsResultPtr) {
+            writer.write(` as ${info.tsReturnType}`);
+        }
+        writer.write(";");
+        writer.newLine();
+        return resultExpression;
+    }
+
+    private buildOriginalReturnExpression(
+        writer: Writer,
+        shape: CallableShape,
+        wrapInfo: ObjectWrapInfo,
+        info: {
+            resultExpression: string | null;
+            hasReturnValue: boolean;
+            ownClassName: string | undefined;
+            baseReturnType: string;
+        },
+    ): string | null {
+        const { resultExpression, hasReturnValue, ownClassName, baseReturnType } = info;
+        if (!hasReturnValue || resultExpression === null) return null;
+
+        if (ownClassName !== undefined) {
+            return `getNativeObject(${resultExpression} as NativeHandle, ${ownClassName})`;
+        }
+
+        if (wrapInfo.needsWrap) {
+            const wrapped = this.formatObjectWrap(resultExpression, baseReturnType, wrapInfo);
+            if (shape.originalReturnNullable) {
+                writer.writeLine(
+                    `const ${resultExpression}Wrapped = ${resultExpression} === null ? null : ${wrapped};`,
+                );
+                return `${resultExpression}Wrapped`;
+            }
+            return wrapped;
+        }
+
+        if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
+            return wrapInfo.arrayItemIsInterface
+                ? `${resultExpression}.map((item) => getNativeObject(item as NativeHandle, ${wrapInfo.arrayItemType}))`
+                : `${resultExpression}.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType})`;
+        }
+
+        if (wrapInfo.needsHashTableWrap) {
+            return shape.originalReturnNullable
+                ? `(${resultExpression} === null ? null : new Map(${resultExpression}) as ${baseReturnType})`
+                : `(new Map(${resultExpression}) as ${baseReturnType})`;
+        }
+
+        return resultExpression;
+    }
+
+    private writeTupleReturn(
+        writer: Writer,
+        shape: CallableShape,
+        originalReturnExpression: string | null,
+        rewrapBindings: Map<string, string>,
+    ): void {
         const tupleParamMappings = shape.paramMappings.filter((m) => m.isOut && !m.isLengthParam);
         const tupleExprs: string[] = [];
         let outIndex = 0;
@@ -870,9 +982,9 @@ export class MethodBodyWriter {
 
         if (shape.returnTupleEntries.length === 1 && !shape.hasOriginalReturn) {
             writer.writeLine(`return ${tupleExprs[0]};`);
-        } else {
-            writer.writeLine(`return [${tupleExprs.join(", ")}];`);
+            return;
         }
+        writer.writeLine(`return [${tupleExprs.join(", ")}];`);
     }
 
     private expressionForOutMapping(

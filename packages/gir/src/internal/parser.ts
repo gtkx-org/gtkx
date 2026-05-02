@@ -22,6 +22,8 @@ import type {
     RawType,
 } from "./raw-types.js";
 
+type ImplementsSource = Record<string, unknown>[] | Record<string, unknown> | undefined;
+
 const ARRAY_ELEMENT_PATHS = new Set<string>([
     "namespace.class",
     "namespace.interface",
@@ -182,9 +184,7 @@ export class GirParser {
             fundamental: cls["@_glib:fundamental"] === "1",
             refFunc: attrStringOrUndefined(cls["@_glib:ref-func"]),
             unrefFunc: attrStringOrUndefined(cls["@_glib:unref-func"]),
-            implements: this.parseImplements(
-                cls.implements as Record<string, unknown>[] | Record<string, unknown> | undefined,
-            ),
+            implements: this.parseImplements(cls.implements as ImplementsSource),
             methods: this.parseMethods(ensureArray(cls.method)),
             constructors: this.parseConstructors(ensureArray(cls._constructor)),
             functions: this.parseFunctions(ensureArray(cls.function)),
@@ -402,10 +402,11 @@ export class GirParser {
         if (!signals || !Array.isArray(signals)) return [];
         return signals.map((signal) => {
             const whenValue = attrString(signal["@_when"], "last");
-            const validWhen = whenValue === "first" || whenValue === "last" || whenValue === "cleanup";
+            const when: "first" | "last" | "cleanup" =
+                whenValue === "first" || whenValue === "last" || whenValue === "cleanup" ? whenValue : "last";
             return {
                 name: attrString(signal["@_name"]),
-                when: validWhen ? (whenValue as "first" | "last" | "cleanup") : "last",
+                when,
                 returnType: signal["return-value"]
                     ? this.parseReturnType(signal["return-value"] as Record<string, unknown>)
                     : undefined,
@@ -464,8 +465,8 @@ export class GirParser {
             nullable: param["@_nullable"] === "1",
             optional: param["@_allow-none"] === "1" || param["@_optional"] === "1",
             scope: scope as "async" | "call" | "notified" | "forever" | undefined,
-            closure: closure !== undefined ? parseInt(closure, 10) : undefined,
-            destroy: destroy !== undefined ? parseInt(destroy, 10) : undefined,
+            closure: closure === undefined ? undefined : Number.parseInt(closure, 10),
+            destroy: destroy === undefined ? undefined : Number.parseInt(destroy, 10),
             transferOwnership:
                 transferOwnership === "none" || transferOwnership === "full" || transferOwnership === "container"
                     ? transferOwnership

@@ -643,7 +643,7 @@ Context.prototype.textPath = function (text: string): void {
     );
 };
 
-export type { FontExtents, TextExtents };
+export type { FontExtents, TextExtents } from "./common.js";
 
 Context.prototype.textExtents = function (text: string): TextExtents {
     const extents = alloc(48, "cairo_text_extents_t", LIB);

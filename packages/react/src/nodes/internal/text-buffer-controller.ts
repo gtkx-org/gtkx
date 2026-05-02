@@ -142,7 +142,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         this.removeIfPresent(child);
 
         const beforeIndex = this.textChildren.indexOf(before);
-        const insertIndex = beforeIndex !== -1 ? beforeIndex : this.textChildren.length;
+        const insertIndex = beforeIndex === -1 ? this.textChildren.length : beforeIndex;
 
         let offset = 0;
         for (let i = 0; i < insertIndex; i++) {

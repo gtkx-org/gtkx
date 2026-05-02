@@ -1,5 +1,7 @@
 import type { NativeHandle } from "@gtkx/native";
 
+export type { NativeHandle } from "@gtkx/native";
+
 /**
  * Base class for all GLib/GTK native objects managed by the FFI layer.
  *
@@ -27,5 +29,3 @@ export type NativeClass<T extends NativeObject = NativeObject> = (new (
     readonly glibTypeName: string;
     readonly objectType: "gobject" | "interface" | "boxed" | "struct" | "fundamental";
 };
-
-export type { NativeHandle };

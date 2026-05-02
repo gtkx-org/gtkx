@@ -27,8 +27,8 @@ export class FontDialogButtonNode extends WidgetNode<Gtk.FontDialogButton, FontD
         containerClass: typeof Gtk.Widget,
     ): Container | null {
         const dialog = new Gtk.FontDialog();
-        const button = new (containerClass as typeof Gtk.FontDialogButton)(dialog);
-        return button;
+        const ButtonClass = containerClass as typeof Gtk.FontDialogButton;
+        return new ButtonClass(dialog);
     }
 
     constructor(

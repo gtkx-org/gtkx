@@ -91,10 +91,10 @@ export class InterfaceGenerator {
         }
 
         const gobjectMethodNames = collectGObjectMethodNames(this.repository);
-        const methodStructures: MethodStructure[] = [];
-
-        methodStructures.push(...this.buildMethodStructures(iface.methods, iface.name, gobjectMethodNames));
-        methodStructures.push(...this.buildMethodStructures(prerequisiteMethods, iface.name, gobjectMethodNames));
+        const methodStructures: MethodStructure[] = [
+            ...this.buildMethodStructures(iface.methods, iface.name, gobjectMethodNames),
+            ...this.buildMethodStructures(prerequisiteMethods, iface.name, gobjectMethodNames),
+        ];
 
         for (const struct of methodStructures) {
             addMethodStructure(cls, struct);

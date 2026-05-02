@@ -98,10 +98,7 @@ export const CLASS_RENAMES = new Map<string, string>([["Error", "GError"]]);
 
 export const normalizeClassName = (name: string): string => {
     const pascalName = toPascalCase(name);
-    if (CLASS_RENAMES.has(pascalName)) {
-        return CLASS_RENAMES.get(pascalName) as string;
-    }
-    return pascalName;
+    return CLASS_RENAMES.get(pascalName) ?? pascalName;
 };
 
 export const generateConflictingMethodName = (prefix: string, methodName: string): string => {

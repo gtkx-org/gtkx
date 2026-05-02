@@ -31,13 +31,13 @@ const SETTERS: Record<SettingType, string> = {
 type SettingAccessor = (key: string, value?: unknown) => unknown;
 
 function readSetting(settings: Gio.Settings, key: string, type: SettingType): unknown {
-    const getter = (settings as unknown as Record<string, SettingAccessor>)[GETTERS[type]] as SettingAccessor;
-    return getter.call(settings, key);
+    const accessors = settings as unknown as Record<string, SettingAccessor>;
+    return accessors[GETTERS[type]]?.call(settings, key);
 }
 
 function writeSetting(settings: Gio.Settings, key: string, type: SettingType, value: unknown): void {
-    const setter = (settings as unknown as Record<string, SettingAccessor>)[SETTERS[type]] as SettingAccessor;
-    setter.call(settings, key, value);
+    const accessors = settings as unknown as Record<string, SettingAccessor>;
+    accessors[SETTERS[type]]?.call(settings, key, value);
 }
 
 /**

@@ -14,10 +14,11 @@ export function getEnumList<T extends number>(fnName: string): T[] {
         ],
         t.void,
     );
-    const count = numRef.value as number;
+    const count = numRef.value;
     const result: T[] = [];
+    if (versionsRef.value === null) return result;
     for (let i = 0; i < count; i++) {
-        result.push(read(versionsRef.value as NativeHandle, INT_TYPE, i * 4) as T);
+        result.push(read(versionsRef.value, INT_TYPE, i * 4) as T);
     }
     return result;
 }

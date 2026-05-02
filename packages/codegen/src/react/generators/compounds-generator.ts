@@ -128,23 +128,25 @@ export class CompoundsGenerator {
     private collectManualPropsTypes(): Set<string> {
         const manualPropsTypes = new Set<string>();
         for (const compound of this.compounds) {
-            if (compound.children?.virtualChildren) {
-                for (const vc of compound.children.virtualChildren) {
-                    manualPropsTypes.add(vc.props);
-                }
-            }
-            if (compound.children?.menuHost) {
-                for (const mc of MENU_SUB_COMPONENTS) {
-                    manualPropsTypes.add(mc.props);
-                }
-            }
-            if (compound.children?.navigationPages) {
-                for (const np of compound.children.navigationPages) {
-                    manualPropsTypes.add(np.props);
-                }
-            }
+            this.collectCompoundPropsTypes(compound, manualPropsTypes);
         }
         return manualPropsTypes;
+    }
+
+    private collectCompoundPropsTypes(compound: CompoundEntry, target: Set<string>): void {
+        const children = compound.children;
+        if (!children) return;
+        for (const vc of children.virtualChildren ?? []) {
+            target.add(vc.props);
+        }
+        if (children.menuHost) {
+            for (const mc of MENU_SUB_COMPONENTS) {
+                target.add(mc.props);
+            }
+        }
+        for (const np of children.navigationPages ?? []) {
+            target.add(np.props);
+        }
     }
 
     private addImports(file: FileBuilder): void {

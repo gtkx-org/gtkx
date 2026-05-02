@@ -150,7 +150,7 @@ export class FfiMapper {
         const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
         const listType = this.resolveArrayListType(type);
         const adjustedSizeParamIndex =
-            type.sizeParamIndex !== undefined ? type.sizeParamIndex + sizeParamOffset : undefined;
+            type.sizeParamIndex === undefined ? undefined : type.sizeParamIndex + sizeParamOffset;
 
         if (!type.elementType) {
             return {

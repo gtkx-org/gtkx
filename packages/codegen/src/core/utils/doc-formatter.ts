@@ -280,7 +280,7 @@ function stripHtmlLinks(text: string): string {
 }
 
 function convertAtAnnotations(text: string): string {
-    return text.replaceAll(/(?<!\{)@([a-zA-Z_][a-zA-Z0-9_]*)\b(?!\s*\{)/g, "`$1`");
+    return text.replaceAll(/(?<!\{)@([a-zA-Z_]\w*)\b(?!\s*\{)/g, "`$1`");
 }
 
 function escapeXmlStyleTags(text: string): string {

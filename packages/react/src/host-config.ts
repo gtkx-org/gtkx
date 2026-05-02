@@ -11,11 +11,9 @@ declare global {
     var __GTKX_CONTAINER_NODE_CACHE__: WeakMap<Container, Node> | undefined;
 }
 
-if (!globalThis.__GTKX_CONTAINER_NODE_CACHE__) {
-    globalThis.__GTKX_CONTAINER_NODE_CACHE__ = new WeakMap<Container, Node>();
-}
+globalThis.__GTKX_CONTAINER_NODE_CACHE__ ??= new WeakMap<Container, Node>();
 
-const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__ as WeakMap<Container, Node>;
+const containerNodeCache = globalThis.__GTKX_CONTAINER_NODE_CACHE__;
 
 type PublicInstance = Gtk.Widget | Gtk.Application;
 type HostContext = {
@@ -45,8 +43,8 @@ const getOrCreateContainerNode = (container: Container): Node => {
     let node = containerNodeCache.get(container);
 
     if (!node) {
-        const type = (container.constructor as ContainerClass).glibTypeName;
-        node = createNode(type, {}, container, container);
+        const ctor = container.constructor as ContainerClass;
+        node = createNode(ctor.glibTypeName, {}, container, container);
         containerNodeCache.set(container, node);
     }
 

@@ -9,7 +9,7 @@ import { splitQualifiedName } from "../utils/qualified-name.js";
 import { qualifyType } from "../utils/type-qualification.js";
 
 const GOBJECT_OBJECT = "GObject.Object";
-const CLASSES_WITH_NOTIFY: string[] = ["Gtk.Widget", "Gtk.EventController"];
+const CLASSES_WITH_NOTIFY = new Set<string>(["Gtk.Widget", "Gtk.EventController"]);
 
 /**
  * Analyzes signals for JSX component generation.
@@ -40,7 +40,7 @@ export class SignalAnalyzer {
 
         const signals = directSignals.map((signal) => this.analyzeSignal(signal, namespace));
 
-        if (CLASSES_WITH_NOTIFY.includes(cls.qualifiedName)) {
+        if (CLASSES_WITH_NOTIFY.has(cls.qualifiedName)) {
             const notifySignal = this.getNotifySignalFromGObject(namespace);
             if (notifySignal) {
                 signals.push(notifySignal);

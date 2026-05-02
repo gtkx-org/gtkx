@@ -37,15 +37,15 @@ function parseMessages(raw: string): Message[] {
     return lines.map((line) => {
         const parts = line.split("|");
         return {
-            id: parseInt(parts[0] ?? "0", 10),
+            id: Number.parseInt(parts[0] ?? "0", 10),
             senderName: parts[1] ?? "",
             senderNick: parts[2] ?? "",
             message: parts[3] ?? "",
-            time: parseInt(parts[4] ?? "0", 10),
-            replyTo: parseInt(parts[5] ?? "0", 10),
+            time: Number.parseInt(parts[4] ?? "0", 10),
+            replyTo: Number.parseInt(parts[5] ?? "0", 10),
             resentBy: parts[6] && parts[6].length > 0 ? parts[6] : null,
-            nFavorites: parseInt(parts[7] ?? "0", 10),
-            nReshares: parseInt(parts[8] ?? "0", 10),
+            nFavorites: Number.parseInt(parts[7] ?? "0", 10),
+            nReshares: Number.parseInt(parts[8] ?? "0", 10),
         };
     });
 }

@@ -69,15 +69,21 @@ export function writeFfiTypeExpression(writer: Writer, descriptor: FfiTypeDescri
 
         case "ref":
             writer.write("t.ref(");
-            writeFfiTypeExpression(writer, descriptor.innerType as FfiTypeDescriptor);
+            if (typeof descriptor.innerType === "object") {
+                writeFfiTypeExpression(writer, descriptor.innerType);
+            }
             writer.write(")");
             return;
 
         case "hashtable":
             writer.write("t.hashTable(");
-            writeFfiTypeExpression(writer, descriptor.keyType as FfiTypeDescriptor);
+            if (descriptor.keyType !== undefined) {
+                writeFfiTypeExpression(writer, descriptor.keyType);
+            }
             writer.write(", ");
-            writeFfiTypeExpression(writer, descriptor.valueType as FfiTypeDescriptor);
+            if (descriptor.valueType !== undefined) {
+                writeFfiTypeExpression(writer, descriptor.valueType);
+            }
             writer.write(`, ${ownership(descriptor)})`);
             return;
 
@@ -96,7 +102,9 @@ export function writeFfiTypeExpression(writer: Writer, descriptor: FfiTypeDescri
             writer.write("t.callback(");
             writeTypeArray(writer, descriptor.argTypes ?? []);
             writer.write(", ");
-            writeFfiTypeExpression(writer, descriptor.returnType as FfiTypeDescriptor);
+            if (descriptor.returnType !== undefined) {
+                writeFfiTypeExpression(writer, descriptor.returnType);
+            }
             writer.write(")");
             return;
 
@@ -104,7 +112,9 @@ export function writeFfiTypeExpression(writer: Writer, descriptor: FfiTypeDescri
             writer.write("t.trampoline(");
             writeTypeArray(writer, descriptor.argTypes ?? []);
             writer.write(", ");
-            writeFfiTypeExpression(writer, descriptor.returnType as FfiTypeDescriptor);
+            if (descriptor.returnType !== undefined) {
+                writeFfiTypeExpression(writer, descriptor.returnType);
+            }
             writeTrampolineOptions(writer, descriptor);
             writer.write(")");
             return;
@@ -148,9 +158,14 @@ function writeFundamentalExpression(writer: Writer, descriptor: FfiTypeDescripto
 }
 
 function writeArrayExpression(writer: Writer, descriptor: FfiTypeDescriptor): void {
-    const item = descriptor.itemType as FfiTypeDescriptor;
+    const item = descriptor.itemType;
     const own = ownership(descriptor);
     const kind = descriptor.kind ?? "array";
+
+    if (item === undefined) {
+        writer.write("undefined");
+        return;
+    }
 
     switch (kind) {
         case "glist":

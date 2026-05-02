@@ -160,12 +160,8 @@ export class ConnectionManager extends EventEmitter<ConnectionManagerEventMap> {
     private handleRequest(connection: AppConnection, request: IpcRequest): void {
         if (request.method === "app.register") {
             this.handleRegister(connection, request);
-            return;
-        }
-
-        if (request.method === "app.unregister") {
+        } else if (request.method === "app.unregister") {
             this.handleUnregister(connection, request);
-            return;
         }
     }
 

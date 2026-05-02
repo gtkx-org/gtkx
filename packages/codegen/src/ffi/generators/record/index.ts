@@ -108,9 +108,8 @@ export class RecordGenerator {
 
         this.generateConstructors(record, recordName, cls, methodStructures);
 
-        methodStructures.push(...this.buildStaticFunctionStructures(record.staticFunctions, recordName, record.name));
-
         methodStructures.push(
+            ...this.buildStaticFunctionStructures(record.staticFunctions, recordName, record.name),
             ...this.buildMethodStructures(record.methods, {
                 glibTypeName: record.glibTypeName,
                 glibGetType: record.glibGetType,

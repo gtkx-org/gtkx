@@ -139,51 +139,80 @@ export class WidgetNode<
 
         applyAccessibleProps(this.container, oldProps, newProps);
 
+        const { pendingSignals, pendingProperties } = this.collectPendingPropChanges(oldProps, newProps);
+        this.applyPendingSignals(pendingSignals);
+        this.applyPendingProperties(pendingProperties);
+    }
+
+    private collectPendingPropChanges(
+        oldProps: P | null,
+        newProps: P,
+    ): {
+        pendingSignals: Array<{ name: string; newValue: unknown }>;
+        pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }>;
+    } {
         const propNames = new Set([
             ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
             ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
         ]);
-
         const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
         const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
 
         for (const name of propNames) {
-            if (isAccessibleProp(name)) continue;
-            if (isConstructOnlyProp(this.container, name)) continue;
+            this.classifyPropChange(name, oldProps, newProps, pendingSignals, pendingProperties);
+        }
+        return { pendingSignals, pendingProperties };
+    }
 
-            const oldValue = oldProps?.[name];
-            const newValue = newProps[name];
+    private classifyPropChange(
+        name: string,
+        oldProps: P | null,
+        newProps: P,
+        pendingSignals: Array<{ name: string; newValue: unknown }>,
+        pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }>,
+    ): void {
+        if (isAccessibleProp(name)) return;
+        if (isConstructOnlyProp(this.container, name)) return;
 
-            if (oldValue === newValue) continue;
+        const oldValue = oldProps?.[name];
+        const newValue = newProps[name];
+        if (oldValue === newValue) return;
 
-            const signalName = resolveSignal(this.container, name);
-
-            if (signalName) {
-                pendingSignals.push({ name, newValue });
-            } else if (newValue !== undefined) {
-                pendingProperties.push({ name, oldValue, newValue });
-            } else if (oldValue !== undefined) {
-                const defaultValue = this.getPropertyDefaultValue(name);
-                if (defaultValue !== undefined) {
-                    pendingProperties.push({ name, oldValue, newValue: defaultValue });
-                }
+        const signalName = resolveSignal(this.container, name);
+        if (signalName) {
+            pendingSignals.push({ name, newValue });
+            return;
+        }
+        if (newValue !== undefined) {
+            pendingProperties.push({ name, oldValue, newValue });
+            return;
+        }
+        if (oldValue !== undefined) {
+            const defaultValue = this.getPropertyDefaultValue(name);
+            if (defaultValue !== undefined) {
+                pendingProperties.push({ name, oldValue, newValue: defaultValue });
             }
         }
+    }
 
+    private applyPendingSignals(pendingSignals: Array<{ name: string; newValue: unknown }>): void {
         for (const { name, newValue } of pendingSignals) {
             const signalName = resolveSignal(this.container, name);
             if (!signalName) continue;
             const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
             this.signalStore.set(this, this.container, signalName, handler);
         }
+    }
 
+    private applyPendingProperties(
+        pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }>,
+    ): void {
         for (const { name, oldValue, newValue } of pendingProperties) {
             if (name === "text" && oldValue !== undefined && isEditable(this.container)) {
                 if (oldValue !== this.container.getText()) {
                     continue;
                 }
             }
-
             this.setProperty(name, newValue);
         }
     }
@@ -265,7 +294,8 @@ export class WidgetNode<
 
     private unwrapGtkChild(child: Gtk.Widget): Gtk.Widget | null {
         if ("getChild" in child && typeof child.getChild === "function") {
-            return child.getChild() as Gtk.Widget | null;
+            const inner: unknown = child.getChild();
+            return inner instanceof Gtk.Widget ? inner : null;
         }
         return child;
     }

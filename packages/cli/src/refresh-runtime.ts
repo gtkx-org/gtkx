@@ -74,7 +74,7 @@ export function isReactRefreshBoundary(moduleExports: Record<string, unknown>): 
         }
     }
 
-    return Object.keys(moduleExports).filter((k) => k !== "__esModule").length > 0;
+    return Object.keys(moduleExports).some((k) => k !== "__esModule");
 }
 
 /**

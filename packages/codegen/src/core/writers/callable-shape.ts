@@ -180,6 +180,206 @@ const PRIMITIVE_INITIAL_LITERALS = new Set(["number", "boolean", "string", "unkn
  * allocated internally, which length params are hidden entirely, and the
  * ordered return-tuple entries.
  */
+type ShapeAccumulator = {
+    imports: TypeImport[];
+    paramMappings: ParamMapping[];
+    signatureParams: SignatureParam[];
+    hiddenOuts: HiddenOut[];
+    callArgs: ShapeCallArg[];
+    tupleOuts: { mapping: ParamMapping; hiddenOutIndex: number | null }[];
+};
+
+type ParamContext = {
+    param: GirParameter;
+    girIndex: number;
+    mapped: MappedType;
+    jsName: string;
+    isNullable: boolean;
+    isOptional: boolean;
+    isOut: boolean;
+    isInout: boolean;
+    isLengthParam: boolean;
+    isOpaqueCallerAllocates: boolean;
+    isCallerAllocatesStruct: boolean;
+    tsType: string;
+};
+
+const recordMapping = (
+    acc: ShapeAccumulator,
+    ctx: ParamContext,
+    sigPushed: boolean,
+    hiddenIndex: number | null,
+): void => {
+    const mapping: ParamMapping = {
+        girIndex: ctx.girIndex,
+        jsName: ctx.jsName,
+        mapped: ctx.mapped,
+        isSignatureParam: sigPushed,
+        hiddenOutIndex: hiddenIndex,
+        isLengthParam: ctx.isLengthParam,
+        isOut: ctx.isOut,
+        isInout: ctx.isInout,
+        isCallerAllocatesStruct: ctx.isCallerAllocatesStruct,
+        nullable: ctx.isNullable,
+        optional: ctx.isOptional,
+    };
+    acc.paramMappings.push(mapping);
+    if (ctx.isOut && !ctx.isLengthParam) {
+        acc.tupleOuts.push({ mapping, hiddenOutIndex: hiddenIndex });
+    }
+};
+
+const handleInputParam = (
+    acc: ShapeAccumulator,
+    ctx: ParamContext,
+    filteredParams: GirParameter[],
+    lengthToDataIndex: Map<number, number>,
+    ffiMapper: FfiMapper,
+    sizeParamOffset: number,
+): void => {
+    if (ctx.isLengthParam) {
+        const dataIndex = lengthToDataIndex.get(ctx.girIndex);
+        const dataParam = dataIndex === undefined ? undefined : filteredParams[dataIndex];
+        const dataMapped = dataParam ? ffiMapper.mapParameter(dataParam, sizeParamOffset) : undefined;
+        const dataJsName = dataParam ? toValidIdentifier(toCamelCase(dataParam.name)) : undefined;
+        acc.callArgs.push({
+            ffi: ctx.mapped.ffi,
+            value: buildLengthExpression(dataJsName, dataMapped, dataParam),
+            optional: false,
+            sourceParamIndex: ctx.girIndex,
+        });
+        recordMapping(acc, ctx, false, null);
+        return;
+    }
+    acc.signatureParams.push({ name: ctx.jsName, tsType: ctx.tsType, optional: ctx.isOptional });
+    acc.callArgs.push({
+        ffi: ctx.mapped.ffi,
+        value: buildInputValueExpression(ctx.jsName, ctx.mapped, ctx.isNullable || ctx.isOptional),
+        optional: ctx.isOptional,
+        sourceParamIndex: ctx.girIndex,
+    });
+    recordMapping(acc, ctx, true, null);
+};
+
+const handleOpaqueCallerAllocates = (acc: ShapeAccumulator, ctx: ParamContext): void => {
+    acc.signatureParams.push({ name: ctx.jsName, tsType: ctx.tsType, optional: ctx.isOptional });
+    acc.callArgs.push({
+        ffi: ctx.mapped.ffi,
+        value: buildInputValueExpression(ctx.jsName, ctx.mapped, ctx.isNullable || ctx.isOptional),
+        optional: ctx.isOptional,
+        sourceParamIndex: ctx.girIndex,
+    });
+    acc.paramMappings.push({
+        girIndex: ctx.girIndex,
+        jsName: ctx.jsName,
+        mapped: ctx.mapped,
+        isSignatureParam: true,
+        hiddenOutIndex: null,
+        isLengthParam: ctx.isLengthParam,
+        isOut: false,
+        isInout: false,
+        isCallerAllocatesStruct: false,
+        nullable: ctx.isNullable,
+        optional: ctx.isOptional,
+    });
+};
+
+const handleRefHandleOut = (acc: ShapeAccumulator, ctx: ParamContext): void => {
+    const hiddenIndex = acc.hiddenOuts.length;
+    const varName = `${ctx.jsName}Ref`;
+    const wrapInfo = extractBoxedWrapInfo(ctx.mapped);
+    acc.hiddenOuts.push({
+        varName,
+        tsType: ctx.isNullable
+            ? `${ctx.mapped.innerTsType ?? ctx.mapped.ts} | null`
+            : (ctx.mapped.innerTsType ?? ctx.mapped.ts),
+        initialValue: "null",
+        ffi: ctx.mapped.ffi,
+        kind: "ref-handle",
+        isLengthParam: ctx.isLengthParam,
+        nullable: ctx.isNullable,
+        wrapClassName: wrapInfo.className,
+        wrapAsBoxed: wrapInfo.isBoxed,
+    });
+    acc.callArgs.push({ ffi: ctx.mapped.ffi, value: varName, optional: false, sourceParamIndex: ctx.girIndex });
+    recordMapping(acc, ctx, false, hiddenIndex);
+};
+
+const handleRefPrimitiveOut = (acc: ShapeAccumulator, ctx: ParamContext): void => {
+    const hiddenIndex = acc.hiddenOuts.length;
+    const varName = `${ctx.jsName}Ref`;
+    const innerTs = ctx.mapped.innerTsType ?? "unknown";
+    const initial = ctx.isInout
+        ? inoutInitialValueExpression(ctx.jsName, innerTs, ctx.isNullable || ctx.isOptional)
+        : initialValueFor(innerTs);
+    acc.hiddenOuts.push({
+        varName,
+        tsType: innerTs,
+        initialValue: initial,
+        ffi: ctx.mapped.ffi,
+        kind: ctx.isInout ? "ref-primitive-inout" : "ref-primitive",
+        isLengthParam: ctx.isLengthParam,
+        nullable: ctx.isNullable,
+    });
+    if (ctx.isInout) {
+        const innerSignatureType = formatNullableType(innerTs, ctx.isNullable, false);
+        acc.signatureParams.push({ name: ctx.jsName, tsType: innerSignatureType, optional: ctx.isOptional });
+    }
+    acc.callArgs.push({ ffi: ctx.mapped.ffi, value: varName, optional: false, sourceParamIndex: ctx.girIndex });
+    recordMapping(acc, ctx, ctx.isInout, hiddenIndex);
+};
+
+const handleAllocStructOut = (acc: ShapeAccumulator, ctx: ParamContext): void => {
+    const hiddenIndex = acc.hiddenOuts.length;
+    const varName = `${ctx.jsName}Ref`;
+    const wrapInfo = extractBoxedWrapInfo(ctx.mapped);
+    acc.hiddenOuts.push({
+        varName,
+        tsType: ctx.mapped.ts,
+        initialValue: "",
+        ffi: ctx.mapped.ffi,
+        kind: "alloc-struct",
+        isLengthParam: ctx.isLengthParam,
+        nullable: false,
+        wrapClassName: wrapInfo.className,
+        wrapAsBoxed: wrapInfo.isBoxed,
+    });
+    acc.callArgs.push({
+        ffi: ctx.mapped.ffi,
+        value: `${varName}.handle`,
+        optional: false,
+        sourceParamIndex: ctx.girIndex,
+    });
+    recordMapping(acc, ctx, false, hiddenIndex);
+};
+
+const dispatchOutParam = (acc: ShapeAccumulator, ctx: ParamContext): void => {
+    if (ctx.isInout && ctx.mapped.ffi.type !== "ref") {
+        acc.signatureParams.push({ name: ctx.jsName, tsType: ctx.tsType, optional: ctx.isOptional });
+        acc.callArgs.push({
+            ffi: ctx.mapped.ffi,
+            value: buildInputValueExpression(ctx.jsName, ctx.mapped, ctx.isNullable || ctx.isOptional),
+            optional: ctx.isOptional,
+            sourceParamIndex: ctx.girIndex,
+        });
+        recordMapping(acc, ctx, true, null);
+        return;
+    }
+    if (ctx.isOpaqueCallerAllocates) {
+        handleOpaqueCallerAllocates(acc, ctx);
+        return;
+    }
+    if (ctx.mapped.ffi.type === "ref" && refTargetsHandle(ctx.mapped.ffi)) {
+        handleRefHandleOut(acc, ctx);
+        return;
+    }
+    if (ctx.mapped.ffi.type === "ref") {
+        handleRefPrimitiveOut(acc, ctx);
+        return;
+    }
+    handleAllocStructOut(acc, ctx);
+};
+
 export const buildCallableShape = (input: CallableShapeInput): CallableShape => {
     const { parameters, returnTypeMapping, returnNullable, sizeParamOffset, ffiMapper } = input;
 
@@ -192,197 +392,48 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
         sizeParamOffset,
     );
 
-    const imports: TypeImport[] = [];
-    const paramMappings: ParamMapping[] = [];
-    const signatureParams: SignatureParam[] = [];
-    const hiddenOuts: HiddenOut[] = [];
-    const callArgs: ShapeCallArg[] = [];
-    const tupleOuts: { mapping: ParamMapping; hiddenOutIndex: number | null }[] = [];
+    const acc: ShapeAccumulator = {
+        imports: [],
+        paramMappings: [],
+        signatureParams: [],
+        hiddenOuts: [],
+        callArgs: [],
+        tupleOuts: [],
+    };
 
     filteredParams.forEach((param, girIndex) => {
         const mapped = ffiMapper.mapParameter(param, sizeParamOffset);
-        imports.push(...mapped.imports);
+        acc.imports.push(...mapped.imports);
 
-        const jsName = toValidIdentifier(toCamelCase(param.name));
-        const isNullable = param.nullable;
-        const isOptional = param.optional || param.nullable;
         const isOut = param.direction === "out" || param.direction === "inout";
-        const isInout = param.direction === "inout";
-        const isLengthParam = lengthIndices.has(girIndex);
-        const isOpaqueCallerAllocates =
+        const isOpaque =
             isOut &&
             param.callerAllocates &&
             isBoxedOrStructFfi(mapped.ffi) &&
             !ffiMapper.canAllocateLocally(param.type.name);
-        const isCallerAllocatesStruct =
-            isOut && param.callerAllocates && isBoxedOrStructFfi(mapped.ffi) && !isOpaqueCallerAllocates;
-
-        const tsType = formatNullableType(mapped.ts, isNullable, mapped.ffi.type === "callback");
-
-        const pushSignatureMapping = (sigPushed: boolean, hiddenIndex: number | null): void => {
-            const mapping: ParamMapping = {
-                girIndex,
-                jsName,
-                mapped,
-                isSignatureParam: sigPushed,
-                hiddenOutIndex: hiddenIndex,
-                isLengthParam,
-                isOut,
-                isInout,
-                isCallerAllocatesStruct,
-                nullable: isNullable,
-                optional: isOptional,
-            };
-            paramMappings.push(mapping);
-            if (isOut && !isLengthParam) {
-                tupleOuts.push({ mapping, hiddenOutIndex: hiddenIndex });
-            }
+        const ctx: ParamContext = {
+            param,
+            girIndex,
+            mapped,
+            jsName: toValidIdentifier(toCamelCase(param.name)),
+            isNullable: param.nullable,
+            isOptional: param.optional || param.nullable,
+            isOut,
+            isInout: param.direction === "inout",
+            isLengthParam: lengthIndices.has(girIndex),
+            isOpaqueCallerAllocates: isOpaque,
+            isCallerAllocatesStruct: isOut && param.callerAllocates && isBoxedOrStructFfi(mapped.ffi) && !isOpaque,
+            tsType: formatNullableType(mapped.ts, param.nullable, mapped.ffi.type === "callback"),
         };
 
-        if (!isOut) {
-            if (isLengthParam) {
-                const dataIndex = lengthToDataIndex.get(girIndex);
-                const dataParam = dataIndex === undefined ? undefined : filteredParams[dataIndex];
-                const dataMapped = dataParam ? ffiMapper.mapParameter(dataParam, sizeParamOffset) : undefined;
-                const dataJsName = dataParam ? toValidIdentifier(toCamelCase(dataParam.name)) : undefined;
-                callArgs.push({
-                    ffi: mapped.ffi,
-                    value: buildLengthExpression(dataJsName, dataMapped, dataParam),
-                    optional: false,
-                    sourceParamIndex: girIndex,
-                });
-                pushSignatureMapping(false, null);
-                return;
-            }
-            signatureParams.push({ name: jsName, tsType, optional: isOptional });
-            callArgs.push({
-                ffi: mapped.ffi,
-                value: buildInputValueExpression(jsName, mapped, isNullable || isOptional),
-                optional: isOptional,
-                sourceParamIndex: girIndex,
-            });
-            pushSignatureMapping(true, null);
+        if (!ctx.isOut) {
+            handleInputParam(acc, ctx, filteredParams, lengthToDataIndex, ffiMapper, sizeParamOffset);
             return;
         }
-
-        if (isInout && mapped.ffi.type !== "ref") {
-            signatureParams.push({ name: jsName, tsType, optional: isOptional });
-            callArgs.push({
-                ffi: mapped.ffi,
-                value: buildInputValueExpression(jsName, mapped, isNullable || isOptional),
-                optional: isOptional,
-                sourceParamIndex: girIndex,
-            });
-            pushSignatureMapping(true, null);
-            return;
-        }
-
-        if (isOpaqueCallerAllocates) {
-            signatureParams.push({ name: jsName, tsType, optional: isOptional });
-            callArgs.push({
-                ffi: mapped.ffi,
-                value: buildInputValueExpression(jsName, mapped, isNullable || isOptional),
-                optional: isOptional,
-                sourceParamIndex: girIndex,
-            });
-            // Treat opaque caller-allocates as a regular `in` for tuple
-            // accounting: the caller already holds the instance, so we don't
-            // duplicate it as a return-tuple entry. `isOut`/`isInout` are
-            // intentionally false here so the body emitter's filter on
-            // `paramMappings` lines up with `tupleOuts`.
-            paramMappings.push({
-                girIndex,
-                jsName,
-                mapped,
-                isSignatureParam: true,
-                hiddenOutIndex: null,
-                isLengthParam,
-                isOut: false,
-                isInout: false,
-                isCallerAllocatesStruct: false,
-                nullable: isNullable,
-                optional: isOptional,
-            });
-            return;
-        }
-
-        const hiddenIndex = hiddenOuts.length;
-        const varName = `${jsName}Ref`;
-
-        if (mapped.ffi.type === "ref" && refTargetsHandle(mapped.ffi)) {
-            const wrapInfo = extractBoxedWrapInfo(mapped);
-            hiddenOuts.push({
-                varName,
-                tsType: isNullable ? `${mapped.innerTsType ?? mapped.ts} | null` : (mapped.innerTsType ?? mapped.ts),
-                initialValue: "null",
-                ffi: mapped.ffi,
-                kind: "ref-handle",
-                isLengthParam,
-                nullable: isNullable,
-                wrapClassName: wrapInfo.className,
-                wrapAsBoxed: wrapInfo.isBoxed,
-            });
-            callArgs.push({
-                ffi: mapped.ffi,
-                value: varName,
-                optional: false,
-                sourceParamIndex: girIndex,
-            });
-            pushSignatureMapping(false, hiddenIndex);
-            return;
-        }
-
-        if (mapped.ffi.type === "ref") {
-            const innerTs = mapped.innerTsType ?? "unknown";
-            const initial = isInout
-                ? inoutInitialValueExpression(jsName, innerTs, isNullable || isOptional)
-                : initialValueFor(innerTs);
-            hiddenOuts.push({
-                varName,
-                tsType: innerTs,
-                initialValue: initial,
-                ffi: mapped.ffi,
-                kind: isInout ? "ref-primitive-inout" : "ref-primitive",
-                isLengthParam,
-                nullable: isNullable,
-            });
-            if (isInout) {
-                const innerSignatureType = formatNullableType(innerTs, isNullable, false);
-                signatureParams.push({ name: jsName, tsType: innerSignatureType, optional: isOptional });
-            }
-            callArgs.push({
-                ffi: mapped.ffi,
-                value: varName,
-                optional: false,
-                sourceParamIndex: girIndex,
-            });
-            pushSignatureMapping(isInout, hiddenIndex);
-            return;
-        }
-
-        // Caller-allocates boxed/struct out param: codegen allocates an
-        // empty instance via the type's no-arg constructor, passes its
-        // handle to FFI, and returns it in the tuple.
-        const wrapInfo = extractBoxedWrapInfo(mapped);
-        hiddenOuts.push({
-            varName,
-            tsType: mapped.ts,
-            initialValue: "",
-            ffi: mapped.ffi,
-            kind: "alloc-struct",
-            isLengthParam,
-            nullable: false,
-            wrapClassName: wrapInfo.className,
-            wrapAsBoxed: wrapInfo.isBoxed,
-        });
-        callArgs.push({
-            ffi: mapped.ffi,
-            value: `${varName}.handle`,
-            optional: false,
-            sourceParamIndex: girIndex,
-        });
-        pushSignatureMapping(false, hiddenIndex);
+        dispatchOutParam(acc, ctx);
     });
+
+    const { imports, paramMappings, signatureParams, hiddenOuts, callArgs, tupleOuts } = acc;
 
     const reorderedSignature = reorderOptionalLast(signatureParams);
 

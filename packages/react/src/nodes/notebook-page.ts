@@ -143,10 +143,10 @@ export class NotebookPageNode extends VirtualNode<NotebookPageProps, WidgetNode<
             tabLabel = label;
         }
 
-        if (this.position != null) {
-            notebook.insertPage(child, this.position, tabLabel);
-        } else {
+        if (this.position == null) {
             notebook.appendPage(child, tabLabel);
+        } else {
+            notebook.insertPage(child, this.position, tabLabel);
         }
 
         this.applyPageProps();

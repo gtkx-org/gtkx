@@ -412,7 +412,7 @@ class McpClient {
         const p = params as {
             widgetId: string;
             signal: string;
-            args?: (unknown | { type: string; value: unknown })[];
+            args?: unknown[];
         };
         const widget = getWidgetById(p.widgetId);
         if (!widget) {
@@ -447,11 +447,11 @@ class McpClient {
     }
 
     private async executeMethod(method: IpcMethod, params: unknown): Promise<unknown> {
-        const app = Gio.Application.getDefault() as Gtk.Application | null;
-
-        if (!app) {
+        const defaultApp = Gio.Application.getDefault();
+        if (!(defaultApp instanceof Gtk.Application)) {
             throw new Error("Application not initialized");
         }
+        const app = defaultApp;
 
         refreshWidgetRegistry();
 

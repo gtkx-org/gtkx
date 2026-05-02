@@ -17,9 +17,7 @@ function expandNestedRules(styles: string, className: string): string {
     let currentSegment = "";
     let braceDepth = 0;
 
-    for (let i = 0; i < expandedStyles.length; i++) {
-        const char = expandedStyles[i];
-
+    for (const char of expandedStyles) {
         if (char === "{") {
             currentSegment += char;
             braceDepth++;

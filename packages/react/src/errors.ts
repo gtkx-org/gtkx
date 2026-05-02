@@ -33,11 +33,18 @@ export class GtkxError extends Error {
     }
 }
 
+function formatUnknownError(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    if (typeof error === "string") return error;
+    if (typeof error === "number" || typeof error === "boolean") return String(error);
+    return "Unknown error";
+}
+
 export function toGtkxError(error: unknown): GtkxError {
     if (error instanceof GtkxError) {
         return error;
     }
 
-    const message = error instanceof Error ? error.message : String(error);
+    const message = formatUnknownError(error);
     return new GtkxError(message);
 }

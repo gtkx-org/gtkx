@@ -80,6 +80,127 @@ const hintStyleOptions = [
     { id: "full", label: "Full", value: HintStyle.FULL },
 ];
 
+const ZWNJ = "‌";
+
+const createGridFontOptions = (hintStyle: HintStyle, antialias: boolean, hintMetrics: boolean): FontOptions => {
+    const fontOptions = new FontOptions();
+    fontOptions.setHintStyle(hintStyle);
+    fontOptions.setAntialias(antialias ? Antialias.GRAY : Antialias.NONE);
+    fontOptions.setHintMetrics(hintMetrics ? HintMetrics.ON : HintMetrics.OFF);
+    return fontOptions;
+};
+
+const setupGridLayout = (
+    context: Pango.Context,
+    fontDesc: Pango.FontDescription,
+    text: string,
+): { logicalRect: Pango.Rectangle; ch: string; iter: Pango.LayoutIter } | null => {
+    let ch = text.length > 0 && text[0] !== undefined ? text[0] : " ";
+    const layout = new Pango.Layout(context);
+    layout.setFontDescription(fontDesc);
+    layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
+
+    let [, logicalRect] = layout.getPixelExtents();
+    const iter = layout.getIter();
+    if (!iter) return null;
+    const glyphItem = iter.getRun();
+    if (!glyphItem?.glyphs) return null;
+
+    if (glyphItem.glyphs.numGlyphs < 8) {
+        ch = "a";
+        layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
+        [, logicalRect] = layout.getPixelExtents();
+    }
+
+    const glyphs = readGlyphsArray(glyphItem.glyphs);
+    for (let i = 0; i < 4; i++) {
+        const g = readGlyph(glyphs, 2 * i);
+        writeGlyph(glyphs, 2 * i, { ...g, width: Math.round((g.width * 3) / 2) });
+    }
+    commitGlyphs(glyphItem.glyphs, glyphs);
+    return { logicalRect, ch, iter };
+};
+
+const renderSmallSurface = (
+    small: ReturnType<Context["getTarget"]>,
+    fontOptions: FontOptions,
+    fontDesc: Pango.FontDescription,
+    ch: string,
+    hintMetrics: boolean,
+): { iter: Pango.LayoutIter } | null => {
+    const smallCr = new Context(small);
+    smallCr.setFontOptions(fontOptions);
+    const smallCtx = PangoCairo.createContext(smallCr);
+    PangoCairo.contextSetFontOptions(smallCtx, fontOptions);
+    smallCtx.setRoundGlyphPositions(hintMetrics);
+
+    const smallLayout = new Pango.Layout(smallCtx);
+    smallLayout.setFontDescription(fontDesc);
+    smallLayout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
+
+    let [, smallLogical] = smallLayout.getPixelExtents();
+    const smallIter = smallLayout.getIter();
+    if (!smallIter) return null;
+    const smallGlyphItem = smallIter.getRun();
+    if (!smallGlyphItem?.glyphs) return null;
+
+    if (smallGlyphItem.glyphs.numGlyphs < 8) {
+        smallLayout.setText(`a${ZWNJ}a${ZWNJ}a${ZWNJ}a`, -1);
+        [, smallLogical] = smallLayout.getPixelExtents();
+    }
+
+    const smallGlyphs = readGlyphsArray(smallGlyphItem.glyphs);
+    for (let i = 0; i < 4; i++) {
+        const g = readGlyph(smallGlyphs, 2 * i);
+        writeGlyph(smallGlyphs, 2 * i, { ...g, width: Math.round((g.width * 3) / 2) });
+    }
+    commitGlyphs(smallGlyphItem.glyphs, smallGlyphs);
+
+    smallCr.setSourceRgb(1, 1, 1);
+    smallCr.paint();
+    smallCr.setSourceRgb(0, 0, 0);
+
+    for (let j = 0; j < 4; j++) {
+        const offsetGlyphs = readGlyphsArray(smallGlyphItem.glyphs);
+        for (let i = 0; i < 4; i++) {
+            const g = readGlyph(offsetGlyphs, 2 * i);
+            writeGlyph(offsetGlyphs, 2 * i, {
+                ...g,
+                xOffset: Math.round((i * PANGO_SCALE) / 4),
+                yOffset: Math.round((j * PANGO_SCALE) / 4),
+            });
+        }
+        commitGlyphs(smallGlyphItem.glyphs, offsetGlyphs);
+
+        smallCr.moveTo(0, j * smallLogical.height);
+        PangoCairo.showLayout(smallCr, smallLayout);
+    }
+    return { iter: smallIter };
+};
+
+const paintSmallSurface = (
+    cr: Context,
+    small: ReturnType<Context["getTarget"]>,
+    surfaceWidth: number,
+    surfaceHeight: number,
+    scale: number,
+    width: number,
+    height: number,
+): void => {
+    const scaledWidth = surfaceWidth * scale;
+    const scaledHeight = surfaceHeight * scale;
+    const offsetX = Math.max(0, Math.floor((width - scaledWidth) / 2));
+    const offsetY = Math.max(0, Math.floor((height - scaledHeight) / 2));
+
+    cr.save();
+    cr.translate(offsetX, offsetY);
+    cr.scale(scale, scale);
+    cr.setSourceSurface(small, 0, 0);
+    cr.getSource().setFilter(Filter.NEAREST);
+    cr.paint();
+    cr.restore();
+};
+
 const FontRenderingDemo = () => {
     const [mode, setMode] = useState<Mode>("text");
     const [text, setText] = useState(DEFAULT_TEXT);
@@ -299,16 +420,8 @@ const FontRenderingDemo = () => {
 
     const drawGridMode = useCallback(
         (cr: Context, width: number, height: number) => {
-            cr.setSourceRgb(1, 1, 1);
-            cr.paint();
-
-            const fontOptions = new FontOptions();
-            fontOptions.setHintStyle(hintStyle);
-            fontOptions.setAntialias(antialias ? Antialias.GRAY : Antialias.NONE);
-            fontOptions.setHintMetrics(hintMetrics ? HintMetrics.ON : HintMetrics.OFF);
-
+            const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
             const target = cr.getTarget();
-
             const tmpSurface = target.createSimilar("COLOR_ALPHA", 1, 1);
             const tmpCr = new Context(tmpSurface);
             tmpCr.setFontOptions(fontOptions);
@@ -317,116 +430,28 @@ const FontRenderingDemo = () => {
             PangoCairo.contextSetFontOptions(context, fontOptions);
             context.setRoundGlyphPositions(hintMetrics);
 
-            let ch = text.length > 0 ? text[0] : " ";
-
-            const ZWNJ = "\u200C";
-            const glyphText = `${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`;
-
-            const layout = new Pango.Layout(context);
-            layout.setFontDescription(fontDesc);
-            layout.setText(glyphText, -1);
-
-            let [, logicalRect] = layout.getPixelExtents();
-
-            const iter = layout.getIter();
-            if (!iter) return;
-
-            const glyphItem = iter.getRun();
-            if (!glyphItem) return;
-
-            const glyphString = glyphItem.glyphs;
-            if (!glyphString) return;
-
-            if (glyphString.numGlyphs < 8) {
-                ch = "a";
-                layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
-                [, logicalRect] = layout.getPixelExtents();
-            }
-
-            const glyphs = readGlyphsArray(glyphString);
-            for (let i = 0; i < 4; i++) {
-                const g = readGlyph(glyphs, 2 * i);
-                writeGlyph(glyphs, 2 * i, { ...g, width: Math.round((g.width * 3) / 2) });
-            }
-            commitGlyphs(glyphString, glyphs);
+            const layoutSetup = setupGridLayout(context, fontDesc, text);
+            if (!layoutSetup) return;
+            const { logicalRect, ch } = layoutSetup;
 
             const surfaceWidth = Math.round((logicalRect.width * 3) / 2);
             const surfaceHeight = logicalRect.height * 4;
-
             const small = target.createSimilar("COLOR_ALPHA", surfaceWidth, surfaceHeight);
-            const smallCr = new Context(small);
-            smallCr.setFontOptions(fontOptions);
-
-            const smallCtx = PangoCairo.createContext(smallCr);
-            PangoCairo.contextSetFontOptions(smallCtx, fontOptions);
-            smallCtx.setRoundGlyphPositions(hintMetrics);
-
-            const smallLayout = new Pango.Layout(smallCtx);
-            smallLayout.setFontDescription(fontDesc);
-
-            const smallGlyphText = `${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`;
-            smallLayout.setText(smallGlyphText, -1);
-
-            let [, smallLogical] = smallLayout.getPixelExtents();
-
-            const smallIter = smallLayout.getIter();
-            if (!smallIter) return;
-            const smallGlyphItem = smallIter.getRun();
-            if (!smallGlyphItem) return;
-
-            const smallGlyphString = smallGlyphItem.glyphs;
-            if (!smallGlyphString) return;
-
-            if (smallGlyphString.numGlyphs < 8) {
-                smallLayout.setText(`a${ZWNJ}a${ZWNJ}a${ZWNJ}a`, -1);
-                [, smallLogical] = smallLayout.getPixelExtents();
+            const smallSetup = renderSmallSurface(small, fontOptions, fontDesc, ch, hintMetrics);
+            if (!smallSetup) {
+                small.finish();
+                tmpSurface.finish();
+                return;
             }
 
-            const smallGlyphs = readGlyphsArray(smallGlyphString);
-            for (let i = 0; i < 4; i++) {
-                const g = readGlyph(smallGlyphs, 2 * i);
-                writeGlyph(smallGlyphs, 2 * i, { ...g, width: Math.round((g.width * 3) / 2) });
-            }
-            commitGlyphs(smallGlyphString, smallGlyphs);
-
-            smallCr.setSourceRgb(1, 1, 1);
-            smallCr.paint();
-            smallCr.setSourceRgb(0, 0, 0);
-
-            for (let j = 0; j < 4; j++) {
-                const offsetGlyphs = readGlyphsArray(smallGlyphString);
-                for (let i = 0; i < 4; i++) {
-                    const g = readGlyph(offsetGlyphs, 2 * i);
-                    writeGlyph(offsetGlyphs, 2 * i, {
-                        ...g,
-                        xOffset: Math.round((i * PANGO_SCALE) / 4),
-                        yOffset: Math.round((j * PANGO_SCALE) / 4),
-                    });
-                }
-                commitGlyphs(smallGlyphString, offsetGlyphs);
-
-                smallCr.moveTo(0, j * smallLogical.height);
-                PangoCairo.showLayout(smallCr, smallLayout);
-            }
-
-            const scaledWidth = surfaceWidth * scale;
-            const scaledHeight = surfaceHeight * scale;
-            const offsetX = Math.max(0, Math.floor((width - scaledWidth) / 2));
-            const offsetY = Math.max(0, Math.floor((height - scaledHeight) / 2));
-
-            cr.save();
-            cr.translate(offsetX, offsetY);
-            cr.scale(scale, scale);
-            cr.setSourceSurface(small, 0, 0);
-            cr.getSource().setFilter(Filter.NEAREST);
+            cr.setSourceRgb(1, 1, 1);
             cr.paint();
-            cr.restore();
+            paintSmallSurface(cr, small, surfaceWidth, surfaceHeight, scale, width, height);
 
-            smallIter.free();
+            smallSetup.iter.free();
             small.finish();
             tmpSurface.finish();
-
-            iter.free();
+            layoutSetup.iter.free();
         },
         [fontDesc, text, hintStyle, antialias, hintMetrics, scale],
     );

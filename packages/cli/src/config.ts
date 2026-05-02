@@ -71,7 +71,7 @@ export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     }
 
     for (const library of config.libraries) {
-        if (typeof library !== "string" || !/^[A-Za-z][A-Za-z0-9]*-[0-9]+(?:\.[0-9]+)*$/.test(library)) {
+        if (typeof library !== "string" || !/^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/.test(library)) {
             throw new Error(
                 `gtkx.config.ts: invalid library identifier "${library}" — must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
             );

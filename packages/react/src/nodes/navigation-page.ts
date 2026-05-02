@@ -92,8 +92,8 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
         const setter = resolvePropertySetter(parentWidget, propId);
 
         if (!setter) {
-            const parentType = (parentWidget.constructor as ContainerClass).glibTypeName;
-            throw new Error(`Unable to find property for slot '${propId}' on type '${parentType}'`);
+            const parentCtor = parentWidget.constructor as ContainerClass;
+            throw new Error(`Unable to find property for slot '${propId}' on type '${parentCtor.glibTypeName}'`);
         }
 
         if (oldChild && !this.wrappedPage) {

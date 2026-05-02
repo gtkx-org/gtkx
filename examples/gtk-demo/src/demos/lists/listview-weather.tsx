@@ -100,7 +100,7 @@ const parseWeatherData = (): WeatherInfo[] => {
         currentTemp = parseTemperature(fields[1] ?? "", currentTemp);
         currentWeather = parseWeatherType(fields[2] ?? "", fields[3] ?? "", currentWeather);
 
-        const last = data[data.length - 1];
+        const last = data.at(-1);
         if (last) {
             last.temperature = currentTemp;
             last.weatherType = currentWeather;

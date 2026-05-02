@@ -373,7 +373,7 @@ export class PropertyAccessorBuilder {
     private getRecordGetterInfo(typeName: string, typeMapping: MappedType): GValueGetterInfo | null {
         if (typeMapping.ffi.type === "boxed" && typeof typeMapping.ffi.innerType === "string") {
             return {
-                gtypeName: typeMapping.ffi.innerType as string,
+                gtypeName: typeMapping.ffi.innerType,
                 getMethod: "getBoxed",
                 isBoxed: true,
                 tsType: typeMapping.ts,

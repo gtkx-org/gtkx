@@ -60,10 +60,9 @@ const DefaultWrapper: WrapperComponent = ({ children, ref }) => (
 
 const findFirstWidget = (root: Container): Gtk.Widget | null => {
     if (!isApplication(root)) return root;
-    for (const widget of traverse(root)) {
-        return widget;
-    }
-    return null;
+    const iterator = traverse(root)[Symbol.iterator]();
+    const first = iterator.next();
+    return first.done ? null : first.value;
 };
 
 const wrapElement = (

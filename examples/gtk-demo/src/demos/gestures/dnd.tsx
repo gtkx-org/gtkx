@@ -140,7 +140,7 @@ function createRotationTransform(halfW: number, halfH: number, angle: number): G
     return t;
 }
 
-function ColorSwatch({ color }: { color: string }) {
+function ColorSwatch({ color }: Readonly<{ color: string }>) {
     const dynamicStyle = css`
         background-color: ${color};
     `;
@@ -158,7 +158,7 @@ function ColorSwatch({ color }: { color: string }) {
     );
 }
 
-function CssPatternSwatch({ cssClass }: { cssClass: string }) {
+function CssPatternSwatch({ cssClass }: Readonly<{ cssClass: string }>) {
     const createClassProvider = useCallback(() => {
         return Gdk.ContentProvider.newForValue(GObject.Value.newFromString(cssClass));
     }, [cssClass]);
@@ -246,7 +246,7 @@ const DndDemo = ({ window }: DemoProps) => {
                 if (ok) {
                     const halfW = bounds.getWidth() / 2;
                     const halfH = bounds.getHeight() / 2;
-                    const r = Math.sqrt(halfW * halfW + halfH * halfH);
+                    const r = Math.hypot(halfW, halfH);
                     itemHalves.current.set(item.id, { halfW, halfH });
                     itemRadii.current.set(item.id, r);
                 }

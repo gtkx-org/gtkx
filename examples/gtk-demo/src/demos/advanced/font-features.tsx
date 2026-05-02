@@ -206,13 +206,31 @@ const FEATURE_GROUPS: FeatureGroup[] = [
 
 type FeatureState = "inconsistent" | "active" | "inactive";
 
+const SS_RE = /^ss(\d{2})$/;
+const CV_RE = /^cv(\d{2})$/;
+
 const getFeatureDisplayName = (tag: string): string => {
     if (tag === "xxxx") return "Default";
-    const ssMatch = tag.match(/^ss(\d{2})$/);
+    const ssMatch = SS_RE.exec(tag);
     if (ssMatch) return `Stylistic Set ${Number.parseInt(ssMatch[1] ?? "0", 10)}`;
-    const cvMatch = tag.match(/^cv(\d{2})$/);
+    const cvMatch = CV_RE.exec(tag);
     if (cvMatch) return `Character Variant ${Number.parseInt(cvMatch[1] ?? "0", 10)}`;
     return FEATURE_DISPLAY_NAMES[tag] ?? tag;
+};
+
+const buildRadioFeaturePart = (group: { title: string }, radioStates: Map<string, string>): string | null => {
+    const selected = radioStates.get(group.title) ?? "xxxx";
+    return selected === "xxxx" ? null : `"${selected}" 1`;
+};
+
+const buildCheckFeatureParts = (group: { tags: string[] }, checkStates: Map<string, FeatureState>): string[] => {
+    const parts: string[] = [];
+    for (const tag of group.tags) {
+        const state = checkStates.get(tag) ?? "inconsistent";
+        if (state === "inconsistent") continue;
+        parts.push(`"${tag}" ${state === "active" ? "1" : "0"}`);
+    }
+    return parts;
 };
 
 const WATERFALL_SIZES = [7, 8, 9, 10, 12, 14, 16, 20, 24, 30, 40, 50, 60, 70, 90];
@@ -345,16 +363,10 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
         const parts: string[] = [];
         for (const group of FEATURE_GROUPS) {
             if (group.type === "radio") {
-                const selected = radioStates.get(group.title) ?? "xxxx";
-                if (selected !== "xxxx") {
-                    parts.push(`"${selected}" 1`);
-                }
+                const part = buildRadioFeaturePart(group, radioStates);
+                if (part !== null) parts.push(part);
             } else {
-                for (const tag of group.tags) {
-                    const state = checkStates.get(tag) ?? "inconsistent";
-                    if (state === "inconsistent") continue;
-                    parts.push(`"${tag}" ${state === "active" ? "1" : "0"}`);
-                }
+                parts.push(...buildCheckFeatureParts(group, checkStates));
             }
         }
         return parts.join(", ") || "normal";

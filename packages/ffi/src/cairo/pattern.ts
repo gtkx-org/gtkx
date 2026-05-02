@@ -496,7 +496,7 @@ Pattern.prototype.getSurface = function (): Surface {
         ],
         INT_TYPE,
     );
-    return getNativeObject(surfRef.value as NativeHandle, Surface) as Surface;
+    return getNativeObject(surfRef.value, Surface) as Surface;
 };
 
 Pattern.prototype.getLinearPoints = function (): {

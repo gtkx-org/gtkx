@@ -327,6 +327,43 @@ function getCompareFn(mode: SortMode): ((a: ColorItem, b: ColorItem) => number) 
     }
 }
 
+function mergeRange(
+    arr: ColorItem[],
+    tmp: ColorItem[],
+    cmp: (a: ColorItem, b: ColorItem) => number,
+    start: number,
+    mid: number,
+    end: number,
+): void {
+    let i = start;
+    let j = mid;
+    let k = start;
+    while (i < mid && j < end) {
+        const a = arr[i];
+        const b = arr[j];
+        if (a === undefined || b === undefined) break;
+        if (cmp(a, b) <= 0) {
+            tmp[k++] = a;
+            i++;
+        } else {
+            tmp[k++] = b;
+            j++;
+        }
+    }
+    while (i < mid) {
+        const value = arr[i++];
+        if (value !== undefined) tmp[k++] = value;
+    }
+    while (j < end) {
+        const value = arr[j++];
+        if (value !== undefined) tmp[k++] = value;
+    }
+    for (let idx = start; idx < end; idx++) {
+        const value = tmp[idx];
+        if (value !== undefined) arr[idx] = value;
+    }
+}
+
 function mergeSort(
     arr: ColorItem[],
     cmp: (a: ColorItem, b: ColorItem) => number,
@@ -338,26 +375,7 @@ function mergeSort(
     const mid = (start + end) >>> 1;
     mergeSort(arr, cmp, start, mid, tmp);
     mergeSort(arr, cmp, mid, end, tmp);
-
-    let i = start;
-    let j = mid;
-    let k = start;
-    while (i < mid && j < end) {
-        const a = arr[i] as ColorItem;
-        const b = arr[j] as ColorItem;
-        if (cmp(a, b) <= 0) {
-            tmp[k++] = a;
-            i++;
-        } else {
-            tmp[k++] = b;
-            j++;
-        }
-    }
-    while (i < mid) tmp[k++] = arr[i++] as ColorItem;
-    while (j < end) tmp[k++] = arr[j++] as ColorItem;
-    for (let idx = start; idx < end; idx++) {
-        arr[idx] = tmp[idx] as ColorItem;
-    }
+    mergeRange(arr, tmp, cmp, start, mid, end);
 }
 
 const MERGE_SORT_CHUNK = 65536;
@@ -405,26 +423,7 @@ function useIncrementalSort(colors: ColorItem[], mode: SortMode): { sorted: Colo
             for (let start = 0; start < n; start += passEnd) {
                 const end = Math.min(start + passEnd, n);
                 const mid = Math.min(start + passStart, end);
-
-                let i = start;
-                let j = mid;
-                let k = start;
-                while (i < mid && j < end) {
-                    const a = arr[i] as ColorItem;
-                    const b = arr[j] as ColorItem;
-                    if (cmp(a, b) <= 0) {
-                        tmp[k++] = a;
-                        i++;
-                    } else {
-                        tmp[k++] = b;
-                        j++;
-                    }
-                }
-                while (i < mid) tmp[k++] = arr[i++] as ColorItem;
-                while (j < end) tmp[k++] = arr[j++] as ColorItem;
-                for (let idx = start; idx < end; idx++) {
-                    arr[idx] = tmp[idx] as ColorItem;
-                }
+                mergeRange(arr, tmp, cmp, start, mid, end);
             }
 
             blockSize = passEnd;

@@ -1,4 +1,4 @@
-import type { Builder, Writable } from "./types.js";
+import type { Writable } from "./types.js";
 
 const INDENT = "    ";
 
@@ -14,7 +14,7 @@ export class Writer {
     /** Write a {@link Writable} value at the current position, applying indentation at line starts. */
     write(value: Writable): this {
         if (typeof value !== "string") {
-            (value as Builder).write(this);
+            value.write(this);
             return this;
         }
 

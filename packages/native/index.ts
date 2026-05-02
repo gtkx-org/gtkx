@@ -152,4 +152,4 @@ export function unfreeze(): void {
     native.unfreeze();
 }
 
-export type { Arg, CallbackType, FfiValue, NativeHandle, Ref, Type };
+export type { Arg, CallbackType, FfiValue, NativeHandle, Ref, Type } from "./types.js";

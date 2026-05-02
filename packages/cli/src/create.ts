@@ -261,13 +261,13 @@ const printNextSteps = (name: string, packageManager: PackageManager, testing: T
     const nextSteps = `cd ${name}\n${runCmd}`;
 
     const testingNote =
-        testing !== "none"
-            ? `
+        testing === "none"
+            ? ""
+            : `
 
 To run tests, you need xvfb installed:
   Fedora: sudo dnf install xorg-x11-server-Xvfb
-  Ubuntu: sudo apt install xvfb`
-            : "";
+  Ubuntu: sudo apt install xvfb`;
 
     p.note(`${nextSteps}${testingNote}`, "Next steps");
 };

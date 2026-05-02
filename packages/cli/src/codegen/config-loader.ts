@@ -63,7 +63,7 @@ export const loadGtkxConfig = async (cwd: string): Promise<LoadedConfig> => {
     }
 
     return {
-        config: defineConfig(result.config as GtkxConfig),
+        config: defineConfig(result.config),
         configFile: result.configFile,
         rootDir: result.cwd ?? cwd,
     };

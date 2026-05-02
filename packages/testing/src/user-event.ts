@@ -88,8 +88,9 @@ const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: numb
         return;
     }
 
-    if (exclusive && positions.length === 1) {
-        selectionModel.selectItem(positions[0] as number, true);
+    const [first] = positions;
+    if (exclusive && positions.length === 1 && first !== undefined) {
+        selectionModel.selectItem(first, true);
         return;
     }
 
@@ -112,10 +113,12 @@ const selectComboBoxOption = (element: Gtk.Widget, values: number | number[], va
     if (Array.isArray(values) && values.length > 1) {
         throw new Error("Cannot select multiple options: ComboBox only supports single selection");
     }
+    const [selection] = valueArray;
+    if (selection === undefined) return;
     if (element instanceof Gtk.DropDown) {
-        element.setSelected(valueArray[0] as number);
-    } else {
-        (element as Gtk.ComboBox).setActive(valueArray[0] as number);
+        element.setSelected(selection);
+    } else if (element instanceof Gtk.ComboBox) {
+        element.setActive(selection);
     }
 };
 
@@ -194,7 +197,7 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
     for (let i = 0; i < nItems; i++) {
         const controller = controllers.getObject(i);
         if (controller instanceof controllerType) {
-            return controller as T;
+            return controller;
         }
     }
 
@@ -204,7 +207,8 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
 };
 
 const getSignalId = (target: Gtk.EventController, signalName: string): number => {
-    const gtype = typeFromName((target.constructor as typeof GObject).glibTypeName);
+    const ctor = target.constructor as typeof GObject;
+    const gtype = typeFromName(ctor.glibTypeName);
     return signalLookup(signalName, gtype);
 };
 
@@ -273,9 +277,8 @@ const parseKeyboardInput = (input: string): KeyAction[] => {
 
     while (i < input.length) {
         if (input[i] !== "{") {
-            const keyval = input.charCodeAt(i);
-            actions.push({ keyval, press: true });
-            actions.push({ keyval, press: false });
+            const keyval = input.codePointAt(i) ?? 0;
+            actions.push({ keyval, press: true }, { keyval, press: false });
             i++;
             continue;
         }

@@ -24,7 +24,7 @@ const ASSET_EXTENSIONS = [
     "avif",
     "data",
 ] as const;
-const ASSET_RE = new RegExp(`\\.(?:${ASSET_EXTENSIONS.join("|")})$`, "i");
+const ASSET_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})$`, "i");
 const CSS_RE = /\.css$/i;
 const VIRTUAL_PREFIX = "\0gtkx:";
 

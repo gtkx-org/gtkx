@@ -48,7 +48,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
             isOrExtendsClass(WindowClass, Adw.ApplicationWindow)
         ) {
             if (!(rootContainer instanceof Gtk.Application)) {
-                throw new Error("Expected ApplicationWindow to be created within Application");
+                throw new TypeError("Expected ApplicationWindow to be created within Application");
             }
 
             if (isOrExtendsClass(WindowClass, Adw.ApplicationWindow)) {

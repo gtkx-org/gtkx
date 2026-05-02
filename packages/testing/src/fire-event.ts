@@ -32,7 +32,8 @@ export const fireEvent = async (
     signalName: string,
     ...args: Value[]
 ): Promise<void> => {
-    const gtype = typeFromName((element.constructor as typeof GObject).glibTypeName);
+    const ctor = element.constructor as typeof GObject;
+    const gtype = typeFromName(ctor.glibTypeName);
     const signalId = signalLookup(signalName, gtype);
 
     const instanceValue = Value.newFromObject(element as GObject);

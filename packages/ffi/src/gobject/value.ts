@@ -240,25 +240,38 @@ Value.prototype.getStrv = function (): string[] {
     return (g_value_get_boxed_strv(this.handle) as string[] | null) ?? [];
 };
 
+type FundamentalGetter = (value: Value) => unknown;
+let fundamentalGetters: Map<number, FundamentalGetter> | undefined;
+
+const getFundamentalGetters = (): Map<number, FundamentalGetter> => {
+    if (!fundamentalGetters) {
+        const entries: Array<[number, FundamentalGetter]> = [
+            [Type.BOOLEAN, (v) => v.getBoolean()],
+            [Type.INT, (v) => v.getInt()],
+            [Type.UINT, (v) => v.getUint()],
+            [Type.LONG, (v) => v.getLong()],
+            [Type.ULONG, (v) => v.getUlong()],
+            [Type.INT64, (v) => v.getInt64()],
+            [Type.UINT64, (v) => v.getUint64()],
+            [Type.FLOAT, (v) => v.getFloat()],
+            [Type.DOUBLE, (v) => v.getDouble()],
+            [Type.CHAR, (v) => v.getSchar()],
+            [Type.UCHAR, (v) => v.getUchar()],
+            [Type.STRING, (v) => v.getString()],
+            [Type.ENUM, (v) => v.getEnum()],
+            [Type.FLAGS, (v) => v.getFlags()],
+            [Type.OBJECT, (v) => v.getObject()],
+            [Type.VARIANT, (v) => v.getVariant()],
+            [Type.PARAM, (v) => v.getParam()],
+        ];
+        fundamentalGetters = new Map(entries);
+    }
+    return fundamentalGetters;
+};
+
 const valueFromFundamental = (value: Value, fundamental: number): unknown => {
-    if (fundamental === Type.BOOLEAN) return value.getBoolean();
-    if (fundamental === Type.INT) return value.getInt();
-    if (fundamental === Type.UINT) return value.getUint();
-    if (fundamental === Type.LONG) return value.getLong();
-    if (fundamental === Type.ULONG) return value.getUlong();
-    if (fundamental === Type.INT64) return value.getInt64();
-    if (fundamental === Type.UINT64) return value.getUint64();
-    if (fundamental === Type.FLOAT) return value.getFloat();
-    if (fundamental === Type.DOUBLE) return value.getDouble();
-    if (fundamental === Type.CHAR) return value.getSchar();
-    if (fundamental === Type.UCHAR) return value.getUchar();
-    if (fundamental === Type.STRING) return value.getString();
-    if (fundamental === Type.ENUM) return value.getEnum();
-    if (fundamental === Type.FLAGS) return value.getFlags();
-    if (fundamental === Type.OBJECT) return value.getObject();
-    if (fundamental === Type.VARIANT) return value.getVariant();
-    if (fundamental === Type.PARAM) return value.getParam();
-    return undefined;
+    const getter = getFundamentalGetters().get(fundamental);
+    return getter ? getter(value) : undefined;
 };
 
 const readPointerValue = (handle: NativeHandle): null => {

@@ -87,7 +87,7 @@ export class FieldBuilder {
         const layout = this.calculateLayout(fields, true);
         if (layout.length === 0) return 0;
 
-        const lastField = layout[layout.length - 1];
+        const lastField = layout.at(-1);
         const rawSize = lastField ? lastField.offset + lastField.size : 0;
         const maxAlignment = Math.max(...layout.map((l) => l.alignment), 1);
 
@@ -271,7 +271,7 @@ export class FieldBuilder {
             return elementSize * type.fixedSize;
         }
 
-        const typeName = String(type.name);
+        const typeName = typeof type.name === "string" ? type.name : "";
 
         if (isPrimitiveFieldType(typeName)) {
             return getPrimitiveTypeSize(typeName);
@@ -311,7 +311,7 @@ export class FieldBuilder {
             return this.getFieldAlignment(type.elementType, visited);
         }
 
-        const typeName = String(type.name);
+        const typeName = typeof type.name === "string" ? type.name : "";
 
         if (isPrimitiveFieldType(typeName)) {
             return getPrimitiveTypeSize(typeName);

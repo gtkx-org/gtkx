@@ -113,7 +113,7 @@ declare const __GTKX_APP_ID__: string | undefined;
  * @see {@link update} for hot-reloading the rendered tree
  */
 export const render = (element: ReactNode, appId?: string, flags?: Gio.ApplicationFlags): void => {
-    const injectedAppId = typeof __GTKX_APP_ID__ === "undefined" ? undefined : __GTKX_APP_ID__;
+    const injectedAppId = __GTKX_APP_ID__;
     const resolvedAppId = appId ?? injectedAppId;
     if (!resolvedAppId) {
         throw new Error(

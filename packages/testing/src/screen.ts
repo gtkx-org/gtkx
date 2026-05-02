@@ -99,18 +99,24 @@ export const screen = {
         let targetWindow: Gtk.Window | undefined;
 
         if (selector === undefined) {
-            targetWindow = windows[0] as Gtk.Window;
+            const [first] = windows;
+            if (!(first instanceof Gtk.Window)) {
+                throw new Error("First toplevel is not a Window");
+            }
+            targetWindow = first;
         } else if (typeof selector === "number") {
-            targetWindow = windows[selector] as Gtk.Window | undefined;
-            if (!targetWindow) {
+            const indexed = windows[selector];
+            if (!(indexed instanceof Gtk.Window)) {
                 throw new Error(`Window at index ${selector} not found`);
             }
+            targetWindow = indexed;
         } else {
             const isRegex = selector instanceof RegExp;
-            targetWindow = windows.find((w) => {
-                const title = (w as Gtk.Window).getTitle() ?? "";
+            targetWindow = windows.find((w): w is Gtk.Window => {
+                if (!(w instanceof Gtk.Window)) return false;
+                const title = w.getTitle() ?? "";
                 return isRegex ? selector.test(title) : title.includes(selector);
-            }) as Gtk.Window | undefined;
+            });
 
             if (!targetWindow) {
                 const pattern = isRegex ? selector.toString() : `"${selector}"`;

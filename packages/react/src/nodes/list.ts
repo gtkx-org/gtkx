@@ -269,17 +269,19 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             const position = listItem.getPosition();
 
             if (isTree) {
-                const expander = this.treeExpanders.get(listItem) as Gtk.TreeExpander;
+                const expander = this.treeExpanders.get(listItem);
                 const row = (listItem as unknown as { getItem(): GObject.Object | null }).getItem() as Gtk.TreeListRow;
-                expander.setListRow(row);
-                this.applyEstimatedItemSize(expander);
+                if (expander) {
+                    expander.setListRow(row);
+                    this.applyEstimatedItemSize(expander);
 
-                const treeItem = this.resolveTreeItem(row);
-                if (treeItem) {
-                    this.applyTreeExpanderProps(expander, treeItem);
+                    const treeItem = this.resolveTreeItem(row);
+                    if (treeItem) {
+                        this.applyTreeExpanderProps(expander, treeItem);
+                    }
+
+                    this.containers.set(expander, position);
                 }
-
-                this.containers.set(expander, position);
             } else {
                 this.containers.set(listItem, position);
             }
@@ -292,9 +294,11 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             const listItem = obj as unknown as Gtk.ListItem;
 
             if (isTree) {
-                const expander = this.treeExpanders.get(listItem) as Gtk.TreeExpander;
-                this.containers.set(expander, UNBOUND_POSITION);
-                expander.setListRow(null);
+                const expander = this.treeExpanders.get(listItem);
+                if (expander) {
+                    this.containers.set(expander, UNBOUND_POSITION);
+                    expander.setListRow(null);
+                }
             } else {
                 this.containers.set(listItem, UNBOUND_POSITION);
             }
@@ -605,7 +609,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         }
 
         for (let i = 0; i < sections.length; i++) {
-            const section = sections[i] as ListItem;
+            const section = sections[i];
+            if (section === undefined) continue;
             const itemCount = section.children?.length ?? 0;
 
             if (i >= this.sectionModels.length) {
@@ -614,7 +619,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
                 this.sectionModels.push(sectionModel);
                 this.sectionStore.append(sectionModel as unknown as GObject.Object);
             } else {
-                resizeStringList(this.sectionModels[i] as Gtk.StringList, itemCount);
+                const existing = this.sectionModels[i];
+                if (existing) resizeStringList(existing, itemCount);
             }
         }
 
@@ -720,37 +726,49 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         this.connectSelectionSignal();
     }
 
+    private clearSelection(): void {
+        if (this.selectionModel instanceof Gtk.SingleSelection) {
+            this.selectionModel.setSelected(Gtk.INVALID_LIST_POSITION);
+        } else if (this.selectionModel instanceof Gtk.MultiSelection) {
+            this.selectionModel.unselectAll();
+        }
+    }
+
+    private applySingleSelection(model: Gtk.SingleSelection, idSet: Set<string>): void {
+        const nItems = model.getNItems();
+        for (let i = 0; i < nItems; i++) {
+            const id = this.resolveItemIdAtPosition(i);
+            if (id && idSet.has(id)) {
+                model.setSelected(i);
+                return;
+            }
+        }
+    }
+
+    private applyMultiSelection(model: Gtk.MultiSelection, idSet: Set<string>): void {
+        model.unselectAll();
+        const nItems = model.getNItems();
+        for (let i = 0; i < nItems; i++) {
+            const id = this.resolveItemIdAtPosition(i);
+            if (id && idSet.has(id)) {
+                model.selectItem(i, false);
+            }
+        }
+    }
+
     private applySelection(ids: string[] | null): void {
         if (!this.selectionModel || this.isDropDown()) return;
 
         if (!ids || ids.length === 0) {
-            if (this.selectionModel instanceof Gtk.SingleSelection) {
-                this.selectionModel.setSelected(Gtk.INVALID_LIST_POSITION);
-            } else if (this.selectionModel instanceof Gtk.MultiSelection) {
-                this.selectionModel.unselectAll();
-            }
+            this.clearSelection();
             return;
         }
 
         const idSet = new Set(ids);
-        const nItems = this.selectionModel.getNItems();
-
         if (this.selectionModel instanceof Gtk.SingleSelection) {
-            for (let i = 0; i < nItems; i++) {
-                const id = this.resolveItemIdAtPosition(i);
-                if (id && idSet.has(id)) {
-                    this.selectionModel.setSelected(i);
-                    return;
-                }
-            }
+            this.applySingleSelection(this.selectionModel, idSet);
         } else if (this.selectionModel instanceof Gtk.MultiSelection) {
-            this.selectionModel.unselectAll();
-            for (let i = 0; i < nItems; i++) {
-                const id = this.resolveItemIdAtPosition(i);
-                if (id && idSet.has(id)) {
-                    this.selectionModel.selectItem(i, false);
-                }
-            }
+            this.applyMultiSelection(this.selectionModel, idSet);
         }
     }
 
@@ -780,21 +798,58 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         return -1;
     }
 
+    private collectTreeSelectionIds(treeModel: Gtk.TreeListModel, selection: Gtk.Bitset, nItems: number): string[] {
+        const ids: string[] = [];
+        for (let i = 0; i < nItems; i++) {
+            if (!selection.contains(i)) continue;
+            const row = treeModel.getRow(i);
+            const item = row ? this.resolveTreeItem(row) : null;
+            if (item) ids.push(item.id);
+        }
+        return ids;
+    }
+
+    private collectFlatSelectionIds(selection: Gtk.Bitset, nItems: number): string[] {
+        const ids: string[] = [];
+        const flatItems = this.collectFlatItems();
+        for (let i = 0; i < nItems; i++) {
+            if (!selection.contains(i)) continue;
+            const item = flatItems[i];
+            if (item) ids.push(item.id);
+        }
+        return ids;
+    }
+
+    private buildDropDownSelectionHandler(onSelectionChanged: (id: string) => void): () => void {
+        return () => {
+            const position = this.getDropDownSelected();
+            const flatItems = this.collectFlatItems();
+            const item = flatItems[position];
+            if (item) {
+                onSelectionChanged(item.id);
+            }
+        };
+    }
+
+    private buildMultiSelectionHandler(onSelectionChanged: (ids: string[]) => void): () => void {
+        return () => {
+            const selection = this.selectionModel?.getSelection();
+            if (!selection) return;
+            const nItems = this.selectionModel?.getNItems() ?? 0;
+            const ids = this.treeModel
+                ? this.collectTreeSelectionIds(this.treeModel, selection, nItems)
+                : this.collectFlatSelectionIds(selection, nItems);
+            onSelectionChanged(ids);
+        };
+    }
+
     private connectSelectionSignal(): void {
         const { onSelectionChanged } = this.props;
 
         if (this.isDropDown()) {
             const handler = onSelectionChanged
-                ? () => {
-                      const position = this.getDropDownSelected();
-                      const flatItems = this.collectFlatItems();
-                      const item = flatItems[position];
-                      if (item) {
-                          (onSelectionChanged as (id: string) => void)(item.id);
-                      }
-                  }
+                ? this.buildDropDownSelectionHandler(onSelectionChanged as (id: string) => void)
                 : undefined;
-
             this.signalStore.set(this, this.container as GObject.Object, "notify::selected", handler);
             return;
         }
@@ -802,33 +857,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (!this.selectionModel) return;
 
         const handler = onSelectionChanged
-            ? () => {
-                  const selection = this.selectionModel?.getSelection();
-                  if (!selection) return;
-
-                  const ids: string[] = [];
-                  const nItems = this.selectionModel?.getNItems() ?? 0;
-
-                  if (this.treeModel) {
-                      for (let i = 0; i < nItems; i++) {
-                          if (selection.contains(i)) {
-                              const row = this.treeModel.getRow(i);
-                              const item = row ? this.resolveTreeItem(row) : null;
-                              if (item) ids.push(item.id);
-                          }
-                      }
-                  } else {
-                      const flatItems = this.collectFlatItems();
-                      for (let i = 0; i < nItems; i++) {
-                          if (selection.contains(i)) {
-                              const item = flatItems[i];
-                              if (item) ids.push(item.id);
-                          }
-                      }
-                  }
-
-                  (onSelectionChanged as (ids: string[]) => void)(ids);
-              }
+            ? this.buildMultiSelectionHandler(onSelectionChanged as (ids: string[]) => void)
             : undefined;
 
         this.signalStore.set(this, this.selectionModel as GObject.Object, "selection-changed", handler, {
@@ -846,8 +875,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const { onSortChanged } = this.props;
         const handler = onSortChanged
             ? () => {
-                  const cvSorter = columnView.getSorter() as Gtk.ColumnViewSorter | null;
-                  if (!cvSorter) {
+                  const cvSorter = columnView.getSorter();
+                  if (!(cvSorter instanceof Gtk.ColumnViewSorter)) {
                       onSortChanged(null, Gtk.SortType.ASCENDING);
                       return;
                   }
@@ -885,8 +914,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const nItems = columns.getNItems();
 
         for (let i = 0; i < nItems; i++) {
-            const obj = columns.getObject(i) as Gtk.ColumnViewColumn | null;
-            if (obj && obj.getId() === id) {
+            const obj = columns.getObject(i);
+            if (obj instanceof Gtk.ColumnViewColumn && obj.getId() === id) {
                 return obj;
             }
         }
@@ -931,7 +960,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         renderListItem: ListProps["renderListItem"],
     ): BoundItem[] {
         const newBoundItems: BoundItem[] = [];
-        const renderFn = renderItem ?? (this.isDropDown() ? (item: unknown) => String(item ?? "") : null);
+        const stringifyItem = (item: unknown): string => (typeof item === "string" ? item : "");
+        const renderFn = renderItem ?? (this.isDropDown() ? stringifyItem : null);
 
         if (renderFn) {
             this.collectContainerBoundItems(this.containers, this.containerKeys, flatItems, renderFn, newBoundItems);

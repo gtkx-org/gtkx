@@ -77,9 +77,11 @@ export class ShortcutNode extends VirtualNode<ShortcutProps, EventControllerNode
             return Gtk.NeverTrigger.get();
         }
 
-        let result: Gtk.ShortcutTrigger = new Gtk.ShortcutTrigger(triggers[0] as string);
-        for (let i = 1; i < triggers.length; i++) {
-            result = new Gtk.AlternativeTrigger(result, new Gtk.ShortcutTrigger(triggers[i] as string));
+        const [first, ...rest] = triggers;
+        if (first === undefined) return Gtk.NeverTrigger.get();
+        let result: Gtk.ShortcutTrigger = new Gtk.ShortcutTrigger(first);
+        for (const next of rest) {
+            result = new Gtk.AlternativeTrigger(result, new Gtk.ShortcutTrigger(next));
         }
         return result;
     }
