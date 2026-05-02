@@ -160,6 +160,20 @@ export class ConstructorBuilder {
      * @returns An object with constructor data (to be set on the class builder)
      *          and method structures (to be added as static methods).
      */
+    private collectFactoryMethods(
+        supportedConstructors: GirConstructor[],
+        excludeMain: GirConstructor | undefined,
+    ): MethodStructure[] {
+        const methodStructures: MethodStructure[] = [];
+        for (const ctor of supportedConstructors) {
+            if (ctor === excludeMain) continue;
+            if (!this.conflictsWithParentFactoryMethod(ctor)) {
+                methodStructures.push(this.buildStaticFactoryMethodStructure(ctor));
+            }
+        }
+        return methodStructures;
+    }
+
     buildConstructorAndFactoryMethods(hasParent: boolean): {
         constructorData: ConstructorOverloads | null;
         factoryMethods: MethodStructure[];
@@ -167,8 +181,6 @@ export class ConstructorBuilder {
         const { supported: supportedConstructors, main: mainConstructor } = this.methodBody.selectConstructors(
             this.cls.constructors,
         );
-        const methodStructures: MethodStructure[] = [];
-        let constructorData: ConstructorOverloads | null = null;
 
         const mainTakesParams =
             mainConstructor !== undefined && this.methodBody.filterParameters(mainConstructor.parameters).length > 0;
@@ -176,29 +188,23 @@ export class ConstructorBuilder {
             hasParent && this.cls.glibGetType !== undefined && !this.cls.abstract && !mainTakesParams;
 
         if (useGObjectNewPath) {
-            for (const ctor of supportedConstructors) {
-                if (ctor === mainConstructor) continue;
-                if (!this.conflictsWithParentFactoryMethod(ctor)) {
-                    methodStructures.push(this.buildStaticFactoryMethodStructure(ctor));
-                }
-            }
-            constructorData = this.buildGObjectNewConstructorWithOverloads(this.cls.glibGetType as string);
-        } else if (mainConstructor && hasParent) {
-            constructorData = this.buildConstructorWithOverloads(mainConstructor);
-            for (const ctor of supportedConstructors) {
-                if (ctor !== mainConstructor && !this.conflictsWithParentFactoryMethod(ctor)) {
-                    methodStructures.push(this.buildStaticFactoryMethodStructure(ctor));
-                }
-            }
-        } else {
-            for (const ctor of supportedConstructors) {
-                if (!this.conflictsWithParentFactoryMethod(ctor)) {
-                    methodStructures.push(this.buildStaticFactoryMethodStructure(ctor));
-                }
-            }
+            return {
+                constructorData: this.buildGObjectNewConstructorWithOverloads(this.cls.glibGetType as string),
+                factoryMethods: this.collectFactoryMethods(supportedConstructors, mainConstructor),
+            };
         }
 
-        return { constructorData, factoryMethods: methodStructures };
+        if (mainConstructor && hasParent) {
+            return {
+                constructorData: this.buildConstructorWithOverloads(mainConstructor),
+                factoryMethods: this.collectFactoryMethods(supportedConstructors, mainConstructor),
+            };
+        }
+
+        return {
+            constructorData: null,
+            factoryMethods: this.collectFactoryMethods(supportedConstructors, undefined),
+        };
     }
 
     private buildOverloads(params: Param[]): OverloadSignature[] {

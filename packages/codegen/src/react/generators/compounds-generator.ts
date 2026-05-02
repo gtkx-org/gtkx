@@ -110,10 +110,7 @@ export class CompoundsGenerator {
         this.compounds.sort((a, b) => a.jsxName.localeCompare(b.jsxName));
     }
 
-    private addImports(file: FileBuilder): void {
-        file.addTypeImport("react", ["ReactNode"]);
-        file.addImport("../components/slot-widget.js", ["createSlotWidget"]);
-
+    private addCompoundImports(file: FileBuilder): void {
         const needsContainerSlot = this.compounds.some((c) => c.containerMethods.length > 0);
         const needsVirtualChild = this.compounds.some((c) => c.children?.virtualChildren || c.children?.menuHost);
         const needsNavPage = this.compounds.some((c) => c.children?.navigationPages);
@@ -126,15 +123,9 @@ export class CompoundsGenerator {
         if (compoundImports.length > 0) {
             file.addImport("../components/compound.js", compoundImports);
         }
+    }
 
-        const generatedPropsTypes: string[] = [];
-        for (const compound of this.compounds) {
-            generatedPropsTypes.push(`${compound.jsxName}Props`);
-        }
-        if (generatedPropsTypes.length > 0) {
-            file.addTypeImport("./jsx.js", generatedPropsTypes);
-        }
-
+    private collectManualPropsTypes(): Set<string> {
         const manualPropsTypes = new Set<string>();
         for (const compound of this.compounds) {
             if (compound.children?.virtualChildren) {
@@ -153,7 +144,21 @@ export class CompoundsGenerator {
                 }
             }
         }
+        return manualPropsTypes;
+    }
 
+    private addImports(file: FileBuilder): void {
+        file.addTypeImport("react", ["ReactNode"]);
+        file.addImport("../components/slot-widget.js", ["createSlotWidget"]);
+
+        this.addCompoundImports(file);
+
+        const generatedPropsTypes = this.compounds.map((compound) => `${compound.jsxName}Props`);
+        if (generatedPropsTypes.length > 0) {
+            file.addTypeImport("./jsx.js", generatedPropsTypes);
+        }
+
+        const manualPropsTypes = this.collectManualPropsTypes();
         if (manualPropsTypes.size > 0) {
             file.addTypeImport(
                 "../jsx.js",
