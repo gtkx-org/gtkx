@@ -68,6 +68,195 @@ const textError = (text: string) => ({
     isError: true,
 });
 
+type AppQueryClient = Pick<
+    ConnectionManager,
+    "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp"
+>;
+
+type ToolHandlerResult = {
+    content: Array<{ type: "text"; text: string } | { type: "image"; data: string; mimeType: string }>;
+    isError?: boolean;
+};
+
+type ToolDefinition<Args> = {
+    name: string;
+    config: { description: string; inputSchema: unknown };
+    handler: (args: Args) => Promise<ToolHandlerResult>;
+};
+
+/**
+ * Builds the GTKX MCP tool definitions, ready to be registered on a server.
+ *
+ * Exposed so tests can drive each tool handler against a fake
+ * {@link ConnectionManager} without spinning up a real socket server.
+ *
+ * @param connectionManager - Connection manager that proxies tool requests to
+ *   the connected GTKX application.
+ * @returns Array of tool definitions in registration order.
+ */
+export function buildTools(connectionManager: AppQueryClient): Array<ToolDefinition<never>> {
+    const tools: Array<ToolDefinition<never>> = [
+        {
+            name: "gtkx_list_apps",
+            config: {
+                description: "List all connected GTKX applications",
+                inputSchema: listAppsShape,
+            },
+            handler: (async ({ waitForApps, timeout }: { waitForApps?: boolean; timeout?: number }) => {
+                if (waitForApps && !connectionManager.hasConnectedApps()) {
+                    try {
+                        await connectionManager.waitForApp(timeout);
+                    } catch (error) {
+                        return textError(error instanceof Error ? error.message : "Timeout waiting for app");
+                    }
+                }
+
+                const apps = connectionManager.getApps();
+                const appsWithWindows = await Promise.all(
+                    apps.map(async (app) => {
+                        try {
+                            const result = await connectionManager.sendToApp<{
+                                windows: Array<{ id: string; title: string | null }>;
+                            }>(app.appId, "app.getWindows", {});
+                            return { ...app, windows: result.windows };
+                        } catch {
+                            return app;
+                        }
+                    }),
+                );
+                return textContent(JSON.stringify(appsWithWindows, null, 2));
+            }) as ToolDefinition<never>["handler"],
+        },
+        {
+            name: "gtkx_get_widget_tree",
+            config: {
+                description:
+                    "Get the widget hierarchy for a connected GTKX app. Returns a tree of all widgets with their IDs, types, roles, and properties.",
+                inputSchema: appIdShape,
+            },
+            handler: (async ({ appId }: { appId?: string }) => {
+                const result = await connectionManager.sendToApp<{ tree: string }>(appId, "widget.getTree", {});
+                return textContent(result.tree);
+            }) as ToolDefinition<never>["handler"],
+        },
+        {
+            name: "gtkx_query_widgets",
+            config: {
+                description:
+                    "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
+                inputSchema: queryWidgetsShape,
+            },
+            handler: (async ({
+                appId,
+                by,
+                value,
+                options,
+            }: {
+                appId?: string;
+                by: "role" | "text" | "name" | "labelText";
+                value: string | number;
+                options?: { name?: string; exact?: boolean; timeout?: number };
+            }) => {
+                const result = await connectionManager.sendToApp(appId, "widget.query", {
+                    queryType: by,
+                    value,
+                    options,
+                });
+                return textContent(JSON.stringify(result, null, 2));
+            }) as ToolDefinition<never>["handler"],
+        },
+        {
+            name: "gtkx_get_widget_props",
+            config: {
+                description: "Get all properties of a specific widget by its ID",
+                inputSchema: widgetIdShape,
+            },
+            handler: (async ({ appId, widgetId }: { appId?: string; widgetId: string }) => {
+                const result = await connectionManager.sendToApp(appId, "widget.getProps", { widgetId });
+                return textContent(JSON.stringify(result, null, 2));
+            }) as ToolDefinition<never>["handler"],
+        },
+        {
+            name: "gtkx_click",
+            config: {
+                description: "Click a widget. Works with buttons, checkboxes, and other interactive widgets.",
+                inputSchema: widgetIdShape,
+            },
+            handler: (async ({ appId, widgetId }: { appId?: string; widgetId: string }) => {
+                await connectionManager.sendToApp(appId, "widget.click", { widgetId });
+                return textContent("Click successful");
+            }) as ToolDefinition<never>["handler"],
+        },
+        {
+            name: "gtkx_type",
+            config: {
+                description: "Type text into an editable widget like Entry or TextView",
+                inputSchema: typeShape,
+            },
+            handler: (async ({
+                appId,
+                widgetId,
+                text,
+                clear,
+            }: {
+                appId?: string;
+                widgetId: string;
+                text: string;
+                clear?: boolean;
+            }) => {
+                await connectionManager.sendToApp(appId, "widget.type", { widgetId, text, clear });
+                return textContent("Type successful");
+            }) as ToolDefinition<never>["handler"],
+        },
+        {
+            name: "gtkx_fire_event",
+            config: {
+                description: "Emit a GTK signal on a widget. Use this for custom interactions.",
+                inputSchema: fireEventShape,
+            },
+            handler: (async ({
+                appId,
+                widgetId,
+                signal,
+                args,
+            }: {
+                appId?: string;
+                widgetId: string;
+                signal: string;
+                args?: unknown[];
+            }) => {
+                await connectionManager.sendToApp(appId, "widget.fireEvent", { widgetId, signal, args });
+                return textContent("Event fired successfully");
+            }) as ToolDefinition<never>["handler"],
+        },
+        {
+            name: "gtkx_take_screenshot",
+            config: {
+                description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
+                inputSchema: screenshotShape,
+            },
+            handler: (async ({ appId, windowId }: { appId?: string; windowId?: string }) => {
+                const result = await connectionManager.sendToApp<{ data: string; mimeType: string }>(
+                    appId,
+                    "widget.screenshot",
+                    { windowId },
+                );
+                return {
+                    content: [
+                        {
+                            type: "image" as const,
+                            data: result.data,
+                            mimeType: result.mimeType,
+                        },
+                    ],
+                };
+            }) as ToolDefinition<never>["handler"],
+        },
+    ];
+
+    return tools;
+}
+
 async function main() {
     const socketServer = new SocketServer(DEFAULT_SOCKET_PATH);
     const connectionManager = new ConnectionManager(socketServer);
@@ -95,139 +284,9 @@ async function main() {
         version,
     });
 
-    mcpServer.registerTool(
-        "gtkx_list_apps",
-        {
-            description: "List all connected GTKX applications",
-            inputSchema: listAppsShape,
-        },
-        async ({ waitForApps, timeout }) => {
-            if (waitForApps && !connectionManager.hasConnectedApps()) {
-                try {
-                    await connectionManager.waitForApp(timeout);
-                } catch (error) {
-                    return textError(error instanceof Error ? error.message : "Timeout waiting for app");
-                }
-            }
-
-            const apps = connectionManager.getApps();
-            const appsWithWindows = await Promise.all(
-                apps.map(async (app) => {
-                    try {
-                        const result = await connectionManager.sendToApp<{
-                            windows: Array<{ id: string; title: string | null }>;
-                        }>(app.appId, "app.getWindows", {});
-                        return { ...app, windows: result.windows };
-                    } catch {
-                        return app;
-                    }
-                }),
-            );
-            return textContent(JSON.stringify(appsWithWindows, null, 2));
-        },
-    );
-
-    mcpServer.registerTool(
-        "gtkx_get_widget_tree",
-        {
-            description:
-                "Get the widget hierarchy for a connected GTKX app. Returns a tree of all widgets with their IDs, types, roles, and properties.",
-            inputSchema: appIdShape,
-        },
-        async ({ appId }) => {
-            const result = await connectionManager.sendToApp<{ tree: string }>(appId, "widget.getTree", {});
-            return textContent(result.tree);
-        },
-    );
-
-    mcpServer.registerTool(
-        "gtkx_query_widgets",
-        {
-            description:
-                "Find widgets by role, text, name, or label. Returns matching widgets with their IDs and properties.",
-            inputSchema: queryWidgetsShape,
-        },
-        async ({ appId, by, value, options }) => {
-            const result = await connectionManager.sendToApp(appId, "widget.query", {
-                queryType: by,
-                value,
-                options,
-            });
-            return textContent(JSON.stringify(result, null, 2));
-        },
-    );
-
-    mcpServer.registerTool(
-        "gtkx_get_widget_props",
-        {
-            description: "Get all properties of a specific widget by its ID",
-            inputSchema: widgetIdShape,
-        },
-        async ({ appId, widgetId }) => {
-            const result = await connectionManager.sendToApp(appId, "widget.getProps", { widgetId });
-            return textContent(JSON.stringify(result, null, 2));
-        },
-    );
-
-    mcpServer.registerTool(
-        "gtkx_click",
-        {
-            description: "Click a widget. Works with buttons, checkboxes, and other interactive widgets.",
-            inputSchema: widgetIdShape,
-        },
-        async ({ appId, widgetId }) => {
-            await connectionManager.sendToApp(appId, "widget.click", { widgetId });
-            return textContent("Click successful");
-        },
-    );
-
-    mcpServer.registerTool(
-        "gtkx_type",
-        {
-            description: "Type text into an editable widget like Entry or TextView",
-            inputSchema: typeShape,
-        },
-        async ({ appId, widgetId, text, clear }) => {
-            await connectionManager.sendToApp(appId, "widget.type", { widgetId, text, clear });
-            return textContent("Type successful");
-        },
-    );
-
-    mcpServer.registerTool(
-        "gtkx_fire_event",
-        {
-            description: "Emit a GTK signal on a widget. Use this for custom interactions.",
-            inputSchema: fireEventShape,
-        },
-        async ({ appId, widgetId, signal, args }) => {
-            await connectionManager.sendToApp(appId, "widget.fireEvent", { widgetId, signal, args });
-            return textContent("Event fired successfully");
-        },
-    );
-
-    mcpServer.registerTool(
-        "gtkx_take_screenshot",
-        {
-            description: "Capture a screenshot of a window. Returns base64-encoded PNG image data.",
-            inputSchema: screenshotShape,
-        },
-        async ({ appId, windowId }) => {
-            const result = await connectionManager.sendToApp<{ data: string; mimeType: string }>(
-                appId,
-                "widget.screenshot",
-                { windowId },
-            );
-            return {
-                content: [
-                    {
-                        type: "image" as const,
-                        data: result.data,
-                        mimeType: result.mimeType,
-                    },
-                ],
-            };
-        },
-    );
+    for (const tool of buildTools(connectionManager)) {
+        mcpServer.registerTool(tool.name, tool.config as never, tool.handler as never);
+    }
 
     const transport = new StdioServerTransport();
     await mcpServer.connect(transport);
@@ -249,9 +308,11 @@ async function main() {
     process.on("SIGTERM", shutdown);
 }
 
-try {
-    await main();
-} catch (error) {
-    console.error("[gtkx] Fatal error:", error);
-    process.exit(1);
+if (import.meta.main) {
+    try {
+        await main();
+    } catch (error) {
+        console.error("[gtkx] Fatal error:", error);
+        process.exit(1);
+    }
 }
