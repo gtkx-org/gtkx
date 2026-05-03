@@ -15,10 +15,12 @@ export default mergeConfig(
             },
         },
         test: {
-            setupFiles: ["./tests/setup.ts"],
+            root: "../..",
+            include: ["packages/e2e/tests/**/*.test.{ts,tsx}"],
+            setupFiles: ["packages/e2e/tests/setup.ts"],
             coverage: {
-                include: ["../react/src/**/*.{ts,tsx}"],
-                allowExternal: true,
+                include: ["packages/react/src/**/*.{ts,tsx}"],
+                reportsDirectory: "packages/e2e/coverage",
             },
         },
     }),
