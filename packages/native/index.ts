@@ -148,15 +148,12 @@ function wrapValue(value: unknown, type: Type): unknown {
 
     switch (type.type) {
         case "array":
-            return Array.isArray(value) ? value.map((item) => wrapValue(item, (type as ArrayType).itemType)) : value;
+            return Array.isArray(value) ? value.map((item) => wrapValue(item, type.itemType)) : value;
         case "hashtable":
             if (!Array.isArray(value)) return value;
             return value.map((entry) => {
                 if (!Array.isArray(entry) || entry.length !== 2) return entry;
-                return [
-                    wrapValue(entry[0], (type as HashTableType).keyType),
-                    wrapValue(entry[1], (type as HashTableType).valueType),
-                ];
+                return [wrapValue(entry[0], type.keyType), wrapValue(entry[1], type.valueType)];
             });
         default:
             return value;
