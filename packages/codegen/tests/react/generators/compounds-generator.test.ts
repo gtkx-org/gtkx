@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder, stringify } from "../../../src/builders/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../src/core/codegen-metadata.js";
-import { MetadataReader } from "../../../src/react/metadata-reader.js";
 import { CompoundsGenerator } from "../../../src/react/generators/compounds-generator.js";
+import { MetadataReader } from "../../../src/react/metadata-reader.js";
 import { createCodegenWidgetMeta } from "../../fixtures/metadata-fixtures.js";
 
 function generate(
@@ -91,7 +91,11 @@ describe("CompoundsGenerator", () => {
 
         it("emits navigation-page sub-components for navigation-page widgets", () => {
             const code = generate([
-                createCodegenWidgetMeta({ jsxName: "AdwNavigationView", className: "NavigationView", namespace: "Adw" }),
+                createCodegenWidgetMeta({
+                    jsxName: "AdwNavigationView",
+                    className: "NavigationView",
+                    namespace: "Adw",
+                }),
             ]);
             expect(code).toContain("export const AdwNavigationView");
             expect(code).toContain('createNavigationPageChild<NavigationViewPageProps>("AdwNavigationView")');
@@ -198,9 +202,7 @@ describe("CompoundsGenerator", () => {
         });
 
         it("memoizes compound collection across calls", () => {
-            const reader = new MetadataReader([
-                createCodegenWidgetMeta({ jsxName: "GtkWindow", className: "Window" }),
-            ]);
+            const reader = new MetadataReader([createCodegenWidgetMeta({ jsxName: "GtkWindow", className: "Window" })]);
             const generator = new CompoundsGenerator(reader, [], ["Gtk", "Adw"]);
             const first = generator.getCompoundJsxNames();
             const second = generator.getCompoundJsxNames();

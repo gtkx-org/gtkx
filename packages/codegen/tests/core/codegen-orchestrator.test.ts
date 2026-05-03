@@ -225,7 +225,8 @@ describe("CodegenOrchestrator", () => {
 
             await orchestrator.generate();
 
-            const reactCall = reactCtorSpy.mock.calls[0]!;
+            const reactCall = reactCtorSpy.mock.calls[0];
+            if (!reactCall) throw new Error("ReactGenerator was not constructed");
             expect(new Set(reactCall[2] as string[])).toEqual(new Set(["Gtk", "Adw"]));
         });
     });
@@ -253,7 +254,9 @@ describe("CodegenOrchestrator", () => {
             const orchestrator = new CodegenOrchestrator({ girsDir: dir });
             await orchestrator.generate();
 
-            const [roots, opts] = repositoryLoadMock.mock.calls[0]!;
+            const repoCall = repositoryLoadMock.mock.calls[0];
+            if (!repoCall) throw new Error("GirRepository.load was not invoked");
+            const [roots, opts] = repoCall;
             expect(new Set(roots)).toEqual(new Set(["Gtk-4.0", "Adw-1"]));
             expect(opts).toEqual({ girPath: [dir] });
         });

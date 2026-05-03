@@ -70,7 +70,9 @@ describe("buildCmd", () => {
 
         expect(preflightMock).toHaveBeenCalledOnce();
         expect(buildMock).toHaveBeenCalledOnce();
-        const buildArgs = buildMock.mock.calls[0]![0];
+        const buildCall = buildMock.mock.calls[0];
+        if (!buildCall) throw new Error("build was not invoked");
+        const buildArgs = buildCall[0];
         expect(buildArgs.entry).toMatch(/src\/index\.tsx$/);
         expect(buildArgs.assetBase).toBeUndefined();
     });
@@ -80,7 +82,9 @@ describe("buildCmd", () => {
 
         await run({ args: { entry: "src/main.tsx", "asset-base": "../share/myapp" } });
 
-        const buildArgs = buildMock.mock.calls[0]![0];
+        const buildCall = buildMock.mock.calls[0];
+        if (!buildCall) throw new Error("build was not invoked");
+        const buildArgs = buildCall[0];
         expect(buildArgs.entry).toMatch(/src\/main\.tsx$/);
         expect(buildArgs.assetBase).toBe("../share/myapp");
     });
@@ -158,7 +162,7 @@ describe("codegen command", () => {
 
         await run({ args: {} });
 
-        const logged = logSpy.mock.calls.map((call) => call[0]).join("\n");
+        const logged = logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
         expect(logged).toContain("up to date");
         expect(logged).not.toContain("namespaces");
     });
@@ -170,7 +174,7 @@ describe("codegen command", () => {
 
         expect(runCodegenMock).toHaveBeenCalledWith({ cwd: process.cwd(), force: undefined });
 
-        const logged = logSpy.mock.calls.map((call) => call[0]).join("\n");
+        const logged = logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
         expect(logged).toContain("config=/project/gtkx.config.ts");
         expect(logged).toContain("libraries=Gtk-4.0, Adw-1");
         expect(logged).toContain("girPath=/usr/share/gir-1.0");
@@ -199,7 +203,7 @@ describe("codegen command", () => {
 
         await run({ args: {} });
 
-        const logged = logSpy.mock.calls.map((call) => call[0]).join("\n");
+        const logged = logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
         expect(logged).not.toContain("config=");
         expect(logged).not.toContain("libraries=");
         expect(logged).not.toContain("girPath=");

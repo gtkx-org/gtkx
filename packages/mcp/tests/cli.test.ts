@@ -64,9 +64,7 @@ describe("buildTools", () => {
             expect(sendToApp).toHaveBeenCalledWith("app-a", "app.getWindows", {});
             expect(result.content[0]).toMatchObject({ type: "text" });
             const text = result.content[0] as { type: "text"; text: string };
-            expect(JSON.parse(text.text)).toEqual([
-                { appId: "app-a", pid: 1, windows: [{ id: "w1", title: "Main" }] },
-            ]);
+            expect(JSON.parse(text.text)).toEqual([{ appId: "app-a", pid: 1, windows: [{ id: "w1", title: "Main" }] }]);
         });
 
         it("falls back to the original app info when getWindows fails", async () => {

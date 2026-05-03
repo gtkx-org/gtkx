@@ -68,10 +68,7 @@ const textError = (text: string) => ({
     isError: true,
 });
 
-type AppQueryClient = Pick<
-    ConnectionManager,
-    "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp"
->;
+type AppQueryClient = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 
 type ToolHandlerResult = {
     content: Array<{ type: "text"; text: string } | { type: "image"; data: string; mimeType: string }>;

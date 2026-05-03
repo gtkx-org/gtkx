@@ -21,7 +21,10 @@ function controllerMeta(overrides: Partial<CodegenControllerMeta> = {}): Codegen
     };
 }
 
-function declarationToString(builder: ControllerPropsBuilder, decl: NonNullable<ReturnType<ControllerPropsBuilder["buildControllerPropsInterface"]>>): string {
+function declarationToString(
+    builder: ControllerPropsBuilder,
+    decl: NonNullable<ReturnType<ControllerPropsBuilder["buildControllerPropsInterface"]>>,
+): string {
     void builder;
     const file = fileBuilder();
     file.add(decl);
