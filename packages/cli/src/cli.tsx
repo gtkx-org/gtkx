@@ -21,7 +21,7 @@ const forwardSignal = (child: ChildProcess, signal: NodeJS.Signals): void => {
     }
 };
 
-const exitCodeForSignal = (signal: NodeJS.Signals | null): number => {
+export const exitCodeForSignal = (signal: NodeJS.Signals | null): number => {
     if (!signal) return 0;
     return signal === "SIGINT" ? 130 : 143;
 };
@@ -64,7 +64,7 @@ const runDevSupervisor = async (entryPath: string): Promise<never> => {
     });
 };
 
-const dev = defineCommand({
+export const dev = defineCommand({
     meta: {
         name: "dev",
         description: "Start development server with HMR",
@@ -86,7 +86,7 @@ const dev = defineCommand({
     },
 });
 
-const buildCmd = defineCommand({
+export const buildCmd = defineCommand({
     meta: {
         name: "build",
         description: "Build application for production",
@@ -121,7 +121,7 @@ const buildCmd = defineCommand({
     },
 });
 
-const create = defineCommand({
+export const create = defineCommand({
     meta: {
         name: "create",
         description: "Create a new GTKX application",
@@ -160,7 +160,7 @@ const create = defineCommand({
     },
 });
 
-const codegen = defineCommand({
+export const codegen = defineCommand({
     meta: {
         name: "codegen",
         description: "Generate TypeScript bindings for the GIR libraries declared in gtkx.config.ts",
@@ -204,7 +204,7 @@ const codegen = defineCommand({
     },
 });
 
-const main = defineCommand({
+export const main = defineCommand({
     meta: {
         name: "gtkx",
         version,
@@ -218,4 +218,6 @@ const main = defineCommand({
     },
 });
 
-runMain(main);
+if (import.meta.main) {
+    runMain(main);
+}
