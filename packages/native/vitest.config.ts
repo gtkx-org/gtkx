@@ -9,6 +9,9 @@ export default mergeConfig(
         test: {
             setupFiles: ["packages/native/tests/module/setup.ts"],
             execArgv: ["--expose-gc"],
+            coverage: {
+                include: ["packages/native/index.ts", "packages/native/types.ts"],
+            },
         },
     }),
 );
