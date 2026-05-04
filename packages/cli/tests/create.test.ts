@@ -341,7 +341,7 @@ describe("createApp", () => {
         expect(content).not.toContain("appId");
     });
 
-    it("creates index.tsx entry point that calls render with the configured appId", async () => {
+    it("creates index.tsx entry point that constructs the application and calls render", async () => {
         const { createApp } = await import("../src/create.js");
         await createApp({
             name: "test-app",
@@ -355,7 +355,8 @@ describe("createApp", () => {
 
         expect(content).toContain("import { render }");
         expect(content).toContain("import { App }");
-        expect(content).toContain('render(<App />, "org.test.app")');
+        expect(content).toContain('new Gtk.Application(undefined, "org.test.app")');
+        expect(content).toContain("render(<App />, app)");
         expect(content).not.toContain("pkg.gtkx.appId");
     });
 

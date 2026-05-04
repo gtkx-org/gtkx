@@ -23,7 +23,8 @@ const App = () => (
     </GtkApplicationWindow>
 );
 
-render(<App />, "com.example.myapp");
+const app = new Gtk.Application(undefined, "com.example.myapp");
+render(<App />, app);
 ```
 
 `render` is called once at module top-level — analogous to `createRoot().render()` in `react-dom`. In dev, `gtkx dev` restarts the Node process whenever a non-component file changes, so this top-level call only ever runs once per process life.

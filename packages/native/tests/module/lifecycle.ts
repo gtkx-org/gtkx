@@ -1,12 +1,10 @@
-import { start as nativeStart, stop as nativeStop } from "../../index.js";
+import { call, stop as nativeStop } from "../../index.js";
 
-const G_FLAGS_NON_UNIQUE = 1 << 5;
-
-let application: unknown = null;
+let started = false;
 let exitHandlersRegistered = false;
 
 const teardown = (): void => {
-    if (application) {
+    if (started) {
         try {
             nativeStop();
         } catch {}
@@ -61,24 +59,24 @@ const unregisterExitHandlers = (): void => {
     process.off("unhandledRejection", handleRejection);
 };
 
-export const start = (): unknown => {
-    if (application) {
-        return application;
+export const start = (): void => {
+    if (started) {
+        return;
     }
 
-    application = nativeStart("com.gtkx.native", G_FLAGS_NON_UNIQUE);
+    started = true;
+    call("libgtk-4.so.1", "gtk_init", [], { type: "void" });
     registerExitHandlers();
-    return application;
 };
 
 export const stop = (): void => {
-    if (!application) {
+    if (!started) {
         return;
     }
 
     unregisterExitHandlers();
     nativeStop();
-    application = null;
+    started = false;
 };
 
 export const suppressUnhandledRejections = async (fn: () => void): Promise<void> => {

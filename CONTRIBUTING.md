@@ -149,9 +149,9 @@ API docs are generated from TypeScript with TypeDoc. Add JSDoc comments to expor
 /**
  * Renders a React element into a GTK application.
  * @param element - The root React element to render
- * @param appId - The GTK application ID (e.g., "com.example.app")
+ * @param app - The GTK application that hosts the rendered tree
  */
-export function render(element: React.ReactNode, appId: string): void;
+export function render(element: ReactNode, app: Gtk.Application): void;
 ```
 
 ### Examples

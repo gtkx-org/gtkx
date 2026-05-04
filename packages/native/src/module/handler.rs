@@ -18,16 +18,7 @@ pub trait ModuleResponse: Sized {
 }
 
 pub fn dispatch_request<R: ModuleRequest>(env: &Env, request: R) -> napi::Result<Unknown<'_>> {
-    let mailbox = dispatch::Mailbox::global();
-
-    if !mailbox.is_started() {
-        return Err(napi::Error::new(
-            napi::Status::GenericFailure,
-            "GTK application has not been started. Call start() first.",
-        ));
-    }
-
-    let result = mailbox
+    let result = dispatch::Mailbox::global()
         .dispatch_to_glib_and_wait(*env, move || request.execute())
         .map_err(|e| napi::Error::new(napi::Status::GenericFailure, e.to_string()))?
         .map_err(|e| {

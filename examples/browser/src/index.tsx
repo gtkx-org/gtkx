@@ -1,4 +1,6 @@
+import * as Gtk from "@gtkx/ffi/gtk";
 import { render } from "@gtkx/react";
 import { App } from "./app.js";
 
-render(<App />, "com.gtkx.browser");
+const app = new Gtk.Application(undefined, "com.gtkx.browser");
+render(<App />, app);

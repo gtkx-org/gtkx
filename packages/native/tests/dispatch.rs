@@ -59,7 +59,7 @@ fn schedule_glib_drops_task_when_stopped() {
     assert!(!dispatched);
     assert_eq!(counter.load(Ordering::SeqCst), 0);
 
-    mailbox.mark_started();
+    mailbox.reset_for_test();
 }
 
 #[test]

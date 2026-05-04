@@ -1,85 +1,64 @@
 import EventEmitter from "node:events";
-import { type NativeHandle, start as nativeStart, stop as nativeStop } from "@gtkx/native";
+import { stop as nativeStop } from "@gtkx/native";
 import { init as initAdwaita } from "./generated/adw/functions.js";
-import type { ApplicationFlags } from "./generated/gio/enums.js";
-import type { Application } from "./generated/gtk/application.js";
+import { init as initGtk } from "./generated/gtk/functions.js";
 import { finalize as finalizeGtkSource, init as initGtkSource } from "./generated/gtksource/functions.js";
-import { getNativeObject } from "./registry.js";
 
-let applicationHandle: NativeHandle | null = null;
-let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
+let runtimeReady = false;
 
 /**
  * Event map for application lifecycle events.
  * @internal
  */
 type NativeEventMap = {
-    /** Emitted when the GTK application starts */
+    /** Emitted when extension libraries have been initialized */
     start: [];
-    /** Emitted when the GTK application stops */
+    /** Emitted when the GTK runtime is shutting down */
     stop: [];
 };
 
 /**
- * Event emitter for GTK application lifecycle events.
+ * Event emitter for GTK runtime lifecycle events.
  *
- * Emits "start" when {@link start} is called and "stop" when
- * {@link stop} is called.
+ * Emits "start" the first time {@link initRuntime} is called and "stop"
+ * when {@link stop} is invoked.
  *
  * @example
  * ```tsx
  * import { events } from "@gtkx/ffi";
  *
  * events.on("start", () => {
- *   console.log("Application started");
+ *   console.log("Runtime started");
  * });
  *
  * events.on("stop", () => {
- *   console.log("Application stopping");
+ *   console.log("Runtime stopping");
  * });
  * ```
  */
 export const events = new EventEmitter<NativeEventMap>();
 
 /**
- * Whether the GTK application runtime is currently running.
- * `true` if {@link start} has been called and {@link stop} has not.
+ * Whether the GTK runtime has been fully initialized.
+ *
+ * `true` once {@link initRuntime} has run and {@link stop} has not yet
+ * been called.
  */
-export const isStarted = (): boolean => {
-    return Boolean(applicationHandle);
-};
-
-const keepAlive = (): void => {
-    keepAliveTimeout = setTimeout(() => keepAlive(), 2147483647);
-};
+export const isStarted = (): boolean => runtimeReady;
 
 /**
- * Initializes the GTK application runtime.
+ * Initializes optional GTK extension libraries (Adwaita, GtkSource).
  *
- * Creates a GTK Application instance, initializes Adwaita and GtkSource
- * if available, and starts the event loop.
- *
- * @param appId - Application ID in reverse domain notation (e.g., "com.example.app")
- * @param flags - Optional GIO application flags
- * @returns The GTK Application instance
- *
- * @example
- * ```tsx
- * import { start } from "@gtkx/ffi";
- *
- * const app = start("com.example.myapp");
- * ```
- *
- * @see {@link stop} for shutting down the application
+ * The `GLib` main loop is spawned automatically when `@gtkx/native` is
+ * imported, so most callers should rely on {@link render} from `@gtkx/react`
+ * to trigger initialization. Call this directly only when bootstrapping
+ * GTK without the React reconciler.
  */
-export const start = (appId: string, flags?: ApplicationFlags): Application => {
-    if (applicationHandle) {
-        return getNativeObject(applicationHandle) as Application;
-    }
+export const initRuntime = (): void => {
+    if (runtimeReady) return;
+    runtimeReady = true;
 
-    const handle = nativeStart(appId, flags);
-    applicationHandle = handle;
-    const application = getNativeObject(handle) as Application;
+    initGtk();
 
     try {
         initAdwaita();
@@ -87,34 +66,29 @@ export const start = (appId: string, flags?: ApplicationFlags): Application => {
     } catch {}
 
     events.emit("start");
-    keepAlive();
-    return application;
 };
 
 /**
- * Shuts down the GTK application runtime.
+ * Shuts down the GTK runtime.
  *
- * Stops the event loop, cleans up resources, and finalizes libraries.
- * Emits a "stop" event before cleanup.
+ * Finalizes extension libraries, emits a `"stop"` event, and quits the
+ * `GLib` main loop. Once stopped, no further FFI calls may be made.
  *
- * @see {@link start} for initializing the application
- * @see {@link events} for lifecycle event handling
+ * @see {@link initRuntime}
+ * @see {@link events}
  */
 export const stop = (): void => {
-    if (!applicationHandle) {
+    if (!runtimeReady) {
+        nativeStop();
         return;
     }
 
-    if (keepAliveTimeout) {
-        clearTimeout(keepAliveTimeout);
-        keepAliveTimeout = null;
-    }
+    runtimeReady = false;
 
     try {
         finalizeGtkSource();
     } catch {}
 
     events.emit("stop");
-    applicationHandle = null;
     nativeStop();
 };

@@ -1,22 +1,28 @@
-//! GTK application initialization and thread spawning.
+//! `GLib` main loop initialization and thread spawning.
 //!
-//! The [`start`] function creates a GTK `Application`, spawns a dedicated
-//! `GLib` thread, and waits for the application to activate before returning.
+//! The [`start`] function spawns a dedicated `GLib` thread that runs a plain
+//! `glib::MainLoop`. The loop reference is exposed to JavaScript as a
+//! [`NativeHandle`] wrapping a `GMainLoop` boxed value, allowing the JS layer
+//! to terminate it via `g_main_loop_quit` through the standard FFI dispatch.
 //!
 //! ## Startup Sequence
 //!
-//! 1. Parse application ID and optional flags from JavaScript
+//! 1. Wire up the wake and error-reporter threadsafe functions
 //! 2. Spawn a new OS thread that runs the `GLib` main loop
-//! 3. Create the `GtkApplication` and connect the activate signal
-//! 4. Acquire an application hold guard to prevent auto-shutdown
-//! 5. Start the main loop with `app.run_with_args`
-//! 6. When activate fires, send the application's `NativeHandle` back to JS
-//! 7. Return the `NativeHandle` to JavaScript
+//! 3. Build a [`NativeHandle`] for the loop and post a `glib::idle_add_once`
+//!    barrier that fires on the first iteration to confirm liveness
+//! 4. Block the JS thread on the barrier; once unblocked, return the handle
+//! 5. The loop runs until JS calls `stop`, which dispatches a final task to
+//!    drain pending finalizers and quit the loop
 
+use std::ffi::c_void;
 use std::sync::Arc;
 use std::sync::mpsc;
 
-use gtk4::{gio::ApplicationFlags, prelude::*};
+use gtk4::glib::{
+    self,
+    translate::{FromGlib, IntoGlibPtr},
+};
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi::sys;
@@ -25,15 +31,10 @@ use napi_derive::napi;
 use crate::dispatch::{Mailbox, WakeJsTsfn};
 use crate::error_reporter::{ErrorReporterTsfn, NativeErrorReporter};
 use crate::glib_log_handler::GlibLogHandler;
-use crate::managed::{NativeHandle, NativeValue};
-use crate::state::{GtkThread, GtkThreadState};
+use crate::managed::{Boxed, NativeHandle, NativeValue};
 
 #[napi]
-pub fn start(env: Env, app_id: String, flags: Option<f64>) -> napi::Result<External<NativeHandle>> {
-    let flags = flags.map_or(ApplicationFlags::FLAGS_NONE, |f| {
-        ApplicationFlags::from_bits_truncate(f as u32)
-    });
-
+pub fn start(env: Env) -> napi::Result<External<NativeHandle>> {
     let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
         Mailbox::global().process_node_pending(*ctx.env);
         Ok(())
@@ -64,42 +65,36 @@ pub fn start(env: Env, app_id: String, flags: Option<f64>) -> napi::Result<Exter
 
     let (tx, rx) = mpsc::channel::<NativeHandle>();
 
-    let handle = std::thread::spawn(move || {
+    std::thread::spawn(move || {
         GlibLogHandler::install();
 
-        let app = gtk4::Application::builder()
-            .application_id(app_id)
-            .flags(flags)
-            .build();
+        let main_loop = glib::MainLoop::new(None, false);
+        let main_loop_for_js = main_loop.clone();
 
-        let app_handle: NativeHandle = NativeValue::GObject(app.clone().into()).into();
+        glib::idle_add_once(move || {
+            let gtype = unsafe { glib::Type::from_glib(glib::ffi::g_main_loop_get_type()) };
+            let raw_ptr = IntoGlibPtr::<*mut glib::ffi::GMainLoop>::into_glib_ptr(main_loop_for_js)
+                as *mut c_void;
+            let boxed = Boxed::from_glib_full(Some(gtype), raw_ptr);
+            let handle: NativeHandle = NativeValue::Boxed(boxed).into();
 
-        GtkThreadState::with(|state| {
-            state.app_hold_guard = Some(app.hold());
-        });
-
-        app.connect_activate(move |_| {
-            if tx.send(app_handle.clone()).is_err() {
+            if tx.send(handle).is_err() {
                 NativeErrorReporter::global()
-                    .report_str("GTK application activated but startup channel was already closed");
+                    .report_str("GLib main loop ready but startup channel was closed");
             }
         });
 
-        app.run_with_args::<&str>(&[]);
+        main_loop.run();
     });
 
-    GtkThread::global().set_handle(handle);
-
-    let app_handle = rx.recv().map_err(|err| {
+    let main_loop_handle = rx.recv().map_err(|err| {
         napi::Error::new(
             napi::Status::GenericFailure,
-            format!("Error starting GTK thread: {err}"),
+            format!("Error starting GLib thread: {err}"),
         )
     })?;
 
-    Mailbox::global().mark_started();
-
-    Ok(External::new(app_handle))
+    Ok(External::new(main_loop_handle))
 }
 
 /// Emits an `unhandledRejection` event on the Node.js process with a synthesized

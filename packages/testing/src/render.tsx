@@ -1,6 +1,6 @@
-import { start, stop } from "@gtkx/ffi";
+import { initRuntime, stop } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
 import { createRef, type ReactNode, type Ref } from "react";
 import type Reconciler from "react-reconciler";
@@ -32,7 +32,12 @@ const handleError = (error: Error): void => {
 };
 
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
-    application = start("org.gtkx.testing", Gio.ApplicationFlags.NON_UNIQUE);
+    if (!application) {
+        initRuntime();
+        application = new Gtk.Application(Gio.ApplicationFlags.NON_UNIQUE, "org.gtkx.testing");
+        application.register(null);
+        application.activate();
+    }
 
     if (!container) {
         container = reconciler.createContainer(

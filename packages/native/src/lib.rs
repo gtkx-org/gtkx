@@ -7,8 +7,8 @@
 //!
 //! | Function | Purpose |
 //! |----------|---------|
-//! | `start` | Initialize the `GLib` main loop and spawn its thread |
-//! | `stop` | Shutdown the `GLib` main loop and join its thread |
+//! | `start` | Spawn the `GLib` thread, run a `MainLoop`, and return its handle |
+//! | `stop` | Quit the `GLib` main loop and drain pending finalizers |
 //! | `call` | Execute FFI function call to native library |
 //! | `alloc` | Allocate memory for boxed types |
 //! | `read` | Read field from boxed/struct memory |

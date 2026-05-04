@@ -17,8 +17,8 @@ const native = nativeBinding as unknown as {
     freeze: () => void;
     getNativeId: (external: unknown) => number;
     read: (external: unknown, type: unknown, offset: number) => unknown;
-    start: (appId: string, flags?: number) => unknown;
-    stop: () => void;
+    start: () => unknown;
+    stop: (mainLoop: unknown) => void;
     unfreeze: () => void;
     write: (external: unknown, type: unknown, offset: number, value: unknown) => unknown;
 };
@@ -193,26 +193,34 @@ export function call(library: string, symbol: string, args: Arg[], returnType: T
     return wrapValue(result, returnType) as FfiValue;
 }
 
-/**
- * Starts the GTK runtime and creates an application.
- *
- * @param appId - Application ID in reverse domain notation
- * @param flags - Optional GIO application flags
- * @returns Native application handle
- *
- * @internal Use `@gtkx/ffi` start() instead
- */
-export function start(appId: string, flags?: number): NativeHandle {
-    return new NativeHandle(native.start(appId, flags));
-}
+const KEEP_ALIVE_INTERVAL = 2147483647;
+
+let mainLoopHandle: NativeHandle | null = new NativeHandle(native.start());
+let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const keepAlive = (): void => {
+    keepAliveTimeout = setTimeout(keepAlive, KEEP_ALIVE_INTERVAL);
+};
+
+keepAlive();
 
 /**
- * Stops the GTK runtime.
+ * Quits the `GLib` main loop and clears the keep-alive timer.
  *
- * @internal Use `@gtkx/ffi` stop() instead
+ * Drains all pending finalizers before quitting, then allows the spawned
+ * GLib thread to terminate so the Node.js process can exit cleanly.
  */
 export function stop(): void {
-    native.stop();
+    if (!mainLoopHandle) return;
+
+    native.stop(mainLoopHandle.external);
+
+    if (keepAliveTimeout) {
+        clearTimeout(keepAliveTimeout);
+        keepAliveTimeout = null;
+    }
+
+    mainLoopHandle = null;
 }
 
 /**

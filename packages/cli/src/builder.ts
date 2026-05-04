@@ -45,7 +45,7 @@ export type BuildOptions = {
  * with no `node_modules` dependency at runtime.
  *
  * The user entry is the bundle's only entry point: it is expected to call
- * `render(<App />, appId, flags?)` at top level, mirroring the
+ * `render(<App />, app)` at top level, mirroring the
  * `createRoot().render()` pattern used in `react-dom`.
  *
  * @param options - Build configuration including entry point and Vite options

@@ -1,5 +1,4 @@
-import { start, stop } from "@gtkx/ffi";
-import type * as Gio from "@gtkx/ffi/gio";
+import { initRuntime, stop } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
 import { toGtkxError } from "./errors.js";
@@ -14,9 +13,9 @@ import { reconciler } from "./reconciler.js";
  * @example
  * ```tsx
  * const App = () => {
- * const app = useApplication();
- * console.log(app.applicationId);
- * return <GtkLabel label="Hello" />;
+ *   const app = useApplication();
+ *   console.log(app.applicationId);
+ *   return <GtkLabel label="Hello" />;
  * };
  * ```
  */
@@ -33,8 +32,8 @@ export const ApplicationContext = createContext<Gtk.Application | null>(null);
  * @example
  * ```tsx
  * const MyComponent = () => {
- * const app = useApplication();
- * return <GtkLabel label={app.applicationId} />;
+ *   const app = useApplication();
+ *   return <GtkLabel label={app.applicationId} />;
  * };
  * ```
  *
@@ -55,50 +54,55 @@ let container: unknown = null;
 /**
  * Renders a React element tree into a GTK4 application window.
  *
- * Initializes the GTK4 runtime, creates an application container, and begins
- * the React reconciliation process. Mirrors the role of `createRoot().render()`
- * in `react-dom`: call once at module top-level in your entry file.
+ * Initializes the GTK4 runtime, registers and activates the supplied
+ * application, then begins the React reconciliation process. Mirrors the
+ * role of `createRoot().render()` in `react-dom`: call once at module
+ * top-level in your entry file.
  *
  * In the dev server, the entry module runs once per process. Component-level
  * edits are applied via React Refresh; edits that propagate up to the entry
- * trigger a process restart so this function still runs at most once per life.
+ * trigger a process restart so this function still runs at most once per
+ * process.
  *
  * @param element - The root React element to render
- * @param appId - Application ID in reverse-DNS notation (e.g. `"com.example.myapp"`)
- * @param flags - Optional GIO application flags
+ * @param app - The GTK application to host the rendered tree
  *
  * @example
  * ```tsx
  * import * as Gio from "@gtkx/ffi/gio";
+ * import * as Gtk from "@gtkx/ffi/gtk";
  * import { render, quit } from "@gtkx/react";
  *
  * const App = () => (
- * <GtkApplicationWindow title="My App" onClose={quit}>
- * <GtkLabel label="Hello, GTKX!" />
- * </GtkApplicationWindow>
+ *   <GtkApplicationWindow title="My App" onClose={quit}>
+ *     <GtkLabel label="Hello, GTKX!" />
+ *   </GtkApplicationWindow>
  * );
  *
- * render(<App />, "com.example.myapp", Gio.ApplicationFlags.NON_UNIQUE);
+ * const app = new Gtk.Application(Gio.ApplicationFlags.NON_UNIQUE, "com.example.myapp");
+ * render(<App />, app);
  * ```
  *
  * @see {@link quit} for shutting down the application
  */
-export const render = (element: ReactNode, appId: string, flags?: Gio.ApplicationFlags): void => {
-    const application = start(appId, flags);
+export const render = (element: ReactNode, app: Gtk.Application): void => {
+    initRuntime();
+    app.register(null);
+    app.activate();
 
     container = reconciler.createContainer(
-        application,
+        app,
         1,
         null,
         false,
         null,
         "",
         (error: unknown) => {
-            getSignalStore(application).forceUnblockAll();
+            getSignalStore(app).forceUnblockAll();
             throw toGtkxError(error);
         },
         (error: unknown) => {
-            getSignalStore(application).forceUnblockAll();
+            getSignalStore(app).forceUnblockAll();
             console.error(toGtkxError(error).toString());
         },
         () => {},
@@ -106,7 +110,7 @@ export const render = (element: ReactNode, appId: string, flags?: Gio.Applicatio
     );
 
     reconciler.updateContainer(
-        <ApplicationContext.Provider value={application}>{element}</ApplicationContext.Provider>,
+        <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
         container,
         null,
         () => {},
@@ -124,9 +128,9 @@ export const render = (element: ReactNode, appId: string, flags?: Gio.Applicatio
  * import { quit } from "@gtkx/react";
  *
  * const App = () => (
- * <GtkApplicationWindow title="My App" onClose={quit}>
- * <GtkButton label="Quit" onClicked={quit} />
- * </GtkApplicationWindow>
+ *   <GtkApplicationWindow title="My App" onClose={quit}>
+ *     <GtkButton label="Quit" onClicked={quit} />
+ *   </GtkApplicationWindow>
  * );
  * ```
  *

@@ -14,7 +14,6 @@ use std::mem::ManuallyDrop;
 use std::sync::{Mutex, OnceLock};
 use std::thread::JoinHandle;
 
-use gtk4::gio::ApplicationHoldGuard;
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
 use crate::managed::{RefFn, UnrefFn};
@@ -208,7 +207,6 @@ impl FundamentalFnCache {
 }
 
 pub struct GtkThreadState {
-    pub app_hold_guard: Option<ApplicationHoldGuard>,
     pub libs: LibraryCache,
     pub fundamental_fns: FundamentalFnCache,
 }
@@ -216,7 +214,6 @@ pub struct GtkThreadState {
 impl Default for GtkThreadState {
     fn default() -> Self {
         Self {
-            app_hold_guard: None,
             libs: LibraryCache::new(),
             fundamental_fns: FundamentalFnCache::new(),
         }

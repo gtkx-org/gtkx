@@ -9,14 +9,6 @@ use crate::error_reporter::NativeErrorReporter;
 #[napi]
 pub fn freeze(env: Env) -> napi::Result<()> {
     let mailbox = Mailbox::global();
-
-    if !mailbox.is_started() {
-        return Err(napi::Error::new(
-            napi::Status::GenericFailure,
-            "GTK application has not been started. Call start() first.",
-        ));
-    }
-
     let is_outermost = mailbox.freeze();
 
     if is_outermost {

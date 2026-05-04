@@ -6,6 +6,7 @@
 
 ```tsx
 // src/index.tsx
+import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, GtkLabel, render, quit } from "@gtkx/react";
 
 const App = () => (
@@ -14,7 +15,8 @@ const App = () => (
     </GtkApplicationWindow>
 );
 
-render(<App />, "com.example.hello");
+const app = new Gtk.Application(undefined, "com.example.hello");
+render(<App />, app);
 ```
 
 The entry calls `render` directly (similar to `createRoot().render()` in `react-dom`). `gtkx dev` restarts the Node process on entry-level changes so the top-level call only runs once per process life.

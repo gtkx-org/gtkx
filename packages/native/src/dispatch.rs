@@ -23,10 +23,10 @@
 //!
 //! ## Lifecycle
 //!
-//! [`Mailbox::mark_started`] is set once the `GLib` thread is up and the
-//! application has activated. [`Mailbox::mark_stopped`] is set when the
-//! application hold guard is released. After stopped, new tasks are silently
-//! dropped to allow clean shutdown.
+//! [`Mailbox::mark_stopped`] is set during the orchestrated shutdown task,
+//! after which new tasks are silently dropped so callers blocked in
+//! [`Mailbox::dispatch_to_glib_and_wait`] do not deadlock waiting on a
+//! result from the dying main loop.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -66,7 +66,6 @@ pub struct Mailbox {
 
     wake_js_tsfn: OnceLock<Arc<WakeJsTsfn>>,
 
-    started: AtomicBool,
     stopped: AtomicBool,
 
     freeze_depth: AtomicUsize,
@@ -77,7 +76,6 @@ pub struct Mailbox {
 impl std::fmt::Debug for Mailbox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Mailbox")
-            .field("started", &self.started)
             .field("stopped", &self.stopped)
             .field("freeze_depth", &self.freeze_depth)
             .finish_non_exhaustive()
@@ -99,7 +97,6 @@ impl Mailbox {
             wake_js: WaitSignal::new(),
             wake_glib: WaitSignal::new(),
             wake_js_tsfn: OnceLock::new(),
-            started: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
             freeze_depth: AtomicUsize::new(0),
             freeze_loop_active: AtomicBool::new(false),
@@ -114,23 +111,18 @@ impl Mailbox {
         let _ = self.wake_js_tsfn.set(tsfn);
     }
 
-    /// Marks the `GLib` thread as ready to receive tasks.
-    pub fn mark_started(&self) {
-        self.stopped.store(false, Ordering::Release);
-        self.started.store(true, Ordering::Release);
-    }
-
-    /// Returns whether the `GLib` thread is currently accepting tasks.
-    pub fn is_started(&self) -> bool {
-        self.started.load(Ordering::Acquire)
-    }
-
     /// Marks the mailbox as shut down. Subsequent `dispatch_to_glib*` calls become no-ops.
     pub fn mark_stopped(&self) {
-        self.started.store(false, Ordering::Release);
         self.stopped.store(true, Ordering::Release);
         self.wake_js.notify();
         self.wake_glib.notify();
+    }
+
+    /// Clears the stopped flag so the mailbox accepts tasks again. Intended
+    /// for tests that need to restore the mailbox to a fresh state after
+    /// exercising the shutdown path.
+    pub fn reset_for_test(&self) {
+        self.stopped.store(false, Ordering::Release);
     }
 
     /// Returns whether the mailbox has been shut down.
