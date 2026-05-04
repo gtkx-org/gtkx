@@ -7,6 +7,6 @@ mod call;
 mod field;
 mod freeze;
 pub(crate) mod handler;
+mod init;
 mod object;
-mod start;
 mod stop;

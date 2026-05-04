@@ -16,8 +16,8 @@ const native = nativeBinding as unknown as {
     call: (library: string, symbol: string, args: unknown[], returnType: unknown) => unknown;
     freeze: () => void;
     getNativeId: (external: unknown) => number;
+    init: () => unknown;
     read: (external: unknown, type: unknown, offset: number) => unknown;
-    start: () => unknown;
     stop: (mainLoop: unknown) => void;
     unfreeze: () => void;
     write: (external: unknown, type: unknown, offset: number, value: unknown) => unknown;
@@ -193,34 +193,30 @@ export function call(library: string, symbol: string, args: Arg[], returnType: T
     return wrapValue(result, returnType) as FfiValue;
 }
 
-const KEEP_ALIVE_INTERVAL = 2147483647;
-
-let mainLoopHandle: NativeHandle | null = new NativeHandle(native.start());
-let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
-
-const keepAlive = (): void => {
-    keepAliveTimeout = setTimeout(keepAlive, KEEP_ALIVE_INTERVAL);
-};
-
-keepAlive();
+/**
+ * Spawns the dedicated `GLib` thread and starts a `glib::MainLoop` on it.
+ *
+ * Returns an opaque handle to the loop, which must be passed to {@link stop}
+ * to terminate it. Most code should rely on `@gtkx/ffi`'s lifecycle wrapper
+ * instead of calling this directly.
+ *
+ * @returns Native handle wrapping the spawned `GMainLoop`.
+ */
+export function init(): NativeHandle {
+    return new NativeHandle(native.init());
+}
 
 /**
- * Quits the `GLib` main loop and clears the keep-alive timer.
+ * Quits the `GLib` main loop wrapped by `mainLoop`.
  *
- * Drains all pending finalizers before quitting, then allows the spawned
- * GLib thread to terminate so the Node.js process can exit cleanly.
+ * Drains all pending finalizers before quitting so the spawned GLib thread
+ * terminates cleanly. Most code should rely on `@gtkx/ffi`'s lifecycle wrapper
+ * instead of calling this directly.
+ *
+ * @param mainLoop - Handle returned by {@link init}.
  */
-export function stop(): void {
-    if (!mainLoopHandle) return;
-
-    native.stop(mainLoopHandle.external);
-
-    if (keepAliveTimeout) {
-        clearTimeout(keepAliveTimeout);
-        keepAliveTimeout = null;
-    }
-
-    mainLoopHandle = null;
+export function stop(mainLoop: NativeHandle): void {
+    native.stop(mainLoop.external);
 }
 
 /**

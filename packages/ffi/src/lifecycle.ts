@@ -1,10 +1,20 @@
 import EventEmitter from "node:events";
-import { stop as nativeStop } from "@gtkx/native";
+import { type NativeHandle, init as nativeInit, stop as nativeStop } from "@gtkx/native";
 import { init as initAdwaita } from "./generated/adw/functions.js";
 import { init as initGtk } from "./generated/gtk/functions.js";
 import { finalize as finalizeGtkSource, init as initGtkSource } from "./generated/gtksource/functions.js";
 
+const KEEP_ALIVE_INTERVAL = 2147483647;
+
+let mainLoopHandle: NativeHandle | null = nativeInit();
+let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let runtimeReady = false;
+
+const keepAlive = (): void => {
+    keepAliveTimeout = setTimeout(keepAlive, KEEP_ALIVE_INTERVAL);
+};
+
+keepAlive();
 
 /**
  * Event map for application lifecycle events.
@@ -49,8 +59,8 @@ export const isStarted = (): boolean => runtimeReady;
 /**
  * Initializes optional GTK extension libraries (Adwaita, GtkSource).
  *
- * The `GLib` main loop is spawned automatically when `@gtkx/native` is
- * imported, so most callers should rely on {@link render} from `@gtkx/react`
+ * The `GLib` main loop is spawned automatically when `@gtkx/ffi` is
+ * imported, so most callers should rely on `render` from `@gtkx/react`
  * to trigger initialization. Call this directly only when bootstrapping
  * GTK without the React reconciler.
  */
@@ -71,24 +81,32 @@ export const initRuntime = (): void => {
 /**
  * Shuts down the GTK runtime.
  *
- * Finalizes extension libraries, emits a `"stop"` event, and quits the
- * `GLib` main loop. Once stopped, no further FFI calls may be made.
+ * Finalizes extension libraries, emits a `"stop"` event, quits the `GLib`
+ * main loop, and clears the keep-alive timer so the Node.js process can
+ * exit cleanly. Once stopped, no further FFI calls may be made.
  *
  * @see {@link initRuntime}
  * @see {@link events}
  */
 export const stop = (): void => {
-    if (!runtimeReady) {
-        nativeStop();
-        return;
+    if (!mainLoopHandle) return;
+
+    if (runtimeReady) {
+        runtimeReady = false;
+
+        try {
+            finalizeGtkSource();
+        } catch {}
+
+        events.emit("stop");
     }
 
-    runtimeReady = false;
+    nativeStop(mainLoopHandle);
 
-    try {
-        finalizeGtkSource();
-    } catch {}
+    if (keepAliveTimeout) {
+        clearTimeout(keepAliveTimeout);
+        keepAliveTimeout = null;
+    }
 
-    events.emit("stop");
-    nativeStop();
+    mainLoopHandle = null;
 };

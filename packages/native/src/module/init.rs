@@ -1,6 +1,6 @@
 //! `GLib` main loop initialization and thread spawning.
 //!
-//! The [`start`] function spawns a dedicated `GLib` thread that runs a plain
+//! The [`init`] function spawns a dedicated `GLib` thread that runs a plain
 //! `glib::MainLoop`. The loop reference is exposed to JavaScript as a
 //! [`NativeHandle`] wrapping a `GMainLoop` boxed value, allowing the JS layer
 //! to terminate it via `g_main_loop_quit` through the standard FFI dispatch.
@@ -34,7 +34,7 @@ use crate::glib_log_handler::GlibLogHandler;
 use crate::managed::{Boxed, NativeHandle, NativeValue};
 
 #[napi]
-pub fn start(env: Env) -> napi::Result<External<NativeHandle>> {
+pub fn init(env: Env) -> napi::Result<External<NativeHandle>> {
     let wake_js_fn = env.create_function_from_closure::<(), _, _>("gtkx_wake_js", |ctx| {
         Mailbox::global().process_node_pending(*ctx.env);
         Ok(())

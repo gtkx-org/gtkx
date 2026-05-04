@@ -40,13 +40,7 @@ const packages = [
         entryPoints: [resolve(root, "packages/ffi/src/index.ts")],
         tsconfig: resolve(root, "packages/ffi/tsconfig.lib.json"),
         excludeInternal: true,
-        intentionallyNotExported: [
-            "GError",
-            "Application",
-            "ApplicationFlags",
-            "NativeEventMap",
-            "GetNativeObjectResult",
-        ],
+        intentionallyNotExported: ["GError", "NativeEventMap", "GetNativeObjectResult"],
     },
 ];
 
