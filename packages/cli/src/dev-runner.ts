@@ -14,13 +14,26 @@ import { swcSsrRefresh } from "./vite-plugin-swc-ssr-refresh.js";
  * Argv slot the CLI supervisor uses to pass the entry path to the runner.
  * Anything beyond `argv[2]` is reserved for future runner flags.
  */
-const ENTRY_ARG_INDEX = 2;
+export const ENTRY_ARG_INDEX = 2;
 
-const log = (message: string): void => {
+/**
+ * Logs a runner-prefixed message to stdout.
+ *
+ * @param message - The message text to emit.
+ */
+export const log = (message: string): void => {
     console.log(`[gtkx] ${message}`);
 };
 
-const createViteDevServer = async (root: string): Promise<ViteDevServer> => {
+/**
+ * Creates the Vite dev server used by the runner.
+ *
+ * Wires the GTKX plugins, disables file discovery, and configures custom
+ * middleware mode so the runner controls module loading via SSR.
+ *
+ * @param root - Project root directory.
+ */
+export const createViteDevServer = async (root: string): Promise<ViteDevServer> => {
     return createServer({
         root,
         appType: "custom",
@@ -46,13 +59,31 @@ const createViteDevServer = async (root: string): Promise<ViteDevServer> => {
     });
 };
 
-const requestReload = async (server: ViteDevServer): Promise<never> => {
+/**
+ * Closes the Vite dev server and exits with {@link RELOAD_EXIT_CODE}.
+ *
+ * The CLI supervisor watches for this exit code to relaunch the runner.
+ *
+ * @param server - The active Vite dev server to shut down.
+ */
+export const requestReload = async (server: ViteDevServer): Promise<never> => {
     log("Full reload (process restart)");
     await server.close();
     process.exit(RELOAD_EXIT_CODE);
 };
 
-const handleFileChange = async (server: ViteDevServer, changedPath: string): Promise<void> => {
+/**
+ * Reacts to a watched file change by invalidating modules and either fast
+ * refreshing or requesting a full reload.
+ *
+ * Returns silently when the changed file is not part of the module graph.
+ * Performs a React fast-refresh when the reloaded module is a refresh
+ * boundary; otherwise delegates to {@link requestReload}.
+ *
+ * @param server - The active Vite dev server.
+ * @param changedPath - Absolute path of the changed file.
+ */
+export const handleFileChange = async (server: ViteDevServer, changedPath: string): Promise<void> => {
     const module = server.moduleGraph.getModuleById(changedPath);
     if (!module) return;
 
@@ -74,7 +105,15 @@ const handleFileChange = async (server: ViteDevServer, changedPath: string): Pro
     await requestReload(server);
 };
 
-const main = async (): Promise<void> => {
+/**
+ * Runner entry point invoked by the CLI supervisor.
+ *
+ * Reads the entry path from `process.argv`, starts the Vite dev server,
+ * registers watchers, and loads the user entry. When the entry calls
+ * `render()` (registering a `Gio.Application`), connects to the MCP socket
+ * server using the app id.
+ */
+export const main = async (): Promise<void> => {
     const cwd = process.cwd();
     const entryArg = process.argv[ENTRY_ARG_INDEX];
 
@@ -113,10 +152,3 @@ const main = async (): Promise<void> => {
 
     log("HMR enabled - watching for changes...");
 };
-
-try {
-    await main();
-} catch (error) {
-    console.error("[gtkx-dev-runner] Fatal:", error);
-    process.exit(1);
-}

@@ -11,7 +11,7 @@ import { RELOAD_EXIT_CODE } from "./dev-protocol.js";
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
-const DEV_RUNNER_URL = new URL("./dev-runner.js", import.meta.url);
+const DEV_RUNNER_URL = new URL("../bin/gtkx-dev-runner.js", import.meta.url);
 
 const forwardSignal = (child: ChildProcess, signal: NodeJS.Signals): void => {
     if (!child.killed) {
