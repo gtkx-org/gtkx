@@ -4,9 +4,15 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "website/**"
+      - "**/*.md"
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - "website/**"
+      - "**/*.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,6 +21,10 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
   sonarcloud:
