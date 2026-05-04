@@ -472,4 +472,242 @@ describe("ClassGenerator", () => {
             expect(code).toContain("extends Gtk.Window");
         });
     });
+
+    describe("interface methods", () => {
+        function setupClassImplementingInterface(
+            interfaceName: string,
+            interfaceMethods: ReturnType<typeof createNormalizedMethod>[],
+            ifaceQn = qualifiedName("Gtk", interfaceName),
+        ) {
+            const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+            const widgetClass = createNormalizedClass({
+                name: "Widget",
+                qualifiedName: qualifiedName("Gtk", "Widget"),
+                parent: null,
+            });
+            const button = createNormalizedClass({
+                name: "Button",
+                qualifiedName: qualifiedName("Gtk", "Button"),
+                parent: qualifiedName("Gtk", "Widget"),
+                implements: [ifaceQn],
+            });
+            gtkNs.classes.set(widgetClass.name, widgetClass);
+            gtkNs.classes.set(button.name, button);
+
+            const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
+            // biome-ignore lint/suspicious/noExplicitAny: mock repo
+            const ifaceMethods = interfaceMethods.map((m) => m as any);
+            (repo as unknown as { resolveInterface(qn: string): unknown }).resolveInterface = (qn: string) => {
+                if (qn !== ifaceQn) return null;
+                return { name: interfaceName, methods: ifaceMethods, properties: [], signals: [] };
+            };
+
+            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const file = fileBuilder();
+            const options = {
+                namespace: "Gtk",
+                sharedLibrary: "libgtk-4.so.1",
+                glibLibrary: "libglib-2.0.so.0",
+                gobjectLibrary: "libgobject-2.0.so.0",
+            };
+
+            const generator = new ClassGenerator(button, ffiMapper, file, repo as unknown as GirRepository, options);
+            return { generator, file };
+        }
+
+        it("emits interface methods on the implementing class", () => {
+            const { generator, file } = setupClassImplementingInterface("Orientable", [
+                createNormalizedMethod({
+                    name: "get_orientation",
+                    cIdentifier: "gtk_orientable_get_orientation",
+                    returnType: createNormalizedType({ name: "gint" }),
+                }),
+            ]);
+
+            generator.generate();
+
+            expect(stringify(file)).toContain("getOrientation");
+        });
+
+        it("renames interface methods when their name collides across multiple interfaces", () => {
+            const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+            const widgetClass = createNormalizedClass({
+                name: "Widget",
+                qualifiedName: qualifiedName("Gtk", "Widget"),
+                parent: null,
+            });
+            const button = createNormalizedClass({
+                name: "Button",
+                qualifiedName: qualifiedName("Gtk", "Button"),
+                parent: qualifiedName("Gtk", "Widget"),
+                implements: [qualifiedName("Gtk", "Editable"), qualifiedName("Gtk", "Buildable")],
+            });
+            gtkNs.classes.set(widgetClass.name, widgetClass);
+            gtkNs.classes.set(button.name, button);
+
+            const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
+            (repo as unknown as { resolveInterface(qn: string): unknown }).resolveInterface = (qn: string) => {
+                if (qn === qualifiedName("Gtk", "Editable")) {
+                    return {
+                        name: "Editable",
+                        methods: [
+                            createNormalizedMethod({
+                                name: "get_name",
+                                cIdentifier: "gtk_editable_get_name",
+                                returnType: createNormalizedType({ name: "utf8" }),
+                            }),
+                        ],
+                        properties: [],
+                        signals: [],
+                    };
+                }
+                if (qn === qualifiedName("Gtk", "Buildable")) {
+                    return {
+                        name: "Buildable",
+                        methods: [
+                            createNormalizedMethod({
+                                name: "get_name",
+                                cIdentifier: "gtk_buildable_get_name",
+                                returnType: createNormalizedType({ name: "utf8" }),
+                            }),
+                        ],
+                        properties: [],
+                        signals: [],
+                    };
+                }
+                return null;
+            };
+
+            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const file = fileBuilder();
+            const options = {
+                namespace: "Gtk",
+                sharedLibrary: "libgtk-4.so.1",
+                glibLibrary: "libglib-2.0.so.0",
+                gobjectLibrary: "libgobject-2.0.so.0",
+            };
+
+            const generator = new ClassGenerator(button, ffiMapper, file, repo as unknown as GirRepository, options);
+            generator.generate();
+
+            const code = stringify(file);
+            expect(code).toMatch(/get(?:Editable|Buildable)?Name/);
+        });
+
+        it("ignores unresolvable interface entries", () => {
+            const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+            const widgetClass = createNormalizedClass({
+                name: "Widget",
+                qualifiedName: qualifiedName("Gtk", "Widget"),
+                parent: null,
+            });
+            const button = createNormalizedClass({
+                name: "Button",
+                qualifiedName: qualifiedName("Gtk", "Button"),
+                parent: qualifiedName("Gtk", "Widget"),
+                implements: ["Phantom.Iface"],
+            });
+            gtkNs.classes.set(widgetClass.name, widgetClass);
+            gtkNs.classes.set(button.name, button);
+
+            const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
+            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const file = fileBuilder();
+            const options = {
+                namespace: "Gtk",
+                sharedLibrary: "libgtk-4.so.1",
+                glibLibrary: "libglib-2.0.so.0",
+                gobjectLibrary: "libgobject-2.0.so.0",
+            };
+
+            const generator = new ClassGenerator(button, ffiMapper, file, repo as unknown as GirRepository, options);
+            const result = generator.generate();
+            expect(result).toBeDefined();
+        });
+    });
+
+    describe("name collisions with parent methods", () => {
+        it("emits a renamed method via filterClassMethods when a name collides with a parent", () => {
+            const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+            const widget = createNormalizedClass({
+                name: "Widget",
+                qualifiedName: qualifiedName("Gtk", "Widget"),
+                parent: null,
+                methods: [
+                    createNormalizedMethod({
+                        name: "get_name",
+                        cIdentifier: "gtk_widget_get_name",
+                        returnType: createNormalizedType({ name: "utf8" }),
+                    }),
+                ],
+            });
+            const button = createNormalizedClass({
+                name: "Button",
+                qualifiedName: qualifiedName("Gtk", "Button"),
+                parent: qualifiedName("Gtk", "Widget"),
+                methods: [
+                    createNormalizedMethod({
+                        name: "get_name",
+                        cIdentifier: "gtk_button_get_name",
+                        returnType: createNormalizedType({ name: "utf8" }),
+                    }),
+                ],
+            });
+            gtkNs.classes.set(widget.name, widget);
+            gtkNs.classes.set(button.name, button);
+
+            const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
+            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const file = fileBuilder();
+
+            const generator = new ClassGenerator(button, ffiMapper, file, repo as unknown as GirRepository, {
+                namespace: "Gtk",
+                sharedLibrary: "libgtk-4.so.1",
+                glibLibrary: "libglib-2.0.so.0",
+                gobjectLibrary: "libgobject-2.0.so.0",
+            });
+
+            const result = generator.generate();
+            expect(result).toBeDefined();
+            expect(stringify(file)).toContain("Button");
+        });
+
+        it("renames a method named connect on a class with a parent to avoid the signal helper collision", () => {
+            const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+            const widget = createNormalizedClass({
+                name: "Widget",
+                qualifiedName: qualifiedName("Gtk", "Widget"),
+                parent: null,
+            });
+            const socket = createNormalizedClass({
+                name: "Socket",
+                qualifiedName: qualifiedName("Gtk", "Socket"),
+                parent: qualifiedName("Gtk", "Widget"),
+                methods: [
+                    createNormalizedMethod({
+                        name: "connect",
+                        cIdentifier: "gtk_socket_connect",
+                        returnType: createNormalizedType({ name: "none" }),
+                    }),
+                ],
+            });
+            gtkNs.classes.set(widget.name, widget);
+            gtkNs.classes.set(socket.name, socket);
+
+            const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
+            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const file = fileBuilder();
+
+            const generator = new ClassGenerator(socket, ffiMapper, file, repo as unknown as GirRepository, {
+                namespace: "Gtk",
+                sharedLibrary: "libgtk-4.so.1",
+                glibLibrary: "libglib-2.0.so.0",
+                gobjectLibrary: "libgobject-2.0.so.0",
+            });
+
+            generator.generate();
+            const code = stringify(file);
+            expect(code).not.toMatch(/^\s*connect\(/m);
+        });
+    });
 });
