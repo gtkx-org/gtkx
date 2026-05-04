@@ -31,12 +31,14 @@ describe("needsReturnUnwrap", () => {
         expect(needsReturnUnwrap(mapped({ ffi: { type } }))).toEqual({ needsUnwrap: true });
     });
 
-    it.each(["int32", "string", "boolean", "fundamental"] as const)(
-        "does not require unwrap for %s ffi type",
-        (type) => {
-            expect(needsReturnUnwrap(mapped({ ffi: { type } }))).toEqual({ needsUnwrap: false });
-        },
-    );
+    it.each([
+        "int32",
+        "string",
+        "boolean",
+        "fundamental",
+    ] as const)("does not require unwrap for %s ffi type", (type) => {
+        expect(needsReturnUnwrap(mapped({ ffi: { type } }))).toEqual({ needsUnwrap: false });
+    });
 });
 
 describe("needsParamWrap", () => {
@@ -87,7 +89,12 @@ describe("needsParamWrap", () => {
 
 describe("writeWrapExpression", () => {
     it("emits an as-cast when no wrap is needed", () => {
-        const info: ParamWrapInfo = { needsWrap: false, needsTargetClass: false, targetClass: undefined, tsType: "number" };
+        const info: ParamWrapInfo = {
+            needsWrap: false,
+            needsTargetClass: false,
+            targetClass: undefined,
+            tsType: "number",
+        };
         expect(writeWrapExpression("args[0]", info)).toBe("args[0] as number");
     });
 
@@ -98,9 +105,7 @@ describe("writeWrapExpression", () => {
             targetClass: "Gtk.Editable",
             tsType: "Gtk.Editable",
         };
-        expect(writeWrapExpression("args[1]", info)).toBe(
-            "getNativeObject(args[1] as NativeHandle, Gtk.Editable)",
-        );
+        expect(writeWrapExpression("args[1]", info)).toBe("getNativeObject(args[1] as NativeHandle, Gtk.Editable)");
     });
 
     it("falls back to a single-argument getNativeObject cast when no target class is supplied", () => {
@@ -110,9 +115,7 @@ describe("writeWrapExpression", () => {
             targetClass: undefined,
             tsType: "Gtk.Widget",
         };
-        expect(writeWrapExpression("args[0]", info)).toBe(
-            "getNativeObject(args[0] as NativeHandle) as Gtk.Widget",
-        );
+        expect(writeWrapExpression("args[0]", info)).toBe("getNativeObject(args[0] as NativeHandle) as Gtk.Widget");
     });
 });
 
