@@ -1,4 +1,4 @@
-export { GtkxError } from "./errors.js";
+export { GtkxError, toGtkxError } from "./errors.js";
 export * from "./jsx.js";
 export { createPortal } from "./portal.js";
 export { reconciler } from "./reconciler.js";

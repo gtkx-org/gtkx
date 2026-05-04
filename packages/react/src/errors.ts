@@ -40,6 +40,17 @@ function formatUnknownError(error: unknown): string {
     return "Unknown error";
 }
 
+/**
+ * Wraps an unknown thrown value in a {@link GtkxError}.
+ *
+ * Returns the input unchanged when it is already a {@link GtkxError}; otherwise
+ * extracts a human-readable message from common error shapes (`Error`,
+ * `string`, `number`, `boolean`) and falls back to "Unknown error" for
+ * anything else.
+ *
+ * @param error - The thrown value to normalize.
+ * @returns A {@link GtkxError} carrying the extracted message.
+ */
 export function toGtkxError(error: unknown): GtkxError {
     if (error instanceof GtkxError) {
         return error;

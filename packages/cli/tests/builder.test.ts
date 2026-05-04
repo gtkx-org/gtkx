@@ -77,6 +77,57 @@ describe("build", () => {
     it("falls back to process.cwd() for the gtkx-native plugin when no vite root is given", async () => {
         const cwdSpy = vi.spyOn(process, "cwd").mockReturnValue("/fake/project");
         await build({ entry: "src/index.tsx" });
+
+        expect(cwdSpy).toHaveBeenCalled();
+        const nativePlugin = getViteConfig().plugins.find((p) => p?.name === "gtkx:native");
+        expect(nativePlugin).toBeDefined();
+
         cwdSpy.mockRestore();
+    });
+
+    it("uses the user-supplied vite root and does not call process.cwd()", async () => {
+        const cwdSpy = vi.spyOn(process, "cwd");
+        await build({ entry: "src/index.tsx", vite: { root: "/explicit/root" } });
+
+        expect(cwdSpy).not.toHaveBeenCalled();
+
+        cwdSpy.mockRestore();
+    });
+
+    it("forwards a custom assetBase to the gtkx-built-url plugin", async () => {
+        await build({ entry: "src/index.tsx", assetBase: "../share/app" });
+
+        const builtUrlPlugin = getViteConfig().plugins.find((p) => p?.name === "gtkx:built-url");
+        expect(builtUrlPlugin).toBeDefined();
+    });
+
+    it("merges user-supplied define entries while forcing NODE_ENV to production", async () => {
+        await build({
+            entry: "src/index.tsx",
+            vite: { define: { __APP_VERSION__: JSON.stringify("1.2.3") } },
+        });
+
+        const config = getViteConfig();
+        expect(config.define.__APP_VERSION__).toBe(JSON.stringify("1.2.3"));
+        expect(config.define["process.env.NODE_ENV"]).toBe(JSON.stringify("production"));
+    });
+
+    it("preserves user rollup output options while overriding entryFileNames", async () => {
+        const userOutput = { format: "es" as const, sourcemap: true };
+        await build({
+            entry: "src/index.tsx",
+            vite: { build: { rollupOptions: { output: userOutput } } },
+        });
+
+        const output = getViteConfig().build.rollupOptions.output as Record<string, unknown>;
+        expect(output.format).toBe("es");
+        expect(output.sourcemap).toBe(true);
+        expect(output.entryFileNames).toBe("bundle.js");
+    });
+
+    it("forces ssr.noExternal=true regardless of user ssr config", async () => {
+        await build({ entry: "src/index.tsx", vite: { ssr: { noExternal: ["other-pkg"] } } });
+
+        expect(getViteConfig().ssr.noExternal).toBe(true);
     });
 });
