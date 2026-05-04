@@ -9,6 +9,7 @@ import {
     createNormalizedField,
     createNormalizedFunction,
     createNormalizedInterface,
+    createNormalizedMethod,
     createNormalizedNamespace,
     createNormalizedRecord,
     createNormalizedType,
@@ -260,6 +261,105 @@ describe("FfiGenerator.generateNamespace", () => {
         }).generateNamespace("GLib");
 
         expect(filePathOf(files, "bytes.ts")).toBe("glib/bytes.ts");
+    });
+
+    it("walks nested record fields when deciding whether to fully generate a record", () => {
+        const inner = createNormalizedRecord({
+            name: "Inner",
+            qualifiedName: "Gtk.Inner",
+            cType: "GtkInner",
+            fields: [createNormalizedField({ name: "value", type: createNormalizedType({ name: "gint" }) })],
+        });
+        const outer = createNormalizedRecord({
+            name: "Outer",
+            qualifiedName: "Gtk.Outer",
+            cType: "GtkOuter",
+            fields: [createNormalizedField({ name: "inner", type: createNormalizedType({ name: "Inner" }) })],
+        });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            records: new Map([
+                [outer.name, outer],
+                [inner.name, inner],
+            ]),
+        });
+        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
+
+        const { files } = new FfiGenerator({
+            repository: repo as unknown as GirRepository,
+            namespace: "Gtk",
+        }).generateNamespace("Gtk");
+
+        expect(filePathOf(files, "outer.ts")).toBe("gtk/outer.ts");
+        expect(filePathOf(files, "inner.ts")).toBe("gtk/inner.ts");
+    });
+
+    it("falls back to a stub for records whose fields recurse to a disguised type", () => {
+        const inner = createNormalizedRecord({
+            name: "Inner",
+            qualifiedName: "Gtk.Inner",
+            cType: "GtkInner",
+            disguised: true,
+        });
+        const outer = createNormalizedRecord({
+            name: "Outer",
+            qualifiedName: "Gtk.Outer",
+            cType: "GtkOuter",
+            fields: [createNormalizedField({ name: "inner", type: createNormalizedType({ name: "Inner" }) })],
+        });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            records: new Map([
+                [outer.name, outer],
+                [inner.name, inner],
+            ]),
+        });
+        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
+
+        const { files } = new FfiGenerator({
+            repository: repo as unknown as GirRepository,
+            namespace: "Gtk",
+        }).generateNamespace("Gtk");
+
+        const outerFile = files.find((f) => f.path === "gtk/outer.ts");
+        expect(outerFile?.content).toContain("Stub class for Outer");
+    });
+
+    it("emits stub methods on a glib-typed opaque record that exposes safe instance methods", () => {
+        const opaqueRecord = createNormalizedRecord({
+            name: "Bytes",
+            qualifiedName: "GLib.Bytes",
+            opaque: true,
+            glibTypeName: "GBytes",
+            glibGetType: "g_bytes_get_type",
+            cType: "GBytes",
+            methods: [
+                createNormalizedMethod({
+                    name: "get_size",
+                    cIdentifier: "g_bytes_get_size",
+                    returnType: createNormalizedType({ name: "gsize" }),
+                }),
+            ],
+        });
+        const ns = createNormalizedNamespace({
+            name: "GLib",
+            sharedLibrary: "libglib-2.0.so.0",
+            records: new Map([[opaqueRecord.name, opaqueRecord]]),
+        });
+        const repo = createMockRepository(
+            baseNamespaces({
+                GLib: ns,
+                Gtk: createNormalizedNamespace({ name: "Gtk" }),
+            }),
+        );
+
+        const { files } = new FfiGenerator({
+            repository: repo as unknown as GirRepository,
+            namespace: "GLib",
+        }).generateNamespace("GLib");
+
+        const bytesFile = files.find((f) => f.path === "glib/bytes.ts");
+        expect(bytesFile?.content).toContain("getSize");
     });
 
     it("generates records that have only primitive fields", () => {
