@@ -1,7 +1,78 @@
-import { describe, expect, it, vi } from "vitest";
-import { buildTools } from "../src/cli.js";
+import { EventEmitter } from "node:events";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConnectionManager } from "../src/connection-manager.js";
 import type { AppInfo } from "../src/protocol/types.js";
+
+const { mcpServerInstances, registerToolMock, mcpConnectMock, mcpCloseMock } = vi.hoisted(() => {
+    const instances: Array<{ name: string; version: string }> = [];
+    return {
+        mcpServerInstances: instances,
+        registerToolMock: vi.fn(),
+        mcpConnectMock: vi.fn(async () => undefined),
+        mcpCloseMock: vi.fn(async () => undefined),
+    };
+});
+
+vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
+    McpServer: class {
+        constructor(opts: { name: string; version: string }) {
+            mcpServerInstances.push(opts);
+        }
+        registerTool(name: string, config: unknown, handler: unknown): void {
+            registerToolMock(name, config, handler);
+        }
+        connect = mcpConnectMock;
+        close = mcpCloseMock;
+    },
+}));
+
+const { stdioInstances } = vi.hoisted(() => ({ stdioInstances: [] as object[] }));
+
+vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
+    StdioServerTransport: class {
+        constructor() {
+            stdioInstances.push(this);
+        }
+    },
+}));
+
+const { socketStartMock, socketStopMock, socketServerInstances } = vi.hoisted(() => ({
+    socketStartMock: vi.fn(async () => undefined),
+    socketStopMock: vi.fn(async () => undefined),
+    socketServerInstances: [] as Array<
+        EventEmitter & { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }
+    >,
+}));
+
+vi.mock("../src/socket-server.js", () => ({
+    SocketServer: class extends EventEmitter {
+        start = socketStartMock;
+        stop = socketStopMock;
+        constructor(_path: string) {
+            super();
+            socketServerInstances.push(
+                this as EventEmitter & { start: typeof socketStartMock; stop: typeof socketStopMock },
+            );
+        }
+    },
+}));
+
+const { connectionManagerInstances, cleanupMock } = vi.hoisted(() => ({
+    connectionManagerInstances: [] as Array<EventEmitter & { cleanup: ReturnType<typeof vi.fn> }>,
+    cleanupMock: vi.fn(),
+}));
+
+vi.mock("../src/connection-manager.js", () => ({
+    ConnectionManager: class extends EventEmitter {
+        cleanup = cleanupMock;
+        constructor(_socketServer: unknown) {
+            super();
+            connectionManagerInstances.push(this as EventEmitter & { cleanup: typeof cleanupMock });
+        }
+    },
+}));
+
+import { buildTools, main } from "../src/cli.js";
 
 type AppQueryClient = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 
@@ -252,5 +323,98 @@ describe("buildTools", () => {
             expect(sendToApp).toHaveBeenCalledWith("app-a", "widget.screenshot", { windowId: "w-main" });
             expect(result.content[0]).toEqual({ type: "image", data: "BASE64", mimeType: "image/png" });
         });
+    });
+});
+
+describe("main", () => {
+    let errorSpy: ReturnType<typeof vi.spyOn>;
+    let exitSpy: ReturnType<typeof vi.spyOn>;
+    let prevSigInt: ReturnType<typeof process.listeners>;
+    let prevSigTerm: ReturnType<typeof process.listeners>;
+
+    beforeEach(() => {
+        mcpServerInstances.length = 0;
+        registerToolMock.mockClear();
+        mcpConnectMock.mockClear();
+        mcpCloseMock.mockClear();
+        socketStartMock.mockClear();
+        socketStopMock.mockClear();
+        cleanupMock.mockClear();
+        socketServerInstances.length = 0;
+        connectionManagerInstances.length = 0;
+        stdioInstances.length = 0;
+
+        errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+        prevSigInt = process.listeners("SIGINT");
+        prevSigTerm = process.listeners("SIGTERM");
+    });
+
+    afterEach(() => {
+        errorSpy.mockRestore();
+        exitSpy.mockRestore();
+        for (const listener of process.listeners("SIGINT")) {
+            if (!prevSigInt.includes(listener)) process.removeListener("SIGINT", listener as never);
+        }
+        for (const listener of process.listeners("SIGTERM")) {
+            if (!prevSigTerm.includes(listener)) process.removeListener("SIGTERM", listener as never);
+        }
+    });
+
+    it("starts the socket server, registers all tools, and connects the MCP server", async () => {
+        await main();
+
+        expect(socketStartMock).toHaveBeenCalledOnce();
+        expect(mcpServerInstances).toHaveLength(1);
+        expect(mcpServerInstances[0]?.name).toBe("gtkx-mcp");
+        expect(registerToolMock).toHaveBeenCalledTimes(allToolNames.length);
+        expect(mcpConnectMock).toHaveBeenCalledOnce();
+        expect(stdioInstances).toHaveLength(1);
+    });
+
+    it("logs broken-pipe-style socket errors only when the code is not EPIPE/ECONNRESET", async () => {
+        await main();
+        const socket = socketServerInstances[0];
+        if (!socket) throw new Error("Socket not registered");
+
+        socket.emit("error", Object.assign(new Error("pipe gone"), { code: "EPIPE" }));
+        socket.emit("error", Object.assign(new Error("conn gone"), { code: "ECONNRESET" }));
+        socket.emit("error", Object.assign(new Error("real boom"), { code: "EACCES" }));
+
+        const messages = errorSpy.mock.calls.map((c: unknown[]) => String(c[1] ?? c[0]));
+        expect(messages.filter((m: string) => m.includes("real boom"))).toHaveLength(1);
+        expect(messages.some((m: string) => m.includes("pipe gone"))).toBe(false);
+        expect(messages.some((m: string) => m.includes("conn gone"))).toBe(false);
+    });
+
+    it("logs an entry when an app registers and unregisters", async () => {
+        await main();
+        const cm = connectionManagerInstances[0];
+        if (!cm) throw new Error("ConnectionManager not registered");
+
+        cm.emit("appRegistered", { appId: "app-a", pid: 42 });
+        cm.emit("appUnregistered", "app-a");
+
+        const messages = errorSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+        expect(messages.some((m: string) => m.includes("App registered: app-a (PID: 42)"))).toBe(true);
+        expect(messages.some((m: string) => m.includes("App unregistered: app-a"))).toBe(true);
+    });
+
+    it("shuts down on SIGINT, cleaning up resources exactly once", async () => {
+        await main();
+
+        process.emit("SIGINT", "SIGINT");
+        await new Promise((r) => setImmediate(r));
+
+        expect(cleanupMock).toHaveBeenCalledOnce();
+        expect(socketStopMock).toHaveBeenCalledOnce();
+        expect(mcpCloseMock).toHaveBeenCalledOnce();
+        expect(exitSpy).toHaveBeenCalledWith(0);
+
+        process.emit("SIGTERM", "SIGTERM");
+        await new Promise((r) => setImmediate(r));
+
+        expect(cleanupMock).toHaveBeenCalledOnce();
+        expect(socketStopMock).toHaveBeenCalledOnce();
     });
 });
