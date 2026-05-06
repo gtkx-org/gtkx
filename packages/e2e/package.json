@@ -16,6 +16,6 @@
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
-        "react": "^19.2.5"
+        "react": "^19.2.6"
     }
 }

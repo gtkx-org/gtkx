@@ -28,7 +28,7 @@
         "@vitest/coverage-v8": "^4.1.5",
         "dpdm": "^4.0.1",
         "knip": "^6.11.0",
-        "react": "^19.2.5",
+        "react": "^19.2.6",
         "turbo": "^2.9.9",
         "typescript": "^6.0.3",
         "vitest": "^4.1.5"
