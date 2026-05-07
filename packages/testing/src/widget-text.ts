@@ -1,4 +1,3 @@
-import { getNativeInterface } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 const getLabelText = (widget: Gtk.Widget): string | null => {
@@ -20,7 +19,7 @@ const getDefaultText = (widget: Gtk.Widget): string | null => {
         return (widget.getTitle() as string) || null;
     }
 
-    return getNativeInterface(widget, Gtk.Editable)?.getText() || null;
+    return null;
 };
 
 const collectDirectChildLabels = (widget: Gtk.Widget): string[] => {

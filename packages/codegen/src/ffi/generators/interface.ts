@@ -80,14 +80,6 @@ export class InterfaceGenerator {
                     override: true,
                 }),
             );
-            cls.addProperty(
-                property("objectType", {
-                    isStatic: true,
-                    readonly: true,
-                    initializer: '"interface" as const',
-                    override: true,
-                }),
-            );
         }
 
         const gobjectMethodNames = collectGObjectMethodNames(this.repository);

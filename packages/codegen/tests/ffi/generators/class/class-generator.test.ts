@@ -120,7 +120,7 @@ describe("ClassGenerator", () => {
             expect(code).toContain('"GtkButton"');
         });
 
-        it("includes objectType property when glibTypeName present", () => {
+        it("does not emit objectType property", () => {
             const { generator, file } = createTestSetup({
                 glibTypeName: "GtkButton",
             });
@@ -128,8 +128,7 @@ describe("ClassGenerator", () => {
             generator.generate();
 
             const code = stringify(file);
-            expect(code).toContain("objectType");
-            expect(code).toContain('"gobject"');
+            expect(code).not.toContain("objectType");
         });
 
         it("generates methods for class", () => {
@@ -375,7 +374,7 @@ describe("ClassGenerator", () => {
     });
 
     describe("ParamSpec handling", () => {
-        it("uses fundamental objectType for ParamSpec classes", () => {
+        it("generates fundamental ParamSpec class without objectType", () => {
             const gobjectNs = createNormalizedNamespace({
                 name: "GObject",
                 sharedLibrary: "libgobject-2.0.so.0",
@@ -413,7 +412,8 @@ describe("ClassGenerator", () => {
             generator.generate();
 
             const code = stringify(psFile);
-            expect(code).toContain('"fundamental"');
+            expect(code).toContain("export class ParamSpec");
+            expect(code).not.toContain("objectType");
         });
     });
 

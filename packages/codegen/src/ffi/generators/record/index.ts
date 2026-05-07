@@ -177,23 +177,6 @@ export class RecordGenerator {
                     initializer: `"${record.glibTypeName}"`,
                 }),
             );
-
-            const objectType = record.isFundamental() ? "fundamental" : "boxed";
-            cls.addProperty(
-                property("objectType", {
-                    isStatic: true,
-                    readonly: true,
-                    initializer: `"${objectType}" as const`,
-                }),
-            );
-        } else {
-            cls.addProperty(
-                property("objectType", {
-                    isStatic: true,
-                    readonly: true,
-                    initializer: `"struct" as const`,
-                }),
-            );
         }
 
         return cls;
@@ -604,9 +587,13 @@ export class RecordGenerator {
             typeMapping.ffi.type === "boxed" ||
             typeMapping.ffi.type === "gobject" ||
             typeMapping.ffi.type === "fundamental";
+        const isInterfaceField = needsObjectWrap && typeMapping.kind === "interface";
 
         if (needsObjectWrap) {
-            this.file.addImport("../../registry.js", ["getNativeObject"]);
+            this.file.addImport(
+                "../../registry.js",
+                isInterfaceField ? ["getNativeObjectAsInterface"] : ["getNativeObject"],
+            );
             this.file.addImport("../../object.js", ["NativeHandle"]);
         }
 
@@ -615,7 +602,7 @@ export class RecordGenerator {
         this.file.addImport("../../native.js", ["read", "t"]);
         const doc = buildJsDocStructure(field.doc, this.options.namespace);
 
-        const getBody = this.buildFieldGetBody(typeMapping, offset, needsObjectWrap);
+        const getBody = this.buildFieldGetBody(typeMapping, offset, needsObjectWrap, isInterfaceField);
         const setBody = isWritable ? this.buildFieldSetBody(typeMapping, offset, needsObjectWrap) : undefined;
 
         cls.addAccessor(
@@ -632,14 +619,16 @@ export class RecordGenerator {
         typeMapping: MappedType,
         offset: number,
         needsObjectWrap: boolean,
+        isInterfaceField: boolean,
     ): (writer: Writer) => void {
         if (needsObjectWrap) {
+            const wrapFn = isInterfaceField ? "getNativeObjectAsInterface" : "getNativeObject";
             return (writer: Writer) => {
                 writer.write("const ptr = read(this.handle, ");
                 writeFfiTypeExpression(writer, typeMapping.ffi);
                 writer.writeLine(`, ${offset});`);
                 writer.writeLine("if (ptr === null) return null;");
-                writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${typeMapping.ts});`);
+                writer.writeLine(`return ${wrapFn}(ptr as NativeHandle, ${typeMapping.ts});`);
             };
         }
         return (writer: Writer) => {

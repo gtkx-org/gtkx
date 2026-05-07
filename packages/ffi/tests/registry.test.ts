@@ -5,16 +5,16 @@ import {
     findNativeClass,
     getNativeClass,
     getNativeObject,
+    getNativeObjectAsInterface,
     type NativeClass,
     NativeObject,
     registerNativeClass,
 } from "../src/index.js";
 
 describe("registerNativeClass", () => {
-    it("registers a class with glibTypeName and objectType", () => {
+    it("registers a class by glibTypeName", () => {
         class TestClass extends NativeObject {
             static glibTypeName = "TestType";
-            static objectType = "gobject" as const;
         }
         registerNativeClass(TestClass as NativeClass);
         expect(findNativeClass("TestType")).toBe(TestClass);
@@ -120,15 +120,33 @@ describe("getNativeObject", () => {
     describe("interfaces", () => {
         it("returns interface instance when object implements it", () => {
             const box = new Gtk.Box();
-            const orientable = getNativeObject(box.handle, Gtk.Orientable);
+            const orientable = getNativeObjectAsInterface(box.handle, Gtk.Orientable);
             expect(orientable).not.toBeNull();
         });
 
         it("allows calling interface methods on returned instance", () => {
             const box = new Gtk.Box();
-            const orientable = getNativeObject(box.handle, Gtk.Orientable);
+            const orientable = getNativeObjectAsInterface(box.handle, Gtk.Orientable);
             expect(orientable).not.toBeNull();
             expect(typeof orientable?.setOrientation).toBe("function");
+        });
+
+        it("returns null for null/undefined handle", () => {
+            expect(getNativeObjectAsInterface(null, Gtk.Orientable)).toBeNull();
+            expect(getNativeObjectAsInterface(undefined, Gtk.Orientable)).toBeNull();
+        });
+
+        it("instantiates concrete registered class when handle is unseen", () => {
+            const searchEntry = new Gtk.SearchEntry();
+            const child = searchEntry.getFirstAccessibleChild();
+            expect(child).not.toBeNull();
+        });
+
+        it("registers wrapper so subsequent lookups return the same instance", () => {
+            const searchEntry = new Gtk.SearchEntry();
+            const first = searchEntry.getFirstAccessibleChild();
+            const second = searchEntry.getFirstAccessibleChild();
+            expect(first).toBe(second);
         });
     });
 });

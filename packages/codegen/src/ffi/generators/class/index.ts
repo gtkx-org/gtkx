@@ -120,10 +120,9 @@ export class ClassGenerator {
         const filteredClassMethods = this.filterClassMethods(parentMethodNames);
 
         const parentInfo = parseParentReference(this.cls.parent, this.options.namespace);
-        const isFundamental = this.isFundamentalType();
         const selfTypeDescriptor = this.getSelfTypeDescriptor();
 
-        const cls = this.buildClassDeclaration(parentInfo, isFundamental);
+        const cls = this.buildClassDeclaration(parentInfo);
 
         const parentFactoryMethodNames = collectParentFactoryMethodNames(this.cls);
         this.constructorBuilder.setParentFactoryMethodNames(parentFactoryMethodNames);
@@ -189,7 +188,7 @@ export class ClassGenerator {
         return { widgetMeta, controllerMeta };
     }
 
-    private buildClassDeclaration(parentInfo: ParentInfo, isFundamental: boolean): ClassDeclarationBuilder {
+    private buildClassDeclaration(parentInfo: ParentInfo): ClassDeclarationBuilder {
         let extendsExpr: string | undefined;
         if (parentInfo.hasParent) {
             if (parentInfo.isCrossNamespace && parentInfo.namespace) {
@@ -205,12 +204,6 @@ export class ClassGenerator {
             extendsExpr = "NativeObject";
             this.file.addImport("../../object.js", ["NativeObject"]);
         }
-
-        const objectType = isFundamental ? "fundamental" : "gobject";
-        const isRootGObject = !parentInfo.hasParent && objectType === "gobject";
-        const objectTypeInitializer = isRootGObject
-            ? `"gobject" as "gobject" | "interface"`
-            : `"${objectType}" as const`;
 
         const doc = buildJsDocStructure(this.cls.doc, this.options.namespace);
         const cls = classDecl(this.className, {
@@ -229,33 +222,9 @@ export class ClassGenerator {
                     override: parentInfo.hasParent,
                 }),
             );
-            cls.addProperty(
-                property("objectType", {
-                    isStatic: true,
-                    readonly: true,
-                    initializer: objectTypeInitializer,
-                    override: parentInfo.hasParent,
-                }),
-            );
         }
 
         return cls;
-    }
-
-    private isFundamentalType(): boolean {
-        if (this.cls.isFundamental()) {
-            return true;
-        }
-        let currentClass = this.cls;
-        while (currentClass.parent) {
-            const parent = this.repository.resolveClass(currentClass.parent);
-            if (!parent) break;
-            if (parent.isFundamental()) {
-                return true;
-            }
-            currentClass = parent;
-        }
-        return false;
     }
 
     private resolveInterfaceNamespace(ifaceQualifiedName: string): string {

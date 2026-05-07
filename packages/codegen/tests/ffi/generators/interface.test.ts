@@ -90,7 +90,7 @@ describe("InterfaceGenerator", () => {
             expect(code).toContain('"GtkBuildable"');
         });
 
-        it("adds objectType property as interface when glibTypeName present", () => {
+        it("does not emit objectType property", () => {
             const { generator, file } = createTestSetup();
             const iface = createNormalizedInterface({
                 name: "Buildable",
@@ -101,8 +101,7 @@ describe("InterfaceGenerator", () => {
             generator.generate(iface);
 
             const code = stringify(file);
-            expect(code).toContain("objectType");
-            expect(code).toContain('"interface"');
+            expect(code).not.toContain("objectType");
         });
 
         it("generates methods for interface", () => {

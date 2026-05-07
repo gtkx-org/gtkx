@@ -370,10 +370,14 @@ export class SignalBuilder {
             if (mapped.ffi.type === "ref") {
                 this.imports.addImport("@gtkx/native", ["Ref"]);
             }
+            const wrapInfo = needsParamWrap(mapped);
+            if (wrapInfo.isInterface) {
+                this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
+            }
             return {
                 mapped,
                 paramName: toValidIdentifier(toCamelCase(p.name)),
-                wrapInfo: needsParamWrap(mapped),
+                wrapInfo,
             };
         });
     }

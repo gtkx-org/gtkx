@@ -1,5 +1,4 @@
 import * as net from "node:net";
-import { getNativeInterface } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import { Value } from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -82,7 +81,7 @@ const getWidgetText = (widget: Gtk.Widget): string | null => {
         return widget.getTitle() ?? null;
     }
 
-    return getNativeInterface(widget, Gtk.Editable)?.getText() ?? null;
+    return null;
 };
 
 const serializeWidget = (widget: Gtk.Widget): SerializedWidget => {

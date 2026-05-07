@@ -179,8 +179,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
             if (!formats.containMimeType("image/png")) return false;
             const texture = await clipboard.readTextureAsync();
             if (!texture) return false;
-            const paintable = getNativeInterface(texture, Gdk.Paintable);
-            if (paintable) setPastedContent({ type: "Image", paintable });
+            setPastedContent({ type: "Image", paintable: texture });
             return true;
         },
         [],
@@ -192,8 +191,7 @@ const ClipboardDemo = ({ window }: DemoProps) => {
             const value = await clipboard.readValueAsync(getGdkPaintableType(), 0);
             const obj = value.getObject();
             if (!obj) return false;
-            const paintable = getNativeInterface(obj, Gdk.Paintable);
-            if (paintable) setPastedContent({ type: "Image", paintable });
+            setPastedContent({ type: "Image", paintable: obj as Gdk.Paintable });
             return true;
         },
         [],

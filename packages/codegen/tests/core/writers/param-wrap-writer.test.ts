@@ -48,6 +48,7 @@ describe("needsParamWrap", () => {
             needsWrap: true,
             needsTargetClass: false,
             targetClass: undefined,
+            isInterface: false,
             tsType: "Gtk.Widget",
         });
     });
@@ -58,6 +59,7 @@ describe("needsParamWrap", () => {
             needsWrap: true,
             needsTargetClass: true,
             targetClass: "Gtk.Editable",
+            isInterface: true,
             tsType: "Gtk.Editable",
         });
     });
@@ -72,6 +74,7 @@ describe("needsParamWrap", () => {
             needsWrap: true,
             needsTargetClass: true,
             targetClass: ts,
+            isInterface: false,
             tsType: ts,
         });
     });
@@ -82,6 +85,7 @@ describe("needsParamWrap", () => {
             needsWrap: false,
             needsTargetClass: false,
             targetClass: undefined,
+            isInterface: false,
             tsType: "number",
         });
     });
@@ -93,19 +97,34 @@ describe("writeWrapExpression", () => {
             needsWrap: false,
             needsTargetClass: false,
             targetClass: undefined,
+            isInterface: false,
             tsType: "number",
         };
         expect(writeWrapExpression("args[0]", info)).toBe("args[0] as number");
     });
 
-    it("calls getNativeObject with the target class when one is supplied", () => {
+    it("calls getNativeObjectAsInterface with the target class for interface types", () => {
         const info: ParamWrapInfo = {
             needsWrap: true,
             needsTargetClass: true,
             targetClass: "Gtk.Editable",
+            isInterface: true,
             tsType: "Gtk.Editable",
         };
-        expect(writeWrapExpression("args[1]", info)).toBe("getNativeObject(args[1] as NativeHandle, Gtk.Editable)");
+        expect(writeWrapExpression("args[1]", info)).toBe(
+            "getNativeObjectAsInterface(args[1] as NativeHandle, Gtk.Editable)",
+        );
+    });
+
+    it("calls getNativeObject with the target class for boxed-like types", () => {
+        const info: ParamWrapInfo = {
+            needsWrap: true,
+            needsTargetClass: true,
+            targetClass: "GError",
+            isInterface: false,
+            tsType: "GError",
+        };
+        expect(writeWrapExpression("args[1]", info)).toBe("getNativeObject(args[1] as NativeHandle, GError)");
     });
 
     it("falls back to a single-argument getNativeObject cast when no target class is supplied", () => {
@@ -113,6 +132,7 @@ describe("writeWrapExpression", () => {
             needsWrap: true,
             needsTargetClass: false,
             targetClass: undefined,
+            isInterface: false,
             tsType: "Gtk.Widget",
         };
         expect(writeWrapExpression("args[0]", info)).toBe("getNativeObject(args[0] as NativeHandle) as Gtk.Widget");
@@ -126,6 +146,7 @@ describe("buildCallbackWrapperExpression", () => {
                 needsWrap: true,
                 needsTargetClass: false,
                 targetClass: undefined,
+                isInterface: false,
                 tsType: "Gtk.Widget",
             } as ParamWrapInfo,
         },
@@ -134,6 +155,7 @@ describe("buildCallbackWrapperExpression", () => {
                 needsWrap: false,
                 needsTargetClass: false,
                 targetClass: undefined,
+                isInterface: false,
                 tsType: "number",
             } as ParamWrapInfo,
         },

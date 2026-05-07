@@ -5,6 +5,7 @@ export type ParamWrapInfo = {
     needsWrap: boolean;
     needsTargetClass: boolean;
     targetClass: string | undefined;
+    isInterface: boolean;
     tsType: string;
 };
 
@@ -23,20 +24,17 @@ export function needsParamWrap(mappedType: MappedType): ParamWrapInfo {
     const tsType = mappedType.ts;
 
     if (ffiType === "gobject" && mappedType.kind !== "interface") {
-        return { needsWrap: true, needsTargetClass: false, targetClass: undefined, tsType };
+        return { needsWrap: true, needsTargetClass: false, targetClass: undefined, isInterface: false, tsType };
     }
 
-    const needsTargetClass =
-        (ffiType === "gobject" && mappedType.kind === "interface") ||
-        ffiType === "boxed" ||
-        ffiType === "struct" ||
-        ffiType === "fundamental";
+    const isInterface = ffiType === "gobject" && mappedType.kind === "interface";
+    const needsTargetClass = isInterface || ffiType === "boxed" || ffiType === "struct" || ffiType === "fundamental";
 
     if (needsTargetClass) {
-        return { needsWrap: true, needsTargetClass: true, targetClass: mappedType.ts, tsType };
+        return { needsWrap: true, needsTargetClass: true, targetClass: mappedType.ts, isInterface, tsType };
     }
 
-    return { needsWrap: false, needsTargetClass: false, targetClass: undefined, tsType };
+    return { needsWrap: false, needsTargetClass: false, targetClass: undefined, isInterface: false, tsType };
 }
 
 export function writeWrapExpression(argName: string, wrapInfo: ParamWrapInfo): string {
@@ -44,6 +42,9 @@ export function writeWrapExpression(argName: string, wrapInfo: ParamWrapInfo): s
         return `${argName} as ${wrapInfo.tsType}`;
     }
     if (wrapInfo.needsTargetClass && wrapInfo.targetClass) {
+        if (wrapInfo.isInterface) {
+            return `getNativeObjectAsInterface(${argName} as NativeHandle, ${wrapInfo.targetClass})`;
+        }
         return `getNativeObject(${argName} as NativeHandle, ${wrapInfo.targetClass})`;
     }
     return `getNativeObject(${argName} as NativeHandle) as ${wrapInfo.tsType}`;

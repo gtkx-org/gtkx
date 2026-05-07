@@ -231,14 +231,6 @@ export class FfiGenerator {
             );
         }
 
-        cls.addProperty(
-            property("objectType", {
-                isStatic: true,
-                readonly: true,
-                initializer: '"boxed" as const',
-            }),
-        );
-
         if (record.methods.length > 0) {
             const methodBody = createMethodBodyWriter(this.ffiMapper, file, {
                 sharedLibrary: generatorOptions.sharedLibrary,
@@ -253,7 +245,6 @@ export class FfiGenerator {
 
             if (supportedMethods.length > 0) {
                 file.addImport("../../object.js", ["NativeHandle"]);
-                file.addImport("../../registry.js", ["getNativeObject"]);
 
                 for (const m of supportedMethods) {
                     const methodName = toValidMemberName(toCamelCase(m.name));

@@ -639,8 +639,6 @@ export class MethodBodyWriter {
         const ownClassName = options.ownClassName;
         const wrapInfo = this.needsObjectWrap(shape.returnTypeMapping);
         const hasReturnValue = shape.hasOriginalReturn;
-        const hasOwnClassReturn = ownClassName !== undefined;
-        const hasObjectWrapReturn = wrapInfo.needsWrap && hasReturnValue;
         const hasRefHandleHidden = shape.hiddenOuts.some((h) => h.kind === "ref-handle");
 
         if (options.throws) {
@@ -648,12 +646,7 @@ export class MethodBodyWriter {
             this.setupGErrorImports();
         }
 
-        if (
-            hasOwnClassReturn ||
-            hasObjectWrapReturn ||
-            (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) ||
-            hasRefHandleHidden
-        ) {
+        if (hasRefHandleHidden) {
             this.imports.addImport("../../registry.js", ["getNativeObject"]);
         }
 
@@ -776,19 +769,17 @@ export class MethodBodyWriter {
         ownClassName: string | undefined,
     ): void {
         this.writeRefHandleRewrap(writer, shape);
-        if (ownClassName !== undefined) {
-            writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${ownClassName});`);
-            return;
-        }
-        const baseReturnType = shape.originalReturnTsType;
-        if (shape.originalReturnNullable) {
+        const baseReturnType = ownClassName ?? shape.originalReturnTsType;
+        if (ownClassName === undefined && shape.originalReturnNullable) {
             writer.writeLine("if (ptr === null) return null;");
         }
-        const needsTypedWrap =
-            wrapInfo.needsBoxedWrap ||
-            wrapInfo.needsFundamentalWrap ||
-            wrapInfo.needsStructWrap ||
-            wrapInfo.needsInterfaceWrap;
+        if (wrapInfo.needsInterfaceWrap) {
+            this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
+            writer.writeLine(`return getNativeObjectAsInterface(ptr as NativeHandle, ${baseReturnType});`);
+            return;
+        }
+        this.imports.addImport("../../registry.js", ["getNativeObject"]);
+        const needsTypedWrap = wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsStructWrap;
         if (needsTypedWrap) {
             writer.writeLine(`return getNativeObject(ptr as NativeHandle, ${baseReturnType});`);
         } else {
@@ -799,10 +790,12 @@ export class MethodBodyWriter {
     private writeArrayItemReturn(writer: Writer, shape: CallableShape, wrapInfo: ObjectWrapInfo): void {
         this.writeRefHandleRewrap(writer, shape);
         if (wrapInfo.arrayItemIsInterface) {
+            this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
             writer.writeLine(
-                `return arr.map((item) => getNativeObject(item as NativeHandle, ${wrapInfo.arrayItemType}));`,
+                `return arr.map((item) => getNativeObjectAsInterface(item as NativeHandle, ${wrapInfo.arrayItemType}));`,
             );
         } else {
+            this.imports.addImport("../../registry.js", ["getNativeObject"]);
             writer.writeLine(
                 `return arr.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType});`,
             );
@@ -948,13 +941,10 @@ export class MethodBodyWriter {
         const { resultExpression, hasReturnValue, ownClassName, baseReturnType } = info;
         if (!hasReturnValue || resultExpression === null) return null;
 
-        if (ownClassName !== undefined) {
-            return `getNativeObject(${resultExpression} as NativeHandle, ${ownClassName})`;
-        }
-
-        if (wrapInfo.needsWrap) {
-            const wrapped = this.formatObjectWrap(resultExpression, baseReturnType, wrapInfo);
-            if (shape.originalReturnNullable) {
+        if (ownClassName !== undefined || wrapInfo.needsWrap) {
+            const targetType = ownClassName ?? baseReturnType;
+            const wrapped = this.formatObjectWrap(resultExpression, targetType, wrapInfo);
+            if (ownClassName === undefined && shape.originalReturnNullable) {
                 writer.writeLine(
                     `const ${resultExpression}Wrapped = ${resultExpression} === null ? null : ${wrapped};`,
                 );
@@ -964,9 +954,12 @@ export class MethodBodyWriter {
         }
 
         if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
-            return wrapInfo.arrayItemIsInterface
-                ? `${resultExpression}.map((item) => getNativeObject(item as NativeHandle, ${wrapInfo.arrayItemType}))`
-                : `${resultExpression}.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType})`;
+            if (wrapInfo.arrayItemIsInterface) {
+                this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
+                return `${resultExpression}.map((item) => getNativeObjectAsInterface(item as NativeHandle, ${wrapInfo.arrayItemType}))`;
+            }
+            this.imports.addImport("../../registry.js", ["getNativeObject"]);
+            return `${resultExpression}.map((item) => getNativeObject(item as NativeHandle) as ${wrapInfo.arrayItemType})`;
         }
 
         if (wrapInfo.needsHashTableWrap) {
@@ -1103,12 +1096,12 @@ export class MethodBodyWriter {
         baseReturnType: string,
         wrapInfo: ReturnType<MethodBodyWriter["needsObjectWrap"]>,
     ): string {
-        if (
-            wrapInfo.needsBoxedWrap ||
-            wrapInfo.needsFundamentalWrap ||
-            wrapInfo.needsStructWrap ||
-            wrapInfo.needsInterfaceWrap
-        ) {
+        if (wrapInfo.needsInterfaceWrap) {
+            this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
+            return `getNativeObjectAsInterface(${ptrExpr} as NativeHandle, ${baseReturnType})`;
+        }
+        this.imports.addImport("../../registry.js", ["getNativeObject"]);
+        if (wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsStructWrap) {
             return `getNativeObject(${ptrExpr} as NativeHandle, ${baseReturnType})`;
         }
         return `getNativeObject(${ptrExpr} as NativeHandle) as ${baseReturnType}`;
@@ -1163,7 +1156,10 @@ export class MethodBodyWriter {
 
         for (const w of wrapInfos) {
             if (w.wrapInfo.needsWrap) {
-                this.imports.addImport("../../registry.js", ["getNativeObject"]);
+                this.imports.addImport(
+                    "../../registry.js",
+                    w.wrapInfo.isInterface ? ["getNativeObjectAsInterface"] : ["getNativeObject"],
+                );
             }
             this.addTypeImportsFromMapping(w.mapped);
         }

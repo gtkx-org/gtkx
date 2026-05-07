@@ -80,7 +80,7 @@ describe("RecordGenerator", () => {
             expect(code).toContain('"GdkRectangle"');
         });
 
-        it("adds objectType as boxed when glibTypeName present", () => {
+        it("does not emit objectType when glibTypeName present", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -91,11 +91,10 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("objectType");
-            expect(code).toContain('"boxed"');
+            expect(code).not.toContain("objectType");
         });
 
-        it("adds objectType as struct when no glibTypeName", () => {
+        it("does not emit objectType when no glibTypeName", () => {
             const { generator, file } = createTestSetup();
             const record = createNormalizedRecord({
                 name: "Rectangle",
@@ -106,11 +105,10 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(file);
-            expect(code).toContain("objectType");
-            expect(code).toContain('"struct"');
+            expect(code).not.toContain("objectType");
         });
 
-        it("adds objectType as fundamental for records with copy/free functions", () => {
+        it("does not emit objectType for fundamental records", () => {
             const glibNs = createNormalizedNamespace({ name: "GLib" });
             const namespaces = new Map([["GLib", glibNs]]);
             const repo = createMockRepository(namespaces);
@@ -135,7 +133,7 @@ describe("RecordGenerator", () => {
             generator.generate(record);
 
             const code = stringify(glibFile);
-            expect(code).toContain('"fundamental"');
+            expect(code).not.toContain("objectType");
         });
 
         it("adds registerNativeClass call when glibTypeName present", () => {

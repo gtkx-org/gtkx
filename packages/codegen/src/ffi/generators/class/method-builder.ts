@@ -140,7 +140,6 @@ export class MethodBuilder {
             finishMethod.returnType.transferOwnership,
         );
         addTypeImports(this.imports, returnTypeMapping.imports);
-        this.imports.addImport("../../registry.js", ["getNativeObject"]);
 
         const innerReturnType = formatNullableReturn(returnTypeMapping.ts, finishMethod.returnType.nullable === true);
         const promiseReturnType = `Promise<${innerReturnType}>`;
@@ -212,15 +211,11 @@ export class MethodBuilder {
             this.imports.addImport("@gtkx/native", ["createRef"]);
             this.methodBody.setupGErrorImports();
         }
-        if (
-            hasReturnValue &&
-            (wrapInfo.needsWrap ||
-                wrapInfo.needsBoxedWrap ||
-                wrapInfo.needsFundamentalWrap ||
-                wrapInfo.needsStructWrap ||
-                wrapInfo.needsInterfaceWrap)
-        ) {
-            this.imports.addImport("../../registry.js", ["getNativeObject"]);
+        if (hasReturnValue && wrapInfo.needsWrap) {
+            this.imports.addImport(
+                "../../registry.js",
+                wrapInfo.needsInterfaceWrap ? ["getNativeObjectAsInterface"] : ["getNativeObject"],
+            );
         }
 
         const asyncShape = this.methodBody.buildShape(asyncParams, undefined, 1);
@@ -379,12 +374,10 @@ export class MethodBuilder {
             });
             writer.writeLine("}");
         }
-        if (
-            ctx.wrapInfo.needsBoxedWrap ||
-            ctx.wrapInfo.needsFundamentalWrap ||
-            ctx.wrapInfo.needsStructWrap ||
-            ctx.wrapInfo.needsInterfaceWrap
-        ) {
+        if (ctx.wrapInfo.needsInterfaceWrap) {
+            this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
+            writer.writeLine(`resolve(getNativeObjectAsInterface(ptr as NativeHandle, ${ctx.baseReturnType}));`);
+        } else if (ctx.wrapInfo.needsBoxedWrap || ctx.wrapInfo.needsFundamentalWrap || ctx.wrapInfo.needsStructWrap) {
             writer.writeLine(`resolve(getNativeObject(ptr as NativeHandle, ${ctx.baseReturnType}));`);
         } else {
             writer.writeLine(`resolve(getNativeObject(ptr as NativeHandle) as ${ctx.baseReturnType});`);

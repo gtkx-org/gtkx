@@ -126,14 +126,14 @@ type GetNativeObjectResult<
 > = T extends null | undefined ? null : TClass extends NativeClass<infer U> ? U : NativeObject;
 
 /**
- * Creates a JavaScript wrapper for a native GObject.
+ * Creates a JavaScript wrapper for a native handle.
  *
- * Resolves the runtime type of the object and creates an instance of the
- * appropriate wrapper class. If a target type is provided, uses that
- * class directly without runtime type resolution.
- *
- * Returns an existing wrapper if one already exists for the same native
- * pointer, ensuring object identity (`===`) works correctly.
+ * When a target class is supplied, instantiates that class directly with
+ * no identity tracking — used for value-style types (boxed, struct,
+ * fundamental, opaque class structures) where each handle is owned per
+ * wrapper. When no target class is supplied, resolves the runtime GLib
+ * type and reuses the registered wrapper instance, preserving object
+ * identity (`===`) for shared GObject pointers.
  *
  * @typeParam T - The handle type (null, undefined, or NativeHandle)
  * @typeParam TClass - Optional target wrapper class type
@@ -143,42 +143,13 @@ type GetNativeObjectResult<
  *
  * @example
  * ```tsx
- * // Automatic type resolution
+ * // Automatic type resolution (identity-tracked GObject)
  * const widget = getNativeObject(widgetHandle);
  *
- * // Explicit type
- * const button = getNativeObject(buttonHandle, Gtk.Button);
+ * // Explicit type (boxed value, no identity tracking)
+ * const rgba = getNativeObject(rgbaHandle, Gdk.RGBA);
  * ```
  */
-function instantiateNonInterface<TClass extends NativeClass>(
-    handle: NativeHandle,
-    targetType: TClass,
-): InstanceType<TClass> {
-    const isIdentityType = targetType.objectType === "gobject" || targetType.objectType === "fundamental";
-
-    if (isIdentityType) {
-        const existing = findNativeObject(handle);
-        if (existing) return existing as InstanceType<TClass>;
-    }
-
-    const instance = new targetType(handle) as InstanceType<TClass>;
-    if (isIdentityType) {
-        registerNativeObject(instance);
-    }
-    return instance;
-}
-
-function instantiateForInterface<TClass extends NativeClass>(
-    handle: NativeHandle,
-    targetType: TClass,
-    runtimeTypeName: string,
-): InstanceType<TClass> {
-    const cls = findNativeClass(runtimeTypeName, false);
-    const instance = (cls ? new cls(handle) : new targetType(handle)) as InstanceType<TClass>;
-    registerNativeObject(instance);
-    return instance;
-}
-
 export function getNativeObject<
     T extends NativeHandle | null | undefined,
     TClass extends NativeClass | undefined = undefined,
@@ -189,25 +160,52 @@ export function getNativeObject<
         return null as Result;
     }
 
-    if (targetType && targetType.objectType !== "interface") {
-        return instantiateNonInterface(handle, targetType) as Result;
+    if (targetType) {
+        return new targetType(handle) as Result;
     }
 
     const existing = findNativeObject(handle);
     if (existing) return existing as Result;
 
-    const typeInstance = new TypeInstance(handle);
-    const runtimeTypeName = typeNameFromInstance(typeInstance);
-
-    if (targetType && targetType.objectType === "interface") {
-        return instantiateForInterface(handle, targetType, runtimeTypeName) as Result;
-    }
-
+    const runtimeTypeName = typeNameFromInstance(new TypeInstance(handle));
     const cls = findNativeClass(runtimeTypeName);
     if (!cls) {
         throw new Error(`Expected registered GLib type, got '${runtimeTypeName}'`);
     }
 
+    const instance = new cls(handle);
+    registerNativeObject(instance);
+    return instance as Result;
+}
+
+/**
+ * Creates a JavaScript wrapper for a native handle known to implement
+ * a specific GObject interface.
+ *
+ * Resolves the runtime GLib type and instantiates the matching registered
+ * class when present, falling back to the supplied interface class when
+ * no concrete implementation is registered. The result is always assignable
+ * to the interface type, so callers can invoke interface methods on it.
+ *
+ * @typeParam T - The handle type (null, undefined, or NativeHandle)
+ * @typeParam TClass - The interface class type
+ * @param handle - The native handle (or null/undefined)
+ * @param interfaceClass - The interface class to fall back to
+ * @returns A wrapper instance, or null if handle is null/undefined
+ */
+export function getNativeObjectAsInterface<T extends NativeHandle | null | undefined, TClass extends NativeClass>(
+    handle: T,
+    interfaceClass: TClass,
+): T extends null | undefined ? null : InstanceType<TClass> {
+    type Result = T extends null | undefined ? null : InstanceType<TClass>;
+
+    if (handle === null || handle === undefined) return null as Result;
+
+    const existing = findNativeObject(handle);
+    if (existing) return existing as Result;
+
+    const runtimeTypeName = typeNameFromInstance(new TypeInstance(handle));
+    const cls = findNativeClass(runtimeTypeName, false) ?? interfaceClass;
     const instance = new cls(handle);
     registerNativeObject(instance);
     return instance as Result;

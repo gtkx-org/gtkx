@@ -10,7 +10,6 @@ export type { NativeHandle } from "@gtkx/native";
  */
 export abstract class NativeObject {
     static readonly glibTypeName: string;
-    static readonly objectType: "gobject" | "interface" | "boxed" | "struct" | "fundamental";
     // biome-ignore lint/complexity/useLiteralKeys: bracket syntax required to declare the `constructor` field type without overriding the actual constructor signature
     declare ["constructor"]: NativeClass;
     handle: NativeHandle;
@@ -21,13 +20,12 @@ export abstract class NativeObject {
 }
 
 /**
- * Constructor type for a {@link NativeObject} subclass, carrying GLib type
- * metadata (`glibTypeName`, `objectType`) as static properties.
+ * Constructor type for a {@link NativeObject} subclass, carrying the GLib
+ * type name as a static property.
  */
 export type NativeClass<T extends NativeObject = NativeObject> = (new (
     // biome-ignore lint/suspicious/noExplicitAny: Required for contravariant constructor type compatibility
     ...args: any[]
 ) => T) & {
     readonly glibTypeName: string;
-    readonly objectType: "gobject" | "interface" | "boxed" | "struct" | "fundamental";
 };
