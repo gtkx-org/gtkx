@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { fireEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { passwordEntryDemo } from "../../../src/demos/input/password-entry.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -56,9 +56,10 @@ describe("passwordEntryDemo form behavior", () => {
         if (!pwd || !confirm) throw new Error("expected two password entries");
         pwd.setText("hunter2");
         confirm.setText("hunter2");
-        await new Promise((resolve) => setTimeout(resolve, 30));
-        const button = findDoneButton(container);
-        expect(button?.getSensitive()).toBe(true);
+        await waitFor(() => {
+            const button = findDoneButton(container);
+            expect(button?.getSensitive()).toBe(true);
+        });
     });
 
     it("keeps the Done button disabled when passwords differ", async () => {
@@ -67,9 +68,11 @@ describe("passwordEntryDemo form behavior", () => {
         if (!pwd || !confirm) throw new Error("expected two password entries");
         pwd.setText("hunter2");
         confirm.setText("different");
-        await new Promise((resolve) => setTimeout(resolve, 30));
-        const button = findDoneButton(container);
-        expect(button?.getSensitive()).toBe(false);
+        await waitFor(() => {
+            const button = findDoneButton(container);
+            expect(button).not.toBeNull();
+            expect(button?.getSensitive()).toBe(false);
+        });
     });
 
     it("invokes onClose when the Done button is activated with matching passwords", async () => {
@@ -79,10 +82,12 @@ describe("passwordEntryDemo form behavior", () => {
         if (!pwd || !confirm) throw new Error("expected two password entries");
         pwd.setText("abc");
         confirm.setText("abc");
-        await new Promise((resolve) => setTimeout(resolve, 30));
-        const button = findDoneButton(container);
-        expect(button).not.toBeNull();
-        if (button) await fireEvent(button, "clicked");
+        const button = await waitFor(() => {
+            const candidate = findDoneButton(container);
+            expect(candidate?.getSensitive()).toBe(true);
+            return candidate as Gtk.Button;
+        });
+        await fireEvent(button, "clicked");
         expect(onClose).toHaveBeenCalled();
     });
 });

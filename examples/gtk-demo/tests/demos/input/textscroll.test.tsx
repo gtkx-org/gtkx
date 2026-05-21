@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textscrollDemo } from "../../../src/demos/input/textscroll.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -62,12 +63,13 @@ describe("textscrollDemo", () => {
         if (!textscrollDemo.component) throw new Error("textscroll demo component missing");
         const { container } = await renderDemo(textscrollDemo.component);
         const textViews = findAllByType(container, Gtk.TextView);
-        await new Promise((resolve) => setTimeout(resolve, 250));
-        for (const view of textViews) {
-            const buffer = view.getBuffer();
-            const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
-            const expected = text.includes("Scroll to end") || text.includes("Scroll to bottom");
-            expect(expected).toBe(true);
-        }
+        await waitFor(() => {
+            for (const view of textViews) {
+                const buffer = view.getBuffer();
+                const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
+                const expected = text.includes("Scroll to end") || text.includes("Scroll to bottom");
+                expect(expected).toBe(true);
+            }
+        });
     });
 });

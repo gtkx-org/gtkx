@@ -32,7 +32,9 @@ function loadInitialWords(): string[] {
                 .split("\n")
                 .map((w) => w.trim())
                 .filter((w) => w.length > 0);
-        } catch {}
+        } catch (e) {
+            if (e instanceof Error) console.error(e.message);
+        }
     }
     return LOREM_IPSUM.split(" ");
 }
@@ -52,7 +54,11 @@ const loadWordsFromFile = async (
             .filter((w) => w.length > 0);
         setWords(wordList);
         setSearchText("");
-    } catch {}
+    } catch (e) {
+        const dialog = new Gtk.AlertDialog();
+        dialog.setMessage(`Failure reading words from '${filePath}': ${e}`);
+        dialog.show(null);
+    }
 };
 
 interface FilterCtx {
@@ -195,7 +201,9 @@ const ListViewWordsProvider = ({ window, children }: DemoProviderProps) => {
                 const file = await dialog.open(window.current, null);
                 const path = file.getPath();
                 if (path) await loadFile(path);
-            } catch {}
+            } catch (e) {
+                if (e instanceof Error) console.error(e.message);
+            }
         };
         void run();
     }, [window, loadFile]);

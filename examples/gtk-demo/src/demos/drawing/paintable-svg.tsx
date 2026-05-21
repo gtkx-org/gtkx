@@ -32,7 +32,8 @@ function renderSvgToSurface(path: string, width: number, height: number): ImageS
         const surface = ImageSurface.createFromPng(getTmpPngPath());
         surfaceCache = { surface, path, width, height };
         return surface;
-    } catch {
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
         surfaceCache = null;
         return null;
     }
@@ -52,7 +53,8 @@ const pickSvgFile = async (window: Gtk.Window | null): Promise<string | null> =>
     try {
         const file = await dialog.open(window, null);
         return file.getPath();
-    } catch {
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
         return null;
     }
 };

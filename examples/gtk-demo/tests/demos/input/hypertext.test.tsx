@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { fireEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { hypertextDemo } from "../../../src/demos/input/hypertext.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -145,20 +145,23 @@ describe("hypertextDemo round trip", () => {
         textView.getBuffer().placeCursor(textView.getBuffer().getIterAtOffset(tagsOffset));
         const firstController = findKeyController(textView) as Gtk.EventControllerKey;
         await fireEvent(firstController, "key-pressed", Gdk.KEY_Return, 0, 0);
-        await new Promise((resolve) => setTimeout(resolve, 30));
-        const pageTwo = readBufferText(textView);
-        expect(pageTwo).toContain("attribute that can be applied");
+        const pageTwo = await waitFor(() => {
+            const text = readBufferText(textView);
+            expect(text).toContain("attribute that can be applied");
+            return text;
+        });
         const backOffset = pageTwo.indexOf("Go back");
         expect(backOffset).toBeGreaterThanOrEqual(0);
         const bufferAfter = textView.getBuffer();
         bufferAfter.placeCursor(bufferAfter.getIterAtOffset(backOffset + 1));
         const secondController = findKeyController(textView) as Gtk.EventControllerKey;
         await fireEvent(secondController, "key-pressed", Gdk.KEY_Return, 0, 0);
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        const finalText = readBufferText(textView);
-        const isBackOnPageOne =
-            finalText.includes("can easily be realized with ") || finalText.includes("Some text to show");
-        expect(isBackOnPageOne).toBe(true);
+        await waitFor(() => {
+            const finalText = readBufferText(textView);
+            const isBackOnPageOne =
+                finalText.includes("can easily be realized with ") || finalText.includes("Some text to show");
+            expect(isBackOnPageOne).toBe(true);
+        });
     });
 });
 

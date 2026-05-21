@@ -37,7 +37,9 @@ const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.
     try {
         const file = await dialog.open(window, null);
         setVideoFile(file);
-    } catch {}
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
+    }
 };
 
 interface VideoPlayerContextValue {

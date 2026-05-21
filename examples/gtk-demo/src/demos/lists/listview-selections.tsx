@@ -295,7 +295,9 @@ function loadDirectoryEntries(): DirEntry[] {
             let isDir = false;
             try {
                 isDir = statSync(`${cwd}/${name}`).isDirectory();
-            } catch {}
+            } catch (e) {
+                if (e instanceof Error) console.error(e.message);
+            }
             results.push({
                 path: name,
                 name,
@@ -303,7 +305,8 @@ function loadDirectoryEntries(): DirEntry[] {
             });
         }
         return results.sort((a, b) => a.name.localeCompare(b.name));
-    } catch {
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
         return [];
     }
 }

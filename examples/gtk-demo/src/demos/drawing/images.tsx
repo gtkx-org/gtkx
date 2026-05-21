@@ -30,7 +30,11 @@ function useGifPaintable() {
             mediaFile.setLoop(true);
             mediaFile.play();
             setGifPaintable(mediaFile);
-        } catch {}
+        } catch (e) {
+            const dialog = new Gtk.AlertDialog();
+            dialog.setMessage(`Failure loading GIF '${floppybuddyGifPath}': ${e}`);
+            dialog.show(null);
+        }
     }, []);
     return gifPaintable;
 }

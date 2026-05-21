@@ -46,7 +46,8 @@ function buildNodeFromSettings(settings: Gio.Settings, schemaId: string): Schema
     let childNames: string[];
     try {
         childNames = settings.listChildren().sort();
-    } catch {
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
         childNames = [];
     }
 
@@ -55,7 +56,9 @@ function buildNodeFromSettings(settings: Gio.Settings, schemaId: string): Schema
         try {
             const child = settings.getChild(name);
             children.push(buildNodeFromSettings(child, `${schemaId}.${name}`));
-        } catch {}
+        } catch (e) {
+            if (e instanceof Error) console.error(e.message);
+        }
     }
 
     return { nodeId, schemaId, children };
@@ -110,7 +113,8 @@ function loadKeysForNode(nodeId: string): KeyInfo[] {
                 summary: schemaKey.getSummary() ?? "",
                 description: schemaKey.getDescription() ?? "",
             });
-        } catch {
+        } catch (e) {
+            if (e instanceof Error) console.error(e.message);
             result.push({
                 name: keyName,
                 value: "<error>",
@@ -286,7 +290,8 @@ const commitKeyInfoEdit = ({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
         setKeyInfos((prev) =>
             prev.map((k) => (k.name === keyInfo.name ? { ...k, value: variant.print(false) ?? "" } : k)),
         );
-    } catch {
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
         widget.errorBell();
     }
 };

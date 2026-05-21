@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { fireEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textviewDemo } from "../../../src/demos/input/textview.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -118,9 +118,9 @@ describe("textviewDemo easter egg", () => {
         if (!clonedButton) throw new Error("expected cloned Click Me button");
         const beforeWindows = Gtk.Window.listToplevels().length;
         await fireEvent(clonedButton, "clicked");
-        await new Promise((resolve) => setTimeout(resolve, 30));
-        const afterWindows = Gtk.Window.listToplevels().length;
-        expect(afterWindows).toBeGreaterThan(beforeWindows);
+        await waitFor(() => {
+            expect(Gtk.Window.listToplevels().length).toBeGreaterThan(beforeWindows);
+        });
     });
 
     it("opens the easter-egg via the source Click Me button in the first text view", async () => {
@@ -133,9 +133,9 @@ describe("textviewDemo easter egg", () => {
         if (!sourceButton) throw new Error("expected source Click Me button");
         const beforeWindows = Gtk.Window.listToplevels().length;
         await fireEvent(sourceButton, "clicked");
-        await new Promise((resolve) => setTimeout(resolve, 30));
-        const afterWindows = Gtk.Window.listToplevels().length;
-        expect(afterWindows).toBeGreaterThanOrEqual(beforeWindows);
+        await waitFor(() => {
+            expect(Gtk.Window.listToplevels().length).toBeGreaterThanOrEqual(beforeWindows);
+        });
     });
 
     it("reuses the same easter-egg window on subsequent activations", async () => {
@@ -146,12 +146,16 @@ describe("textviewDemo easter egg", () => {
         if (!view2) throw new Error("expected second text view");
         const clonedButton = findAllByType(view2, Gtk.Button).find((b) => b.getLabel() === "Click Me");
         if (!clonedButton) throw new Error("expected cloned Click Me button");
+        const beforeWindows = Gtk.Window.listToplevels().length;
         await fireEvent(clonedButton, "clicked");
-        await new Promise((resolve) => setTimeout(resolve, 30));
-        const windowCountAfterFirst = Gtk.Window.listToplevels().length;
+        const windowCountAfterFirst = await waitFor(() => {
+            const count = Gtk.Window.listToplevels().length;
+            expect(count).toBeGreaterThan(beforeWindows);
+            return count;
+        });
         await fireEvent(clonedButton, "clicked");
-        await new Promise((resolve) => setTimeout(resolve, 30));
-        const windowCountAfterSecond = Gtk.Window.listToplevels().length;
-        expect(windowCountAfterSecond).toBe(windowCountAfterFirst);
+        await waitFor(() => {
+            expect(Gtk.Window.listToplevels().length).toBe(windowCountAfterFirst);
+        });
     });
 });

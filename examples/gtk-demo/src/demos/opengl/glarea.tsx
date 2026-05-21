@@ -158,7 +158,8 @@ const renderGLArea = ({ glAreaRef, glStateRef, rotationX, rotationY, rotationZ }
     if (!glStateRef.current && !glAreaRef.current?.getError()) {
         try {
             glStateRef.current = initGL();
-        } catch {
+        } catch (e) {
+            if (e instanceof Error) console.error(e.message);
             glStateRef.current = null;
         }
     }

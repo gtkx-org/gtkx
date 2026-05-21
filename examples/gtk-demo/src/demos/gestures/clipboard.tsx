@@ -163,7 +163,8 @@ function useDragProviders(state: ClipboardState) {
         try {
             const texture = Gdk.Texture.newFromFilename(path);
             return Gdk.ContentProvider.newForValue(makeValue(getGdkPaintableType(), (v) => v.setObject(texture)));
-        } catch {
+        } catch (e) {
+            if (e instanceof Error) console.error(e.message);
             return null;
         }
     }, [selectedImage]);
@@ -201,7 +202,9 @@ const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) =
             clipboard,
             makeValue(getGdkPaintableType(), (v) => v.setObject(texture)),
         );
-    } catch {}
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
+    }
 };
 
 const copyFileToClipboard = (clipboard: Gdk.Clipboard, sourceFile: Gio.File) =>
@@ -233,7 +236,9 @@ function useClipboardHandlers(state: ClipboardState, window: React.RefObject<Gtk
             if (await tryPasteColor(clipboard, formats, setPastedContent)) return;
             if (await tryPasteFile(clipboard, formats, setPastedContent)) return;
             await tryPasteText(clipboard, formats, setPastedContent);
-        } catch {}
+        } catch (e) {
+            if (e instanceof Error) console.error(e.message);
+        }
     }, [setPastedContent]);
 
     const handleFileSelect = useCallback(
@@ -328,7 +333,9 @@ const openFileDialog = async (
     try {
         const file = kind === "file" ? await dialog.open(window, null) : await dialog.selectFolder(window, null);
         setSourceFile(file);
-    } catch {}
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
+    }
 };
 
 const handleClipboardDrop = (value: GObject.Value, setPastedContent: SetPastedContent): boolean => {

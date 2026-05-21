@@ -48,7 +48,8 @@ const loadKeyItem = (schemaId: string, schema: Gio.SettingsSchema, settings: Gio
             summary: schemaKey.getSummary() ?? "",
             valueType: schemaKey.getValueType().dupString() ?? "",
         };
-    } catch {
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
         return {
             id: `${schemaId}/${name}`,
             name,
@@ -71,7 +72,8 @@ const loadSchemaKeysFor = (source: Gio.SettingsSchemaSource, schemaId: string): 
         const keys = schema.listKeys().map((name) => loadKeyItem(schemaId, schema, settings, name));
         keys.sort((a, b) => a.name.localeCompare(b.name));
         return keys;
-    } catch {
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
         return null;
     }
 };
@@ -144,7 +146,8 @@ const commitSettingValue = (key: KeyItem, entry: Gtk.Entry, keysState: React.Ref
         const settings = Gio.Settings.new(key.schemaId);
         settings.setValue(key.name, variant);
         keysState.current.set(key.id, variant.print(false) ?? "");
-    } catch {
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
         revertEntry(entry, key, keysState);
     }
 };
