@@ -75,7 +75,7 @@
         "react-refresh": "^0.18.0",
         "tinyexec": "^1.1.2",
         "typescript": "^6.0.3",
-        "vite": "^8.0.13"
+        "vite": "^8.0.14"
     },
     "devDependencies": {
         "@gtkx/testing": "workspace:*",
