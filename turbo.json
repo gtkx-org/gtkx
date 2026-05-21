@@ -124,11 +124,6 @@
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
-        "@gtkx/ffi#conformance": {
-            "inputs": ["src/**/*.ts", "src/generated/**/*.js", "src/generated/**/*.d.ts", "scripts/conformance.ts"],
-            "outputs": [],
-            "outputLogs": "new-only"
-        },
         "@gtkx/native#typecheck": {
             "dependsOn": ["^build", "native-build"],
             "inputs": ["*.ts", "tests/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],

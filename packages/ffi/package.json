@@ -71,7 +71,6 @@
     "scripts": {
         "build": "tsc -b && pnpm run copy-generated-dts",
         "copy-generated-dts": "node scripts/copy-generated-dts.ts",
-        "conformance": "node scripts/conformance.ts",
         "postinstall": "node scripts/postinstall.ts",
         "test": "vitest run",
         "coverage": "vitest run --coverage",

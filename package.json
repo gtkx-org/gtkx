@@ -9,7 +9,6 @@
     "scripts": {
         "build": "turbo build --filter=!website --filter=!gtkx && node scripts/copy-readme.ts",
         "codegen": "node --conditions=source --import tsx packages/cli/src/cli.ts codegen",
-        "conformance": "turbo conformance --filter=@gtkx/ffi",
         "docs": "turbo build --filter=website",
         "circular": "dpdm --no-warning --no-tree --transform -T --skip-dynamic-imports circular --exit-code circular:1 --exclude '(node_modules|dist|generated|out-tsc)' 'packages/{cli,codegen,css,e2e,ffi,mcp,react,testing,vitest}/src/**/*.{ts,tsx}'",
         "knip": "knip",
