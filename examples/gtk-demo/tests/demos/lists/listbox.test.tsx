@@ -19,7 +19,7 @@ describe("listboxDemo metadata", () => {
 });
 
 describe("listboxDemo rendering", () => {
-    it("renders the header label inside the demo", { timeout: 15000 }, async () => {
+    it("renders the header label inside the demo", async () => {
         if (!listboxDemo.component) throw new Error("listbox demo component missing");
         const { container } = await renderDemo(listboxDemo.component);
         const labels = findAll(container, Gtk.Label);
@@ -27,7 +27,7 @@ describe("listboxDemo rendering", () => {
         expect(titles).toContain("Messages from GTK and friends");
     });
 
-    it("wraps the list box in a scrolled window with the expected policies", { timeout: 15000 }, async () => {
+    it("wraps the list box in a scrolled window with the expected policies", async () => {
         if (!listboxDemo.component) throw new Error("listbox demo component missing");
         const { container } = await renderDemo(listboxDemo.component);
         const sw = findFirst(container, Gtk.ScrolledWindow);
@@ -37,7 +37,7 @@ describe("listboxDemo rendering", () => {
         expect(v).toBe(Gtk.PolicyType.AUTOMATIC);
     });
 
-    it("renders a GtkListBox configured for double-click activation", { timeout: 15000 }, async () => {
+    it("renders a GtkListBox configured for double-click activation", async () => {
         if (!listboxDemo.component) throw new Error("listbox demo component missing");
         const { container } = await renderDemo(listboxDemo.component);
         const listBox = findFirst(container, Gtk.ListBox);
@@ -45,7 +45,7 @@ describe("listboxDemo rendering", () => {
         expect(listBox?.getActivateOnSingleClick()).toBe(false);
     });
 
-    it("renders one row per message in the parsed dataset", { timeout: 15000 }, async () => {
+    it("renders one row per message in the parsed dataset", async () => {
         if (!listboxDemo.component) throw new Error("listbox demo component missing");
         const { container } = await renderDemo(listboxDemo.component);
         const rows = findAll(container, Gtk.ListBoxRow);
@@ -56,7 +56,7 @@ describe("listboxDemo rendering", () => {
 });
 
 describe("listboxDemo row interaction", () => {
-    it("toggles the message details revealer when a row is activated", { timeout: 15000 }, async () => {
+    it("toggles the message details revealer when a row is activated", async () => {
         if (!listboxDemo.component) throw new Error("listbox demo component missing");
         const { container } = await renderDemo(listboxDemo.component);
         const listBox = findFirst(container, Gtk.ListBox);
@@ -70,7 +70,7 @@ describe("listboxDemo row interaction", () => {
         expect(after).toBe(!before);
     });
 
-    it("returns to the initial revealer state after a second activation", { timeout: 15000 }, async () => {
+    it("returns to the initial revealer state after a second activation", async () => {
         if (!listboxDemo.component) throw new Error("listbox demo component missing");
         const { container } = await renderDemo(listboxDemo.component);
         const listBox = findFirst(container, Gtk.ListBox);
@@ -86,7 +86,7 @@ describe("listboxDemo row interaction", () => {
 });
 
 describe("listboxDemo expand / hide button", () => {
-    it("toggles the row revealer when the expand button is clicked", { timeout: 15000 }, async () => {
+    it("toggles the row revealer when the expand button is clicked", async () => {
         if (!listboxDemo.component) throw new Error("listbox demo component missing");
         const { container } = await renderDemo(listboxDemo.component);
         const firstRow = findAll(container, Gtk.ListBoxRow)[0];
@@ -103,7 +103,7 @@ describe("listboxDemo expand / hide button", () => {
 });
 
 describe("listboxDemo row state flags", () => {
-    it("reveals the per-row action buttons when state flags change", { timeout: 15000 }, async () => {
+    it("reveals the per-row action buttons when state flags change", async () => {
         if (!listboxDemo.component) throw new Error("listbox demo component missing");
         const { container } = await renderDemo(listboxDemo.component);
         const firstRow = findAll(container, Gtk.ListBoxRow)[0];
