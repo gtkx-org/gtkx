@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import ejs from "ejs";
-import type { TestingOption } from "./create.js";
+import type { TestingOption } from "./create/options.js";
 
 export type TemplateContext = {
     name: string;

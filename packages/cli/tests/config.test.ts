@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defineConfig, isValidAppId } from "../src/config.js";
-import { isValidProjectName } from "../src/create.js";
+import { isValidProjectName } from "../src/create/options.js";
 
 describe("defineConfig", () => {
     it("returns the config unchanged when valid", () => {

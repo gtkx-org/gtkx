@@ -1,8 +1,7 @@
 import { join, resolve } from "node:path";
 import { isValidAppId } from "../config.js";
-import type { TestingOption } from "../create.js";
-import { isValidProjectName } from "../create.js";
 import type { TemplateContext } from "../templates.js";
+import { isValidProjectName, type TestingOption } from "./options.js";
 
 /**
  * Supported package managers for GTKX projects.
