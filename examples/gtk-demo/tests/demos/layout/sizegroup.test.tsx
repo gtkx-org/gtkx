@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, screen } from "@gtkx/testing";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { sizegroupDemo } from "../../../src/demos/layout/sizegroup.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -100,7 +100,7 @@ describe("sizegroupDemo check button", () => {
         const [check] = findAllOfType(container, Gtk.CheckButton);
         if (!check) throw new Error("expected check button");
         expect(check.getActive()).toBe(true);
-        check.setActive(false);
+        await act(() => check.setActive(false));
         await fireEvent(check, "toggled");
         expect(check.getActive()).toBe(false);
     });
@@ -122,7 +122,7 @@ describe("sizegroupDemo dropdowns", () => {
         const { container } = await renderDemo(sizegroupDemo.component);
         const [foreground] = findAllOfType(container, Gtk.DropDown);
         if (!foreground) throw new Error("expected foreground dropdown");
-        foreground.setSelected(2);
+        await act(() => foreground.setSelected(2));
         expect(foreground.getSelected()).toBe(2);
     });
 });

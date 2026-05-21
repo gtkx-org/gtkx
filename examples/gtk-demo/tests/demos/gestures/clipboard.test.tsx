@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { act, fireEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { clipboardDemo } from "../../../src/demos/gestures/clipboard.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
@@ -115,7 +115,7 @@ describe("clipboardDemo entry interactions", () => {
         const { container } = await renderDemo(clipboardDemo.component);
         const entry = findFirstOfType(container, Gtk.Entry);
         if (!entry) throw new Error("entry missing");
-        entry.setText("hello clipboard");
+        await act(() => entry.setText("hello clipboard"));
         await fireEvent(entry, "changed");
         expect(entry.getText()).toBe("hello clipboard");
     });
@@ -128,7 +128,7 @@ describe("clipboardDemo entry interactions", () => {
         const copyButton = findButtonByLabel(container, "_Copy");
         if (!copyButton) throw new Error("copy button missing");
         expect(copyButton.getSensitive()).toBe(true);
-        entry.setText("");
+        await act(() => entry.setText(""));
         await fireEvent(entry, "changed");
         expect(copyButton.getSensitive()).toBe(false);
     });
@@ -140,10 +140,10 @@ describe("clipboardDemo entry interactions", () => {
         if (!entry) throw new Error("entry missing");
         const copyButton = findButtonByLabel(container, "_Copy");
         if (!copyButton) throw new Error("copy button missing");
-        entry.setText("");
+        await act(() => entry.setText(""));
         await fireEvent(entry, "changed");
         expect(copyButton.getSensitive()).toBe(false);
-        entry.setText("retyped");
+        await act(() => entry.setText("retyped"));
         await fireEvent(entry, "changed");
         expect(copyButton.getSensitive()).toBe(true);
     });

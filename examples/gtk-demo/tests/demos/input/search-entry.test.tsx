@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { act, fireEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { searchEntryDemo } from "../../../src/demos/input/search-entry.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -59,7 +59,7 @@ describe("searchEntryDemo interactions", () => {
         const { container } = await renderDemo(searchEntryDemo);
         const toggle = findFirstByType(container, Gtk.ToggleButton);
         if (!toggle) throw new Error("expected toggle button");
-        toggle.setActive(true);
+        await act(() => toggle.setActive(true));
         await fireEvent(toggle, "toggled");
         expect(toggle.getActive()).toBe(true);
         const searchBar = findFirstByType(container, Gtk.SearchBar);
@@ -70,7 +70,7 @@ describe("searchEntryDemo interactions", () => {
         const { container } = await renderDemo(searchEntryDemo);
         const entry = findFirstByType(container, Gtk.SearchEntry);
         if (!entry) throw new Error("expected search entry");
-        entry.setText("rocket");
+        await act(() => entry.setText("rocket"));
         await fireEvent(entry, "search-changed");
         const labels = findAllByType(container, Gtk.Label).map((l) => l.getLabel());
         expect(labels).toContain("rocket");
@@ -81,7 +81,7 @@ describe("searchEntryDemo interactions", () => {
         const toggle = findFirstByType(container, Gtk.ToggleButton);
         const searchBar = findFirstByType(container, Gtk.SearchBar);
         if (!toggle || !searchBar) throw new Error("expected toggle and search bar");
-        searchBar.setSearchMode(true);
+        await act(() => searchBar.setSearchMode(true));
         await fireEvent(searchBar, "notify::search-mode-enabled");
         expect(searchBar.getSearchMode()).toBe(true);
         expect(toggle.getActive()).toBe(true);

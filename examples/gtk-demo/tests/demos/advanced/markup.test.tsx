@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, screen } from "@gtkx/testing";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { markupDemo } from "../../../src/demos/advanced/markup.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
@@ -86,7 +86,7 @@ describe("markupDemo toggle interaction", () => {
             name: "Source",
         })) as Gtk.CheckButton;
 
-        sourceToggle.setActive(true);
+        await act(() => sourceToggle.setActive(true));
         await fireEvent(sourceToggle, "toggled");
 
         const stack = findStack(container);
@@ -99,16 +99,16 @@ describe("markupDemo toggle interaction", () => {
             name: "Source",
         })) as Gtk.CheckButton;
 
-        sourceToggle.setActive(true);
+        await act(() => sourceToggle.setActive(true));
         await fireEvent(sourceToggle, "toggled");
 
         const textViews = collectTextViews(container);
         const sourceView = textViews.find((tv) => tv.getEditable());
         if (!sourceView) throw new Error("source view not found");
         const buffer = sourceView.getBuffer();
-        buffer.setText("Hello <b>World</b>", -1);
+        await act(() => buffer.setText("Hello <b>World</b>", -1));
 
-        sourceToggle.setActive(false);
+        await act(() => sourceToggle.setActive(false));
         await fireEvent(sourceToggle, "toggled");
 
         const stack = findStack(container);

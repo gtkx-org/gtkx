@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, screen } from "@gtkx/testing";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fontFeaturesDemo } from "../../../src/demos/advanced/font-features.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
@@ -110,7 +110,7 @@ describe("fontFeaturesDemo view mode buttons", () => {
         const waterfall = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Waterfall",
         })) as Gtk.ToggleButton;
-        waterfall.setActive(true);
+        await act(() => waterfall.setActive(true));
         await fireEvent(waterfall, "toggled");
         const labels = collectAll(container, (w): w is Gtk.Label => w instanceof Gtk.Label).filter((l) =>
             l.getSelectable(),
@@ -126,9 +126,9 @@ describe("fontFeaturesDemo view mode buttons", () => {
         const waterfall = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Waterfall",
         })) as Gtk.ToggleButton;
-        waterfall.setActive(true);
+        await act(() => waterfall.setActive(true));
         await fireEvent(waterfall, "toggled");
-        plain.setActive(true);
+        await act(() => plain.setActive(true));
         await fireEvent(plain, "toggled");
         expect(plain.getActive()).toBe(true);
     });
@@ -138,7 +138,7 @@ describe("fontFeaturesDemo view mode buttons", () => {
         const editToggles = collectAll(container, (w): w is Gtk.ToggleButton => w instanceof Gtk.ToggleButton);
         const editBtn = editToggles.find((b) => b.getIconName() === "document-edit-symbolic");
         if (!editBtn) throw new Error("edit toggle not found");
-        editBtn.setActive(true);
+        await act(() => editBtn.setActive(true));
         await fireEvent(editBtn, "toggled");
 
         const stack = findFirst(container, (w): w is Gtk.Stack => w instanceof Gtk.Stack);
@@ -182,7 +182,7 @@ describe("fontFeaturesDemo feature toggling", () => {
         await expandFeatures(container);
         const kerning = findCheckButtonByLabel(container, "Kerning");
         if (!kerning) throw new Error("Kerning check not found");
-        kerning.setActive(true);
+        await act(() => kerning.setActive(true));
         await fireEvent(kerning, "toggled");
         const labels = collectAll(container, (w): w is Gtk.Label => w instanceof Gtk.Label).map((l) => l.getLabel());
         expect(labels.some((l) => (l ?? "").includes('"kern"'))).toBe(true);
@@ -193,7 +193,7 @@ describe("fontFeaturesDemo feature toggling", () => {
         await expandFeatures(container);
         const liningFigures = findCheckButtonByLabel(container, "Lining Figures");
         if (!liningFigures) throw new Error("Lining Figures radio not found");
-        liningFigures.setActive(true);
+        await act(() => liningFigures.setActive(true));
         await fireEvent(liningFigures, "toggled");
         const labels = collectAll(container, (w): w is Gtk.Label => w instanceof Gtk.Label).map(
             (l) => l.getLabel() ?? "",
@@ -219,7 +219,7 @@ describe("fontFeaturesDemo titlebar", () => {
         await expandFeatures(container);
         const kerning = findCheckButtonByLabel(container, "Kerning");
         if (!kerning) throw new Error("Kerning check not found");
-        kerning.setActive(true);
+        await act(() => kerning.setActive(true));
         await fireEvent(kerning, "toggled");
         const labelsAfterToggle = collectAll(container, (w): w is Gtk.Label => w instanceof Gtk.Label).map(
             (l) => l.getLabel() ?? "",
@@ -267,7 +267,7 @@ describe("fontFeaturesDemo size entry", () => {
         const entries = collectAll(container, (w): w is Gtk.Entry => w instanceof Gtk.Entry);
         const sizeEntry = entries[0];
         if (!sizeEntry) throw new Error("size entry not found");
-        sizeEntry.setText("24");
+        await act(() => sizeEntry.setText("24"));
         await fireEvent(sizeEntry, "activate");
         expect(sizeEntry.getText()).toBe("24");
     });
@@ -277,7 +277,7 @@ describe("fontFeaturesDemo size entry", () => {
         const entries = collectAll(container, (w): w is Gtk.Entry => w instanceof Gtk.Entry);
         const sizeEntry = entries[0];
         if (!sizeEntry) throw new Error("size entry not found");
-        sizeEntry.setText("9999");
+        await act(() => sizeEntry.setText("9999"));
         await fireEvent(sizeEntry, "activate");
         const labels = collectAll(container, (w): w is Gtk.Label => w instanceof Gtk.Label).map(
             (l) => l.getLabel() ?? "",
@@ -292,7 +292,7 @@ describe("fontFeaturesDemo letterspacing entry", () => {
         const entries = collectAll(container, (w): w is Gtk.Entry => w instanceof Gtk.Entry);
         const letterspacingEntry = entries[1];
         if (!letterspacingEntry) throw new Error("letterspacing entry not found");
-        letterspacingEntry.setText("512");
+        await act(() => letterspacingEntry.setText("512"));
         await fireEvent(letterspacingEntry, "activate");
         expect(letterspacingEntry.getText()).toBe("512");
     });
@@ -304,7 +304,7 @@ describe("fontFeaturesDemo line-height entry", () => {
         const entries = collectAll(container, (w): w is Gtk.Entry => w instanceof Gtk.Entry);
         const lineHeightEntry = entries[2];
         if (!lineHeightEntry) throw new Error("line height entry not found");
-        lineHeightEntry.setText("1.5");
+        await act(() => lineHeightEntry.setText("1.5"));
         await fireEvent(lineHeightEntry, "activate");
         expect(lineHeightEntry.getText()).toBe("1.5");
     });
@@ -314,7 +314,7 @@ describe("fontFeaturesDemo line-height entry", () => {
         const entries = collectAll(container, (w): w is Gtk.Entry => w instanceof Gtk.Entry);
         const lineHeightEntry = entries[2];
         if (!lineHeightEntry) throw new Error("line height entry not found");
-        lineHeightEntry.setText("0.1");
+        await act(() => lineHeightEntry.setText("0.1"));
         await fireEvent(lineHeightEntry, "activate");
         expect(lineHeightEntry.getText()).toBe("0.1");
     });

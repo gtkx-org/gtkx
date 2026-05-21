@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, waitFor } from "@gtkx/testing";
+import { act, fireEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { imagesDemo } from "../../../src/demos/drawing/images.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -51,10 +51,10 @@ describe("imagesDemo toggle", () => {
         expect(imageStrip).toBeInstanceOf(Gtk.Box);
         if (!imageStrip) return;
         expect(imageStrip.getSensitive()).toBe(true);
-        toggle.setActive(true);
+        await act(() => toggle.setActive(true));
         await fireEvent(toggle as Gtk.Widget, "toggled");
         expect(imageStrip.getSensitive()).toBe(false);
-        toggle.setActive(false);
+        await act(() => toggle.setActive(false));
         await fireEvent(toggle as Gtk.Widget, "toggled");
         expect(imageStrip.getSensitive()).toBe(true);
     });

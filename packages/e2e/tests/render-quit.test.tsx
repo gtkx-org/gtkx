@@ -2,9 +2,23 @@ import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, quit, render, useApplication } from "@gtkx/react";
-import { act } from "@gtkx/testing";
 import { Component, type ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+declare global {
+    var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+}
+
+let previousActEnvironment: boolean | undefined;
+
+beforeEach(() => {
+    previousActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
+    globalThis.IS_REACT_ACT_ENVIRONMENT = false;
+});
+
+afterEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+});
 
 describe("render and quit", () => {
     it("logs caught render errors via console.error and registers the app", async () => {
@@ -45,7 +59,7 @@ describe("render and quit", () => {
         };
 
         render(<Probe />, app);
-        await act(() => {});
+        await new Promise((resolve) => setTimeout(resolve, 0));
 
         const messages = errorSpy.mock.calls.map((call) => String(call[0])).join("\n");
         expect(messages).toContain("boom-from-render");

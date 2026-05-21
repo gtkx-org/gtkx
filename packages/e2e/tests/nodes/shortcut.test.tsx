@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkShortcutController } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { act, render } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -105,7 +105,7 @@ describe("render - Shortcut (3)", () => {
         const { rerender } = await render(<Harness />);
         expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
 
-        updateDisabled(true);
+        await act(() => updateDisabled(true));
         await rerender(<Harness />);
 
         expect(controllerRef.current?.getNItems() ?? 0).toBe(1);

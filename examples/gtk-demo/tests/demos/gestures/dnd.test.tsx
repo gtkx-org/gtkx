@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, screen, waitFor } from "@gtkx/testing";
+import { act, fireEvent, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { dndDemo } from "../../../src/demos/gestures/dnd.js";
 import { makeValue } from "../../../src/gvalue.js";
@@ -170,7 +170,7 @@ describe("dndDemo item editor", () => {
         if (!gestureClick) throw new Error("gesture click missing");
         await fireEvent(gestureClick, "released", 1, 0, 0);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
-        entry.setText("Renamed");
+        await act(() => entry.setText("Renamed"));
         await fireEvent(entry, "changed");
         const renamed = await waitFor(() => {
             const renamedLabel = findAllOfType(container, Gtk.Label).find((l) => l.getLabel() === "Renamed");

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { act, fireEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { overlayDecorativeDemo } from "../../../src/demos/layout/overlay-decorative.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -110,7 +110,7 @@ describe("overlayDecorativeDemo scale behavior", () => {
         if (!scale || !textView) throw new Error("expected scale and text view");
         expect(textView.getLeftMargin()).toBe(100);
         const adjustment = scale.getAdjustment();
-        adjustment.setValue(25);
+        await act(() => adjustment.setValue(25));
         await fireEvent(scale, "value-changed");
         expect(textView.getLeftMargin()).toBe(25);
     });
@@ -122,7 +122,7 @@ describe("overlayDecorativeDemo scale behavior", () => {
         const [textView] = findAllOfType(container, Gtk.TextView);
         if (!scale || !textView) throw new Error("expected scale and text view");
         const adjustment = scale.getAdjustment();
-        adjustment.setValue(37.7);
+        await act(() => adjustment.setValue(37.7));
         await fireEvent(scale, "value-changed");
         expect(textView.getLeftMargin()).toBe(38);
     });

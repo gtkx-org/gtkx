@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, screen } from "@gtkx/testing";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { overlayDemo } from "../../../src/demos/layout/overlay.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -89,7 +89,7 @@ describe("overlayDemo entry behavior", () => {
         if (!overlayDemo.component) throw new Error("overlay demo component missing");
         await renderDemo(overlayDemo.component);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
-        entry.setText("typed");
+        await act(() => entry.setText("typed"));
         await fireEvent(entry, "changed");
         expect(entry.getText()).toBe("typed");
     });

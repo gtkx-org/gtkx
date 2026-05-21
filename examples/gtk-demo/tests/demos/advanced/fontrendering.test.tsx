@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, screen } from "@gtkx/testing";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fontRenderingDemo } from "../../../src/demos/advanced/fontrendering.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
@@ -80,7 +80,7 @@ describe("fontRenderingDemo header toggles", () => {
         const gridToggle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Grid",
         })) as Gtk.ToggleButton;
-        gridToggle.setActive(true);
+        await act(() => gridToggle.setActive(true));
         await fireEvent(gridToggle, "toggled");
         expect(gridToggle.getActive()).toBe(true);
     });
@@ -104,7 +104,7 @@ describe("fontRenderingDemo overlay checks", () => {
         const showPixels = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Show _Pixels",
         })) as Gtk.CheckButton;
-        showPixels.setActive(false);
+        await act(() => showPixels.setActive(false));
         await fireEvent(showPixels, "toggled");
         expect(showPixels.getActive()).toBe(false);
     });
@@ -120,9 +120,9 @@ describe("fontRenderingDemo overlay checks", () => {
         expect(antialias.getActive()).toBe(true);
         expect(hintMetrics.getActive()).toBe(false);
 
-        antialias.setActive(false);
+        await act(() => antialias.setActive(false));
         await fireEvent(antialias, "toggled");
-        hintMetrics.setActive(true);
+        await act(() => hintMetrics.setActive(true));
         await fireEvent(hintMetrics, "toggled");
 
         expect(antialias.getActive()).toBe(false);
@@ -137,9 +137,9 @@ describe("fontRenderingDemo overlay checks", () => {
         const grid = (await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, {
             name: "Show _Grid",
         })) as Gtk.CheckButton;
-        extents.setActive(true);
+        await act(() => extents.setActive(true));
         await fireEvent(extents, "toggled");
-        grid.setActive(true);
+        await act(() => grid.setActive(true));
         await fireEvent(grid, "toggled");
         expect(extents.getActive()).toBe(true);
         expect(grid.getActive()).toBe(true);
@@ -191,7 +191,7 @@ describe("fontRenderingDemo text input", () => {
         const { container } = await renderDemo(fontRenderingDemo);
         const entry = findFirst(container, (w): w is Gtk.Entry => w instanceof Gtk.Entry);
         if (!entry) throw new Error("entry not found");
-        entry.setText("Hello");
+        await act(() => entry.setText("Hello"));
         await fireEvent(entry, "changed");
         expect(entry.getText()).toBe("Hello");
     });

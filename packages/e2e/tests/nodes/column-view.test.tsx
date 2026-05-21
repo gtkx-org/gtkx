@@ -56,8 +56,7 @@ const getColumnById = (columnView: Gtk.ColumnView, columnId: string): Gtk.Column
 const clickColumnHeader = async (columnView: Gtk.ColumnView, columnId: string, order: Gtk.SortType): Promise<void> => {
     const column = getColumnById(columnView, columnId);
     if (column) {
-        columnView.sortByColumn(column, order);
-        await act(() => {});
+        await act(() => columnView.sortByColumn(column, order));
     }
 };
 

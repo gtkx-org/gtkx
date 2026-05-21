@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, screen } from "@gtkx/testing";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { errorstatesDemo } from "../../../src/demos/css/errorstates.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -40,7 +40,7 @@ describe("errorstatesDemo entries", () => {
         const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
         const [detailsEntry, moreDetailsEntry] = entries;
         if (!detailsEntry || !moreDetailsEntry) throw new Error("expected both entries to be present");
-        moreDetailsEntry.setText("filled in");
+        await act(() => moreDetailsEntry.setText("filled in"));
         await fireEvent(moreDetailsEntry as Gtk.Widget, "changed");
         expect(moreDetailsEntry.hasCssClass("error")).toBe(true);
         expect(moreDetailsEntry.getTooltipText()).toBe("Must have details first");
@@ -52,10 +52,10 @@ describe("errorstatesDemo entries", () => {
         const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
         const [detailsEntry, moreDetailsEntry] = entries;
         if (!detailsEntry || !moreDetailsEntry) throw new Error("expected both entries to be present");
-        moreDetailsEntry.setText("filled in");
+        await act(() => moreDetailsEntry.setText("filled in"));
         await fireEvent(moreDetailsEntry as Gtk.Widget, "changed");
         expect(moreDetailsEntry.hasCssClass("error")).toBe(true);
-        detailsEntry.setText("ok");
+        await act(() => detailsEntry.setText("ok"));
         await fireEvent(detailsEntry as Gtk.Widget, "changed");
         expect(moreDetailsEntry.hasCssClass("error")).toBe(false);
     });
@@ -66,7 +66,7 @@ describe("errorstatesDemo switch and scale", () => {
         if (!errorstatesDemo.component) throw new Error("errorstates demo component missing");
         const { container } = await renderDemo(errorstatesDemo.component);
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
-        sw.setActive(true);
+        await act(() => sw.setActive(true));
         await fireEvent(sw as Gtk.Widget, "state-set", true);
         const errorLabel = findLabelByText(container, "Level too low");
         expect(errorLabel).toBeInstanceOf(Gtk.Label);
@@ -79,9 +79,9 @@ describe("errorstatesDemo switch and scale", () => {
         const { container } = await renderDemo(errorstatesDemo.component);
         const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
-        scale.setValue(80);
+        await act(() => scale.setValue(80));
         await fireEvent(scale as Gtk.Widget, "value-changed");
-        sw.setActive(true);
+        await act(() => sw.setActive(true));
         await fireEvent(sw as Gtk.Widget, "state-set", true);
         expect(sw.getState()).toBe(true);
         expect(findLabelByText(container, "Level too low")).toBeNull();
@@ -92,12 +92,12 @@ describe("errorstatesDemo switch and scale", () => {
         await renderDemo(errorstatesDemo.component);
         const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
-        sw.setActive(true);
+        await act(() => sw.setActive(true));
         await fireEvent(sw as Gtk.Widget, "state-set", true);
-        scale.setValue(80);
+        await act(() => scale.setValue(80));
         await fireEvent(scale as Gtk.Widget, "value-changed");
         expect(sw.getState()).toBe(true);
-        scale.setValue(20);
+        await act(() => scale.setValue(20));
         await fireEvent(scale as Gtk.Widget, "value-changed");
         expect(sw.getState()).toBe(false);
     });

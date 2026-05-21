@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { act, fireEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewSelectionsDemo } from "../../../src/demos/lists/listview-selections.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
@@ -77,7 +77,7 @@ describe("listviewSelectionsDemo controls", () => {
         const { container } = await renderDemo(listviewSelectionsDemo.component);
         const check = findFirst(container, Gtk.CheckButton);
         if (!check) throw new Error("check button not found");
-        check.setActive(true);
+        await act(() => check.setActive(true));
         await fireEvent(check as Gtk.Widget, "toggled");
         const dropdowns = findAll(container, Gtk.DropDown);
         const enableSearchValues = dropdowns.map((d) => d.getEnableSearch());
@@ -89,7 +89,7 @@ describe("listviewSelectionsDemo controls", () => {
         const { container } = await renderDemo(listviewSelectionsDemo.component);
         const entry = findFirst(container, Gtk.Entry);
         if (!entry) throw new Error("entry not found");
-        entry.setText("GNOME");
+        await act(() => entry.setText("GNOME"));
         await fireEvent(entry as Gtk.Widget, "changed");
         const refreshedEntry = findFirst(container, Gtk.Entry);
         expect(refreshedEntry?.getText()).toBe("GNOME");

@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/ffi/gio";
 import { useSetting } from "@gtkx/react";
-import { renderHook, waitFor } from "@gtkx/testing";
+import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
 const SCHEMA_ID = "com.gtkx.test.useSetting";
@@ -26,7 +26,7 @@ describe("useSetting (1)", () => {
         resetKey("enabled", () => {});
         const { result } = await renderHook(() => useSetting(SCHEMA_ID, "enabled", "boolean"));
 
-        result.current[1](true);
+        await act(() => result.current[1](true));
 
         await waitFor(() => {
             expect(result.current[0]).toBe(true);
@@ -39,7 +39,7 @@ describe("useSetting (1)", () => {
 
         expect(result.current[0]).toBe(0);
 
-        result.current[1](42);
+        await act(() => result.current[1](42));
 
         await waitFor(() => {
             expect(result.current[0]).toBe(42);
@@ -52,7 +52,7 @@ describe("useSetting (1)", () => {
 
         expect(result.current[0]).toBe("initial");
 
-        result.current[1]("updated");
+        await act(() => result.current[1]("updated"));
 
         await waitFor(() => {
             expect(result.current[0]).toBe("updated");
@@ -67,7 +67,7 @@ describe("useSetting (2)", () => {
 
         expect(result.current[0]).toEqual([]);
 
-        result.current[1](["alpha", "beta"]);
+        await act(() => result.current[1](["alpha", "beta"]));
 
         await waitFor(() => {
             expect(result.current[0]).toEqual(["alpha", "beta"]);
@@ -80,7 +80,7 @@ describe("useSetting (2)", () => {
 
         expect(result.current[0]).toBeCloseTo(1.0);
 
-        result.current[1](2.5);
+        await act(() => result.current[1](2.5));
 
         await waitFor(() => {
             expect(result.current[0]).toBeCloseTo(2.5);
@@ -92,7 +92,7 @@ describe("useSetting (2)", () => {
         const { result } = await renderHook(() => useSetting(SCHEMA_ID, "count", "int"));
 
         const settings = Gio.Settings.new(SCHEMA_ID);
-        settings.setInt("count", 99);
+        await act(() => settings.setInt("count", 99));
 
         await waitFor(() => {
             expect(result.current[0]).toBe(99);
@@ -108,7 +108,7 @@ describe("useSetting (3)", () => {
         await unmount();
 
         const settings = Gio.Settings.new(SCHEMA_ID);
-        settings.setInt("count", 7);
+        await act(() => settings.setInt("count", 7));
 
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(result.current[0]).toBe(0);

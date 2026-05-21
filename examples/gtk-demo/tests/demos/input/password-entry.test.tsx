@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, waitFor } from "@gtkx/testing";
+import { act, fireEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { passwordEntryDemo } from "../../../src/demos/input/password-entry.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -54,8 +54,8 @@ describe("passwordEntryDemo form behavior", () => {
         const { container } = await renderDemo(passwordEntryDemo);
         const [pwd, confirm] = findAllByType(container, Gtk.PasswordEntry);
         if (!pwd || !confirm) throw new Error("expected two password entries");
-        pwd.setText("hunter2");
-        confirm.setText("hunter2");
+        await act(() => pwd.setText("hunter2"));
+        await act(() => confirm.setText("hunter2"));
         await waitFor(() => {
             const button = findDoneButton(container);
             expect(button?.getSensitive()).toBe(true);
@@ -66,8 +66,8 @@ describe("passwordEntryDemo form behavior", () => {
         const { container } = await renderDemo(passwordEntryDemo);
         const [pwd, confirm] = findAllByType(container, Gtk.PasswordEntry);
         if (!pwd || !confirm) throw new Error("expected two password entries");
-        pwd.setText("hunter2");
-        confirm.setText("different");
+        await act(() => pwd.setText("hunter2"));
+        await act(() => confirm.setText("different"));
         await waitFor(() => {
             const button = findDoneButton(container);
             expect(button).not.toBeNull();
@@ -80,8 +80,8 @@ describe("passwordEntryDemo form behavior", () => {
         const { container } = await renderDemo(passwordEntryDemo, { onClose });
         const [pwd, confirm] = findAllByType(container, Gtk.PasswordEntry);
         if (!pwd || !confirm) throw new Error("expected two password entries");
-        pwd.setText("abc");
-        confirm.setText("abc");
+        await act(() => pwd.setText("abc"));
+        await act(() => confirm.setText("abc"));
         const button = await waitFor(() => {
             const candidate = findDoneButton(container);
             expect(candidate?.getSensitive()).toBe(true);

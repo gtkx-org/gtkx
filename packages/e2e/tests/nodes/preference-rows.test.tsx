@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { AdwPreferencesGroup, AdwSpinRow, AdwSwitchRow } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { act, render } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -38,7 +38,7 @@ describe("render - SpinRow (1)", () => {
         if (!row) throw new Error("expected ref");
         installAdjustment(row, 0, 10, 1);
 
-        row.setValue(7);
+        await act(() => row.setValue(7));
 
         expect(onValueChanged).toHaveBeenCalled();
         const lastCall = onValueChanged.mock.calls.at(-1);
@@ -67,14 +67,14 @@ describe("render - SpinRow (2)", () => {
         if (!row) throw new Error("expected ref");
         installAdjustment(row, 0, 10, 1);
 
-        row.setValue(2);
+        await act(() => row.setValue(2));
         const callsBefore = handler.mock.calls.length;
         expect(callsBefore).toBeGreaterThan(0);
 
-        setActiveHandler(null);
+        await act(() => setActiveHandler(null));
         await rerender(<Harness />);
 
-        row.setValue(5);
+        await act(() => row.setValue(5));
         expect(handler.mock.calls.length).toBe(callsBefore);
     });
 });
@@ -102,7 +102,7 @@ describe("render - SwitchRow (1)", () => {
             </AdwPreferencesGroup>,
         );
 
-        ref.current?.setActive(true);
+        await act(() => ref.current?.setActive(true));
 
         expect(onActiveChanged).toHaveBeenCalled();
         const lastCall = onActiveChanged.mock.calls.at(-1);
@@ -127,14 +127,14 @@ describe("render - SwitchRow (2)", () => {
         };
 
         const { rerender } = await render(<Harness />);
-        ref.current?.setActive(true);
+        await act(() => ref.current?.setActive(true));
         const callsBefore = handler.mock.calls.length;
         expect(callsBefore).toBeGreaterThan(0);
 
-        setActiveHandler(null);
+        await act(() => setActiveHandler(null));
         await rerender(<Harness />);
 
-        ref.current?.setActive(false);
+        await act(() => ref.current?.setActive(false));
         expect(handler.mock.calls.length).toBe(callsBefore);
     });
 });

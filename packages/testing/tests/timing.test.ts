@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { act } from "../src/index.js";
 
 describe("act", () => {
-    it("returns a promise", () => {
+    it("returns a promise", async () => {
         const result = act(() => {});
         expect(result).toBeInstanceOf(Promise);
+        await result;
     });
 
     it("resolves after running the callback", async () => {

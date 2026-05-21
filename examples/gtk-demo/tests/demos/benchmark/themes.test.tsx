@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, screen } from "@gtkx/testing";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { themesDemo } from "../../../src/demos/benchmark/themes.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -31,7 +31,7 @@ describe("themesDemo", () => {
         const cycle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
             name: "Cycle",
         })) as Gtk.ToggleButton;
-        cycle.setActive(true);
+        await act(() => cycle.setActive(true));
         await fireEvent(cycle, "toggled");
         const warning = await screen.findByText(/photosensitive/i, { exact: false });
         expect(warning).toBeDefined();

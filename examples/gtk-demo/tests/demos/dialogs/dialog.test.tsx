@@ -1,6 +1,6 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, screen, waitFor } from "@gtkx/testing";
+import { act, fireEvent, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { dialogDemo } from "../../../src/demos/dialogs/dialog.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
@@ -145,7 +145,7 @@ describe("dialogDemo interactive dialog", () => {
         const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
         const firstEntry = entries[0];
         if (!firstEntry) throw new Error("expected at least one entry");
-        firstEntry.setText("hello");
+        await act(() => firstEntry.setText("hello"));
         await fireEvent(firstEntry, "changed");
         expect(firstEntry.getText()).toBe("hello");
     });

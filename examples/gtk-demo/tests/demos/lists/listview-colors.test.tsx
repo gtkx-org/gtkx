@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { act, fireEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewColorsDemo } from "../../../src/demos/lists/listview-colors.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
@@ -88,7 +88,7 @@ describe("listviewColorsDemo selection info revealer", () => {
         if (!window) throw new Error("application window not found");
         const toggle = findAll(window, Gtk.ToggleButton).find((t) => t.getIconName() === "emblem-important-symbolic");
         if (!toggle) throw new Error("selection toggle not found");
-        toggle.setActive(true);
+        await act(() => toggle.setActive(true));
         await fireEvent(toggle as Gtk.Widget, "toggled");
         const revealer = findAll(container, Gtk.Revealer)[0];
         expect(revealer?.getRevealChild()).toBe(true);

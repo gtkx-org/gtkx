@@ -13,8 +13,7 @@ const buildDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: s
 );
 
 const expectSelectedText = async (dropDown: Gtk.DropDown | null, index: number, text: string): Promise<void> => {
-    dropDown?.setSelected(index);
-    await act(() => {});
+    await act(() => dropDown?.setSelected(index));
     expect(screen.queryAllByText(text).length).toBeGreaterThan(0);
 };
 
@@ -62,7 +61,7 @@ describe("render - DropDown > DropDownNode (2)", () => {
             />,
         );
 
-        dropDownRef.current?.setSelected(1);
+        await act(() => dropDownRef.current?.setSelected(1));
 
         expect(onSelectionChanged).toHaveBeenCalledWith("2");
     });
