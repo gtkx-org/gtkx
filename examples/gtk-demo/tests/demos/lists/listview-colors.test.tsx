@@ -1,9 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { act, fireEvent } from "@gtkx/testing";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewColorsDemo } from "../../../src/demos/lists/listview-colors.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
-import { findAll, findApplicationWindow, findFirst } from "./helpers.js";
+import { findApplicationWindow } from "../../helpers/traverse.js";
 
 describe("listviewColorsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -27,70 +27,86 @@ describe("listviewColorsDemo header bar", () => {
     });
 
     it("renders the Refill button", async () => {
-        const { container } = await renderDemo(listviewColorsDemo);
-        const window = findApplicationWindow(container);
-        if (!window) throw new Error("application window not found");
-        const buttons = findAll(window, Gtk.Button).filter(
-            (b) => !(b instanceof Gtk.ToggleButton) && b.getLabel() !== null,
-        );
-        expect(buttons.some((b) => b.getLabel() === "_Refill")).toBe(true);
+        await renderDemo(listviewColorsDemo);
+        const refill = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Refill" });
+        expect(refill).toBeInstanceOf(Gtk.Button);
     });
 
     it("renders three drop-downs in the header bar (limit, sort, display)", async () => {
-        const { container } = await renderDemo(listviewColorsDemo);
-        const window = findApplicationWindow(container);
-        if (!window) throw new Error("application window not found");
-        const dropdowns = findAll(window, Gtk.DropDown);
-        expect(dropdowns.length).toBe(3);
+        await renderDemo(listviewColorsDemo);
+        expect(await screen.findByName("limit-dropdown")).toBeInstanceOf(Gtk.DropDown);
+        expect(await screen.findByName("sort-dropdown")).toBeInstanceOf(Gtk.DropDown);
+        expect(await screen.findByName("display-dropdown")).toBeInstanceOf(Gtk.DropDown);
     });
 
     it("renders a selection-info toggle button", async () => {
-        const { container } = await renderDemo(listviewColorsDemo);
-        const window = findApplicationWindow(container);
-        if (!window) throw new Error("application window not found");
-        const toggles = findAll(window, Gtk.ToggleButton);
-        const selectionToggle = toggles.find((t) => t.getIconName() === "emblem-important-symbolic");
+        await renderDemo(listviewColorsDemo);
+        const selectionToggle = (await screen.findByName("selection-toggle")) as Gtk.ToggleButton;
         expect(selectionToggle).toBeInstanceOf(Gtk.ToggleButton);
-        expect(selectionToggle?.getActive()).toBe(false);
+        expect(selectionToggle.getIconName()).toBe("emblem-important-symbolic");
+        expect(selectionToggle.getActive()).toBe(false);
     });
 });
 
 describe("listviewColorsDemo grid view", () => {
     it("renders a GtkGridView with multiple selection and rubberband enabled", async () => {
-        const { container } = await renderDemo(listviewColorsDemo);
-        const gridView = findFirst(container, Gtk.GridView);
-        expect(gridView).toBeInstanceOf(Gtk.GridView);
-        const model = gridView?.getModel();
-        expect(model).toBeInstanceOf(Gtk.MultiSelection);
-        expect(gridView?.getEnableRubberband()).toBe(true);
+        await renderDemo(listviewColorsDemo);
+        const mainGrid = (await screen.findByName("color-grid")) as Gtk.GridView;
+        expect(mainGrid.getEnableRubberband()).toBe(true);
+        expect(mainGrid.getModel()).toBeInstanceOf(Gtk.MultiSelection);
     });
 
     it("wraps the grid view in a scrolled window inside an overlay", async () => {
-        const { container } = await renderDemo(listviewColorsDemo);
-        const overlay = findFirst(container, Gtk.Overlay);
+        await renderDemo(listviewColorsDemo);
+        const overlay = await screen.findByName("grid-overlay");
         expect(overlay).toBeInstanceOf(Gtk.Overlay);
-        const sw = overlay && findFirst(overlay, Gtk.ScrolledWindow);
+        const sw = await screen.findByName("grid-scrolled");
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
     });
 });
 
 describe("listviewColorsDemo selection info revealer", () => {
     it("starts collapsed (revealer not revealing children)", async () => {
-        const { container } = await renderDemo(listviewColorsDemo);
-        const revealers = findAll(container, Gtk.Revealer);
-        const mainRevealer = revealers[0];
-        expect(mainRevealer?.getRevealChild()).toBe(false);
+        await renderDemo(listviewColorsDemo);
+        const revealer = (await screen.findByName("selection-revealer")) as Gtk.Revealer;
+        expect(revealer.getRevealChild()).toBe(false);
     });
 
     it("expands when the selection-info toggle is activated", async () => {
-        const { container } = await renderDemo(listviewColorsDemo);
-        const window = findApplicationWindow(container);
-        if (!window) throw new Error("application window not found");
-        const toggle = findAll(window, Gtk.ToggleButton).find((t) => t.getIconName() === "emblem-important-symbolic");
-        if (!toggle) throw new Error("selection toggle not found");
+        await renderDemo(listviewColorsDemo);
+        const toggle = (await screen.findByName("selection-toggle")) as Gtk.ToggleButton;
         await act(() => toggle.setActive(true));
-        await fireEvent(toggle as Gtk.Widget, "toggled");
-        const revealer = findAll(container, Gtk.Revealer)[0];
-        expect(revealer?.getRevealChild()).toBe(true);
+        await fireEvent(toggle, "toggled");
+        const revealer = (await screen.findByName("selection-revealer")) as Gtk.Revealer;
+        expect(revealer.getRevealChild()).toBe(true);
+    });
+});
+
+describe("listviewColorsDemo header actions", () => {
+    it("triggers the refill handler when the Refill button is clicked", async () => {
+        await renderDemo(listviewColorsDemo);
+        const refill = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Refill" });
+        await fireEvent(refill, "clicked");
+    });
+
+    it("changes the sort mode when the sort dropdown selection changes", async () => {
+        await renderDemo(listviewColorsDemo);
+        const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
+        await act(() => sortDropdown.setSelected(1));
+        await fireEvent(sortDropdown, "notify::selected");
+    });
+
+    it("changes the display factory when the display dropdown selection changes", async () => {
+        await renderDemo(listviewColorsDemo);
+        const displayDropdown = (await screen.findByName("display-dropdown")) as Gtk.DropDown;
+        await act(() => displayDropdown.setSelected(1));
+        await fireEvent(displayDropdown, "notify::selected");
+    });
+
+    it("changes the color limit when the limit dropdown selection changes", async () => {
+        await renderDemo(listviewColorsDemo);
+        const limitDropdown = (await screen.findByName("limit-dropdown")) as Gtk.DropDown;
+        await act(() => limitDropdown.setSelected(0));
+        await fireEvent(limitDropdown, "notify::selected");
     });
 });

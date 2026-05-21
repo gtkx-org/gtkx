@@ -47,8 +47,7 @@ describe("textundoDemo", () => {
     });
 
     it("renders a text view with undo enabled and the introductory content", async () => {
-        if (!textundoDemo.component) throw new Error("textundo demo component missing");
-        const { container } = await renderDemo(textundoDemo.component);
+        const { container } = await renderDemo(textundoDemo);
         const textView = findTextView(container);
         expect(textView).toBeInstanceOf(Gtk.TextView);
         const view = textView as Gtk.TextView;
@@ -61,8 +60,7 @@ describe("textundoDemo", () => {
     });
 
     it("nests the text view inside a scrolled window with automatic scrollbar policies", async () => {
-        if (!textundoDemo.component) throw new Error("textundo demo component missing");
-        const { container } = await renderDemo(textundoDemo.component);
+        const { container } = await renderDemo(textundoDemo);
         const sw = findScrolledWindow(container) as Gtk.ScrolledWindow;
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
         const [hpolicy, vpolicy] = sw.getPolicy();

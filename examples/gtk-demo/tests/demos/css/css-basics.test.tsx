@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssBasicsDemo } from "../../../src/demos/css/css-basics.js";
 import { renderDemo } from "../../helpers/render-demo.js";
-import { findFirstOfType } from "../../helpers/traverse.js";
 
 describe("cssBasicsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -22,13 +22,11 @@ describe("cssBasicsDemo metadata", () => {
 
 describe("cssBasicsDemo rendering", () => {
     it("renders a text view inside a scrolled window with the default CSS preloaded", async () => {
-        if (!cssBasicsDemo.component) throw new Error("css-basics demo component missing");
-        const { container } = await renderDemo(cssBasicsDemo.component);
-        const textView = findFirstOfType(container, Gtk.TextView);
+        await renderDemo(cssBasicsDemo);
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         expect(textView).toBeInstanceOf(Gtk.TextView);
-        const sw = findFirstOfType(container, Gtk.ScrolledWindow);
+        const sw = await screen.findByName("scrolled");
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
-        if (!textView) return;
         const buffer = textView.getBuffer();
         const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
         expect(text).toContain("Set a very futuristic style by default");
@@ -37,8 +35,7 @@ describe("cssBasicsDemo rendering", () => {
     });
 
     it("adds the demo css class to the host window on mount and removes it on unmount", async () => {
-        if (!cssBasicsDemo.component) throw new Error("css-basics demo component missing");
-        const { window, unmount } = await renderDemo(cssBasicsDemo.component);
+        const { window, unmount } = await renderDemo(cssBasicsDemo);
         const win = window.current;
         expect(win).not.toBeNull();
         if (!win) return;
@@ -50,9 +47,8 @@ describe("cssBasicsDemo rendering", () => {
 
 describe("cssBasicsDemo behavior", () => {
     it("propagates edited buffer text back into the text view", async () => {
-        if (!cssBasicsDemo.component) throw new Error("css-basics demo component missing");
-        const { container } = await renderDemo(cssBasicsDemo.component);
-        const textView = findFirstOfType(container, Gtk.TextView) as Gtk.TextView;
+        await renderDemo(cssBasicsDemo);
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         const buffer = textView.getBuffer();
         buffer.setText("/* edited */\nwindow { color: red; }\n", -1);
         const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
@@ -60,9 +56,8 @@ describe("cssBasicsDemo behavior", () => {
     });
 
     it("loads invalid CSS without crashing the parsing-error handler", async () => {
-        if (!cssBasicsDemo.component) throw new Error("css-basics demo component missing");
-        const { container } = await renderDemo(cssBasicsDemo.component);
-        const textView = findFirstOfType(container, Gtk.TextView) as Gtk.TextView;
+        await renderDemo(cssBasicsDemo);
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         const buffer = textView.getBuffer();
         buffer.setText("window { color: this-is-not-a-valid-color; }", -1);
         const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);

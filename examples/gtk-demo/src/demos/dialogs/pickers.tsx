@@ -161,7 +161,7 @@ const ColorPickerRow = ({ colorWidget, setColorWidget }: ColorRowProps) => (
             />
         </GtkGrid.Child>
         <GtkGrid.Child column={1} row={0}>
-            <GtkColorDialogButton ref={setColorWidget} />
+            <GtkColorDialogButton name="color-button" ref={setColorWidget} />
         </GtkGrid.Child>
     </>
 );
@@ -184,7 +184,7 @@ const FontPickerRow = ({ fontWidget, setFontWidget }: FontRowProps) => (
             />
         </GtkGrid.Child>
         <GtkGrid.Child column={1} row={1}>
-            <GtkFontDialogButton ref={setFontWidget} />
+            <GtkFontDialogButton name="font-button" ref={setFontWidget} />
         </GtkGrid.Child>
     </>
 );
@@ -212,6 +212,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
             <GtkBox spacing={6}>
                 <GtkLabel label={fileState.fileName} xalign={0} ellipsize={2} hexpand />
                 <GtkButton
+                    name="select-file-button"
                     ref={setFileButtonWidget}
                     iconName="document-open-symbolic"
                     accessibleLabel="Select File"
@@ -225,6 +226,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     />
                 </GtkButton>
                 <GtkButton
+                    name="open-file-button"
                     iconName="emblem-system-symbolic"
                     accessibleLabel="Open File"
                     accessibleHasPopup
@@ -232,6 +234,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     onClicked={() => void handlers.handleLaunchApp()}
                 />
                 <GtkButton
+                    name="open-folder-button"
                     iconName="folder-symbolic"
                     accessibleLabel="Open in Folder"
                     accessibleHasPopup
@@ -239,6 +242,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     onClicked={() => void handlers.handleOpenFolder()}
                 />
                 <GtkButton
+                    name="print-button"
                     iconName="printer-symbolic"
                     accessibleLabel="Print file"
                     tooltipText="Print file"

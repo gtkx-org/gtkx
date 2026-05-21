@@ -147,6 +147,7 @@ const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[];
     <GtkOverlay vexpand hexpand>
         <GtkScrolledWindow vexpand hexpand>
             <GtkListView
+                name="list-view"
                 vexpand
                 hexpand
                 estimatedItemHeight={32}
@@ -232,6 +233,7 @@ const ListViewWordsDemo = () => {
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
             <GtkSearchEntry
+                name="search-entry"
                 text={searchText}
                 placeholderText="Search words..."
                 onSearchChanged={(entry: Gtk.SearchEntry) => setSearchText(entry.getText())}

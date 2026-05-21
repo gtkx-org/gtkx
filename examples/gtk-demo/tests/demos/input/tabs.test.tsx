@@ -16,8 +16,7 @@ describe("tabsDemo", () => {
     });
 
     it("renders a GtkTextView populated with tab-separated rows", async () => {
-        if (!tabsDemo.component) throw new Error("tabs demo component missing");
-        const { container } = await renderDemo(tabsDemo.component);
+        const { container } = await renderDemo(tabsDemo);
         const textView = findTextView(container);
         expect(textView).toBeInstanceOf(Gtk.TextView);
         const buffer = (textView as Gtk.TextView).getBuffer();
@@ -32,8 +31,7 @@ describe("tabsDemo", () => {
     });
 
     it("configures the text view tabs with the expected alignments", async () => {
-        if (!tabsDemo.component) throw new Error("tabs demo component missing");
-        const { container } = await renderDemo(tabsDemo.component);
+        const { container } = await renderDemo(tabsDemo);
         const textView = findTextView(container) as Gtk.TextView;
         const tabs = textView.getTabs();
         expect(tabs).not.toBeNull();
@@ -44,8 +42,7 @@ describe("tabsDemo", () => {
     });
 
     it("wraps the text view in a scrolled window with the expected scrollbar policies", async () => {
-        if (!tabsDemo.component) throw new Error("tabs demo component missing");
-        const { container } = await renderDemo(tabsDemo.component);
+        const { container } = await renderDemo(tabsDemo);
         const sw = findScrolledWindow(container) as Gtk.ScrolledWindow;
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
         const [hpolicy, vpolicy] = sw.getPolicy();

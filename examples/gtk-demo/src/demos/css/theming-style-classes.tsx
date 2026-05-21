@@ -6,6 +6,7 @@ import sourceCode from "./theming-style-classes.tsx?raw";
 const ThemingStyleClassesDemo = () => {
     return (
         <GtkGrid
+            name="root-grid"
             rowSpacing={10}
             marginStart={10}
             marginEnd={10}

@@ -704,8 +704,13 @@ const FlowBoxDemo = () => {
     );
 
     return (
-        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-            <GtkFlowBox maxChildrenPerLine={30} selectionMode={Gtk.SelectionMode.NONE} valign={Gtk.Align.START}>
+        <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+            <GtkFlowBox
+                name="flow-box"
+                maxChildrenPerLine={30}
+                selectionMode={Gtk.SelectionMode.NONE}
+                valign={Gtk.Align.START}
+            >
                 {colorItems.map(({ color, rgba }) => (
                     <GtkButton key={color}>
                         <GtkDrawingArea

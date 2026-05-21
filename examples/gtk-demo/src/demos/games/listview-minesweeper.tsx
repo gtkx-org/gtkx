@@ -179,6 +179,7 @@ const ListViewMinesweeperDemo = () => {
     return (
         <GtkBox halign={Gtk.Align.CENTER}>
             <GtkGridView
+                name="grid-view"
                 estimatedItemHeight={32}
                 minColumns={GRID_SIZE}
                 maxColumns={GRID_SIZE}

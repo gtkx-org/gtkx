@@ -28,8 +28,7 @@ describe("constraintsDemo metadata", () => {
 
 describe("constraintsDemo layout", () => {
     it("attaches a GtkConstraintLayout manager to the container box", async () => {
-        if (!constraintsDemo.component) throw new Error("constraints demo component missing");
-        const { container } = await renderDemo(constraintsDemo.component);
+        const { container } = await renderDemo(constraintsDemo);
         const box = findBox(container);
         expect(box).toBeInstanceOf(Gtk.Box);
         const layoutManager = box?.getLayoutManager();
@@ -37,8 +36,7 @@ describe("constraintsDemo layout", () => {
     });
 
     it("registers a single named spacing guide on the layout", async () => {
-        if (!constraintsDemo.component) throw new Error("constraints demo component missing");
-        const { container } = await renderDemo(constraintsDemo.component);
+        const { container } = await renderDemo(constraintsDemo);
         const box = findBox(container);
         const layout = box?.getLayoutManager() as Gtk.ConstraintLayout;
 
@@ -66,8 +64,7 @@ describe("constraintsDemo layout", () => {
     });
 
     it("adds many constraints to the layout", async () => {
-        if (!constraintsDemo.component) throw new Error("constraints demo component missing");
-        const { container } = await renderDemo(constraintsDemo.component);
+        const { container } = await renderDemo(constraintsDemo);
         const box = findBox(container);
         const layout = box?.getLayoutManager() as Gtk.ConstraintLayout;
 
@@ -79,8 +76,7 @@ describe("constraintsDemo layout", () => {
 
 describe("constraintsDemo children", () => {
     it("renders the three child buttons inside the constrained box", async () => {
-        if (!constraintsDemo.component) throw new Error("constraints demo component missing");
-        const { container } = await renderDemo(constraintsDemo.component);
+        const { container } = await renderDemo(constraintsDemo);
         const box = findBox(container);
         if (!box) throw new Error("box not found");
 

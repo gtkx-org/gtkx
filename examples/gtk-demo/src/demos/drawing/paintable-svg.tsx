@@ -129,7 +129,7 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
     return isSymbolic ? (
         <GtkImage file={filePath} pixelSize={64} hexpand vexpand halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
     ) : (
-        <GtkDrawingArea render={handleDraw} hexpand vexpand />
+        <GtkDrawingArea name="drawing-area" render={handleDraw} hexpand vexpand />
     );
 };
 

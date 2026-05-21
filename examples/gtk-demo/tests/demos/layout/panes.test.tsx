@@ -2,20 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { describe, expect, it } from "vitest";
 import { panesDemo } from "../../../src/demos/layout/panes.js";
 import { renderDemo } from "../../helpers/render-demo.js";
-
-const findAllOfType = <T extends Gtk.Widget>(root: Gtk.Widget, ctor: new (...args: never[]) => T): T[] => {
-    const matches: T[] = [];
-    const visit = (widget: Gtk.Widget): void => {
-        if (widget instanceof ctor) matches.push(widget);
-        let child = widget.getFirstChild();
-        while (child) {
-            visit(child);
-            child = child.getNextSibling();
-        }
-    };
-    visit(root);
-    return matches;
-};
+import { findAllOfType } from "../../helpers/traverse.js";
 
 describe("panesDemo", () => {
     it("exposes the expected metadata", () => {
@@ -31,8 +18,7 @@ describe("panesDemo", () => {
     });
 
     it("renders the 'Hi there', 'Hello' and 'Goodbye' labels", async () => {
-        if (!panesDemo.component) throw new Error("panes demo component missing");
-        const { container } = await renderDemo(panesDemo.component);
+        const { container } = await renderDemo(panesDemo);
         const labelTexts = findAllOfType(container, Gtk.Label).map((l) => l.getLabel());
         expect(labelTexts).toContain("Hi there");
         expect(labelTexts).toContain("Hello");
@@ -40,8 +26,7 @@ describe("panesDemo", () => {
     });
 
     it("renders two GtkPaned widgets: an outer vertical and an inner horizontal", async () => {
-        if (!panesDemo.component) throw new Error("panes demo component missing");
-        const { container } = await renderDemo(panesDemo.component);
+        const { container } = await renderDemo(panesDemo);
         const paneds = findAllOfType(container, Gtk.Paned);
         expect(paneds).toHaveLength(2);
         const orientations = paneds.map((p) => p.getOrientation());
@@ -50,8 +35,7 @@ describe("panesDemo", () => {
     });
 
     it("disables shrink on both children of both GtkPaned widgets", async () => {
-        if (!panesDemo.component) throw new Error("panes demo component missing");
-        const { container } = await renderDemo(panesDemo.component);
+        const { container } = await renderDemo(panesDemo);
         const paneds = findAllOfType(container, Gtk.Paned);
         for (const paned of paneds) {
             expect(paned.getShrinkStartChild()).toBe(false);
@@ -60,8 +44,7 @@ describe("panesDemo", () => {
     });
 
     it("wraps the outer GtkPaned in a GtkFrame within a vertical GtkBox", async () => {
-        if (!panesDemo.component) throw new Error("panes demo component missing");
-        const { container } = await renderDemo(panesDemo.component);
+        const { container } = await renderDemo(panesDemo);
         const frames = findAllOfType(container, Gtk.Frame);
         expect(frames).toHaveLength(1);
         const boxes = findAllOfType(container, Gtk.Box);

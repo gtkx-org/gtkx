@@ -25,8 +25,7 @@ describe("textmaskDemo", () => {
     });
 
     it("renders a GtkDrawingArea with the configured size requests", async () => {
-        if (!textmaskDemo.component) throw new Error("textmask demo component missing");
-        const { container } = await renderDemo(textmaskDemo.component);
+        const { container } = await renderDemo(textmaskDemo);
         const area = findFirstDrawingArea(container);
         expect(area).toBeInstanceOf(Gtk.DrawingArea);
         const [w, h] = area?.getSizeRequest() ?? [0, 0];

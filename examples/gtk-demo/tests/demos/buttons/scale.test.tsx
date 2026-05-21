@@ -11,8 +11,7 @@ describe("scaleDemo", () => {
     });
 
     it("renders the grid containing the three scale rows", async () => {
-        if (!scaleDemo.component) throw new Error("scale demo component missing");
-        const { container } = await renderDemo(scaleDemo.component);
+        const { container } = await renderDemo(scaleDemo);
         expect(container).toBeDefined();
         const text = await screen.findByText("Plain", { exact: false });
         expect(text).toBeDefined();

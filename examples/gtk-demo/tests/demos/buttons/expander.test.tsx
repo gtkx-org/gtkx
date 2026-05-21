@@ -1,3 +1,5 @@
+import * as Gtk from "@gtkx/ffi/gtk";
+import { act, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { expanderDemo } from "../../../src/demos/buttons/expander.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -10,8 +12,22 @@ describe("expanderDemo", () => {
     });
 
     it("renders the Details expander", async () => {
-        if (!expanderDemo.component) throw new Error("expander demo component missing");
-        const { container } = await renderDemo(expanderDemo.component);
-        expect(container).toBeDefined();
+        await renderDemo(expanderDemo);
+        const expander = (await screen.findByName("expander")) as Gtk.Expander;
+        expect(expander).toBeInstanceOf(Gtk.Expander);
+        expect(expander.getLabel()).toBe("Details:");
+        expect(expander.getExpanded()).toBe(false);
+    });
+
+    it("makes the host window resizable when the expander is expanded", async () => {
+        const { window } = await renderDemo(expanderDemo);
+        const expander = (await screen.findByName("expander")) as Gtk.Expander;
+        const win = window.current;
+        if (!win) throw new Error("window ref missing");
+        win.setResizable(false);
+        await act(() => expander.setExpanded(true));
+        await waitFor(() => expect(win.getResizable()).toBe(true));
+        await act(() => expander.setExpanded(false));
+        await waitFor(() => expect(win.getResizable()).toBe(false));
     });
 });

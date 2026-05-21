@@ -1,9 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { videoPlayerDemo } from "../../../src/demos/media/video-player.js";
 import { renderDemo } from "../../helpers/render-demo.js";
-import { findAllOfType, findFirstOfType } from "../../helpers/traverse.js";
+import { findAllOfType } from "../../helpers/traverse.js";
 
 describe("videoPlayerDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -23,38 +23,25 @@ describe("videoPlayerDemo metadata", () => {
 
 describe("videoPlayerDemo header bar", () => {
     it("renders the Open button and three icon buttons in the header bar", async () => {
-        const { container } = await renderDemo(videoPlayerDemo);
-        const headerBar = findFirstOfType(container, Gtk.HeaderBar);
-        expect(headerBar).toBeInstanceOf(Gtk.HeaderBar);
-        if (!headerBar) return;
-        const buttons = findAllOfType(headerBar, Gtk.Button).filter((b) => !isWindowControlButton(b));
-        const openButton = buttons.find((b) => b.getLabel() === "_Open");
-        expect(openButton).toBeInstanceOf(Gtk.Button);
-        const iconButtons = buttons.filter((b) => b.getLabel() === null || b.getLabel() === "");
-        expect(iconButtons.length).toBeGreaterThanOrEqual(3);
-        const fullscreenButton = iconButtons.find((b) => b.getIconName() === "view-fullscreen-symbolic");
-        expect(fullscreenButton).toBeInstanceOf(Gtk.Button);
+        await renderDemo(videoPlayerDemo);
+        expect(await screen.findByName("open-button")).toBeInstanceOf(Gtk.Button);
+        expect(await screen.findByName("logo-button")).toBeInstanceOf(Gtk.Button);
+        expect(await screen.findByName("bbb-button")).toBeInstanceOf(Gtk.Button);
+        const fullscreenButton = (await screen.findByName("fullscreen-button")) as Gtk.Button;
+        expect(fullscreenButton.getIconName()).toBe("view-fullscreen-symbolic");
     });
 
     it("wires the Open button with useUnderline in the header bar's pack-start area", async () => {
-        const { container } = await renderDemo(videoPlayerDemo);
-        const headerBar = findFirstOfType(container, Gtk.HeaderBar) as Gtk.HeaderBar;
-        const openButton = findAllOfType(headerBar, Gtk.Button).find((b) => b.getLabel() === "_Open");
+        await renderDemo(videoPlayerDemo);
+        const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
         expect(openButton).toBeInstanceOf(Gtk.Button);
-        if (!openButton) return;
         expect(openButton.getUseUnderline()).toBe(true);
     });
 
     it("renders the second image-only header button as the Big Buck Bunny trigger", async () => {
-        const { container } = await renderDemo(videoPlayerDemo);
-        const headerBar = findFirstOfType(container, Gtk.HeaderBar) as Gtk.HeaderBar;
-        const iconButtons = findAllOfType(headerBar, Gtk.Button)
-            .filter((b) => !isWindowControlButton(b))
-            .filter((b) => (b.getLabel() ?? "") === "" && b.getIconName() !== "view-fullscreen-symbolic");
-        const bbbButton = iconButtons[1];
-        expect(bbbButton).toBeInstanceOf(Gtk.Button);
-        if (!bbbButton) return;
-        const image = findFirstOfType(bbbButton, Gtk.Image);
+        await renderDemo(videoPlayerDemo);
+        const bbbButton = (await screen.findByName("bbb-button")) as Gtk.Button;
+        const image = findAllOfType(bbbButton, Gtk.Image)[0];
         expect(image).toBeInstanceOf(Gtk.Image);
         expect(image?.getPixelSize()).toBe(24);
     });
@@ -62,47 +49,26 @@ describe("videoPlayerDemo header bar", () => {
 
 describe("videoPlayerDemo video and actions", () => {
     it("renders a GtkVideo widget configured with autoplay and graphics offload enabled", async () => {
-        const { container } = await renderDemo(videoPlayerDemo);
-        const video = findFirstOfType(container, Gtk.Video);
+        await renderDemo(videoPlayerDemo);
+        const video = (await screen.findByName("video")) as Gtk.Video;
         expect(video).toBeInstanceOf(Gtk.Video);
-        if (!video) return;
         expect(video.getAutoplay()).toBe(true);
         expect(video.getGraphicsOffload()).toBe(Gtk.GraphicsOffloadEnabled.ENABLED);
         expect(video.getFile()).toBeNull();
     });
 
     it("loads the GTK Logo source when the first image-only button in the header is clicked", async () => {
-        const { container } = await renderDemo(videoPlayerDemo);
-        const headerBar = findFirstOfType(container, Gtk.HeaderBar) as Gtk.HeaderBar;
-        const iconButtons = findAllOfType(headerBar, Gtk.Button)
-            .filter((b) => !isWindowControlButton(b))
-            .filter((b) => (b.getLabel() ?? "") === "");
-        const logoButton = iconButtons[0];
-        expect(logoButton).toBeInstanceOf(Gtk.Button);
-        if (!logoButton) return;
-        await fireEvent(logoButton as Gtk.Widget, "clicked");
-        const video = findFirstOfType(container, Gtk.Video) as Gtk.Video;
+        await renderDemo(videoPlayerDemo);
+        const logoButton = (await screen.findByName("logo-button")) as Gtk.Button;
+        await fireEvent(logoButton, "clicked");
+        const video = (await screen.findByName("video")) as Gtk.Video;
         expect(video.getFile()).not.toBeNull();
     });
 
     it("requests fullscreen on the host window when the Fullscreen icon button is clicked", async () => {
-        const { container, window } = await renderDemo(videoPlayerDemo);
-        const headerBar = findFirstOfType(container, Gtk.HeaderBar) as Gtk.HeaderBar;
-        const fullscreenButton = findAllOfType(headerBar, Gtk.Button).find(
-            (b) => b.getIconName() === "view-fullscreen-symbolic",
-        );
-        expect(fullscreenButton).toBeInstanceOf(Gtk.Button);
-        if (!fullscreenButton) return;
-        await fireEvent(fullscreenButton as Gtk.Widget, "clicked");
+        const { window } = await renderDemo(videoPlayerDemo);
+        const fullscreenButton = (await screen.findByName("fullscreen-button")) as Gtk.Button;
+        await fireEvent(fullscreenButton, "clicked");
         expect(window.current).toBeInstanceOf(Gtk.Window);
     });
 });
-
-const isWindowControlButton = (button: Gtk.Button): boolean => {
-    let parent = button.getParent();
-    while (parent) {
-        if (parent instanceof Gtk.WindowControls) return true;
-        parent = parent.getParent();
-    }
-    return false;
-};

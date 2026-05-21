@@ -1,8 +1,12 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
 import { renderDemo } from "../../helpers/render-demo.js";
-import { findAllOfType, findFirstOfType } from "../../helpers/traverse.js";
+import { findApplicationWindow } from "../../helpers/traverse.js";
+
+const findOpenButton = async (): Promise<Gtk.Button> =>
+    (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
 
 describe("paintableSvgDemo", () => {
     it("exposes the expected metadata", () => {
@@ -20,36 +24,34 @@ describe("paintableSvgDemo", () => {
     });
 
     it("renders the Open button in the header bar", async () => {
-        const { container } = await renderDemo(paintableSvgDemo);
-        const openButton = findButtonByLabel(container, "_Open");
+        await renderDemo(paintableSvgDemo);
+        const openButton = await findOpenButton();
         expect(openButton).toBeInstanceOf(Gtk.Button);
-        if (!openButton) return;
         expect(openButton.getUseUnderline()).toBe(true);
     });
 
     it("renders a drawing area for the non-symbolic default SVG path", async () => {
-        const { container } = await renderDemo(paintableSvgDemo);
-        const drawing = findFirstOfType(container, Gtk.DrawingArea);
+        await renderDemo(paintableSvgDemo);
+        const drawing = (await screen.findByName("drawing-area")) as Gtk.DrawingArea;
         expect(drawing).toBeInstanceOf(Gtk.DrawingArea);
-        if (!drawing) return;
         expect(drawing.getHexpand()).toBe(true);
         expect(drawing.getVexpand()).toBe(true);
     });
 
     it("renders a header bar containing the Open button", async () => {
         const { container } = await renderDemo(paintableSvgDemo);
-        const headerBar = findFirstOfType(container, Gtk.HeaderBar);
-        expect(headerBar).toBeInstanceOf(Gtk.HeaderBar);
+        const window = findApplicationWindow(container);
+        if (!window) throw new Error("window not found");
+        expect(window.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
     });
 
     it("wires the open button as a useUnderline-enabled action button", async () => {
         const { container } = await renderDemo(paintableSvgDemo);
-        const openButton = findButtonByLabel(container, "_Open");
+        const openButton = await findOpenButton();
         expect(openButton).toBeInstanceOf(Gtk.Button);
-        if (!openButton) return;
         expect(openButton.getUseUnderline()).toBe(true);
-        const headerBar = findFirstOfType(container, Gtk.HeaderBar);
-        expect(openButton.getParent()).not.toBeNull();
+        const window = findApplicationWindow(container);
+        const headerBar = window?.getTitlebar();
         let parent: Gtk.Widget | null = openButton;
         let foundHeaderBar = false;
         while (parent) {
@@ -62,6 +64,3 @@ describe("paintableSvgDemo", () => {
         expect(foundHeaderBar).toBe(true);
     });
 });
-
-const findButtonByLabel = (root: Gtk.Widget, label: string): Gtk.Button | null =>
-    findAllOfType(root, Gtk.Button).find((b) => b.getLabel() === label) ?? null;

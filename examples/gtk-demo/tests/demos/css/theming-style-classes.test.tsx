@@ -3,7 +3,6 @@ import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { themingStyleClassesDemo } from "../../../src/demos/css/theming-style-classes.js";
 import { renderDemo } from "../../helpers/render-demo.js";
-import { findFirstOfType } from "../../helpers/traverse.js";
 
 describe("themingStyleClassesDemo", () => {
     it("exposes the expected metadata", () => {
@@ -19,8 +18,7 @@ describe("themingStyleClassesDemo", () => {
     });
 
     it("renders the linked button group with three buttons", async () => {
-        if (!themingStyleClassesDemo.component) throw new Error("theming-style-classes demo component missing");
-        await renderDemo(themingStyleClassesDemo.component);
+        await renderDemo(themingStyleClassesDemo);
         const first = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hi, I am a button" });
         const second = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "And I'm another button" });
         const third = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This is a button party!" });
@@ -33,8 +31,7 @@ describe("themingStyleClassesDemo", () => {
     });
 
     it("renders the suggested and destructive action buttons with their style classes", async () => {
-        if (!themingStyleClassesDemo.component) throw new Error("theming-style-classes demo component missing");
-        await renderDemo(themingStyleClassesDemo.component);
+        await renderDemo(themingStyleClassesDemo);
         const plain = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Plain" })) as Gtk.Button;
         const destructive = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
             name: "Destructive",
@@ -47,11 +44,9 @@ describe("themingStyleClassesDemo", () => {
     });
 
     it("applies the configured spacing and margins on the root grid", async () => {
-        if (!themingStyleClassesDemo.component) throw new Error("theming-style-classes demo component missing");
-        const { container } = await renderDemo(themingStyleClassesDemo.component);
-        const grid = findFirstOfType(container, Gtk.Grid);
+        await renderDemo(themingStyleClassesDemo);
+        const grid = (await screen.findByName("root-grid")) as Gtk.Grid;
         expect(grid).not.toBeNull();
-        if (!grid) return;
         expect(grid.getRowSpacing()).toBe(10);
         expect(grid.getMarginStart()).toBe(10);
         expect(grid.getMarginEnd()).toBe(10);

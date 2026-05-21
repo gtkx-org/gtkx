@@ -33,8 +33,7 @@ describe("textscrollDemo", () => {
     });
 
     it("renders two text views nested in two scrolled windows wrapped by a homogeneous box", async () => {
-        if (!textscrollDemo.component) throw new Error("textscroll demo component missing");
-        const { container } = await renderDemo(textscrollDemo.component);
+        const { container } = await renderDemo(textscrollDemo);
         const textViews = findAllByType(container, Gtk.TextView);
         expect(textViews).toHaveLength(2);
         const scrolledWindows = findAllByType(container, Gtk.ScrolledWindow);
@@ -46,8 +45,7 @@ describe("textscrollDemo", () => {
     });
 
     it("creates 'end' and 'scroll' marks in the two text view buffers", async () => {
-        if (!textscrollDemo.component) throw new Error("textscroll demo component missing");
-        const { container } = await renderDemo(textscrollDemo.component);
+        const { container } = await renderDemo(textscrollDemo);
         const textViews = findAllByType(container, Gtk.TextView);
         expect(textViews).toHaveLength(2);
         const markNames = ["end", "scroll"];
@@ -60,8 +58,7 @@ describe("textscrollDemo", () => {
     });
 
     it("appends text to the buffers as scroll ticks run", async () => {
-        if (!textscrollDemo.component) throw new Error("textscroll demo component missing");
-        const { container } = await renderDemo(textscrollDemo.component);
+        const { container } = await renderDemo(textscrollDemo);
         const textViews = findAllByType(container, Gtk.TextView);
         await waitFor(() => {
             for (const view of textViews) {

@@ -1,8 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
-import { findAll, findApplicationWindow, findFirst } from "./helpers.js";
+import { ancestorOfType, findApplicationWindow } from "../../helpers/traverse.js";
 
 describe("listviewFilebrowserDemo", () => {
     it("exposes the expected metadata", () => {
@@ -23,39 +24,24 @@ describe("listviewFilebrowserDemo", () => {
     });
 
     it("renders a go-up button in the header bar", async () => {
-        const { container } = await renderDemo(listviewFilebrowserDemo);
-        const window = findApplicationWindow(container);
-        if (!window) throw new Error("window not found");
-        const buttons = findAll(window, Gtk.Button);
-        const upButton = buttons.find((b) => b.getIconName() === "go-up-symbolic");
+        await renderDemo(listviewFilebrowserDemo);
+        const upButton = (await screen.findByName("up-button")) as Gtk.Button;
         expect(upButton).toBeInstanceOf(Gtk.Button);
+        expect(upButton.getIconName()).toBe("go-up-symbolic");
     });
 
     it("renders a view-mode list view with three entries", async () => {
-        const { container } = await renderDemo(listviewFilebrowserDemo);
-        const window = findApplicationWindow(container);
-        if (!window) throw new Error("window not found");
-        const lists = findAll(window, Gtk.ListView);
-        expect(lists.length).toBeGreaterThanOrEqual(1);
-        const switcher = lists[0];
-        if (!switcher) throw new Error("view switcher missing");
+        await renderDemo(listviewFilebrowserDemo);
+        const switcher = (await screen.findByName("view-switcher")) as Gtk.ListView;
         const model = switcher.getModel();
         expect(model?.getNItems()).toBe(3);
     });
 
     it("renders the file grid view inside a scrolled window", async () => {
-        const { container } = await renderDemo(listviewFilebrowserDemo);
-        const grid = findFirst(container, Gtk.GridView);
+        await renderDemo(listviewFilebrowserDemo);
+        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
         expect(grid).toBeInstanceOf(Gtk.GridView);
-        let parent: Gtk.Widget | null = grid;
-        let sw: Gtk.ScrolledWindow | null = null;
-        while (parent) {
-            if (parent instanceof Gtk.ScrolledWindow) {
-                sw = parent;
-                break;
-            }
-            parent = parent.getParent();
-        }
+        const sw = ancestorOfType(grid, Gtk.ScrolledWindow);
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
     });
 });

@@ -17,6 +17,7 @@ describe("framesDemo", () => {
         const win = window.current;
         if (!win) throw new Error("expected the window ref to be populated");
         const titlebar = win.getTitlebar?.();
+        if (!titlebar) throw new Error("titlebar missing");
         expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
         const collectLabels = (root: Gtk.Widget, out: Gtk.Label[] = []): Gtk.Label[] => {
             if (root instanceof Gtk.Label) out.push(root);
@@ -27,7 +28,7 @@ describe("framesDemo", () => {
             }
             return out;
         };
-        const fpsLabel = collectLabels(titlebar as Gtk.Widget).find((l) => /fps$/.test(l.getLabel() ?? ""));
+        const fpsLabel = collectLabels(titlebar).find((l) => /fps$/.test(l.getLabel() ?? ""));
         if (!fpsLabel) throw new Error("expected an fps label inside the titlebar");
         expect(fpsLabel.getLabel()).toMatch(/^[0-9]+\.[0-9]{2} fps$/);
     });

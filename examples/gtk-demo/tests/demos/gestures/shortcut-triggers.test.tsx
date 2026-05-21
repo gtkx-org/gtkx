@@ -1,23 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { shortcutTriggersDemo } from "../../../src/demos/gestures/shortcut-triggers.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
-
-const findAllOfType = <T extends Gtk.Widget>(root: Gtk.Widget, ctor: new (...args: never[]) => T): T[] => {
-    const out: T[] = [];
-    const stack: Gtk.Widget[] = [root];
-    while (stack.length > 0) {
-        const node = stack.pop();
-        if (!node) continue;
-        if (node instanceof ctor) out.push(node);
-        let child = node.getFirstChild();
-        while (child) {
-            stack.push(child);
-            child = child.getNextSibling();
-        }
-    }
-    return out;
-};
+import { findAllOfType } from "../../helpers/traverse.js";
 
 describe("shortcutTriggersDemo", () => {
     it("exposes the expected metadata", () => {
@@ -31,28 +17,23 @@ describe("shortcutTriggersDemo", () => {
     });
 
     it("renders a ListBox containing the two instruction labels", async () => {
-        if (!shortcutTriggersDemo.component) throw new Error("shortcut-triggers demo component missing");
-        const { container } = await renderDemo(shortcutTriggersDemo.component);
-        const listBox = findAllOfType(container, Gtk.ListBox)[0];
+        const { container } = await renderDemo(shortcutTriggersDemo);
+        const listBox = (await screen.findByName("list-box")) as Gtk.ListBox;
         expect(listBox).toBeInstanceOf(Gtk.ListBox);
         const labels = findAllOfType(container, Gtk.Label).map((l) => l.getLabel());
         expect(labels).toEqual(expect.arrayContaining(["Press Ctrl-G", "Press X"]));
     });
 
     it("renders the two instruction labels inside the list box", async () => {
-        if (!shortcutTriggersDemo.component) throw new Error("shortcut-triggers demo component missing");
-        const { container } = await renderDemo(shortcutTriggersDemo.component);
-        const listBox = findAllOfType(container, Gtk.ListBox)[0];
-        if (!listBox) throw new Error("expected list box");
+        await renderDemo(shortcutTriggersDemo);
+        const listBox = (await screen.findByName("list-box")) as Gtk.ListBox;
         const labels = findAllOfType(listBox, Gtk.Label).filter((l) => l.getLabel()?.startsWith("Press"));
         expect(labels.map((l) => l.getLabel())).toEqual(expect.arrayContaining(["Press Ctrl-G", "Press X"]));
     });
 
     it("wraps each instruction label in a list box row", async () => {
-        if (!shortcutTriggersDemo.component) throw new Error("shortcut-triggers demo component missing");
-        const { container } = await renderDemo(shortcutTriggersDemo.component);
-        const listBox = findAllOfType(container, Gtk.ListBox)[0];
-        if (!listBox) throw new Error("expected list box");
+        await renderDemo(shortcutTriggersDemo);
+        const listBox = (await screen.findByName("list-box")) as Gtk.ListBox;
         const rows = findAllOfType(listBox, Gtk.ListBoxRow);
         expect(rows).toHaveLength(2);
         for (const row of rows) {
@@ -62,10 +43,8 @@ describe("shortcutTriggersDemo", () => {
     });
 
     it("applies the 6px margins on the listbox container", async () => {
-        if (!shortcutTriggersDemo.component) throw new Error("shortcut-triggers demo component missing");
-        const { container } = await renderDemo(shortcutTriggersDemo.component);
-        const listBox = findAllOfType(container, Gtk.ListBox)[0];
-        if (!listBox) throw new Error("expected list box");
+        await renderDemo(shortcutTriggersDemo);
+        const listBox = (await screen.findByName("list-box")) as Gtk.ListBox;
         expect(listBox.getMarginTop()).toBe(6);
         expect(listBox.getMarginBottom()).toBe(6);
         expect(listBox.getMarginStart()).toBe(6);

@@ -1,22 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { act, fireEvent } from "@gtkx/testing";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { overlayDecorativeDemo } from "../../../src/demos/layout/overlay-decorative.js";
 import { renderDemo } from "../../helpers/render-demo.js";
-
-const findAllOfType = <T extends Gtk.Widget>(root: Gtk.Widget, ctor: new (...args: never[]) => T): T[] => {
-    const matches: T[] = [];
-    const visit = (widget: Gtk.Widget): void => {
-        if (widget instanceof ctor) matches.push(widget);
-        let child = widget.getFirstChild();
-        while (child) {
-            visit(child);
-            child = child.getNextSibling();
-        }
-    };
-    visit(root);
-    return matches;
-};
 
 describe("overlayDecorativeDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -45,37 +31,27 @@ describe("overlayDecorativeDemo metadata", () => {
 
 describe("overlayDecorativeDemo overlay structure", () => {
     it("renders a single GtkOverlay containing the scrolled text view and three overlay children", async () => {
-        if (!overlayDecorativeDemo.component) throw new Error("overlay-decorative demo component missing");
-        const { container } = await renderDemo(overlayDecorativeDemo.component);
-        const overlays = findAllOfType(container, Gtk.Overlay);
-        expect(overlays).toHaveLength(1);
-        const scrolledWindows = findAllOfType(container, Gtk.ScrolledWindow);
-        expect(scrolledWindows).toHaveLength(1);
-        const textViews = findAllOfType(container, Gtk.TextView);
-        expect(textViews).toHaveLength(1);
-        const pictures = findAllOfType(container, Gtk.Picture);
-        expect(pictures).toHaveLength(2);
-        const scales = findAllOfType(container, Gtk.Scale);
-        expect(scales).toHaveLength(1);
+        await renderDemo(overlayDecorativeDemo);
+        expect(await screen.findByName("overlay")).toBeInstanceOf(Gtk.Overlay);
+        expect(await screen.findByName("scrolled")).toBeInstanceOf(Gtk.ScrolledWindow);
+        expect(await screen.findByName("text-view")).toBeInstanceOf(Gtk.TextView);
+        expect(await screen.findByName("picture-start")).toBeInstanceOf(Gtk.Picture);
+        expect(await screen.findByName("picture-end")).toBeInstanceOf(Gtk.Picture);
+        expect(await screen.findByName("margin-scale")).toBeInstanceOf(Gtk.Scale);
     });
 
     it("configures the scrolled window with automatic scrollbar policies", async () => {
-        if (!overlayDecorativeDemo.component) throw new Error("overlay-decorative demo component missing");
-        const { container } = await renderDemo(overlayDecorativeDemo.component);
-        const [scrolled] = findAllOfType(container, Gtk.ScrolledWindow);
-        if (!scrolled) throw new Error("expected scrolled window");
+        await renderDemo(overlayDecorativeDemo);
+        const scrolled = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
         const [hpolicy, vpolicy] = scrolled.getPolicy();
         expect(hpolicy).toBe(Gtk.PolicyType.AUTOMATIC);
         expect(vpolicy).toBe(Gtk.PolicyType.AUTOMATIC);
     });
 
     it("aligns the decorative pictures at opposite corners and prevents pointer targeting", async () => {
-        if (!overlayDecorativeDemo.component) throw new Error("overlay-decorative demo component missing");
-        const { container } = await renderDemo(overlayDecorativeDemo.component);
-        const pictures = findAllOfType(container, Gtk.Picture);
-        expect(pictures).toHaveLength(2);
-        const [first, second] = pictures;
-        if (!first || !second) throw new Error("expected two pictures");
+        await renderDemo(overlayDecorativeDemo);
+        const first = (await screen.findByName("picture-start")) as Gtk.Picture;
+        const second = (await screen.findByName("picture-end")) as Gtk.Picture;
         expect(first.getHalign()).toBe(Gtk.Align.START);
         expect(first.getValign()).toBe(Gtk.Align.START);
         expect(first.getCanTarget()).toBe(false);
@@ -87,10 +63,8 @@ describe("overlayDecorativeDemo overlay structure", () => {
 
 describe("overlayDecorativeDemo scale behavior", () => {
     it("initialises the scale at 100 with a 0..100 range and step of 1", async () => {
-        if (!overlayDecorativeDemo.component) throw new Error("overlay-decorative demo component missing");
-        const { container } = await renderDemo(overlayDecorativeDemo.component);
-        const [scale] = findAllOfType(container, Gtk.Scale);
-        if (!scale) throw new Error("expected Gtk.Scale");
+        await renderDemo(overlayDecorativeDemo);
+        const scale = (await screen.findByName("margin-scale")) as Gtk.Scale;
         const adjustment = scale.getAdjustment();
         expect(adjustment.getValue()).toBe(100);
         expect(adjustment.getLower()).toBe(0);
@@ -103,11 +77,9 @@ describe("overlayDecorativeDemo scale behavior", () => {
     });
 
     it("syncs the TextView left margin when the scale value changes", async () => {
-        if (!overlayDecorativeDemo.component) throw new Error("overlay-decorative demo component missing");
-        const { container } = await renderDemo(overlayDecorativeDemo.component);
-        const [scale] = findAllOfType(container, Gtk.Scale);
-        const [textView] = findAllOfType(container, Gtk.TextView);
-        if (!scale || !textView) throw new Error("expected scale and text view");
+        await renderDemo(overlayDecorativeDemo);
+        const scale = (await screen.findByName("margin-scale")) as Gtk.Scale;
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         expect(textView.getLeftMargin()).toBe(100);
         const adjustment = scale.getAdjustment();
         await act(() => adjustment.setValue(25));
@@ -116,11 +88,9 @@ describe("overlayDecorativeDemo scale behavior", () => {
     });
 
     it("rounds non-integer margins from the scale value", async () => {
-        if (!overlayDecorativeDemo.component) throw new Error("overlay-decorative demo component missing");
-        const { container } = await renderDemo(overlayDecorativeDemo.component);
-        const [scale] = findAllOfType(container, Gtk.Scale);
-        const [textView] = findAllOfType(container, Gtk.TextView);
-        if (!scale || !textView) throw new Error("expected scale and text view");
+        await renderDemo(overlayDecorativeDemo);
+        const scale = (await screen.findByName("margin-scale")) as Gtk.Scale;
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         const adjustment = scale.getAdjustment();
         await act(() => adjustment.setValue(37.7));
         await fireEvent(scale, "value-changed");
@@ -130,10 +100,8 @@ describe("overlayDecorativeDemo scale behavior", () => {
 
 describe("overlayDecorativeDemo text content", () => {
     it("renders the 'Dear diary...' text inside the text view buffer", async () => {
-        if (!overlayDecorativeDemo.component) throw new Error("overlay-decorative demo component missing");
-        const { container } = await renderDemo(overlayDecorativeDemo.component);
-        const [textView] = findAllOfType(container, Gtk.TextView);
-        if (!textView) throw new Error("expected text view");
+        await renderDemo(overlayDecorativeDemo);
+        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         const buffer = textView.getBuffer();
         const start = buffer.getStartIter();
         const end = buffer.getEndIter();

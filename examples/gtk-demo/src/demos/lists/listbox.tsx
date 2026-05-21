@@ -287,11 +287,12 @@ const ListBoxDemo = () => {
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
             <GtkLabel label="Messages from GTK and friends" />
             <GtkScrolledWindow
+                name="scrolled"
                 hscrollbarPolicy={Gtk.PolicyType.NEVER}
                 vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 vexpand
             >
-                <GtkListBox activateOnSingleClick={false} onRowActivated={handleRowActivated}>
+                <GtkListBox name="list-box" activateOnSingleClick={false} onRowActivated={handleRowActivated}>
                     {sortedMessages.map((message) => (
                         <MessageRow
                             key={message.id}

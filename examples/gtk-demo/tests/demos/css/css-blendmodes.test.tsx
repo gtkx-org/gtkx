@@ -1,9 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssBlendmodesDemo } from "../../../src/demos/css/css-blendmodes.js";
 import { renderDemo } from "../../helpers/render-demo.js";
-import { findFirstOfType } from "../../helpers/traverse.js";
+import { findAllOfType } from "../../helpers/traverse.js";
 
 describe("cssBlendmodesDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -23,30 +23,26 @@ describe("cssBlendmodesDemo metadata", () => {
 
 describe("cssBlendmodesDemo rendering", () => {
     it("renders the blend mode list and the three pages in the stack", async () => {
-        if (!cssBlendmodesDemo.component) throw new Error("css-blendmodes demo component missing");
-        const { container } = await renderDemo(cssBlendmodesDemo.component);
-        expect(findLabelWithText(container, "Blend mode:")).toBeInstanceOf(Gtk.Label);
-        expect(findLabelWithText(container, "Normal")).toBeInstanceOf(Gtk.Label);
-        expect(findLabelWithText(container, "Multiply")).toBeInstanceOf(Gtk.Label);
-        expect(findLabelWithText(container, "Screen")).toBeInstanceOf(Gtk.Label);
+        const { container } = await renderDemo(cssBlendmodesDemo);
+        const labels = findAllOfType(container, Gtk.Label).map((l) => l.getLabel());
+        expect(labels).toContain("Blend mode:");
+        expect(labels).toContain("Normal");
+        expect(labels).toContain("Multiply");
+        expect(labels).toContain("Screen");
     });
 
     it("renders all sixteen blend mode rows in the listbox", async () => {
-        if (!cssBlendmodesDemo.component) throw new Error("css-blendmodes demo component missing");
-        const { container } = await renderDemo(cssBlendmodesDemo.component);
-        const listbox = findFirstOfType(container, Gtk.ListBox);
+        await renderDemo(cssBlendmodesDemo);
+        const listbox = (await screen.findByName("blend-list")) as Gtk.ListBox;
         expect(listbox).toBeInstanceOf(Gtk.ListBox);
-        if (!listbox) return;
         const rows = countChildren(listbox);
         expect(rows).toBe(16);
     });
 
     it("renders the stack with the expected page identifiers", async () => {
-        if (!cssBlendmodesDemo.component) throw new Error("css-blendmodes demo component missing");
-        const { container } = await renderDemo(cssBlendmodesDemo.component);
-        const stack = findFirstOfType(container, Gtk.Stack);
+        await renderDemo(cssBlendmodesDemo);
+        const stack = (await screen.findByName("blend-stack")) as Gtk.Stack;
         expect(stack).toBeInstanceOf(Gtk.Stack);
-        if (!stack) return;
         expect(stack.getChildByName("page0")).toBeInstanceOf(Gtk.Widget);
         expect(stack.getChildByName("page1")).toBeInstanceOf(Gtk.Widget);
         expect(stack.getChildByName("page2")).toBeInstanceOf(Gtk.Widget);
@@ -55,9 +51,8 @@ describe("cssBlendmodesDemo rendering", () => {
 
 describe("cssBlendmodesDemo behavior", () => {
     it("selects the Normal row by default once the listbox is mounted", async () => {
-        if (!cssBlendmodesDemo.component) throw new Error("css-blendmodes demo component missing");
-        const { container } = await renderDemo(cssBlendmodesDemo.component);
-        const listbox = findFirstOfType(container, Gtk.ListBox) as Gtk.ListBox;
+        await renderDemo(cssBlendmodesDemo);
+        const listbox = (await screen.findByName("blend-list")) as Gtk.ListBox;
         const normalRow = listbox.getRowAtIndex(11);
         expect(normalRow).not.toBeNull();
         if (!normalRow) return;
@@ -65,26 +60,24 @@ describe("cssBlendmodesDemo behavior", () => {
     });
 
     it("activates a different blend row and switches the active blend mode", async () => {
-        if (!cssBlendmodesDemo.component) throw new Error("css-blendmodes demo component missing");
-        const { container } = await renderDemo(cssBlendmodesDemo.component);
-        const listbox = findFirstOfType(container, Gtk.ListBox) as Gtk.ListBox;
+        await renderDemo(cssBlendmodesDemo);
+        const listbox = (await screen.findByName("blend-list")) as Gtk.ListBox;
         const multiplyRow = listbox.getRowAtIndex(10);
         expect(multiplyRow).not.toBeNull();
         if (!multiplyRow) return;
         listbox.selectRow(multiplyRow);
-        await fireEvent(listbox as Gtk.Widget, "row-activated", multiplyRow);
+        await fireEvent(listbox, "row-activated", multiplyRow);
         expect(multiplyRow.isSelected()).toBe(true);
     });
 
     it("ignores activation when no matching blend mode exists at the row index", async () => {
-        if (!cssBlendmodesDemo.component) throw new Error("css-blendmodes demo component missing");
-        const { container } = await renderDemo(cssBlendmodesDemo.component);
-        const listbox = findFirstOfType(container, Gtk.ListBox) as Gtk.ListBox;
-        const stack = findFirstOfType(container, Gtk.Stack) as Gtk.Stack;
+        await renderDemo(cssBlendmodesDemo);
+        const listbox = (await screen.findByName("blend-list")) as Gtk.ListBox;
+        const stack = (await screen.findByName("blend-stack")) as Gtk.Stack;
         const initialPage = stack.getVisibleChildName();
         const firstRow = listbox.getRowAtIndex(0);
         if (!firstRow) throw new Error("expected at least one row");
-        await fireEvent(listbox as Gtk.Widget, "row-activated", firstRow);
+        await fireEvent(listbox, "row-activated", firstRow);
         expect(stack.getVisibleChildName()).toBe(initialPage);
     });
 });
@@ -97,19 +90,4 @@ const countChildren = (widget: Gtk.Widget): number => {
         child = child.getNextSibling();
     }
     return count;
-};
-
-const findLabelWithText = (root: Gtk.Widget, label: string): Gtk.Label | null => {
-    const stack: Gtk.Widget[] = [root];
-    while (stack.length > 0) {
-        const node = stack.pop();
-        if (!node) continue;
-        if (node instanceof Gtk.Label && node.getLabel() === label) return node;
-        let next = node.getFirstChild();
-        while (next) {
-            stack.push(next);
-            next = next.getNextSibling();
-        }
-    }
-    return null;
 };

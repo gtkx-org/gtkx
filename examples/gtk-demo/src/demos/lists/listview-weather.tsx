@@ -114,8 +114,9 @@ const ListViewWeatherDemo = () => {
     const weatherData = useMemo(() => parseWeatherData(), []);
 
     return (
-        <GtkScrolledWindow vexpand hexpand>
+        <GtkScrolledWindow name="scrolled" vexpand hexpand>
             <GtkListView
+                name="list-view"
                 estimatedItemWidth={56}
                 estimatedItemHeight={80}
                 orientation={Gtk.Orientation.HORIZONTAL}

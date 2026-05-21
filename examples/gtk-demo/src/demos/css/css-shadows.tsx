@@ -54,6 +54,7 @@ const CssShadowsDemo = ({ window }: DemoProps) => {
 
     return (
         <GtkPaned
+            name="paned"
             orientation={Gtk.Orientation.VERTICAL}
             resizeStartChild={false}
             startChild={
@@ -65,7 +66,7 @@ const CssShadowsDemo = ({ window }: DemoProps) => {
             }
             endChild={
                 <GtkScrolledWindow>
-                    <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
+                    <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged} />
                 </GtkScrolledWindow>
             }
         />

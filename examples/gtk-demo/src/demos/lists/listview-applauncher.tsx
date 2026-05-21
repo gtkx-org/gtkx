@@ -49,8 +49,9 @@ const ListViewApplauncherDemo = () => {
     );
 
     return (
-        <GtkScrolledWindow vexpand hexpand>
+        <GtkScrolledWindow name="scrolled" vexpand hexpand>
             <GtkListView
+                name="list-view"
                 estimatedItemHeight={48}
                 selectionMode={Gtk.SelectionMode.SINGLE}
                 onActivate={handleActivate}

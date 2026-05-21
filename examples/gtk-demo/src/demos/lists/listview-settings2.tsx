@@ -159,8 +159,9 @@ interface SchemaKeysListViewProps {
 }
 
 const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: SchemaKeysListViewProps) => (
-    <GtkScrolledWindow>
+    <GtkScrolledWindow name="scrolled">
         <GtkListView
+            name="list-view"
             vexpand
             cssClasses={["rich-list"]}
             renderItem={(key: KeyItem) => (
@@ -249,6 +250,7 @@ const ListViewSettings2Titlebar = () => {
         <GtkHeaderBar>
             <GtkHeaderBar.PackEnd>
                 <GtkToggleButton
+                    name="search-toggle"
                     iconName="system-search-symbolic"
                     active={searchMode}
                     onToggled={(btn) => {
@@ -266,8 +268,12 @@ const ListViewSettings2Demo = () => {
         useSettings2Context();
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkSearchBar searchModeEnabled={searchMode}>
-                <GtkSearchEntry onSearchChanged={handleSearchChanged} onStopSearch={handleStopSearch} />
+            <GtkSearchBar name="search-bar" searchModeEnabled={searchMode}>
+                <GtkSearchEntry
+                    name="search-entry"
+                    onSearchChanged={handleSearchChanged}
+                    onStopSearch={handleStopSearch}
+                />
             </GtkSearchBar>
             <SchemaKeysListView
                 filteredSchemaKeys={filteredSchemaKeys}

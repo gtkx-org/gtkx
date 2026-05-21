@@ -151,7 +151,7 @@ const CssMultiplebgsDemo = ({ window }: DemoProps) => {
     const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
 
     return (
-        <GtkOverlay>
+        <GtkOverlay name="overlay">
             <GtkDrawingArea name="canvas" hexpand vexpand />
             <GtkOverlay.Child>
                 <GtkButton
@@ -164,11 +164,12 @@ const CssMultiplebgsDemo = ({ window }: DemoProps) => {
             </GtkOverlay.Child>
             <GtkOverlay.Child>
                 <GtkPaned
+                    name="paned"
                     orientation={Gtk.Orientation.VERTICAL}
                     startChild={<GtkBox />}
                     endChild={
                         <GtkScrolledWindow>
-                            <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
+                            <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged} />
                         </GtkScrolledWindow>
                     }
                 />

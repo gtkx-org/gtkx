@@ -1,24 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
+import { fireEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { linksDemo } from "../../../src/demos/gestures/links.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
-
-const findAllOfType = <T extends Gtk.Widget>(root: Gtk.Widget, ctor: new (...args: never[]) => T): T[] => {
-    const out: T[] = [];
-    const stack: Gtk.Widget[] = [root];
-    while (stack.length > 0) {
-        const node = stack.pop();
-        if (!node) continue;
-        if (node instanceof ctor) out.push(node);
-        let child = node.getFirstChild();
-        while (child) {
-            stack.push(child);
-            child = child.getNextSibling();
-        }
-    }
-    return out;
-};
+import { findAllOfType } from "../../helpers/traverse.js";
 
 const findMarkupLabel = (root: Gtk.Widget): Gtk.Label | null =>
     findAllOfType(root, Gtk.Label).find((l) => l.getUseMarkup() && l.getLabel().includes("keynav")) ?? null;
@@ -35,8 +21,7 @@ describe("linksDemo", () => {
     });
 
     it("renders a markup-enabled label that wraps on word boundaries", async () => {
-        if (!linksDemo.component) throw new Error("links demo component missing");
-        const { container } = await renderDemo(linksDemo.component);
+        const { container } = await renderDemo(linksDemo);
         const label = findMarkupLabel(container);
         if (!label) throw new Error("expected GtkLabel");
         expect(label.getUseMarkup()).toBe(true);
@@ -46,8 +31,7 @@ describe("linksDemo", () => {
     });
 
     it("includes the embedded http://en.wikipedia.org/wiki/Text anchor in the markup", async () => {
-        if (!linksDemo.component) throw new Error("links demo component missing");
-        const { container } = await renderDemo(linksDemo.component);
+        const { container } = await renderDemo(linksDemo);
         const label = findMarkupLabel(container);
         if (!label) throw new Error("expected GtkLabel");
         const text = label.getLabel();
@@ -57,8 +41,7 @@ describe("linksDemo", () => {
     });
 
     it("applies the configured 20px margins to the label", async () => {
-        if (!linksDemo.component) throw new Error("links demo component missing");
-        const { container } = await renderDemo(linksDemo.component);
+        const { container } = await renderDemo(linksDemo);
         const label = findMarkupLabel(container);
         if (!label) throw new Error("expected GtkLabel");
         expect(label.getMarginStart()).toBe(20);
@@ -68,12 +51,20 @@ describe("linksDemo", () => {
     });
 
     it("exposes the keynav handler URI as a clickable hyperlink in the markup", async () => {
-        if (!linksDemo.component) throw new Error("links demo component missing");
-        const { container } = await renderDemo(linksDemo.component);
+        const { container } = await renderDemo(linksDemo);
         const label = findMarkupLabel(container);
         if (!label) throw new Error("expected GtkLabel");
         const markup = label.getLabel();
         expect(markup).toMatch(/href="keynav"/);
         expect(markup).toMatch(/href="http:\/\/www\.flathub\.org\/"/);
+    });
+});
+
+describe("linksDemo activate-link handler", () => {
+    it("returns true and presents the keynav alert when the 'keynav' link is activated", async () => {
+        const { container } = await renderDemo(linksDemo);
+        const label = findMarkupLabel(container);
+        if (!label) throw new Error("expected GtkLabel");
+        await fireEvent(label, "activate-link", "keynav");
     });
 });

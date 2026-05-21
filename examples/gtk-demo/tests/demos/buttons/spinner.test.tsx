@@ -12,12 +12,11 @@ describe("spinnerDemo", () => {
     });
 
     it("renders Play/Stop buttons and toggles via clicks", async () => {
-        if (!spinnerDemo.component) throw new Error("spinner demo component missing");
-        await renderDemo(spinnerDemo.component);
+        await renderDemo(spinnerDemo);
         const play = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Play" });
         const stop = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Stop" });
-        await fireEvent(stop as Gtk.Widget, "clicked");
-        await fireEvent(play as Gtk.Widget, "clicked");
+        await fireEvent(stop, "clicked");
+        await fireEvent(play, "clicked");
         expect(play).toBeInstanceOf(Gtk.Button);
     });
 });

@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewWeatherDemo } from "../../../src/demos/lists/listview-weather.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
-import { findFirst } from "./helpers.js";
 
 describe("listviewWeatherDemo", () => {
     it("exposes the expected metadata", () => {
@@ -17,36 +17,32 @@ describe("listviewWeatherDemo", () => {
     });
 
     it("renders a horizontal GtkListView with separators and no selection", async () => {
-        if (!listviewWeatherDemo.component) throw new Error("listview-weather demo component missing");
-        const { container } = await renderDemo(listviewWeatherDemo.component);
-        const lv = findFirst(container, Gtk.ListView);
+        await renderDemo(listviewWeatherDemo);
+        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
         expect(lv).toBeInstanceOf(Gtk.ListView);
-        expect(lv?.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
-        expect(lv?.getShowSeparators()).toBe(true);
+        expect(lv.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
+        expect(lv.getShowSeparators()).toBe(true);
     });
 
     it("uses a no-selection model", async () => {
-        if (!listviewWeatherDemo.component) throw new Error("listview-weather demo component missing");
-        const { container } = await renderDemo(listviewWeatherDemo.component);
-        const lv = findFirst(container, Gtk.ListView);
-        expect(lv?.getModel()).toBeInstanceOf(Gtk.NoSelection);
+        await renderDemo(listviewWeatherDemo);
+        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        expect(lv.getModel()).toBeInstanceOf(Gtk.NoSelection);
     });
 
     it("populates the list view with parsed weather entries", async () => {
-        if (!listviewWeatherDemo.component) throw new Error("listview-weather demo component missing");
-        const { container } = await renderDemo(listviewWeatherDemo.component);
-        const lv = findFirst(container, Gtk.ListView);
-        const model = lv?.getModel();
+        await renderDemo(listviewWeatherDemo);
+        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        const model = lv.getModel();
         const count = model?.getNItems() ?? 0;
         expect(count).toBeGreaterThan(0);
     });
 
     it("wraps the list view inside a scrolled window with vexpand and hexpand", async () => {
-        if (!listviewWeatherDemo.component) throw new Error("listview-weather demo component missing");
-        const { container } = await renderDemo(listviewWeatherDemo.component);
-        const sw = findFirst(container, Gtk.ScrolledWindow);
+        await renderDemo(listviewWeatherDemo);
+        const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
-        expect(sw?.getVexpand()).toBe(true);
-        expect(sw?.getHexpand()).toBe(true);
+        expect(sw.getVexpand()).toBe(true);
+        expect(sw.getHexpand()).toBe(true);
     });
 });

@@ -173,6 +173,7 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
 
     return (
         <GtkDrawingArea
+            name="scribble-area"
             ref={ref}
             contentWidth={100}
             contentHeight={100}
@@ -214,6 +215,7 @@ const DrawingAreaDemo = ({ window }: DemoProps) => {
             <GtkLabel ref={setKnockoutLabel} label="Knockout groups" cssClasses={["heading"]} />
             <GtkFrame vexpand>
                 <GtkDrawingArea
+                    name="knockout-area"
                     render={drawKnockoutGroups}
                     contentWidth={100}
                     contentHeight={100}

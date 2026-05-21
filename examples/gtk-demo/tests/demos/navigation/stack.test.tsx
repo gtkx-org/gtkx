@@ -36,16 +36,14 @@ describe("stackDemo metadata", () => {
 
 describe("stackDemo structure", () => {
     it("renders a GtkStack containing three pages", async () => {
-        if (!stackDemo.component) throw new Error("stack demo component missing");
-        const { container } = await renderDemo(stackDemo.component);
+        const { container } = await renderDemo(stackDemo);
         const stack = findStack(container);
         expect(stack).toBeInstanceOf(Gtk.Stack);
         expect(stack?.getPages().getNItems()).toBe(3);
     });
 
     it("renders a GtkStackSwitcher tied to the stack", async () => {
-        if (!stackDemo.component) throw new Error("stack demo component missing");
-        const { container } = await renderDemo(stackDemo.component);
+        const { container } = await renderDemo(stackDemo);
         const switcher = findSwitcher(container);
         expect(switcher).toBeInstanceOf(Gtk.StackSwitcher);
         expect(switcher?.getStack()).toBeInstanceOf(Gtk.Stack);
@@ -54,8 +52,7 @@ describe("stackDemo structure", () => {
 
 describe("stackDemo pages", () => {
     it("declares pages with the expected titles and ids", async () => {
-        if (!stackDemo.component) throw new Error("stack demo component missing");
-        const { container } = await renderDemo(stackDemo.component);
+        const { container } = await renderDemo(stackDemo);
         const stack = findStack(container);
         if (!stack) throw new Error("stack widget not found");
 
@@ -63,18 +60,15 @@ describe("stackDemo pages", () => {
         const page2Child = stack.getChildByName("page2");
         const page3Child = stack.getChildByName("page3");
 
-        expect(page1Child).not.toBeNull();
-        expect(page2Child).not.toBeNull();
-        expect(page3Child).not.toBeNull();
+        if (!page1Child || !page2Child || !page3Child) throw new Error("stack pages missing");
 
-        expect(stack.getPage(page1Child as Gtk.Widget).getTitle()).toBe("Page 1");
-        expect(stack.getPage(page2Child as Gtk.Widget).getTitle()).toBe("Page 2");
-        expect(stack.getPage(page3Child as Gtk.Widget).getIconName()).toBe("face-laugh-symbolic");
+        expect(stack.getPage(page1Child).getTitle()).toBe("Page 1");
+        expect(stack.getPage(page2Child).getTitle()).toBe("Page 2");
+        expect(stack.getPage(page3Child).getIconName()).toBe("face-laugh-symbolic");
     });
 
     it("renders the Page 2 check button inside the stack", async () => {
-        if (!stackDemo.component) throw new Error("stack demo component missing");
-        const { container } = await renderDemo(stackDemo.component);
+        const { container } = await renderDemo(stackDemo);
         const stack = findStack(container);
         const page2Child = stack?.getChildByName("page2") as Gtk.CheckButton | null;
         expect(page2Child).toBeInstanceOf(Gtk.CheckButton);

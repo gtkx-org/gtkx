@@ -39,7 +39,7 @@ const ExpanderDemo = () => {
             <GtkLabel label="<big><b>Something went wrong</b></big>" useMarkup />
             <GtkLabel label="Here are some more details but not the full story" wrap={false} vexpand={false} />
 
-            <GtkExpander label="Details:" vexpand ref={expanderRef} onNotify={handleExpandedNotify}>
+            <GtkExpander name="expander" label="Details:" vexpand ref={expanderRef} onNotify={handleExpandedNotify}>
                 <GtkScrolledWindow
                     minContentHeight={100}
                     hasFrame

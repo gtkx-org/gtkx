@@ -19,8 +19,7 @@ describe("errorstatesDemo metadata", () => {
     });
 
     it("renders both entries, the scale and the switch in initial state", async () => {
-        if (!errorstatesDemo.component) throw new Error("errorstates demo component missing");
-        await renderDemo(errorstatesDemo.component);
+        await renderDemo(errorstatesDemo);
         const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
         expect(entries).toHaveLength(2);
         const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER);
@@ -35,39 +34,36 @@ describe("errorstatesDemo metadata", () => {
 
 describe("errorstatesDemo entries", () => {
     it("flags the more-details entry as invalid when filled while details is empty", async () => {
-        if (!errorstatesDemo.component) throw new Error("errorstates demo component missing");
-        await renderDemo(errorstatesDemo.component);
+        await renderDemo(errorstatesDemo);
         const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
         const [detailsEntry, moreDetailsEntry] = entries;
         if (!detailsEntry || !moreDetailsEntry) throw new Error("expected both entries to be present");
         await act(() => moreDetailsEntry.setText("filled in"));
-        await fireEvent(moreDetailsEntry as Gtk.Widget, "changed");
+        await fireEvent(moreDetailsEntry, "changed");
         expect(moreDetailsEntry.hasCssClass("error")).toBe(true);
         expect(moreDetailsEntry.getTooltipText()).toBe("Must have details first");
     });
 
     it("clears the more-details error once the details entry receives input", async () => {
-        if (!errorstatesDemo.component) throw new Error("errorstates demo component missing");
-        await renderDemo(errorstatesDemo.component);
+        await renderDemo(errorstatesDemo);
         const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
         const [detailsEntry, moreDetailsEntry] = entries;
         if (!detailsEntry || !moreDetailsEntry) throw new Error("expected both entries to be present");
         await act(() => moreDetailsEntry.setText("filled in"));
-        await fireEvent(moreDetailsEntry as Gtk.Widget, "changed");
+        await fireEvent(moreDetailsEntry, "changed");
         expect(moreDetailsEntry.hasCssClass("error")).toBe(true);
         await act(() => detailsEntry.setText("ok"));
-        await fireEvent(detailsEntry as Gtk.Widget, "changed");
+        await fireEvent(detailsEntry, "changed");
         expect(moreDetailsEntry.hasCssClass("error")).toBe(false);
     });
 });
 
 describe("errorstatesDemo switch and scale", () => {
     it("shows the level-too-low error label when the switch is activated with the level low", async () => {
-        if (!errorstatesDemo.component) throw new Error("errorstates demo component missing");
-        const { container } = await renderDemo(errorstatesDemo.component);
+        const { container } = await renderDemo(errorstatesDemo);
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
         await act(() => sw.setActive(true));
-        await fireEvent(sw as Gtk.Widget, "state-set", true);
+        await fireEvent(sw, "state-set", true);
         const errorLabel = findLabelByText(container, "Level too low");
         expect(errorLabel).toBeInstanceOf(Gtk.Label);
         if (!errorLabel) return;
@@ -75,30 +71,28 @@ describe("errorstatesDemo switch and scale", () => {
     });
 
     it("does not show the error label when the switch is activated with a high level", async () => {
-        if (!errorstatesDemo.component) throw new Error("errorstates demo component missing");
-        const { container } = await renderDemo(errorstatesDemo.component);
+        const { container } = await renderDemo(errorstatesDemo);
         const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
         await act(() => scale.setValue(80));
-        await fireEvent(scale as Gtk.Widget, "value-changed");
+        await fireEvent(scale, "value-changed");
         await act(() => sw.setActive(true));
-        await fireEvent(sw as Gtk.Widget, "state-set", true);
+        await fireEvent(sw, "state-set", true);
         expect(sw.getState()).toBe(true);
         expect(findLabelByText(container, "Level too low")).toBeNull();
     });
 
     it("flips the switch state automatically when the level crosses 50 with the switch already active", async () => {
-        if (!errorstatesDemo.component) throw new Error("errorstates demo component missing");
-        await renderDemo(errorstatesDemo.component);
+        await renderDemo(errorstatesDemo);
         const scale = (await screen.findByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale;
         const sw = (await screen.findByRole(Gtk.AccessibleRole.SWITCH)) as Gtk.Switch;
         await act(() => sw.setActive(true));
-        await fireEvent(sw as Gtk.Widget, "state-set", true);
+        await fireEvent(sw, "state-set", true);
         await act(() => scale.setValue(80));
-        await fireEvent(scale as Gtk.Widget, "value-changed");
+        await fireEvent(scale, "value-changed");
         expect(sw.getState()).toBe(true);
         await act(() => scale.setValue(20));
-        await fireEvent(scale as Gtk.Widget, "value-changed");
+        await fireEvent(scale, "value-changed");
         expect(sw.getState()).toBe(false);
     });
 });

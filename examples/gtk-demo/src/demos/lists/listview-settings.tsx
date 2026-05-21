@@ -299,6 +299,7 @@ const commitKeyInfoEdit = ({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
 const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: string[]) => void }) => (
     <GtkScrolledWindow>
         <GtkListView
+            name="sidebar"
             tabBehavior={Gtk.ListTabBehavior.ITEM}
             selectionMode={Gtk.SelectionMode.BROWSE}
             onSelectionChanged={onSelectionChanged}
@@ -328,11 +329,12 @@ const SettingsColumnView = ({
     onValueEdit,
 }: SettingsColumnViewProps) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-        <GtkSearchBar searchModeEnabled={keySearchActive}>
-            <GtkSearchEntry onSearchChanged={onSearchChanged} onStopSearch={onStopSearch} />
+        <GtkSearchBar name="search-bar" searchModeEnabled={keySearchActive}>
+            <GtkSearchEntry name="search-entry" onSearchChanged={onSearchChanged} onStopSearch={onStopSearch} />
         </GtkSearchBar>
         <GtkScrolledWindow hexpand vexpand>
             <GtkColumnView
+                name="column-view"
                 ref={columnViewRef}
                 tabBehavior={Gtk.ListTabBehavior.CELL}
                 cssClasses={["data-table"]}
@@ -429,6 +431,7 @@ const ListViewSettingsTitlebar = () => {
         <GtkHeaderBar>
             <GtkHeaderBar.PackEnd>
                 <GtkToggleButton
+                    name="search-toggle"
                     iconName="system-search-symbolic"
                     active={state.keySearchActive}
                     onToggled={(btn) => {
@@ -445,6 +448,7 @@ const ListViewSettingsDemo = () => {
     const { state, columnViewRef, handleValueEdit } = useSettingsContext();
     return (
         <GtkPaned
+            name="paned"
             position={300}
             hexpand
             vexpand

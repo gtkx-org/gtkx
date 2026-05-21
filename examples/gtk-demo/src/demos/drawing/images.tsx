@@ -122,7 +122,7 @@ const ImagesDemo = ({ window }: DemoProps) => {
             marginTop={16}
             marginBottom={16}
         >
-            <GtkBox spacing={16} sensitive={!insensitive}>
+            <GtkBox name="image-strip" spacing={16} sensitive={!insensitive}>
                 <ImagesPanel title="Image">
                     <GtkImage file={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
                 </ImagesPanel>

@@ -111,6 +111,7 @@ function createBlendCss(blendMode: string) {
 
 const BlendStack = ({ stackRef }: { stackRef: (s: Gtk.Stack | null) => void }) => (
     <GtkStack
+        name="blend-stack"
         ref={stackRef}
         hexpand
         vexpand
@@ -234,7 +235,7 @@ const CssBlendmodesDemo = () => {
 
             <GtkGrid.Child column={0} row={1}>
                 <GtkScrolledWindow vexpand hasFrame minContentWidth={150}>
-                    <GtkListBox ref={setListbox} onRowActivated={handleRowActivated}>
+                    <GtkListBox name="blend-list" ref={setListbox} onRowActivated={handleRowActivated}>
                         {BLEND_MODES.map((mode) => (
                             <GtkListBoxRow key={mode.id}>
                                 <GtkLabel label={mode.name} xalign={0} />

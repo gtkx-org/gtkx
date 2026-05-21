@@ -1,9 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listboxControlsDemo } from "../../../src/demos/lists/listbox-controls.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
-import { ancestorOfType, findAll, findFirst } from "./helpers.js";
+import { ancestorOfType, findAllOfType } from "../../helpers/traverse.js";
 
 describe("listboxControlsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -18,118 +18,97 @@ describe("listboxControlsDemo metadata", () => {
 
 describe("listboxControlsDemo Group 1 structure", () => {
     it("renders two list boxes (Group 1 and Group 2)", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        const lists = findAll(container, Gtk.ListBox);
-        expect(lists.length).toBe(2);
-        for (const list of lists) {
-            expect(list.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
-        }
+        await renderDemo(listboxControlsDemo);
+        const group1 = (await screen.findByName("group-1-list")) as Gtk.ListBox;
+        const group2 = (await screen.findByName("group-2-list")) as Gtk.ListBox;
+        expect(group1.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
+        expect(group2.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
     });
 
     it("renders the Group 1 and Group 2 title labels", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        const labelTexts = findAll(container, Gtk.Label).map((l) => l.getLabel());
+        const { container } = await renderDemo(listboxControlsDemo);
+        const labelTexts = findAllOfType(container, Gtk.Label).map((l) => l.getLabel());
         expect(labelTexts).toContain("Group 1");
         expect(labelTexts).toContain("Group 2");
     });
 
     it("renders the switch initially inactive", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        const sw = findFirst(container, Gtk.Switch);
+        await renderDemo(listboxControlsDemo);
+        const sw = (await screen.findByName("switch")) as Gtk.Switch;
         expect(sw).toBeInstanceOf(Gtk.Switch);
-        expect(sw?.getActive()).toBe(false);
+        expect(sw.getActive()).toBe(false);
     });
 
     it("renders the check button initially active", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        const check = findFirst(container, Gtk.CheckButton);
+        await renderDemo(listboxControlsDemo);
+        const check = (await screen.findByName("check")) as Gtk.CheckButton;
         expect(check).toBeInstanceOf(Gtk.CheckButton);
-        expect(check?.getActive()).toBe(true);
+        expect(check.getActive()).toBe(true);
     });
 
     it("renders the click-here icon initially hidden via opacity", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        const images = findAll(container, Gtk.Image);
-        const clickHereImage = images.find((i) => i.getIconName() === "object-select-symbolic");
+        await renderDemo(listboxControlsDemo);
+        const clickHereImage = (await screen.findByName("click-here-image")) as Gtk.Image;
         expect(clickHereImage).toBeInstanceOf(Gtk.Image);
-        expect(clickHereImage?.getOpacity()).toBe(0);
+        expect(clickHereImage.getOpacity()).toBe(0);
     });
 });
 
 describe("listboxControlsDemo direct toggles", () => {
     it("toggles the switch when its state-set signal fires", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        const sw = findFirst(container, Gtk.Switch);
-        if (!sw) throw new Error("switch not found");
+        await renderDemo(listboxControlsDemo);
+        const sw = (await screen.findByName("switch")) as Gtk.Switch;
         const before = sw.getActive();
-        await fireEvent(sw as Gtk.Widget, "state-set", !before);
-        const after = findFirst(container, Gtk.Switch)?.getActive();
-        expect(after).toBe(!before);
+        await fireEvent(sw, "state-set", !before);
+        expect(sw.getActive()).toBe(!before);
     });
 
     it("toggles the check button when toggled", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        const check = findFirst(container, Gtk.CheckButton);
-        if (!check) throw new Error("check button not found");
+        await renderDemo(listboxControlsDemo);
+        const check = (await screen.findByName("check")) as Gtk.CheckButton;
         const before = check.getActive();
-        await fireEvent(check as Gtk.Widget, "toggled");
-        const after = findFirst(container, Gtk.CheckButton)?.getActive();
-        expect(after).toBe(!before);
+        await fireEvent(check, "toggled");
+        expect(check.getActive()).toBe(!before);
     });
 });
 
 describe("listboxControlsDemo row activation", () => {
     it("activating the click-here row toggles the image opacity", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        const clickHereImage = findAll(container, Gtk.Image).find((i) => i.getIconName() === "object-select-symbolic");
-        if (!clickHereImage) throw new Error("click-here image not found");
+        await renderDemo(listboxControlsDemo);
+        const clickHereImage = (await screen.findByName("click-here-image")) as Gtk.Image;
         const clickRow = ancestorOfType(clickHereImage, Gtk.ListBoxRow);
-        const list = clickRow?.getParent() as Gtk.ListBox | null;
-        if (!clickRow || !list) throw new Error("click-here row / list not found");
-        await fireEvent(list as Gtk.Widget, "row-activated", clickRow);
-        const updatedImage = findAll(container, Gtk.Image).find((i) => i.getIconName() === "object-select-symbolic");
-        expect(updatedImage?.getOpacity()).toBe(1);
+        const list = (await screen.findByName("group-1-list")) as Gtk.ListBox;
+        if (!clickRow) throw new Error("click-here row not found");
+        await fireEvent(list, "row-activated", clickRow);
+        expect(clickHereImage.getOpacity()).toBe(1);
     });
 
     it("activating the switch row toggles the switch", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        const sw = findFirst(container, Gtk.Switch);
-        if (!sw) throw new Error("switch not found");
+        await renderDemo(listboxControlsDemo);
+        const sw = (await screen.findByName("switch")) as Gtk.Switch;
         const before = sw.getActive();
         const switchRow = ancestorOfType(sw, Gtk.ListBoxRow);
-        const list = switchRow?.getParent() as Gtk.ListBox | null;
-        if (!switchRow || !list) throw new Error("switch row / list not found");
-        await fireEvent(list as Gtk.Widget, "row-activated", switchRow);
-        const after = findFirst(container, Gtk.Switch)?.getActive();
-        expect(after).toBe(!before);
+        const list = (await screen.findByName("group-1-list")) as Gtk.ListBox;
+        if (!switchRow) throw new Error("switch row not found");
+        await fireEvent(list, "row-activated", switchRow);
+        expect(sw.getActive()).toBe(!before);
     });
 });
 
 describe("listboxControlsDemo Group 2 controls", () => {
     it("renders a scale, spin button, dropdown and entry in Group 2", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        expect(findFirst(container, Gtk.Scale)).toBeInstanceOf(Gtk.Scale);
-        expect(findFirst(container, Gtk.SpinButton)).toBeInstanceOf(Gtk.SpinButton);
-        expect(findFirst(container, Gtk.DropDown)).toBeInstanceOf(Gtk.DropDown);
-        expect(findFirst(container, Gtk.Entry)).toBeInstanceOf(Gtk.Entry);
+        await renderDemo(listboxControlsDemo);
+        expect(await screen.findByName("scale")).toBeInstanceOf(Gtk.Scale);
+        expect(await screen.findByName("spin")).toBeInstanceOf(Gtk.SpinButton);
+        expect(await screen.findByName("dropdown")).toBeInstanceOf(Gtk.DropDown);
+        expect(await screen.findByName("entry")).toBeInstanceOf(Gtk.Entry);
     });
 
     it("seeds the scale and spin button with the expected starting value", async () => {
-        if (!listboxControlsDemo.component) throw new Error("listbox-controls demo component missing");
-        const { container } = await renderDemo(listboxControlsDemo.component);
-        const scale = findFirst(container, Gtk.Scale);
-        const spin = findFirst(container, Gtk.SpinButton);
-        expect(scale?.getValue()).toBe(50);
-        expect(spin?.getValue()).toBe(50);
+        await renderDemo(listboxControlsDemo);
+        const scale = (await screen.findByName("scale")) as Gtk.Scale;
+        const spin = (await screen.findByName("spin")) as Gtk.SpinButton;
+        expect(scale.getValue()).toBe(50);
+        expect(spin.getValue()).toBe(50);
     });
 });

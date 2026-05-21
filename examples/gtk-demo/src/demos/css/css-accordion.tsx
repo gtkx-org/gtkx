@@ -55,7 +55,7 @@ const accordionStyle = css`
 `;
 
 const CssAccordionDemo = () => (
-    <GtkFrame cssClasses={[accordionStyle]}>
+    <GtkFrame name="frame" cssClasses={[accordionStyle]}>
         <GtkBox
             orientation={Gtk.Orientation.HORIZONTAL}
             halign={Gtk.Align.CENTER}

@@ -135,7 +135,7 @@ function highlightMatch(word: string, query: string): string {
     return `${before}<b>${match}</b>${after}`;
 }
 
-const SuggestionEntry = ({ words, placeholder }: { words: string[]; placeholder: string }) => {
+const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeholder: string; name?: string }) => {
     const [text, setText] = useState("");
 
     const suggestions = useMemo(() => {
@@ -149,6 +149,7 @@ const SuggestionEntry = ({ words, placeholder }: { words: string[]; placeholder:
     return (
         <GtkBox cssClasses={["linked"]}>
             <GtkEntry
+                name={name}
                 text={text}
                 hexpand
                 placeholderText={placeholder}
@@ -379,6 +380,7 @@ const ListViewSelectionsDemo = () => {
                 <TimesSectionedDropDown />
 
                 <GtkDropDown
+                    name="fonts-dropdown"
                     selectedId={getFontFamilies()[fontIndex] ?? ""}
                     enableSearch={enableFontSearch}
                     onSelectionChanged={(id) => {
@@ -389,6 +391,7 @@ const ListViewSelectionsDemo = () => {
                 />
 
                 <GtkSpinButton
+                    name="font-spin"
                     halign={Gtk.Align.START}
                     marginStart={20}
                     value={fontIndex}
@@ -399,6 +402,7 @@ const ListViewSelectionsDemo = () => {
                 />
 
                 <GtkCheckButton
+                    name="enable-search-check"
                     label="Enable search"
                     marginStart={20}
                     active={enableFontSearch}
@@ -408,12 +412,12 @@ const ListViewSelectionsDemo = () => {
                 <DevicesDropDown />
             </GtkBox>
 
-            <GtkSeparator orientation={Gtk.Orientation.VERTICAL} />
+            <GtkSeparator name="column-separator" orientation={Gtk.Orientation.VERTICAL} />
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={10}>
                 <GtkLabel label="Suggestions" cssClasses={["title-4"]} />
 
-                <SuggestionEntry words={suggestionWords} placeholder="Words with T or G…" />
+                <SuggestionEntry name="words-entry" words={suggestionWords} placeholder="Words with T or G…" />
 
                 <DirectorySuggestionEntry />
 

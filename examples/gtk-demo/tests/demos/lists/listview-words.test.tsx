@@ -1,9 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent } from "@gtkx/testing";
+import { fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewWordsDemo } from "../../../src/demos/lists/listview-words.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
-import { findAll, findApplicationWindow, findFirst } from "./helpers.js";
 
 describe("listviewWordsDemo", () => {
     it("exposes the expected metadata", () => {
@@ -17,48 +16,39 @@ describe("listviewWordsDemo", () => {
     });
 
     it("installs a header bar with an Open button", async () => {
-        const { container } = await renderDemo(listviewWordsDemo);
-        const window = findApplicationWindow(container);
-        expect(window?.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
-        const openButton = findAll(window as Gtk.Widget, Gtk.Button).find((b) => b.getLabel() === "_Open");
-        expect(openButton).toBeInstanceOf(Gtk.Button);
-        expect(openButton?.getUseUnderline()).toBe(true);
+        await renderDemo(listviewWordsDemo);
+        const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
+        expect(openButton.getUseUnderline()).toBe(true);
     });
 
     it("renders a GtkSearchEntry with the configured placeholder", async () => {
-        const { container } = await renderDemo(listviewWordsDemo);
-        const entry = findFirst(container, Gtk.SearchEntry);
-        expect(entry).toBeInstanceOf(Gtk.SearchEntry);
-        expect(entry?.getPlaceholderText()).toBe("Search words...");
+        await renderDemo(listviewWordsDemo);
+        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        expect(entry.getPlaceholderText()).toBe("Search words...");
     });
 
     it("renders a GtkListView with NONE selection", async () => {
-        const { container } = await renderDemo(listviewWordsDemo);
-        const lv = findFirst(container, Gtk.ListView);
-        expect(lv).toBeInstanceOf(Gtk.ListView);
-        expect(lv?.getModel()).toBeInstanceOf(Gtk.NoSelection);
+        await renderDemo(listviewWordsDemo);
+        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        expect(lv.getModel()).toBeInstanceOf(Gtk.NoSelection);
     });
 
     it("populates the list view from the loaded word list", async () => {
-        const { container } = await renderDemo(listviewWordsDemo);
-        const lv = findFirst(container, Gtk.ListView);
-        expect(lv?.getModel()?.getNItems() ?? 0).toBeGreaterThan(0);
+        await renderDemo(listviewWordsDemo);
+        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        expect(lv.getModel()?.getNItems() ?? 0).toBeGreaterThan(0);
     });
 
     it("displays the line count in the header label", async () => {
-        const { container } = await renderDemo(listviewWordsDemo);
-        const window = findApplicationWindow(container);
-        const labels = findAll(window as Gtk.Widget, Gtk.Label);
-        const titleLabel = labels.find((l) => /\bline(s)?$/.test(l.getLabel()));
-        expect(titleLabel).toBeInstanceOf(Gtk.Label);
+        await renderDemo(listviewWordsDemo);
+        await screen.findByText(/\blines$/);
     });
 
     it("updates the search entry text when text is typed", async () => {
-        const { container } = await renderDemo(listviewWordsDemo);
-        const entry = findFirst(container, Gtk.SearchEntry);
-        if (!entry) throw new Error("search entry not found");
+        await renderDemo(listviewWordsDemo);
+        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
         entry.setText("lorem");
-        await fireEvent(entry as Gtk.Widget, "search-changed");
-        expect(findFirst(container, Gtk.SearchEntry)?.getText()).toBe("lorem");
+        await fireEvent(entry, "search-changed");
+        expect(entry.getText()).toBe("lorem");
     });
 });

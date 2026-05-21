@@ -46,8 +46,7 @@ describe("textviewDemo metadata", () => {
 
 describe("textviewDemo rendering", () => {
     it("renders a vertical paned with two text views sharing a single buffer", async () => {
-        if (!textviewDemo.component) throw new Error("textview demo component missing");
-        const { container } = await renderDemo(textviewDemo.component);
+        const { container } = await renderDemo(textviewDemo);
         const paned = findFirstByType(container, Gtk.Paned);
         expect(paned).toBeInstanceOf(Gtk.Paned);
         expect(paned?.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
@@ -61,8 +60,7 @@ describe("textviewDemo rendering", () => {
     });
 
     it("populates the shared buffer with section headings and international content", async () => {
-        if (!textviewDemo.component) throw new Error("textview demo component missing");
-        const { container } = await renderDemo(textviewDemo.component);
+        const { container } = await renderDemo(textviewDemo);
         const textView = findFirstByType(container, Gtk.TextView) as Gtk.TextView;
         const text = readBufferText(textView);
         expect(text).toContain("The text widget can display text with all kinds of nifty attributes");
@@ -80,8 +78,7 @@ describe("textviewDemo rendering", () => {
     });
 
     it("wraps text in word mode in the first text view", async () => {
-        if (!textviewDemo.component) throw new Error("textview demo component missing");
-        const { container } = await renderDemo(textviewDemo.component);
+        const { container } = await renderDemo(textviewDemo);
         const textViews = findAllByType(container, Gtk.TextView);
         const view1 = textViews[0];
         if (!view1) throw new Error("expected first text view");
@@ -91,8 +88,7 @@ describe("textviewDemo rendering", () => {
 
 describe("textviewDemo cloned widgets", () => {
     it("attaches Click Me buttons, drop downs, scales, and entries in the second text view", async () => {
-        if (!textviewDemo.component) throw new Error("textview demo component missing");
-        const { container } = await renderDemo(textviewDemo.component);
+        const { container } = await renderDemo(textviewDemo);
         const textViews = findAllByType(container, Gtk.TextView);
         const view2 = textViews[1];
         if (!view2) throw new Error("expected second text view");
@@ -109,8 +105,7 @@ describe("textviewDemo cloned widgets", () => {
 
 describe("textviewDemo easter egg", () => {
     it("opens the easter-egg nested window when the cloned Click Me button is activated", async () => {
-        if (!textviewDemo.component) throw new Error("textview demo component missing");
-        const { container } = await renderDemo(textviewDemo.component);
+        const { container } = await renderDemo(textviewDemo);
         const textViews = findAllByType(container, Gtk.TextView);
         const view2 = textViews[1];
         if (!view2) throw new Error("expected second text view");
@@ -124,8 +119,7 @@ describe("textviewDemo easter egg", () => {
     });
 
     it("opens the easter-egg via the source Click Me button in the first text view", async () => {
-        if (!textviewDemo.component) throw new Error("textview demo component missing");
-        const { container } = await renderDemo(textviewDemo.component);
+        const { container } = await renderDemo(textviewDemo);
         const textViews = findAllByType(container, Gtk.TextView);
         const view1 = textViews[0];
         if (!view1) throw new Error("expected first text view");
@@ -139,8 +133,7 @@ describe("textviewDemo easter egg", () => {
     });
 
     it("reuses the same easter-egg window on subsequent activations", async () => {
-        if (!textviewDemo.component) throw new Error("textview demo component missing");
-        const { container } = await renderDemo(textviewDemo.component);
+        const { container } = await renderDemo(textviewDemo);
         const textViews = findAllByType(container, Gtk.TextView);
         const view2 = textViews[1];
         if (!view2) throw new Error("expected second text view");

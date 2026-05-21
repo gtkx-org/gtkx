@@ -3,7 +3,6 @@ import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssAccordionDemo } from "../../../src/demos/css/css-accordion.js";
 import { renderDemo } from "../../helpers/render-demo.js";
-import { findFirstOfType } from "../../helpers/traverse.js";
 
 describe("cssAccordionDemo", () => {
     it("exposes the expected metadata", () => {
@@ -21,8 +20,7 @@ describe("cssAccordionDemo", () => {
     });
 
     it("renders six accordion buttons with the expected labels", async () => {
-        if (!cssAccordionDemo.component) throw new Error("css-accordion demo component missing");
-        await renderDemo(cssAccordionDemo.component);
+        await renderDemo(cssAccordionDemo);
         const labels = ["This", "Is", "A", "CSS", "Accordion", ":-)"];
         for (const label of labels) {
             const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
@@ -31,19 +29,16 @@ describe("cssAccordionDemo", () => {
     });
 
     it("wraps the buttons in a frame with the accordion css class applied", async () => {
-        if (!cssAccordionDemo.component) throw new Error("css-accordion demo component missing");
-        const { container } = await renderDemo(cssAccordionDemo.component);
-        const frame = findFirstOfType(container, Gtk.Frame);
+        await renderDemo(cssAccordionDemo);
+        const frame = (await screen.findByName("frame")) as Gtk.Frame;
         expect(frame).toBeInstanceOf(Gtk.Frame);
-        if (!frame) return;
         const classes = frame.getCssClasses();
         expect(classes.length).toBeGreaterThan(0);
         expect(classes.some((c) => c.length > 0)).toBe(true);
     });
 
     it("centers the horizontal button box without spacing", async () => {
-        if (!cssAccordionDemo.component) throw new Error("css-accordion demo component missing");
-        const { container } = await renderDemo(cssAccordionDemo.component);
+        await renderDemo(cssAccordionDemo);
         const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This" })) as Gtk.Button;
         const box = button.getParent() as Gtk.Box;
         expect(box).toBeInstanceOf(Gtk.Box);
@@ -51,6 +46,5 @@ describe("cssAccordionDemo", () => {
         expect(box.getHalign()).toBe(Gtk.Align.CENTER);
         expect(box.getValign()).toBe(Gtk.Align.CENTER);
         expect(box.getSpacing()).toBe(0);
-        expect(container).toBeDefined();
     });
 });

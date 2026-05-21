@@ -32,8 +32,7 @@ describe("entryUndoDemo", () => {
     });
 
     it("renders the instructional label and entry widget", async () => {
-        if (!entryUndoDemo.component) throw new Error("entry-undo demo component missing");
-        const { container } = await renderDemo(entryUndoDemo.component);
+        const { container } = await renderDemo(entryUndoDemo);
         const box = await screen.findByText("Use Control+z or Control+Shift+z to undo or redo changes");
         expect(box).toBeInstanceOf(Gtk.Box);
         const labels = findAllByType(container, Gtk.Label).map((l) => l.getLabel());
@@ -44,16 +43,14 @@ describe("entryUndoDemo", () => {
     });
 
     it("accepts typed text into the entry", async () => {
-        if (!entryUndoDemo.component) throw new Error("entry-undo demo component missing");
-        await renderDemo(entryUndoDemo.component);
+        await renderDemo(entryUndoDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await userEvent.type(entry, "hello");
         expect(entry.getText()).toBe("hello");
     });
 
     it("nests the label and entry inside a vertically-oriented box", async () => {
-        if (!entryUndoDemo.component) throw new Error("entry-undo demo component missing");
-        await renderDemo(entryUndoDemo.component);
+        await renderDemo(entryUndoDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         const parent = entry.getParent();
         expect(parent).toBeInstanceOf(Gtk.Box);

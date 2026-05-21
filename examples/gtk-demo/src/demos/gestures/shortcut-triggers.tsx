@@ -5,7 +5,7 @@ import sourceCode from "./shortcut-triggers.tsx?raw";
 
 const ShortcutTriggersDemo = () => {
     return (
-        <GtkListBox marginTop={6} marginBottom={6} marginStart={6} marginEnd={6}>
+        <GtkListBox name="list-box" marginTop={6} marginBottom={6} marginStart={6} marginEnd={6}>
             <GtkLabel label="Press Ctrl-G">
                 <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                     <GtkShortcutController.Shortcut

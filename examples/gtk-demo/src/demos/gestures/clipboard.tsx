@@ -386,7 +386,7 @@ const ClipboardSourceSection = ({
             onSelectionChanged={(id) => state.setSourceType(id as SourceType)}
             items={SOURCE_TYPES.map((type) => ({ id: type, value: type }))}
         />
-        <GtkStack page={state.sourceType} vexpand>
+        <GtkStack name="source-stack" page={state.sourceType} vexpand>
             <SourcePageText state={state} createTextDragProvider={providers.createTextDragProvider} />
             <SourcePageColor state={state} createColorDragProvider={providers.createColorDragProvider} />
             <SourcePageImage
@@ -422,6 +422,7 @@ const SourcePageText = ({
 }) => (
     <GtkStack.Page id="Text">
         <GtkEntry
+            name="source-entry"
             text={state.sourceText}
             valign={Gtk.Align.CENTER}
             accessibleLabel="Text to copy"
@@ -441,6 +442,7 @@ const SourcePageColor = ({
 }) => (
     <GtkStack.Page id="Color">
         <GtkColorDialogButton
+            name="color-button"
             rgba={state.sourceColor}
             valign={Gtk.Align.CENTER}
             accessibleLabel="Color to copy"
@@ -535,7 +537,7 @@ interface ClipboardPasteSectionProps {
 }
 
 const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: ClipboardPasteSectionProps) => (
-    <GtkBox spacing={12}>
+    <GtkBox name="paste-box" spacing={12}>
         <GtkDropTarget
             types={[getGdkPaintableType(), getGFileType(), getGdkRgbaType(), GObject.Type.STRING]}
             actions={Gdk.DragAction.COPY}

@@ -587,6 +587,7 @@ const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
     return (
         <GtkFixed.Child x={0} y={0}>
             <GtkPopover
+                name="context-menu"
                 ref={refs.contextMenuRef}
                 hasArrow={false}
                 pointingTo={contextMenu ? makeRectangle(contextMenu.x, contextMenu.y, 1, 1) : undefined}
@@ -699,7 +700,7 @@ const DndDemo = ({ window }: DemoProps) => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkFixed hexpand vexpand cssClasses={[css`min-height: 400px;`]}>
+            <GtkFixed name="canvas" hexpand vexpand cssClasses={[css`min-height: 400px;`]}>
                 <GtkDropTarget
                     types={[GObject.Type.STRING]}
                     actions={Gdk.DragAction.MOVE}

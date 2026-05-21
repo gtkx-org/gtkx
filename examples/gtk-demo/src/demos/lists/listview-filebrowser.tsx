@@ -188,10 +188,11 @@ const ListViewFilebrowserTitlebar = () => {
     return (
         <GtkHeaderBar>
             <GtkHeaderBar.PackStart>
-                <GtkButton iconName="go-up-symbolic" onClicked={navigateUp} />
+                <GtkButton name="up-button" iconName="go-up-symbolic" onClicked={navigateUp} />
             </GtkHeaderBar.PackStart>
             <GtkHeaderBar.PackEnd>
                 <GtkListView
+                    name="view-switcher"
                     orientation={Gtk.Orientation.HORIZONTAL}
                     cssClasses={[
                         css`
@@ -219,8 +220,9 @@ const ListViewFilebrowserTitlebar = () => {
 const ListViewFilebrowserDemo = () => {
     const { viewMode, files, handleActivate } = useFilebrowserContext();
     return (
-        <GtkScrolledWindow vexpand hexpand>
+        <GtkScrolledWindow name="files-scrolled" vexpand hexpand>
             <GtkGridView
+                name="files-grid"
                 estimatedItemHeight={viewMode === "grid" ? 80 : 48}
                 maxColumns={15}
                 orientation={viewMode === "grid" ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL}

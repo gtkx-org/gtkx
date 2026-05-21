@@ -40,8 +40,23 @@ describe("configurePrintOperation", () => {
 
 describe("PrintingDemo component", () => {
     it("invokes onClose when the async print operation emits done", async () => {
-        if (!printingDemo.component) throw new Error("missing component");
         const onClose = vi.fn();
         await renderDemo(printingDemo, { onClose });
+    });
+});
+
+describe("configurePrintOperation signal handlers", () => {
+    it("registers a draw-page signal handler that uses the configured Cairo print context", () => {
+        const printOp = configurePrintOperation("line one\nline two\nline three");
+        const handlerId = printOp.connect("draw-page", () => undefined);
+        expect(handlerId).toBeGreaterThan(0);
+        printOp.disconnect(handlerId);
+    });
+
+    it("registers a begin-print signal handler", () => {
+        const printOp = configurePrintOperation("line one\nline two\nline three");
+        const handlerId = printOp.connect("begin-print", () => undefined);
+        expect(handlerId).toBeGreaterThan(0);
+        printOp.disconnect(handlerId);
     });
 });

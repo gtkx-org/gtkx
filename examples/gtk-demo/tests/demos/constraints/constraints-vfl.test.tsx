@@ -26,15 +26,13 @@ describe("constraintsVflDemo", () => {
     });
 
     it("attaches a GtkConstraintLayout manager to the container box", async () => {
-        if (!constraintsVflDemo.component) throw new Error("constraints VFL demo component missing");
-        const { container } = await renderDemo(constraintsVflDemo.component);
+        const { container } = await renderDemo(constraintsVflDemo);
         const box = findBox(container);
         expect(box?.getLayoutManager()).toBeInstanceOf(Gtk.ConstraintLayout);
     });
 
     it("adds the VFL-derived constraints to the layout", async () => {
-        if (!constraintsVflDemo.component) throw new Error("constraints VFL demo component missing");
-        const { container } = await renderDemo(constraintsVflDemo.component);
+        const { container } = await renderDemo(constraintsVflDemo);
         const box = findBox(container);
         const layout = box?.getLayoutManager() as Gtk.ConstraintLayout;
         const observer = layout.observeConstraints();
@@ -42,8 +40,7 @@ describe("constraintsVflDemo", () => {
     });
 
     it("renders the three child buttons of the VFL demo", async () => {
-        if (!constraintsVflDemo.component) throw new Error("constraints VFL demo component missing");
-        const { container } = await renderDemo(constraintsVflDemo.component);
+        const { container } = await renderDemo(constraintsVflDemo);
         const box = findBox(container);
         if (!box) throw new Error("box not found");
 

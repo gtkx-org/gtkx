@@ -47,6 +47,7 @@ process.env.GDK_DISABLE = "vulkan";
 process.env.GSK_RENDERER = "cairo";
 process.env.GTK_A11Y = "test";
 process.env.LIBGL_ALWAYS_SOFTWARE = "1";
+process.env.GSETTINGS_BACKEND = "memory";
 
 const killChildren = (): void => {
     if (xvfb.pid !== undefined) {

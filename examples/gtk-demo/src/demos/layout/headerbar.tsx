@@ -5,21 +5,21 @@ import sourceCode from "./headerbar.tsx?raw";
 const HeaderBarTitlebar = () => (
     <GtkHeaderBar>
         <GtkHeaderBar.PackStart>
-            <GtkBox cssClasses={["linked"]}>
-                <GtkButton iconName="go-previous-symbolic" tooltipText="Back" />
-                <GtkButton iconName="go-next-symbolic" tooltipText="Forward" />
+            <GtkBox name="nav-box" cssClasses={["linked"]}>
+                <GtkButton name="back-button" iconName="go-previous-symbolic" tooltipText="Back" />
+                <GtkButton name="forward-button" iconName="go-next-symbolic" tooltipText="Forward" />
             </GtkBox>
         </GtkHeaderBar.PackStart>
         <GtkHeaderBar.PackStart>
             <GtkSwitch accessibleLabel="Change something" />
         </GtkHeaderBar.PackStart>
         <GtkHeaderBar.PackEnd>
-            <GtkButton iconName="mail-send-receive-symbolic" tooltipText="Check out" />
+            <GtkButton name="check-out-button" iconName="mail-send-receive-symbolic" tooltipText="Check out" />
         </GtkHeaderBar.PackEnd>
     </GtkHeaderBar>
 );
 
-const HeaderBarDemo = () => <GtkTextView accessibleLabel="Content" />;
+const HeaderBarDemo = () => <GtkTextView name="text-view" accessibleLabel="Content" />;
 
 export const headerbarDemo: Demo = {
     id: "headerbar",

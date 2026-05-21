@@ -53,11 +53,9 @@ describe("fontRenderingDemo titlebar wiring", () => {
         const win = window.current;
         if (!win) throw new Error("expected window ref");
         const titlebar = win.getTitlebar?.();
+        if (!titlebar) throw new Error("titlebar missing");
         expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
-        const titlebarToggles = collectAll(
-            titlebar as Gtk.Widget,
-            (w): w is Gtk.ToggleButton => w instanceof Gtk.ToggleButton,
-        );
+        const titlebarToggles = collectAll(titlebar, (w): w is Gtk.ToggleButton => w instanceof Gtk.ToggleButton);
         expect(titlebarToggles.map((t) => t.getLabel())).toEqual(["Text", "Grid"]);
     });
 });

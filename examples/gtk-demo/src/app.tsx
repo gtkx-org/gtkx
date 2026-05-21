@@ -150,6 +150,7 @@ const AppHeaderBar = ({
                 focusOnClick={false}
             />
             <GtkToggleButton
+                name="search-toggle"
                 iconName="edit-find-symbolic"
                 active={searchMode}
                 onToggled={(btn: Gtk.ToggleButton) => onSearchToggle(btn.getActive())}
@@ -158,7 +159,12 @@ const AppHeaderBar = ({
             />
         </GtkHeaderBar.PackStart>
         <GtkHeaderBar.PackEnd>
-            <GtkMenuButton iconName="open-menu-symbolic" valign={Gtk.Align.CENTER} focusOnClick={false}>
+            <GtkMenuButton
+                name="menu-button"
+                iconName="open-menu-symbolic"
+                valign={Gtk.Align.CENTER}
+                focusOnClick={false}
+            >
                 <GtkMenuButton.MenuSection>
                     <GtkMenuButton.MenuItem
                         id="inspector"
@@ -206,6 +212,7 @@ interface AppNotebookProps {
 
 const AppNotebook = ({ page, onSwitchPage }: AppNotebookProps) => (
     <GtkNotebook
+        name="notebook"
         page={page}
         onSwitchPage={(_page, pageNum) => onSwitchPage(pageNum)}
         vexpand

@@ -1,10 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewSettings2Demo } from "../../../src/demos/lists/listview-settings2.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
-import { findAll, findApplicationWindow, findFirst } from "./helpers.js";
 
-describe("listviewSettings2Demo", () => {
+describe("listviewSettings2Demo metadata", () => {
     it("exposes the expected metadata", () => {
         expectDemoMetadata(listviewSettings2Demo, {
             id: "listview-settings2",
@@ -17,43 +17,62 @@ describe("listviewSettings2Demo", () => {
         expect(listviewSettings2Demo.defaultHeight).toBe(480);
         expect(listviewSettings2Demo.component).toBeTypeOf("function");
     });
+});
 
-    it("installs a header bar with a search toggle starting inactive", async () => {
-        const { container } = await renderDemo(listviewSettings2Demo);
-        const window = findApplicationWindow(container);
-        expect(window?.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
-        const toggle = findAll(window as Gtk.Widget, Gtk.ToggleButton).find(
-            (t) => t.getIconName() === "system-search-symbolic",
-        );
-        expect(toggle?.getActive()).toBe(false);
+describe("listviewSettings2Demo layout", () => {
+    it("installs a search toggle in the header bar starting inactive", async () => {
+        await renderDemo(listviewSettings2Demo);
+        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
+        expect(toggle.getActive()).toBe(false);
     });
 
     it("renders a search bar in disabled mode by default", async () => {
-        const { container } = await renderDemo(listviewSettings2Demo);
-        const bar = findFirst(container, Gtk.SearchBar);
-        expect(bar).toBeInstanceOf(Gtk.SearchBar);
-        expect(bar?.getSearchMode()).toBe(false);
+        await renderDemo(listviewSettings2Demo);
+        const bar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
+        expect(bar.getSearchMode()).toBe(false);
     });
 
-    it("renders a GtkListView with the rich-list css class", async () => {
-        const { container } = await renderDemo(listviewSettings2Demo);
-        const listView = findFirst(container, Gtk.ListView);
-        expect(listView).toBeInstanceOf(Gtk.ListView);
-        expect(listView?.getCssClasses()).toContain("rich-list");
+    it("renders a list view with the rich-list css class", async () => {
+        await renderDemo(listviewSettings2Demo);
+        const listView = (await screen.findByName("list-view")) as Gtk.ListView;
+        expect(listView.getCssClasses()).toContain("rich-list");
     });
 
-    it("renders a scrolled window wrapping the list view", async () => {
-        const { container } = await renderDemo(listviewSettings2Demo);
-        const sw = findFirst(container, Gtk.ScrolledWindow);
+    it("wraps the list view in a scrolled window", async () => {
+        await renderDemo(listviewSettings2Demo);
+        const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
-        const listView = sw && findFirst(sw, Gtk.ListView);
-        expect(listView).toBeInstanceOf(Gtk.ListView);
     });
 
-    it("renders a GtkSearchEntry inside the search bar", async () => {
-        const { container } = await renderDemo(listviewSettings2Demo);
-        const bar = findFirst(container, Gtk.SearchBar);
-        const entry = bar && findFirst(bar, Gtk.SearchEntry);
+    it("renders a search entry inside the search bar", async () => {
+        await renderDemo(listviewSettings2Demo);
+        const entry = await screen.findByName("search-entry");
         expect(entry).toBeInstanceOf(Gtk.SearchEntry);
+    });
+});
+
+describe("listviewSettings2Demo search and editing", () => {
+    it("enables the search bar when the titlebar search toggle is activated", async () => {
+        await renderDemo(listviewSettings2Demo);
+        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
+        await act(() => toggle.setActive(true));
+        await fireEvent(toggle, "toggled");
+        const bar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
+        expect(bar.getSearchMode()).toBe(true);
+    });
+
+    it("updates the filter when the search entry text changes", async () => {
+        await renderDemo(listviewSettings2Demo);
+        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        await act(() => entry.setText("display"));
+        await fireEvent(entry, "search-changed");
+    });
+
+    it("clears the search text when stop-search is emitted", async () => {
+        await renderDemo(listviewSettings2Demo);
+        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        await act(() => entry.setText("anything"));
+        await fireEvent(entry, "search-changed");
+        await fireEvent(entry, "stop-search");
     });
 });

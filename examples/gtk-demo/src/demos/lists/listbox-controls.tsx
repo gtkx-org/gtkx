@@ -44,6 +44,7 @@ const Group1List = ({
     onRowActivated,
 }: Group1ListProps) => (
     <GtkListBox
+        name="group-1-list"
         selectionMode={Gtk.SelectionMode.NONE}
         cssClasses={["rich-list", "boxed-list"]}
         onRowActivated={onRowActivated}
@@ -77,6 +78,7 @@ const SwitchRow = ({ labelRefs, switchRef, active, setActive }: SwitchRowProps) 
                 hexpand
             />
             <GtkSwitch
+                name="switch"
                 ref={switchRef}
                 halign={Gtk.Align.END}
                 valign={Gtk.Align.CENTER}
@@ -113,6 +115,7 @@ const CheckRow = ({ labelRefs, checkRef, active, setActive }: CheckRowProps) => 
                 hexpand
             />
             <GtkCheckButton
+                name="check"
                 ref={checkRef}
                 halign={Gtk.Align.END}
                 valign={Gtk.Align.CENTER}
@@ -147,6 +150,7 @@ const ClickHereRow = ({ labelRefs, imageRef, opacity }: ClickHereRowProps) => (
                 hexpand
             />
             <GtkImage
+                name="click-here-image"
                 ref={imageRef}
                 iconName="object-select-symbolic"
                 halign={Gtk.Align.END}
@@ -161,7 +165,7 @@ const ClickHereRow = ({ labelRefs, imageRef, opacity }: ClickHereRowProps) => (
 );
 
 const Group2List = ({ labelRefs }: { labelRefs: React.RefObject<(Gtk.Label | null)[]> }) => (
-    <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
+    <GtkListBox name="group-2-list" selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
         <ScaleRow labelRefs={labelRefs} />
         <SpinRow labelRefs={labelRefs} />
         <DropdownRow labelRefs={labelRefs} />
@@ -184,6 +188,7 @@ const ScaleRow = ({ labelRefs }: { labelRefs: React.RefObject<(Gtk.Label | null)
                 hexpand
             />
             <GtkScale
+                name="scale"
                 halign={Gtk.Align.END}
                 valign={Gtk.Align.CENTER}
                 drawValue={false}
@@ -212,6 +217,7 @@ const SpinRow = ({ labelRefs }: { labelRefs: React.RefObject<(Gtk.Label | null)[
                 hexpand
             />
             <GtkSpinButton
+                name="spin"
                 halign={Gtk.Align.END}
                 valign={Gtk.Align.CENTER}
                 upper={100}
@@ -238,6 +244,7 @@ const DropdownRow = ({ labelRefs }: { labelRefs: React.RefObject<(Gtk.Label | nu
                 hexpand
             />
             <GtkDropDown
+                name="dropdown"
                 halign={Gtk.Align.END}
                 valign={Gtk.Align.CENTER}
                 items={[
@@ -265,7 +272,7 @@ const EntryRow = ({ labelRefs }: { labelRefs: React.RefObject<(Gtk.Label | null)
                 valign={Gtk.Align.CENTER}
                 hexpand
             />
-            <GtkEntry halign={Gtk.Align.END} valign={Gtk.Align.CENTER} placeholderText="Type here…" />
+            <GtkEntry name="entry" halign={Gtk.Align.END} valign={Gtk.Align.CENTER} placeholderText="Type here…" />
         </GtkBox>
     </GtkListBoxRow>
 );

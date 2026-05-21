@@ -38,19 +38,13 @@ describe("constraintsInteractiveDemo metadata", () => {
 
 describe("constraintsInteractiveDemo layout", () => {
     it("attaches a GtkConstraintLayout manager to the container box", async () => {
-        if (!constraintsInteractiveDemo.component) {
-            throw new Error("constraints interactive demo component missing");
-        }
-        const { container } = await renderDemo(constraintsInteractiveDemo.component);
+        const { container } = await renderDemo(constraintsInteractiveDemo);
         const box = findBox(container);
         expect(box?.getLayoutManager()).toBeInstanceOf(Gtk.ConstraintLayout);
     });
 
     it("registers a single guide on the layout", async () => {
-        if (!constraintsInteractiveDemo.component) {
-            throw new Error("constraints interactive demo component missing");
-        }
-        const { container } = await renderDemo(constraintsInteractiveDemo.component);
+        const { container } = await renderDemo(constraintsInteractiveDemo);
         const box = findBox(container);
         const layout = box?.getLayoutManager() as Gtk.ConstraintLayout;
 
@@ -59,20 +53,14 @@ describe("constraintsInteractiveDemo layout", () => {
     });
 
     it("attaches a GestureDrag controller to the container", async () => {
-        if (!constraintsInteractiveDemo.component) {
-            throw new Error("constraints interactive demo component missing");
-        }
-        const { container } = await renderDemo(constraintsInteractiveDemo.component);
+        const { container } = await renderDemo(constraintsInteractiveDemo);
         const box = findBox(container);
         if (!box) throw new Error("box not found");
         expect(getDragController(box)).toBeInstanceOf(Gtk.GestureDrag);
     });
 
     it("renders three button children with the expected labels", async () => {
-        if (!constraintsInteractiveDemo.component) {
-            throw new Error("constraints interactive demo component missing");
-        }
-        const { container } = await renderDemo(constraintsInteractiveDemo.component);
+        const { container } = await renderDemo(constraintsInteractiveDemo);
         const box = findBox(container);
         if (!box) throw new Error("box not found");
 
@@ -88,10 +76,7 @@ describe("constraintsInteractiveDemo layout", () => {
 
 describe("constraintsInteractiveDemo dragging", () => {
     it("reacts to drag-update by adding a positional constraint to the layout", async () => {
-        if (!constraintsInteractiveDemo.component) {
-            throw new Error("constraints interactive demo component missing");
-        }
-        const { container } = await renderDemo(constraintsInteractiveDemo.component);
+        const { container } = await renderDemo(constraintsInteractiveDemo);
         const box = findBox(container);
         if (!box) throw new Error("box not found");
         const drag = getDragController(box);
@@ -108,10 +93,7 @@ describe("constraintsInteractiveDemo dragging", () => {
     });
 
     it("replaces the positional constraint on subsequent drag-updates", async () => {
-        if (!constraintsInteractiveDemo.component) {
-            throw new Error("constraints interactive demo component missing");
-        }
-        const { container } = await renderDemo(constraintsInteractiveDemo.component);
+        const { container } = await renderDemo(constraintsInteractiveDemo);
         const box = findBox(container);
         if (!box) throw new Error("box not found");
         const drag = getDragController(box);

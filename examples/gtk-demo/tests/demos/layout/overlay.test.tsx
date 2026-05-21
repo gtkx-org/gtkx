@@ -3,20 +3,7 @@ import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { overlayDemo } from "../../../src/demos/layout/overlay.js";
 import { renderDemo } from "../../helpers/render-demo.js";
-
-const findAllOfType = <T extends Gtk.Widget>(root: Gtk.Widget, ctor: new (...args: never[]) => T): T[] => {
-    const matches: T[] = [];
-    const visit = (widget: Gtk.Widget): void => {
-        if (widget instanceof ctor) matches.push(widget);
-        let child = widget.getFirstChild();
-        while (child) {
-            visit(child);
-            child = child.getNextSibling();
-        }
-    };
-    visit(root);
-    return matches;
-};
+import { findAllOfType } from "../../helpers/traverse.js";
 
 describe("overlayDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -34,8 +21,7 @@ describe("overlayDemo metadata", () => {
 
 describe("overlayDemo grid and labels", () => {
     it("renders a 5x5 grid of numbered buttons", async () => {
-        if (!overlayDemo.component) throw new Error("overlay demo component missing");
-        const { container } = await renderDemo(overlayDemo.component);
+        const { container } = await renderDemo(overlayDemo);
         const buttons = findAllOfType(container, Gtk.Button);
         expect(buttons).toHaveLength(25);
         const labels = buttons.map((b) => b.getLabel());
@@ -45,8 +31,7 @@ describe("overlayDemo grid and labels", () => {
     });
 
     it("renders the decorative 'Numbers' label using markup", async () => {
-        if (!overlayDemo.component) throw new Error("overlay demo component missing");
-        const { container } = await renderDemo(overlayDemo.component);
+        const { container } = await renderDemo(overlayDemo);
         const labels = findAllOfType(container, Gtk.Label);
         const numbersLabel = labels.find((l) => l.getUseMarkup());
         expect(numbersLabel).toBeDefined();
@@ -56,8 +41,7 @@ describe("overlayDemo grid and labels", () => {
     });
 
     it("nests the grid inside a GtkOverlay with two overlay children", async () => {
-        if (!overlayDemo.component) throw new Error("overlay demo component missing");
-        const { container } = await renderDemo(overlayDemo.component);
+        const { container } = await renderDemo(overlayDemo);
         const overlays = findAllOfType(container, Gtk.Overlay);
         expect(overlays).toHaveLength(1);
         const overlay = overlays[0];
@@ -69,16 +53,14 @@ describe("overlayDemo grid and labels", () => {
 
 describe("overlayDemo entry behavior", () => {
     it("renders the entry with the placeholder text 'Your Lucky Number' and empty initial value", async () => {
-        if (!overlayDemo.component) throw new Error("overlay demo component missing");
-        await renderDemo(overlayDemo.component);
+        await renderDemo(overlayDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         expect(entry.getPlaceholderText()).toBe("Your Lucky Number");
         expect(entry.getText()).toBe("");
     });
 
     it("updates the entry to the clicked number when a grid button is activated", async () => {
-        if (!overlayDemo.component) throw new Error("overlay demo component missing");
-        await renderDemo(overlayDemo.component);
+        await renderDemo(overlayDemo);
         const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "13" })) as Gtk.Button;
         await fireEvent(button, "clicked");
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
@@ -86,8 +68,7 @@ describe("overlayDemo entry behavior", () => {
     });
 
     it("updates the entry text via the changed signal", async () => {
-        if (!overlayDemo.component) throw new Error("overlay demo component missing");
-        await renderDemo(overlayDemo.component);
+        await renderDemo(overlayDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         await act(() => entry.setText("typed"));
         await fireEvent(entry, "changed");

@@ -1,3 +1,4 @@
+import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -56,5 +57,52 @@ describe("themesDemo", () => {
         const fpsLabel = collectLabels(titlebar).find((l) => l.getWidthChars() === 12);
         if (!fpsLabel) throw new Error("expected the fps label inside the titlebar");
         expect(fpsLabel.getLabel() ?? "").toBe("");
+    });
+});
+
+describe("themesDemo cycling lifecycle", () => {
+    const findAlertDialog = async (): Promise<Adw.AlertDialog> => {
+        const warningLabel = await screen.findByText(/photosensitive/i, { exact: false });
+        let current: Gtk.Widget | null = warningLabel;
+        while (current) {
+            if (current instanceof Adw.AlertDialog) return current;
+            current = current.getParent();
+        }
+        throw new Error("alert dialog ancestor missing");
+    };
+
+    it("starts cycling when the warning is accepted", async () => {
+        await renderDemo(themesDemo);
+        const cycle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
+            name: "Cycle",
+        })) as Gtk.ToggleButton;
+        await act(() => cycle.setActive(true));
+        await fireEvent(cycle, "toggled");
+        const alert = await findAlertDialog();
+        await fireEvent(alert, "response", "ok");
+    });
+
+    it("does not start cycling when the warning is dismissed", async () => {
+        await renderDemo(themesDemo);
+        const cycle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
+            name: "Cycle",
+        })) as Gtk.ToggleButton;
+        await act(() => cycle.setActive(true));
+        await fireEvent(cycle, "toggled");
+        const alert = await findAlertDialog();
+        await fireEvent(alert, "response", "cancel");
+    });
+
+    it("stops cycling when the toggle is unchecked after acceptance", async () => {
+        await renderDemo(themesDemo);
+        const cycle = (await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, {
+            name: "Cycle",
+        })) as Gtk.ToggleButton;
+        await act(() => cycle.setActive(true));
+        await fireEvent(cycle, "toggled");
+        const alert = await findAlertDialog();
+        await fireEvent(alert, "response", "ok");
+        await act(() => cycle.setActive(false));
+        await fireEvent(cycle, "toggled");
     });
 });

@@ -111,10 +111,15 @@ const FixedDemo = () => {
     }, []);
 
     return (
-        <GtkScrolledWindow>
-            <GtkFixed halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} overflow={Gtk.Overflow.VISIBLE}>
+        <GtkScrolledWindow name="scrolled">
+            <GtkFixed
+                name="outer-fixed"
+                halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.CENTER}
+                overflow={Gtk.Overflow.VISIBLE}
+            >
                 <GtkFixed.Child x={0} y={0}>
-                    <GtkFixed overflow={Gtk.Overflow.VISIBLE}>
+                    <GtkFixed name="inner-fixed" overflow={Gtk.Overflow.VISIBLE}>
                         {faceTransforms.map(({ face, transform }) => (
                             <GtkFixed.Child key={face.name} x={0} y={0} transform={transform}>
                                 <GtkFrame

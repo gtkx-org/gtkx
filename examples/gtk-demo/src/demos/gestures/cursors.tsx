@@ -173,7 +173,7 @@ const CursorRow = ({ info }: { info: CursorInfo }) => {
 };
 
 const CursorsDemo = () => (
-    <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight hexpand>
+    <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight hexpand>
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             marginStart={60}
@@ -184,7 +184,7 @@ const CursorsDemo = () => (
             halign={Gtk.Align.CENTER}
         >
             <GtkFrame cssClasses={["view"]}>
-                <GtkListBox selectionMode={Gtk.SelectionMode.NONE}>
+                <GtkListBox name="cursor-list" selectionMode={Gtk.SelectionMode.NONE}>
                     {CURSORS.map((info) => (
                         <CursorRow key={info.name} info={info} />
                     ))}

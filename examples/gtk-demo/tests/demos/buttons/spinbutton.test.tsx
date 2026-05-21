@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen } from "@gtkx/testing";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { spinbuttonDemo } from "../../../src/demos/buttons/spinbutton.js";
 import { renderDemo } from "../../helpers/render-demo.js";
@@ -12,15 +12,13 @@ describe("spinbuttonDemo", () => {
     });
 
     it("renders the four labelled spin rows", async () => {
-        if (!spinbuttonDemo.component) throw new Error("spinbutton demo component missing");
-        await renderDemo(spinbuttonDemo.component);
+        await renderDemo(spinbuttonDemo);
         const spinButtons = await screen.findAllByRole(Gtk.AccessibleRole.SPIN_BUTTON);
         expect(spinButtons).toHaveLength(4);
     });
 
     it("formats the hex spin button as 0x00 on first render", async () => {
-        if (!spinbuttonDemo.component) throw new Error("spinbutton demo component missing");
-        await renderDemo(spinbuttonDemo.component);
+        await renderDemo(spinbuttonDemo);
         const spinButtons = (await screen.findAllByRole(Gtk.AccessibleRole.SPIN_BUTTON)) as Gtk.SpinButton[];
         const hexButton = spinButtons[1];
         if (!hexButton) throw new Error("expected the hex spin button to be present");
@@ -28,8 +26,7 @@ describe("spinbuttonDemo", () => {
     });
 
     it("formats the time spin button as 00:00 on first render", async () => {
-        if (!spinbuttonDemo.component) throw new Error("spinbutton demo component missing");
-        await renderDemo(spinbuttonDemo.component);
+        await renderDemo(spinbuttonDemo);
         const spinButtons = (await screen.findAllByRole(Gtk.AccessibleRole.SPIN_BUTTON)) as Gtk.SpinButton[];
         const timeButton = spinButtons[2];
         if (!timeButton) throw new Error("expected the time spin button to be present");
@@ -37,11 +34,56 @@ describe("spinbuttonDemo", () => {
     });
 
     it("formats the month spin button as January on first render", async () => {
-        if (!spinbuttonDemo.component) throw new Error("spinbutton demo component missing");
-        await renderDemo(spinbuttonDemo.component);
+        await renderDemo(spinbuttonDemo);
         const spinButtons = (await screen.findAllByRole(Gtk.AccessibleRole.SPIN_BUTTON)) as Gtk.SpinButton[];
         const monthButton = spinButtons[3];
         if (!monthButton) throw new Error("expected the month spin button to be present");
         expect(monthButton.getText()).toBe("January");
+    });
+});
+
+describe("spinbuttonDemo custom output formatting", () => {
+    it("formats hex output for a non-zero value", async () => {
+        await renderDemo(spinbuttonDemo);
+        const spinButtons = (await screen.findAllByRole(Gtk.AccessibleRole.SPIN_BUTTON)) as Gtk.SpinButton[];
+        const hexButton = spinButtons[1];
+        if (!hexButton) throw new Error("hex spin missing");
+        await act(() => hexButton.setValue(0xab));
+        await fireEvent(hexButton, "value-changed");
+        await fireEvent(hexButton, "output");
+        expect(hexButton.getText()).toBe("0xAB");
+    });
+
+    it("formats hex output as 0x00 when the value is essentially zero", async () => {
+        await renderDemo(spinbuttonDemo);
+        const spinButtons = (await screen.findAllByRole(Gtk.AccessibleRole.SPIN_BUTTON)) as Gtk.SpinButton[];
+        const hexButton = spinButtons[1];
+        if (!hexButton) throw new Error("hex spin missing");
+        await act(() => hexButton.setValue(0));
+        await fireEvent(hexButton, "value-changed");
+        await fireEvent(hexButton, "output");
+        expect(hexButton.getText()).toBe("0x00");
+    });
+
+    it("formats time output as HH:MM for a non-zero value", async () => {
+        await renderDemo(spinbuttonDemo);
+        const spinButtons = (await screen.findAllByRole(Gtk.AccessibleRole.SPIN_BUTTON)) as Gtk.SpinButton[];
+        const timeButton = spinButtons[2];
+        if (!timeButton) throw new Error("time spin missing");
+        await act(() => timeButton.setValue(150));
+        await fireEvent(timeButton, "value-changed");
+        await fireEvent(timeButton, "output");
+        expect(timeButton.getText()).toBe("02:30");
+    });
+
+    it("formats month output for the corresponding month index", async () => {
+        await renderDemo(spinbuttonDemo);
+        const spinButtons = (await screen.findAllByRole(Gtk.AccessibleRole.SPIN_BUTTON)) as Gtk.SpinButton[];
+        const monthButton = spinButtons[3];
+        if (!monthButton) throw new Error("month spin missing");
+        await act(() => monthButton.setValue(7));
+        await fireEvent(monthButton, "value-changed");
+        await fireEvent(monthButton, "output");
+        expect(monthButton.getText()).toBe("July");
     });
 });

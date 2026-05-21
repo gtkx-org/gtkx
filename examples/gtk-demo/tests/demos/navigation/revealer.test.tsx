@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { act, waitFor } from "@gtkx/testing";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { revealerDemo } from "../../../src/demos/navigation/revealer.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
 
@@ -27,8 +28,7 @@ describe("revealerDemo", () => {
     });
 
     it("renders nine GtkRevealer widgets initially hidden", async () => {
-        if (!revealerDemo.component) throw new Error("revealer demo component missing");
-        const { container } = await renderDemo(revealerDemo.component);
+        const { container } = await renderDemo(revealerDemo);
         const revealers = collectAll(container, (w): w is Gtk.Revealer => w instanceof Gtk.Revealer);
         expect(revealers).toHaveLength(9);
         for (const r of revealers) {
@@ -38,8 +38,7 @@ describe("revealerDemo", () => {
     });
 
     it("configures each revealer with the expected transition type", async () => {
-        if (!revealerDemo.component) throw new Error("revealer demo component missing");
-        const { container } = await renderDemo(revealerDemo.component);
+        const { container } = await renderDemo(revealerDemo);
         const revealers = collectAll(container, (w): w is Gtk.Revealer => w instanceof Gtk.Revealer);
         const expectedTransitions = [
             Gtk.RevealerTransitionType.CROSSFADE,
@@ -58,8 +57,7 @@ describe("revealerDemo", () => {
     });
 
     it("places each revealer's child as a GtkImage with the cool-face icon", async () => {
-        if (!revealerDemo.component) throw new Error("revealer demo component missing");
-        const { container } = await renderDemo(revealerDemo.component);
+        const { container } = await renderDemo(revealerDemo);
         const revealers = collectAll(container, (w): w is Gtk.Revealer => w instanceof Gtk.Revealer);
         for (const r of revealers) {
             const child = r.getChild() as Gtk.Image;
@@ -69,11 +67,30 @@ describe("revealerDemo", () => {
     });
 
     it("renders the GtkGrid container with center alignment", async () => {
-        if (!revealerDemo.component) throw new Error("revealer demo component missing");
-        const { container } = await renderDemo(revealerDemo.component);
+        const { container } = await renderDemo(revealerDemo);
         const grid = collectAll(container, (w): w is Gtk.Grid => w instanceof Gtk.Grid)[0];
         expect(grid).toBeInstanceOf(Gtk.Grid);
         expect(grid?.getHalign()).toBe(Gtk.Align.CENTER);
         expect(grid?.getValign()).toBe(Gtk.Align.CENTER);
+    });
+});
+
+describe("revealerDemo reveal sequence", () => {
+    beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it("reveals every revealer after nine timer ticks", async () => {
+        const { container } = await renderDemo(revealerDemo);
+        const revealers = collectAll(container, (w): w is Gtk.Revealer => w instanceof Gtk.Revealer);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(690 * 9);
+        });
+        await waitFor(() => {
+            expect(revealers.every((r) => r.getRevealChild())).toBe(true);
+        });
     });
 });

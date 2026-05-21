@@ -38,8 +38,8 @@ const CssBasicsDemo = ({ window }: DemoProps) => {
     const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
 
     return (
-        <GtkScrolledWindow hexpand vexpand>
-            <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
+        <GtkScrolledWindow name="scrolled" hexpand vexpand>
+            <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged} />
         </GtkScrolledWindow>
     );
 };

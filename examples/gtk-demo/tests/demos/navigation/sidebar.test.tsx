@@ -22,46 +22,42 @@ describe("sidebarDemo", () => {
     });
 
     it("renders a GtkStack with the nine declared pages", async () => {
-        if (!sidebarDemo.component) throw new Error("sidebar demo component missing");
-        const { container } = await renderDemo(sidebarDemo.component);
+        const { container } = await renderDemo(sidebarDemo);
         const stack = findFirst(container, (w): w is Gtk.Stack => w instanceof Gtk.Stack);
         expect(stack).toBeInstanceOf(Gtk.Stack);
         expect(stack?.getPages().getNItems()).toBe(9);
     });
 
     it("renders a GtkStackSidebar bound to the stack", async () => {
-        if (!sidebarDemo.component) throw new Error("sidebar demo component missing");
-        const { container } = await renderDemo(sidebarDemo.component);
+        const { container } = await renderDemo(sidebarDemo);
         const sidebar = findFirst(container, (w): w is Gtk.StackSidebar => w instanceof Gtk.StackSidebar);
         expect(sidebar).toBeInstanceOf(Gtk.StackSidebar);
         expect(sidebar?.getStack()).toBeInstanceOf(Gtk.Stack);
     });
 
     it("uses page titles from the declared pages list", async () => {
-        if (!sidebarDemo.component) throw new Error("sidebar demo component missing");
-        const { container } = await renderDemo(sidebarDemo.component);
+        const { container } = await renderDemo(sidebarDemo);
         const stack = findFirst(container, (w): w is Gtk.Stack => w instanceof Gtk.Stack);
         if (!stack) throw new Error("stack widget not found");
         const welcome = stack.getChildByName("Welcome to GTK");
-        expect(welcome).not.toBeNull();
-        const page = stack.getPage(welcome as Gtk.Widget);
+        if (!welcome) throw new Error("welcome page missing");
+        const page = stack.getPage(welcome);
         expect(page.getTitle()).toBe("Welcome to GTK");
     });
 
     it("renders a GtkPicture on the first page and labels on other pages", async () => {
-        if (!sidebarDemo.component) throw new Error("sidebar demo component missing");
-        const { container } = await renderDemo(sidebarDemo.component);
+        const { container } = await renderDemo(sidebarDemo);
         const stack = findFirst(container, (w): w is Gtk.Stack => w instanceof Gtk.Stack);
         if (!stack) throw new Error("stack widget not found");
 
         const welcome = stack.getChildByName("Welcome to GTK");
-        expect(welcome).not.toBeNull();
-        const picture = findFirst(welcome as Gtk.Widget, (w): w is Gtk.Picture => w instanceof Gtk.Picture);
+        if (!welcome) throw new Error("welcome page missing");
+        const picture = findFirst(welcome, (w): w is Gtk.Picture => w instanceof Gtk.Picture);
         expect(picture).toBeInstanceOf(Gtk.Picture);
 
         const scrolling = stack.getChildByName("Scrolling");
-        expect(scrolling).not.toBeNull();
-        const label = findFirst(scrolling as Gtk.Widget, (w): w is Gtk.Label => w instanceof Gtk.Label);
+        if (!scrolling) throw new Error("scrolling page missing");
+        const label = findFirst(scrolling, (w): w is Gtk.Label => w instanceof Gtk.Label);
         expect(label?.getLabel()).toBe("Scrolling");
     });
 });

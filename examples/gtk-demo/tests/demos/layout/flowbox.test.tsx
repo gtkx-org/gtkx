@@ -3,20 +3,7 @@ import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { flowboxDemo } from "../../../src/demos/layout/flowbox.js";
 import { renderDemo } from "../../helpers/render-demo.js";
-
-const findAllOfType = <T extends Gtk.Widget>(root: Gtk.Widget, ctor: new (...args: never[]) => T): T[] => {
-    const matches: T[] = [];
-    const visit = (widget: Gtk.Widget): void => {
-        if (widget instanceof ctor) matches.push(widget);
-        let child = widget.getFirstChild();
-        while (child) {
-            visit(child);
-            child = child.getNextSibling();
-        }
-    };
-    visit(root);
-    return matches;
-};
+import { findAllOfType } from "../../helpers/traverse.js";
 
 const EXPECTED_COLOR_COUNT = 665;
 
@@ -44,23 +31,15 @@ describe("flowboxDemo metadata", () => {
 
 describe("flowboxDemo container", () => {
     it("renders a GtkScrolledWindow with horizontal scrollbar disabled", async () => {
-        if (!flowboxDemo.component) throw new Error("flowbox demo component missing");
-        const { container } = await renderDemo(flowboxDemo.component);
-        const scrolled = findAllOfType(container, Gtk.ScrolledWindow);
-        expect(scrolled).toHaveLength(1);
-        const sw = scrolled[0];
-        if (!sw) throw new Error("expected scrolled window");
+        await renderDemo(flowboxDemo);
+        const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
         const [hpolicy] = sw.getPolicy();
         expect(hpolicy).toBe(Gtk.PolicyType.NEVER);
     });
 
     it("renders a single GtkFlowBox configured with NONE selection and START valign", async () => {
-        if (!flowboxDemo.component) throw new Error("flowbox demo component missing");
-        const { container } = await renderDemo(flowboxDemo.component);
-        const flowBoxes = findAllOfType(container, Gtk.FlowBox);
-        expect(flowBoxes).toHaveLength(1);
-        const flowBox = flowBoxes[0];
-        if (!flowBox) throw new Error("expected GtkFlowBox");
+        await renderDemo(flowboxDemo);
+        const flowBox = (await screen.findByName("flow-box")) as Gtk.FlowBox;
         expect(flowBox.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
         expect(flowBox.getValign()).toBe(Gtk.Align.START);
         expect(flowBox.getMaxChildrenPerLine()).toBe(30);
@@ -69,15 +48,13 @@ describe("flowboxDemo container", () => {
 
 describe("flowboxDemo children", () => {
     it("renders one GtkButton per color in the dataset", async () => {
-        if (!flowboxDemo.component) throw new Error("flowbox demo component missing");
-        const { container } = await renderDemo(flowboxDemo.component);
+        const { container } = await renderDemo(flowboxDemo);
         const buttons = findAllOfType(container, Gtk.Button);
         expect(buttons).toHaveLength(EXPECTED_COLOR_COUNT);
     });
 
     it("wraps each GtkButton with a 24x24 GtkDrawingArea", async () => {
-        if (!flowboxDemo.component) throw new Error("flowbox demo component missing");
-        const { container } = await renderDemo(flowboxDemo.component);
+        const { container } = await renderDemo(flowboxDemo);
         const areas = findAllOfType(container, Gtk.DrawingArea);
         expect(areas).toHaveLength(EXPECTED_COLOR_COUNT);
         for (const area of areas) {
@@ -87,8 +64,7 @@ describe("flowboxDemo children", () => {
     });
 
     it("creates a unique GtkFlowBoxChild for every color button", async () => {
-        if (!flowboxDemo.component) throw new Error("flowbox demo component missing");
-        const { container } = await renderDemo(flowboxDemo.component);
+        const { container } = await renderDemo(flowboxDemo);
         const flowBoxChildren = findAllOfType(container, Gtk.FlowBoxChild);
         expect(flowBoxChildren).toHaveLength(EXPECTED_COLOR_COUNT);
     });
@@ -96,15 +72,13 @@ describe("flowboxDemo children", () => {
 
 describe("flowboxDemo accessibility", () => {
     it("exposes the GtkFlowBox via the GRID accessible role", async () => {
-        if (!flowboxDemo.component) throw new Error("flowbox demo component missing");
-        await renderDemo(flowboxDemo.component);
+        await renderDemo(flowboxDemo);
         const grid = await screen.findByRole(Gtk.AccessibleRole.GRID);
         expect(grid).toBeInstanceOf(Gtk.FlowBox);
     });
 
     it("exposes every GtkFlowBoxChild via the GRID_CELL role", async () => {
-        if (!flowboxDemo.component) throw new Error("flowbox demo component missing");
-        await renderDemo(flowboxDemo.component);
+        await renderDemo(flowboxDemo);
         const cells = await screen.findAllByRole(Gtk.AccessibleRole.GRID_CELL);
         expect(cells).toHaveLength(EXPECTED_COLOR_COUNT);
     });

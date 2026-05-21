@@ -119,7 +119,7 @@ function useSizeGroupState() {
 type SizeGroupState = ReturnType<typeof useSizeGroupState>;
 
 const ColorOptionsFrame = ({ state, refs }: { state: SizeGroupState; refs: SizeGroupRefs }) => (
-    <GtkFrame label="Color Options">
+    <GtkFrame name="color-options-frame" label="Color Options">
         <GtkGrid rowSpacing={5} columnSpacing={10} marginStart={5} marginEnd={5} marginTop={5} marginBottom={5}>
             <DropdownRow
                 row={0}
@@ -144,7 +144,7 @@ const ColorOptionsFrame = ({ state, refs }: { state: SizeGroupState; refs: SizeG
 );
 
 const LineOptionsFrame = ({ state, refs }: { state: SizeGroupState; refs: SizeGroupRefs }) => (
-    <GtkFrame label="Line Options">
+    <GtkFrame name="line-options-frame" label="Line Options">
         <GtkGrid rowSpacing={5} columnSpacing={10} marginStart={5} marginEnd={5} marginTop={5} marginBottom={5}>
             <DropdownRow
                 row={0}
@@ -191,6 +191,7 @@ const SizeGroupDemo = () => {
             <ColorOptionsFrame state={state} refs={refs} />
             <LineOptionsFrame state={state} refs={refs} />
             <GtkCheckButton
+                name="enable-grouping-check"
                 label="_Enable grouping"
                 useUnderline
                 active={state.groupingEnabled}

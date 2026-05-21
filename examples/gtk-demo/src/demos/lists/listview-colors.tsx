@@ -699,6 +699,7 @@ const ColorsHeader = () => {
         <GtkHeaderBar>
             <GtkHeaderBar.PackStart>
                 <GtkToggleButton
+                    name="selection-toggle"
                     iconName="emblem-important-symbolic"
                     tooltipText="Show selection info"
                     active={state.showSelectionInfo}
@@ -712,6 +713,7 @@ const ColorsHeader = () => {
                     xalign={1}
                 />
                 <GtkDropDown
+                    name="limit-dropdown"
                     selectedId={String(state.colorLimit)}
                     onSelectionChanged={computed.handleLimitChange}
                     items={COLOR_LIMITS.map((l) => ({ id: l.id, value: l.label }))}
@@ -721,6 +723,7 @@ const ColorsHeader = () => {
                 <GtkBox spacing={10}>
                     <GtkLabel label="Sort by:" />
                     <GtkDropDown
+                        name="sort-dropdown"
                         selectedId={state.sortMode}
                         onSelectionChanged={(id) => state.setSortMode(id as SortMode)}
                         items={SORT_MODES.map((m) => ({ id: m.id, value: m.label }))}
@@ -729,6 +732,7 @@ const ColorsHeader = () => {
                 <GtkBox spacing={10}>
                     <GtkLabel label="Show:" />
                     <GtkDropDown
+                        name="display-dropdown"
                         selectedId={state.displayFactory}
                         onSelectionChanged={(id) => state.setDisplayFactory(id as DisplayFactory)}
                         items={DISPLAY_FACTORIES.map((f) => ({ id: f.id, value: f.label }))}
@@ -740,9 +744,10 @@ const ColorsHeader = () => {
 };
 
 const ColorsGridOverlay = ({ state, computed }: { state: ColorsState; computed: ColorsComputed }) => (
-    <GtkOverlay vexpand hexpand>
-        <GtkScrolledWindow vexpand hexpand>
+    <GtkOverlay name="grid-overlay" vexpand hexpand>
+        <GtkScrolledWindow name="grid-scrolled" vexpand hexpand>
             <GtkGridView
+                name="color-grid"
                 estimatedItemHeight={computed.showDetails ? 120 : 40}
                 minColumns={computed.showDetails ? 4 : 8}
                 maxColumns={computed.showDetails ? 12 : 24}
@@ -771,7 +776,7 @@ const ListViewColorsDemo = () => {
     const { state, computed } = useColorsContext();
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkRevealer revealChild={state.showSelectionInfo}>
+            <GtkRevealer name="selection-revealer" revealChild={state.showSelectionInfo}>
                 <SelectionInfoPanel selectedColors={computed.selectedColors} averageColor={computed.averageColor} />
             </GtkRevealer>
             <ColorsGridOverlay state={state} computed={computed} />

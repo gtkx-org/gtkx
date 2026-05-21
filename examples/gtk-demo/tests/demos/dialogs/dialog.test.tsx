@@ -4,52 +4,15 @@ import { act, fireEvent, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { dialogDemo } from "../../../src/demos/dialogs/dialog.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
+import { findAllOfType } from "../../helpers/traverse.js";
 
-const findButtonByLabel = (root: Gtk.Widget, label: string): Gtk.Button | null => {
-    const stack: Gtk.Widget[] = [root];
-    while (stack.length > 0) {
-        const node = stack.pop();
-        if (!node) continue;
-        if (node instanceof Gtk.Button && node.getLabel() === label) return node;
-        let child = node.getFirstChild();
-        while (child) {
-            stack.push(child);
-            child = child.getNextSibling();
-        }
-    }
-    return null;
-};
-
-const findAllOfType = <T extends Gtk.Widget>(root: Gtk.Widget, ctor: new (...args: never[]) => T): T[] => {
-    const out: T[] = [];
-    const stack: Gtk.Widget[] = [root];
-    while (stack.length > 0) {
-        const node = stack.pop();
-        if (!node) continue;
-        if (node instanceof ctor) out.push(node);
-        let child = node.getFirstChild();
-        while (child) {
-            stack.push(child);
-            child = child.getNextSibling();
-        }
-    }
-    return out;
-};
+const findButtonByLabel = async (label: string): Promise<Gtk.Button> =>
+    (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: label })) as Gtk.Button;
 
 const findAlertDialogs = (): Adw.AlertDialog[] => {
     const out: Adw.AlertDialog[] = [];
     for (const top of Gtk.Window.listToplevels()) {
-        const stack: Gtk.Widget[] = [top];
-        while (stack.length > 0) {
-            const node = stack.pop();
-            if (!node) continue;
-            if (node instanceof Adw.AlertDialog) out.push(node);
-            let child = node.getFirstChild();
-            while (child) {
-                stack.push(child);
-                child = child.getNextSibling();
-            }
-        }
+        out.push(...findAllOfType(top, Adw.AlertDialog));
     }
     return out;
 };
@@ -65,11 +28,10 @@ describe("dialogDemo metadata", () => {
     });
 
     it("renders the Message Dialog button, the Interactive Dialog button and two entries", async () => {
-        if (!dialogDemo.component) throw new Error("dialog demo component missing");
-        const { container } = await renderDemo(dialogDemo.component);
-        const messageButton = findButtonByLabel(container, "_Message Dialog");
+        await renderDemo(dialogDemo);
+        const messageButton = await findButtonByLabel("_Message Dialog");
         expect(messageButton).toBeInstanceOf(Gtk.Button);
-        const interactiveButton = findButtonByLabel(container, "_Interactive Dialog");
+        const interactiveButton = await findButtonByLabel("_Interactive Dialog");
         expect(interactiveButton).toBeInstanceOf(Gtk.Button);
         const entries = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
         expect(entries.length).toBeGreaterThanOrEqual(2);
@@ -79,10 +41,8 @@ describe("dialogDemo metadata", () => {
 
 describe("dialogDemo message dialog", () => {
     it("presents an AdwAlertDialog with heading 'Test message' and body 'Has been shown once' after the first click", async () => {
-        if (!dialogDemo.component) throw new Error("dialog demo component missing");
-        const { container } = await renderDemo(dialogDemo.component);
-        const messageButton = findButtonByLabel(container, "_Message Dialog");
-        if (!messageButton) throw new Error("message button not found");
+        await renderDemo(dialogDemo);
+        const messageButton = await findButtonByLabel("_Message Dialog");
         await fireEvent(messageButton, "clicked");
         const dialog = await waitFor(() => {
             const [d] = findAlertDialogs();
@@ -94,10 +54,8 @@ describe("dialogDemo message dialog", () => {
     });
 
     it("increments the body text to 'Has been shown 2 times' after a second clicked signal", async () => {
-        if (!dialogDemo.component) throw new Error("dialog demo component missing");
-        const { container } = await renderDemo(dialogDemo.component);
-        const messageButton = findButtonByLabel(container, "_Message Dialog");
-        if (!messageButton) throw new Error("message button not found");
+        await renderDemo(dialogDemo);
+        const messageButton = await findButtonByLabel("_Message Dialog");
         await fireEvent(messageButton, "clicked");
         await waitFor(() => {
             const [d] = findAlertDialogs();
@@ -120,10 +78,8 @@ describe("dialogDemo message dialog", () => {
     });
 
     it("dismisses the message dialog after emitting the response signal", async () => {
-        if (!dialogDemo.component) throw new Error("dialog demo component missing");
-        const { container } = await renderDemo(dialogDemo.component);
-        const messageButton = findButtonByLabel(container, "_Message Dialog");
-        if (!messageButton) throw new Error("message button not found");
+        await renderDemo(dialogDemo);
+        const messageButton = await findButtonByLabel("_Message Dialog");
         await fireEvent(messageButton, "clicked");
         const dialog = await waitFor(() => {
             const [d] = findAlertDialogs();
@@ -140,8 +96,7 @@ describe("dialogDemo message dialog", () => {
 
 describe("dialogDemo interactive dialog", () => {
     it("updates the demo entry text from the typed value", async () => {
-        if (!dialogDemo.component) throw new Error("dialog demo component missing");
-        await renderDemo(dialogDemo.component);
+        await renderDemo(dialogDemo);
         const entries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
         const firstEntry = entries[0];
         if (!firstEntry) throw new Error("expected at least one entry");
@@ -151,10 +106,8 @@ describe("dialogDemo interactive dialog", () => {
     });
 
     it("renders the interactive dialog with two entry fields when opened", async () => {
-        if (!dialogDemo.component) throw new Error("dialog demo component missing");
-        const { container } = await renderDemo(dialogDemo.component);
-        const interactiveButton = findButtonByLabel(container, "_Interactive Dialog");
-        if (!interactiveButton) throw new Error("interactive button not found");
+        await renderDemo(dialogDemo);
+        const interactiveButton = await findButtonByLabel("_Interactive Dialog");
         await fireEvent(interactiveButton, "clicked");
         const interactive = await waitFor(() => {
             const dialogs = findAlertDialogs();
@@ -168,10 +121,8 @@ describe("dialogDemo interactive dialog", () => {
     });
 
     it("closes the interactive dialog when its response signal fires with 'cancel'", async () => {
-        if (!dialogDemo.component) throw new Error("dialog demo component missing");
-        const { container } = await renderDemo(dialogDemo.component);
-        const interactiveButton = findButtonByLabel(container, "_Interactive Dialog");
-        if (!interactiveButton) throw new Error("interactive button not found");
+        await renderDemo(dialogDemo);
+        const interactiveButton = await findButtonByLabel("_Interactive Dialog");
         await fireEvent(interactiveButton, "clicked");
         const interactive = await waitFor(() => {
             const dialogs = findAlertDialogs();
@@ -183,7 +134,7 @@ describe("dialogDemo interactive dialog", () => {
         await waitFor(() => {
             if (findAlertDialogs().length > 0) throw new Error("dialog still presented");
         });
-        const demoEntries = findAllOfType(container, Gtk.Entry);
+        const demoEntries = (await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry[];
         expect(demoEntries[0]?.getText()).toBe("");
         expect(demoEntries[1]?.getText()).toBe("");
     });

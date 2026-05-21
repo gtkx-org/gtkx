@@ -34,7 +34,7 @@ const findFontFeaturesPreviewLabel = (container: Gtk.Widget): Gtk.Label | null =
     if (!stack) return null;
     const labelPage = stack.getChildByName("label");
     if (!labelPage) return null;
-    return findFirst(labelPage as Gtk.Widget, (w): w is Gtk.Label => w instanceof Gtk.Label);
+    return findFirst(labelPage, (w): w is Gtk.Label => w instanceof Gtk.Label);
 };
 
 const findCheckButtonByLabel = (container: Gtk.Widget, label: string): Gtk.CheckButton | null => {
@@ -207,8 +207,9 @@ describe("fontFeaturesDemo titlebar", () => {
         const { container } = await renderDemo(fontFeaturesDemo);
         const win = container as Gtk.Window;
         const titlebar = win.getTitlebar?.();
+        if (!titlebar) throw new Error("titlebar missing");
         expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
-        const titlebarButtons = collectAll(titlebar as Gtk.Widget, (w): w is Gtk.Button => w instanceof Gtk.Button);
+        const titlebarButtons = collectAll(titlebar, (w): w is Gtk.Button => w instanceof Gtk.Button);
         const resetButton = titlebarButtons.find((b) => b.getTooltipText() === "Reset");
         expect(resetButton).toBeInstanceOf(Gtk.Button);
         expect(resetButton?.getIconName()).toBe("view-refresh-symbolic");
@@ -226,10 +227,10 @@ describe("fontFeaturesDemo titlebar", () => {
         );
         expect(labelsAfterToggle.some((l) => l.includes('"kern"'))).toBe(true);
 
-        const { window } = await Promise.resolve({ window: { current: container as Gtk.Window } });
-        const win = window.current;
+        const win = container as Gtk.Window;
         const titlebar = win.getTitlebar?.();
-        const titlebarButtons = collectAll(titlebar as Gtk.Widget, (w): w is Gtk.Button => w instanceof Gtk.Button);
+        if (!titlebar) throw new Error("titlebar missing");
+        const titlebarButtons = collectAll(titlebar, (w): w is Gtk.Button => w instanceof Gtk.Button);
         const resetButton = titlebarButtons.find((b) => b.getTooltipText() === "Reset");
         if (!resetButton) throw new Error("expected reset button in titlebar");
         await fireEvent(resetButton, "clicked");

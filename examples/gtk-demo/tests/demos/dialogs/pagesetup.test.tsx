@@ -23,14 +23,12 @@ describe("pageSetupDemo", () => {
     });
 
     it("renders using the wrapper ApplicationWindow even though the component returns null", async () => {
-        if (!pageSetupDemo.component) throw new Error("pagesetup demo component missing");
-        const { container } = await renderDemo(pageSetupDemo.component);
+        const { container } = await renderDemo(pageSetupDemo);
         expect(container).toBeInstanceOf(Gtk.ApplicationWindow);
     });
 
     it("creates a visible GtkPageSetupUnixDialog titled 'Page Setup' on mount", async () => {
-        if (!pageSetupDemo.component) throw new Error("pagesetup demo component missing");
-        await renderDemo(pageSetupDemo.component);
+        await renderDemo(pageSetupDemo);
         const dialog = findToplevelDialog();
         expect(dialog).toBeInstanceOf(Gtk.PageSetupUnixDialog);
         if (!dialog) throw new Error("expected dialog");
@@ -39,9 +37,8 @@ describe("pageSetupDemo", () => {
     });
 
     it("invokes onClose when the dialog response signal fires", async () => {
-        if (!pageSetupDemo.component) throw new Error("pagesetup demo component missing");
         const onClose = vi.fn();
-        await renderDemo(pageSetupDemo.component, { onClose });
+        await renderDemo(pageSetupDemo, { onClose });
         const dialog = findToplevelDialog();
         if (!dialog) throw new Error("expected dialog");
         dialog.emit("response", Gtk.ResponseType.OK);
@@ -49,8 +46,7 @@ describe("pageSetupDemo", () => {
     });
 
     it("removes the dialog from the toplevel list when the component unmounts", async () => {
-        if (!pageSetupDemo.component) throw new Error("pagesetup demo component missing");
-        const { unmount } = await renderDemo(pageSetupDemo.component);
+        const { unmount } = await renderDemo(pageSetupDemo);
         const initial = findToplevelDialog();
         expect(initial).toBeInstanceOf(Gtk.PageSetupUnixDialog);
         await unmount();

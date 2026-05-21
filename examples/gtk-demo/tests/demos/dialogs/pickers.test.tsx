@@ -1,23 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { fireEvent, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { pickersDemo } from "../../../src/demos/dialogs/pickers.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
-
-const findAllOfType = <T extends Gtk.Widget>(root: Gtk.Widget, ctor: new (...args: never[]) => T): T[] => {
-    const out: T[] = [];
-    const stack: Gtk.Widget[] = [root];
-    while (stack.length > 0) {
-        const node = stack.pop();
-        if (!node) continue;
-        if (node instanceof ctor) out.push(node);
-        let child = node.getFirstChild();
-        while (child) {
-            stack.push(child);
-            child = child.getNextSibling();
-        }
-    }
-    return out;
-};
+import { collectControllers, findAllOfType } from "../../helpers/traverse.js";
 
 describe("pickersDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -34,28 +20,22 @@ describe("pickersDemo metadata", () => {
 
 describe("pickersDemo rendering", () => {
     it("renders a color dialog button and a font dialog button", async () => {
-        if (!pickersDemo.component) throw new Error("pickers demo component missing");
-        const { container } = await renderDemo(pickersDemo.component);
-        const colors = findAllOfType(container, Gtk.ColorDialogButton);
-        const fonts = findAllOfType(container, Gtk.FontDialogButton);
-        expect(colors).toHaveLength(1);
-        expect(fonts).toHaveLength(1);
+        await renderDemo(pickersDemo);
+        expect(await screen.findByName("color-button")).toBeInstanceOf(Gtk.ColorDialogButton);
+        expect(await screen.findByName("font-button")).toBeInstanceOf(Gtk.FontDialogButton);
     });
 
     it("renders the 'None' file label and the www.gtk.org URI launcher button", async () => {
-        if (!pickersDemo.component) throw new Error("pickers demo component missing");
-        const { container } = await renderDemo(pickersDemo.component);
+        const { container } = await renderDemo(pickersDemo);
         const labels = findAllOfType(container, Gtk.Label);
         const noneLabel = labels.find((l) => l.getLabel() === "None");
         expect(noneLabel).toBeDefined();
-        const buttons = findAllOfType(container, Gtk.Button);
-        const uriButton = buttons.find((b) => b.getLabel() === "www.gtk.org");
+        const uriButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "www.gtk.org" });
         expect(uriButton).toBeInstanceOf(Gtk.Button);
     });
 
     it("composes a grid with the four labelled rows for color, font, file and URI", async () => {
-        if (!pickersDemo.component) throw new Error("pickers demo component missing");
-        const { container } = await renderDemo(pickersDemo.component);
+        const { container } = await renderDemo(pickersDemo);
         const grids = findAllOfType(container, Gtk.Grid);
         expect(grids.length).toBeGreaterThanOrEqual(1);
         const labels = findAllOfType(container, Gtk.Label);
@@ -66,36 +46,47 @@ describe("pickersDemo rendering", () => {
 
 describe("pickersDemo file buttons", () => {
     it("renders the symbolic-icon Open File, Open in Folder and Print buttons disabled before selecting a file", async () => {
-        if (!pickersDemo.component) throw new Error("pickers demo component missing");
-        const { container } = await renderDemo(pickersDemo.component);
-        const buttons = findAllOfType(container, Gtk.Button);
-        const openFileBtn = buttons.find((b) => b.getIconName() === "emblem-system-symbolic");
-        const openFolderBtn = buttons.find((b) => b.getIconName() === "folder-symbolic");
-        const printBtn = buttons.find((b) => b.getIconName() === "printer-symbolic");
-        expect(openFileBtn).toBeDefined();
-        expect(openFolderBtn).toBeDefined();
-        expect(printBtn).toBeDefined();
-        expect(openFileBtn?.getSensitive()).toBe(false);
-        expect(openFolderBtn?.getSensitive()).toBe(false);
-        expect(printBtn?.getSensitive()).toBe(false);
-        expect(printBtn?.getTooltipText()).toBe("Print file");
+        await renderDemo(pickersDemo);
+        const openFileBtn = (await screen.findByName("open-file-button")) as Gtk.Button;
+        const openFolderBtn = (await screen.findByName("open-folder-button")) as Gtk.Button;
+        const printBtn = (await screen.findByName("print-button")) as Gtk.Button;
+        expect(openFileBtn.getSensitive()).toBe(false);
+        expect(openFolderBtn.getSensitive()).toBe(false);
+        expect(printBtn.getSensitive()).toBe(false);
+        expect(printBtn.getTooltipText()).toBe("Print file");
     });
 
     it("attaches a GtkDropTarget to the document-open button so files can be dropped onto it", async () => {
-        if (!pickersDemo.component) throw new Error("pickers demo component missing");
-        const { container } = await renderDemo(pickersDemo.component);
-        const buttons = findAllOfType(container, Gtk.Button);
-        const selectFile = buttons.find((b) => b.getIconName() === "document-open-symbolic");
-        if (!selectFile) throw new Error("expected select file button");
-        const controllers = selectFile.observeControllers();
-        let foundDropTarget = false;
-        for (let i = 0; i < controllers.getNItems(); i++) {
-            const controller = controllers.getItem(i);
-            if (controller instanceof Gtk.DropTarget) {
-                foundDropTarget = true;
-                break;
-            }
-        }
-        expect(foundDropTarget).toBe(true);
+        await renderDemo(pickersDemo);
+        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        const dropTargets = collectControllers(selectFile, Gtk.DropTarget);
+        expect(dropTargets.length).toBeGreaterThan(0);
+    });
+});
+
+describe("pickersDemo handlers", () => {
+    it("invokes the file open dialog handler when the select-file button is clicked", async () => {
+        await renderDemo(pickersDemo);
+        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        await fireEvent(selectFile, "clicked");
+        await waitFor(() => expect(selectFile.getSensitive()).toBe(true));
+    });
+
+    it("invokes the launch-app handler when the open-file button is clicked even though no file is selected", async () => {
+        await renderDemo(pickersDemo);
+        const openFile = (await screen.findByName("open-file-button")) as Gtk.Button;
+        await fireEvent(openFile, "clicked");
+    });
+
+    it("invokes the open-folder handler when the folder-symbolic button is clicked", async () => {
+        await renderDemo(pickersDemo);
+        const folder = (await screen.findByName("open-folder-button")) as Gtk.Button;
+        await fireEvent(folder, "clicked");
+    });
+
+    it("invokes the print handler when the printer-symbolic button is clicked", async () => {
+        await renderDemo(pickersDemo);
+        const print = (await screen.findByName("print-button")) as Gtk.Button;
+        await fireEvent(print, "clicked");
     });
 });

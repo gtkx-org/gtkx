@@ -114,16 +114,17 @@ const VideoPlayerTitlebar = () => {
     return (
         <GtkHeaderBar>
             <GtkHeaderBar.PackStart>
-                <GtkButton label="_Open" useUnderline onClicked={handleOpen} />
-                <GtkButton accessibleLabel="GTK Logo" onClicked={handleLogo}>
+                <GtkButton name="open-button" label="_Open" useUnderline onClicked={handleOpen} />
+                <GtkButton name="logo-button" accessibleLabel="GTK Logo" onClicked={handleLogo}>
                     <GtkImage paintable={logoPaintable} pixelSize={24} />
                 </GtkButton>
-                <GtkButton accessibleLabel="Big Buck Bunny" onClicked={handleBBB}>
+                <GtkButton name="bbb-button" accessibleLabel="Big Buck Bunny" onClicked={handleBBB}>
                     <GtkImage paintable={bbbPaintable} pixelSize={24} />
                 </GtkButton>
             </GtkHeaderBar.PackStart>
             <GtkHeaderBar.PackEnd>
                 <GtkButton
+                    name="fullscreen-button"
                     iconName="view-fullscreen-symbolic"
                     accessibleLabel="Fullscreen"
                     onClicked={handleFullscreen}
@@ -140,7 +141,7 @@ const VideoPlayerDemo = () => {
             <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                 <GtkShortcutController.Shortcut trigger="F11" onActivate={handleToggleFullscreen} />
             </GtkShortcutController>
-            <GtkVideo file={videoFile} autoplay graphicsOffload={Gtk.GraphicsOffloadEnabled.ENABLED} />
+            <GtkVideo name="video" file={videoFile} autoplay graphicsOffload={Gtk.GraphicsOffloadEnabled.ENABLED} />
         </>
     );
 };

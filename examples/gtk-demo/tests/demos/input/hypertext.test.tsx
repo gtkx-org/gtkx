@@ -77,8 +77,7 @@ describe("hypertextDemo metadata", () => {
 
 describe("hypertextDemo rendering", () => {
     it("renders page 1 with the hypertext and tags introduction", async () => {
-        if (!hypertextDemo.component) throw new Error("hypertext demo component missing");
-        const { container } = await renderDemo(hypertextDemo.component);
+        const { container } = await renderDemo(hypertextDemo);
         const textView = findFirstByType(container, Gtk.TextView);
         expect(textView).toBeInstanceOf(Gtk.TextView);
         expect(textView?.getWrapMode()).toBe(Gtk.WrapMode.WORD);
@@ -91,8 +90,7 @@ describe("hypertextDemo rendering", () => {
     });
 
     it("registers motion, click, and key controllers on the text view", async () => {
-        if (!hypertextDemo.component) throw new Error("hypertext demo component missing");
-        const { container } = await renderDemo(hypertextDemo.component);
+        const { container } = await renderDemo(hypertextDemo);
         const textView = findFirstByType(container, Gtk.TextView) as Gtk.TextView;
         expect(findMotionController(textView)).toBeInstanceOf(Gtk.EventControllerMotion);
         expect(findKeyController(textView)).toBeInstanceOf(Gtk.EventControllerKey);
@@ -102,8 +100,7 @@ describe("hypertextDemo rendering", () => {
 
 describe("hypertextDemo link navigation", () => {
     it("navigates to the tags definition page when the click gesture identifies the tags link", async () => {
-        if (!hypertextDemo.component) throw new Error("hypertext demo component missing");
-        const { container } = await renderDemo(hypertextDemo.component);
+        const { container } = await renderDemo(hypertextDemo);
         const textView = findFirstByType(container, Gtk.TextView) as Gtk.TextView;
         const buffer = textView.getBuffer();
         const initial = readBufferText(textView);
@@ -120,8 +117,7 @@ describe("hypertextDemo link navigation", () => {
     });
 
     it("navigates to the hypertext definition page when the hypertext link is activated", async () => {
-        if (!hypertextDemo.component) throw new Error("hypertext demo component missing");
-        const { container } = await renderDemo(hypertextDemo.component);
+        const { container } = await renderDemo(hypertextDemo);
         const textView = findFirstByType(container, Gtk.TextView) as Gtk.TextView;
         const buffer = textView.getBuffer();
         const initial = readBufferText(textView);
@@ -137,8 +133,7 @@ describe("hypertextDemo link navigation", () => {
 
 describe("hypertextDemo round trip", () => {
     it("navigates from page 2 (tags) back to page 1 via the Go back link", async () => {
-        if (!hypertextDemo.component) throw new Error("hypertext demo component missing");
-        const { container } = await renderDemo(hypertextDemo.component);
+        const { container } = await renderDemo(hypertextDemo);
         const textView = findFirstByType(container, Gtk.TextView) as Gtk.TextView;
         const initial = readBufferText(textView);
         const tagsOffset = initial.indexOf("tags");
@@ -167,8 +162,7 @@ describe("hypertextDemo round trip", () => {
 
 describe("hypertextDemo input edge cases", () => {
     it("ignores non-Enter key presses without changing the page", async () => {
-        if (!hypertextDemo.component) throw new Error("hypertext demo component missing");
-        const { container } = await renderDemo(hypertextDemo.component);
+        const { container } = await renderDemo(hypertextDemo);
         const textView = findFirstByType(container, Gtk.TextView) as Gtk.TextView;
         const beforeText = readBufferText(textView);
         const keyController = findKeyController(textView) as Gtk.EventControllerKey;
@@ -177,8 +171,7 @@ describe("hypertextDemo input edge cases", () => {
     });
 
     it("does not navigate via Enter when the cursor is not on a link", async () => {
-        if (!hypertextDemo.component) throw new Error("hypertext demo component missing");
-        const { container } = await renderDemo(hypertextDemo.component);
+        const { container } = await renderDemo(hypertextDemo);
         const textView = findFirstByType(container, Gtk.TextView) as Gtk.TextView;
         const buffer = textView.getBuffer();
         buffer.placeCursor(buffer.getStartIter());
@@ -189,8 +182,7 @@ describe("hypertextDemo input edge cases", () => {
     });
 
     it("invokes the motion handler without throwing for both link and non-link positions", async () => {
-        if (!hypertextDemo.component) throw new Error("hypertext demo component missing");
-        const { container } = await renderDemo(hypertextDemo.component);
+        const { container } = await renderDemo(hypertextDemo);
         const textView = findFirstByType(container, Gtk.TextView) as Gtk.TextView;
         const motion = findMotionController(textView) as Gtk.EventControllerMotion;
         await fireEvent(motion, "motion", 1, 1);
@@ -199,8 +191,7 @@ describe("hypertextDemo input edge cases", () => {
     });
 
     it("invokes the click handler at out-of-range coordinates without changing the page", async () => {
-        if (!hypertextDemo.component) throw new Error("hypertext demo component missing");
-        const { container } = await renderDemo(hypertextDemo.component);
+        const { container } = await renderDemo(hypertextDemo);
         const textView = findFirstByType(container, Gtk.TextView) as Gtk.TextView;
         const before = readBufferText(textView);
         const click = findClickGesture(textView) as Gtk.GestureClick;

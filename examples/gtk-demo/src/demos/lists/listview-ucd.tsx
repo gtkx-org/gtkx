@@ -381,6 +381,7 @@ const ListViewUcdDemo = () => {
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
             <GtkScrolledWindow propagateNaturalWidth vexpand>
                 <GtkColumnView<UcdEntry, string>
+                    name="column-view"
                     showColumnSeparators
                     estimatedRowHeight={32}
                     onActivate={handleActivate}

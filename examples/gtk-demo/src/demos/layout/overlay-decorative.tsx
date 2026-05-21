@@ -14,9 +14,13 @@ const OverlayDecorativeDemo = () => {
     const decor2 = useMemo(() => Gdk.Texture.newFromFilename(decor2Path), []);
 
     return (
-        <GtkOverlay>
-            <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
-                <GtkTextView hexpand vexpand leftMargin={Math.round(margin)}>
+        <GtkOverlay name="overlay">
+            <GtkScrolledWindow
+                name="scrolled"
+                hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+            >
+                <GtkTextView name="text-view" hexpand vexpand leftMargin={Math.round(margin)}>
                     <GtkTextView.Tag id="top-margin" pixelsAboveLines={Math.round(margin)}>
                         {"Dear"}
                     </GtkTextView.Tag>
@@ -24,13 +28,26 @@ const OverlayDecorativeDemo = () => {
                 </GtkTextView>
             </GtkScrolledWindow>
             <GtkOverlay.Child>
-                <GtkPicture paintable={decor1} halign={Gtk.Align.START} valign={Gtk.Align.START} canTarget={false} />
+                <GtkPicture
+                    name="picture-start"
+                    paintable={decor1}
+                    halign={Gtk.Align.START}
+                    valign={Gtk.Align.START}
+                    canTarget={false}
+                />
             </GtkOverlay.Child>
             <GtkOverlay.Child>
-                <GtkPicture paintable={decor2} halign={Gtk.Align.END} valign={Gtk.Align.END} canTarget={false} />
+                <GtkPicture
+                    name="picture-end"
+                    paintable={decor2}
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.END}
+                    canTarget={false}
+                />
             </GtkOverlay.Child>
             <GtkOverlay.Child>
                 <GtkScale
+                    name="margin-scale"
                     orientation={Gtk.Orientation.HORIZONTAL}
                     drawValue={false}
                     widthRequest={120}
