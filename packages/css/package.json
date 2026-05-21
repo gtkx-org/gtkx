@@ -48,7 +48,7 @@
         "@emotion/cache": "^11.14.0",
         "@emotion/serialize": "^1.3.3",
         "@gtkx/ffi": "workspace:*",
-        "stylis": "^4.2.0"
+        "stylis": "^4.4.0"
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
