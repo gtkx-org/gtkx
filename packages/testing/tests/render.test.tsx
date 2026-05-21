@@ -1,6 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, GtkBox, GtkButton } from "@gtkx/react";
-import type { Ref } from "react";
 import { describe, expect, it } from "vitest";
 import { cleanup, render, type WrapperComponent } from "../src/index.js";
 
@@ -59,10 +58,8 @@ describe("render wrapper", () => {
     });
 
     it("uses custom wrapper component", async () => {
-        const CustomWrapper: WrapperComponent = ({ children, ref }) => (
-            <GtkApplicationWindow ref={ref as Ref<Gtk.ApplicationWindow>} title="Custom Title">
-                {children}
-            </GtkApplicationWindow>
+        const CustomWrapper: WrapperComponent = ({ children }) => (
+            <GtkApplicationWindow title="Custom Title">{children}</GtkApplicationWindow>
         );
 
         const { findByRole, container } = await render(<GtkButton label="Test" />, { wrapper: CustomWrapper });

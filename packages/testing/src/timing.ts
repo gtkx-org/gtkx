@@ -1,33 +1,35 @@
+import { act as reactAct } from "react";
+
+declare global {
+    var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+}
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+const flushEventLoop = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
 /**
- * Yields to the event loop, allowing pending GTK events to process.
+ * Runs a callback inside React's `act`, flushing pending state updates and
+ * effects, then yields one event-loop tick so GTK can process any signals
+ * the update emitted.
  *
- * Use this after actions that trigger async widget updates.
- *
- * @returns Promise that resolves on the next event loop tick
+ * Mirrors `act` from `@testing-library/react`. Wrap every interaction that
+ * mutates React state or fires a GTK signal so assertions see the settled
+ * tree.
  *
  * @example
  * ```tsx
- * import { tick } from "@gtkx/testing";
+ * import { act } from "@gtkx/testing";
  *
- * widget.setSensitive(false);
- * await tick(); // Wait for GTK to process the change
+ * await act(() => widget.activate());
  * expect(widget.getSensitive()).toBe(false);
  * ```
  */
-export const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
-
-/**
- * Runs an action and yields one tick afterwards so GTK has a chance to flush
- * pending updates. Lets every event-emitting helper share the same post-action
- * settle policy without repeating `await tick()` at each call site.
- *
- * @example
- * ```tsx
- * const click = (el: Gtk.Widget) => withTick(() => el.activate());
- * ```
- */
-export const withTick = async <T>(action: () => T | Promise<T>): Promise<T> => {
-    const result = await action();
-    await tick();
+export const act = async <T>(callback: () => T | Promise<T>): Promise<T> => {
+    let result!: T;
+    await reactAct(async () => {
+        result = await callback();
+        await flushEventLoop();
+    });
     return result;
 };

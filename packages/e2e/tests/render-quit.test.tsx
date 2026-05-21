@@ -2,7 +2,7 @@ import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, quit, render, useApplication } from "@gtkx/react";
-import { tick } from "@gtkx/testing";
+import { act } from "@gtkx/testing";
 import { Component, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -45,7 +45,7 @@ describe("render and quit", () => {
         };
 
         render(<Probe />, app);
-        await tick();
+        await act(() => {});
 
         const messages = errorSpy.mock.calls.map((call) => String(call[0])).join("\n");
         expect(messages).toContain("boom-from-render");

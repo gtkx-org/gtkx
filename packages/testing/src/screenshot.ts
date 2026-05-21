@@ -1,6 +1,6 @@
 import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { tick } from "./timing.js";
+import { act } from "./timing.js";
 import type { ScreenshotResult, WaitForOptions } from "./types.js";
 import { waitFor } from "./wait-for.js";
 
@@ -84,7 +84,7 @@ export type ScreenshotOptions = Pick<WaitForOptions, "timeout" | "interval">;
  * ```
  */
 export const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
-    await tick();
+    await act(() => {});
 
     return waitFor(() => captureSnapshot(widget), {
         timeout: options?.timeout ?? DEFAULT_SCREENSHOT_TIMEOUT,

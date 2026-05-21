@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkColumnView, GtkLabel } from "@gtkx/react";
-import { render, tick } from "@gtkx/testing";
+import { act, render } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { filterableIds } from "../helpers/filterable-items.js";
@@ -57,7 +57,7 @@ const clickColumnHeader = async (columnView: Gtk.ColumnView, columnId: string, o
     const column = getColumnById(columnView, columnId);
     if (column) {
         columnView.sortByColumn(column, order);
-        await tick();
+        await act(() => {});
     }
 };
 

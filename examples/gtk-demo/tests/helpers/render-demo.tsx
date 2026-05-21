@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow } from "@gtkx/react";
 import { type RenderResult, render } from "@gtkx/testing";
-import { type ComponentType, createRef, type ReactNode, type Ref, type RefObject, useCallback, useState } from "react";
+import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
 import type { Demo, DemoProps, DemoProviderProps } from "../../src/demos/types.js";
 
 export interface RenderDemoOptions {
@@ -23,19 +23,14 @@ const buildWrapper = ({
     onClose,
     Provider,
     Titlebar,
-}: WrapperBuildArgs): ComponentType<{ children: ReactNode; ref?: Ref<Gtk.Widget> }> => {
-    const Wrapper = ({ children, ref }: { children: ReactNode; ref?: Ref<Gtk.Widget> }) => {
+}: WrapperBuildArgs): ComponentType<{ children: ReactNode }> => {
+    const Wrapper = ({ children }: { children: ReactNode }) => {
         const [windowReady, setWindowReady] = useState(false);
         const titlebar = Titlebar ? <Titlebar window={windowRef} onClose={onClose} /> : undefined;
-        const handleWindowRef = useCallback(
-            (widget: Gtk.Widget | null) => {
-                if (typeof ref === "function") ref(widget);
-                else if (ref) (ref as { current: Gtk.Widget | null }).current = widget;
-                (windowRef as { current: Gtk.Window | null }).current = (widget as Gtk.Window | null) ?? null;
-                if (widget) setWindowReady(true);
-            },
-            [ref],
-        );
+        const handleWindowRef = useCallback((widget: Gtk.Widget | null): void => {
+            (windowRef as { current: Gtk.Window | null }).current = (widget as Gtk.Window | null) ?? null;
+            if (widget) setWindowReady(true);
+        }, []);
         return (
             <Provider window={windowRef} onClose={onClose}>
                 <GtkApplicationWindow ref={handleWindowRef} defaultWidth={800} defaultHeight={600} titlebar={titlebar}>

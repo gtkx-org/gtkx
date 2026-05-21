@@ -3,11 +3,11 @@ import { getConfig } from "./config.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { formatRole, prettyRoles } from "./role-helpers.js";
 import type { Container } from "./traversal.js";
-import type { ByRoleOptions, TextMatch } from "./types.js";
+import type { ByRoleOptions, Matcher } from "./types.js";
 
 type QueryType = "role" | "text" | "labelText" | "name";
 
-const formatTextMatcher = (text: TextMatch): string => {
+const formatTextMatcher = (text: Matcher): string => {
     if (typeof text === "function") {
         return "custom function";
     }
@@ -28,7 +28,7 @@ const formatByRoleDescription = (role: Gtk.AccessibleRole, options?: ByRoleOptio
     return parts.join(" and ");
 };
 
-type QueryArgs = { role?: Gtk.AccessibleRole; text?: TextMatch; name?: TextMatch; options?: ByRoleOptions };
+type QueryArgs = { role?: Gtk.AccessibleRole; text?: Matcher; name?: Matcher; options?: ByRoleOptions };
 
 const formatQueryDescription = (queryType: QueryType, args: QueryArgs): string => {
     switch (queryType) {

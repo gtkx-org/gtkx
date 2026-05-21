@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkDropDown } from "@gtkx/react";
-import { render, screen, tick } from "@gtkx/testing";
+import { act, render, screen } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
@@ -14,7 +14,7 @@ const buildDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: s
 
 const expectSelectedText = async (dropDown: Gtk.DropDown | null, index: number, text: string): Promise<void> => {
     dropDown?.setSelected(index);
-    await tick();
+    await act(() => {});
     expect(screen.queryAllByText(text).length).toBeGreaterThan(0);
 };
 

@@ -2,12 +2,12 @@ import { stop } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
-import { createRef, type ReactNode, type Ref } from "react";
+import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { setScreenRoot } from "./screen.js";
-import { tick } from "./timing.js";
+import { act } from "./timing.js";
 import { type Container, isApplication, traverse } from "./traversal.js";
 import type { RenderOptions, RenderResult, WrapperComponent } from "./types.js";
 
@@ -17,8 +17,9 @@ let lastRenderError: Error | null = null;
 
 const update = async (element: ReactNode, fiberRoot: Reconciler.FiberRoot): Promise<void> => {
     lastRenderError = null;
-    reconciler.updateContainer(element, fiberRoot, null, () => {});
-    await tick();
+    await act(() => {
+        reconciler.updateContainer(element, fiberRoot, null, () => {});
+    });
 
     if (lastRenderError) {
         const error = lastRenderError;
@@ -59,42 +60,29 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
     return { app: application, container };
 };
 
-const DefaultWrapper: WrapperComponent = ({ children, ref }) => (
-    <GtkApplicationWindow ref={ref as Ref<Gtk.ApplicationWindow>} defaultWidth={800} defaultHeight={600}>
+const DefaultWrapper: WrapperComponent = ({ children }) => (
+    <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>
         {children}
     </GtkApplicationWindow>
 );
 
-const findFirstWidget = (root: Container): Gtk.Widget | null => {
-    if (!isApplication(root)) return root;
-    const iterator = traverse(root)[Symbol.iterator]();
-    const first = iterator.next();
-    return first.done ? null : first.value;
-};
-
-const wrapElement = (
-    element: ReactNode,
-    wrapperRef: React.RefObject<Gtk.Widget | null>,
-    wrapper: RenderOptions["wrapper"],
-): ReactNode => {
-    if (wrapper === false || wrapper === undefined) return element;
-    const Wrapper = wrapper === true ? DefaultWrapper : wrapper;
-    return <Wrapper ref={wrapperRef}>{element}</Wrapper>;
-};
-
-const resolveContainer = (
-    wrapper: RenderOptions["wrapper"],
-    wrapperRef: React.RefObject<Gtk.Widget | null>,
-    baseElement: Container,
-): Gtk.Widget => {
-    if (wrapper !== false && wrapper !== undefined && wrapperRef.current) {
-        return wrapperRef.current;
-    }
-    const firstWidget = findFirstWidget(baseElement);
-    if (!firstWidget) {
+const resolveContainer = (baseElement: Container): Gtk.Widget => {
+    if (isApplication(baseElement)) {
+        const [firstWindow] = baseElement.getWindows();
+        if (firstWindow) return firstWindow;
+        const iterator = traverse(baseElement)[Symbol.iterator]();
+        const first = iterator.next();
+        if (!first.done) return first.value;
         throw new Error("render() produced no widgets: ensure the element renders visible content");
     }
-    return firstWidget;
+    if (baseElement instanceof Gtk.Widget) return baseElement;
+    throw new Error("render() produced no widgets: ensure the element renders visible content");
+};
+
+const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"]): ReactNode => {
+    if (wrapper === false || wrapper === undefined) return element;
+    const Wrapper = wrapper === true ? DefaultWrapper : wrapper;
+    return <Wrapper>{element}</Wrapper>;
 };
 
 /**
@@ -112,9 +100,9 @@ const resolveContainer = (
  * import { render, screen } from "@gtkx/testing";
  *
  * test("button click", async () => {
- * await render(<MyButton />);
- * const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
- * await userEvent.click(button);
+ *   await render(<MyButton />);
+ *   const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
+ *   await userEvent.click(button);
  * });
  * ```
  *
@@ -126,21 +114,19 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
     const baseElement: Container = options?.baseElement ?? application;
     const wrapper = options?.wrapper ?? true;
 
-    const wrapperRef = createRef<Gtk.Widget>();
-    const wrappedElement = wrapElement(element, wrapperRef, wrapper);
+    const wrappedElement = wrapElement(element, wrapper);
     const withContext = <ApplicationContext.Provider value={application}>{wrappedElement}</ApplicationContext.Provider>;
     await update(withContext, fiberRoot);
 
     setScreenRoot(application);
 
     return {
-        container: resolveContainer(wrapper, wrapperRef, baseElement),
+        container: resolveContainer(baseElement),
         baseElement,
         ...bindQueries(baseElement),
         unmount: () => update(null, fiberRoot),
         rerender: async (newElement: ReactNode) => {
-            const newWrapperRef = createRef<Gtk.Widget>();
-            const wrapped = wrapElement(newElement, newWrapperRef, wrapper);
+            const wrapped = wrapElement(newElement, wrapper);
             const withCtx = <ApplicationContext.Provider value={application}>{wrapped}</ApplicationContext.Provider>;
             await update(withCtx, fiberRoot);
         },
@@ -161,12 +147,11 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
  * import { render, cleanup } from "@gtkx/testing";
  *
  * afterEach(async () => {
- * await cleanup();
+ *   await cleanup();
  * });
  *
  * test("my test", async () => {
- * await render(<MyComponent />);
- * // ...
+ *   await render(<MyComponent />);
  * });
  * ```
  */

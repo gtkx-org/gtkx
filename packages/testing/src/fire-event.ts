@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { withTick } from "./timing.js";
+import { act } from "./timing.js";
 
 /**
  * Emits a GTK signal on a widget or event controller.
@@ -31,6 +31,6 @@ export const fireEvent = (
     signalName: string,
     ...args: unknown[]
 ): Promise<void> =>
-    withTick(() => {
+    act(() => {
         element.emit(signalName, ...args);
     });

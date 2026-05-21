@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as queries from "./queries.js";
 import type { Container } from "./traversal.js";
-import type { BoundQueries, ByRoleOptions, TextMatch, TextMatchOptions } from "./types.js";
+import type { BoundQueries, ByRoleOptions, Matcher, MatcherOptions } from "./types.js";
 
 type ContainerOrGetter = Container | (() => Container);
 
@@ -17,34 +17,50 @@ const resolveContainer = (containerOrGetter: ContainerOrGetter): Container =>
 export const bindQueries = (containerOrGetter: ContainerOrGetter): BoundQueries => ({
     queryByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
         queries.queryByRole(resolveContainer(containerOrGetter), role, options),
-    queryByLabelText: (text: TextMatch, options?: TextMatchOptions) =>
+    queryByLabelText: (text: Matcher, options?: MatcherOptions) =>
         queries.queryByLabelText(resolveContainer(containerOrGetter), text, options),
-    queryByText: (text: TextMatch, options?: TextMatchOptions) =>
+    queryByText: (text: Matcher, options?: MatcherOptions) =>
         queries.queryByText(resolveContainer(containerOrGetter), text, options),
-    queryByName: (name: TextMatch, options?: TextMatchOptions) =>
+    queryByName: (name: Matcher, options?: MatcherOptions) =>
         queries.queryByName(resolveContainer(containerOrGetter), name, options),
     queryAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
         queries.queryAllByRole(resolveContainer(containerOrGetter), role, options),
-    queryAllByLabelText: (text: TextMatch, options?: TextMatchOptions) =>
+    queryAllByLabelText: (text: Matcher, options?: MatcherOptions) =>
         queries.queryAllByLabelText(resolveContainer(containerOrGetter), text, options),
-    queryAllByText: (text: TextMatch, options?: TextMatchOptions) =>
+    queryAllByText: (text: Matcher, options?: MatcherOptions) =>
         queries.queryAllByText(resolveContainer(containerOrGetter), text, options),
-    queryAllByName: (name: TextMatch, options?: TextMatchOptions) =>
+    queryAllByName: (name: Matcher, options?: MatcherOptions) =>
         queries.queryAllByName(resolveContainer(containerOrGetter), name, options),
+    getByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
+        queries.getByRole(resolveContainer(containerOrGetter), role, options),
+    getByLabelText: (text: Matcher, options?: MatcherOptions) =>
+        queries.getByLabelText(resolveContainer(containerOrGetter), text, options),
+    getByText: (text: Matcher, options?: MatcherOptions) =>
+        queries.getByText(resolveContainer(containerOrGetter), text, options),
+    getByName: (name: Matcher, options?: MatcherOptions) =>
+        queries.getByName(resolveContainer(containerOrGetter), name, options),
+    getAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
+        queries.getAllByRole(resolveContainer(containerOrGetter), role, options),
+    getAllByLabelText: (text: Matcher, options?: MatcherOptions) =>
+        queries.getAllByLabelText(resolveContainer(containerOrGetter), text, options),
+    getAllByText: (text: Matcher, options?: MatcherOptions) =>
+        queries.getAllByText(resolveContainer(containerOrGetter), text, options),
+    getAllByName: (name: Matcher, options?: MatcherOptions) =>
+        queries.getAllByName(resolveContainer(containerOrGetter), name, options),
     findByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
         queries.findByRole(resolveContainer(containerOrGetter), role, options),
-    findByLabelText: (text: TextMatch, options?: TextMatchOptions) =>
+    findByLabelText: (text: Matcher, options?: MatcherOptions) =>
         queries.findByLabelText(resolveContainer(containerOrGetter), text, options),
-    findByText: (text: TextMatch, options?: TextMatchOptions) =>
+    findByText: (text: Matcher, options?: MatcherOptions) =>
         queries.findByText(resolveContainer(containerOrGetter), text, options),
-    findByName: (name: TextMatch, options?: TextMatchOptions) =>
+    findByName: (name: Matcher, options?: MatcherOptions) =>
         queries.findByName(resolveContainer(containerOrGetter), name, options),
     findAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>
         queries.findAllByRole(resolveContainer(containerOrGetter), role, options),
-    findAllByLabelText: (text: TextMatch, options?: TextMatchOptions) =>
+    findAllByLabelText: (text: Matcher, options?: MatcherOptions) =>
         queries.findAllByLabelText(resolveContainer(containerOrGetter), text, options),
-    findAllByText: (text: TextMatch, options?: TextMatchOptions) =>
+    findAllByText: (text: Matcher, options?: MatcherOptions) =>
         queries.findAllByText(resolveContainer(containerOrGetter), text, options),
-    findAllByName: (name: TextMatch, options?: TextMatchOptions) =>
+    findAllByName: (name: Matcher, options?: MatcherOptions) =>
         queries.findAllByName(resolveContainer(containerOrGetter), name, options),
 });

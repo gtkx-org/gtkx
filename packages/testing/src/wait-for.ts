@@ -25,25 +25,33 @@ const DEFAULT_INTERVAL = 50;
  * ```
  */
 export const waitFor = async <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
-    const config = getConfig();
-    const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
-    const startTime = Date.now();
-    let lastError: Error | null = null;
+    const previousActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
+    globalThis.IS_REACT_ACT_ENVIRONMENT = false;
 
-    while (Date.now() - startTime < timeout) {
-        try {
-            return await callback();
-        } catch (error) {
-            lastError = error as Error;
-            await new Promise((resolve) => setTimeout(resolve, interval));
+    try {
+        const config = getConfig();
+        const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
+        const startTime = Date.now();
+        let lastError: Error | null = null;
+
+        while (Date.now() - startTime < timeout) {
+            try {
+                return await callback();
+            } catch (error) {
+                lastError = error as Error;
+                await new Promise((resolve) => setTimeout(resolve, interval));
+            }
         }
-    }
 
-    const timeoutError = buildTimeoutError(timeout, lastError);
-    if (onTimeout) {
-        throw onTimeout(timeoutError);
+        const timeoutError = buildTimeoutError(timeout, lastError);
+        if (onTimeout) {
+            throw onTimeout(timeoutError);
+        }
+        throw timeoutError;
+    } finally {
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        globalThis.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
     }
-    throw timeoutError;
 };
 
 /** @internal */
@@ -88,29 +96,37 @@ export const waitForElementToBeRemoved = async (
     elementOrCallback: ElementOrCallback,
     options?: WaitForOptions,
 ): Promise<void> => {
-    const config = getConfig();
-    const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
+    const previousActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
+    globalThis.IS_REACT_ACT_ENVIRONMENT = false;
 
-    const initialElement = getElement(elementOrCallback);
-    if (initialElement === null || isElementRemoved(initialElement)) {
-        throw new Error(
-            "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
-        );
-    }
+    try {
+        const config = getConfig();
+        const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
 
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < timeout) {
-        const element = getElement(elementOrCallback);
-        if (isElementRemoved(element)) {
-            return;
+        const initialElement = getElement(elementOrCallback);
+        if (initialElement === null || isElementRemoved(initialElement)) {
+            throw new Error(
+                "Element already removed: waitForElementToBeRemoved requires the element to be present initially",
+            );
         }
-        await new Promise((resolve) => setTimeout(resolve, interval));
-    }
 
-    const timeoutError = new Error(`Timed out after ${timeout}ms waiting for element to be removed`);
-    if (onTimeout) {
-        throw onTimeout(timeoutError);
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < timeout) {
+            const element = getElement(elementOrCallback);
+            if (isElementRemoved(element)) {
+                return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, interval));
+        }
+
+        const timeoutError = new Error(`Timed out after ${timeout}ms waiting for element to be removed`);
+        if (onTimeout) {
+            throw onTimeout(timeoutError);
+        }
+        throw timeoutError;
+    } finally {
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        globalThis.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
     }
-    throw timeoutError;
 };

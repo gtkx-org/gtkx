@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkLabel, type ListItem } from "@gtkx/react";
-import { screen, tick } from "@gtkx/testing";
+import { act, screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { type FixtureInput, renderListView } from "../helpers/list-fixtures.js";
 import { getChildTexts } from "../helpers/widget-text.js";
@@ -435,7 +435,7 @@ describe("render - ListView (tree) (6)", () => {
             const row = expandableExpanders()[0]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
             row.setExpanded(true);
-            await tick();
+            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]);
         });
@@ -552,9 +552,9 @@ describe("render - ListView (tree) (9)", () => {
             if (!row) throw new Error("Expected row to exist");
 
             row.setExpanded(true);
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(screen.queryAllByText("Loading...")).toHaveLength(0);
             expect(getChildTexts(ref.current)).toEqual([
@@ -589,9 +589,9 @@ describe("render - ListView (tree) (10)", () => {
 
             const { ref } = await renderListView(toTreeItems(categories), { autoexpand: true });
 
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(screen.queryAllByText("Loading...")).toHaveLength(0);
             expect(getChildTexts(ref.current)).toEqual([
@@ -680,9 +680,9 @@ describe("render - ListView (tree) (12)", () => {
             if (!row) throw new Error("Expected row to exist");
 
             row.setExpanded(true);
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(screen.queryAllByText("Loading...")).toHaveLength(0);
             expect(getChildTexts(ref.current)).toEqual([
@@ -722,7 +722,7 @@ describe("render - ListView (tree) (13)", () => {
             if (!row) throw new Error("Expected row to exist");
 
             row.setExpanded(true);
-            await tick();
+            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual([
                 "Appearance",
@@ -745,9 +745,9 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
             const row = expandableExpanders()[categoryIndex]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
             row.setExpanded(true);
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(screen.queryAllByText("Loading...")).toHaveLength(0);
 
@@ -760,7 +760,7 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
             const row = expandableExpanders()[categoryIndex]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
             row.setExpanded(false);
-            await tick();
+            await act(() => {});
         };
 
         await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
@@ -801,9 +801,9 @@ describe("render - ListView (tree) (15) > settings tree regression (4)", () => {
 
     const toggleRow = async (row: Gtk.TreeListRow, expanded: boolean) => {
         row.setExpanded(expanded);
-        await tick();
-        await tick();
-        await tick();
+        await act(() => {});
+        await act(() => {});
+        await act(() => {});
     };
 
     it("third child does not remain stuck on Loading after expansion", async () => {
@@ -830,9 +830,9 @@ describe("render - ListView (tree) (16)", () => {
     describe("tree filtering (1)", () => {
         it("shows children after filtering from many root items to few", async () => {
             const { ref, rerender } = await renderListView(fullItems, { autoexpand: true });
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual([
                 "Alpha",
@@ -857,9 +857,9 @@ describe("render - ListView (tree) (16)", () => {
                 ],
                 { autoexpand: true },
             );
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
         });
@@ -870,9 +870,9 @@ describe("render - ListView (tree) (17)", () => {
     describe("tree filtering (2)", () => {
         it("shows children after multiple filter transitions", async () => {
             const { ref, rerender } = await renderListView(fullItems, { autoexpand: true });
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             await rerender(
                 [
@@ -885,16 +885,16 @@ describe("render - ListView (tree) (17)", () => {
                 ],
                 { autoexpand: true },
             );
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One"]);
 
             await rerender(fullItems, { autoexpand: true });
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             await rerender(
                 [
@@ -906,9 +906,9 @@ describe("render - ListView (tree) (17)", () => {
                 ],
                 { autoexpand: true },
             );
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
         });
@@ -937,9 +937,9 @@ describe("render - ListView (tree) (18)", () => {
             }
 
             const { ref, rerender } = await renderListView(fullTree, { autoexpand: true, minContentHeight: 400 });
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             await rerender(
                 [
@@ -951,9 +951,9 @@ describe("render - ListView (tree) (18)", () => {
                 ],
                 { autoexpand: true, minContentHeight: 400 },
             );
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Category 21", "Child 21-1"]);
         });
@@ -966,17 +966,17 @@ describe("render - ListView (tree) (19) > tree filtering (4)", () => {
             autoexpand: true,
             minContentHeight: 600,
         });
-        await tick();
-        await tick();
-        await tick();
+        await act(() => {});
+        await act(() => {});
+        await act(() => {});
 
         await rerender([demoCat("cat-Lists", "Lists", [demoChild("demo-weather", "Weather")])], {
             autoexpand: true,
             minContentHeight: 600,
         });
-        await tick();
-        await tick();
-        await tick();
+        await act(() => {});
+        await act(() => {});
+        await act(() => {});
 
         expect(getChildTexts(ref.current)).toEqual(["Lists", "Weather"]);
     });
@@ -1010,14 +1010,14 @@ describe("render - ListView (tree) (20)", () => {
 
             const viewport = { autoexpand: true, minContentHeight: 100, maxContentHeight: 100 } as const;
             const { ref, rerender } = await renderListView(fullTree, viewport);
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             await rerender([cat("cat-36", "Category 36", [ch("ch-36-0", "Child 36-0")])], viewport);
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Category 36", "Child 36-0"]);
         });
@@ -1028,9 +1028,9 @@ describe("render - ListView (tree) (21)", () => {
     describe("tree filtering (6)", () => {
         it("shows children when transitioning from one filter to another without restoring full list", async () => {
             const { ref, rerender } = await renderListView(fullItems, { autoexpand: true });
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             await rerender(
                 [
@@ -1048,9 +1048,9 @@ describe("render - ListView (tree) (21)", () => {
                 ],
                 { autoexpand: true },
             );
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One", "Delta", "D-One"]);
 
@@ -1064,9 +1064,9 @@ describe("render - ListView (tree) (21)", () => {
                 ],
                 { autoexpand: true },
             );
-            await tick();
-            await tick();
-            await tick();
+            await act(() => {});
+            await act(() => {});
+            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
         });

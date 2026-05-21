@@ -1,13 +1,10 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
-import {
-    logScreenshotPath,
-    resolveWindow,
-    saveScreenshotToTempFile,
-    type WindowSelector,
-} from "./screen-screenshot.js";
 import { screenshot as captureScreenshot, type ScreenshotOptions } from "./screenshot.js";
 import type { ScreenshotResult } from "./types.js";
 
@@ -24,6 +21,62 @@ const getRoot = (): Gtk.Application => {
     }
 
     return currentRoot;
+};
+
+type WindowSelector = number | string | RegExp | undefined;
+
+const resolveWindow = (selector?: WindowSelector): Gtk.Window => {
+    const windows = Gtk.Window.listToplevels();
+
+    if (windows.length === 0) {
+        throw new Error("No windows available for screenshot");
+    }
+
+    if (selector === undefined) {
+        const [first] = windows;
+        if (!(first instanceof Gtk.Window)) {
+            throw new TypeError("First toplevel is not a Window");
+        }
+        return first;
+    }
+
+    if (typeof selector === "number") {
+        const indexed = windows[selector];
+        if (!(indexed instanceof Gtk.Window)) {
+            throw new TypeError(`Window at index ${selector} not found`);
+        }
+        return indexed;
+    }
+
+    const isRegex = selector instanceof RegExp;
+    const found = windows.find((w): w is Gtk.Window => {
+        if (!(w instanceof Gtk.Window)) return false;
+        const title = w.getTitle() ?? "";
+        return isRegex ? selector.test(title) : title.includes(selector);
+    });
+
+    if (!found) {
+        const pattern = isRegex ? selector.toString() : `"${selector}"`;
+        throw new Error(`No window found with title matching ${pattern}`);
+    }
+    return found;
+};
+
+const saveScreenshotToTempFile = (result: ScreenshotResult): string => {
+    const dir = join(tmpdir(), "gtkx-screenshots");
+    if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+    }
+    const filepath = join(dir, `${Date.now()}-screenshot.png`);
+    writeFileSync(filepath, Buffer.from(result.data, "base64"));
+    return filepath;
+};
+
+/**
+ * Logs a `file://` URI for the given screenshot path to the console.
+ */
+export const logScreenshotPath = (filepath: string): void => {
+    console.log(`Screenshot saved: file://${filepath}`);
 };
 
 const boundQueries = bindQueries(getRoot);
@@ -61,11 +114,6 @@ export const screen = {
     /**
      * Capture a screenshot of a toplevel window, save it to a temp file, and
      * log a clickable `file://` URI.
-     *
-     * Composed of {@link resolveWindow} + {@link captureScreenshot} +
-     * {@link saveScreenshotToTempFile} + {@link logScreenshotPath}. Use those
-     * primitives directly to capture without filesystem or console side
-     * effects.
      *
      * @param selector - Window selector: index (number), title substring (string), or title pattern (RegExp).
      *                   If omitted, captures the first window.

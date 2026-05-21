@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { ComponentType, ReactNode, Ref } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { Container } from "./traversal.js";
 
 /**
@@ -9,7 +9,7 @@ import type { Container } from "./traversal.js";
  * @param widget - The widget being tested
  * @returns `true` if the content matches
  */
-export type TextMatchFunction = (content: string, widget: Gtk.Widget) => boolean;
+export type MatcherFunction = (content: string, widget: Gtk.Widget) => boolean;
 
 /**
  * Text matching pattern.
@@ -17,7 +17,7 @@ export type TextMatchFunction = (content: string, widget: Gtk.Widget) => boolean
  * Can be a string for exact/substring matching, a RegExp for pattern matching,
  * or a custom function for advanced matching logic.
  */
-export type TextMatch = string | RegExp | TextMatchFunction;
+export type Matcher = string | RegExp | MatcherFunction;
 
 /**
  * Options for text normalization before matching.
@@ -32,7 +32,7 @@ export type NormalizerOptions = {
 /**
  * Options for text-based queries.
  */
-export type TextMatchOptions = {
+export type MatcherOptions = {
     /** Require exact match vs substring match (default: true) */
     exact?: boolean;
     /** Custom text normalizer function */
@@ -50,9 +50,9 @@ export type TextMatchOptions = {
  *
  * Extends text matching options with accessible state filters.
  */
-export type ByRoleOptions = TextMatchOptions & {
+export type ByRoleOptions = MatcherOptions & {
     /** Filter by accessible name/label */
-    name?: TextMatch;
+    name?: Matcher;
     /** Filter by checked state (checkboxes, radios, toggles) */
     checked?: boolean;
     /** Filter by pressed state */
@@ -81,9 +81,18 @@ export type WaitForOptions = {
  * A wrapper component that exposes its root GTK widget via `ref`.
  * Accept `ref` as a prop and pass it through to the root intrinsic element.
  */
+/**
+ * A wrapper component that receives the rendered tree as children.
+ */
+/**
+ * A wrapper component that exposes its root GTK widget via `ref`.
+ * Accept `ref` as a prop and pass it through to the root intrinsic element.
+ */
+/**
+ * A wrapper component that receives the rendered tree as children.
+ */
 export type WrapperComponent = ComponentType<{
     children: ReactNode;
-    ref?: Ref<Gtk.Widget>;
 }>;
 
 /**
@@ -115,35 +124,51 @@ export type BoundQueries = {
     /** Query single element by accessible role (returns null if not found) */
     queryByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget | null;
     /** Query single element by label/text content (returns null if not found) */
-    queryByLabelText: (text: TextMatch, options?: TextMatchOptions) => Gtk.Widget | null;
+    queryByLabelText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget | null;
     /** Query single element by visible text (returns null if not found) */
-    queryByText: (text: TextMatch, options?: TextMatchOptions) => Gtk.Widget | null;
+    queryByText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget | null;
     /** Query single element by widget name (returns null if not found) */
-    queryByName: (name: TextMatch, options?: TextMatchOptions) => Gtk.Widget | null;
+    queryByName: (name: Matcher, options?: MatcherOptions) => Gtk.Widget | null;
     /** Query all elements by accessible role (returns empty array if none found) */
     queryAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget[];
     /** Query all elements by label/text content (returns empty array if none found) */
-    queryAllByLabelText: (text: TextMatch, options?: TextMatchOptions) => Gtk.Widget[];
+    queryAllByLabelText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget[];
     /** Query all elements by visible text (returns empty array if none found) */
-    queryAllByText: (text: TextMatch, options?: TextMatchOptions) => Gtk.Widget[];
+    queryAllByText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget[];
     /** Query all elements by widget name (returns empty array if none found) */
-    queryAllByName: (name: TextMatch, options?: TextMatchOptions) => Gtk.Widget[];
+    queryAllByName: (name: Matcher, options?: MatcherOptions) => Gtk.Widget[];
+    /** Get single element by accessible role (throws if not found or multiple match) */
+    getByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget;
+    /** Get single element by label/text content (throws if not found or multiple match) */
+    getByLabelText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget;
+    /** Get single element by visible text (throws if not found or multiple match) */
+    getByText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget;
+    /** Get single element by widget name (throws if not found or multiple match) */
+    getByName: (name: Matcher, options?: MatcherOptions) => Gtk.Widget;
+    /** Get all elements by accessible role (throws if none found) */
+    getAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Gtk.Widget[];
+    /** Get all elements by label/text content (throws if none found) */
+    getAllByLabelText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget[];
+    /** Get all elements by visible text (throws if none found) */
+    getAllByText: (text: Matcher, options?: MatcherOptions) => Gtk.Widget[];
+    /** Get all elements by widget name (throws if none found) */
+    getAllByName: (name: Matcher, options?: MatcherOptions) => Gtk.Widget[];
     /** Find single element by accessible role (waits and throws if not found) */
     findByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget>;
     /** Find single element by label/text content (waits and throws if not found) */
-    findByLabelText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
+    findByLabelText: (text: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget>;
     /** Find single element by visible text (waits and throws if not found) */
-    findByText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
+    findByText: (text: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget>;
     /** Find single element by widget name (waits and throws if not found) */
-    findByName: (name: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget>;
+    findByName: (name: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget>;
     /** Find all elements by accessible role (waits and throws if none found) */
     findAllByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) => Promise<Gtk.Widget[]>;
     /** Find all elements by label/text content (waits and throws if none found) */
-    findAllByLabelText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
+    findAllByLabelText: (text: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget[]>;
     /** Find all elements by visible text (waits and throws if none found) */
-    findAllByText: (text: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
+    findAllByText: (text: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget[]>;
     /** Find all elements by widget name (waits and throws if none found) */
-    findAllByName: (name: TextMatch, options?: TextMatchOptions) => Promise<Gtk.Widget[]>;
+    findAllByName: (name: Matcher, options?: MatcherOptions) => Promise<Gtk.Widget[]>;
 };
 
 /**

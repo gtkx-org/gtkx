@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { buildMultipleFoundError, buildNotFoundError } from "./error-builder.js";
 import { buildQueries } from "./query-helpers.js";
 import { type Container, findAll, traverse } from "./traversal.js";
-import type { ByRoleOptions, TextMatch, TextMatchOptions } from "./types.js";
+import type { ByRoleOptions, Matcher, MatcherOptions } from "./types.js";
 import {
     getWidgetAccessibleName,
     getWidgetCheckedState,
@@ -13,7 +13,7 @@ import {
     getWidgetText,
 } from "./widget-text.js";
 
-const buildNormalizer = (options?: TextMatchOptions): ((text: string) => string) => {
+const buildNormalizer = (options?: MatcherOptions): ((text: string) => string) => {
     if (options?.normalizer) {
         return options.normalizer;
     }
@@ -35,17 +35,12 @@ const buildNormalizer = (options?: TextMatchOptions): ((text: string) => string)
     };
 };
 
-const normalizeText = (text: string, options?: TextMatchOptions): string => {
+const normalizeText = (text: string, options?: MatcherOptions): string => {
     const normalizer = buildNormalizer(options);
     return normalizer(text);
 };
 
-const matchText = (
-    actual: string | null,
-    expected: TextMatch,
-    widget: Gtk.Widget,
-    options?: TextMatchOptions,
-): boolean => {
+const matchText = (actual: string | null, expected: Matcher, widget: Gtk.Widget, options?: MatcherOptions): boolean => {
     if (actual === null) return false;
 
     const normalizedActual = normalizeText(actual, options);
@@ -116,11 +111,7 @@ const roleVariants = buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOpt
  * @param options - Query options including normalization
  * @returns Array of labeled widgets (empty if none found)
  */
-export const queryAllByLabelText = (
-    container: Container,
-    text: TextMatch,
-    options?: TextMatchOptions,
-): Gtk.Widget[] => {
+export const queryAllByLabelText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] => {
     const results: Gtk.Widget[] = [];
 
     for (const node of traverse(container)) {
@@ -139,7 +130,7 @@ export const queryAllByLabelText = (
     return results;
 };
 
-const labelTextVariants = buildQueries<[text: TextMatch, options?: TextMatchOptions]>(
+const labelTextVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     queryAllByLabelText,
     (container, count, text, options) => buildMultipleFoundError(container, "labelText", { text, options }, count),
     (container, text, options) => buildNotFoundError(container, "labelText", { text, options }),
@@ -153,10 +144,10 @@ const labelTextVariants = buildQueries<[text: TextMatch, options?: TextMatchOpti
  * @param options - Query options including normalization
  * @returns Array of matching widgets (empty if none found)
  */
-export const queryAllByText = (container: Container, text: TextMatch, options?: TextMatchOptions): Gtk.Widget[] =>
+export const queryAllByText = (container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
     findAll(container, (node) => matchText(getWidgetText(node), text, node, options));
 
-const textVariants = buildQueries<[text: TextMatch, options?: TextMatchOptions]>(
+const textVariants = buildQueries<[text: Matcher, options?: MatcherOptions]>(
     queryAllByText,
     (container, count, text, options) => buildMultipleFoundError(container, "text", { text, options }, count),
     (container, text, options) => buildNotFoundError(container, "text", { text, options }),
@@ -170,10 +161,10 @@ const textVariants = buildQueries<[text: TextMatch, options?: TextMatchOptions]>
  * @param options - Query options including normalization
  * @returns Array of matching widgets (empty if none found)
  */
-export const queryAllByName = (container: Container, name: TextMatch, options?: TextMatchOptions): Gtk.Widget[] =>
+export const queryAllByName = (container: Container, name: Matcher, options?: MatcherOptions): Gtk.Widget[] =>
     findAll(container, (node) => matchText(getWidgetName(node), name, node, options));
 
-const nameVariants = buildQueries<[name: TextMatch, options?: TextMatchOptions]>(
+const nameVariants = buildQueries<[name: Matcher, options?: MatcherOptions]>(
     queryAllByName,
     (container, count, name, options) => buildMultipleFoundError(container, "name", { name, options }, count),
     (container, name, options) => buildNotFoundError(container, "name", { name, options }),
@@ -182,27 +173,43 @@ const nameVariants = buildQueries<[name: TextMatch, options?: TextMatchOptions]>
 /** Finds a single element matching a role without throwing. Returns `null` if not found; throws if multiple match. */
 export const queryByRole = roleVariants.queryBy;
 /** Finds a single element matching a role. Throws if not found or if multiple match. */
-export const findByRole = roleVariants.findBy;
+export const getByRole = roleVariants.getBy;
 /** Finds all elements matching a role. Throws if none found. */
+export const getAllByRole = roleVariants.getAllBy;
+/** Finds a single element matching a role, waiting until it appears. Throws if not found or if multiple match. */
+export const findByRole = roleVariants.findBy;
+/** Finds all elements matching a role, waiting until any appear. Throws if none found. */
 export const findAllByRole = roleVariants.findAllBy;
 
 /** Finds a single element by label text without throwing. Returns `null` if not found; throws if multiple match. */
 export const queryByLabelText = labelTextVariants.queryBy;
 /** Finds a single element by label text. Throws if not found or if multiple match. */
-export const findByLabelText = labelTextVariants.findBy;
+export const getByLabelText = labelTextVariants.getBy;
 /** Finds all elements matching label text. Throws if none found. */
+export const getAllByLabelText = labelTextVariants.getAllBy;
+/** Finds a single element by label text, waiting until it appears. Throws if not found or if multiple match. */
+export const findByLabelText = labelTextVariants.findBy;
+/** Finds all elements matching label text, waiting until any appear. Throws if none found. */
 export const findAllByLabelText = labelTextVariants.findAllBy;
 
 /** Finds a single element by visible text without throwing. Returns `null` if not found; throws if multiple match. */
 export const queryByText = textVariants.queryBy;
 /** Finds a single element by visible text. Throws if not found or if multiple match. */
-export const findByText = textVariants.findBy;
+export const getByText = textVariants.getBy;
 /** Finds all elements matching visible text. Throws if none found. */
+export const getAllByText = textVariants.getAllBy;
+/** Finds a single element by visible text, waiting until it appears. Throws if not found or if multiple match. */
+export const findByText = textVariants.findBy;
+/** Finds all elements matching visible text, waiting until any appear. Throws if none found. */
 export const findAllByText = textVariants.findAllBy;
 
 /** Finds a single element by widget name without throwing. Returns `null` if not found; throws if multiple match. */
 export const queryByName = nameVariants.queryBy;
 /** Finds a single element by widget name. Throws if not found or if multiple match. */
-export const findByName = nameVariants.findBy;
+export const getByName = nameVariants.getBy;
 /** Finds all elements matching a widget name. Throws if none found. */
+export const getAllByName = nameVariants.getAllBy;
+/** Finds a single element by widget name, waiting until it appears. Throws if not found or if multiple match. */
+export const findByName = nameVariants.findBy;
+/** Finds all elements matching a widget name, waiting until any appear. Throws if none found. */
 export const findAllByName = nameVariants.findAllBy;

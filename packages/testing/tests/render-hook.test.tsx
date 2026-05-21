@@ -2,7 +2,7 @@ import { GtkApplicationWindow } from "@gtkx/react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describe, expect, it } from "vitest";
-import { renderHook } from "../src/index.js";
+import { act, renderHook } from "../src/index.js";
 
 describe("renderHook", () => {
     it("renders a hook and returns its result", async () => {
@@ -11,13 +11,12 @@ describe("renderHook", () => {
     });
 
     it("updates result when hook state changes", async () => {
-        const { result, rerender } = await renderHook(() => useState(0));
+        const { result } = await renderHook(() => useState(0));
 
         expect(result.current[0]).toBe(0);
 
         const [, setState] = result.current;
-        setState(10);
-        await rerender();
+        await act(() => setState(10));
 
         expect(result.current[0]).toBe(10);
     });
@@ -64,15 +63,14 @@ describe("renderHook rerender", () => {
     });
 
     it("preserves hook state across rerenders", async () => {
-        const { result, rerender } = await renderHook(() => {
+        const { result } = await renderHook(() => {
             const [count, setCount] = useState(0);
             return { count, increment: () => setCount((c) => c + 1) };
         });
 
         expect(result.current.count).toBe(0);
 
-        result.current.increment();
-        await rerender();
+        await act(() => result.current.increment());
 
         expect(result.current.count).toBe(1);
     });
@@ -162,13 +160,12 @@ describe("renderHook error handling", () => {
 
 describe("renderHook complex hooks state", () => {
     it("works with useState", async () => {
-        const { result, rerender } = await renderHook(() => useState({ count: 0 }));
+        const { result } = await renderHook(() => useState({ count: 0 }));
 
         expect(result.current[0]).toEqual({ count: 0 });
 
         const [, setState] = result.current;
-        setState({ count: 5 });
-        await rerender();
+        await act(() => setState({ count: 5 }));
 
         expect(result.current[0]).toEqual({ count: 5 });
     });
@@ -239,19 +236,17 @@ describe("renderHook complex hooks effects", () => {
             };
         };
 
-        const { result, rerender } = await renderHook(({ initial }: { initial: number }) => useCounter(initial), {
+        const { result } = await renderHook(({ initial }: { initial: number }) => useCounter(initial), {
             initialProps: { initial: 10 },
         });
 
         expect(result.current.count).toBe(10);
 
-        result.current.increment();
-        await rerender();
+        await act(() => result.current.increment());
         expect(result.current.count).toBe(11);
 
-        result.current.decrement();
-        result.current.decrement();
-        await rerender();
+        await act(() => result.current.decrement());
+        await act(() => result.current.decrement());
         expect(result.current.count).toBe(9);
     });
 });

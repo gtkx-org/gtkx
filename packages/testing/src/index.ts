@@ -1,8 +1,8 @@
 export type { Config } from "./config.js";
 export { configure, getConfig } from "./config.js";
 export { fireEvent } from "./fire-event.js";
-export type { PrettyWidgetOptions, WidgetEvent, WidgetNode, WidgetSerializer } from "./pretty-widget.js";
-export { createAnsiSerializer, iterateWidgets, prettyWidget } from "./pretty-widget.js";
+export type { PrettyWidgetOptions } from "./pretty-widget.js";
+export { prettyWidget } from "./pretty-widget.js";
 export {
     findAllByLabelText,
     findAllByName,
@@ -12,6 +12,14 @@ export {
     findByName,
     findByRole,
     findByText,
+    getAllByLabelText,
+    getAllByName,
+    getAllByRole,
+    getAllByText,
+    getByLabelText,
+    getByName,
+    getByRole,
+    getByText,
     queryAllByLabelText,
     queryAllByName,
     queryAllByRole,
@@ -25,29 +33,23 @@ export { cleanup, render } from "./render.js";
 export { renderHook } from "./render-hook.js";
 export type { RoleInfo } from "./role-helpers.js";
 export { getRoles, logRoles, prettyRoles } from "./role-helpers.js";
-export { screen } from "./screen.js";
-export {
-    logScreenshotPath,
-    resolveWindow,
-    saveScreenshotToTempFile,
-    type WindowSelector,
-} from "./screen-screenshot.js";
+export { logScreenshotPath, screen } from "./screen.js";
 export type { ScreenshotOptions } from "./screenshot.js";
 export { screenshot } from "./screenshot.js";
-export { tick } from "./timing.js";
+export { act } from "./timing.js";
 export type { Container } from "./traversal.js";
 export type {
     BoundQueries,
     ByRoleOptions,
+    Matcher,
+    MatcherFunction,
+    MatcherOptions,
     NormalizerOptions,
     RenderHookOptions,
     RenderHookResult,
     RenderOptions,
     RenderResult,
     ScreenshotResult,
-    TextMatch,
-    TextMatchFunction,
-    TextMatchOptions,
     WaitForOptions,
     WrapperComponent,
 } from "./types.js";

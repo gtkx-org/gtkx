@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { fireEvent } from "./fire-event.js";
-import { withTick } from "./timing.js";
+import { act } from "./timing.js";
 import { isEditable } from "./widget.js";
 
 /**
@@ -13,12 +13,12 @@ export type TabOptions = {
 };
 
 const click = (element: Gtk.Widget): Promise<void> =>
-    withTick(() => {
+    act(() => {
         element.activate();
     });
 
 const emitClickSequence = (element: Gtk.Widget, nPress: number): Promise<void> =>
-    withTick(() => {
+    act(() => {
         const controller = getOrCreateController(element, Gtk.GestureClick);
 
         for (let i = 1; i <= nPress; i++) {
@@ -32,7 +32,7 @@ const dblClick = (element: Gtk.Widget): Promise<void> => emitClickSequence(eleme
 const tripleClick = (element: Gtk.Widget): Promise<void> => emitClickSequence(element, 3);
 
 const tab = (element: Gtk.Widget, options?: TabOptions): Promise<void> =>
-    withTick(() => {
+    act(() => {
         const direction = options?.shift ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;
         const root = element.getRoot();
 
@@ -42,7 +42,7 @@ const tab = (element: Gtk.Widget, options?: TabOptions): Promise<void> =>
     });
 
 const type = (element: Gtk.Widget, text: string): Promise<void> =>
-    withTick(() => {
+    act(() => {
         if (!isEditable(element)) {
             throw new Error(
                 "Cannot type into element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)",
@@ -54,7 +54,7 @@ const type = (element: Gtk.Widget, text: string): Promise<void> =>
     });
 
 const clear = (element: Gtk.Widget): Promise<void> =>
-    withTick(() => {
+    act(() => {
         if (!isEditable(element)) {
             throw new Error("Cannot clear element: expected editable widget (TEXT_BOX, SEARCH_BOX, or SPIN_BUTTON)");
         }
@@ -142,7 +142,7 @@ const selectByRole = (element: Gtk.Widget, values: number | number[], valueArray
 };
 
 const selectOptions = (element: Gtk.Widget, values: number | number[]): Promise<void> =>
-    withTick(() => {
+    act(() => {
         const valueArray = Array.isArray(values) ? values : [values];
         if (isListView(element)) {
             selectInListView(element, valueArray);
@@ -171,7 +171,7 @@ const deselectInListBox = (listBox: Gtk.ListBox, valueArray: number[]): void => 
 };
 
 const deselectOptions = (element: Gtk.Widget, values: number | number[]): Promise<void> =>
-    withTick(() => {
+    act(() => {
         const valueArray = Array.isArray(values) ? values : [values];
         if (isListView(element)) {
             deselectInListView(element, valueArray);
@@ -200,13 +200,13 @@ const getOrCreateController = <T extends Gtk.EventController>(element: Gtk.Widge
 };
 
 const hover = (element: Gtk.Widget): Promise<void> =>
-    withTick(() => {
+    act(() => {
         const controller = getOrCreateController(element, Gtk.EventControllerMotion);
         controller.emit("enter", 0, 0);
     });
 
 const unhover = (element: Gtk.Widget): Promise<void> =>
-    withTick(() => {
+    act(() => {
         const controller = getOrCreateController(element, Gtk.EventControllerMotion);
         controller.emit("leave");
     });
@@ -324,7 +324,7 @@ const applyKeyAction = async (
 const keyboardWith =
     (state: UserEventState) =>
     (element: Gtk.Widget, input: string): Promise<void> =>
-        withTick(async () => {
+        act(async () => {
             const controller = getOrCreateController(element, Gtk.EventControllerKey);
             for (const action of parseKeyboardInput(input)) {
                 await applyKeyAction(element, controller, state, action);
@@ -368,7 +368,7 @@ const applyPointerInput = (controller: Gtk.GestureClick, state: UserEventState, 
 const pointerWith =
     (state: UserEventState) =>
     (element: Gtk.Widget, input: PointerInput): Promise<void> =>
-        withTick(() => {
+        act(() => {
             const controller = getOrCreateController(element, Gtk.GestureClick);
             applyPointerInput(controller, state, input);
         });

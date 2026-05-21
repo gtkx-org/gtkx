@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkDropDown, GtkLabel, GtkListView } from "@gtkx/react";
-import { render, screen, tick } from "@gtkx/testing";
+import { act, render, screen } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
@@ -176,11 +176,11 @@ describe("render - ListItem (5)", () => {
             expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
 
             dropDownRef.current?.setSelected(1);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("Second").length).toBeGreaterThan(0);
 
             dropDownRef.current?.setSelected(2);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("Third").length).toBeGreaterThan(0);
         });
 
@@ -191,20 +191,20 @@ describe("render - ListItem (5)", () => {
             expect(screen.queryAllByText("first").length).toBeGreaterThan(0);
 
             dropDownRef.current?.setSelected(1);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("last").length).toBeGreaterThan(0);
 
             await rerender(["first", "middle", "last"]);
             dropDownRef.current?.setSelected(0);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("first").length).toBeGreaterThan(0);
 
             dropDownRef.current?.setSelected(1);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("middle").length).toBeGreaterThan(0);
 
             dropDownRef.current?.setSelected(2);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("last").length).toBeGreaterThan(0);
         });
     });

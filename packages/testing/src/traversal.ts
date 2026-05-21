@@ -1,16 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import type { Container } from "@gtkx/react";
 
-/**
- * Root element for scoping queries.
- *
- * When a `Gtk.Application` is provided, queries search across all toplevel
- * windows. When a `Gtk.Widget` is provided, queries are scoped to that
- * widget's subtree.
- */
-export type Container = Gtk.Application | Gtk.Widget;
+export type { Container };
 
 export const isApplication = (container: Container): container is Gtk.Application =>
-    "getWindows" in container && typeof container.getWindows === "function";
+    container instanceof Gtk.Application;
 
 const traverseWidgetTree = function* (root: Gtk.Widget): Generator<Gtk.Widget> {
     yield root;
@@ -29,11 +23,21 @@ const traverseWindows = function* (): Generator<Gtk.Widget> {
     }
 };
 
+const resolveRoot = (container: Container): Gtk.Widget | null => {
+    if (container instanceof Gtk.Widget) return container;
+    if (container instanceof Gtk.EventController) return container.getWidget();
+    if (container instanceof Gtk.ListItem || container instanceof Gtk.ListHeader) return container.getChild();
+    return null;
+};
+
 export const traverse = function* (container: Container): Generator<Gtk.Widget> {
     if (isApplication(container)) {
         yield* traverseWindows();
-    } else {
-        yield* traverseWidgetTree(container);
+        return;
+    }
+    const root = resolveRoot(container);
+    if (root) {
+        yield* traverseWidgetTree(root);
     }
 };
 
