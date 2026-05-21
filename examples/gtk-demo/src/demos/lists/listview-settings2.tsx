@@ -13,10 +13,8 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 
-const Slot = "Slot" as const;
-
-import { useCallback, useMemo, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-settings2.tsx?raw";
 
 interface KeyItem {
@@ -187,7 +185,26 @@ const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: Sche
     </GtkScrolledWindow>
 );
 
-const ListViewSettings2Demo = () => {
+interface Settings2ContextValue {
+    searchMode: boolean;
+    setSearchMode: (value: boolean) => void;
+    setSearchText: (value: string) => void;
+    filteredSchemaKeys: SchemaKeys[];
+    keysState: React.RefObject<Map<string, string>>;
+    handleSearchChanged: (entry: Gtk.SearchEntry) => void;
+    handleStopSearch: () => void;
+    handleValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
+}
+
+const Settings2Context = createContext<Settings2ContextValue | null>(null);
+
+const useSettings2Context = (): Settings2ContextValue => {
+    const ctx = useContext(Settings2Context);
+    if (!ctx) throw new Error("Settings2Context is missing");
+    return ctx;
+};
+
+const ListViewSettings2Provider = ({ children }: DemoProviderProps) => {
     const [searchText, setSearchText] = useState("");
     const [searchMode, setSearchMode] = useState(false);
     const keysState = useRef(new Map<string, string>());
@@ -206,33 +223,55 @@ const ListViewSettings2Demo = () => {
         [],
     );
 
+    const value = useMemo<Settings2ContextValue>(
+        () => ({
+            searchMode,
+            setSearchMode,
+            setSearchText,
+            filteredSchemaKeys,
+            keysState,
+            handleSearchChanged,
+            handleStopSearch,
+            handleValueEdit,
+        }),
+        [searchMode, filteredSchemaKeys, handleSearchChanged, handleStopSearch, handleValueEdit],
+    );
+
+    return <Settings2Context.Provider value={value}>{children}</Settings2Context.Provider>;
+};
+
+const ListViewSettings2Titlebar = () => {
+    const { searchMode, setSearchMode, setSearchText } = useSettings2Context();
     return (
-        <>
-            <Slot id="titlebar">
-                <GtkHeaderBar>
-                    <GtkHeaderBar.PackEnd>
-                        <GtkToggleButton
-                            iconName="system-search-symbolic"
-                            active={searchMode}
-                            onToggled={(btn) => {
-                                setSearchMode(btn.getActive());
-                                setSearchText("");
-                            }}
-                        />
-                    </GtkHeaderBar.PackEnd>
-                </GtkHeaderBar>
-            </Slot>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkSearchBar searchModeEnabled={searchMode}>
-                    <GtkSearchEntry onSearchChanged={handleSearchChanged} onStopSearch={handleStopSearch} />
-                </GtkSearchBar>
-                <SchemaKeysListView
-                    filteredSchemaKeys={filteredSchemaKeys}
-                    keysState={keysState}
-                    onValueEdit={handleValueEdit}
+        <GtkHeaderBar>
+            <GtkHeaderBar.PackEnd>
+                <GtkToggleButton
+                    iconName="system-search-symbolic"
+                    active={searchMode}
+                    onToggled={(btn) => {
+                        setSearchMode(btn.getActive());
+                        setSearchText("");
+                    }}
                 />
-            </GtkBox>
-        </>
+            </GtkHeaderBar.PackEnd>
+        </GtkHeaderBar>
+    );
+};
+
+const ListViewSettings2Demo = () => {
+    const { searchMode, filteredSchemaKeys, keysState, handleSearchChanged, handleStopSearch, handleValueEdit } =
+        useSettings2Context();
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkSearchBar searchModeEnabled={searchMode}>
+                <GtkSearchEntry onSearchChanged={handleSearchChanged} onStopSearch={handleStopSearch} />
+            </GtkSearchBar>
+            <SchemaKeysListView
+                filteredSchemaKeys={filteredSchemaKeys}
+                keysState={keysState}
+                onValueEdit={handleValueEdit}
+            />
+        </GtkBox>
     );
 };
 
@@ -243,6 +282,8 @@ export const listviewSettings2Demo: Demo = {
         "An alternative GSettings viewer that uses a flat list with section headers. Demonstrates GtkListView sections with GtkListHeader and GtkSectionModel.",
     keywords: ["listview", "section", "header", "settings", "GSettings", "GtkListHeader", "GtkSectionModel"],
     component: ListViewSettings2Demo,
+    titlebar: ListViewSettings2Titlebar,
+    provider: ListViewSettings2Provider,
     sourceCode,
     defaultWidth: 640,
     defaultHeight: 480,

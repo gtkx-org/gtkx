@@ -8,6 +8,7 @@
 import type { TypeImport } from "../type-system/ffi-types.js";
 import { toKebabCase } from "../utils/naming.js";
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
+import { resolveNamespaceImportPath } from "./namespace-import-path.js";
 
 /**
  * Collects imports during method body generation.
@@ -40,8 +41,7 @@ export const addTypeImports = (
     for (const imp of typeImports) {
         if (!imp.isExternal && skipNames?.has(imp.transformedName)) continue;
         if (imp.isExternal) {
-            const ns = imp.namespace.toLowerCase();
-            imports.addNamespaceImport(`../${ns}/${ns}.js`, imp.namespace);
+            imports.addNamespaceImport(resolveNamespaceImportPath(imp.namespace), imp.namespace);
         } else {
             switch (imp.kind) {
                 case "enum":

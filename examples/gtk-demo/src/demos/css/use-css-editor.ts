@@ -61,7 +61,7 @@ interface SetupProviderArgs {
     providerRef: RefObject<Gtk.CssProvider | null>;
     parsingErrorHandlerIdRef: RefObject<number | null>;
     displayRef: RefObject<Gdk.Display | null>;
-    handleParsingError: (provider: Gtk.CssProvider, section: Gtk.CssSection, error: GLib.Error) => void;
+    handleParsingError: (section: Gtk.CssSection, error: GLib.Error) => void;
 }
 
 const setupProvider = ({
@@ -99,7 +99,7 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
     const warningTagRef = useRef<Gtk.TextTag | null>(null);
 
     const handleParsingError = useCallback(
-        (_provider: Gtk.CssProvider, section: Gtk.CssSection, error: GLib.Error) =>
+        (section: Gtk.CssSection, error: GLib.Error) =>
             markParsingError({
                 textView: textViewRef.current,
                 section,

@@ -3,11 +3,9 @@ import type * as Gdk from "@gtkx/ffi/gdk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import { GtkBox, GtkDrawingArea, GtkHeaderBar, GtkLabel } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./frames.tsx?raw";
-
-const Slot = "Slot" as const;
 
 interface Color {
     r: number;
@@ -71,7 +69,7 @@ function useFrameTickAndFps(
     }, [tickCallback, drawingRef, setFps]);
 }
 
-const FramesDemo = ({ window }: DemoProps) => {
+function useFramesState(window: React.RefObject<Gtk.Window | null>) {
     const drawingRef = useRef<Gtk.DrawingArea>(null);
     const [fps, setFps] = useState(0);
     const animationRefs = useFrameAnimationRefs();
@@ -84,7 +82,7 @@ const FramesDemo = ({ window }: DemoProps) => {
     }, [window]);
 
     const fpsAttrs = useMemo(() => {
-        const attrs = new Pango.AttrList();
+        const attrs = Pango.AttrList.new();
         attrs.insert(Pango.attrFontFeaturesNew("tnum=1"));
         return attrs;
     }, []);
@@ -119,19 +117,41 @@ const FramesDemo = ({ window }: DemoProps) => {
 
     useFrameTickAndFps(drawingRef, tickCallback, setFps);
 
+    return { drawingRef, fps, fpsAttrs, draw };
+}
+
+type FramesContextValue = ReturnType<typeof useFramesState>;
+
+const FramesContext = createContext<FramesContextValue | null>(null);
+
+const useFrames = (): FramesContextValue => {
+    const ctx = useContext(FramesContext);
+    if (!ctx) throw new Error("useFrames must be used inside a FramesProvider");
+    return ctx;
+};
+
+const FramesProvider = ({ window, children }: DemoProviderProps) => {
+    const value = useFramesState(window);
+    return <FramesContext.Provider value={value}>{children}</FramesContext.Provider>;
+};
+
+const FramesTitlebar = () => {
+    const { fps, fpsAttrs } = useFrames();
     return (
-        <>
-            <Slot id="titlebar">
-                <GtkHeaderBar>
-                    <GtkHeaderBar.PackEnd>
-                        <GtkLabel label={`${fps.toFixed(2)} fps`} attributes={fpsAttrs} />
-                    </GtkHeaderBar.PackEnd>
-                </GtkHeaderBar>
-            </Slot>
-            <GtkBox>
-                <GtkDrawingArea ref={drawingRef} render={draw} hexpand vexpand />
-            </GtkBox>
-        </>
+        <GtkHeaderBar>
+            <GtkHeaderBar.PackEnd>
+                <GtkLabel label={`${fps.toFixed(2)} fps`} attributes={fpsAttrs} />
+            </GtkHeaderBar.PackEnd>
+        </GtkHeaderBar>
+    );
+};
+
+const FramesDemo = () => {
+    const { drawingRef, draw } = useFrames();
+    return (
+        <GtkBox>
+            <GtkDrawingArea ref={drawingRef} render={draw} hexpand vexpand />
+        </GtkBox>
     );
 };
 
@@ -142,6 +162,8 @@ export const framesDemo: Demo = {
         "This demo is intentionally as simple as possible, to see what framerate the windowing system can deliver on its own. It does nothing but change the drawn color, for every frame.",
     keywords: ["benchmark", "frames", "fps", "performance", "GdkFrameClock"],
     component: FramesDemo,
+    titlebar: FramesTitlebar,
+    provider: FramesProvider,
     sourceCode,
     defaultWidth: 600,
     defaultHeight: 400,

@@ -63,12 +63,17 @@ export class SignalStore {
         return map;
     }
 
-    private wrapHandler(handler: SignalHandler, signal: string, blockable: boolean): SignalHandler {
+    private wrapHandler(
+        handler: SignalHandler,
+        signal: string,
+        obj: GObject.Object,
+        blockable: boolean,
+    ): SignalHandler {
         return (...args: unknown[]) => {
             if (this.blockDepth > 0 && blockable && !LIFECYCLE_SIGNALS.has(signal)) {
                 return;
             }
-            return handler(...args);
+            return handler(...args, obj);
         };
     }
 
@@ -86,7 +91,7 @@ export class SignalStore {
     private connect(binding: SignalBinding & { handler: SignalHandler; blockable: boolean }): void {
         const { owner, obj, signal, handler, blockable } = binding;
         const key = getSignalKey(obj, signal);
-        const wrappedHandler = this.wrapHandler(handler, signal, blockable);
+        const wrappedHandler = this.wrapHandler(handler, signal, obj, blockable);
         const handlerId = obj.connect(signal, wrappedHandler);
         this.getOwnerMap(owner).set(key, { obj, handlerId });
     }

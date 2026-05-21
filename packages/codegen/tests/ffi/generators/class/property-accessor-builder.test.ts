@@ -515,7 +515,7 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (5)", () => {
         expect(code).toContain("get label(): string | null {");
     });
 
-    it("emits a generic accessor for a write-only property", () => {
+    it("emits no accessor for a write-only property", () => {
         const code = renderSetupAccessors({
             properties: [
                 createNormalizedProperty({
@@ -529,7 +529,7 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (5)", () => {
             ],
         });
 
-        expect(code).toContain("get secret(): unknown {");
+        expect(code).not.toContain("secret");
     });
 });
 

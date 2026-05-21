@@ -14,10 +14,8 @@ import {
     GtkSearchEntry,
 } from "@gtkx/react";
 
-const Slot = "Slot" as const;
-
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-words.tsx?raw";
 
 const DICT_FILE = "/usr/share/dict/words";
@@ -166,42 +164,73 @@ const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[];
     </GtkOverlay>
 );
 
-const ListViewWordsDemo = ({ window }: DemoProps) => {
+interface WordsContextValue {
+    searchText: string;
+    setSearchText: (value: string) => void;
+    filteredWords: string[];
+    filterProgress: number;
+    handleOpen: () => void;
+}
+
+const WordsContext = createContext<WordsContextValue | null>(null);
+
+const useWordsContext = (): WordsContextValue => {
+    const ctx = useContext(WordsContext);
+    if (!ctx) throw new Error("WordsContext is missing");
+    return ctx;
+};
+
+const ListViewWordsProvider = ({ window, children }: DemoProviderProps) => {
     const [words, setWords] = useState(initialWords);
     const [searchText, setSearchText] = useState("");
     const { filteredWords, filterProgress } = useFilteredWords(words, searchText);
 
     const loadFile = useCallback((filePath: string) => loadWordsFromFile(filePath, setWords, setSearchText), []);
 
-    const handleOpen = useCallback(async () => {
-        const dialog = new Gtk.FileDialog();
-        dialog.setTitle("Open file");
-        try {
-            const file = await dialog.open(window.current, null);
-            const path = file.getPath();
-            if (path) await loadFile(path);
-        } catch {}
+    const handleOpen = useCallback(() => {
+        const run = async () => {
+            const dialog = new Gtk.FileDialog();
+            dialog.setTitle("Open file");
+            try {
+                const file = await dialog.open(window.current, null);
+                const path = file.getPath();
+                if (path) await loadFile(path);
+            } catch {}
+        };
+        void run();
     }, [window, loadFile]);
 
+    const value = useMemo<WordsContextValue>(
+        () => ({ searchText, setSearchText, filteredWords, filterProgress, handleOpen }),
+        [searchText, filteredWords, filterProgress, handleOpen],
+    );
+
+    return <WordsContext.Provider value={value}>{children}</WordsContext.Provider>;
+};
+
+const ListViewWordsTitlebar = () => {
+    const { filteredWords, handleOpen } = useWordsContext();
     return (
-        <>
-            <Slot id="titlebar">
-                <GtkHeaderBar titleWidget={<GtkLabel label={`${filteredWords.length.toLocaleString()} lines`} />}>
-                    <GtkHeaderBar.PackStart>
-                        <GtkButton label="_Open" useUnderline onClicked={() => void handleOpen()} />
-                    </GtkHeaderBar.PackStart>
-                </GtkHeaderBar>
-            </Slot>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-                <GtkSearchEntry
-                    text={searchText}
-                    placeholderText="Search words..."
-                    onSearchChanged={(entry: Gtk.SearchEntry) => setSearchText(entry.getText())}
-                    hexpand
-                />
-                <WordsList filteredWords={filteredWords} filterProgress={filterProgress} />
-            </GtkBox>
-        </>
+        <GtkHeaderBar titleWidget={<GtkLabel label={`${filteredWords.length.toLocaleString()} lines`} />}>
+            <GtkHeaderBar.PackStart>
+                <GtkButton label="_Open" useUnderline onClicked={handleOpen} />
+            </GtkHeaderBar.PackStart>
+        </GtkHeaderBar>
+    );
+};
+
+const ListViewWordsDemo = () => {
+    const { searchText, setSearchText, filteredWords, filterProgress } = useWordsContext();
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
+            <GtkSearchEntry
+                text={searchText}
+                placeholderText="Search words..."
+                onSearchChanged={(entry: Gtk.SearchEntry) => setSearchText(entry.getText())}
+                hexpand
+            />
+            <WordsList filteredWords={filteredWords} filterProgress={filterProgress} />
+        </GtkBox>
     );
 };
 
@@ -212,6 +241,8 @@ export const listviewWordsDemo: Demo = {
         "This demo shows a listview with a large number of words. The list is loaded from /usr/share/dict/words and filtered incrementally.",
     keywords: ["listview", "words", "dictionary", "GtkListView", "search", "filter", "incremental"],
     component: ListViewWordsDemo,
+    titlebar: ListViewWordsTitlebar,
+    provider: ListViewWordsProvider,
     sourceCode,
     defaultWidth: 400,
     defaultHeight: 600,

@@ -63,7 +63,7 @@ function getAppleRedTexture() {
 let boldAttrs: Pango.AttrList | undefined;
 function getBoldAttrs() {
     if (!boldAttrs) {
-        boldAttrs = new Pango.AttrList();
+        boldAttrs = Pango.AttrList.new();
         boldAttrs.insert(Pango.attrWeightNew(Pango.Weight.BOLD));
     }
     return boldAttrs;

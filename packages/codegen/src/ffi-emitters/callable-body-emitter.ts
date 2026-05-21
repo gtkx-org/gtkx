@@ -21,6 +21,7 @@ import type { CallableShape, HiddenOut, ParamMapping, ShapeCallArg } from "./cal
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import type { FfiTypeWriter } from "./ffi-type-writer.js";
 import { addTypeImports, type ImportCollector } from "./import-collector.js";
+import { resolveNamespaceImportPath } from "./namespace-import-path.js";
 import { buildCallbackWrapperExpression, needsParamWrap, needsReturnUnwrap } from "./param-wrap-writer.js";
 
 /**
@@ -879,7 +880,7 @@ export class CallableBodyEmitter {
             this.imports.addImport("./error.js", ["Error"]);
             return "Error";
         }
-        this.imports.addNamespaceImport("../glib/glib.js", "GLib");
+        this.imports.addNamespaceImport(resolveNamespaceImportPath("GLib"), "GLib");
         return "GLib.Error";
     }
 

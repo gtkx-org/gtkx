@@ -85,11 +85,12 @@ const drawPageBody = ({
     }
 };
 
-const runPrintOperation = (window: Gtk.Window | null, source: string) => {
+export const configurePrintOperation = (source: string): Gtk.PrintOperation => {
     const lines = source.split("\n");
     const numLines = lines.length;
 
     const printOp = new Gtk.PrintOperation();
+    printOp.setAllowAsync(true);
     printOp.setUseFullPage(false);
     printOp.setUnit(Gtk.Unit.POINTS);
     printOp.setEmbedPageSetup(true);
@@ -115,19 +116,25 @@ const runPrintOperation = (window: Gtk.Window | null, source: string) => {
         drawPageBody({ cr, context, lines, pageNr, linesPerPage });
     });
 
+    return printOp;
+};
+
+const runPrintOperation = (window: Gtk.Window | null, source: string, onDone: () => void) => {
+    const printOp = configurePrintOperation(source);
+    printOp.connect("done", () => onDone());
     try {
         printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, window);
     } catch (error) {
         const dialog = new Gtk.AlertDialog();
         dialog.setMessage(`${error}`);
         dialog.show(window);
+        onDone();
     }
 };
 
 const PrintingDemo = ({ window, onClose }: DemoProps) => {
     useEffect(() => {
-        runPrintOperation(window.current, sourceCode);
-        onClose?.();
+        runPrintOperation(window.current, sourceCode, () => onClose?.());
     }, [window, onClose]);
 
     return null;

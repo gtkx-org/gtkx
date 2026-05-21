@@ -52,6 +52,10 @@ export class FunctionGenerator {
             (returnType) => this.methodBody.isReturnTypeUnsafe(returnType),
         );
 
+        if (supported.length > 0) {
+            this.file.addImport("../../runtime.js", ["getHandle", "tryGetHandle"]);
+        }
+
         const asyncPairs = collectAsyncCallablePairs(supported, functions);
 
         for (const func of supported) {

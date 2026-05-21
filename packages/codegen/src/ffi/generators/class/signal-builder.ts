@@ -19,6 +19,7 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../../ffi-emitters/index.js";
+import { resolveNamespaceImportPath } from "../../../ffi-emitters/namespace-import-path.js";
 import {
     needsParamWrap,
     needsReturnUnwrap,
@@ -480,7 +481,7 @@ export class SignalBuilder {
             this.imports.addImport("./functions.js", ["signalEmitv", "signalLookup"]);
             return "{ Value, valueFromFfi, signalEmitv, signalLookup }";
         }
-        this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
+        this.imports.addNamespaceImport(resolveNamespaceImportPath("GObject"), "GObject");
         return "{ Value: GObject.Value, valueFromFfi, signalEmitv: GObject.signalEmitv, signalLookup: GObject.signalLookup }";
     }
 
@@ -495,7 +496,7 @@ export class SignalBuilder {
         if (isGObjectNamespace) {
             this.imports.addImport("./functions.js", ["typeFromName"]);
         } else {
-            this.imports.addNamespaceImport("../gobject/gobject.js", "GObject");
+            this.imports.addNamespaceImport(resolveNamespaceImportPath("GObject"), "GObject");
         }
         return `${prefix}typeFromName(${jsStringLiteral(this.gtypeName(ffiType))})`;
     }

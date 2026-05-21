@@ -18,6 +18,7 @@ import {
 } from "../../../builders/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../codegen-metadata.js";
 import { addMethodStructure, type MethodStructure } from "../../../ffi-emitters/index.js";
+import { resolveNamespaceImportPath } from "../../../ffi-emitters/namespace-import-path.js";
 import type { FfiGeneratorOptions } from "../../../generator-types.js";
 import type { GirClass, GirMethod, GirRepository } from "../../../gir/index.js";
 import type { FfiMapper } from "../../../type-system/ffi-mapper.js";
@@ -275,7 +276,7 @@ export class ClassGenerator {
                 this.file.addImport(`./${toKebabCase(originalIfaceName)}.js`, [ifaceName]);
             } else {
                 extendsList.push(`${ns}.${ifaceName}.ConstructorProperties`);
-                this.file.addNamespaceImport(`../${ns.toLowerCase()}/${ns.toLowerCase()}.js`, ns);
+                this.file.addNamespaceImport(resolveNamespaceImportPath(ns), ns);
             }
         }
 
@@ -294,10 +295,7 @@ export class ClassGenerator {
         if (parentInfo.hasParent) {
             if (parentInfo.isCrossNamespace && parentInfo.namespace) {
                 extendsBase = `${parentInfo.namespace}.${parentInfo.className}`;
-                this.file.addNamespaceImport(
-                    `../${parentInfo.namespace.toLowerCase()}/${parentInfo.namespace.toLowerCase()}.js`,
-                    parentInfo.namespace,
-                );
+                this.file.addNamespaceImport(resolveNamespaceImportPath(parentInfo.namespace), parentInfo.namespace);
             } else {
                 extendsBase = parentInfo.className;
                 if (parentInfo.originalName) {

@@ -18,11 +18,8 @@ import {
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/react";
-
-const Slot = "Slot" as const;
-
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./fontrendering.tsx?raw";
 
 const PANGO_SCALE = 1024;
@@ -72,7 +69,7 @@ const hintStyleOptions = [
 const ZWNJ = "‌";
 
 const createGridFontOptions = (hintStyle: HintStyle, antialias: boolean, hintMetrics: boolean): FontOptions => {
-    const fontOptions = new FontOptions();
+    const fontOptions = FontOptions.create();
     fontOptions.setHintStyle(hintStyle);
     fontOptions.setAntialias(antialias ? Antialias.GRAY : Antialias.NONE);
     fontOptions.setHintMetrics(hintMetrics ? HintMetrics.ON : HintMetrics.OFF);
@@ -85,7 +82,7 @@ const setupGridLayout = (
     text: string,
 ): { logicalRect: Pango.Rectangle; ch: string; iter: Pango.LayoutIter } | null => {
     let ch = text[0] ?? " ";
-    const layout = new Pango.Layout(context);
+    const layout = Pango.Layout.new(context);
     layout.setFontDescription(fontDesc);
     layout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
 
@@ -124,7 +121,7 @@ const renderSmallSurface = ({
     PangoCairo.contextSetFontOptions(smallCtx, fontOptions);
     smallCtx.setRoundGlyphPositions(hintMetrics);
 
-    const smallLayout = new Pango.Layout(smallCtx);
+    const smallLayout = Pango.Layout.new(smallCtx);
     smallLayout.setFontDescription(fontDesc);
     smallLayout.setText(`${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`, -1);
 
@@ -312,7 +309,7 @@ const drawSmallSurface = (ctx: DrawTextModeContext) => {
     PangoCairo.contextSetFontOptions(smallContext, fontOptions);
     smallContext.setRoundGlyphPositions(state.hintMetrics);
 
-    const smallLayout = new Pango.Layout(smallContext);
+    const smallLayout = Pango.Layout.new(smallContext);
     smallLayout.setFontDescription(state.fontDesc);
     smallLayout.setText(state.text || " ", -1);
 
@@ -421,7 +418,7 @@ const drawOutlineLayer = (ctx: DrawTextModeContext) => {
     PangoCairo.contextSetFontOptions(outlineCtx, fontOptions);
     outlineCtx.setRoundGlyphPositions(state.hintMetrics);
 
-    const outlineLayout = new Pango.Layout(outlineCtx);
+    const outlineLayout = Pango.Layout.new(outlineCtx);
     outlineLayout.setFontDescription(state.fontDesc);
     outlineLayout.setText(state.text || " ", -1);
 
@@ -459,7 +456,7 @@ const computeTextLayout = ({ cr, width, height, fontOptions, fontDesc, text, hin
     PangoCairo.contextSetFontOptions(context, fontOptions);
     context.setRoundGlyphPositions(hintMetrics);
 
-    const layout = new Pango.Layout(context);
+    const layout = Pango.Layout.new(context);
     layout.setFontDescription(fontDesc);
     layout.setText(text || " ", -1);
 
@@ -561,19 +558,18 @@ function useDrawGridMode(state: FontRenderingState) {
     );
 }
 
-const FontRenderingHeader = ({ state }: { state: FontRenderingState }) => {
+const FontRenderingTitlebar = () => {
+    const { state } = useFontRendering();
     const { mode, setMode } = state;
     return (
-        <Slot id="titlebar">
-            <GtkHeaderBar
-                titleWidget={
-                    <GtkBox cssClasses={["linked"]}>
-                        <GtkToggleButton label="Text" active={mode === "text"} onToggled={() => setMode("text")} />
-                        <GtkToggleButton label="Grid" active={mode === "grid"} onToggled={() => setMode("grid")} />
-                    </GtkBox>
-                }
-            ></GtkHeaderBar>
-        </Slot>
+        <GtkHeaderBar
+            titleWidget={
+                <GtkBox cssClasses={["linked"]}>
+                    <GtkToggleButton label="Text" active={mode === "text"} onToggled={() => setMode("text")} />
+                    <GtkToggleButton label="Grid" active={mode === "grid"} onToggled={() => setMode("grid")} />
+                </GtkBox>
+            }
+        ></GtkHeaderBar>
     );
 };
 
@@ -740,7 +736,22 @@ const FontRenderingZoomButtons = ({
     );
 };
 
-const FontRenderingDemo = () => {
+interface FontRenderingContextValue {
+    state: FontRenderingState;
+    drawFunc: (cr: Context, width: number, height: number) => void;
+    zoomIn: () => void;
+    zoomOut: () => void;
+}
+
+const FontRenderingContext = createContext<FontRenderingContextValue | null>(null);
+
+const useFontRendering = (): FontRenderingContextValue => {
+    const ctx = useContext(FontRenderingContext);
+    if (!ctx) throw new Error("useFontRendering must be used inside a FontRenderingProvider");
+    return ctx;
+};
+
+const FontRenderingProvider = ({ children }: DemoProviderProps) => {
     const state = useFontRenderingState();
     const { mode, setScale } = state;
 
@@ -754,12 +765,21 @@ const FontRenderingDemo = () => {
     const zoomOut = useCallback(() => setScale((s) => Math.max(1, s - 1)), [setScale]);
 
     return (
+        <FontRenderingContext.Provider value={{ state, drawFunc, zoomIn, zoomOut }}>
+            {children}
+        </FontRenderingContext.Provider>
+    );
+};
+
+const FontRenderingDemo = () => {
+    const { state, drawFunc, zoomIn, zoomOut } = useFontRendering();
+
+    return (
         <>
             <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
                 <GtkShortcutController.Shortcut trigger="<Control>plus" onActivate={zoomIn} />
                 <GtkShortcutController.Shortcut trigger="<Control>minus" onActivate={zoomOut} />
             </GtkShortcutController>
-            <FontRenderingHeader state={state} />
             <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
                 <FontRenderingControls state={state} onZoomIn={zoomIn} onZoomOut={zoomOut} />
                 <GtkSeparator />
@@ -777,6 +797,8 @@ export const fontRenderingDemo: Demo = {
     description: "Explore font rendering options: hinting, antialiasing, and subpixel rendering",
     keywords: ["font", "rendering", "hinting", "antialiasing", "subpixel", "cairo", "pango", "text", "typography"],
     component: FontRenderingDemo,
+    titlebar: FontRenderingTitlebar,
+    provider: FontRenderingProvider,
     sourceCode,
     defaultWidth: 1024,
     defaultHeight: 768,

@@ -812,7 +812,7 @@ describe("addTypeImports (2)", () => {
             { kind: "class", name: "Application", namespace: "Gio", transformedName: "Application", isExternal: true },
         ]);
 
-        expect(namespaceImports).toContain("../gio/gio.js:Gio");
+        expect(namespaceImports).toContain("../../gio/index.js:Gio");
     });
 
     it("skips internal names listed in skipNames", () => {

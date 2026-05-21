@@ -6,11 +6,10 @@ import * as GLib from "@gtkx/ffi/glib";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, GtkDrawingArea, GtkHeaderBar, GtkImage } from "@gtkx/react";
-import { useCallback, useLayoutEffect, useState } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState } from "react";
+import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./paintable-svg.tsx?raw";
 
-const Slot = "Slot" as const;
 const DEFAULT_SVG_PATH = "/usr/share/icons/hicolor/scalable/apps/org.gtk.gtk4.NodeEditor.Devel.svg";
 let tmpPngPath: string | undefined;
 
@@ -75,17 +74,49 @@ const drawSvg = (cr: Context, filePath: string, width: number, height: number) =
     cr.paint();
 };
 
-const PaintableSvgDemo = ({ window }: DemoProps) => {
+interface PaintableSvgContextValue {
+    filePath: string;
+    handleOpen: () => void;
+}
+
+const PaintableSvgContext = createContext<PaintableSvgContextValue | null>(null);
+
+const usePaintableSvgContext = (): PaintableSvgContextValue => {
+    const ctx = useContext(PaintableSvgContext);
+    if (!ctx) throw new Error("PaintableSvgContext is missing");
+    return ctx;
+};
+
+const PaintableSvgProvider = ({ window, children }: DemoProviderProps) => {
     const [filePath, setFilePath] = useState(DEFAULT_SVG_PATH);
+    const handleOpen = useCallback(async () => {
+        const path = await pickSvgFile(window.current);
+        if (path) setFilePath(path);
+    }, [window]);
+    const value = useMemo<PaintableSvgContextValue>(
+        () => ({ filePath, handleOpen: () => void handleOpen() }),
+        [filePath, handleOpen],
+    );
+    return <PaintableSvgContext.Provider value={value}>{children}</PaintableSvgContext.Provider>;
+};
+
+const PaintableSvgTitlebar = () => {
+    const { handleOpen } = usePaintableSvgContext();
+    return (
+        <GtkHeaderBar>
+            <GtkHeaderBar.PackStart>
+                <GtkButton label="_Open" useUnderline onClicked={handleOpen} />
+            </GtkHeaderBar.PackStart>
+        </GtkHeaderBar>
+    );
+};
+
+const PaintableSvgDemo = ({ window }: DemoProps) => {
+    const { filePath } = usePaintableSvgContext();
     const isSymbolic = filePath.includes("symbolic");
 
     useLayoutEffect(() => {
         window.current?.setDefaultSize(330, 330);
-    }, [window]);
-
-    const handleOpen = useCallback(async () => {
-        const path = await pickSvgFile(window.current);
-        if (path) setFilePath(path);
     }, [window]);
 
     const handleDraw = useCallback(
@@ -93,29 +124,10 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
         [filePath],
     );
 
-    return (
-        <>
-            <Slot id="titlebar">
-                <GtkHeaderBar>
-                    <GtkHeaderBar.PackStart>
-                        <GtkButton label="_Open" useUnderline onClicked={() => void handleOpen()} />
-                    </GtkHeaderBar.PackStart>
-                </GtkHeaderBar>
-            </Slot>
-
-            {isSymbolic ? (
-                <GtkImage
-                    file={filePath}
-                    pixelSize={64}
-                    hexpand
-                    vexpand
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.CENTER}
-                />
-            ) : (
-                <GtkDrawingArea render={handleDraw} hexpand vexpand />
-            )}
-        </>
+    return isSymbolic ? (
+        <GtkImage file={filePath} pixelSize={64} hexpand vexpand halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
+    ) : (
+        <GtkDrawingArea render={handleDraw} hexpand vexpand />
     );
 };
 
@@ -126,6 +138,8 @@ export const paintableSvgDemo: Demo = {
         "This demo shows rendering an SVG image that can be scaled by resizing the window. The image is re-rendered at the widget's current size for resolution-independent display.",
     keywords: ["paintable", "svg", "vector", "scalable", "graphics", "GtkDrawingArea", "GdkPixbuf"],
     component: PaintableSvgDemo,
+    titlebar: PaintableSvgTitlebar,
+    provider: PaintableSvgProvider,
     sourceCode,
     defaultWidth: 330,
     defaultHeight: 330,

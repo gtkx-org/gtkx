@@ -26,7 +26,7 @@ const computeFixedTransform = (
     const offsetPoint = new Graphene.Point();
     offsetPoint.init(-labelWidth / 2, -labelHeight / 2);
 
-    let t: Gsk.Transform | undefined = new Gsk.Transform();
+    let t: Gsk.Transform | undefined = Gsk.Transform.new();
     t = t.translate(centerPoint) ?? undefined;
     t = t?.rotate(angle) ?? undefined;
     t = t?.scale(scale, scale) ?? undefined;

@@ -7,9 +7,11 @@
     "type": "module",
     "scripts": {
         "build": "gtkx build",
-        "typecheck": "tsc -b --noEmit",
+        "typecheck": "tsc -b --emitDeclarationOnly",
         "dev": "gtkx dev",
-        "start": "node dist/bundle.js"
+        "start": "node dist/bundle.js",
+        "test": "vitest run",
+        "coverage": "vitest run --coverage"
     },
     "dependencies": {
         "@gtkx/css": "workspace:*",
@@ -19,6 +21,10 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
-        "vite": "^8.0.13"
+        "@gtkx/testing": "workspace:*",
+        "@gtkx/vitest": "workspace:*",
+        "@vitest/coverage-v8": "^4.1.7",
+        "vite": "^8.0.13",
+        "vitest": "^4.1.7"
     }
 }

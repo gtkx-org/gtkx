@@ -15,10 +15,8 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 
-const Slot = "Slot" as const;
-
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-settings.tsx?raw";
 
 interface KeyInfo {
@@ -387,7 +385,21 @@ const SettingsColumnView = ({
     </GtkBox>
 );
 
-const ListViewSettingsDemo = () => {
+interface SettingsContextValue {
+    state: ListViewSettingsState;
+    columnViewRef: React.RefObject<Gtk.ColumnView | null>;
+    handleValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
+}
+
+const SettingsContext = createContext<SettingsContextValue | null>(null);
+
+const useSettingsContext = (): SettingsContextValue => {
+    const ctx = useContext(SettingsContext);
+    if (!ctx) throw new Error("SettingsContext is missing");
+    return ctx;
+};
+
+const ListViewSettingsProvider = ({ children }: DemoProviderProps) => {
     const state = useListViewSettingsState();
     const columnViewRef = useRef<Gtk.ColumnView | null>(null);
     useColumnVisibilityMenu(columnViewRef);
@@ -398,39 +410,51 @@ const ListViewSettingsDemo = () => {
         [state],
     );
 
+    const value = useMemo<SettingsContextValue>(
+        () => ({ state, columnViewRef, handleValueEdit }),
+        [state, handleValueEdit],
+    );
+
+    return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
+};
+
+const ListViewSettingsTitlebar = () => {
+    const { state } = useSettingsContext();
     return (
-        <>
-            <Slot id="titlebar">
-                <GtkHeaderBar>
-                    <GtkHeaderBar.PackEnd>
-                        <GtkToggleButton
-                            iconName="system-search-symbolic"
-                            active={state.keySearchActive}
-                            onToggled={(btn) => {
-                                state.setKeySearchActive(btn.getActive());
-                                state.setKeySearchText("");
-                            }}
-                        />
-                    </GtkHeaderBar.PackEnd>
-                </GtkHeaderBar>
-            </Slot>
-            <GtkPaned
-                position={300}
-                hexpand
-                vexpand
-                startChild={<SchemaSidebar onSelectionChanged={state.handleSchemaSelected} />}
-                endChild={
-                    <SettingsColumnView
-                        columnViewRef={columnViewRef}
-                        keySearchActive={state.keySearchActive}
-                        onSearchChanged={state.handleKeySearchChanged}
-                        onStopSearch={state.handleStopSearch}
-                        filteredKeyInfos={state.filteredKeyInfos}
-                        onValueEdit={handleValueEdit}
-                    />
-                }
-            />
-        </>
+        <GtkHeaderBar>
+            <GtkHeaderBar.PackEnd>
+                <GtkToggleButton
+                    iconName="system-search-symbolic"
+                    active={state.keySearchActive}
+                    onToggled={(btn) => {
+                        state.setKeySearchActive(btn.getActive());
+                        state.setKeySearchText("");
+                    }}
+                />
+            </GtkHeaderBar.PackEnd>
+        </GtkHeaderBar>
+    );
+};
+
+const ListViewSettingsDemo = () => {
+    const { state, columnViewRef, handleValueEdit } = useSettingsContext();
+    return (
+        <GtkPaned
+            position={300}
+            hexpand
+            vexpand
+            startChild={<SchemaSidebar onSelectionChanged={state.handleSchemaSelected} />}
+            endChild={
+                <SettingsColumnView
+                    columnViewRef={columnViewRef}
+                    keySearchActive={state.keySearchActive}
+                    onSearchChanged={state.handleKeySearchChanged}
+                    onStopSearch={state.handleStopSearch}
+                    filteredKeyInfos={state.filteredKeyInfos}
+                    onValueEdit={handleValueEdit}
+                />
+            }
+        />
     );
 };
 
@@ -441,6 +465,8 @@ export const listviewSettingsDemo: Demo = {
         "A GSettings browser that enumerates all system schemas and displays their keys, values, types, and descriptions",
     keywords: ["listview", "settings", "GSettings", "GtkColumnView", "search", "schema", "paned", "browser"],
     component: ListViewSettingsDemo,
+    titlebar: ListViewSettingsTitlebar,
+    provider: ListViewSettingsProvider,
     sourceCode,
     defaultWidth: 640,
     defaultHeight: 480,

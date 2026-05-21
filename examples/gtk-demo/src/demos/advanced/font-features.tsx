@@ -23,11 +23,8 @@ import {
     GtkToggleButton,
     GtkViewport,
 } from "@gtkx/react";
-
-const Slot = "Slot" as const;
-
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./font-features.tsx?raw";
 
 const FEATURE_DISPLAY_NAMES: Record<string, string> = {
@@ -628,7 +625,7 @@ function useFontFeaturesAttributes(
             return;
         }
 
-        const attrList = new Pango.AttrList();
+        const attrList = Pango.AttrList.new();
 
         const [hasSelection, selStart, selEnd] = label.getSelectionBounds();
 
@@ -1067,10 +1064,41 @@ const FontFeaturesPreview = ({ state, styles, handlers, stackPage }: FontFeature
     </GtkBox>
 );
 
-const FontFeaturesDemo = ({ window }: DemoProps) => {
+interface FontFeaturesContextValue {
+    state: FontFeaturesState;
+    styles: FontFeaturesStyles;
+    handlers: FontFeaturesHandlers;
+}
+
+const FontFeaturesContext = createContext<FontFeaturesContextValue | null>(null);
+
+const useFontFeatures = (): FontFeaturesContextValue => {
+    const ctx = useContext(FontFeaturesContext);
+    if (!ctx) throw new Error("useFontFeatures must be used inside a FontFeaturesProvider");
+    return ctx;
+};
+
+const FontFeaturesProvider = ({ children }: DemoProviderProps) => {
     const state = useFontFeaturesState();
     const styles = useFontFeaturesStyles(state);
     const handlers = useFontFeaturesHandlers(state);
+    const value = useMemo<FontFeaturesContextValue>(() => ({ state, styles, handlers }), [state, styles, handlers]);
+    return <FontFeaturesContext.Provider value={value}>{children}</FontFeaturesContext.Provider>;
+};
+
+const FontFeaturesTitlebar = () => {
+    const { handlers } = useFontFeatures();
+    return (
+        <GtkHeaderBar>
+            <GtkHeaderBar.PackStart>
+                <GtkButton iconName="view-refresh-symbolic" tooltipText="Reset" onClicked={handlers.resetAll} />
+            </GtkHeaderBar.PackStart>
+        </GtkHeaderBar>
+    );
+};
+
+const FontFeaturesDemo = ({ window }: DemoProps) => {
+    const { state, styles, handlers } = useFontFeatures();
 
     useLayoutEffect(() => {
         const win = window.current;
@@ -1085,13 +1113,6 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
 
     return (
         <>
-            <Slot id="titlebar">
-                <GtkHeaderBar>
-                    <GtkHeaderBar.PackStart>
-                        <GtkButton iconName="view-refresh-symbolic" tooltipText="Reset" onClicked={handlers.resetAll} />
-                    </GtkHeaderBar.PackStart>
-                </GtkHeaderBar>
-            </Slot>
             <GtkShortcutController scope={Gtk.ShortcutScope.MANAGED}>
                 <GtkShortcutController.Shortcut
                     trigger="Escape"
@@ -1133,6 +1154,8 @@ export const fontFeaturesDemo: Demo = {
         "css",
     ],
     component: FontFeaturesDemo,
+    titlebar: FontFeaturesTitlebar,
+    provider: FontFeaturesProvider,
     sourceCode,
     defaultWidth: 600,
     defaultHeight: 500,

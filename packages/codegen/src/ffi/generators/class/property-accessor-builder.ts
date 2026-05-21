@@ -141,7 +141,10 @@ export class PropertyAccessorBuilder {
         }
 
         const getBody = this.buildGetBody(prop, typeMapping);
-        if (!getBody) return this.buildGenericAccessor(prop, camelName);
+        if (!getBody) {
+            if (!prop.readable) return null;
+            return this.buildGenericAccessor(prop, camelName);
+        }
 
         const returnType = this.computeGetterReturnType(prop, typeMapping);
 

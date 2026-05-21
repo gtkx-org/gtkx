@@ -1,0 +1,47 @@
+import * as Gtk from "@gtkx/ffi/gtk";
+import { describe, expect, it, vi } from "vitest";
+import { configurePrintOperation, printingDemo } from "../../../src/demos/dialogs/printing.js";
+import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
+
+describe("printingDemo", () => {
+    it("exposes the expected metadata", () => {
+        expectDemoMetadata(printingDemo, { id: "printing", title: "Printing/Printing" });
+        expect(typeof printingDemo.sourceCode).toBe("string");
+        expect(printingDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(printingDemo.keywords).toContain("print");
+        expect(printingDemo.keywords).toContain("GtkPrintOperation");
+        expect(printingDemo.component).toBeTypeOf("function");
+        expect(printingDemo.dialogOnly).toBe(true);
+    });
+
+    it("declares the print-related keywords", () => {
+        expect(printingDemo.keywords).toEqual(expect.arrayContaining(["print", "printing", "dialog"]));
+    });
+
+    it("includes the actual source code as a non-empty string with PrintOperation usage", () => {
+        const source = printingDemo.sourceCode ?? "";
+        expect(source).toContain("PrintOperation");
+        expect(source).toContain("begin-print");
+        expect(source).toContain("draw-page");
+    });
+});
+
+describe("configurePrintOperation", () => {
+    it("returns a PrintOperation with the demo's async, unit, and page-setup defaults", () => {
+        const printOp = configurePrintOperation("line one\nline two\nline three");
+        expect(printOp).toBeInstanceOf(Gtk.PrintOperation);
+        expect(printOp.allowAsync).toBe(true);
+        expect(printOp.useFullPage).toBe(false);
+        expect(printOp.getEmbedPageSetup()).toBe(true);
+        const settings = printOp.getPrintSettings();
+        expect(settings?.get(Gtk.PRINT_SETTINGS_OUTPUT_BASENAME)).toBe("gtk-demo");
+    });
+});
+
+describe("PrintingDemo component", () => {
+    it("invokes onClose when the async print operation emits done", async () => {
+        if (!printingDemo.component) throw new Error("missing component");
+        const onClose = vi.fn();
+        await renderDemo(printingDemo, { onClose });
+    });
+});

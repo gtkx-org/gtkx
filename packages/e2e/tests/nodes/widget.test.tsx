@@ -490,11 +490,11 @@ describe("widget - signals (4)", () => {
             await userEvent.click(switchWidget);
 
             await waitFor(() => {
-                expect(handleStateSet).toHaveBeenCalledWith(true);
+                expect(handleStateSet).toHaveBeenCalledWith(true, expect.any(Gtk.Switch));
             });
         });
 
-        it("invokes the parameterless handler without any arguments", async () => {
+        it("invokes the parameterless handler with the source widget", async () => {
             const handleClick = vi.fn();
 
             await render(<GtkButton onClicked={handleClick} label="Click" />);
@@ -503,7 +503,7 @@ describe("widget - signals (4)", () => {
             await userEvent.click(button);
 
             await waitFor(() => {
-                expect(handleClick).toHaveBeenCalledWith();
+                expect(handleClick).toHaveBeenCalledWith(expect.any(Gtk.Button));
             });
         });
     });
@@ -755,7 +755,7 @@ describe("widget - signals (11)", () => {
             });
         });
 
-        it("receives the changed ParamSpec in callback", async () => {
+        it("receives the changed ParamSpec and source widget in callback", async () => {
             const handleNotify = vi.fn();
 
             function App({ text }: { text: string }) {
@@ -765,7 +765,7 @@ describe("widget - signals (11)", () => {
             await render(<App text="Initial" />);
 
             await waitFor(() => {
-                expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec));
+                expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec), expect.any(Gtk.Label));
             });
         });
     });

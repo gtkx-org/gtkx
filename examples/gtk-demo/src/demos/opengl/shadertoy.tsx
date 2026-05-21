@@ -56,6 +56,8 @@ const FRAGMENT_SUFFIX =
 
 const SHADER_PREFIX = "#version 300 es\nprecision highp float;\n\n";
 
+const SHADERTOY_ERROR_DOMAIN = GLib.quarkFromString("gtkx-shadertoy-error-quark");
+
 function buildVertexSource(): string {
     return SHADER_PREFIX + VERTEX_SHADER_SOURCE;
 }
@@ -1381,7 +1383,7 @@ const compileShadertoyFragment = (area: Gtk.GLArea, imageShader: string): number
     gl.compileShader(fragmentShader);
     if (gl.getShaderiv(fragmentShader, gl.COMPILE_STATUS) === 0) {
         const log = gl.getShaderInfoLog(fragmentShader);
-        area.setError(GLib.Error.newLiteral(0, 0, `Fragment shader compile error:\n${log}`));
+        area.setError(GLib.Error.newLiteral(SHADERTOY_ERROR_DOMAIN, 0, `Fragment shader compile error:\n${log}`));
         gl.deleteShader(fragmentShader);
         return null;
     }
@@ -1420,7 +1422,7 @@ const linkShadertoyProgram = ({
 
     if (gl.getProgramiv(program, gl.LINK_STATUS) === 0) {
         const log = gl.getProgramInfoLog(program);
-        area.setError(GLib.Error.newLiteral(0, 0, `Program link error:\n${log}`));
+        area.setError(GLib.Error.newLiteral(SHADERTOY_ERROR_DOMAIN, 1, `Program link error:\n${log}`));
         gl.deleteProgram(program);
         return null;
     }
@@ -1544,7 +1546,7 @@ function useShadertoyEditor(
     }, [sourceViewRef, setCompiledCode]);
 
     const handleClear = useCallback(() => {
-        sourceViewRef.current?.getBuffer().setText("", 0);
+        sourceViewRef.current?.getBuffer().setText("", -1);
     }, [sourceViewRef]);
 
     const loadPreset = useCallback(
@@ -1596,30 +1598,37 @@ const ShadertoyGLAreaPanel = ({
 
 const ShadertoyEditor = ({
     sourceViewRef,
-    compiledCode,
+    initialCode,
 }: {
     sourceViewRef: React.RefObject<GtkSource.View | null>;
-    compiledCode: string;
-}) => (
-    <GtkScrolledWindow minContentHeight={250} hasFrame hexpand>
-        <GtkSourceView
-            ref={(view: GtkSource.View | null) => {
-                sourceViewRef.current = view;
-                if (view) view.getBuffer().setText(compiledCode, -1);
-            }}
-            showLineNumbers
-            highlightCurrentLine
-            tabWidth={4}
-            leftMargin={20}
-            rightMargin={20}
-            topMargin={20}
-            bottomMargin={20}
-            monospace
-            language="glsl"
-            styleScheme="Adwaita-dark"
-        />
-    </GtkScrolledWindow>
-);
+    initialCode: string;
+}) => {
+    const handleSourceViewRef = useCallback(
+        (view: GtkSource.View | null) => {
+            const previous = sourceViewRef.current;
+            sourceViewRef.current = view;
+            if (view && !previous) view.getBuffer().setText(initialCode, -1);
+        },
+        [sourceViewRef, initialCode],
+    );
+    return (
+        <GtkScrolledWindow minContentHeight={250} hasFrame hexpand>
+            <GtkSourceView
+                ref={handleSourceViewRef}
+                showLineNumbers
+                highlightCurrentLine
+                tabWidth={4}
+                leftMargin={20}
+                rightMargin={20}
+                topMargin={20}
+                bottomMargin={20}
+                monospace
+                language="glsl"
+                styleScheme="Adwaita-dark"
+            />
+        </GtkScrolledWindow>
+    );
+};
 
 interface ShadertoyControlsProps {
     onRun: () => void;
@@ -1722,7 +1731,7 @@ const ShadertoyDemo = () => {
                 handleUnrealize={handlers.handleUnrealize}
                 dragHandlers={dragHandlers}
             />
-            <ShadertoyEditor sourceViewRef={refs.sourceViewRef} compiledCode={compiledCode} />
+            <ShadertoyEditor sourceViewRef={refs.sourceViewRef} initialCode={ALIEN_PLANET_SHADER} />
             <ShadertoyControls
                 onRun={editorHandlers.handleRun}
                 onClear={editorHandlers.handleClear}

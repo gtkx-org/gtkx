@@ -3,11 +3,8 @@ import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import { AdwAlertDialog, createPortal, GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/react";
-
-const Slot = "Slot" as const;
-
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./themes.tsx?raw";
 
 interface Theme {
@@ -127,7 +124,7 @@ const ThemesWarningDialog = ({ window, onResponse }: { window: Gtk.Window; onRes
 
 function useFpsAttrs() {
     return useMemo(() => {
-        const attrs = new Pango.AttrList();
+        const attrs = Pango.AttrList.new();
         attrs.insert(Pango.attrFontFeaturesNew("tnum=1"));
         return attrs;
     }, []);
@@ -189,24 +186,43 @@ function useThemesCycling(window: React.RefObject<Gtk.Window | null>) {
     return { isRunning, fps, showWarning, fpsAttrs, boxRef, handleToggle, handleWarningResponse };
 }
 
+type ThemesContextValue = ReturnType<typeof useThemesCycling>;
+
+const ThemesContext = createContext<ThemesContextValue | null>(null);
+
+const useThemes = (): ThemesContextValue => {
+    const ctx = useContext(ThemesContext);
+    if (!ctx) throw new Error("useThemes must be used inside a ThemesProvider");
+    return ctx;
+};
+
+const ThemesProvider = ({ window, children }: DemoProviderProps) => {
+    const value = useThemesCycling(window);
+    return <ThemesContext.Provider value={value}>{children}</ThemesContext.Provider>;
+};
+
+const ThemesTitlebar = () => {
+    const cycling = useThemes();
+    return (
+        <GtkHeaderBar>
+            <GtkHeaderBar.PackStart>
+                <GtkToggleButton
+                    label="Cycle"
+                    active={cycling.isRunning}
+                    onToggled={(btn) => cycling.handleToggle(btn.getActive())}
+                />
+            </GtkHeaderBar.PackStart>
+            <GtkHeaderBar.PackEnd>
+                <GtkLabel label={cycling.fps} widthChars={12} attributes={cycling.fpsAttrs} />
+            </GtkHeaderBar.PackEnd>
+        </GtkHeaderBar>
+    );
+};
+
 const ThemesDemo = ({ window }: DemoProps) => {
-    const cycling = useThemesCycling(window);
+    const cycling = useThemes();
     return (
         <>
-            <Slot id="titlebar">
-                <GtkHeaderBar>
-                    <GtkHeaderBar.PackStart>
-                        <GtkToggleButton
-                            label="Cycle"
-                            active={cycling.isRunning}
-                            onToggled={(btn) => cycling.handleToggle(btn.getActive())}
-                        />
-                    </GtkHeaderBar.PackStart>
-                    <GtkHeaderBar.PackEnd>
-                        <GtkLabel label={cycling.fps} widthChars={12} attributes={cycling.fpsAttrs} />
-                    </GtkHeaderBar.PackEnd>
-                </GtkHeaderBar>
-            </Slot>
             <ThemesBody boxRef={cycling.boxRef} />
             {cycling.showWarning && window.current && (
                 <ThemesWarningDialog window={window.current} onResponse={cycling.handleWarningResponse} />
@@ -222,5 +238,7 @@ export const themesDemo: Demo = {
         "This demo continuously switches themes, like some of you. Warning: This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers.",
     keywords: ["benchmark", "themes", "performance", "fps", "GtkSettings"],
     component: ThemesDemo,
+    titlebar: ThemesTitlebar,
+    provider: ThemesProvider,
     sourceCode,
 };

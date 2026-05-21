@@ -18,11 +18,9 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 
-const Slot = "Slot" as const;
-
 import type { RefObject } from "react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { Demo, DemoProviderProps } from "../types.js";
 import colorNamesRaw from "./color.names.txt?raw";
 import sourceCode from "./listview-colors.tsx?raw";
 
@@ -74,7 +72,7 @@ const COLOR_LIMITS: { id: string; value: ColorLimit; label: string }[] = [
 let tnumAttrs: Pango.AttrList | undefined;
 function getTnumAttrs() {
     if (!tnumAttrs) {
-        tnumAttrs = new Pango.AttrList();
+        tnumAttrs = Pango.AttrList.new();
         tnumAttrs.insert(Pango.attrFontFeaturesNew("tnum"));
     }
     return tnumAttrs;
@@ -675,8 +673,29 @@ function useColorsComputed(state: ColorsState) {
 
 type ColorsComputed = ReturnType<typeof useColorsComputed>;
 
-const ColorsHeader = ({ state, computed }: { state: ColorsState; computed: ColorsComputed }) => (
-    <Slot id="titlebar">
+interface ColorsContextValue {
+    state: ColorsState;
+    computed: ColorsComputed;
+}
+
+const ColorsContext = createContext<ColorsContextValue | null>(null);
+
+const useColorsContext = (): ColorsContextValue => {
+    const ctx = useContext(ColorsContext);
+    if (!ctx) throw new Error("ColorsContext is missing");
+    return ctx;
+};
+
+const ListViewColorsProvider = ({ children }: DemoProviderProps) => {
+    const state = useColorsState();
+    const computed = useColorsComputed(state);
+    const value = useMemo<ColorsContextValue>(() => ({ state, computed }), [state, computed]);
+    return <ColorsContext.Provider value={value}>{children}</ColorsContext.Provider>;
+};
+
+const ColorsHeader = () => {
+    const { state, computed } = useColorsContext();
+    return (
         <GtkHeaderBar>
             <GtkHeaderBar.PackStart>
                 <GtkToggleButton
@@ -717,8 +736,8 @@ const ColorsHeader = ({ state, computed }: { state: ColorsState; computed: Color
                 </GtkBox>
             </GtkHeaderBar.PackEnd>
         </GtkHeaderBar>
-    </Slot>
-);
+    );
+};
 
 const ColorsGridOverlay = ({ state, computed }: { state: ColorsState; computed: ColorsComputed }) => (
     <GtkOverlay vexpand hexpand>
@@ -749,19 +768,14 @@ const ColorsGridOverlay = ({ state, computed }: { state: ColorsState; computed: 
 );
 
 const ListViewColorsDemo = () => {
-    const state = useColorsState();
-    const computed = useColorsComputed(state);
-
+    const { state, computed } = useColorsContext();
     return (
-        <>
-            <ColorsHeader state={state} computed={computed} />
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                <GtkRevealer revealChild={state.showSelectionInfo}>
-                    <SelectionInfoPanel selectedColors={computed.selectedColors} averageColor={computed.averageColor} />
-                </GtkRevealer>
-                <ColorsGridOverlay state={state} computed={computed} />
-            </GtkBox>
-        </>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkRevealer revealChild={state.showSelectionInfo}>
+                <SelectionInfoPanel selectedColors={computed.selectedColors} averageColor={computed.averageColor} />
+            </GtkRevealer>
+            <ColorsGridOverlay state={state} computed={computed} />
+        </GtkBox>
     );
 };
 
@@ -771,6 +785,8 @@ export const listviewColorsDemo: Demo = {
     description: "GridView showing generated colors with multi-selection, sorting, and various display styles",
     keywords: ["gridview", "colors", "palette", "GtkGridView", "selection", "sort", "multi-select"],
     component: ListViewColorsDemo,
+    titlebar: ColorsHeader,
+    provider: ListViewColorsProvider,
     sourceCode,
     defaultWidth: 600,
     defaultHeight: 400,

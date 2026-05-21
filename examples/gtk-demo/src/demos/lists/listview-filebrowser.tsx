@@ -13,10 +13,8 @@ import {
     GtkScrolledWindow,
 } from "@gtkx/react";
 
-const Slot = "Slot" as const;
-
-import { useCallback, useEffect, useState } from "react";
-import type { Demo } from "../types.js";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-filebrowser.tsx?raw";
 
 function formatSize(bytes: number): string {
@@ -145,17 +143,52 @@ const navigateInto = (item: FileItem | undefined, currentPath: string, setCurren
     if (childPath) setCurrentPath(childPath);
 };
 
-interface FilebrowserHeaderProps {
+interface FilebrowserContextValue {
     viewMode: ViewMode;
     setViewMode: (mode: ViewMode) => void;
-    onNavigateUp: () => void;
+    files: FileItem[];
+    handleActivate: (position: number) => void;
+    navigateUp: () => void;
 }
 
-const FilebrowserHeader = ({ viewMode, setViewMode, onNavigateUp }: FilebrowserHeaderProps) => (
-    <Slot id="titlebar">
+const FilebrowserContext = createContext<FilebrowserContextValue | null>(null);
+
+const useFilebrowserContext = (): FilebrowserContextValue => {
+    const ctx = useContext(FilebrowserContext);
+    if (!ctx) throw new Error("FilebrowserContext is missing");
+    return ctx;
+};
+
+const FilebrowserProvider = ({ children }: DemoProviderProps) => {
+    const [currentPath, setCurrentPath] = useState(() => process.cwd() ?? homedir() ?? "/");
+    const [viewMode, setViewMode] = useState<ViewMode>("list");
+    const files = useDirectoryFiles(currentPath);
+
+    const navigateUp = useCallback(() => {
+        const file = Gio.fileNewForPath(currentPath);
+        const parent = file.getParent();
+        if (parent) setCurrentPath(parent.getPath() ?? "/");
+    }, [currentPath]);
+
+    const handleActivate = useCallback(
+        (position: number) => navigateInto(files[position], currentPath, setCurrentPath),
+        [files, currentPath],
+    );
+
+    const value = useMemo<FilebrowserContextValue>(
+        () => ({ viewMode, setViewMode, files, handleActivate, navigateUp }),
+        [viewMode, files, handleActivate, navigateUp],
+    );
+
+    return <FilebrowserContext.Provider value={value}>{children}</FilebrowserContext.Provider>;
+};
+
+const ListViewFilebrowserTitlebar = () => {
+    const { viewMode, setViewMode, navigateUp } = useFilebrowserContext();
+    return (
         <GtkHeaderBar>
             <GtkHeaderBar.PackStart>
-                <GtkButton iconName="go-up-symbolic" onClicked={onNavigateUp} />
+                <GtkButton iconName="go-up-symbolic" onClicked={navigateUp} />
             </GtkHeaderBar.PackStart>
             <GtkHeaderBar.PackEnd>
                 <GtkListView
@@ -180,39 +213,22 @@ const FilebrowserHeader = ({ viewMode, setViewMode, onNavigateUp }: FilebrowserH
                 />
             </GtkHeaderBar.PackEnd>
         </GtkHeaderBar>
-    </Slot>
-);
+    );
+};
 
 const ListViewFilebrowserDemo = () => {
-    const [currentPath, setCurrentPath] = useState(() => process.cwd() ?? homedir() ?? "/");
-    const [viewMode, setViewMode] = useState<ViewMode>("list");
-    const files = useDirectoryFiles(currentPath);
-
-    const navigateUp = useCallback(() => {
-        const file = Gio.fileNewForPath(currentPath);
-        const parent = file.getParent();
-        if (parent) setCurrentPath(parent.getPath() ?? "/");
-    }, [currentPath]);
-
-    const handleActivate = useCallback(
-        (position: number) => navigateInto(files[position], currentPath, setCurrentPath),
-        [files, currentPath],
-    );
-
+    const { viewMode, files, handleActivate } = useFilebrowserContext();
     return (
-        <>
-            <FilebrowserHeader viewMode={viewMode} setViewMode={setViewMode} onNavigateUp={navigateUp} />
-            <GtkScrolledWindow vexpand hexpand>
-                <GtkGridView
-                    estimatedItemHeight={viewMode === "grid" ? 80 : 48}
-                    maxColumns={15}
-                    orientation={viewMode === "grid" ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL}
-                    onActivate={handleActivate}
-                    renderItem={(item: FileItem) => <ListItem item={item} mode={viewMode} />}
-                    items={files.map((file) => ({ id: file.name, value: file }))}
-                />
-            </GtkScrolledWindow>
-        </>
+        <GtkScrolledWindow vexpand hexpand>
+            <GtkGridView
+                estimatedItemHeight={viewMode === "grid" ? 80 : 48}
+                maxColumns={15}
+                orientation={viewMode === "grid" ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL}
+                onActivate={handleActivate}
+                renderItem={(item: FileItem) => <ListItem item={item} mode={viewMode} />}
+                items={files.map((file) => ({ id: file.name, value: file }))}
+            />
+        </GtkScrolledWindow>
     );
 };
 
@@ -223,6 +239,8 @@ export const listviewFilebrowserDemo: Demo = {
         "This demo shows off the different layouts that are quickly achievable with GtkGridView by implementing a file browser with different views.",
     keywords: ["listview", "gridview", "files", "browser", "GtkGridView", "GtkDirectoryList", "views"],
     component: ListViewFilebrowserDemo,
+    titlebar: ListViewFilebrowserTitlebar,
+    provider: FilebrowserProvider,
     sourceCode,
     defaultWidth: 600,
     defaultHeight: 400,

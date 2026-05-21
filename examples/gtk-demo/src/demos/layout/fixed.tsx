@@ -83,7 +83,7 @@ function createFaceTransform(face: CubeFace): Gsk.Transform {
     const centeringOffset = new Graphene.Point3D();
     centeringOffset.init(-w, -h, 0);
 
-    let t = new Gsk.Transform();
+    let t = Gsk.Transform.new();
     t = t.translate(centerPoint) ?? t;
     t = t.perspective(p) ?? t;
     t = t.rotate3d(-30, getAxisX()) ?? t;

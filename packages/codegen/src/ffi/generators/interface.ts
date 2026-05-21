@@ -14,6 +14,7 @@ import {
     type MethodBodyWriter,
     type MethodStructure,
 } from "../../ffi-emitters/index.js";
+import { resolveNamespaceImportPath } from "../../ffi-emitters/namespace-import-path.js";
 import type { FfiGeneratorOptions } from "../../generator-types.js";
 import type { GirInterface, GirMethod, GirProperty, GirRepository } from "../../gir/index.js";
 import type { FfiMapper } from "../../type-system/ffi-mapper.js";
@@ -115,7 +116,7 @@ export class InterfaceGenerator {
             this.file.addImport("./object.js", ["Object"]);
             return "Object";
         }
-        this.file.addNamespaceImport("../gobject/gobject.js", "GObject");
+        this.file.addNamespaceImport(resolveNamespaceImportPath("GObject"), "GObject");
         return "GObject.Object";
     }
 
@@ -158,7 +159,7 @@ export class InterfaceGenerator {
                 this.file.addImport(`./${toKebabCase(originalName)}.js`, [prereqName]);
             } else {
                 extendsList.push(`${ns}.${prereqName}.ConstructorProperties`);
-                this.file.addNamespaceImport(`../${ns.toLowerCase()}/${ns.toLowerCase()}.js`, ns);
+                this.file.addNamespaceImport(resolveNamespaceImportPath(ns), ns);
             }
         }
         if (extendsList.length === 0) {

@@ -5,6 +5,7 @@
  */
 
 import { enumDecl, type FileBuilder } from "../../builders/index.js";
+import { resolveNamespaceImportPath } from "../../ffi-emitters/namespace-import-path.js";
 import type { SimpleGeneratorOptions } from "../../generator-types.js";
 import type { GirEnumeration } from "../../gir/index.js";
 import { formatJsDoc } from "../../utils/doc-formatter.js";
@@ -73,7 +74,7 @@ export class EnumGenerator {
         if (this.options.namespace === "GLib") {
             return `() => quarkFromString(${literal})`;
         }
-        this.file.addNamespaceImport("../glib/glib.js", "GLib");
+        this.file.addNamespaceImport(resolveNamespaceImportPath("GLib"), "GLib");
         return `() => GLib.quarkFromString(${literal})`;
     }
 }

@@ -3,14 +3,12 @@ import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcutController, GtkVideo } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import type { Demo, DemoProviderProps } from "../types.js";
 import bbbPngPath from "./bbb.png";
 import gtkLogoCursorPath from "./gtk_logo_cursor.png";
 import gtkLogoPath from "./gtk-logo.webm";
 import sourceCode from "./video-player.tsx?raw";
-
-const Slot = "Slot" as const;
 
 const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.File) => void) => {
     const dialog = new Gtk.FileDialog();
@@ -42,47 +40,33 @@ const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.
     } catch {}
 };
 
-interface VideoPlayerHeaderProps {
+interface VideoPlayerContextValue {
+    videoFile: Gio.File | null;
     logoPaintable: Gdk.Texture;
     bbbPaintable: Gdk.Texture;
-    onOpen: () => void;
-    onLogo: () => void;
-    onBBB: () => void;
-    onFullscreen: () => void;
+    handleOpen: () => void;
+    handleLogo: () => void;
+    handleBBB: () => void;
+    handleFullscreen: () => void;
+    handleToggleFullscreen: () => void;
 }
 
-const VideoPlayerHeader = ({
-    logoPaintable,
-    bbbPaintable,
-    onOpen,
-    onLogo,
-    onBBB,
-    onFullscreen,
-}: VideoPlayerHeaderProps) => (
-    <Slot id="titlebar">
-        <GtkHeaderBar>
-            <GtkHeaderBar.PackStart>
-                <GtkButton label="_Open" useUnderline onClicked={() => void onOpen()} />
-                <GtkButton accessibleLabel="GTK Logo" onClicked={onLogo}>
-                    <GtkImage paintable={logoPaintable} pixelSize={24} />
-                </GtkButton>
-                <GtkButton accessibleLabel="Big Buck Bunny" onClicked={onBBB}>
-                    <GtkImage paintable={bbbPaintable} pixelSize={24} />
-                </GtkButton>
-            </GtkHeaderBar.PackStart>
-            <GtkHeaderBar.PackEnd>
-                <GtkButton iconName="view-fullscreen-symbolic" accessibleLabel="Fullscreen" onClicked={onFullscreen} />
-            </GtkHeaderBar.PackEnd>
-        </GtkHeaderBar>
-    </Slot>
-);
+const VideoPlayerContext = createContext<VideoPlayerContextValue | null>(null);
 
-const VideoPlayerDemo = ({ window }: DemoProps) => {
+const useVideoPlayerContext = (): VideoPlayerContextValue => {
+    const ctx = useContext(VideoPlayerContext);
+    if (!ctx) throw new Error("VideoPlayerContext is missing");
+    return ctx;
+};
+
+const VideoPlayerProvider = ({ window, children }: DemoProviderProps) => {
     const [videoFile, setVideoFile] = useState<Gio.File | null>(null);
     const logoPaintable = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoCursorPath), []);
     const bbbPaintable = useMemo(() => Gdk.Texture.newFromFilename(bbbPngPath), []);
 
-    const handleOpen = useCallback(() => openVideoDialog(window.current, setVideoFile), [window]);
+    const handleOpen = useCallback(() => {
+        void openVideoDialog(window.current, setVideoFile);
+    }, [window]);
     const handleLogo = useCallback(() => setVideoFile(Gio.fileNewForPath(gtkLogoPath)), []);
     const handleBBB = useCallback(
         () => setVideoFile(Gio.fileNewForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg")),
@@ -96,16 +80,61 @@ const VideoPlayerDemo = ({ window }: DemoProps) => {
         else win.fullscreen();
     }, [window]);
 
+    const value = useMemo<VideoPlayerContextValue>(
+        () => ({
+            videoFile,
+            logoPaintable,
+            bbbPaintable,
+            handleOpen,
+            handleLogo,
+            handleBBB,
+            handleFullscreen,
+            handleToggleFullscreen,
+        }),
+        [
+            videoFile,
+            logoPaintable,
+            bbbPaintable,
+            handleOpen,
+            handleLogo,
+            handleBBB,
+            handleFullscreen,
+            handleToggleFullscreen,
+        ],
+    );
+
+    return <VideoPlayerContext.Provider value={value}>{children}</VideoPlayerContext.Provider>;
+};
+
+const VideoPlayerTitlebar = () => {
+    const { logoPaintable, bbbPaintable, handleOpen, handleLogo, handleBBB, handleFullscreen } =
+        useVideoPlayerContext();
+    return (
+        <GtkHeaderBar>
+            <GtkHeaderBar.PackStart>
+                <GtkButton label="_Open" useUnderline onClicked={handleOpen} />
+                <GtkButton accessibleLabel="GTK Logo" onClicked={handleLogo}>
+                    <GtkImage paintable={logoPaintable} pixelSize={24} />
+                </GtkButton>
+                <GtkButton accessibleLabel="Big Buck Bunny" onClicked={handleBBB}>
+                    <GtkImage paintable={bbbPaintable} pixelSize={24} />
+                </GtkButton>
+            </GtkHeaderBar.PackStart>
+            <GtkHeaderBar.PackEnd>
+                <GtkButton
+                    iconName="view-fullscreen-symbolic"
+                    accessibleLabel="Fullscreen"
+                    onClicked={handleFullscreen}
+                />
+            </GtkHeaderBar.PackEnd>
+        </GtkHeaderBar>
+    );
+};
+
+const VideoPlayerDemo = () => {
+    const { videoFile, handleToggleFullscreen } = useVideoPlayerContext();
     return (
         <>
-            <VideoPlayerHeader
-                logoPaintable={logoPaintable}
-                bbbPaintable={bbbPaintable}
-                onOpen={handleOpen}
-                onLogo={handleLogo}
-                onBBB={handleBBB}
-                onFullscreen={handleFullscreen}
-            />
             <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                 <GtkShortcutController.Shortcut trigger="F11" onActivate={handleToggleFullscreen} />
             </GtkShortcutController>
@@ -120,6 +149,8 @@ export const videoPlayerDemo: Demo = {
     description: "This is a simple video player using just GTK widgets.",
     keywords: ["video", "player", "media", "GtkVideo", "GtkMediaStream", "GtkMediaFile"],
     component: VideoPlayerDemo,
+    titlebar: VideoPlayerTitlebar,
+    provider: VideoPlayerProvider,
     sourceCode,
     defaultWidth: 600,
     defaultHeight: 400,

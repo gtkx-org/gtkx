@@ -1,11 +1,10 @@
 import { existsSync } from "node:fs";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkGridView, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
-import type { Demo } from "../types.js";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
 
-const Slot = "Slot" as const;
 const GRID_SIZE = 8;
 const MINE_COUNT = 10;
 
@@ -108,7 +107,22 @@ const getCellDisplay = (cell: Cell): string => {
     return String(cell.adjacentMines);
 };
 
-const ListViewMinesweeperDemo = () => {
+interface MinesweeperContextValue {
+    board: Cell[];
+    gameState: GameState;
+    handleCellClick: (index: number) => void;
+    resetGame: () => void;
+}
+
+const MinesweeperContext = createContext<MinesweeperContextValue | null>(null);
+
+const useMinesweeperContext = (): MinesweeperContextValue => {
+    const ctx = useContext(MinesweeperContext);
+    if (!ctx) throw new Error("MinesweeperContext is missing");
+    return ctx;
+};
+
+const MinesweeperProvider = ({ children }: DemoProviderProps) => {
     const [board, setBoard] = useState<Cell[]>(createBoard);
     const [gameState, setGameState] = useState<GameState>("playing");
     const soundStreamRef = useRef<Gtk.MediaFile | null>(null);
@@ -141,35 +155,47 @@ const ListViewMinesweeperDemo = () => {
         setGameState("playing");
     }, []);
 
+    const value = useMemo<MinesweeperContextValue>(
+        () => ({ board, gameState, handleCellClick, resetGame }),
+        [board, gameState, handleCellClick, resetGame],
+    );
+
+    return <MinesweeperContext.Provider value={value}>{children}</MinesweeperContext.Provider>;
+};
+
+const ListViewMinesweeperTitlebar = () => {
+    const { gameState, resetGame } = useMinesweeperContext();
     return (
-        <>
-            <Slot id="titlebar">
-                <GtkHeaderBar titleWidget={gameState === "won" ? <GtkImage iconName="trophy-gold" /> : null}>
-                    <GtkHeaderBar.PackStart>
-                        <GtkButton label="New Game" onClicked={resetGame} />
-                    </GtkHeaderBar.PackStart>
-                </GtkHeaderBar>
-            </Slot>
-            <GtkBox halign={Gtk.Align.CENTER}>
-                <GtkGridView
-                    estimatedItemHeight={32}
-                    minColumns={GRID_SIZE}
-                    maxColumns={GRID_SIZE}
-                    singleClickActivate
-                    onActivate={(position) => handleCellClick(position)}
-                    renderItem={(item: Cell) => (
-                        <GtkLabel
-                            label={getCellDisplay(item)}
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                            widthRequest={32}
-                            heightRequest={32}
-                        />
-                    )}
-                    items={board.map((cell) => ({ id: cell.id, value: cell }))}
-                />
-            </GtkBox>
-        </>
+        <GtkHeaderBar titleWidget={gameState === "won" ? <GtkImage iconName="trophy-gold" /> : null}>
+            <GtkHeaderBar.PackStart>
+                <GtkButton label="New Game" onClicked={resetGame} />
+            </GtkHeaderBar.PackStart>
+        </GtkHeaderBar>
+    );
+};
+
+const ListViewMinesweeperDemo = () => {
+    const { board, handleCellClick } = useMinesweeperContext();
+    return (
+        <GtkBox halign={Gtk.Align.CENTER}>
+            <GtkGridView
+                estimatedItemHeight={32}
+                minColumns={GRID_SIZE}
+                maxColumns={GRID_SIZE}
+                singleClickActivate
+                onActivate={(position) => handleCellClick(position)}
+                renderItem={(item: Cell) => (
+                    <GtkLabel
+                        label={getCellDisplay(item)}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        widthRequest={32}
+                        heightRequest={32}
+                    />
+                )}
+                items={board.map((cell) => ({ id: cell.id, value: cell }))}
+            />
+        </GtkBox>
     );
 };
 
@@ -180,5 +206,7 @@ export const listviewMinesweeperDemo: Demo = {
         "Classic Minesweeper game using GridView. Click cells to reveal them. Numbers show adjacent mine count.",
     keywords: ["gridview", "minesweeper", "game", "GtkGridView", "grid", "puzzle", "mines"],
     component: ListViewMinesweeperDemo,
+    titlebar: ListViewMinesweeperTitlebar,
+    provider: MinesweeperProvider,
     sourceCode,
 };

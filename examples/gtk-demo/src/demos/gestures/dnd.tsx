@@ -144,7 +144,7 @@ function createRotationTransform(halfW: number, halfH: number, angle: number): G
     const offset = new Graphene.Point();
     offset.init(-halfW, -halfH);
 
-    let t: Gsk.Transform | undefined = new Gsk.Transform();
+    let t: Gsk.Transform | undefined = Gsk.Transform.new();
     t = t.translate(center) ?? undefined;
     t = t?.rotate(angle) ?? undefined;
     t = t?.translate(offset) ?? undefined;

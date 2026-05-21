@@ -27,8 +27,6 @@ import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
 import logoPath from "./logo.svg";
 
-const Slot = "Slot" as const;
-
 const InfoTab = () => {
     const { currentDemo } = useDemo();
 
@@ -77,22 +75,33 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     if (!currentDemo?.component || !activeWindow) return null;
 
     const DemoComponent = currentDemo.component;
+    const DemoTitlebar = currentDemo.titlebar;
+    const DemoStateProvider = currentDemo.provider ?? (({ children }) => children);
     const { displayTitle } = parseTitle(currentDemo.title);
 
     if (currentDemo.dialogOnly) {
-        return <DemoComponent onClose={onClose} window={activeWindowRef} />;
+        return (
+            <DemoStateProvider window={activeWindowRef} onClose={onClose}>
+                <DemoComponent onClose={onClose} window={activeWindowRef} />
+            </DemoStateProvider>
+        );
     }
 
+    const titlebar = DemoTitlebar ? <DemoTitlebar onClose={onClose} window={windowRef} /> : undefined;
+
     return createPortal(
-        <GtkWindow
-            ref={windowRef}
-            title={displayTitle}
-            defaultWidth={currentDemo.defaultWidth ?? -1}
-            defaultHeight={currentDemo.defaultHeight ?? -1}
-            onClose={onClose}
-        >
-            <DemoComponent onClose={onClose} window={windowRef} />
-        </GtkWindow>,
+        <DemoStateProvider window={windowRef} onClose={onClose}>
+            <GtkWindow
+                ref={windowRef}
+                title={displayTitle}
+                defaultWidth={currentDemo.defaultWidth ?? -1}
+                defaultHeight={currentDemo.defaultHeight ?? -1}
+                titlebar={titlebar}
+                onClose={onClose}
+            >
+                <DemoComponent onClose={onClose} window={windowRef} />
+            </GtkWindow>
+        </DemoStateProvider>,
         activeWindow,
     );
 };
@@ -131,45 +140,43 @@ const AppHeaderBar = ({
     onKeyboardShortcuts,
     onAbout,
 }: AppHeaderBarProps) => (
-    <Slot id="titlebar">
-        <GtkHeaderBar>
-            <GtkHeaderBar.PackStart>
-                <GtkButton
-                    label="Run"
-                    onClicked={onRun}
-                    sensitive={hasDemo}
-                    valign={Gtk.Align.CENTER}
-                    focusOnClick={false}
-                />
-                <GtkToggleButton
-                    iconName="edit-find-symbolic"
-                    active={searchMode}
-                    onToggled={(btn: Gtk.ToggleButton) => onSearchToggle(btn.getActive())}
-                    valign={Gtk.Align.CENTER}
-                    focusOnClick={false}
-                />
-            </GtkHeaderBar.PackStart>
-            <GtkHeaderBar.PackEnd>
-                <GtkMenuButton iconName="open-menu-symbolic" valign={Gtk.Align.CENTER} focusOnClick={false}>
-                    <GtkMenuButton.MenuSection>
-                        <GtkMenuButton.MenuItem
-                            id="inspector"
-                            label="_Inspector"
-                            onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
-                            accels="<Control><Shift>i"
-                        />
-                        <GtkMenuButton.MenuItem
-                            id="shortcuts"
-                            label="_Keyboard Shortcuts"
-                            onActivate={onKeyboardShortcuts}
-                            accels="<Control>question"
-                        />
-                        <GtkMenuButton.MenuItem id="about" label="_About GTK Demo" onActivate={onAbout} />
-                    </GtkMenuButton.MenuSection>
-                </GtkMenuButton>
-            </GtkHeaderBar.PackEnd>
-        </GtkHeaderBar>
-    </Slot>
+    <GtkHeaderBar>
+        <GtkHeaderBar.PackStart>
+            <GtkButton
+                label="Run"
+                onClicked={onRun}
+                sensitive={hasDemo}
+                valign={Gtk.Align.CENTER}
+                focusOnClick={false}
+            />
+            <GtkToggleButton
+                iconName="edit-find-symbolic"
+                active={searchMode}
+                onToggled={(btn: Gtk.ToggleButton) => onSearchToggle(btn.getActive())}
+                valign={Gtk.Align.CENTER}
+                focusOnClick={false}
+            />
+        </GtkHeaderBar.PackStart>
+        <GtkHeaderBar.PackEnd>
+            <GtkMenuButton iconName="open-menu-symbolic" valign={Gtk.Align.CENTER} focusOnClick={false}>
+                <GtkMenuButton.MenuSection>
+                    <GtkMenuButton.MenuItem
+                        id="inspector"
+                        label="_Inspector"
+                        onActivate={() => Gtk.Window.setInteractiveDebugging(true)}
+                        accels="<Control><Shift>i"
+                    />
+                    <GtkMenuButton.MenuItem
+                        id="shortcuts"
+                        label="_Keyboard Shortcuts"
+                        onActivate={onKeyboardShortcuts}
+                        accels="<Control>question"
+                    />
+                    <GtkMenuButton.MenuItem id="about" label="_About GTK Demo" onActivate={onAbout} />
+                </GtkMenuButton.MenuSection>
+            </GtkMenuButton>
+        </GtkHeaderBar.PackEnd>
+    </GtkHeaderBar>
 );
 
 interface AppShortcutsProps {
@@ -252,73 +259,105 @@ const AboutDialog = ({ activeWindow, onClose }: AboutDialogProps) => {
     );
 };
 
-const AppContent = () => {
-    const { currentDemo, setSearchQuery } = useDemo();
-    const [searchMode, setSearchMode] = useState(false);
+const useDemoWindows = () => {
     const [demoWindows, setDemoWindows] = useState<number[]>([]);
     const [nextWindowId, setNextWindowId] = useState(1);
+
+    const openWindow = useCallback(() => {
+        setDemoWindows((prev) => [...prev, nextWindowId]);
+        setNextWindowId((prev) => prev + 1);
+    }, [nextWindowId]);
+
+    const closeWindow = useCallback((id: number) => {
+        setDemoWindows((prev) => prev.filter((w) => w !== id));
+    }, []);
+
+    return { demoWindows, openWindow, closeWindow };
+};
+
+interface MainWindowBodyProps {
+    searchMode: boolean;
+    notebookPage: number;
+    onSearchToggle: () => void;
+    onKeyboardShortcuts: () => void;
+    onNotebookPageChange: (page: number) => void;
+    onSearchChanged: (query: string) => void;
+}
+
+const MainWindowBody = ({
+    searchMode,
+    notebookPage,
+    onSearchToggle,
+    onKeyboardShortcuts,
+    onNotebookPageChange,
+    onSearchChanged,
+}: MainWindowBodyProps) => (
+    <GtkBox vexpand hexpand>
+        <AppShortcuts
+            onSearchToggle={onSearchToggle}
+            onKeyboardShortcuts={onKeyboardShortcuts}
+            onNotebookNext={() => onNotebookPageChange(Math.min(notebookPage + 1, 1))}
+            onNotebookPrev={() => onNotebookPageChange(Math.max(notebookPage - 1, 0))}
+        />
+        <Sidebar searchMode={searchMode} onSearchChanged={onSearchChanged} />
+        <AppNotebook page={notebookPage} onSwitchPage={onNotebookPageChange} />
+    </GtkBox>
+);
+
+const MainWindow = () => {
+    const { currentDemo, setSearchQuery } = useDemo();
+    const [searchMode, setSearchMode] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
     const [notebookPage, setNotebookPage] = useState(0);
+    const { demoWindows, openWindow, closeWindow } = useDemoWindows();
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
+    const windowTitle = currentDemo ? parseTitle(currentDemo.title).displayTitle : "GTK Demo";
+
     const handleRun = useCallback(() => {
         if (!currentDemo) return;
-        setDemoWindows((prev) => [...prev, nextWindowId]);
-        setNextWindowId((prev) => prev + 1);
-    }, [currentDemo, nextWindowId]);
-
-    const handleCloseWindow = useCallback((id: number) => {
-        setDemoWindows((prev) => prev.filter((w) => w !== id));
-    }, []);
+        openWindow();
+    }, [currentDemo, openWindow]);
 
     const handleKeyboardShortcuts = useCallback(() => {
         if (!activeWindow) return;
         showShortcutsDialog(activeWindow);
     }, [activeWindow]);
 
+    const titlebar = (
+        <AppHeaderBar
+            hasDemo={!!currentDemo?.component}
+            searchMode={searchMode}
+            onRun={handleRun}
+            onSearchToggle={setSearchMode}
+            onKeyboardShortcuts={handleKeyboardShortcuts}
+            onAbout={() => setShowAbout(true)}
+        />
+    );
+
     return (
-        <>
-            <AppHeaderBar
-                hasDemo={!!currentDemo?.component}
+        <GtkApplicationWindow
+            title={windowTitle}
+            defaultWidth={800}
+            defaultHeight={600}
+            titlebar={titlebar}
+            onClose={quit}
+        >
+            <MainWindowBody
                 searchMode={searchMode}
-                onRun={handleRun}
-                onSearchToggle={setSearchMode}
+                notebookPage={notebookPage}
+                onSearchToggle={() => setSearchMode((prev) => !prev)}
                 onKeyboardShortcuts={handleKeyboardShortcuts}
-                onAbout={() => setShowAbout(true)}
+                onNotebookPageChange={setNotebookPage}
+                onSearchChanged={setSearchQuery}
             />
-
-            <GtkBox vexpand hexpand>
-                <AppShortcuts
-                    onSearchToggle={() => setSearchMode((prev) => !prev)}
-                    onKeyboardShortcuts={handleKeyboardShortcuts}
-                    onNotebookNext={() => setNotebookPage((prev) => Math.min(prev + 1, 1))}
-                    onNotebookPrev={() => setNotebookPage((prev) => Math.max(prev - 1, 0))}
-                />
-
-                <Sidebar searchMode={searchMode} onSearchChanged={setSearchQuery} />
-
-                <AppNotebook page={notebookPage} onSwitchPage={setNotebookPage} />
-            </GtkBox>
-
             {demoWindows.map((id) => (
-                <DemoWindow key={id} onClose={() => handleCloseWindow(id)} />
+                <DemoWindow key={id} onClose={() => closeWindow(id)} />
             ))}
-
             {showAbout && activeWindow && (
                 <AboutDialog activeWindow={activeWindow} onClose={() => setShowAbout(false)} />
             )}
-        </>
-    );
-};
-
-const MainWindow = () => {
-    const { currentDemo } = useDemo();
-    const windowTitle = currentDemo ? parseTitle(currentDemo.title).displayTitle : "GTK Demo";
-
-    return (
-        <GtkApplicationWindow title={windowTitle} defaultWidth={800} defaultHeight={600} onClose={quit}>
-            <AppContent />
         </GtkApplicationWindow>
     );
 };

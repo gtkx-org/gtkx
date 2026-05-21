@@ -110,7 +110,6 @@ interface DemoProviderProps {
 
 const findFirstDemoInItem = (item: TreeItem): Demo | null => {
     if (item.type === "demo") return item.demo;
-    if (item.type !== "category") return null;
     for (const child of item.children) {
         if (child.type === "demo") return child.demo;
     }
