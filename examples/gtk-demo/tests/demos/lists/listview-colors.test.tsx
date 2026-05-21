@@ -3,7 +3,6 @@ import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewColorsDemo } from "../../../src/demos/lists/listview-colors.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
-import { findApplicationWindow } from "../../helpers/traverse.js";
 
 describe("listviewColorsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -19,11 +18,9 @@ describe("listviewColorsDemo metadata", () => {
 
 describe("listviewColorsDemo header bar", () => {
     it("installs a header bar via the titlebar slot", async () => {
-        const { container } = await renderDemo(listviewColorsDemo);
-        const window = findApplicationWindow(container);
-        if (!window) throw new Error("application window not found");
-        const titlebar = window.getTitlebar();
-        expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
+        await renderDemo(listviewColorsDemo);
+        const headerBar = await screen.findByName("header-bar");
+        expect(headerBar).toBeInstanceOf(Gtk.HeaderBar);
     });
 
     it("renders the Refill button", async () => {

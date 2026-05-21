@@ -696,7 +696,7 @@ const ListViewColorsProvider = ({ children }: DemoProviderProps) => {
 const ColorsHeader = () => {
     const { state, computed } = useColorsContext();
     return (
-        <GtkHeaderBar>
+        <GtkHeaderBar name="header-bar">
             <GtkHeaderBar.PackStart>
                 <GtkToggleButton
                     name="selection-toggle"
