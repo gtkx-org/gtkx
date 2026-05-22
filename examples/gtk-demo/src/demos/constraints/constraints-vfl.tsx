@@ -56,6 +56,7 @@ const ConstraintsVflDemo = () => {
             button1Ref={button1Ref}
             button2Ref={button2Ref}
             button3Ref={button3Ref}
+            namedButtons
         />
     );
 };
