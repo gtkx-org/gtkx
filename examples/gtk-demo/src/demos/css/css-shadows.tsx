@@ -7,15 +7,19 @@ import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";
 import { useCssEditor } from "./use-css-editor.js";
 
-const DEFAULT_CSS = `@import url("file://${resetCssPath}");
-@import url("file://${cssviewCssPath}");
-
-/* You can edit the text in this window to change the
+const DEFAULT_CSS = `/* You can edit the text in this window to change the
  * appearance of this Window.
  * Be careful, if you screw it up, nothing might be visible
  * anymore. :)
  */
 
+/* This CSS resets all properties to their defaults values
+ * and overrides all user settings and the theme in use
+ */
+@import url("file://${resetCssPath}");
+@import url("file://${cssviewCssPath}");
+
+/* Get a nice background for the window */
 window.demo.background {
   background-color: #4870bc;
   background-image: linear-gradient(to left, transparent, rgba(255,255,255,.07) 50%, transparent 50%),
