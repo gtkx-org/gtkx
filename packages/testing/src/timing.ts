@@ -34,13 +34,16 @@ const isThenable = (value: unknown): value is PromiseLike<unknown> =>
  */
 export const act = async <T>(callback: () => T | Promise<T>): Promise<T> => {
     let result: T | undefined;
-    await reactAct(async () => {
+    const actResult = reactAct(() => {
         const returned = callback();
         if (isThenable(returned)) {
-            result = (await returned) as T;
-        } else {
-            result = returned as T;
+            return Promise.resolve(returned).then((value) => {
+                result = value as T;
+            });
         }
+        result = returned as T;
+        return undefined;
     });
+    await actResult;
     return result as T;
 };
