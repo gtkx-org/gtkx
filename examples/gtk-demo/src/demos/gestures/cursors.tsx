@@ -43,7 +43,7 @@ import zoomOutPath from "./cursors/zoom_out_cursor.png";
 import sourceCode from "./cursors.tsx?raw";
 
 const cursorbgStyle = css`
-    background: linear-gradient(135deg, white 50%, black 50%);
+    background: linear-gradient(to bottom right, white 0%, white 50%, black 50%, black 100%);
 `;
 
 interface CursorInfo {
@@ -108,65 +108,61 @@ const CursorPreview = ({ info }: { info: CursorInfo }) => {
     return <GtkImage paintable={texture} />;
 };
 
+const buildCursorVariants = (info: CursorInfo) => {
+    const texture = getCursorTexture(info);
+    const named = Gdk.Cursor.newFromName(info.name, null);
+    const image = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null);
+
+    if (info.name === "gtk-logo") {
+        const fallback = Gdk.Cursor.newFromName("default", null);
+        const imageWithFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, fallback);
+        return [image, image, imageWithFallback, imageWithFallback] as const;
+    }
+
+    const namedWithFallback = Gdk.Cursor.newFromName(
+        info.name,
+        Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null),
+    );
+    const imageWithFallback = Gdk.Cursor.newFromTexture(
+        texture,
+        info.hotX,
+        info.hotY,
+        Gdk.Cursor.newFromName(info.name, null),
+    );
+    return [named, image, namedWithFallback, imageWithFallback] as const;
+};
+
+const buildCursorTooltips = (info: CursorInfo): readonly [string, string, string, string] =>
+    info.name === "gtk-logo"
+        ? [
+              `The "gtk-logo" named cursor`,
+              "An image cursor for the GTK logo",
+              "A callback cursor for the GTK logo",
+              `An image cursor falling back to the "gtk-logo" cursor`,
+          ]
+        : [
+              `The "${info.name}" named cursor`,
+              "An image cursor",
+              `The "${info.name}" named cursor falling back to an image cursor`,
+              `An image cursor falling back to the "${info.name}" cursor`,
+          ];
+
+const CursorFrame = ({ cursor, tooltip }: { cursor: Gdk.Cursor; tooltip: string }) => (
+    <GtkFrame widthRequest={32} heightRequest={32} cssClasses={[cursorbgStyle]} cursor={cursor} tooltipText={tooltip} />
+);
+
 const CursorRow = ({ info }: { info: CursorInfo }) => {
-    const cursors = useMemo(() => {
-        const texture = getCursorTexture(info);
-        const named = Gdk.Cursor.newFromName(info.name, null);
-        const image = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null);
-
-        if (info.name === "gtk-logo") {
-            const fallback = Gdk.Cursor.newFromName("default", null);
-            const imageWithFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, fallback);
-            return [image, image, imageWithFallback, imageWithFallback] as const;
-        }
-
-        const namedWithFallback = Gdk.Cursor.newFromName(
-            info.name,
-            Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null),
-        );
-        const imageWithFallback = Gdk.Cursor.newFromTexture(
-            texture,
-            info.hotX,
-            info.hotY,
-            Gdk.Cursor.newFromName(info.name, null),
-        );
-
-        return [named, image, namedWithFallback, imageWithFallback] as const;
-    }, [info]);
-
+    const cursors = useMemo(() => buildCursorVariants(info), [info]);
+    const tooltips = useMemo(() => buildCursorTooltips(info), [info]);
     return (
         <GtkListBoxRow activatable={false}>
             <GtkBox spacing={10} marginStart={10} marginEnd={10} marginTop={10} marginBottom={10}>
                 <CursorPreview info={info} />
-                <GtkLabel label={info.name} hexpand xalign={0} />
-                <GtkFrame
-                    widthRequest={32}
-                    heightRequest={32}
-                    cssClasses={[cursorbgStyle]}
-                    cursor={cursors[0]}
-                    tooltipText={`The '${info.name}' named cursor`}
-                />
-                <GtkFrame
-                    widthRequest={32}
-                    heightRequest={32}
-                    cssClasses={[cursorbgStyle]}
-                    cursor={cursors[1]}
-                    tooltipText={`The '${info.name}' image cursor`}
-                />
-                <GtkFrame
-                    widthRequest={32}
-                    heightRequest={32}
-                    cssClasses={[cursorbgStyle]}
-                    cursor={cursors[2]}
-                    tooltipText={`The '${info.name}' named cursor falling back to an image cursor`}
-                />
-                <GtkFrame
-                    widthRequest={32}
-                    heightRequest={32}
-                    cssClasses={[cursorbgStyle]}
-                    cursor={cursors[3]}
-                    tooltipText={`The '${info.name}' image cursor falling back to a named cursor`}
-                />
+                <GtkLabel label={info.name} halign={Gtk.Align.START} valign={Gtk.Align.BASELINE} hexpand xalign={0} />
+                <CursorFrame cursor={cursors[0]} tooltip={tooltips[0]} />
+                <CursorFrame cursor={cursors[1]} tooltip={tooltips[1]} />
+                <CursorFrame cursor={cursors[2]} tooltip={tooltips[2]} />
+                <CursorFrame cursor={cursors[3]} tooltip={tooltips[3]} />
             </GtkBox>
         </GtkListBoxRow>
     );
