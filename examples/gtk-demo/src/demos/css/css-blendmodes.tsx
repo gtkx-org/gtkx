@@ -185,7 +185,7 @@ const CmykPage = () => (
             <GtkLabel label="Yellow" xalign={0} cssClasses={["dim-label"]} />
         </GtkGrid.Child>
         <GtkGrid.Child column={1} row={2}>
-            <GtkLabel label="&lt;b&gt;Blended picture&lt;/b&gt;" useMarkup xalign={0} />
+            <GtkLabel label="<b>Blended picture</b>" useMarkup xalign={0} />
         </GtkGrid.Child>
         <GtkGrid.Child column={0} row={3}>
             <GtkImage cssClasses={["yellow"]} />
