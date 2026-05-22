@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { act, fireEvent, render, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
+import { app } from "../src/application.js";
 
 const selectFirstDemoWithComponent = async (): Promise<void> => {
     const sidebar = (await screen.findByName("sidebar-list")) as Gtk.ListView;
@@ -18,7 +19,7 @@ const selectFirstDemoWithComponent = async (): Promise<void> => {
 
 describe("App search toggle", () => {
     it("turns the sidebar's search bar on when the header bar toggle is activated", async () => {
-        await render(<App />, { wrapper: false });
+        await render(<App />, { wrapper: false, app });
         const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
         const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
         expect(searchBar.getSearchMode()).toBe(false);
@@ -30,14 +31,14 @@ describe("App search toggle", () => {
 
 describe("App run button", () => {
     it("enables the Run button after a demo with a component is selected", async () => {
-        await render(<App />, { wrapper: false });
+        await render(<App />, { wrapper: false, app });
         await selectFirstDemoWithComponent();
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
         expect(run.getSensitive()).toBe(true);
     });
 
     it("opens a demo window when Run is clicked", async () => {
-        await render(<App />, { wrapper: false });
+        await render(<App />, { wrapper: false, app });
         await selectFirstDemoWithComponent();
         const beforeCount = (await screen.findAllByRole(Gtk.AccessibleRole.WINDOW)).length;
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
@@ -51,7 +52,7 @@ describe("App run button", () => {
 
 describe("App about menu", () => {
     it("renders the about dialog after the About menu entry is activated", async () => {
-        await render(<App />, { wrapper: false });
+        await render(<App />, { wrapper: false, app });
         const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
         await act(() => menuButton.activateAction("app.about", null));
         await waitFor(async () => {
@@ -63,13 +64,13 @@ describe("App about menu", () => {
 
 describe("App notebook", () => {
     it("renders the Info and Source tabs", async () => {
-        await render(<App />, { wrapper: false });
+        await render(<App />, { wrapper: false, app });
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         expect(notebook.getNPages()).toBe(2);
     });
 
     it("advances the page when the notebook page is set", async () => {
-        await render(<App />, { wrapper: false });
+        await render(<App />, { wrapper: false, app });
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         expect(notebook.getCurrentPage()).toBe(0);
         await act(() => notebook.setCurrentPage(1));

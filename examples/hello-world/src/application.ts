@@ -1,0 +1,3 @@
+import * as Gtk from "@gtkx/ffi/gtk";
+
+export const app = new Gtk.Application({ application_id: "com.gtkx.hello-world" });

@@ -1,21 +1,27 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkEnums from "@gtkx/ffi/gtk";
-import { createPortal, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, useApplication } from "@gtkx/react";
+import { createPortal, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { act, render } from "@gtkx/testing";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: string }) => {
-    const app = useApplication();
-    return <>{createPortal(children, app, portalKey)}</>;
-};
+const Portal = ({
+    children,
+    target,
+    portalKey,
+}: {
+    children: ReactNode;
+    target: Gtk.Application;
+    portalKey?: string;
+}) => <>{createPortal(children, target, portalKey)}</>;
 
 describe("createPortal (1)", () => {
     it("renders children at root level when no container specified", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
-        await render(
-            <Portal>
+        const { app, rerender } = await render(<></>);
+        await rerender(
+            <Portal target={app}>
                 <GtkApplicationWindow ref={windowRef} title="Portal Window" />
             </Portal>,
         );
@@ -48,8 +54,9 @@ describe("createPortal (1)", () => {
     it("preserves key when provided", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
-        await render(
-            <Portal portalKey="my-key">
+        const { app, rerender } = await render(<></>);
+        await rerender(
+            <Portal target={app} portalKey="my-key">
                 <GtkApplicationWindow ref={windowRef} title="Keyed Window" />
             </Portal>,
         );
@@ -64,31 +71,31 @@ describe("createPortal (2)", () => {
     it("unmounts portal children when portal is removed", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
-        function App({ showPortal }: { showPortal: boolean }) {
-            const app = useApplication();
-            return <>{showPortal && createPortal(<GtkApplicationWindow ref={windowRef} title="Portal" />, app)}</>;
+        function App({ target, showPortal }: { target: Gtk.Application; showPortal: boolean }) {
+            return <>{showPortal && createPortal(<GtkApplicationWindow ref={windowRef} title="Portal" />, target)}</>;
         }
 
-        await render(<App showPortal={true} />);
+        const { app, rerender } = await render(<></>);
+        await rerender(<App target={app} showPortal={true} />);
 
         const windowId = windowRef.current;
         expect(windowId).not.toBeUndefined();
 
-        await render(<App showPortal={false} />);
+        await rerender(<App target={app} showPortal={false} />);
     });
 
     it("updates portal children when props change", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
-        function App({ title }: { title: string }) {
-            const app = useApplication();
-            return <>{createPortal(<GtkApplicationWindow ref={windowRef} title={title} />, app)}</>;
+        function App({ target, title }: { target: Gtk.Application; title: string }) {
+            return <>{createPortal(<GtkApplicationWindow ref={windowRef} title={title} />, target)}</>;
         }
 
-        await render(<App title="First" />);
+        const { app, rerender } = await render(<></>);
+        await rerender(<App target={app} title="First" />);
         expect(windowRef.current?.getTitle()).toBe("First");
 
-        await render(<App title="Second" />);
+        await rerender(<App target={app} title="Second" />);
         expect(windowRef.current?.getTitle()).toBe("Second");
     });
 });

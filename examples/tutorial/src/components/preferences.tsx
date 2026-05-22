@@ -5,14 +5,13 @@ import {
     AdwSpinRow,
     AdwSwitchRow,
     createPortal,
-    useApplication,
     useProperty,
     useSetting,
 } from "@gtkx/react";
 import schemaId from "../../com.gtkx.tutorial.gschema.xml";
+import { app } from "../application.js";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
-    const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
     const [compactMode, setCompactMode] = useSetting(schemaId, "compact-mode", "boolean");

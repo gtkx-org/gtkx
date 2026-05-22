@@ -23,11 +23,19 @@ const App = () => (
     </GtkApplicationWindow>
 );
 
-const app = new Gtk.Application(undefined, "com.example.myapp");
+// src/application.ts
+import * as Gtk from "@gtkx/ffi/gtk";
+export const app = new Gtk.Application({ application_id: "com.example.myapp" });
+
+// src/index.tsx
+import { render } from "@gtkx/react";
+import { app } from "./application.js";
 render(<App />, app);
 ```
 
 `render` is called once at module top-level — analogous to `createRoot().render()` in `react-dom`. In dev, `gtkx dev` restarts the Node process whenever a non-component file changes, so this top-level call only ever runs once per process life.
+
+The `Gtk.Application` instance lives in a dedicated `application.ts` module so components anywhere in the tree can access it with `import { app } from "./application.js"` instead of going through a React context.
 
 ## Essential Patterns
 
