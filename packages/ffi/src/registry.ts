@@ -1,6 +1,6 @@
 import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import type { GType } from "./generated/gobject/gobject.js";
-import { G_TYPE_INVALID, typeIsA, typeParent } from "./gtype.js";
+import { G_TYPE_INVALID, typeFromName, typeIsA, typeParent } from "./gtype.js";
 import { type GTypeStamped, getHandle, type NativeClass, type NativeObject, setHandle } from "./handles.js";
 
 const classRegistry = new Map<GType, NativeClass>();
@@ -95,6 +95,23 @@ export function wrapHandle<T extends object>(cls: NativeClass<T>, handle: Native
  */
 export function getNativeClass(gtype: GType): NativeClass | null {
     return classRegistry.get(gtype) ?? null;
+}
+
+/**
+ * Looks up the registered native class for a GLib type name.
+ *
+ * Resolves the runtime `GType` for `name` via `g_type_from_name` and returns
+ * the class registered under it. Returns `null` when `name` is not a
+ * registered GLib type — useful when callers operate on free-form strings
+ * (such as JSX intrinsic-element names) where the input may legitimately
+ * refer to a non-GLib element.
+ *
+ * @param name - GLib type name, e.g. `"GtkButton"` or a custom subclass
+ *   name passed as `gtypeName` to {@link registerClass}.
+ */
+export function getNativeClassByName(name: string): NativeClass | null {
+    const gtype = typeFromName(name);
+    return gtype === G_TYPE_INVALID ? null : getNativeClass(gtype);
 }
 
 /**

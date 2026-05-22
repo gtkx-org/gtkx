@@ -1,7 +1,5 @@
 export * from "../generated/gobject/gobject.js";
 export { G_TYPE_INVALID, isInvalidGType } from "../gtype.js";
-export type { NativeClass } from "../handles.js";
-export { getNativeClass } from "../registry.js";
 export {
     TYPE_BOOLEAN,
     TYPE_BOXED,

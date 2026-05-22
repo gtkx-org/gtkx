@@ -1,7 +1,7 @@
+import { getNativeClassByName } from "@gtkx/ffi";
 import { type GType, typeFromName } from "@gtkx/ffi/gobject";
 import { collectTypeNameChain } from "./metadata.js";
 import type { Node } from "./node.js";
-import { resolveNativeClass } from "./nodes/internal/construct.js";
 import { NODE_REGISTRY, type NodeClass } from "./registry.js";
 import type { Container, ContainerClass, Props } from "./types.js";
 
@@ -14,7 +14,7 @@ import type { Container, ContainerClass, Props } from "./types.js";
  * @param type - JSX intrinsic element name, e.g. `"GtkButton"`
  */
 export const resolveContainerClass = (type: string): ContainerClass | null =>
-    resolveNativeClass(type) as ContainerClass | null;
+    getNativeClassByName(type) as ContainerClass | null;
 
 const resolveNodeClass = (elementType: string, gtype: GType): NodeClass | null => {
     if (gtype === 0) {

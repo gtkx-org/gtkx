@@ -63,6 +63,8 @@ export function isInvalidGType(gtype: GType): boolean {
  */
 export const gtypeFromFfi: (value: unknown) => GType = Number;
 
+const g_type_from_name = t.fn(LIBGOBJECT, "g_type_from_name", [{ type: t.string("borrowed") }], t.uint64);
+
 const g_type_is_a = t.fn(LIBGOBJECT, "g_type_is_a", [{ type: t.uint64 }, { type: t.uint64 }], t.boolean);
 
 const g_type_parent = t.fn(LIBGOBJECT, "g_type_parent", [{ type: t.uint64 }], t.uint64);
@@ -103,4 +105,15 @@ export function typeParent(type: GType): GType {
 export function typeInterfaces(type: GType): GType[] {
     const nInterfacesRef = createRef(0);
     return g_type_interfaces(type, nInterfacesRef) as GType[];
+}
+
+/**
+ * Resolves the runtime `GType` registered under the GLib type name `name`,
+ * or the invalid GType (`0`) when no type has been registered with that name
+ * — equivalent to a direct call to `g_type_from_name`.
+ *
+ * @param name - GLib type name (e.g. `"GtkButton"`)
+ */
+export function typeFromName(name: string): GType {
+    return g_type_from_name(name) as GType;
 }

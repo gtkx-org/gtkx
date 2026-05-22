@@ -1,21 +1,6 @@
-import { G_TYPE_INVALID, getNativeClass, type NativeClass, typeFromName } from "@gtkx/ffi/gobject";
+import { getNativeClassByName } from "@gtkx/ffi";
 import type { Container, Props } from "../../types.js";
 import { camelToSnake } from "./naming.js";
-
-/**
- * Resolves the registered native wrapper class for a GLib type name.
- *
- * Returns `null` when `typeName` is not a reconcilable element — a virtual
- * reconciler element such as `"Slot"` — or when no wrapper class is registered
- * for it. Widget construction and node-class resolution both gate on this: a
- * `null` result marks the element as a non-widget node.
- *
- * @param typeName - GLib type name (e.g. `"GtkLabel"`)
- */
-export function resolveNativeClass(typeName: string): NativeClass | null {
-    const gtype = typeFromName(typeName);
-    return gtype === G_TYPE_INVALID ? null : getNativeClass(gtype);
-}
 
 /**
  * Instantiates a container widget from the React reconciler.
@@ -32,7 +17,7 @@ export function resolveNativeClass(typeName: string): NativeClass | null {
  *   up, all others are ignored at construction
  */
 export function createContainerWithProperties(typeName: string, props: Props): Container {
-    const cls = resolveNativeClass(typeName);
+    const cls = getNativeClassByName(typeName);
     if (!cls) {
         throw new Error(`createContainerWithProperties: no registered class for GLib type '${typeName}'`);
     }

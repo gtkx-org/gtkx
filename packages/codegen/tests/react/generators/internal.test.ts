@@ -43,8 +43,8 @@ describe("InternalGenerator / FFI namespace imports", () => {
         const code = generateCode([createWidgetMeta(), adwMeta]);
         expect(code).toContain('import "@gtkx/ffi/adw";');
         expect(code).toContain('import "@gtkx/ffi/gtk";');
-        expect(code).not.toContain('import * as Adw');
-        expect(code).not.toContain('import * as Gtk');
+        expect(code).not.toContain("import * as Adw");
+        expect(code).not.toContain("import * as Gtk");
     });
 });
 
