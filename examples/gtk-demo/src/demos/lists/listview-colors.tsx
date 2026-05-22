@@ -522,8 +522,17 @@ const startGradualFill = ({
     setFilling(true);
 
     const increment = Math.max(1, Math.floor(targetLimit / 4096));
+    let tickCount = 0;
+    let setColorsCount = 0;
+    const startTime = Date.now();
+    const diagInterval = setInterval(() => {
+        console.error(
+            `[fill-diag] t+${Date.now() - startTime}ms ticks=${tickCount} setColors=${setColorsCount} size=${accumulated.length}`,
+        );
+    }, 2000);
 
     tickIdRef.current = widget.addTickCallback((): boolean => {
+        tickCount++;
         const newSize = Math.min(targetLimit, accumulated.length + increment);
         for (let i = accumulated.length; i < newSize; i++) accumulated.push(createColorItem(i));
 
@@ -531,12 +540,14 @@ const startGradualFill = ({
         const done = accumulated.length >= targetLimit;
 
         setTimeout(() => {
+            setColorsCount++;
             setColors(snapshot);
             if (done) setFilling(false);
         }, 0);
 
         if (done) {
             tickIdRef.current = null;
+            clearInterval(diagInterval);
             return false;
         }
         return true;
