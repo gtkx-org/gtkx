@@ -24,7 +24,7 @@ describe("clipboardDemo rendering", () => {
     it("renders the intro label, the text source entry initialised to 'Copy this!' and the Copy/Paste buttons", async () => {
         const { container } = await renderDemo(clipboardDemo);
         const labels = findAllOfType(container, Gtk.Label).map((l) => l.getLabel());
-        const introMatch = labels.find((l) => typeof l === "string" && l.startsWith('"Copy"'));
+        const introMatch = labels.find((l) => typeof l === "string" && l.startsWith("“Copy”"));
         expect(introMatch).toBeDefined();
         const entry = (await screen.findByName("source-entry")) as Gtk.Entry;
         expect(entry).toBeInstanceOf(Gtk.Entry);
@@ -92,6 +92,17 @@ describe("clipboardDemo drag and drop", () => {
         const entry = (await screen.findByName("source-entry")) as Gtk.Entry;
         const dragSources = collectControllers(entry, Gtk.DragSource);
         expect(dragSources).toHaveLength(1);
+    });
+
+    it("omits the GtkDragSource from the photo toggle and attaches it to the icon and SVG toggles", async () => {
+        const { container } = await renderDemo(clipboardDemo);
+        const imageToggles = findAllOfType(container, Gtk.ToggleButton).filter(
+            (t) => findAllOfType(t, Gtk.Image).length > 0,
+        );
+        expect(imageToggles).toHaveLength(3);
+        expect(collectControllers(imageToggles[0] as Gtk.ToggleButton, Gtk.DragSource)).toHaveLength(0);
+        expect(collectControllers(imageToggles[1] as Gtk.ToggleButton, Gtk.DragSource)).toHaveLength(1);
+        expect(collectControllers(imageToggles[2] as Gtk.ToggleButton, Gtk.DragSource)).toHaveLength(1);
     });
 
     it("propagates the text value into the clipboard when Copy is clicked with text selected", async () => {
