@@ -220,7 +220,7 @@ const ListViewWordsProvider = ({ window, children }: DemoProviderProps) => {
 const ListViewWordsTitlebar = () => {
     const { filteredWords, handleOpen } = useWordsContext();
     return (
-        <GtkHeaderBar titleWidget={<GtkLabel label={`${filteredWords.length.toLocaleString()} lines`} />}>
+        <GtkHeaderBar titleWidget={<GtkLabel label={`${filteredWords.length} lines`} />}>
             <GtkHeaderBar.PackStart>
                 <GtkButton label="_Open" useUnderline onClicked={handleOpen} />
             </GtkHeaderBar.PackStart>
