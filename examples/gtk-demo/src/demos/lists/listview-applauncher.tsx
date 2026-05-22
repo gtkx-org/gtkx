@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useCallback, useEffect, useState } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
 
 interface AppItem {
@@ -13,7 +13,7 @@ interface AppItem {
     icon: Gio.Icon | null;
 }
 
-const ListViewApplauncherDemo = () => {
+const ListViewApplauncherDemo = ({ window }: DemoProps) => {
     const [apps, setApps] = useState<AppItem[]>([]);
 
     useEffect(() => {
@@ -26,6 +26,10 @@ const ListViewApplauncherDemo = () => {
         }));
         setApps(appItems);
     }, []);
+
+    useEffect(() => {
+        window.current?.setTitle("Application Launcher");
+    }, [window]);
 
     const handleActivate = useCallback(
         (position: number) => {
