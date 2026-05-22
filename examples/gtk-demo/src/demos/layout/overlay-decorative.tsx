@@ -8,7 +8,7 @@ import decor2Path from "./decor2.png";
 import sourceCode from "./overlay-decorative.tsx?raw";
 
 const OverlayDecorativeDemo = () => {
-    const [margin, setMargin] = useState(100);
+    const [margin, setMargin] = useState(0);
 
     const decor1 = useMemo(() => Gdk.Texture.newFromFilename(decor1Path), []);
     const decor2 = useMemo(() => Gdk.Texture.newFromFilename(decor2Path), []);

@@ -51,11 +51,11 @@ describe("overlayDecorativeDemo overlay structure", () => {
 });
 
 describe("overlayDecorativeDemo scale behavior", () => {
-    it("initialises the scale at 100 with a 0..100 range and step of 1", async () => {
+    it("initialises the scale at 0 with a 0..100 range and step of 1", async () => {
         await renderDemo(overlayDecorativeDemo);
         const scale = (await screen.findByName("margin-scale")) as Gtk.Scale;
         const adjustment = scale.getAdjustment();
-        expect(adjustment.getValue()).toBe(100);
+        expect(adjustment.getValue()).toBe(0);
         expect(adjustment.getLower()).toBe(0);
         expect(adjustment.getUpper()).toBe(100);
         expect(adjustment.getStepIncrement()).toBe(1);
@@ -69,7 +69,7 @@ describe("overlayDecorativeDemo scale behavior", () => {
         await renderDemo(overlayDecorativeDemo);
         const scale = (await screen.findByName("margin-scale")) as Gtk.Scale;
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        expect(textView.getLeftMargin()).toBe(100);
+        expect(textView.getLeftMargin()).toBe(0);
         const adjustment = scale.getAdjustment();
         await act(() => adjustment.setValue(25));
         await fireEvent(scale, "value-changed");
