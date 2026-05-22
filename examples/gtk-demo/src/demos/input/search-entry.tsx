@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkHeaderBar, GtkLabel, GtkSearchBar, GtkSearchEntry, GtkToggleButton } from "@gtkx/react";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./search-entry.tsx?raw";
 
@@ -53,6 +53,9 @@ const SearchEntryTitlebar = () => {
 
 const SearchEntryDemo = ({ window }: DemoProps) => {
     const { searchText, setSearchText, searchMode, setSearchMode } = useSearchEntryContext();
+    useEffect(() => {
+        window.current?.setTitle("Type to Search");
+    }, [window]);
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
             <GtkSearchBar
