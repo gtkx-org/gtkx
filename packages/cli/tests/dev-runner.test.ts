@@ -158,12 +158,8 @@ describe("createDevRunner (MCP lifecycle)", () => {
 
     it("tears down the dev server and MCP client when the runtime stops", async () => {
         const harness = buildHarness();
-        let resolveStopped!: () => void;
-        harness.whenStopped.mockReturnValueOnce(
-            new Promise<void>((resolve) => {
-                resolveStopped = resolve;
-            }),
-        );
+        const { promise: whenStoppedPromise, resolve: resolveStopped } = Promise.withResolvers<void>();
+        harness.whenStopped.mockReturnValueOnce(whenStoppedPromise);
 
         const runner = createDevRunner(harness.deps);
         await runner.run("/abs/src/main.tsx");

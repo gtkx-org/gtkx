@@ -23,7 +23,7 @@ export interface GTypeStamped {
  */
 export abstract class NativeObject implements GTypeStamped {
     /** Runtime GType of the underlying GObject or boxed instance. */
-    __gtype__!: GType;
+    declare __gtype__: GType;
 }
 
 /**

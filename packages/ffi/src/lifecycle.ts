@@ -5,10 +5,7 @@ const KEEP_ALIVE_INTERVAL = 2147483647;
 let keepAliveTimeout: ReturnType<typeof setTimeout> | null = null;
 let stopped = false;
 
-let resolveStopped!: () => void;
-const stoppedPromise = new Promise<void>((resolve) => {
-    resolveStopped = resolve;
-});
+const { promise: stoppedPromise, resolve: resolveStopped } = Promise.withResolvers<void>();
 
 const keepAlive = (): void => {
     keepAliveTimeout = setTimeout(keepAlive, KEEP_ALIVE_INTERVAL);
