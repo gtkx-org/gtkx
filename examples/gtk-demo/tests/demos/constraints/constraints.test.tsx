@@ -1,13 +1,13 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { describe, expect, it } from "vitest";
-import { constraintsDemo } from "../../../src/demos/constraints/constraints.js";
+import { constraintsDemo, SimpleConstraintGrid } from "../../../src/demos/constraints/constraints.js";
 import { expectDemoMetadata, renderDemo } from "../../helpers/render-demo.js";
 
-const findBox = (root: Gtk.Widget): Gtk.Box | null => {
-    if (root instanceof Gtk.Box && root.getFirstChild() instanceof Gtk.Button) return root;
+const findGrid = (root: Gtk.Widget): SimpleConstraintGrid | null => {
+    if (root instanceof SimpleConstraintGrid) return root;
     let child = root.getFirstChild();
     while (child) {
-        const found = findBox(child);
+        const found = findGrid(child);
         if (found) return found;
         child = child.getNextSibling();
     }
@@ -27,18 +27,17 @@ describe("constraintsDemo metadata", () => {
 });
 
 describe("constraintsDemo layout", () => {
-    it("attaches a GtkConstraintLayout manager to the container box", async () => {
+    it("mounts the registered SimpleConstraintGrid subclass as the demo's root widget", async () => {
         const { container } = await renderDemo(constraintsDemo);
-        const box = findBox(container);
-        expect(box).toBeInstanceOf(Gtk.Box);
-        const layoutManager = box?.getLayoutManager();
-        expect(layoutManager).toBeInstanceOf(Gtk.ConstraintLayout);
+        const grid = findGrid(container);
+        expect(grid).toBeInstanceOf(SimpleConstraintGrid);
+        expect(grid?.getLayoutManager()).toBeInstanceOf(Gtk.ConstraintLayout);
     });
 
     it("registers a single named spacing guide on the layout", async () => {
         const { container } = await renderDemo(constraintsDemo);
-        const box = findBox(container);
-        const layout = box?.getLayoutManager() as Gtk.ConstraintLayout;
+        const grid = findGrid(container);
+        const layout = grid?.getLayoutManager() as Gtk.ConstraintLayout;
 
         const guides: Gtk.ConstraintGuide[] = [];
         const observer = layout.observeGuides();
@@ -65,8 +64,8 @@ describe("constraintsDemo layout", () => {
 
     it("adds many constraints to the layout", async () => {
         const { container } = await renderDemo(constraintsDemo);
-        const box = findBox(container);
-        const layout = box?.getLayoutManager() as Gtk.ConstraintLayout;
+        const grid = findGrid(container);
+        const layout = grid?.getLayoutManager() as Gtk.ConstraintLayout;
 
         const observer = layout.observeConstraints();
         const count = observer.getNItems();
@@ -75,13 +74,13 @@ describe("constraintsDemo layout", () => {
 });
 
 describe("constraintsDemo children", () => {
-    it("renders the three child buttons inside the constrained box", async () => {
+    it("renders the three child buttons inside the SimpleConstraintGrid", async () => {
         const { container } = await renderDemo(constraintsDemo);
-        const box = findBox(container);
-        if (!box) throw new Error("box not found");
+        const grid = findGrid(container);
+        if (!grid) throw new Error("grid not found");
 
         const labels: string[] = [];
-        let child = box.getFirstChild();
+        let child = grid.getFirstChild();
         while (child) {
             if (child instanceof Gtk.Button) labels.push(child.getLabel() ?? "");
             child = child.getNextSibling();

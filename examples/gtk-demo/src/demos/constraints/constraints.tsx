@@ -1,21 +1,12 @@
+import { registerClass } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { useLayoutEffect, useRef } from "react";
+import { registerCustomElement } from "@gtkx/react";
 import type { Demo } from "../types.js";
-import { ThreeButtonsBox } from "./_shared.js";
 import sourceCode from "./constraints.tsx?raw";
 
-type ConstraintTarget = Gtk.Widget | Gtk.ConstraintGuide | null;
+const SIMPLE_GRID_TYPE_NAME = "GtkxSimpleConstraintGrid";
 
-const createSpaceGuide = (layout: Gtk.ConstraintLayout) => {
-    const guide = new Gtk.ConstraintGuide();
-    guide.setName("space");
-    guide.setMinSize(10, 10);
-    guide.setNatSize(100, 10);
-    guide.setMaxSize(200, 20);
-    guide.setStrength(Gtk.ConstraintStrength.STRONG);
-    layout.addGuide(guide);
-    return guide;
-};
+type ConstraintTarget = Gtk.Widget | Gtk.ConstraintGuide | null;
 
 interface ConstraintArgs {
     target: ConstraintTarget;
@@ -42,21 +33,30 @@ const addConstraint = (layout: Gtk.ConstraintLayout, args: ConstraintArgs) => {
     );
 };
 
-interface ConstraintRefs {
-    button1: Gtk.Button;
-    button2: Gtk.Button;
-    button3: Gtk.Button;
+const buildSpaceGuide = (layout: Gtk.ConstraintLayout): Gtk.ConstraintGuide => {
+    const guide = new Gtk.ConstraintGuide();
+    guide.setName("space");
+    guide.setMinSize(10, 10);
+    guide.setNatSize(100, 10);
+    guide.setMaxSize(200, 20);
+    guide.setStrength(Gtk.ConstraintStrength.STRONG);
+    layout.addGuide(guide);
+    return guide;
+};
+
+interface ConstraintBuildArgs {
+    layout: Gtk.ConstraintLayout;
+    button1: Gtk.Widget;
+    button2: Gtk.Widget;
+    button3: Gtk.Widget;
     guide: Gtk.ConstraintGuide;
 }
 
-const addAllConstraints = (layout: Gtk.ConstraintLayout, refs: ConstraintRefs) => {
-    const { button1, button2, button3, guide } = refs;
+const buildConstraints = ({ layout, button1, button2, button3, guide }: ConstraintBuildArgs): void => {
     const A = Gtk.ConstraintAttribute;
-
     layout.addConstraint(
         Gtk.Constraint.newConstant(button1, A.WIDTH, Gtk.ConstraintRelation.LE, 200, Gtk.ConstraintStrength.REQUIRED),
     );
-
     const constraints: ConstraintArgs[] = [
         { target: button1, targetAttribute: A.START, source: null, sourceAttribute: A.START, constant: 8 },
         { target: button1, targetAttribute: A.WIDTH, source: button2, sourceAttribute: A.WIDTH, constant: 0 },
@@ -76,34 +76,62 @@ const addAllConstraints = (layout: Gtk.ConstraintLayout, refs: ConstraintRefs) =
     for (const c of constraints) addConstraint(layout, c);
 };
 
-const ConstraintsDemo = () => {
-    const containerRef = useRef<Gtk.Box | null>(null);
-    const button1Ref = useRef<Gtk.Button | null>(null);
-    const button2Ref = useRef<Gtk.Button | null>(null);
-    const button3Ref = useRef<Gtk.Button | null>(null);
-
-    useLayoutEffect(() => {
-        const container = containerRef.current;
-        const button1 = button1Ref.current;
-        const button2 = button2Ref.current;
-        const button3 = button3Ref.current;
-        if (!container || !button1 || !button2 || !button3) return;
-
+/**
+ * JS subclass of `Gtk.Widget` registered with the GObject type system via
+ * {@link registerClass}, mirroring upstream's `SimpleGrid` (see
+ * `demos/gtk-demo/constraints.c` at GTK 4.22.4). The subclass owns its own
+ * `GtkConstraintLayout`, attaches three `GtkButton` children at `constructed`
+ * time, and unparents them in `dispose`.
+ *
+ * Paired with {@link registerCustomElement} below, the registered GType is
+ * exposed as a JSX intrinsic element of the same name, so the demo can mount
+ * the subclass with plain JSX (`<SimpleConstraintGrid hexpand vexpand />`).
+ */
+export class SimpleConstraintGrid extends Gtk.Widget {
+    constructed(): void {
         const layout = new Gtk.ConstraintLayout();
-        container.setLayoutManager(layout);
-        const guide = createSpaceGuide(layout);
-        addAllConstraints(layout, { button1, button2, button3, guide });
-    }, []);
+        this.setLayoutManager(layout);
 
-    return (
-        <ThreeButtonsBox
-            containerRef={containerRef}
-            button1Ref={button1Ref}
-            button2Ref={button2Ref}
-            button3Ref={button3Ref}
-        />
-    );
-};
+        const button1 = Gtk.Button.newWithLabel("Child 1");
+        const button2 = Gtk.Button.newWithLabel("Child 2");
+        const button3 = Gtk.Button.newWithLabel("Child 3");
+        button1.setParent(this);
+        button2.setParent(this);
+        button3.setParent(this);
+
+        const guide = buildSpaceGuide(layout);
+        buildConstraints({ layout, button1, button2, button3, guide });
+    }
+
+    dispose(): void {
+        let child: Gtk.Widget | null = this.getFirstChild();
+        while (child) {
+            const next: Gtk.Widget | null = child.getNextSibling();
+            child.unparent();
+            child = next;
+        }
+    }
+}
+
+registerClass(SimpleConstraintGrid, { gtypeName: SIMPLE_GRID_TYPE_NAME });
+registerCustomElement(SIMPLE_GRID_TYPE_NAME, SimpleConstraintGrid);
+
+declare module "react" {
+    namespace JSX {
+        interface IntrinsicElements {
+            GtkxSimpleConstraintGrid: {
+                hexpand?: boolean;
+                vexpand?: boolean;
+                ref?: React.Ref<Gtk.Widget>;
+                children?: React.ReactNode;
+            };
+        }
+    }
+}
+
+const GtkxSimpleConstraintGrid = SIMPLE_GRID_TYPE_NAME;
+
+const ConstraintsDemo = () => <GtkxSimpleConstraintGrid hexpand vexpand />;
 
 export const constraintsDemo: Demo = {
     id: "constraints",

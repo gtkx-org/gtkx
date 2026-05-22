@@ -3,11 +3,11 @@ import {
     type RegisterClassNativeOptions,
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
-import { CONSTRUCTION_META } from "./construction-meta.js";
+import { CONSTRUCTION_META, registerConstructionMeta } from "./construction-meta.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID, typeInterfaces } from "./gtype.js";
-import { getClassStruct, getParentClass, type NativeClass } from "./handles.js";
-import { getClassGType, registerNativeClass } from "./registry.js";
+import { getClassStruct, getParentClass, type NativeClass, type NativeHandle } from "./handles.js";
+import { getClassGType, getNativeObject, registerNativeClass } from "./registry.js";
 
 /**
  * Generated descriptor of a class vfunc slot. Codegen emits one per vfunc
@@ -112,8 +112,41 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
     const newGtype: GType = nativeRegisterClass(name, parentGType, nativeOptions);
     registerNativeClass(klass, newGtype);
+    inheritConstructionMeta(klass, newGtype);
 
     return klass;
+}
+
+/**
+ * Mirrors the parent's GObject construction metadata onto the new subclass
+ * with the freshly registered GType. Without this entry, calling
+ * `new MySubclass(props)` would throw because `constructNativeObject` looks
+ * up `CONSTRUCTION_META` keyed by the runtime constructor. The subclass
+ * itself contributes no new GObject properties — those are auto-discovered
+ * via the prototype chain by `walkPropsForGObject` — so an empty `props`
+ * map is enough; only `gtype` needs to be rebound to the new GType.
+ */
+function inheritConstructionMeta(klass: NativeClass, newGtype: GType): void {
+    const parentMeta = findGObjectConstructionMeta(getParentClass(klass));
+    if (!parentMeta) return;
+    const gtypeNumber = Number(newGtype);
+    registerConstructionMeta(klass, {
+        kind: "gobject",
+        gtype: () => gtypeNumber,
+        props: {},
+    });
+}
+
+function findGObjectConstructionMeta(
+    klass: NativeClass | null,
+): Extract<ReturnType<NonNullable<typeof CONSTRUCTION_META.get>>, { kind: "gobject" }> | null {
+    let current = klass;
+    while (current) {
+        const meta = CONSTRUCTION_META.get(current);
+        if (meta?.kind === "gobject") return meta;
+        current = getParentClass(current);
+    }
+    return null;
 }
 
 function hasRegisteredAncestor(klass: NativeClass): boolean {
@@ -154,9 +187,32 @@ function discoverClassVfuncs(klass: NativeClass): DiscoveredClassVfunc[] {
         if (!descriptor) continue;
         const fn = proto[methodName];
         if (!fn) continue;
-        result.push({ ...descriptor, methodName, fn });
+        result.push({ ...descriptor, methodName, fn: wrapVfunc(fn, descriptor.argTypes) });
     }
     return result;
+}
+
+/**
+ * Wraps a JS-side vfunc implementation so the native trampoline can hand it
+ * raw `ExternalObject<NativeHandle>` arguments and the user code receives
+ * fully-typed JS wrappers. The first object-typed argument — the GObject
+ * `self` for any instance vfunc — is also bound as `this`, so subclass
+ * authors can write `this.setLayoutManager(...)` in a vfunc body exactly the
+ * way they would in any other instance method.
+ */
+function wrapVfunc(fn: VfuncFn, argTypes: RegisterClassVfuncDefinition["argTypes"]): VfuncFn {
+    return ((...rawArgs: unknown[]) => {
+        const wrapped: unknown[] = rawArgs.map((arg, i) => {
+            if (arg == null) return arg;
+            const argType = argTypes[i] as { type?: string } | undefined;
+            if (argType?.type === "gobject") {
+                return getNativeObject(arg as NativeHandle);
+            }
+            return arg;
+        });
+        const self = wrapped[0] ?? null;
+        return (fn as (this: unknown, ...args: unknown[]) => unknown).apply(self, wrapped);
+    }) as VfuncFn;
 }
 
 /**
@@ -196,10 +252,11 @@ function discoverInterfaceVfuncs(
         if (!descriptor || (descriptor as { kind?: string }).kind !== "interface") continue;
         const fn = proto[methodName];
         if (!fn) continue;
+        const ifaceDescriptor = descriptor as RegisterClassInterfaceVfuncDescriptor;
         result.push({
-            ...(descriptor as RegisterClassInterfaceVfuncDescriptor),
+            ...ifaceDescriptor,
             methodName,
-            fn,
+            fn: wrapVfunc(fn, ifaceDescriptor.argTypes),
         });
     }
     return result;
