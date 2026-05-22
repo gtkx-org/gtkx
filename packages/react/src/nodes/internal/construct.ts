@@ -1,4 +1,4 @@
-import { CLASS_BY_TYPE_NAME, type NativeClass } from "../../generated/internal.js";
+import { G_TYPE_INVALID, getNativeClass, type NativeClass, typeFromName } from "@gtkx/ffi/gobject";
 import type { Container, Props } from "../../types.js";
 import { camelToSnake } from "./naming.js";
 
@@ -13,7 +13,8 @@ import { camelToSnake } from "./naming.js";
  * @param typeName - GLib type name (e.g. `"GtkLabel"`)
  */
 export function resolveNativeClass(typeName: string): NativeClass | null {
-    return CLASS_BY_TYPE_NAME.get(typeName) ?? null;
+    const gtype = typeFromName(typeName);
+    return gtype === G_TYPE_INVALID ? null : getNativeClass(gtype);
 }
 
 /**

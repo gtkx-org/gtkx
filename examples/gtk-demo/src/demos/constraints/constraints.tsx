@@ -1,6 +1,5 @@
 import { registerClass } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { registerCustomElement } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./constraints.tsx?raw";
 
@@ -83,9 +82,10 @@ const buildConstraints = ({ layout, button1, button2, button3, guide }: Constrai
  * `GtkConstraintLayout`, attaches three `GtkButton` children at `constructed`
  * time, and unparents them in `dispose`.
  *
- * Paired with {@link registerCustomElement} below, the registered GType is
- * exposed as a JSX intrinsic element of the same name, so the demo can mount
- * the subclass with plain JSX (`<SimpleConstraintGrid hexpand vexpand />`).
+ * The registered GType name doubles as the JSX intrinsic element name, so
+ * the demo can mount the subclass with plain JSX
+ * (`<GtkxSimpleConstraintGrid hexpand vexpand />`); the reconciler resolves
+ * the class via `g_type_from_name` on the JSX tag.
  */
 export class SimpleConstraintGrid extends Gtk.Widget {
     constructed(): void {
@@ -114,7 +114,6 @@ export class SimpleConstraintGrid extends Gtk.Widget {
 }
 
 registerClass(SimpleConstraintGrid, { gtypeName: SIMPLE_GRID_TYPE_NAME });
-registerCustomElement(SIMPLE_GRID_TYPE_NAME, SimpleConstraintGrid);
 
 declare module "react" {
     namespace JSX {

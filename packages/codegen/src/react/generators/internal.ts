@@ -1,10 +1,10 @@
 /**
  * Internal Generator
  *
- * Generates internal.ts for the reconciler.
- * Contains runtime prop/signal resolution maps, the construct-only set per
- * class, and a flat GLib-type-name to class registry used to instantiate
- * containers from JSX intrinsic type strings.
+ * Generates internal.ts for the reconciler. Emits runtime prop/signal
+ * resolution maps and the construct-only set per class, plus bare
+ * side-effect imports of every contributing FFI namespace so loading the
+ * module registers their GLib types with the runtime registry.
  */
 
 import type { FileBuilder } from "../../builders/index.js";
@@ -33,14 +33,15 @@ export class InternalGenerator {
         file.add(
             raw(
                 "/**\n" +
-                    " * Internal metadata for the reconciler: runtime prop/signal resolution,\n" +
-                    " * construct-only property sets, and the GLib-type-name to class registry.\n" +
+                    " * Internal metadata for the reconciler: runtime prop/signal resolution\n" +
+                    " * and construct-only property sets.\n" +
                     " *\n" +
-                    " * Also namespace-imports every FFI namespace that contributes a\n" +
+                    " * Also side-effect-imports every FFI namespace that contributes a\n" +
                     " * reconcilable element, so importing this module registers their GLib\n" +
-                    " * types and the reconciler can resolve any generated intrinsic element\n" +
-                    " * by name. The package marks this module in `sideEffects` so bundlers\n" +
-                    " * preserve those imports.\n" +
+                    " * types with the runtime registry and the reconciler can resolve any\n" +
+                    " * generated intrinsic element by name via `g_type_from_name`. The\n" +
+                    " * package marks this module in `sideEffects` so bundlers preserve those\n" +
+                    " * imports.\n" +
                     " *\n" +
                     " * Not part of the public API.\n" +
                     " */\n",
@@ -50,11 +51,9 @@ export class InternalGenerator {
         const items = this.collectClassItems();
 
         this.addNamespaceImports(file);
-        this.emitNativeClassType(file);
         this.generatePropsMap(file, items);
         this.generateSignalsMap(file, items);
         this.generateConstructOnlyMap(file, items);
-        this.generateClassByTypeName(file, items);
     }
 
     private collectClassItems(): ClassItem[] {
@@ -90,12 +89,8 @@ export class InternalGenerator {
 
     private addNamespaceImports(file: FileBuilder): void {
         for (const namespace of this.collectNamespaces()) {
-            file.addNamespaceImport(`@gtkx/ffi/${namespace.toLowerCase()}`, namespace);
+            file.addSideEffectImport(`@gtkx/ffi/${namespace.toLowerCase()}`);
         }
-    }
-
-    private emitNativeClassType(file: FileBuilder): void {
-        file.add(raw("export type NativeClass = abstract new (...args: never[]) => unknown;\n"));
     }
 
     private generatePropsMap(file: FileBuilder, items: readonly ClassItem[]): void {
@@ -142,18 +137,6 @@ export class InternalGenerator {
                 type: "Record<string, ReadonlySet<string>>",
                 doc: "Construct-only camelCase prop names per GLib type name.",
                 initializer: (writer: Writer) => writeConstructOnlyObject(writer, entries),
-            }),
-        );
-    }
-
-    private generateClassByTypeName(file: FileBuilder, items: readonly ClassItem[]): void {
-        file.add(
-            variableStatement("CLASS_BY_TYPE_NAME", {
-                exported: true,
-                kind: "const",
-                type: "ReadonlyMap<string, NativeClass>",
-                doc: "GLib type name to JS class registry for every reconcilable element.",
-                initializer: (writer: Writer) => writeClassByTypeName(writer, items),
             }),
         );
     }
@@ -230,19 +213,4 @@ function writeConstructOnlyObject(
             writer.writeLine(`${jsxName}: new Set([${setLiteral}]),`);
         }
     });
-}
-
-function writeClassByTypeName(writer: Writer, items: readonly ClassItem[]): void {
-    if (items.length === 0) {
-        writer.write("new Map()");
-        return;
-    }
-
-    writer.writeLine("new Map([");
-    writer.withIndent(() => {
-        for (const { jsxName, namespace, className } of items) {
-            writer.writeLine(`["${jsxName}", ${namespace}.${className}],`);
-        }
-    });
-    writer.write("])");
 }

@@ -38,11 +38,13 @@ describe("InternalGenerator / generate", () => {
 });
 
 describe("InternalGenerator / FFI namespace imports", () => {
-    it("namespace-imports every namespace that contributes a reconcilable element", () => {
+    it("side-effect-imports every namespace that contributes a reconcilable element", () => {
         const adwMeta = createCodegenWidgetMeta({ className: "Bin", jsxName: "AdwBin", namespace: "Adw" });
         const code = generateCode([createWidgetMeta(), adwMeta]);
-        expect(code).toContain('import * as Adw from "@gtkx/ffi/adw";');
-        expect(code).toContain('import * as Gtk from "@gtkx/ffi/gtk";');
+        expect(code).toContain('import "@gtkx/ffi/adw";');
+        expect(code).toContain('import "@gtkx/ffi/gtk";');
+        expect(code).not.toContain('import * as Adw');
+        expect(code).not.toContain('import * as Gtk');
     });
 });
 

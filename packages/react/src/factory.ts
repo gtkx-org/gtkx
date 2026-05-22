@@ -1,5 +1,4 @@
-import type { GType } from "@gtkx/ffi/gobject";
-import { typeFromName } from "@gtkx/ffi/gobject";
+import { type GType, typeFromName } from "@gtkx/ffi/gobject";
 import { collectTypeNameChain } from "./metadata.js";
 import type { Node } from "./node.js";
 import { resolveNativeClass } from "./nodes/internal/construct.js";
