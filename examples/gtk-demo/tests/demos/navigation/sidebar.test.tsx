@@ -45,15 +45,17 @@ describe("sidebarDemo", () => {
         expect(page.getTitle()).toBe("Welcome to GTK");
     });
 
-    it("renders a GtkPicture on the first page and labels on other pages", async () => {
+    it("renders a GtkImage on the first page and labels on other pages", async () => {
         const { container } = await renderDemo(sidebarDemo);
         const stack = findFirst(container, (w): w is Gtk.Stack => w instanceof Gtk.Stack);
         if (!stack) throw new Error("stack widget not found");
 
         const welcome = stack.getChildByName("Welcome to GTK");
         if (!welcome) throw new Error("welcome page missing");
-        const picture = findFirst(welcome, (w): w is Gtk.Picture => w instanceof Gtk.Picture);
-        expect(picture).toBeInstanceOf(Gtk.Picture);
+        const image = findFirst(welcome, (w): w is Gtk.Image => w instanceof Gtk.Image);
+        expect(image).toBeInstanceOf(Gtk.Image);
+        expect(image?.getPixelSize()).toBe(256);
+        expect(image?.hasCssClass("icon-dropshadow")).toBe(true);
 
         const scrolling = stack.getChildByName("Scrolling");
         if (!scrolling) throw new Error("scrolling page missing");

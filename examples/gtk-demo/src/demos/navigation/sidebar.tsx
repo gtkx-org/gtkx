@@ -1,9 +1,9 @@
-import * as Gdk from "@gtkx/ffi/gdk";
+import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkPicture, GtkStack, GtkStackSidebar } from "@gtkx/react";
+import { GtkBox, GtkImage, GtkLabel, GtkStack, GtkStackSidebar } from "@gtkx/react";
 import { useMemo, useState } from "react";
-import gtkLogoSvgPath from "../drawing/gtk-logo.svg";
 import type { Demo } from "../types.js";
+import demoIconPath from "./org.gtk.Demo4.svg";
 import sourceCode from "./sidebar.tsx?raw";
 
 const pages = [
@@ -18,13 +18,9 @@ const pages = [
     "Page 9",
 ];
 
-/**
- * Stack Sidebar demo matching the official GTK gtk-demo.
- * Shows a GtkStackSidebar controlling a GtkStack with multiple pages.
- */
 const SidebarDemo = () => {
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
-    const gtkLogo = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoSvgPath), []);
+    const demoIcon = useMemo<Gio.Icon>(() => Gio.FileIcon.new(Gio.fileNewForPath(demoIconPath)), []);
 
     return (
         <GtkBox>
@@ -33,11 +29,9 @@ const SidebarDemo = () => {
                 {pages.map((title, index) => (
                     <GtkStack.Page key={title} id={title} title={title}>
                         {index === 0 ? (
-                            <GtkPicture
-                                paintable={gtkLogo}
-                                widthRequest={256}
-                                heightRequest={256}
-                                canShrink
+                            <GtkImage
+                                gicon={demoIcon}
+                                pixelSize={256}
                                 cssClasses={["icon-dropshadow"]}
                                 halign={Gtk.Align.CENTER}
                                 valign={Gtk.Align.CENTER}
