@@ -25,7 +25,7 @@ const toKebabCase = (str: string): string =>
  *
  * @example
  * ```tsx
- * import { app } from "./application.js";
+ * const app = useApplication();
  * const activeWindow = useProperty(app, "activeWindow");
  * const title = useProperty(activeWindow, "title");
  * ```

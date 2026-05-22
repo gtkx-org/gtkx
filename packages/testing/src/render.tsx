@@ -1,7 +1,7 @@
 import { stop } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, reconciler } from "@gtkx/react";
+import { ApplicationContext, GtkApplicationWindow, reconciler } from "@gtkx/react";
 import type { ReactNode } from "react";
 import type Reconciler from "react-reconciler";
 import { bindQueries } from "./bind-queries.js";
@@ -32,24 +32,14 @@ const handleError = (error: Error): void => {
     lastRenderError = error;
 };
 
-const ensureInitialized = (
-    providedApp?: Gtk.Application,
-): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
+const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
     if (!application) {
-        application =
-            providedApp ??
-            new Gtk.Application({
-                application_id: "org.gtkx.testing",
-                flags: Gio.ApplicationFlags.NON_UNIQUE,
-            });
-        if (!application.getIsRegistered()) {
-            application.register(null);
-            application.activate();
-        }
-    } else if (providedApp && providedApp !== application) {
-        throw new Error(
-            "render() received a different `app` than the one already in use; only one application per test process is supported",
-        );
+        application = new Gtk.Application({
+            application_id: "org.gtkx.testing",
+            flags: Gio.ApplicationFlags.NON_UNIQUE,
+        });
+        application.register(null);
+        application.activate();
     }
 
     if (!container) {
@@ -120,24 +110,25 @@ const wrapElement = (element: ReactNode, wrapper: RenderOptions["wrapper"]): Rea
  * @see {@link screen} for global query access
  */
 export const render = async (element: ReactNode, options?: RenderOptions): Promise<RenderResult> => {
-    const { app: application, container: fiberRoot } = ensureInitialized(options?.app);
+    const { app: application, container: fiberRoot } = ensureInitialized();
     const baseElement: Container = options?.baseElement ?? application;
     const wrapper = options?.wrapper ?? true;
 
     const wrappedElement = wrapElement(element, wrapper);
-    await update(wrappedElement, fiberRoot);
+    const withContext = <ApplicationContext.Provider value={application}>{wrappedElement}</ApplicationContext.Provider>;
+    await update(withContext, fiberRoot);
 
     setScreenRoot(application);
 
     return {
-        app: application,
         container: resolveContainer(baseElement),
         baseElement,
         ...bindQueries(baseElement),
         unmount: () => update(null, fiberRoot),
         rerender: async (newElement: ReactNode) => {
             const wrapped = wrapElement(newElement, wrapper);
-            await update(wrapped, fiberRoot);
+            const withCtx = <ApplicationContext.Provider value={application}>{wrapped}</ApplicationContext.Provider>;
+            await update(withCtx, fiberRoot);
         },
         debug: () => {
             console.log(prettyWidget(application));

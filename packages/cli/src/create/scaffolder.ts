@@ -254,7 +254,6 @@ const scaffoldProject = (deps: ScaffolderDeps, projectPath: string, resolved: Re
     deps.fs.writeFileSync(join(projectPath, "gtkx.config.ts"), deps.render("gtkx.config.ts.ejs", context));
     deps.fs.writeFileSync(join(projectPath, "tsconfig.json"), deps.render("tsconfig.json.ejs", context));
     deps.fs.writeFileSync(join(projectPath, "src", "app.tsx"), deps.render("src/app.tsx.ejs", context));
-    deps.fs.writeFileSync(join(projectPath, "src", "application.ts"), deps.render("src/application.ts.ejs", context));
     deps.fs.writeFileSync(join(projectPath, "src", "index.tsx"), deps.render("src/index.tsx.ejs", context));
     deps.fs.writeFileSync(join(projectPath, "src", "gtkx-env.d.ts"), deps.render("src/gtkx-env.d.ts.ejs", context));
     deps.fs.writeFileSync(join(projectPath, ".gitignore"), deps.render("gitignore.ejs", context));

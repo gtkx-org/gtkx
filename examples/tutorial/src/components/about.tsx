@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AdwAboutDialog, createPortal, useProperty } from "@gtkx/react";
-import { app } from "../application.js";
+import { AdwAboutDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
 
 export const About = ({ onClose }: { onClose: () => void }) => {
+    const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
     if (!activeWindow) return null;

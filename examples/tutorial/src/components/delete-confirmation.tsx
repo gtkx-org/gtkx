@@ -1,6 +1,5 @@
 import * as Adw from "@gtkx/ffi/adw";
-import { AdwAlertDialog, createPortal, useProperty } from "@gtkx/react";
-import { app } from "../application.js";
+import { AdwAlertDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
 
 export const DeleteConfirmation = ({
     noteTitle,
@@ -11,6 +10,7 @@ export const DeleteConfirmation = ({
     onConfirm: () => void;
     onCancel: () => void;
 }) => {
+    const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
     if (!activeWindow) return null;

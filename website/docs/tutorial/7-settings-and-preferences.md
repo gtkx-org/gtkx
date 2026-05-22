@@ -81,11 +81,12 @@ import {
     AdwComboRow,
     AdwSpinRow,
     createPortal,
+    useApplication,
     useProperty,
 } from "@gtkx/react";
-import { app } from "./application.js";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
+    const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
     if (!activeWindow) return null;
@@ -168,10 +169,10 @@ The third argument selects the GSettings getter/setter used to read and write th
 The `useProperty` hook subscribes to any GObject property via the `notify::` signal. It returns the current value and re-renders whenever the property changes.
 
 ```tsx
-import { useProperty } from "@gtkx/react";
-import { app } from "./application.js";
+import { useApplication, useProperty } from "@gtkx/react";
 
 function WindowTitle() {
+    const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
     const title = useProperty(activeWindow, "title");
 
@@ -196,6 +197,7 @@ Here's a complete preferences dialog that reads and writes GSettings values. The
 import schemaId from "../com.example.notes.gschema.xml";
 
 const Preferences = ({ onClose }: { onClose: () => void }) => {
+    const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
     const [compactMode, setCompactMode] = useSetting(schemaId, "compact-mode", "boolean");

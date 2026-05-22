@@ -7,11 +7,11 @@ GTKX supports rendering content outside the normal component tree using portals,
 Render a component into a different container—typically used for dialogs that need to appear as children of the active window:
 
 ```tsx
-import { createPortal, useProperty } from "@gtkx/react";
+import { createPortal, useApplication, useProperty } from "@gtkx/react";
 import { useState } from "react";
-import { app } from "./application.js";
 
 const MyComponent = () => {
+    const app = useApplication();
     const [open, setOpen] = useState(false);
     const activeWindow = useProperty(app, "activeWindow");
 
@@ -23,5 +23,3 @@ const MyComponent = () => {
     );
 };
 ```
-
-The `app` import refers to the `Gtk.Application` instance you constructed in your entry module — typically a dedicated `application.ts` file that the entry imports and passes to `render()`. Components import the same module to access the application directly.

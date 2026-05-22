@@ -17,10 +17,10 @@ import {
     GtkToggleButton,
     GtkWindow,
     quit,
+    useApplication,
     useProperty,
 } from "@gtkx/react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { app } from "./application.js";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
@@ -66,6 +66,7 @@ interface DemoWindowProps {
 
 const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const { currentDemo } = useDemo();
+    const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
     const windowRef = useRef<Gtk.Window>(null);
     const activeWindowRef = useRef<Gtk.Window | null>(null);
@@ -316,6 +317,7 @@ const MainWindow = () => {
     const [showAbout, setShowAbout] = useState(false);
     const [notebookPage, setNotebookPage] = useState(0);
     const { demoWindows, openWindow, closeWindow } = useDemoWindows();
+    const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
     const windowTitle = currentDemo ? parseTitle(currentDemo.title).displayTitle : "GTK Demo";

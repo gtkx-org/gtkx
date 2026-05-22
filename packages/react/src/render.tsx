@@ -1,8 +1,52 @@
 import { stop } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { reconciler } from "./reconciler.js";
+
+/**
+ * React Context providing access to the GTK Application instance.
+ *
+ * Use {@link useApplication} to access the application in components.
+ *
+ * @example
+ * ```tsx
+ * const App = () => {
+ *   const app = useApplication();
+ *   console.log(app.applicationId);
+ *   return <GtkLabel label="Hello" />;
+ * };
+ * ```
+ */
+export const ApplicationContext = createContext<Gtk.Application | null>(null);
+
+/**
+ * Hook to access the GTK Application instance.
+ *
+ * Must be called within a component rendered by {@link render}.
+ * Throws an error if called outside the application context.
+ *
+ * @returns The GTK Application instance
+ *
+ * @example
+ * ```tsx
+ * const MyComponent = () => {
+ *   const app = useApplication();
+ *   return <GtkLabel label={app.applicationId} />;
+ * };
+ * ```
+ *
+ * @see {@link ApplicationContext} for the underlying context
+ */
+export const useApplication = (): Gtk.Application => {
+    const context = useContext(ApplicationContext);
+
+    if (!context) {
+        throw new Error("Expected ApplicationContext: useApplication must be called within Application");
+    }
+
+    return context;
+};
 
 let container: unknown = null;
 
@@ -23,6 +67,7 @@ let container: unknown = null;
  *
  * @example
  * ```tsx
+ * import * as Gio from "@gtkx/ffi/gio";
  * import * as Gtk from "@gtkx/ffi/gtk";
  * import { render, quit } from "@gtkx/react";
  *
@@ -32,7 +77,7 @@ let container: unknown = null;
  *   </GtkApplicationWindow>
  * );
  *
- * const app = new Gtk.Application({ application_id: "com.example.myapp" });
+ * const app = new Gtk.Application(Gio.ApplicationFlags.NON_UNIQUE, "com.example.myapp");
  * render(<App />, app);
  * ```
  *
@@ -61,7 +106,12 @@ export const render = (element: ReactNode, app: Gtk.Application): void => {
         () => {},
     );
 
-    reconciler.updateContainer(element, container, null, () => {});
+    reconciler.updateContainer(
+        <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
+        container,
+        null,
+        () => {},
+    );
 };
 
 /**

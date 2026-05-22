@@ -112,18 +112,6 @@ export type RenderOptions = {
      * Provide a specific widget or application to scope queries.
      */
     baseElement?: Container;
-    /**
-     * The GTK application hosting the rendered tree.
-     *
-     * When provided, the reconciler is rooted on this application instead of
-     * the internal `org.gtkx.testing` singleton. Pass the same `Gtk.Application`
-     * the component under test imports so module-level `app` references resolve
-     * to a registered, activated application with live windows.
-     *
-     * Only honored on the first call within a process — subsequent calls in the
-     * same process reuse the application set on the first call.
-     */
-    app?: Gtk.Application;
 };
 
 /**
@@ -189,8 +177,6 @@ export type BoundQueries = {
  * Provides query methods and utilities for testing rendered components.
  */
 export type RenderResult = BoundQueries & {
-    /** The GTK application hosting the rendered tree */
-    app: Gtk.Application;
     /** The direct container widget wrapping the rendered content */
     container: Gtk.Widget;
     /** The element queries are bound to (defaults to the GTK Application) */

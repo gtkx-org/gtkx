@@ -1,7 +1,7 @@
 import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, quit, render } from "@gtkx/react";
+import { GtkApplicationWindow, quit, render, useApplication } from "@gtkx/react";
 import { Component, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -48,12 +48,17 @@ describe("render and quit", () => {
             }
         }
 
-        render(
-            <ErrorBoundary>
-                <Boom />
-            </ErrorBoundary>,
-            app,
-        );
+        let resolvedApp: Gtk.Application | null = null;
+        const Probe = (): ReactNode => {
+            resolvedApp = useApplication();
+            return (
+                <ErrorBoundary>
+                    <Boom />
+                </ErrorBoundary>
+            );
+        };
+
+        render(<Probe />, app);
         await new Promise((resolve) => setTimeout(resolve, 0));
 
         const messages = errorSpy.mock.calls.map((call) => String(call[0])).join("\n");
@@ -61,6 +66,7 @@ describe("render and quit", () => {
         errorSpy.mockRestore();
 
         expect(app.getIsRegistered()).toBe(true);
+        expect(resolvedApp).toBe(app);
 
         quit();
         await new Promise((resolve) => setTimeout(resolve, 100));

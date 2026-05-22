@@ -9,10 +9,9 @@ Let's add confirmation dialogs for destructive actions and smooth animations for
 Use `AdwAlertDialog` with the `responses` prop and `createPortal` to show it on the active window:
 
 ```tsx
-import { AdwAlertDialog, createPortal, useProperty } from "@gtkx/react";
+import { AdwAlertDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
 import * as Adw from "@gtkx/ffi/adw";
 import { useState } from "react";
-import { app } from "./application.js";
 
 const DeleteConfirmation = ({
     noteTitle,
@@ -23,6 +22,7 @@ const DeleteConfirmation = ({
     onConfirm: () => void;
     onCancel: () => void;
 }) => {
+    const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
     if (!activeWindow) return null;
@@ -305,10 +305,10 @@ Every GNOME app should have an About dialog, accessible from the primary menu. U
 
 ```tsx
 import * as Gtk from "@gtkx/ffi/gtk";
-import { AdwAboutDialog, createPortal, useProperty } from "@gtkx/react";
-import { app } from "./application.js";
+import { AdwAboutDialog, createPortal, useApplication, useProperty } from "@gtkx/react";
 
 const About = ({ onClose }: { onClose: () => void }) => {
+    const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
 
     if (!activeWindow) return null;
