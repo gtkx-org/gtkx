@@ -123,16 +123,16 @@ const ImagesDemo = ({ window }: DemoProps) => {
             marginBottom={16}
         >
             <GtkBox name="image-strip" spacing={16} sensitive={!insensitive}>
-                <ImagesPanel title="Image">
+                <ImagesPanel title="Image from a resource">
                     <GtkImage file={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
                 </ImagesPanel>
-                <ImagesPanel title="Animation">
+                <ImagesPanel title="Animation from a resource">
                     <GtkPicture paintable={gifPaintable} canShrink widthRequest={150} heightRequest={150} />
                 </ImagesPanel>
-                <ImagesPanel title="Symbolic icon">
+                <ImagesPanel title="Symbolic themed icon">
                     <GtkImage gicon={getSymbolicIcon()} iconSize={Gtk.IconSize.LARGE} />
                 </ImagesPanel>
-                <ImagesPanel title="Progressive">
+                <ImagesPanel title="Stateful icon">
                     <GtkPicture
                         paintable={progressiveTexture}
                         canShrink
@@ -141,11 +141,11 @@ const ImagesDemo = ({ window }: DemoProps) => {
                         alternativeText="A slowly loading image"
                     />
                 </ImagesPanel>
-                <ImagesPanel title="Video">
+                <ImagesPanel title="Displaying video">
                     <GtkVideo autoplay loop widthRequest={200} heightRequest={150} file={videoFile} />
                 </ImagesPanel>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Paintable" cssClasses={["heading"]} />
+                    <GtkLabel label="GtkWidgetPaintable" cssClasses={["heading"]} />
                     <GtkPicture
                         paintable={widgetPaintable}
                         widthRequest={100}

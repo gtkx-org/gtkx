@@ -25,7 +25,14 @@ describe("imagesDemo metadata", () => {
         const { container } = await renderDemo(imagesDemo);
         const labels = findAllOfType(container, Gtk.Label).map((l) => l.getLabel());
         expect(labels).toEqual(
-            expect.arrayContaining(["Image", "Animation", "Symbolic icon", "Progressive", "Video", "Paintable"]),
+            expect.arrayContaining([
+                "Image from a resource",
+                "Animation from a resource",
+                "Symbolic themed icon",
+                "Stateful icon",
+                "Displaying video",
+                "GtkWidgetPaintable",
+            ]),
         );
     });
 });
