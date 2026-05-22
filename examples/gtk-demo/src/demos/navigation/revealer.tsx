@@ -86,7 +86,7 @@ export const revealerDemo: Demo = {
     id: "revealer",
     title: "Revealer",
     description: "GtkRevealer is a container that animates showing and hiding of its sole child with nice transitions.",
-    keywords: ["revealer", "GtkRevealer"],
+    keywords: ["gtkrevealer"],
     component: RevealerDemo,
     sourceCode,
     defaultWidth: 300,

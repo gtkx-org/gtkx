@@ -31,8 +31,6 @@ describe("searchEntryDemo metadata", () => {
         expect(searchEntryDemo.title).toBe("Entry/Search Entry");
         expect(typeof searchEntryDemo.sourceCode).toBe("string");
         expect(searchEntryDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(searchEntryDemo.keywords).toContain("search");
-        expect(searchEntryDemo.keywords).toContain("filter");
         expect(searchEntryDemo.component).toBeTypeOf("function");
     });
 });

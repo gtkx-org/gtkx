@@ -9,9 +9,7 @@ describe("cssPixbufsDemo", () => {
         expect(cssPixbufsDemo.id).toBe("css-pixbufs");
         expect(cssPixbufsDemo.title).toBe("Theming/Animated Backgrounds");
         expect(cssPixbufsDemo.description.length).toBeGreaterThan(0);
-        expect(cssPixbufsDemo.keywords).toEqual(
-            expect.arrayContaining(["css", "animation", "keyframes", "gradient", "background"]),
-        );
+        expect(cssPixbufsDemo.keywords).toEqual(expect.arrayContaining([]));
         expect(typeof cssPixbufsDemo.sourceCode).toBe("string");
         expect(cssPixbufsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(cssPixbufsDemo.defaultWidth).toBe(400);

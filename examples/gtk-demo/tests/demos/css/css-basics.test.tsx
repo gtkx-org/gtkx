@@ -9,9 +9,7 @@ describe("cssBasicsDemo metadata", () => {
         expect(cssBasicsDemo.id).toBe("css-basics");
         expect(cssBasicsDemo.title).toBe("Theming/CSS Basics");
         expect(cssBasicsDemo.description.length).toBeGreaterThan(0);
-        expect(cssBasicsDemo.keywords).toEqual(
-            expect.arrayContaining(["css", "style", "theme", "theming", "GtkCssProvider"]),
-        );
+        expect(cssBasicsDemo.keywords).toEqual(expect.arrayContaining([]));
         expect(typeof cssBasicsDemo.sourceCode).toBe("string");
         expect(cssBasicsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(cssBasicsDemo.defaultWidth).toBe(400);

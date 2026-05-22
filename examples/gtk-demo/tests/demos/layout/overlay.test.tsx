@@ -10,7 +10,7 @@ describe("overlayDemo metadata", () => {
         expect(overlayDemo.id).toBe("overlay");
         expect(overlayDemo.title).toBe("Overlay/Interactive Overlay");
         expect(overlayDemo.description.length).toBeGreaterThan(0);
-        expect(overlayDemo.keywords).toEqual(expect.arrayContaining(["overlay", "GtkOverlay", "layer", "stack"]));
+        expect(overlayDemo.keywords).toEqual(expect.arrayContaining(["gtkoverlay"]));
         expect(typeof overlayDemo.sourceCode).toBe("string");
         expect(overlayDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(overlayDemo.defaultWidth).toBe(500);

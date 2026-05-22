@@ -22,7 +22,6 @@ describe("constraintsVflDemo", () => {
         });
         expect(typeof constraintsVflDemo.sourceCode).toBe("string");
         expect(constraintsVflDemo.defaultWidth).toBe(260);
-        expect(constraintsVflDemo.keywords).toContain("VFL");
     });
 
     it("attaches a GtkConstraintLayout manager to the container box", async () => {

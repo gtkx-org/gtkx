@@ -36,8 +36,8 @@ export const themingStyleClassesDemo: Demo = {
     id: "theming-style-classes",
     title: "Theming/Style Classes",
     description:
-        "GTK uses CSS for theming. Style classes can be associated with widgets to inform the theme about intended rendering.",
-    keywords: ["css", "classes", "theming", "linked", "destructive", "suggested"],
+        "GTK uses CSS for theming. Style classes can be associated with widgets to inform the theme about intended rendering.\n\nThis demo shows some common examples where theming features of GTK are used for certain effects: primary toolbars and linked buttons.",
+    keywords: [],
     component: ThemingStyleClassesDemo,
     sourceCode,
 };

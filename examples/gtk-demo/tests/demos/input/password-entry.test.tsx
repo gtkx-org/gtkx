@@ -31,8 +31,6 @@ describe("passwordEntryDemo metadata", () => {
         expect(passwordEntryDemo.title).toBe("Entry/Password Entry");
         expect(typeof passwordEntryDemo.sourceCode).toBe("string");
         expect(passwordEntryDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(passwordEntryDemo.keywords).toContain("password");
-        expect(passwordEntryDemo.keywords).toContain("peek");
         expect(passwordEntryDemo.component).toBeTypeOf("function");
     });
 });

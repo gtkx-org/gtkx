@@ -173,8 +173,8 @@ export const imagesDemo: Demo = {
     id: "images",
     title: "Images",
     description:
-        "GtkImage and GtkPicture are used to display an image; the image can be in a number of formats. GtkImage is the widget used to display icons or images that should be sized and styled like an icon, while GtkPicture is used for images that should be displayed as-is.",
-    keywords: ["GdkPaintable", "GtkWidgetPaintable", "GtkImage", "GtkPicture", "GtkVideo", "GdkPixbufLoader"],
+        "GtkImage and GtkPicture are used to display an image; the image can be in a number of formats.\n\nGtkImage is the widget used to display icons or images that should be sized and styled like an icon, while GtkPicture is used for images that should be displayed as-is.\n\nThis demo code shows some of the more obscure cases, in the simple case a call to gtk_picture_new_for_file() or gtk_image_new_from_icon_name() is all you need.",
+    keywords: ["gdkpaintable", "gtkimage", "gtkpicture", "gtkwidgetpaintable"],
     component: ImagesDemo,
     sourceCode,
 };

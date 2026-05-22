@@ -10,7 +10,7 @@ describe("headerbarDemo metadata", () => {
         expect(headerbarDemo.title).toBe("Header Bar");
         expect(headerbarDemo.description.length).toBeGreaterThan(0);
         expect(headerbarDemo.keywords).toEqual(
-            expect.arrayContaining(["headerbar", "GtkHeaderBar", "GtkWindowHandle", "GtkWindowControls", "titlebar"]),
+            expect.arrayContaining(["gtkheaderbar", "gtkwindowcontrols", "gtkwindowhandle"]),
         );
         expect(typeof headerbarDemo.sourceCode).toBe("string");
         expect(headerbarDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);

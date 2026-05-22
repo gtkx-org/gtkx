@@ -38,7 +38,6 @@ describe("fontRenderingDemo metadata", () => {
         expect(typeof fontRenderingDemo.sourceCode).toBe("string");
         expect(fontRenderingDemo.defaultWidth).toBe(1024);
         expect(fontRenderingDemo.defaultHeight).toBe(768);
-        expect(fontRenderingDemo.keywords).toContain("antialiasing");
     });
 
     it("registers titlebar and provider components on the demo", () => {

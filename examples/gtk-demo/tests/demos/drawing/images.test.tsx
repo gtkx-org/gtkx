@@ -14,7 +14,7 @@ describe("imagesDemo metadata", () => {
         expect(imagesDemo.title).toBe("Images");
         expect(imagesDemo.description.length).toBeGreaterThan(0);
         expect(imagesDemo.keywords).toEqual(
-            expect.arrayContaining(["GtkImage", "GtkPicture", "GtkVideo", "GdkPaintable"]),
+            expect.arrayContaining(["gdkpaintable", "gtkimage", "gtkpicture", "gtkwidgetpaintable"]),
         );
         expect(typeof imagesDemo.sourceCode).toBe("string");
         expect(imagesDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);

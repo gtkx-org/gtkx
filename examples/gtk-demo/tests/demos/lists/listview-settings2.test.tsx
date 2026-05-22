@@ -11,8 +11,6 @@ describe("listviewSettings2Demo metadata", () => {
             title: "Lists/Alternative Settings",
         });
         expect(typeof listviewSettings2Demo.sourceCode).toBe("string");
-        expect(listviewSettings2Demo.keywords).toContain("listview");
-        expect(listviewSettings2Demo.keywords).toContain("section");
         expect(listviewSettings2Demo.defaultWidth).toBe(640);
         expect(listviewSettings2Demo.defaultHeight).toBe(480);
         expect(listviewSettings2Demo.component).toBeTypeOf("function");

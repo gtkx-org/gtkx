@@ -10,9 +10,6 @@ describe("gesturesDemo metadata", () => {
         expectDemoMetadata(gesturesDemo, { id: "gestures", title: "Gestures" });
         expect(typeof gesturesDemo.sourceCode).toBe("string");
         expect(gesturesDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(gesturesDemo.keywords).toContain("gesture");
-        expect(gesturesDemo.keywords).toContain("rotate");
-        expect(gesturesDemo.keywords).toContain("multi-touch");
         expect(gesturesDemo.component).toBeTypeOf("function");
         expect(gesturesDemo.defaultWidth).toBe(400);
         expect(gesturesDemo.defaultHeight).toBe(400);

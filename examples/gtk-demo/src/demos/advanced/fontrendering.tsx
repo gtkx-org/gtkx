@@ -794,8 +794,9 @@ const FontRenderingDemo = () => {
 export const fontRenderingDemo: Demo = {
     id: "fontrendering",
     title: "Pango/Font Rendering",
-    description: "Explore font rendering options: hinting, antialiasing, and subpixel rendering",
-    keywords: ["font", "rendering", "hinting", "antialiasing", "subpixel", "cairo", "pango", "text", "typography"],
+    description:
+        "Demonstrates various aspects of font rendering, such as hinting, antialiasing and grid alignment.\n\nThe demo lets you explore font rendering options interactively to get a feeling for they affect the shape and positioning of the glyphs.",
+    keywords: [],
     component: FontRenderingDemo,
     titlebar: FontRenderingTitlebar,
     provider: FontRenderingProvider,

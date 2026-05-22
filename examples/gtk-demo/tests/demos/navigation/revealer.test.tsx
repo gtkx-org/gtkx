@@ -24,7 +24,7 @@ describe("revealerDemo", () => {
         expect(typeof revealerDemo.sourceCode).toBe("string");
         expect(revealerDemo.defaultWidth).toBe(300);
         expect(revealerDemo.defaultHeight).toBe(300);
-        expect(revealerDemo.keywords).toContain("GtkRevealer");
+        expect(revealerDemo.keywords).toContain("gtkrevealer");
     });
 
     it("renders nine GtkRevealer widgets initially hidden", async () => {

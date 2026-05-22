@@ -10,8 +10,6 @@ describe("cursorsDemo metadata", () => {
         expectDemoMetadata(cursorsDemo, { id: "cursors", title: "Cursors" });
         expect(typeof cursorsDemo.sourceCode).toBe("string");
         expect(cursorsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(cursorsDemo.keywords).toContain("cursor");
-        expect(cursorsDemo.keywords).toContain("Gdk.Cursor");
         expect(cursorsDemo.component).toBeTypeOf("function");
         expect(cursorsDemo.defaultWidth).toBe(300);
         expect(cursorsDemo.defaultHeight).toBe(300);

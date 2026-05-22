@@ -73,7 +73,7 @@ export const overlayDecorativeDemo: Demo = {
     id: "overlay-decorative",
     title: "Overlay/Decorative Overlay",
     description: "Another example of an overlay with some decorative and some interactive controls.",
-    keywords: ["overlay", "badge", "ribbon", "watermark", "notification", "decorative", "layer", "GtkOverlay"],
+    keywords: ["gtkoverlay"],
     component: OverlayDecorativeDemo,
     sourceCode,
     defaultWidth: 500,

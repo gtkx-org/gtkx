@@ -14,9 +14,6 @@ describe("linksDemo", () => {
         expectDemoMetadata(linksDemo, { id: "links", title: "Links" });
         expect(typeof linksDemo.sourceCode).toBe("string");
         expect(linksDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(linksDemo.keywords).toContain("link");
-        expect(linksDemo.keywords).toContain("hyperlink");
-        expect(linksDemo.keywords).toContain("keynav");
         expect(linksDemo.component).toBeTypeOf("function");
     });
 

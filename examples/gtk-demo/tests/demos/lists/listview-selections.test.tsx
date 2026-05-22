@@ -9,8 +9,6 @@ describe("listviewSelectionsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expectDemoMetadata(listviewSelectionsDemo, { id: "listview-selections", title: "Lists/Selections" });
         expect(typeof listviewSelectionsDemo.sourceCode).toBe("string");
-        expect(listviewSelectionsDemo.keywords).toContain("dropdown");
-        expect(listviewSelectionsDemo.keywords).toContain("selection");
         expect(listviewSelectionsDemo.component).toBeTypeOf("function");
     });
 });

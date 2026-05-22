@@ -118,8 +118,8 @@ export const passwordEntryDemo: Demo = {
     id: "password-entry",
     title: "Entry/Password Entry",
     description:
-        "GtkPasswordEntry provides common functionality of entries that are used to enter passwords and other secrets. It will display a warning if CapsLock is on, and it can optionally provide a way to see the text.",
-    keywords: ["password", "entry", "secure", "GtkPasswordEntry", "peek"],
+        "GtkPasswordEntry provides common functionality of entries that are used to enter passwords and other secrets.\n\nIt will display a warning if CapsLock is on, and it can optionally provide a way to see the text.",
+    keywords: ["gtkpasswordentry"],
     component: PasswordEntryDemo,
     titlebar: PasswordEntryTitlebar,
     provider: PasswordEntryProvider,

@@ -67,8 +67,6 @@ describe("hypertextDemo metadata", () => {
         expect(hypertextDemo.title).toBe("Text View/Hypertext");
         expect(typeof hypertextDemo.sourceCode).toBe("string");
         expect(hypertextDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(hypertextDemo.keywords).toContain("hypertext");
-        expect(hypertextDemo.keywords).toContain("clickable");
         expect(hypertextDemo.defaultWidth).toBe(330);
         expect(hypertextDemo.defaultHeight).toBe(330);
         expect(hypertextDemo.component).toBeTypeOf("function");

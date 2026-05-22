@@ -150,7 +150,7 @@ export const videoPlayerDemo: Demo = {
     id: "video-player",
     title: "Video Player",
     description: "This is a simple video player using just GTK widgets.",
-    keywords: ["video", "player", "media", "GtkVideo", "GtkMediaStream", "GtkMediaFile"],
+    keywords: ["gdkpaintable", "gtkmediacontrols", "gtkmediafile", "gtkmediastream", "gtkvideo"],
     component: VideoPlayerDemo,
     titlebar: VideoPlayerTitlebar,
     provider: VideoPlayerProvider,

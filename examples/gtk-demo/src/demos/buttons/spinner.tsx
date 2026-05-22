@@ -40,7 +40,7 @@ export const spinnerDemo: Demo = {
     id: "spinner",
     title: "Spinner",
     description: "GtkSpinner allows to show that background activity is on-going.",
-    keywords: ["spinner", "GtkSpinner"],
+    keywords: ["gtkspinner"],
     component: SpinnerDemo,
     sourceCode,
 };

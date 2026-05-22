@@ -1744,8 +1744,9 @@ const ShadertoyDemo = () => {
 export const shadertoyDemo: Demo = {
     id: "shadertoy",
     title: "OpenGL/Shadertoy",
-    description: "Generate pixels using a custom fragment shader.",
-    keywords: ["opengl", "gl", "shader", "glsl", "shadertoy", "fragment", "GtkGLArea"],
+    description:
+        "Generate pixels using a custom fragment shader.\n\nThe names of the uniforms are compatible with the shaders on shadertoy.com, so many of the shaders there work here too.",
+    keywords: ["gtkglarea"],
     component: ShadertoyDemo,
     sourceCode,
     defaultWidth: 690,

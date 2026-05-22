@@ -16,8 +16,7 @@ describe("pageSetupDemo", () => {
         expectDemoMetadata(pageSetupDemo, { id: "pagesetup", title: "Printing/Page Setup" });
         expect(typeof pageSetupDemo.sourceCode).toBe("string");
         expect(pageSetupDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(pageSetupDemo.keywords).toContain("page");
-        expect(pageSetupDemo.keywords).toContain("GtkPageSetupUnixDialog");
+        expect(pageSetupDemo.keywords).toContain("gtkpagesetupunixdialog");
         expect(pageSetupDemo.component).toBeTypeOf("function");
         expect(pageSetupDemo.dialogOnly).toBe(true);
     });

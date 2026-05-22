@@ -9,8 +9,6 @@ describe("listviewFilebrowserDemo", () => {
     it("exposes the expected metadata", () => {
         expectDemoMetadata(listviewFilebrowserDemo, { id: "listview-filebrowser", title: "Lists/File browser" });
         expect(typeof listviewFilebrowserDemo.sourceCode).toBe("string");
-        expect(listviewFilebrowserDemo.keywords).toContain("listview");
-        expect(listviewFilebrowserDemo.keywords).toContain("gridview");
         expect(listviewFilebrowserDemo.defaultWidth).toBe(600);
         expect(listviewFilebrowserDemo.defaultHeight).toBe(400);
         expect(listviewFilebrowserDemo.component).toBeTypeOf("function");

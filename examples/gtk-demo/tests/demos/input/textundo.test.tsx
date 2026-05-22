@@ -39,8 +39,6 @@ describe("textundoDemo", () => {
         expect(textundoDemo.title).toBe("Text View/Undo and Redo");
         expect(typeof textundoDemo.sourceCode).toBe("string");
         expect(textundoDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(textundoDemo.keywords).toContain("undo");
-        expect(textundoDemo.keywords).toContain("redo");
         expect(textundoDemo.defaultWidth).toBe(330);
         expect(textundoDemo.defaultHeight).toBe(330);
         expect(textundoDemo.component).toBeTypeOf("function");

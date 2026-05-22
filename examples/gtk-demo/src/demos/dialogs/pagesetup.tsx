@@ -48,7 +48,7 @@ export const pageSetupDemo: Demo = {
     id: "pagesetup",
     title: "Printing/Page Setup",
     description: "GtkPageSetupUnixDialog can be used if page setup is needed independent of a full printing dialog.",
-    keywords: ["page", "setup", "paper", "size", "orientation", "GtkPageSetup", "GtkPageSetupUnixDialog", "print"],
+    keywords: ["gtkpagesetup", "gtkpagesetupunixdialog"],
     component: PageSetupDemo,
     sourceCode,
     dialogOnly: true,

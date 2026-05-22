@@ -339,8 +339,8 @@ export const listboxControlsDemo: Demo = {
     id: "listbox-controls",
     title: "List Box/Controls",
     description:
-        "GtkListBox is well-suited for creating button strips — lists of controls for use in preference dialogs or settings panels.",
-    keywords: ["listbox", "controls", "switch", "check", "scale", "spinbutton", "dropdown", "entry", "rich-list"],
+        "GtkListBox is well-suited for creating “button strips” — lists of controls for use in preference dialogs or settings panels. To create this style of list, use the .rich-list style class.",
+    keywords: ["gtklistbox"],
     component: ListBoxControlsDemo,
     sourceCode,
     defaultHeight: 400,

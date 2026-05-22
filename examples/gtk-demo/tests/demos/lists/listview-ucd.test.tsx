@@ -9,8 +9,6 @@ describe("listviewUcdDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expectDemoMetadata(listviewUcdDemo, { id: "listview-ucd", title: "Lists/Characters" });
         expect(typeof listviewUcdDemo.sourceCode).toBe("string");
-        expect(listviewUcdDemo.keywords).toContain("listview");
-        expect(listviewUcdDemo.keywords).toContain("unicode");
         expect(listviewUcdDemo.defaultWidth).toBe(800);
         expect(listviewUcdDemo.defaultHeight).toBe(400);
         expect(listviewUcdDemo.component).toBeTypeOf("function");

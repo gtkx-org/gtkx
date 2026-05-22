@@ -36,8 +36,6 @@ describe("textviewDemo metadata", () => {
         expect(textviewDemo.title).toBe("Text View/Multiple Views");
         expect(typeof textviewDemo.sourceCode).toBe("string");
         expect(textviewDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(textviewDemo.keywords).toContain("textview");
-        expect(textviewDemo.keywords).toContain("buffer");
         expect(textviewDemo.defaultWidth).toBe(450);
         expect(textviewDemo.defaultHeight).toBe(450);
         expect(textviewDemo.component).toBeTypeOf("function");

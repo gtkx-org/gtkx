@@ -26,7 +26,6 @@ describe("textscrollDemo", () => {
         expect(textscrollDemo.title).toBe("Text View/Automatic Scrolling");
         expect(typeof textscrollDemo.sourceCode).toBe("string");
         expect(textscrollDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(textscrollDemo.keywords).toContain("scroll");
         expect(textscrollDemo.defaultWidth).toBe(600);
         expect(textscrollDemo.defaultHeight).toBe(400);
         expect(textscrollDemo.component).toBeTypeOf("function");

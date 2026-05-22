@@ -11,7 +11,7 @@ describe("videoPlayerDemo metadata", () => {
         expect(videoPlayerDemo.title).toBe("Video Player");
         expect(videoPlayerDemo.description.length).toBeGreaterThan(0);
         expect(videoPlayerDemo.keywords).toEqual(
-            expect.arrayContaining(["video", "player", "media", "GtkVideo", "GtkMediaFile"]),
+            expect.arrayContaining(["gdkpaintable", "gtkmediacontrols", "gtkmediafile", "gtkmediastream", "gtkvideo"]),
         );
         expect(typeof videoPlayerDemo.sourceCode).toBe("string");
         expect(videoPlayerDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);

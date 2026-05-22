@@ -13,9 +13,7 @@ describe("paintableSvgDemo", () => {
         expect(paintableSvgDemo.id).toBe("paintable-svg");
         expect(paintableSvgDemo.title).toBe("Paintable/SVG");
         expect(paintableSvgDemo.description.length).toBeGreaterThan(0);
-        expect(paintableSvgDemo.keywords).toEqual(
-            expect.arrayContaining(["paintable", "svg", "vector", "scalable", "graphics"]),
-        );
+        expect(paintableSvgDemo.keywords).toEqual(expect.arrayContaining(["gtkpicture", "gtksvg"]));
         expect(typeof paintableSvgDemo.sourceCode).toBe("string");
         expect(paintableSvgDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(paintableSvgDemo.defaultWidth).toBe(330);

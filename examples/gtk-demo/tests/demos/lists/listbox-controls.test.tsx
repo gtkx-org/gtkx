@@ -9,8 +9,6 @@ describe("listboxControlsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expectDemoMetadata(listboxControlsDemo, { id: "listbox-controls", title: "List Box/Controls" });
         expect(typeof listboxControlsDemo.sourceCode).toBe("string");
-        expect(listboxControlsDemo.keywords).toContain("listbox");
-        expect(listboxControlsDemo.keywords).toContain("controls");
         expect(listboxControlsDemo.defaultHeight).toBe(400);
         expect(listboxControlsDemo.component).toBeTypeOf("function");
     });

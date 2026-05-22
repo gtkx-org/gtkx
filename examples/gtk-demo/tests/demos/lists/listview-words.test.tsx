@@ -8,8 +8,6 @@ describe("listviewWordsDemo", () => {
     it("exposes the expected metadata", () => {
         expectDemoMetadata(listviewWordsDemo, { id: "listview-words", title: "Lists/Words" });
         expect(typeof listviewWordsDemo.sourceCode).toBe("string");
-        expect(listviewWordsDemo.keywords).toContain("listview");
-        expect(listviewWordsDemo.keywords).toContain("words");
         expect(listviewWordsDemo.defaultWidth).toBe(400);
         expect(listviewWordsDemo.defaultHeight).toBe(600);
         expect(listviewWordsDemo.component).toBeTypeOf("function");

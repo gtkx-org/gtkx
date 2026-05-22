@@ -10,9 +10,7 @@ describe("cssBlendmodesDemo metadata", () => {
         expect(cssBlendmodesDemo.id).toBe("css-blendmodes");
         expect(cssBlendmodesDemo.title).toBe("Theming/CSS Blend Modes");
         expect(cssBlendmodesDemo.description.length).toBeGreaterThan(0);
-        expect(cssBlendmodesDemo.keywords).toEqual(
-            expect.arrayContaining(["css", "blend", "mode", "multiply", "screen", "overlay"]),
-        );
+        expect(cssBlendmodesDemo.keywords).toEqual(expect.arrayContaining([]));
         expect(typeof cssBlendmodesDemo.sourceCode).toBe("string");
         expect(cssBlendmodesDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(cssBlendmodesDemo.defaultWidth).toBe(400);

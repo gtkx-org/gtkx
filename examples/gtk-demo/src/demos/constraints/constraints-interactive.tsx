@@ -132,8 +132,8 @@ export const constraintsInteractiveDemo: Demo = {
     id: "constraints-interactive",
     title: "Constraints/Interactive Constraints",
     description:
-        "Interactively reposition a guide to see GtkConstraintLayout react to constraint changes in real time.",
-    keywords: ["constraint", "layout", "GtkConstraintLayout", "GtkConstraint", "guide", "GtkLayoutManager"],
+        "This example shows how constraints can be updated during user interaction. The vertical edge between the buttons can be dragged with the mouse.",
+    keywords: ["gtkconstraintlayout"],
     component: ConstraintsInteractive,
     sourceCode,
     defaultWidth: 360,

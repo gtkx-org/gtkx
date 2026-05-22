@@ -9,9 +9,7 @@ describe("cssAccordionDemo", () => {
         expect(cssAccordionDemo.id).toBe("css-accordion");
         expect(cssAccordionDemo.title).toBe("Theming/CSS Accordion");
         expect(cssAccordionDemo.description.length).toBeGreaterThan(0);
-        expect(cssAccordionDemo.keywords).toEqual(
-            expect.arrayContaining(["css", "transition", "animation", "accordion", "hover"]),
-        );
+        expect(cssAccordionDemo.keywords).toEqual(expect.arrayContaining([]));
         expect(typeof cssAccordionDemo.sourceCode).toBe("string");
         expect(cssAccordionDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(cssAccordionDemo.defaultWidth).toBe(600);

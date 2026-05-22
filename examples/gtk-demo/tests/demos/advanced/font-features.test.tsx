@@ -51,8 +51,6 @@ describe("fontFeaturesDemo metadata", () => {
         expect(typeof fontFeaturesDemo.sourceCode).toBe("string");
         expect(fontFeaturesDemo.defaultWidth).toBe(600);
         expect(fontFeaturesDemo.defaultHeight).toBe(500);
-        expect(fontFeaturesDemo.keywords).toContain("font");
-        expect(fontFeaturesDemo.keywords).toContain("opentype");
     });
 });
 

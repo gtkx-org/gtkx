@@ -71,8 +71,8 @@ export const panesDemo: Demo = {
     id: "panes",
     title: "Paned Widgets",
     description:
-        "The GtkPaned Widget divides its content area into two panes with a divider in between that the user can adjust. A separate child is placed into each pane. GtkPaned widgets can be split horizontally or vertically. This test contains both a horizontal and a vertical GtkPaned widget.",
-    keywords: ["paned", "GtkPaned"],
+        "The GtkPaned Widget divides its content area into two panes with a divider in between that the user can adjust. A separate child is placed into each pane. GtkPaned widgets can be split horizontally or vertically. This test contains both a horizontal and a vertical GtkPaned widget.\n\nThere are a number of options that can be set for each pane. You can use the Inspector to adjust the options for each side of each widget.",
+    keywords: ["gtkpaned"],
     component: PanesDemo,
     sourceCode,
     defaultWidth: 330,

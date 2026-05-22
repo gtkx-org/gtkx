@@ -49,7 +49,7 @@ export const cssBasicsDemo: Demo = {
     title: "Theming/CSS Basics",
     description:
         "GTK themes are written using CSS. Every widget is build of multiple items that you can style very similarly to a regular website.",
-    keywords: ["css", "style", "theme", "theming", "GtkCssProvider"],
+    keywords: [],
     component: CssBasicsDemo,
     sourceCode,
     defaultWidth: 400,

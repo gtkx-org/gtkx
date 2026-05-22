@@ -204,8 +204,8 @@ export const listviewMinesweeperDemo: Demo = {
     id: "listview-minesweeper",
     title: "Lists/Minesweeper",
     description:
-        "Classic Minesweeper game using GridView. Click cells to reveal them. Numbers show adjacent mine count.",
-    keywords: ["gridview", "minesweeper", "game", "GtkGridView", "grid", "puzzle", "mines"],
+        "This demo shows how to develop a user interface for small game using a grid view.\n\nIt demonstrates how to use the activate signal and single-press behavior to implement rather different interaction behavior to a typical list.",
+    keywords: ["game", "glistmodel", "gtkgridview"],
     component: ListViewMinesweeperDemo,
     titlebar: ListViewMinesweeperTitlebar,
     provider: MinesweeperProvider,

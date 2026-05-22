@@ -84,8 +84,8 @@ export const searchEntryDemo: Demo = {
     id: "search-entry",
     title: "Entry/Search Entry",
     description:
-        "GtkSearchEntry provides an entry that is ready for search. Search entries have their search-changed signal delayed and should be used when the search operation is slow, such as big datasets to search, or online searches. GtkSearchBar allows have a hidden search entry that 'springs into action' upon keyboard input.",
-    keywords: ["search", "entry", "filter", "GtkSearchEntry", "GtkSearchBar"],
+        "GtkSearchEntry provides an entry that is ready for search.\n\nSearch entries have their \"search-changed\" signal delayed and should be used when the search operation is slow, such as big datasets to search, or online searches.\n\nGtkSearchBar allows have a hidden search entry that 'springs into action' upon keyboard input.",
+    keywords: ["gtksearchbar", "gtksearchentry"],
     component: SearchEntryDemo,
     titlebar: SearchEntryTitlebar,
     provider: SearchEntryProvider,

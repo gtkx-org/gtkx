@@ -29,8 +29,8 @@ describe("stackDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expectDemoMetadata(stackDemo, { id: "stack", title: "Stack" });
         expect(typeof stackDemo.sourceCode).toBe("string");
-        expect(stackDemo.keywords).toContain("GtkStack");
-        expect(stackDemo.keywords).toContain("GtkStackSwitcher");
+        expect(stackDemo.keywords).toContain("gtkstack");
+        expect(stackDemo.keywords).toContain("gtkstackswitcher");
     });
 });
 

@@ -9,9 +9,7 @@ describe("themingStyleClassesDemo", () => {
         expect(themingStyleClassesDemo.id).toBe("theming-style-classes");
         expect(themingStyleClassesDemo.title).toBe("Theming/Style Classes");
         expect(themingStyleClassesDemo.description.length).toBeGreaterThan(0);
-        expect(themingStyleClassesDemo.keywords).toEqual(
-            expect.arrayContaining(["css", "classes", "theming", "linked", "destructive", "suggested"]),
-        );
+        expect(themingStyleClassesDemo.keywords).toEqual(expect.arrayContaining([]));
         expect(typeof themingStyleClassesDemo.sourceCode).toBe("string");
         expect(themingStyleClassesDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(themingStyleClassesDemo.component).toBeTypeOf("function");

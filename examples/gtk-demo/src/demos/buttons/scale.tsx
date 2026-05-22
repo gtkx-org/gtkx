@@ -44,7 +44,7 @@ export const scaleDemo: Demo = {
     title: "Scales",
     description:
         "GtkScale is a way to select a value from a range. Scales can have marks to help pick special values, and they can also restrict the values that can be chosen.",
-    keywords: ["scale", "slider", "range", "GtkScale", "marks", "discrete", "plain"],
+    keywords: ["gtkscale"],
     component: ScaleDemo,
     sourceCode,
 };

@@ -10,9 +10,7 @@ describe("cssMultiplebgsDemo", () => {
         expect(cssMultiplebgsDemo.id).toBe("css-multiplebgs");
         expect(cssMultiplebgsDemo.title).toBe("Theming/Multiple Backgrounds");
         expect(cssMultiplebgsDemo.description.length).toBeGreaterThan(0);
-        expect(cssMultiplebgsDemo.keywords).toEqual(
-            expect.arrayContaining(["css", "background", "gradient", "layers", "multiple"]),
-        );
+        expect(cssMultiplebgsDemo.keywords).toEqual(expect.arrayContaining([]));
         expect(typeof cssMultiplebgsDemo.sourceCode).toBe("string");
         expect(cssMultiplebgsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(cssMultiplebgsDemo.defaultWidth).toBe(400);

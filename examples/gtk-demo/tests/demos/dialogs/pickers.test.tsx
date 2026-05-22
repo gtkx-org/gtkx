@@ -10,10 +10,7 @@ describe("pickersDemo metadata", () => {
         expectDemoMetadata(pickersDemo, { id: "pickers", title: "Pickers and Launchers" });
         expect(typeof pickersDemo.sourceCode).toBe("string");
         expect(pickersDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(pickersDemo.keywords).toContain("color");
-        expect(pickersDemo.keywords).toContain("font");
-        expect(pickersDemo.keywords).toContain("file");
-        expect(pickersDemo.keywords).toContain("GtkUriLauncher");
+        expect(pickersDemo.keywords).toContain("gtkurilauncher");
         expect(pickersDemo.component).toBeTypeOf("function");
     });
 });

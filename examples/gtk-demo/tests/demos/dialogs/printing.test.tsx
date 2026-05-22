@@ -8,14 +8,13 @@ describe("printingDemo", () => {
         expectDemoMetadata(printingDemo, { id: "printing", title: "Printing/Printing" });
         expect(typeof printingDemo.sourceCode).toBe("string");
         expect(printingDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(printingDemo.keywords).toContain("print");
-        expect(printingDemo.keywords).toContain("GtkPrintOperation");
+        expect(printingDemo.keywords).toContain("gtkprintoperation");
         expect(printingDemo.component).toBeTypeOf("function");
         expect(printingDemo.dialogOnly).toBe(true);
     });
 
     it("declares the print-related keywords", () => {
-        expect(printingDemo.keywords).toEqual(expect.arrayContaining(["print", "printing", "dialog"]));
+        expect(printingDemo.keywords).toEqual(expect.arrayContaining(["gtkprintoperation"]));
     });
 
     it("includes the actual source code as a non-empty string with PrintOperation usage", () => {

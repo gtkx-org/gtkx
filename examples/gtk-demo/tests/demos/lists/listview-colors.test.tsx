@@ -8,8 +8,6 @@ describe("listviewColorsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expectDemoMetadata(listviewColorsDemo, { id: "listview-colors", title: "Lists/Colors" });
         expect(typeof listviewColorsDemo.sourceCode).toBe("string");
-        expect(listviewColorsDemo.keywords).toContain("gridview");
-        expect(listviewColorsDemo.keywords).toContain("colors");
         expect(listviewColorsDemo.defaultWidth).toBe(600);
         expect(listviewColorsDemo.defaultHeight).toBe(400);
         expect(listviewColorsDemo.component).toBeTypeOf("function");

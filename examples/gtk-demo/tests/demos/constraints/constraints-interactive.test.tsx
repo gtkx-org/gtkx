@@ -32,7 +32,7 @@ describe("constraintsInteractiveDemo metadata", () => {
         });
         expect(typeof constraintsInteractiveDemo.sourceCode).toBe("string");
         expect(constraintsInteractiveDemo.defaultWidth).toBe(360);
-        expect(constraintsInteractiveDemo.keywords).toContain("GtkConstraintLayout");
+        expect(constraintsInteractiveDemo.keywords).toContain("gtkconstraintlayout");
     });
 });
 

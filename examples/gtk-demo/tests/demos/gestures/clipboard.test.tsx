@@ -15,8 +15,7 @@ describe("clipboardDemo metadata", () => {
         expectDemoMetadata(clipboardDemo, { id: "clipboard", title: "Clipboard" });
         expect(typeof clipboardDemo.sourceCode).toBe("string");
         expect(clipboardDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(clipboardDemo.keywords).toContain("clipboard");
-        expect(clipboardDemo.keywords).toContain("GdkClipboard");
+        expect(clipboardDemo.keywords).toContain("gdkclipboard");
         expect(clipboardDemo.component).toBeTypeOf("function");
     });
 });

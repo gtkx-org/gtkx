@@ -44,8 +44,8 @@ export const stackDemo: Demo = {
     id: "stack",
     title: "Stack",
     description:
-        "GtkStack is a container that shows a single child at a time, with nice transitions when the visible child changes. GtkStackSwitcher adds buttons to control which child is visible.",
-    keywords: ["stack", "GtkStack", "GtkStackSwitcher", "StackPage", "transition"],
+        "GtkStack is a container that shows a single child at a time, with nice transitions when the visible child changes.\n\nGtkStackSwitcher adds buttons to control which child is visible.",
+    keywords: ["gtkstack", "gtkstackswitcher"],
     component: StackDemo,
     sourceCode,
 };

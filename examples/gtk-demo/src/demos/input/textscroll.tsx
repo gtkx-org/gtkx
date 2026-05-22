@@ -79,7 +79,7 @@ export const textscrollDemo: Demo = {
     title: "Text View/Automatic Scrolling",
     description:
         "This example demonstrates how to use the gravity of GtkTextMarks to keep a text view scrolled to the bottom while appending text.",
-    keywords: ["scroll", "textview", "GtkTextMark", "GtkScrolledWindow", "automatic"],
+    keywords: ["gtkscrolledwindow", "gtktextmarks", "gtktextview"],
     component: TextScrollDemo,
     sourceCode,
     defaultWidth: 600,

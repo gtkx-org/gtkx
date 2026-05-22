@@ -10,9 +10,7 @@ describe("sizegroupDemo metadata", () => {
         expect(sizegroupDemo.id).toBe("sizegroup");
         expect(sizegroupDemo.title).toBe("Size Groups");
         expect(sizegroupDemo.description.length).toBeGreaterThan(0);
-        expect(sizegroupDemo.keywords).toEqual(
-            expect.arrayContaining(["sizegroup", "size", "width", "alignment", "GtkSizeGroup"]),
-        );
+        expect(sizegroupDemo.keywords).toEqual(expect.arrayContaining(["gtk_fill", "gtksizegroup", "gtktable"]));
         expect(typeof sizegroupDemo.sourceCode).toBe("string");
         expect(sizegroupDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(sizegroupDemo.component).toBeTypeOf("function");

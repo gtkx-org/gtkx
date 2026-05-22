@@ -787,8 +787,9 @@ const ListViewColorsDemo = () => {
 export const listviewColorsDemo: Demo = {
     id: "listview-colors",
     title: "Lists/Colors",
-    description: "GridView showing generated colors with multi-selection, sorting, and various display styles",
-    keywords: ["gridview", "colors", "palette", "GtkGridView", "selection", "sort", "multi-select"],
+    description:
+        "This demo displays a grid of colors.\n\nIt is using a GtkGridView, and shows how to display and sort the data in various ways. The controls for this are implemented using GtkDropDown.\n\nThe dataset used here has up to 16 777 216 items.\n\nNote that this demo also functions as a performance test for some of the list model machinery, and the biggest sizes here can lock up the application for extended times when used with sorting.",
+    keywords: ["gtkdropdown", "gtkgridview", "gtkmultiselection", "gtksortlistmodel"],
     component: ListViewColorsDemo,
     titlebar: ColorsHeader,
     provider: ListViewColorsProvider,

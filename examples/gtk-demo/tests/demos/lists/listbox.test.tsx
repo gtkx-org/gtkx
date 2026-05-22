@@ -10,8 +10,7 @@ describe("listboxDemo metadata", () => {
         expectDemoMetadata(listboxDemo, { id: "listbox", title: "List Box/Complex" });
         expect(typeof listboxDemo.sourceCode).toBe("string");
         expect(listboxDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(listboxDemo.keywords).toContain("listbox");
-        expect(listboxDemo.keywords).toContain("GtkListBox");
+        expect(listboxDemo.keywords).toContain("gtklistbox");
         expect(listboxDemo.defaultWidth).toBe(400);
         expect(listboxDemo.defaultHeight).toBe(600);
         expect(listboxDemo.component).toBeTypeOf("function");

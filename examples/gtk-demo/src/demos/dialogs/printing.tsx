@@ -144,7 +144,7 @@ export const printingDemo: Demo = {
     id: "printing",
     title: "Printing/Printing",
     description: "GtkPrintOperation offers a simple API to support printing in a cross-platform way.",
-    keywords: ["print", "printing", "dialog", "GtkPrintOperation"],
+    keywords: ["gtkprintoperation"],
     component: PrintingDemo,
     sourceCode,
     dialogOnly: true,

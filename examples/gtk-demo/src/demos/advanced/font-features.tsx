@@ -1141,18 +1141,9 @@ const FontFeaturesDemo = ({ window }: DemoProps) => {
 export const fontFeaturesDemo: Demo = {
     id: "font-features",
     title: "Pango/Font Explorer",
-    description: "Explore OpenType font features and variable font axes",
-    keywords: [
-        "font",
-        "opentype",
-        "typography",
-        "ligatures",
-        "small caps",
-        "figures",
-        "pango",
-        "font-feature-settings",
-        "css",
-    ],
+    description:
+        "This example demonstrates support for OpenType font features with Pango attributes. The attributes can be used manually or via Pango markup.\n\nIt can also be used to explore available features in OpenType fonts and their effect.\n\nIf the selected font supports OpenType font variations, then the axes are also offered for customization.",
+    keywords: ["pango"],
     component: FontFeaturesDemo,
     titlebar: FontFeaturesTitlebar,
     provider: FontFeaturesProvider,

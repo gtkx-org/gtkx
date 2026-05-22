@@ -288,8 +288,8 @@ export const listviewSettings2Demo: Demo = {
     id: "listview-settings2",
     title: "Lists/Alternative Settings",
     description:
-        "An alternative GSettings viewer that uses a flat list with section headers. Demonstrates GtkListView sections with GtkListHeader and GtkSectionModel.",
-    keywords: ["listview", "section", "header", "settings", "GSettings", "GtkListHeader", "GtkSectionModel"],
+        "This demo shows an alternative settings viewer for GSettings.\n\nIt demonstrates how to implement support for sections with GtkListView.\n\nIt also shows how to quickly flatten a large tree of items into a list that can be filtered to find the items one is looking for.",
+    keywords: ["gsettings", "gtklistheaderfactory", "gtklistview", "gtksectionmodel"],
     component: ListViewSettings2Demo,
     titlebar: ListViewSettings2Titlebar,
     provider: ListViewSettings2Provider,

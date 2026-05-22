@@ -20,8 +20,6 @@ describe("textmaskDemo", () => {
         expect(typeof textmaskDemo.sourceCode).toBe("string");
         expect(textmaskDemo.defaultWidth).toBe(600);
         expect(textmaskDemo.defaultHeight).toBe(400);
-        expect(textmaskDemo.keywords).toContain("cairo");
-        expect(textmaskDemo.keywords).toContain("pango");
     });
 
     it("renders a GtkDrawingArea with the configured size requests", async () => {

@@ -18,9 +18,7 @@ describe("flowboxDemo metadata", () => {
 
     it("includes the dataset-size claim in the description and the expected keywords", () => {
         expect(flowboxDemo.description).toContain("665 colors");
-        expect(flowboxDemo.keywords).toEqual(
-            expect.arrayContaining(["flowbox", "GtkFlowBox", "grid", "wrap", "responsive"]),
-        );
+        expect(flowboxDemo.keywords).toEqual(expect.arrayContaining(["gtkflowbox"]));
     });
 
     it("ships a non-empty source-code string", () => {

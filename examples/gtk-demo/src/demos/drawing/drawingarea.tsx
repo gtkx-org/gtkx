@@ -236,8 +236,8 @@ export const drawingAreaDemo: Demo = {
     id: "drawingarea",
     title: "Drawing Area",
     description:
-        "GtkDrawingArea is a blank area where you can draw custom displays of various kinds. This demo has two drawing areas. The checkerboard area shows how you can just draw something; all you have to do is set a function via gtk_drawing_area_set_draw_func. The scribble area is a bit more advanced, and shows how to handle events such as button presses and mouse motion. Click the mouse and drag in the scribble area to draw squiggles.",
-    keywords: ["drawing", "GtkDrawingArea"],
+        'GtkDrawingArea is a blank area where you can draw custom displays of various kinds.\n\nThis demo has two drawing areas. The checkerboard area shows how you can just draw something; all you have to do is set a function via gtk_drawing_area_set_draw_func(), as shown here.\n\nThe "scribble" area is a bit more advanced, and shows how to handle events such as button presses and mouse motion. Click the mouse and drag in the scribble area to draw squiggles. Resize the window to clear the area.',
+    keywords: ["gtkdrawingarea"],
     component: DrawingAreaDemo,
     sourceCode,
     defaultWidth: 250,

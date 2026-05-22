@@ -9,18 +9,7 @@ describe("overlayDecorativeDemo metadata", () => {
         expect(overlayDecorativeDemo.id).toBe("overlay-decorative");
         expect(overlayDecorativeDemo.title).toBe("Overlay/Decorative Overlay");
         expect(overlayDecorativeDemo.description.length).toBeGreaterThan(0);
-        expect(overlayDecorativeDemo.keywords).toEqual(
-            expect.arrayContaining([
-                "overlay",
-                "badge",
-                "ribbon",
-                "watermark",
-                "notification",
-                "decorative",
-                "layer",
-                "GtkOverlay",
-            ]),
-        );
+        expect(overlayDecorativeDemo.keywords).toEqual(expect.arrayContaining(["gtkoverlay"]));
         expect(typeof overlayDecorativeDemo.sourceCode).toBe("string");
         expect(overlayDecorativeDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(overlayDecorativeDemo.defaultWidth).toBe(500);

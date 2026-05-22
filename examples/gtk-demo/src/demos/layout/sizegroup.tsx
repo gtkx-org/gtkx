@@ -205,8 +205,8 @@ export const sizegroupDemo: Demo = {
     id: "sizegroup",
     title: "Size Groups",
     description:
-        "GtkSizeGroup provides a mechanism for grouping a number of widgets together so they all request the same amount of space. This is typically useful when you want a column of widgets to have the same size, but you can't use a GtkGrid widget.",
-    keywords: ["sizegroup", "size", "width", "alignment", "GtkSizeGroup"],
+        "GtkSizeGroup provides a mechanism for grouping a number of widgets together so they all request the same amount of space. This is typically useful when you want a column of widgets to have the same size, but you can't use a GtkTable widget.\n\nNote that size groups only affect the amount of space requested, not the size that the widgets finally receive. If you want the widgets in a GtkSizeGroup to actually be the same size, you need to pack them in such a way that they get the size they request and not more. For example, if you are packing your widgets into a table, you would not include the GTK_FILL flag.",
+    keywords: ["gtk_fill", "gtksizegroup", "gtktable"],
     component: SizeGroupDemo,
     sourceCode,
 };

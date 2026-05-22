@@ -10,8 +10,7 @@ describe("shortcutTriggersDemo", () => {
         expectDemoMetadata(shortcutTriggersDemo, { id: "shortcut-triggers", title: "Shortcuts" });
         expect(typeof shortcutTriggersDemo.sourceCode).toBe("string");
         expect(shortcutTriggersDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(shortcutTriggersDemo.keywords).toContain("shortcut");
-        expect(shortcutTriggersDemo.keywords).toContain("GtkShortcutController");
+        expect(shortcutTriggersDemo.keywords).toContain("gtkshortcutcontroller");
         expect(shortcutTriggersDemo.component).toBeTypeOf("function");
         expect(shortcutTriggersDemo.defaultWidth).toBe(200);
     });

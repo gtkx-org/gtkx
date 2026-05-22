@@ -10,9 +10,7 @@ describe("fixedDemo metadata", () => {
         expect(fixedDemo.id).toBe("fixed");
         expect(fixedDemo.title).toBe("Fixed Layout / Cube");
         expect(fixedDemo.description.length).toBeGreaterThan(0);
-        expect(fixedDemo.keywords).toEqual(
-            expect.arrayContaining(["fixed", "GtkFixed", "GtkLayoutManager", "cube", "transform", "3D"]),
-        );
+        expect(fixedDemo.keywords).toEqual(expect.arrayContaining(["gtkfixed", "gtklayoutmanager"]));
         expect(typeof fixedDemo.sourceCode).toBe("string");
         expect(fixedDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(fixedDemo.defaultWidth).toBe(600);

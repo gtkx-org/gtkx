@@ -314,7 +314,7 @@ export const listboxDemo: Demo = {
     title: "List Box/Complex",
     description:
         "GtkListBox allows lists with complicated layouts, using regular widgets supporting sorting and filtering.",
-    keywords: ["listbox", "list", "rows", "selection", "GtkListBox", "GtkListBoxRow", "messages", "social"],
+    keywords: ["gtklistbox"],
     component: ListBoxDemo,
     sourceCode,
     defaultWidth: 400,

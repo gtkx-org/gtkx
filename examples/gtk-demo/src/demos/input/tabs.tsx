@@ -35,8 +35,8 @@ export const tabsDemo: Demo = {
     id: "tabs",
     title: "Text View/Tabs",
     description:
-        "GtkTextView can position text at fixed positions, using tabs. Tabs can specify alignment, and also allow aligning numbers on the decimal point. The example here has three tabs, with left, numeric and right alignment.",
-    keywords: ["tabs", "textview", "pango", "alignment", "decimal", "PangoTabArray", "GtkTextView"],
+        "GtkTextView can position text at fixed positions, using tabs. Tabs can specify alignment, and also allow aligning numbers on the decimal point.\n\nThe example here has three tabs, with left, numeric and right alignment.",
+    keywords: ["gtktextview"],
     component: TabsDemo,
     sourceCode,
     defaultWidth: 330,

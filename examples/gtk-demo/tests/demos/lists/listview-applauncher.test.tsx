@@ -13,8 +13,6 @@ describe("listviewApplauncherDemo metadata", () => {
             title: "Lists/Application launcher",
         });
         expect(typeof listviewApplauncherDemo.sourceCode).toBe("string");
-        expect(listviewApplauncherDemo.keywords).toContain("listview");
-        expect(listviewApplauncherDemo.keywords).toContain("launcher");
         expect(listviewApplauncherDemo.defaultWidth).toBe(640);
         expect(listviewApplauncherDemo.defaultHeight).toBe(320);
         expect(listviewApplauncherDemo.component).toBeTypeOf("function");

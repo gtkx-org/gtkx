@@ -228,7 +228,7 @@ export const spinbuttonDemo: Demo = {
     title: "Spin Buttons",
     description:
         "GtkSpinButton provides convenient ways to input data that can be seen as a value in a range. The examples here show that this does not necessarily mean numeric values, and it can include custom formatting.",
-    keywords: ["spin", "number", "input", "numeric", "GtkSpinButton", "integer", "float", "time", "month", "hex"],
+    keywords: ["gtkentry", "gtkspinbutton"],
     component: SpinButtonDemo,
     sourceCode,
 };

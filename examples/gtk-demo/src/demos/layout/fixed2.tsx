@@ -84,8 +84,9 @@ const Fixed2Demo = () => {
 export const fixed2Demo: Demo = {
     id: "fixed2",
     title: "Fixed Layout / Transformations",
-    description: "GtkFixed with GskTransform using GdkFrameClock for smooth animation.",
-    keywords: ["fixed", "transform", "GskTransform", "GdkFrameClock", "addTickCallback", "animation"],
+    description:
+        "GtkFixed is a container that allows placing and transforming widgets manually.\n\nThis demo shows how to rotate and scale a child widget using a transform.",
+    keywords: ["gtkfixed", "gtklayoutmanager"],
     component: Fixed2Demo,
     sourceCode,
     defaultWidth: 400,

@@ -10,16 +10,7 @@ describe("fixed2Demo metadata", () => {
         expect(fixed2Demo.id).toBe("fixed2");
         expect(fixed2Demo.title).toBe("Fixed Layout / Transformations");
         expect(fixed2Demo.description.length).toBeGreaterThan(0);
-        expect(fixed2Demo.keywords).toEqual(
-            expect.arrayContaining([
-                "fixed",
-                "transform",
-                "GskTransform",
-                "GdkFrameClock",
-                "addTickCallback",
-                "animation",
-            ]),
-        );
+        expect(fixed2Demo.keywords).toEqual(expect.arrayContaining(["gtkfixed", "gtklayoutmanager"]));
         expect(typeof fixed2Demo.sourceCode).toBe("string");
         expect(fixed2Demo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(fixed2Demo.defaultWidth).toBe(400);

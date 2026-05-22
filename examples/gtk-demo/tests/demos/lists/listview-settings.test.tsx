@@ -8,8 +8,6 @@ describe("listviewSettingsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expectDemoMetadata(listviewSettingsDemo, { id: "listview-settings", title: "Lists/Settings" });
         expect(typeof listviewSettingsDemo.sourceCode).toBe("string");
-        expect(listviewSettingsDemo.keywords).toContain("listview");
-        expect(listviewSettingsDemo.keywords).toContain("settings");
         expect(listviewSettingsDemo.defaultWidth).toBe(640);
         expect(listviewSettingsDemo.defaultHeight).toBe(480);
         expect(listviewSettingsDemo.component).toBeTypeOf("function");

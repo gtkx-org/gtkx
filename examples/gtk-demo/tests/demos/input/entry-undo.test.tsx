@@ -26,8 +26,6 @@ describe("entryUndoDemo", () => {
         expect(entryUndoDemo.title).toBe("Entry/Undo and Redo");
         expect(typeof entryUndoDemo.sourceCode).toBe("string");
         expect(entryUndoDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(entryUndoDemo.keywords).toContain("entry");
-        expect(entryUndoDemo.keywords).toContain("undo");
         expect(entryUndoDemo.component).toBeTypeOf("function");
     });
 

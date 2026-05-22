@@ -235,8 +235,8 @@ export const themesDemo: Demo = {
     id: "themes",
     title: "Benchmark/Themes",
     description:
-        "This demo continuously switches themes, like some of you. Warning: This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers.",
-    keywords: ["benchmark", "themes", "performance", "fps", "GtkSettings"],
+        "This demo continuously switches themes, like some of you.\n\nWarning: This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers.",
+    keywords: [],
     component: ThemesDemo,
     titlebar: ThemesTitlebar,
     provider: ThemesProvider,

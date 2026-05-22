@@ -10,7 +10,7 @@ describe("drawingAreaDemo metadata", () => {
         expect(drawingAreaDemo.id).toBe("drawingarea");
         expect(drawingAreaDemo.title).toBe("Drawing Area");
         expect(drawingAreaDemo.description.length).toBeGreaterThan(0);
-        expect(drawingAreaDemo.keywords).toEqual(expect.arrayContaining(["drawing", "GtkDrawingArea"]));
+        expect(drawingAreaDemo.keywords).toEqual(expect.arrayContaining(["gtkdrawingarea"]));
         expect(typeof drawingAreaDemo.sourceCode).toBe("string");
         expect(drawingAreaDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(drawingAreaDemo.defaultWidth).toBe(250);

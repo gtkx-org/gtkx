@@ -653,8 +653,8 @@ export const clipboardDemo: Demo = {
     id: "clipboard",
     title: "Clipboard",
     description:
-        "GdkClipboard is used for clipboard handling. This demo shows how to copy and paste text, images, colors or files to and from the clipboard.",
-    keywords: ["clipboard", "copy", "paste", "GdkClipboard", "text", "image", "color", "file", "transfer"],
+        "GdkClipboard is used for clipboard handling. This demo shows how to copy and paste text, images, colors or files to and from the clipboard.\n\nYou can also use Drag-And-Drop to copy the data from the source to the target.",
+    keywords: ["dnd", "drag-and-drop", "gdkclipboard"],
     component: ClipboardDemo,
     sourceCode,
 };

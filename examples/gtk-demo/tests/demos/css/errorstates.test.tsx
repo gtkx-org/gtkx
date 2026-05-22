@@ -11,7 +11,7 @@ describe("errorstatesDemo metadata", () => {
         expect(errorstatesDemo.title).toBe("Error States");
         expect(errorstatesDemo.description.length).toBeGreaterThan(0);
         expect(errorstatesDemo.keywords).toEqual(
-            expect.arrayContaining(["css", "error", "validation", "state", "entry", "switch", "scale"]),
+            expect.arrayContaining(["gtkbuilder", "gtkbuilderscope", "gtkentry", "gtklabel"]),
         );
         expect(typeof errorstatesDemo.sourceCode).toBe("string");
         expect(errorstatesDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);

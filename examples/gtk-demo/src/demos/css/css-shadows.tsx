@@ -76,9 +76,8 @@ const CssShadowsDemo = ({ window }: DemoProps) => {
 export const cssShadowsDemo: Demo = {
     id: "css-shadows",
     title: "Theming/Shadows",
-    description:
-        "Live CSS editing for box-shadow effects. Edit the CSS to experiment with shadows on buttons in real-time.",
-    keywords: ["css", "shadow", "box-shadow", "elevation", "depth", "glow", "live", "editing"],
+    description: "This demo shows how to use CSS shadows.",
+    keywords: [],
     component: CssShadowsDemo,
     sourceCode,
     defaultWidth: 400,

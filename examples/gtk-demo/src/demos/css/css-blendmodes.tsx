@@ -260,7 +260,7 @@ export const cssBlendmodesDemo: Demo = {
     id: "css-blendmodes",
     title: "Theming/CSS Blend Modes",
     description: "You can blend multiple backgrounds using the CSS blend modes available.",
-    keywords: ["css", "blend", "mode", "multiply", "screen", "overlay", "compositing"],
+    keywords: [],
     component: CssBlendmodesDemo,
     sourceCode,
     defaultWidth: 400,

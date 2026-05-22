@@ -9,7 +9,6 @@ describe("tabsDemo", () => {
         expect(tabsDemo.title).toBe("Text View/Tabs");
         expect(typeof tabsDemo.sourceCode).toBe("string");
         expect(tabsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(tabsDemo.keywords).toContain("tabs");
         expect(tabsDemo.defaultWidth).toBe(330);
         expect(tabsDemo.defaultHeight).toBe(130);
         expect(tabsDemo.component).toBeTypeOf("function");

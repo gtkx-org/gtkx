@@ -52,7 +52,7 @@ export const textmaskDemo: Demo = {
     id: "textmask",
     title: "Pango/Text Mask",
     description: "This demo shows how to use PangoCairo to draw text with more than just a single color.",
-    keywords: ["text", "mask", "clip", "gradient", "cairo", "pango"],
+    keywords: ["pangocairo"],
     component: TextmaskDemo,
     sourceCode,
     defaultWidth: 600,

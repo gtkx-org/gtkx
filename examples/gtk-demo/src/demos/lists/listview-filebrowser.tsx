@@ -238,8 +238,8 @@ export const listviewFilebrowserDemo: Demo = {
     id: "listview-filebrowser",
     title: "Lists/File browser",
     description:
-        "This demo shows off the different layouts that are quickly achievable with GtkGridView by implementing a file browser with different views.",
-    keywords: ["listview", "gridview", "files", "browser", "GtkGridView", "GtkDirectoryList", "views"],
+        "This demo shows off the different layouts that are quickly achievable with GtkListview and GtkGridView by implementing a file browser with different views.",
+    keywords: ["glistmodel", "gtkgridview", "gtklistview"],
     component: ListViewFilebrowserDemo,
     titlebar: ListViewFilebrowserTitlebar,
     provider: FilebrowserProvider,

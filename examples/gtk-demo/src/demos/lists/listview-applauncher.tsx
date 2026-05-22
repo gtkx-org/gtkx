@@ -75,8 +75,8 @@ export const listviewApplauncherDemo: Demo = {
     id: "listview-applauncher",
     title: "Lists/Application launcher",
     description:
-        "This demo uses the GtkListView widget as a fancy application launcher. It is also a very small introduction to listviews.",
-    keywords: ["listview", "launcher", "apps", "icons", "GtkListView", "GAppInfo", "GListModel"],
+        "This demo uses the GtkListView widget as a fancy application launcher.\n\nIt is also a very small introduction to listviews.",
+    keywords: ["glistmodel", "gtklistitemfactory", "gtklistview"],
     component: ListViewApplauncherDemo,
     sourceCode,
     defaultWidth: 640,

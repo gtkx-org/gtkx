@@ -10,9 +10,7 @@ describe("listviewMinesweeperDemo metadata", () => {
         expect(listviewMinesweeperDemo.id).toBe("listview-minesweeper");
         expect(listviewMinesweeperDemo.title).toBe("Lists/Minesweeper");
         expect(listviewMinesweeperDemo.description.length).toBeGreaterThan(0);
-        expect(listviewMinesweeperDemo.keywords).toEqual(
-            expect.arrayContaining(["gridview", "minesweeper", "game", "grid", "mines"]),
-        );
+        expect(listviewMinesweeperDemo.keywords).toEqual(expect.arrayContaining(["game", "glistmodel", "gtkgridview"]));
         expect(typeof listviewMinesweeperDemo.sourceCode).toBe("string");
         expect(listviewMinesweeperDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(listviewMinesweeperDemo.component).toBeTypeOf("function");

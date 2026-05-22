@@ -108,8 +108,8 @@ export const cssPixbufsDemo: Demo = {
     id: "css-pixbufs",
     title: "Theming/Animated Backgrounds",
     description:
-        "CSS @keyframes animations for gradient shifts, hue rotation, icon pulsing, and more. Edit CSS to experiment with animations.",
-    keywords: ["css", "animation", "keyframes", "gradient", "icon", "pixbuf", "background", "live", "editing"],
+        "This demo is in honour of a classic Pixbufs demo.\n\nIt is done exclusively with CSS as the background of the window.",
+    keywords: [],
     component: CssPixbufsDemo,
     sourceCode,
     defaultWidth: 400,

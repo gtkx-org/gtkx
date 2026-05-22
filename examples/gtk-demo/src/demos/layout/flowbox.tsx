@@ -729,8 +729,8 @@ export const flowboxDemo: Demo = {
     id: "flowbox",
     title: "Flow Box",
     description:
-        "GtkFlowBox allows flexible and responsive grids which reflow as needed and support sorting and filtering. The children of a GtkFlowBox are regular widgets. The dataset used here has 665 colors.",
-    keywords: ["flowbox", "GtkFlowBox", "grid", "wrap", "responsive"],
+        "GtkFlowBox allows flexible and responsive grids which reflow as needed and support sorting and filtering. The children of a GtkFlowBox are regular widgets\n\nThe dataset used here has 665 colors.",
+    keywords: ["gtkflowbox"],
     component: FlowBoxDemo,
     sourceCode,
     defaultWidth: 400,

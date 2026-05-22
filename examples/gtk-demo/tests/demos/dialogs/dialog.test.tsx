@@ -22,8 +22,6 @@ describe("dialogDemo metadata", () => {
         expectDemoMetadata(dialogDemo, { id: "dialog", title: "Dialogs" });
         expect(typeof dialogDemo.sourceCode).toBe("string");
         expect(dialogDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(dialogDemo.keywords).toContain("dialog");
-        expect(dialogDemo.keywords).toContain("AdwAlertDialog");
         expect(dialogDemo.component).toBeTypeOf("function");
     });
 

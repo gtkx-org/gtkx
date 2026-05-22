@@ -409,8 +409,9 @@ const ListViewUcdDemo = () => {
 export const listviewUcdDemo: Demo = {
     id: "listview-ucd",
     title: "Lists/Characters",
-    description: "Unicode character database browser with grid and list views",
-    keywords: ["listview", "unicode", "characters", "GtkListView", "GtkGridView", "ucd", "codepoint"],
+    description:
+        "This demo shows a multi-column representation of some parts of the Unicode Character Database, or UCD. It also demonstrates the use of sections with headings to group items.\n\nThe dataset used here has 33 796 items.",
+    keywords: [],
     component: ListViewUcdDemo,
     sourceCode,
     defaultWidth: 800,

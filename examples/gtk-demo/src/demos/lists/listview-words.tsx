@@ -248,8 +248,8 @@ export const listviewWordsDemo: Demo = {
     id: "listview-words",
     title: "Lists/Words",
     description:
-        "This demo shows a listview with a large number of words. The list is loaded from /usr/share/dict/words and filtered incrementally.",
-    keywords: ["listview", "words", "dictionary", "GtkListView", "search", "filter", "incremental"],
+        "This demo shows filtering a long list - of words.\n\nYou should have the file `/usr/share/dict/words` installed for this demo to work.",
+    keywords: ["gtkfilterlistmodel", "gtkinscription", "gtklistview"],
     component: ListViewWordsDemo,
     titlebar: ListViewWordsTitlebar,
     provider: ListViewWordsProvider,

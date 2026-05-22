@@ -159,8 +159,8 @@ export const framesDemo: Demo = {
     id: "frames",
     title: "Benchmark/Frames",
     description:
-        "This demo is intentionally as simple as possible, to see what framerate the windowing system can deliver on its own. It does nothing but change the drawn color, for every frame.",
-    keywords: ["benchmark", "frames", "fps", "performance", "GdkFrameClock"],
+        "This demo is intentionally as simple as possible, to see what framerate the windowing system can deliver on its own.\n\nIt does nothing but change the drawn color, for every frame.",
+    keywords: [],
     component: FramesDemo,
     titlebar: FramesTitlebar,
     provider: FramesProvider,

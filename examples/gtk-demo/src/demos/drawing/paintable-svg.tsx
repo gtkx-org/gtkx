@@ -137,8 +137,8 @@ export const paintableSvgDemo: Demo = {
     id: "paintable-svg",
     title: "Paintable/SVG",
     description:
-        "This demo shows rendering an SVG image that can be scaled by resizing the window. The image is re-rendered at the widget's current size for resolution-independent display.",
-    keywords: ["paintable", "svg", "vector", "scalable", "graphics", "GtkDrawingArea", "GdkPixbuf"],
+        "This demo shows using GtkSvg to display an SVG image in a GtkPicture that can be scaled by resizing the window.",
+    keywords: ["gtkpicture", "gtksvg"],
     component: PaintableSvgDemo,
     titlebar: PaintableSvgTitlebar,
     provider: PaintableSvgProvider,

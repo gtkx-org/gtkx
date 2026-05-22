@@ -182,8 +182,8 @@ export const cssMultiplebgsDemo: Demo = {
     id: "css-multiplebgs",
     title: "Theming/Multiple Backgrounds",
     description:
-        "Stack multiple CSS background layers with live editing. Experiment with linear, radial, and repeating gradients.",
-    keywords: ["css", "background", "gradient", "layers", "multiple", "radial", "linear", "live", "editing"],
+        "GTK themes are written using CSS. Every widget is build of multiple items that you can style very similarly to a regular website.",
+    keywords: [],
     component: CssMultiplebgsDemo,
     sourceCode,
     defaultWidth: 400,

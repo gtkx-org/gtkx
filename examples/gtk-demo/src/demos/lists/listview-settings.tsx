@@ -471,8 +471,8 @@ export const listviewSettingsDemo: Demo = {
     id: "listview-settings",
     title: "Lists/Settings",
     description:
-        "A GSettings browser that enumerates all system schemas and displays their keys, values, types, and descriptions",
-    keywords: ["listview", "settings", "GSettings", "GtkColumnView", "search", "schema", "paned", "browser"],
+        "This demo shows a settings viewer for GSettings.\n\nIt demonstrates how to implement support for trees with GtkListView. It also shows how to set up sorting and filtering for columns in a GtkColumnView.\n\nIt also demonstrates different styles of list. The tree on the left uses the ­.navigation-sidebar style class, the list on the right uses the ­.data-table style class.",
+    keywords: ["glistmodel", "gsettings", "gtkcolumnview", "gtklistitemfactory", "gtklistview"],
     component: ListViewSettingsDemo,
     titlebar: ListViewSettingsTitlebar,
     provider: ListViewSettingsProvider,

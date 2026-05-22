@@ -18,9 +18,6 @@ describe("dndDemo metadata", () => {
         expectDemoMetadata(dndDemo, { id: "dnd", title: "Drag-and-Drop" });
         expect(typeof dndDemo.sourceCode).toBe("string");
         expect(dndDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(dndDemo.keywords).toContain("drag");
-        expect(dndDemo.keywords).toContain("drop");
-        expect(dndDemo.keywords).toContain("GtkDragSource");
         expect(dndDemo.component).toBeTypeOf("function");
         expect(dndDemo.defaultWidth).toBe(640);
         expect(dndDemo.defaultHeight).toBe(480);

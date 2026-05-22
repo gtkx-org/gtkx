@@ -9,9 +9,7 @@ describe("cssShadowsDemo metadata", () => {
         expect(cssShadowsDemo.id).toBe("css-shadows");
         expect(cssShadowsDemo.title).toBe("Theming/Shadows");
         expect(cssShadowsDemo.description.length).toBeGreaterThan(0);
-        expect(cssShadowsDemo.keywords).toEqual(
-            expect.arrayContaining(["css", "shadow", "box-shadow", "live", "editing"]),
-        );
+        expect(cssShadowsDemo.keywords).toEqual(expect.arrayContaining([]));
         expect(typeof cssShadowsDemo.sourceCode).toBe("string");
         expect(cssShadowsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(cssShadowsDemo.defaultWidth).toBe(400);

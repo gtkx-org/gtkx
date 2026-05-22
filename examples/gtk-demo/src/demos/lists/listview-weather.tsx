@@ -148,8 +148,8 @@ export const listviewWeatherDemo: Demo = {
     id: "listview-weather",
     title: "Lists/Weather",
     description:
-        "This demo shows a few of the rarer features of GtkListView - horizontal orientation and separators. The dataset has 70,000 hourly weather items.",
-    keywords: ["listview", "weather", "horizontal", "GtkListView", "separators", "70000"],
+        "This demo shows a few of the rarer features of GtkListView and how they can be used to display weather information.\n\nThe hourly weather info uses a horizontal listview. This is easy to achieve because GtkListView implements the GtkOrientable interface. To make the items in the list stand out more, the listview uses separators.\n\nA GtkNoSelectionModel is used to make sure no item in the list can be selected. All other interactions with the items is still possible.\n\nThe dataset used here has 70 000 items.",
+    keywords: ["gtklistview", "gtknoselectionmodel", "gtkorientable"],
     component: ListViewWeatherDemo,
     sourceCode,
     defaultWidth: 600,

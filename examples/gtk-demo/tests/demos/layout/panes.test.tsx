@@ -9,7 +9,7 @@ describe("panesDemo", () => {
         expect(panesDemo.id).toBe("panes");
         expect(panesDemo.title).toBe("Paned Widgets");
         expect(panesDemo.description.length).toBeGreaterThan(0);
-        expect(panesDemo.keywords).toEqual(expect.arrayContaining(["paned", "GtkPaned"]));
+        expect(panesDemo.keywords).toEqual(expect.arrayContaining(["gtkpaned"]));
         expect(typeof panesDemo.sourceCode).toBe("string");
         expect(panesDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
         expect(panesDemo.defaultWidth).toBe(330);

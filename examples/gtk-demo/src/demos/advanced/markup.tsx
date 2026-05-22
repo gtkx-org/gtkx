@@ -148,8 +148,9 @@ const MarkupDemo = () => {
 export const markupDemo: Demo = {
     id: "markup",
     title: "Text View/Markup",
-    description: "Rich text formatting with Pango markup",
-    keywords: ["pango", "markup", "text", "formatting", "rich text", "html", "label", "styled"],
+    description:
+        "GtkTextBuffer lets you define your own tags that can influence text formatting in a variety of ways. In this example, we show that GtkTextBuffer can load Pango markup and automatically generate suitable tags.",
+    keywords: ["gtktextbuffer", "gtktextview", "pango"],
     component: MarkupDemo,
     titlebar: MarkupTitlebar,
     provider: MarkupProvider,

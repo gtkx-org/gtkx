@@ -247,9 +247,8 @@ const DialogDemo = ({ window }: DemoProps) => {
 export const dialogDemo: Demo = {
     id: "dialog",
     title: "Dialogs",
-    description:
-        "A dialog is a transient window that appears in response to some user action. The Message Dialog shows a simple message box, while the Interactive Dialog demonstrates bidirectional data transfer with form fields.",
-    keywords: ["dialog", "modal", "alert", "message", "interactive", "AdwAlertDialog", "entry", "form"],
+    description: "Dialogs are used to pop up transient windows for information and user feedback.",
+    keywords: ["gtkmessagedialog"],
     component: DialogDemo,
     sourceCode,
 };

@@ -18,7 +18,7 @@ describe("sidebarDemo", () => {
     it("exposes the expected metadata", () => {
         expectDemoMetadata(sidebarDemo, { id: "sidebar", title: "Stack Sidebar" });
         expect(typeof sidebarDemo.sourceCode).toBe("string");
-        expect(sidebarDemo.keywords).toContain("GtkStackSidebar");
+        expect(sidebarDemo.keywords).toContain("gtkstacksidebar");
     });
 
     it("renders a GtkStack with the nine declared pages", async () => {

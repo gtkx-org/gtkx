@@ -27,8 +27,8 @@ export const shortcutTriggersDemo: Demo = {
     id: "shortcut-triggers",
     title: "Shortcuts",
     description:
-        "GtkShortcut is the abstraction used by GTK to handle shortcuts from keyboard or other input devices. Shortcut triggers can be used to weave complex sequences of key presses into sophisticated mechanisms to activate shortcuts.",
-    keywords: ["shortcut", "trigger", "keyboard", "accelerator", "GtkShortcutController", "keybinding"],
+        "GtkShortcut is the abstraction used by GTK to handle shortcuts from keyboard or other input devices.\n\nShortcut triggers can be used to weave complex sequences of key presses into sophisticated mechanisms to activate shortcuts.\n\nThis demo code shows creative ways to do that.",
+    keywords: ["gtkshortcut", "gtkshortcutcontroller"],
     component: ShortcutTriggersDemo,
     sourceCode,
     defaultWidth: 200,

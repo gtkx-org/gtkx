@@ -197,8 +197,9 @@ const CursorsDemo = () => (
 export const cursorsDemo: Demo = {
     id: "cursors",
     title: "Cursors",
-    description: "Custom cursor themes and cursor types",
-    keywords: ["cursor", "pointer", "mouse", "crosshair", "resize", "Gdk.Cursor"],
+    description:
+        "Demonstrates a useful set of available cursors. The cursors shown here are the ones defined by CSS, which we assume to be available. The example shows creating cursors by name or from an image, with or without a fallback.",
+    keywords: [],
     component: CursorsDemo,
     sourceCode,
     defaultWidth: 300,

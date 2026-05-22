@@ -258,9 +258,8 @@ const GLAreaDemo = ({ window }: DemoProps) => {
 export const glareaDemo: Demo = {
     id: "glarea",
     title: "OpenGL/OpenGL Area",
-    description:
-        "GtkGLArea is a widget that allows drawing with OpenGL. Drag the sliders to change the rotation angles on the X, Y, and Z axis.",
-    keywords: ["opengl", "gl", "glarea", "GtkGLArea", "3d", "graphics", "shader", "triangle", "rendering", "rotation"],
+    description: "GtkGLArea is a widget that allows custom drawing using OpenGL calls.",
+    keywords: ["gtkglarea"],
     component: GLAreaDemo,
     sourceCode,
     defaultWidth: 400,
