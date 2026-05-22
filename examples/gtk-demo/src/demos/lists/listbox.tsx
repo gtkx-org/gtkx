@@ -14,9 +14,9 @@ import {
     GtkRevealer,
     GtkScrolledWindow,
 } from "@gtkx/react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import appleRedPath from "../css/apple-red.png";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./listbox.tsx?raw";
 import messagesRaw from "./messages.txt?raw";
 
@@ -252,9 +252,13 @@ const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }
     );
 };
 
-const ListBoxDemo = () => {
+const ListBoxDemo = ({ window }: DemoProps) => {
     const [messages, setMessages] = useState(ALL_MESSAGES);
     const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+
+    useEffect(() => {
+        window.current?.setTitle("List Box — Complex");
+    }, [window]);
 
     const sortedMessages = useMemo(() => [...messages].sort((a, b) => b.time - a.time), [messages]);
 
