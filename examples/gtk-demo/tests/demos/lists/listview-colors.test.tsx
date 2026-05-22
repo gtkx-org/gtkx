@@ -18,30 +18,19 @@ describe("listviewColorsDemo header bar", () => {
     it("installs a header bar via the titlebar slot", async () => {
         const t0 = Date.now();
         console.error(`[diag] test#1 start t=${t0}`);
-        await renderDemo(listviewColorsDemo);
-        const t1 = Date.now();
-        console.error(`[diag] test#1 renderDemo done t+${t1 - t0}ms`);
+        const heartbeat = setInterval(() => {
+            console.error(`[diag] heartbeat t+${Date.now() - t0}ms`);
+        }, 2000);
         try {
+            const renderPromise = renderDemo(listviewColorsDemo);
+            console.error(`[diag] renderDemo invoked t+${Date.now() - t0}ms`);
+            await renderPromise;
+            console.error(`[diag] renderDemo resolved t+${Date.now() - t0}ms`);
             const headerBar = await screen.findByName("header-bar", { timeout: 5000 });
-            console.error(`[diag] test#1 findByName found, t+${Date.now() - t0}ms, name="${headerBar.getName?.()}"`);
+            console.error(`[diag] findByName found t+${Date.now() - t0}ms`);
             expect(headerBar).toBeInstanceOf(Gtk.HeaderBar);
-        } catch (e) {
-            const dt = Date.now() - t0;
-            console.error(`[diag] test#1 findByName failed after t+${dt}ms`);
-            const windows = Gtk.Window.listToplevels();
-            console.error(`[diag] toplevels count=${windows.length}`);
-            for (const win of windows) {
-                console.error(`[diag] window name="${win.getName?.()}", visible=${win.getVisible?.()}`);
-                let child: Gtk.Widget | null = win.getFirstChild();
-                let i = 0;
-                while (child && i < 20) {
-                    const cname = child.getName?.() ?? "(no-name)";
-                    console.error(`[diag]   child[${i}] ${child.constructor.name} name="${cname}"`);
-                    child = child.getNextSibling();
-                    i++;
-                }
-            }
-            throw e;
+        } finally {
+            clearInterval(heartbeat);
         }
     });
 
