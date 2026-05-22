@@ -7,14 +7,6 @@ declare global {
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 /**
- * Drains the microtask queue without yielding to macrotasks. Covers
- * `queueMicrotask`-deferred reconciler work (selection-model rebuilds,
- * bound-item refreshes, etc.) without giving the GTK main loop a chance
- * to fire follow-on tick callbacks.
- */
-const flushMicrotasks = (): Promise<void> => Promise.resolve();
-
-/**
  * Yields one full event-loop tick so the GTK main loop can iterate and
  * propagate any signals the React commit emitted before the caller
  * resumes.
@@ -30,11 +22,10 @@ const isThenable = (value: unknown): value is PromiseLike<unknown> =>
  *
  * The depth of the flush is chosen from the callback's shape:
  *
- * - **Synchronous callback** — only the microtask queue is drained
- *   (`Promise.resolve()`). That is enough to settle the reconciler's
- *   `queueMicrotask`-deferred bookkeeping. Macrotask-scheduled work
- *   (`setTimeout`-driven tick callbacks, idle handlers) stays outside
- *   `act`, which is what keeps `render` and `fireEvent` fast.
+ * - **Synchronous callback** — no post-`act` flush. Reconciler work that
+ *   needs to land before the caller resumes is drained inside
+ *   `resetAfterCommit` via the post-commit queue, which `reactAct` already
+ *   awaits, so the tree is settled by the time `act` resolves.
  *
  * - **Asynchronous callback** — the callback is awaited and then we yield
  *   one full event-loop tick (`setTimeout(0)`). Callers who reach for the
@@ -44,7 +35,7 @@ const isThenable = (value: unknown): value is PromiseLike<unknown> =>
  *
  * @example
  * ```tsx
- * // sync: microtask flush
+ * // sync: no extra flush, reconciler work drains inside the commit
  * await act(() => widget.setSensitive(false));
  *
  * // async: setTimeout flush
@@ -63,7 +54,6 @@ export const act = async <T>(callback: () => T | Promise<T>): Promise<T> => {
             await flushEventLoop();
         } else {
             result = returned as T;
-            await flushMicrotasks();
         }
     });
     return result as T;

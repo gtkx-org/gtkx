@@ -5,6 +5,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
 import type { DropDownProps, GridViewProps, ListItem, ListViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
+import { scheduleAfterCommit } from "../post-commit-queue.js";
 import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
 import { ContainerSlotNode } from "./container-slot.js";
@@ -950,7 +951,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (this.syncScheduled) return;
         this.syncScheduled = true;
 
-        queueMicrotask(() => {
+        scheduleAfterCommit(() => {
             this.syncScheduled = false;
             if (this.disposed) return;
             this.syncModel();
@@ -961,7 +962,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         if (this.boundItemsUpdateScheduled) return;
         this.boundItemsUpdateScheduled = true;
 
-        queueMicrotask(() => {
+        scheduleAfterCommit(() => {
             this.boundItemsUpdateScheduled = false;
             if (this.disposed) return;
             this.rebuildBoundItems();
