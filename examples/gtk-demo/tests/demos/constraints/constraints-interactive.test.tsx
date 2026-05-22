@@ -31,7 +31,7 @@ describe("constraintsInteractiveDemo metadata", () => {
             title: "Constraints/Interactive Constraints",
         });
         expect(typeof constraintsInteractiveDemo.sourceCode).toBe("string");
-        expect(constraintsInteractiveDemo.defaultWidth).toBe(360);
+        expect(constraintsInteractiveDemo.defaultWidth).toBe(260);
         expect(constraintsInteractiveDemo.keywords).toContain("gtkconstraintlayout");
     });
 });
