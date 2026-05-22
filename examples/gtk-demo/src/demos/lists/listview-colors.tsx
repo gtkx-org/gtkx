@@ -59,14 +59,14 @@ const DISPLAY_FACTORIES: { id: DisplayFactory; label: string }[] = [
 ];
 
 const COLOR_LIMITS: { id: string; value: ColorLimit; label: string }[] = [
-    { id: "8", value: 8, label: "8" },
-    { id: "64", value: 64, label: "64" },
-    { id: "512", value: 512, label: "512" },
-    { id: "4096", value: 4096, label: "4096" },
-    { id: "32768", value: 32768, label: "32,768" },
-    { id: "262144", value: 262144, label: "262,144" },
-    { id: "2097152", value: 2097152, label: "2,097,152" },
-    { id: "16777216", value: 16777216, label: "16,777,216" },
+    { id: "8", value: 8, label: (8).toLocaleString("en-US") },
+    { id: "64", value: 64, label: (64).toLocaleString("en-US") },
+    { id: "512", value: 512, label: (512).toLocaleString("en-US") },
+    { id: "4096", value: 4096, label: (4096).toLocaleString("en-US") },
+    { id: "32768", value: 32768, label: (32768).toLocaleString("en-US") },
+    { id: "262144", value: 262144, label: (262144).toLocaleString("en-US") },
+    { id: "2097152", value: 2097152, label: (2097152).toLocaleString("en-US") },
+    { id: "16777216", value: 16777216, label: (16777216).toLocaleString("en-US") },
 ];
 
 let tnumAttrs: Pango.AttrList | undefined;
@@ -219,11 +219,13 @@ const ColorGridItem = memo(({ item, showDetails }: { item: ColorItem; showDetail
                     maxWidthChars={10}
                 />
                 <GtkLabel
-                    label={`${item.r}, ${item.g}, ${item.b}`}
+                    label={`<b>R:</b> ${item.r} <b>G:</b> ${item.g} <b>B:</b> ${item.b}`}
+                    useMarkup
                     cssClasses={["dim-label", "caption", "monospace"]}
                 />
                 <GtkLabel
-                    label={`${item.h}° ${item.s}% ${item.v}%`}
+                    label={`<b>H:</b> ${item.h} <b>S:</b> ${item.s} <b>V:</b> ${item.v}`}
+                    useMarkup
                     cssClasses={["dim-label", "caption", "monospace"]}
                 />
             </GtkBox>
@@ -707,7 +709,7 @@ const ColorsHeader = () => {
                 />
                 <GtkButton ref={state.buttonRef} label="_Refill" useUnderline onClicked={computed.handleRefill} />
                 <GtkLabel
-                    label={`${computed.sortedColors.length} /`}
+                    label={`${computed.sortedColors.length.toLocaleString("en-US")} /`}
                     attributes={getTnumAttrs()}
                     widthChars={8}
                     xalign={1}
