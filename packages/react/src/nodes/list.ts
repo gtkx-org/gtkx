@@ -78,6 +78,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     private disposed = false;
     private boundItemsUpdateScheduled = false;
     private syncScheduled = false;
+    private modeCacheItems: readonly ListItem[] | null = null;
+    private modeCacheValue: "sections" | "tree" | "flat" = "flat";
     private readonly sectionModels: Gtk.StringList[] = [];
     private sectionStore: Gio.ListStore | null = null;
     private flattenModel: Gtk.FlattenListModel | null = null;
@@ -172,6 +174,8 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
     private collectFlatItems(): ListItem[] {
         const items = this.getItems();
+        if (this.detectMode() === "flat") return items;
+
         const flat: ListItem[] = [];
         for (const item of items) {
             if (item.section && item.children) {
@@ -210,11 +214,22 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
     private detectMode(): "sections" | "tree" | "flat" {
         const items = this.getItems();
+        if (items === this.modeCacheItems) return this.modeCacheValue;
+
+        let mode: "sections" | "tree" | "flat" = "flat";
         for (const item of items) {
-            if (item.section) return "sections";
-            if (item.children && item.children.length > 0) return "tree";
+            if (item.section) {
+                mode = "sections";
+                break;
+            }
+            if (item.children && item.children.length > 0) {
+                mode = "tree";
+                break;
+            }
         }
-        return "flat";
+        this.modeCacheItems = items;
+        this.modeCacheValue = mode;
+        return mode;
     }
 
     private hasSections(): boolean {
@@ -460,8 +475,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             return;
         }
 
-        const flatItems = this.collectFlatItems();
-        resizeStringList(this.model, flatItems.length);
+        resizeStringList(this.model, this.getItems().length);
 
         this.scheduleBoundItemsUpdate();
     }
