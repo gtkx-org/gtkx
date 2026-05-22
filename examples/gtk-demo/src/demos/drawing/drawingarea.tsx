@@ -1,4 +1,4 @@
-import { Content, Context, Format, ImageSurface, Operator, Surface } from "@gtkx/ffi/cairo";
+import { Content, Context, Format, ImageSurface, LineCap, Operator, Surface } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
@@ -116,8 +116,12 @@ const createSurface = (width: number, height: number): ImageSurface => {
 
 const drawBrush = (surface: ImageSurface, widget: Gtk.DrawingArea, x: number, y: number) => {
     const cr = Context.create(surface);
-    cr.rectangle(x - 3, y - 3, 6, 6);
-    cr.fill();
+    cr.moveTo(x, y);
+    cr.lineTo(x, y);
+    cr.setLineWidth(6);
+    cr.setLineCap(LineCap.ROUND);
+    cr.setSourceRgb(0, 0, 0);
+    cr.stroke();
     widget.queueDraw();
 };
 
