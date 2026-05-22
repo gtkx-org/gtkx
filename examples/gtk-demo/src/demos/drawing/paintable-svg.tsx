@@ -1,83 +1,44 @@
-import type { Context } from "@gtkx/ffi/cairo";
-import { ImageSurface } from "@gtkx/ffi/cairo";
-import * as GdkPixbuf from "@gtkx/ffi/gdkpixbuf";
 import * as Gio from "@gtkx/ffi/gio";
-import * as GLib from "@gtkx/ffi/glib";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkButton, GtkDrawingArea, GtkHeaderBar, GtkImage } from "@gtkx/react";
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState } from "react";
+import { GtkButton, GtkGestureClick, GtkHeaderBar, GtkPicture } from "@gtkx/react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
+import nodeEditorSvgPath from "./org.gtk.gtk4.NodeEditor.Devel.svg";
 import sourceCode from "./paintable-svg.tsx?raw";
 
-const DEFAULT_SVG_PATH = "/usr/share/icons/hicolor/scalable/apps/org.gtk.gtk4.NodeEditor.Devel.svg";
-let tmpPngPath: string | undefined;
-
-function getTmpPngPath(): string {
-    if (!tmpPngPath) {
-        tmpPngPath = GLib.buildFilenamev([GLib.getTmpDir(), "gtkx-svg-paintable.png"]);
-    }
-    return tmpPngPath;
-}
-
-let surfaceCache: { surface: ImageSurface; path: string; width: number; height: number } | null = null;
-
-function renderSvgToSurface(path: string, width: number, height: number): ImageSurface | null {
-    if (surfaceCache?.path === path && surfaceCache.width === width && surfaceCache.height === height) {
-        return surfaceCache.surface;
-    }
+const loadSvgFromFile = (file: Gio.File): Gtk.Svg | null => {
     try {
-        const pixbuf = GdkPixbuf.Pixbuf.newFromFileAtScale(path, width, height, true);
-        pixbuf.savev(getTmpPngPath(), "png", null, null);
-        const surface = ImageSurface.createFromPng(getTmpPngPath());
-        surfaceCache = { surface, path, width, height };
-        return surface;
+        const [bytes] = file.loadBytes(null);
+        return Gtk.Svg.newFromBytes(bytes);
     } catch (e) {
         if (e instanceof Error) console.error(e.message);
-        surfaceCache = null;
         return null;
     }
-}
+};
 
-const pickSvgFile = async (window: Gtk.Window | null): Promise<string | null> => {
+const pickSvgFile = async (window: Gtk.Window | null): Promise<Gio.File | null> => {
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Open svg image");
 
-    const filters = Gio.ListStore.new(GObject.typeFromName("GtkFileFilter"));
     const filter = new Gtk.FileFilter();
-    filter.setName("SVG images");
     filter.addMimeType("image/svg+xml");
+    filter.addMimeType("image/x-gtk-path-animation");
+    filter.addPattern("*.gpa");
+
+    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype.__gtype__);
     filters.append(filter);
     dialog.setFilters(filters);
 
     try {
-        const file = await dialog.open(window, null);
-        return file.getPath();
+        return await dialog.open(window, null);
     } catch (e) {
         if (e instanceof Error) console.error(e.message);
         return null;
     }
 };
 
-const drawSvg = (cr: Context, filePath: string, width: number, height: number) => {
-    if (width <= 0 || height <= 0) return;
-
-    const surface = renderSvgToSurface(filePath, width, height);
-    if (!surface) {
-        cr.setSourceRgba(238 / 255, 106 / 255, 167 / 255, 1);
-        cr.rectangle(0, 0, width, height);
-        cr.fill();
-        return;
-    }
-
-    const sw = surface.getWidth();
-    const sh = surface.getHeight();
-    cr.setSourceSurface(surface, (width - sw) / 2, (height - sh) / 2);
-    cr.paint();
-};
-
 interface PaintableSvgContextValue {
-    filePath: string;
+    svg: Gtk.Svg | null;
     handleOpen: () => void;
 }
 
@@ -90,14 +51,23 @@ const usePaintableSvgContext = (): PaintableSvgContextValue => {
 };
 
 const PaintableSvgProvider = ({ window, children }: DemoProviderProps) => {
-    const [filePath, setFilePath] = useState(DEFAULT_SVG_PATH);
+    const [svg, setSvg] = useState<Gtk.Svg | null>(null);
+
+    useEffect(() => {
+        const file = Gio.fileNewForPath(nodeEditorSvgPath);
+        setSvg(loadSvgFromFile(file));
+    }, []);
+
     const handleOpen = useCallback(async () => {
-        const path = await pickSvgFile(window.current);
-        if (path) setFilePath(path);
+        const file = await pickSvgFile(window.current);
+        if (!file) return;
+        const next = loadSvgFromFile(file);
+        if (next) setSvg(next);
     }, [window]);
+
     const value = useMemo<PaintableSvgContextValue>(
-        () => ({ filePath, handleOpen: () => void handleOpen() }),
-        [filePath, handleOpen],
+        () => ({ svg, handleOpen: () => void handleOpen() }),
+        [svg, handleOpen],
     );
     return <PaintableSvgContext.Provider value={value}>{children}</PaintableSvgContext.Provider>;
 };
@@ -114,23 +84,23 @@ const PaintableSvgTitlebar = () => {
 };
 
 const PaintableSvgDemo = ({ window }: DemoProps) => {
-    const { filePath } = usePaintableSvgContext();
-    const isSymbolic = filePath.includes("symbolic");
+    const { svg } = usePaintableSvgContext();
 
-    useLayoutEffect(() => {
+    useEffect(() => {
         window.current?.setDefaultSize(330, 330);
         window.current?.setTitle("Paintable — SVG");
     }, [window]);
 
-    const handleDraw = useCallback(
-        (cr: Context, width: number, height: number) => drawSvg(cr, filePath, width, height),
-        [filePath],
-    );
+    const handlePressed = useCallback(() => {
+        if (!svg) return;
+        const state = svg.getState();
+        svg.setState(state < 63 ? state + 1 : 0);
+    }, [svg]);
 
-    return isSymbolic ? (
-        <GtkImage file={filePath} pixelSize={64} hexpand vexpand halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
-    ) : (
-        <GtkDrawingArea name="drawing-area" render={handleDraw} hexpand vexpand />
+    return (
+        <GtkPicture name="picture" paintable={svg} widthRequest={16} heightRequest={16}>
+            <GtkGestureClick onPressed={handlePressed} />
+        </GtkPicture>
     );
 };
 

@@ -28,12 +28,13 @@ describe("paintableSvgDemo", () => {
         expect(openButton.getUseUnderline()).toBe(true);
     });
 
-    it("renders a drawing area for the non-symbolic default SVG path", async () => {
+    it("renders a GtkPicture displaying the SVG paintable", async () => {
         await renderDemo(paintableSvgDemo);
-        const drawing = (await screen.findByName("drawing-area")) as Gtk.DrawingArea;
-        expect(drawing).toBeInstanceOf(Gtk.DrawingArea);
-        expect(drawing.getHexpand()).toBe(true);
-        expect(drawing.getVexpand()).toBe(true);
+        const picture = (await screen.findByName("picture")) as Gtk.Picture;
+        expect(picture).toBeInstanceOf(Gtk.Picture);
+        const [width, height] = picture.getSizeRequest();
+        expect(width).toBe(16);
+        expect(height).toBe(16);
     });
 
     it("renders a header bar containing the Open button", async () => {
