@@ -522,18 +522,21 @@ const startGradualFill = ({
     setFilling(true);
 
     const increment = Math.max(1, Math.floor(targetLimit / 4096));
+    const updateChunk = Math.max(1, Math.ceil(targetLimit / 64));
+    let lastPushedSize = 0;
 
     tickIdRef.current = widget.addTickCallback((): boolean => {
         const newSize = Math.min(targetLimit, accumulated.length + increment);
         for (let i = accumulated.length; i < newSize; i++) accumulated.push(createColorItem(i));
 
-        const snapshot = [...accumulated];
         const done = accumulated.length >= targetLimit;
-
-        setTimeout(() => {
+        const shouldFlush = done || accumulated.length - lastPushedSize >= updateChunk;
+        if (shouldFlush) {
+            lastPushedSize = accumulated.length;
+            const snapshot = [...accumulated];
             setColors(snapshot);
             if (done) setFilling(false);
-        }, 0);
+        }
 
         if (done) {
             tickIdRef.current = null;
