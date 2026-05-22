@@ -69,8 +69,7 @@ const SwitchRow = ({ labelRefs, switchRef, active, setActive }: SwitchRowProps) 
                 ref={(r) => {
                     labelRefs.current[0] = r;
                 }}
-                label="_Switch"
-                useUnderline
+                label="Switch"
                 mnemonicWidget={switchRef.current}
                 xalign={0}
                 halign={Gtk.Align.START}
@@ -106,8 +105,7 @@ const CheckRow = ({ labelRefs, checkRef, active, setActive }: CheckRowProps) => 
                 ref={(r) => {
                     labelRefs.current[1] = r;
                 }}
-                label="_Check"
-                useUnderline
+                label="Check"
                 mnemonicWidget={checkRef.current}
                 xalign={0}
                 halign={Gtk.Align.START}
@@ -141,8 +139,7 @@ const ClickHereRow = ({ labelRefs, imageRef, opacity }: ClickHereRowProps) => (
                 ref={(r) => {
                     labelRefs.current[2] = r;
                 }}
-                label="_Click here!"
-                useUnderline
+                label="Click here!"
                 mnemonicWidget={imageRef.current}
                 xalign={0}
                 halign={Gtk.Align.START}
