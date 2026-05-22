@@ -41,7 +41,7 @@ function renderSvgToSurface(path: string, width: number, height: number): ImageS
 
 const pickSvgFile = async (window: Gtk.Window | null): Promise<string | null> => {
     const dialog = new Gtk.FileDialog();
-    dialog.setTitle("Open SVG image");
+    dialog.setTitle("Open svg image");
 
     const filters = Gio.ListStore.new(GObject.typeFromName("GtkFileFilter"));
     const filter = new Gtk.FileFilter();
@@ -119,6 +119,7 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
 
     useLayoutEffect(() => {
         window.current?.setDefaultSize(330, 330);
+        window.current?.setTitle("Paintable — SVG");
     }, [window]);
 
     const handleDraw = useCallback(
