@@ -31,6 +31,6 @@ import { act } from "./timing.js";
  * @see {@link userEvent} for high-level user interactions
  */
 export const fireEvent = (element: GObject.Object, signalName: string, ...args: unknown[]): Promise<void> =>
-    act(async () => {
+    act(() => {
         element.emit(signalName, ...args);
     });

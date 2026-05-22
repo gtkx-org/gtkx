@@ -15,9 +15,9 @@ let application: Gtk.Application | null = null;
 let container: Reconciler.FiberRoot | null = null;
 let lastRenderError: Error | null = null;
 
-const update = (element: ReactNode, fiberRoot: Reconciler.FiberRoot): void => {
+const update = async (element: ReactNode, fiberRoot: Reconciler.FiberRoot): Promise<void> => {
     lastRenderError = null;
-    act(() => {
+    await act(() => {
         reconciler.updateContainer(element, fiberRoot, null, () => {});
     });
 
@@ -116,7 +116,7 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
 
     const wrappedElement = wrapElement(element, wrapper);
     const withContext = <ApplicationContext.Provider value={application}>{wrappedElement}</ApplicationContext.Provider>;
-    update(withContext, fiberRoot);
+    await update(withContext, fiberRoot);
 
     setScreenRoot(application);
 
@@ -124,13 +124,11 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
         container: resolveContainer(baseElement),
         baseElement,
         ...bindQueries(baseElement),
-        unmount: async () => {
-            update(null, fiberRoot);
-        },
+        unmount: () => update(null, fiberRoot),
         rerender: async (newElement: ReactNode) => {
             const wrapped = wrapElement(newElement, wrapper);
             const withCtx = <ApplicationContext.Provider value={application}>{wrapped}</ApplicationContext.Provider>;
-            update(withCtx, fiberRoot);
+            await update(withCtx, fiberRoot);
         },
         debug: () => {
             console.log(prettyWidget(application));
@@ -157,9 +155,9 @@ export const render = async (element: ReactNode, options?: RenderOptions): Promi
  * });
  * ```
  */
-export const cleanup = (): void => {
+export const cleanup = async (): Promise<void> => {
     if (container && application) {
-        update(null, container);
+        await update(null, container);
     }
     container = null;
     setScreenRoot(null);
