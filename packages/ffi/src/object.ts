@@ -2,9 +2,9 @@ import { alloc, call, type NativeHandle, read, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
 import { gvalueFromProp } from "./gobject/gvalue.js";
 import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
-import { type GTypeStamped, getParentClass, type NativeClass, type NativeObject, setHandle } from "./handles.js";
+import { getParentClass, type NativeClass, type NativeObject, setHandle } from "./handles.js";
 import { t } from "./helpers.js";
-import { getClassGType, registerNativeObject } from "./registry.js";
+import { registerNativeObject } from "./registry.js";
 
 /**
  * Dispatches `g_object_new_with_properties` and returns the owned handle of
@@ -66,7 +66,6 @@ export function constructNativeObject(instance: object, props: object = {}): voi
     } else {
         setHandle(instance, constructBoxed(meta, props as Record<string, unknown>));
     }
-    (instance as GTypeStamped).__gtype__ = getClassGType(ctor);
 }
 
 type GObjectPropCollector = {

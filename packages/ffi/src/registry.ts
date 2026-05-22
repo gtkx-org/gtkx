@@ -84,7 +84,6 @@ export function getInterfaceGType(cls: NativeClass): GType {
 export function wrapHandle<T extends object>(cls: NativeClass<T>, handle: NativeHandle): T {
     const instance = Object.create(cls.prototype) as T;
     setHandle(instance, handle);
-    (instance as GTypeStamped).__gtype__ = getClassGType(cls);
     return instance;
 }
 
