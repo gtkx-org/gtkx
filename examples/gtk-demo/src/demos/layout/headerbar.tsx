@@ -1,5 +1,6 @@
 import { GtkBox, GtkButton, GtkHeaderBar, GtkSwitch, GtkTextView } from "@gtkx/react";
-import type { Demo } from "../types.js";
+import { useEffect } from "react";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./headerbar.tsx?raw";
 
 const HeaderBarTitlebar = () => (
@@ -19,7 +20,12 @@ const HeaderBarTitlebar = () => (
     </GtkHeaderBar>
 );
 
-const HeaderBarDemo = () => <GtkTextView name="text-view" accessibleLabel="Content" />;
+const HeaderBarDemo = ({ window }: DemoProps) => {
+    useEffect(() => {
+        window.current?.setTitle("Welcome to the Hotel California");
+    }, [window]);
+    return <GtkTextView name="text-view" accessibleLabel="Content" />;
+};
 
 export const headerbarDemo: Demo = {
     id: "headerbar",
