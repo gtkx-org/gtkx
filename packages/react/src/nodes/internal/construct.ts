@@ -1,60 +1,29 @@
-import type { NativeClass, Type } from "@gtkx/ffi";
-import { Object as GObject, Value } from "@gtkx/ffi/gobject";
-import { CONSTRUCTION_META } from "../../generated/internal.js";
-import type { Container, ContainerClass, Props } from "../../types.js";
+import { getNativeClassByName } from "@gtkx/ffi";
+import type { Container, Props } from "../../types.js";
+import { camelToSnake } from "./naming.js";
 
-type ConstructionPropMeta = {
-    girName: string;
-    ffiType: Type;
-    constructOnly?: true;
-};
-
-function collectConstructionProps(
-    containerClass: ContainerClass,
-    props: Props,
-): Array<{ girName: string; ffiType: Type; value: unknown }> {
-    const result: Array<{ girName: string; ffiType: Type; value: unknown }> = [];
-    const seen = new Set<string>();
-
-    // biome-ignore lint/complexity/noBannedTypes: Walking prototype chain requires Function type
-    let current: Function | null = containerClass;
-    while (current) {
-        const typeName = (current as NativeClass).glibTypeName;
-        if (!typeName) break;
-
-        const meta: Record<string, ConstructionPropMeta> | undefined = CONSTRUCTION_META[typeName];
-        if (meta) {
-            for (const [camelName, propMeta] of Object.entries(meta)) {
-                if (seen.has(camelName)) continue;
-                seen.add(camelName);
-                if (props[camelName] !== undefined) {
-                    result.push({
-                        girName: propMeta.girName,
-                        ffiType: propMeta.ffiType,
-                        value: props[camelName],
-                    });
-                }
-            }
-        }
-
-        current = Object.getPrototypeOf(current);
-        if (current === Object || current === Function) break;
+/**
+ * Instantiates a container widget from the React reconciler.
+ *
+ * Resolves the registered wrapper class for the GLib type and constructs it
+ * via the generic `NativeObject` constructor. The constructor walks the JS
+ * prototype chain to merge inherited props from the construction-meta
+ * registry, whose keys are snake_case to match the ts-for-gir-published
+ * `ConstructorProperties` shape — so we translate the camelCase JSX prop bag
+ * into snake_case before construction.
+ *
+ * @param typeName - GLib type name (e.g. `"GtkLabel"`)
+ * @param props - React prop bag; only construct-time properties are picked
+ *   up, all others are ignored at construction
+ */
+export function createContainerWithProperties(typeName: string, props: Props): Container {
+    const cls = getNativeClassByName(typeName);
+    if (!cls) {
+        throw new Error(`createContainerWithProperties: no registered class for GLib type '${typeName}'`);
     }
-
-    return result;
-}
-
-export function createContainerWithProperties(containerClass: ContainerClass, props: Props): Container {
-    const gtype = containerClass.getGType();
-    const constructionProps = collectConstructionProps(containerClass, props);
-
-    const names: string[] = [];
-    const values: Value[] = [];
-
-    for (const { girName, ffiType, value } of constructionProps) {
-        names.push(girName);
-        values.push(Value.newFrom(ffiType, value));
+    const ffiProps: Record<string, unknown> = {};
+    for (const key of Object.keys(props)) {
+        ffiProps[camelToSnake(key)] = (props as Record<string, unknown>)[key];
     }
-
-    return GObject.newWithProperties(gtype, names, values) as unknown as Container;
+    return new (cls as new (props: Record<string, unknown>) => Container)(ffiProps);
 }

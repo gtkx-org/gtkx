@@ -1,35 +1,32 @@
+import type * as Adw from "@gtkx/ffi/adw";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { AdwViewStackProps, GtkStackProps } from "../jsx.js";
-import type { StackWidget } from "../registry.js";
-import { filterProps, hasChanged } from "./internal/props.js";
+import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";
 import { WidgetNode } from "./widget.js";
 
-const OWN_PROPS = ["page", "onPageChanged"] as const;
+/** Widgets the {@link StackNode} reconciler node specializes. */
+export type StackWidget = Gtk.Stack | Adw.ViewStack;
 
-type StackProps = Omit<Pick<GtkStackProps | AdwViewStackProps, (typeof OWN_PROPS)[number]>, "onPageChanged"> & {
-    onPageChanged?: ((page: string | null, self: StackWidget) => void) | null;
+type StackProps = Omit<Pick<GtkStackProps | AdwViewStackProps, "page" | "onPageChanged">, "onPageChanged"> & {
+    onPageChanged?: ((page: string | null) => void) | null;
 };
 
 export class StackNode extends WidgetNode<StackWidget, StackProps> {
-    public override commitUpdate(oldProps: StackProps | null, newProps: StackProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
-        this.applyOwnProps(oldProps, newProps);
-    }
-
-    private applyOwnProps(oldProps: StackProps | null, newProps: StackProps): void {
-        if (newProps.page && this.container.getVisibleChildName() !== newProps.page) {
-            if (this.container.getChildByName(newProps.page)) {
-                this.container.setVisibleChildName(newProps.page);
-            }
-        }
-
-        if (hasChanged(oldProps, newProps, "onPageChanged")) {
-            const { onPageChanged } = newProps;
-            this.signalStore.set(
-                this,
-                this.container,
-                "notify::visible-child-name",
-                onPageChanged ? (self: StackWidget) => onPageChanged(self.getVisibleChildName(), self) : undefined,
-            );
-        }
+    protected override ownPropDescriptors(): PropDescriptorTable {
+        return {
+            ...super.ownPropDescriptors(),
+            page: imperative(
+                () => {
+                    const { page } = this.props;
+                    if (page && this.container.getVisibleChildName() !== page && this.container.getChildByName(page)) {
+                        this.container.setVisibleChildName(page);
+                    }
+                },
+                { always: true },
+            ),
+            onPageChanged: signal("notify::visible-child-name", {
+                getArgs: () => [this.container.getVisibleChildName()],
+            }),
+        };
     }
 }

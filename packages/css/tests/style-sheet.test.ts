@@ -7,14 +7,14 @@ describe("StyleSheet", () => {
         expect(sheet.key).toBe("test-key");
     });
 
-    it("accepts rules via insert before GTK is ready", () => {
+    it("accepts a rule via insert", () => {
         const sheet = new StyleSheet({ key: "insert-test" });
         expect(() => {
             sheet.insert(".test { color: red; }");
         }).not.toThrow();
     });
 
-    it("queues multiple rules before GTK is ready", () => {
+    it("accepts multiple rules via insert", () => {
         const sheet = new StyleSheet({ key: "queue-test" });
         expect(() => {
             sheet.insert(".rule1 { color: red; }");
@@ -28,21 +28,6 @@ describe("StyleSheet", () => {
         sheet.insert(".test { color: red; }");
         expect(() => {
             sheet.flush();
-        }).not.toThrow();
-    });
-
-    it("allows applyQueuedRules to be called without throwing when no rules", () => {
-        const sheet = new StyleSheet({ key: "apply-empty-test" });
-        expect(() => {
-            sheet.applyQueuedRules();
-        }).not.toThrow();
-    });
-
-    it("allows applyQueuedRules to be called without throwing when rules are queued", () => {
-        const sheet = new StyleSheet({ key: "apply-test" });
-        sheet.insert(".test { color: red; }");
-        expect(() => {
-            sheet.applyQueuedRules();
         }).not.toThrow();
     });
 

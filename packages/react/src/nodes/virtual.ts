@@ -8,9 +8,11 @@ export class VirtualNode<TProps = any, TParent extends Node = any, TChild extend
     TParent,
     TChild
 > {
-    public static override createContainer() {}
+    public static override createContainer(): undefined {
+        return undefined;
+    }
 
-    constructor(typeName: string, props: TProps = {} as TProps, container: undefined, rootContainer: Container) {
-        super(typeName, props, container, rootContainer);
+    constructor(typeName: string, props: TProps, container: undefined, rootContainer: Container) {
+        super(typeName, props ?? ({} as TProps), container, rootContainer);
     }
 }

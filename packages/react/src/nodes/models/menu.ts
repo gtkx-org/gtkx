@@ -13,21 +13,29 @@ export type MenuModelProps = {
 
 export type MenuType = "root" | "item" | "section" | "submenu";
 
+/**
+ * Options for constructing a {@link MenuModel}.
+ *
+ * @public
+ */
+export interface MenuModelOptions {
+    readonly type: MenuType;
+    readonly props: MenuModelProps;
+    readonly rootContainer: Container;
+    readonly actionMap?: Gio.ActionMap;
+    readonly application?: Gtk.Application;
+}
+
 export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel> {
     private actionMap: Gio.ActionMap | null = null;
     private actionPrefix: string;
-    private menu: Gio.Menu;
-    private type: MenuType;
-    private application: Gtk.Application | null = null;
+    private readonly menu: Gio.Menu;
+    private readonly type: MenuType;
+    private readonly application: Gtk.Application | null = null;
     private action: Gio.SimpleAction | null = null;
 
-    constructor(
-        type: MenuType,
-        props: MenuModelProps,
-        rootContainer: Container,
-        actionMap?: Gio.ActionMap,
-        application?: Gtk.Application,
-    ) {
+    constructor(options: MenuModelOptions) {
+        const { type, props, rootContainer, actionMap, application } = options;
         super("", props, undefined, rootContainer);
         this.type = type;
         this.actionMap = actionMap ?? null;
@@ -109,11 +117,11 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
     public createAction(): void {
         if (this.action) {
-            this.signalStore.set(this, this.action, "activate", null);
+            this.signalStore.set({ owner: this, obj: this.action, signal: "activate", handler: null });
         }
 
-        this.action = new Gio.SimpleAction(this.getId());
-        this.signalStore.set(this, this.action, "activate", this.getOnActivate());
+        this.action = Gio.SimpleAction.new(this.getId(), null);
+        this.signalStore.set({ owner: this, obj: this.action, signal: "activate", handler: this.getOnActivate() });
         this.getActionMap().addAction(this.action);
 
         if (this.application && this.props.accels) {
@@ -128,7 +136,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
         if (this.action) {
             this.getActionMap().removeAction(this.getId());
-            this.signalStore.set(this, this.action, "activate", null);
+            this.signalStore.set({ owner: this, obj: this.action, signal: "activate", handler: null });
             this.action = null;
         }
     }
@@ -140,7 +148,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
     private findPositionIn(parentMenu: Gio.Menu): number {
         for (let i = 0; i < parentMenu.getNItems(); i++) {
             if (this.type === "item") {
-                const actionName = parentMenu.getItemAttributeValue(i, "action")?.getString();
+                const actionName = parentMenu.getItemAttributeValue(i, "action", null)?.getString()[0];
 
                 if (actionName === this.getActionName()) {
                     return i;
@@ -190,14 +198,14 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
         switch (this.type) {
             case "item": {
-                parentMenu.insert(beforePosition, this.props.label, this.getActionName());
+                parentMenu.insert(beforePosition, this.props.label ?? null, this.getActionName());
                 break;
             }
             case "section":
-                parentMenu.insertSection(beforePosition, this.menu, this.props.label);
+                parentMenu.insertSection(beforePosition, this.props.label ?? null, this.menu);
                 break;
             case "submenu":
-                parentMenu.insertSubmenu(beforePosition, this.menu, this.props.label);
+                parentMenu.insertSubmenu(beforePosition, this.props.label ?? null, this.menu);
                 break;
         }
     }
@@ -211,13 +219,13 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
         switch (this.type) {
             case "item":
-                parentMenu.append(this.props.label, this.getActionName());
+                parentMenu.append(this.props.label ?? null, this.getActionName());
                 break;
             case "section":
-                parentMenu.appendSection(this.menu, this.props.label);
+                parentMenu.appendSection(this.props.label ?? null, this.menu);
                 break;
             case "submenu":
-                parentMenu.appendSubmenu(this.menu, this.props.label);
+                parentMenu.appendSubmenu(this.props.label ?? null, this.menu);
                 break;
         }
     }
@@ -275,7 +283,12 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
         }
 
         if (oldProps.onActivate !== newProps.onActivate) {
-            this.signalStore.set(this, this.getAction(), "activate", newProps.onActivate);
+            this.signalStore.set({
+                owner: this,
+                obj: this.getAction(),
+                signal: "activate",
+                handler: newProps.onActivate,
+            });
         }
 
         if (oldProps.accels !== newProps.accels) {
@@ -290,7 +303,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
             return;
         }
 
-        if (!oldProps || oldProps.label !== newProps.label) {
+        if (oldProps?.label !== newProps.label) {
             const parentMenu = this.parent.getMenu();
             const position = this.findPositionIn(parentMenu);
 
@@ -298,9 +311,9 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
                 parentMenu.remove(position);
 
                 if (this.type === "section") {
-                    parentMenu.insertSection(position, this.menu, this.props.label);
+                    parentMenu.insertSection(position, this.props.label ?? null, this.menu);
                 } else if (this.type === "submenu") {
-                    parentMenu.insertSubmenu(position, this.menu, this.props.label);
+                    parentMenu.insertSubmenu(position, this.props.label ?? null, this.menu);
                 }
             }
         }

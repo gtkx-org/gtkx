@@ -1,8 +1,6 @@
-import { start, stop } from "@gtkx/ffi";
-import type * as Gio from "@gtkx/ffi/gio";
+import { stop } from "@gtkx/ffi";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
-import { formatBoundaryError, formatRenderError } from "./errors.js";
 import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { reconciler } from "./reconciler.js";
 
@@ -14,9 +12,9 @@ import { reconciler } from "./reconciler.js";
  * @example
  * ```tsx
  * const App = () => {
- * const app = useApplication();
- * console.log(app.applicationId);
- * return <GtkLabel label="Hello" />;
+ *   const app = useApplication();
+ *   console.log(app.applicationId);
+ *   return <GtkLabel label="Hello" />;
  * };
  * ```
  */
@@ -33,8 +31,8 @@ export const ApplicationContext = createContext<Gtk.Application | null>(null);
  * @example
  * ```tsx
  * const MyComponent = () => {
- * const app = useApplication();
- * return <GtkLabel label={app.applicationId} />;
+ *   const app = useApplication();
+ *   return <GtkLabel label={app.applicationId} />;
  * };
  * ```
  *
@@ -51,113 +49,69 @@ export const useApplication = (): Gtk.Application => {
 };
 
 let container: unknown = null;
-let app: Gtk.Application | null = null;
-let isHotReloading = false;
-
-/**
- * Sets the hot reloading state.
- *
- * Used internally by the dev server to prevent quit() from closing
- * the application during HMR updates.
- *
- * @internal
- */
-export const setHotReloading = (value: boolean): void => {
-    isHotReloading = value;
-};
 
 /**
  * Renders a React element tree into a GTK4 application window.
  *
- * This is the main entry point for GTKX applications. It initializes the GTK4
- * runtime, creates an application container, and begins the React reconciliation
+ * Registers and activates the supplied application, then begins the React
+ * reconciliation process. Mirrors the role of `createRoot().render()` in
+ * `react-dom`: call once at module top-level in your entry file.
+ *
+ * In the dev server, the entry module runs once per process. Component-level
+ * edits are applied via React Refresh; edits that propagate up to the entry
+ * trigger a process restart so this function still runs at most once per
  * process.
  *
  * @param element - The root React element to render
- * @param appId - Application ID in reverse domain notation (e.g., "com.example.myapp")
- * @param flags - Optional GIO application flags for customizing behavior
+ * @param app - The GTK application to host the rendered tree
  *
  * @example
  * ```tsx
+ * import * as Gio from "@gtkx/ffi/gio";
+ * import * as Gtk from "@gtkx/ffi/gtk";
  * import { render, quit } from "@gtkx/react";
  *
  * const App = () => (
- * <GtkApplicationWindow title="My App" onClose={quit}>
- * <GtkLabel label="Hello, GTKX!" />
- * </GtkApplicationWindow>
+ *   <GtkApplicationWindow title="My App" onClose={quit}>
+ *     <GtkLabel label="Hello, GTKX!" />
+ *   </GtkApplicationWindow>
  * );
  *
- * render(<App />, "com.example.myapp");
+ * const app = new Gtk.Application(Gio.ApplicationFlags.NON_UNIQUE, "com.example.myapp");
+ * render(<App />, app);
  * ```
  *
  * @see {@link quit} for shutting down the application
- * @see {@link update} for hot-reloading the rendered tree
  */
-export const render = (element: ReactNode, appId: string, flags?: Gio.ApplicationFlags): void => {
-    const application = start(appId, flags);
-    app = application;
-    const instance = reconciler.getInstance();
+export const render = (element: ReactNode, app: Gtk.Application): void => {
+    app.register(null);
+    app.activate();
 
-    container = instance.createContainer(
-        application,
+    container = reconciler.createContainer(
+        app,
         1,
         null,
         false,
         null,
         "",
         (error: unknown) => {
-            getSignalStore(application).forceUnblockAll();
-            throw formatRenderError(error);
+            getSignalStore(app).forceUnblockAll();
+            throw error;
         },
         (error: unknown) => {
-            getSignalStore(application).forceUnblockAll();
-            const formattedError = formatBoundaryError(error);
-            console.error(formattedError.toString());
+            getSignalStore(app).forceUnblockAll();
+            console.error(error);
         },
         () => {},
         () => {},
     );
 
-    instance.updateContainer(
-        <ApplicationContext.Provider value={application}>{element}</ApplicationContext.Provider>,
+    reconciler.updateContainer(
+        <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
         container,
         null,
         () => {},
     );
-};
-
-/**
- * Updates the rendered React element tree.
- *
- * Used primarily for hot module replacement (HMR) during development.
- * Replaces the current component tree with a new element without
- * reinitializing the GTK application.
- *
- * @param element - The new root React element to render
- *
- * @example
- * ```tsx
- * // In HMR handler
- * if (import.meta.hot) {
- * import.meta.hot.accept(() => {
- * update(<App />);
- * });
- * }
- * ```
- *
- * @see {@link render} for initial rendering
- */
-export const update = (element: ReactNode): Promise<void> => {
-    return new Promise((resolve) => {
-        reconciler
-            .getInstance()
-            .updateContainer(
-                <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
-                container,
-                null,
-                resolve,
-            );
-    });
 };
 
 /**
@@ -171,20 +125,16 @@ export const update = (element: ReactNode): Promise<void> => {
  * import { quit } from "@gtkx/react";
  *
  * const App = () => (
- * <GtkApplicationWindow title="My App" onClose={quit}>
- * <GtkButton label="Quit" onClicked={quit} />
- * </GtkApplicationWindow>
+ *   <GtkApplicationWindow title="My App" onClose={quit}>
+ *     <GtkButton label="Quit" onClicked={quit} />
+ *   </GtkApplicationWindow>
  * );
  * ```
  *
  * @see {@link render} for starting the application
  */
 export const quit = (): void => {
-    if (isHotReloading) {
-        return;
-    }
-
-    reconciler.getInstance().updateContainer(null, container, null, () => {
+    reconciler.updateContainer(null, container, null, () => {
         setTimeout(() => {
             stop();
         }, 0);

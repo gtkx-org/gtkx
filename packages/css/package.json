@@ -33,24 +33,25 @@
             "default": "./dist/index.js"
         }
     },
-    "sideEffects": [
-        "./dist/index.js"
-    ],
+    "sideEffects": false,
     "files": [
         "dist",
         "src"
     ],
     "scripts": {
-        "build": "tsc -b && cp ../../README.md .",
+        "build": "tsc -b",
         "test": "vitest run",
+        "coverage": "vitest run --coverage",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
         "@emotion/cache": "^11.14.0",
         "@emotion/serialize": "^1.3.3",
-        "@gtkx/ffi": "workspace:*"
+        "@gtkx/ffi": "workspace:*",
+        "stylis": "^4.4.0"
     },
     "devDependencies": {
-        "@gtkx/vitest": "workspace:*"
+        "@gtkx/vitest": "workspace:*",
+        "@types/stylis": "^4.2.7"
     }
 }

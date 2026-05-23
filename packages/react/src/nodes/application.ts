@@ -1,17 +1,19 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
-import { MenuNode } from "./menu.js";
+import { MenuChildController } from "./internal/menu-child.js";
 import { MenuModel } from "./models/menu.js";
 import { WindowNode } from "./window.js";
 
 export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
-    private menu: MenuModel;
+    private readonly menuController: MenuChildController;
 
     constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
-        this.menu = new MenuModel("root", {}, rootContainer, container, application);
+        this.menuController = new MenuChildController(
+            new MenuModel({ type: "root", props: {}, rootContainer, actionMap: container, application }),
+        );
     }
 
     public override isValidChild(): boolean {
@@ -19,9 +21,8 @@ export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
     }
 
     public override appendChild(child: Node): void {
-        if (child instanceof MenuNode) {
-            this.menu.appendChild(child);
-            this.container.setMenubar(this.menu.getMenu());
+        if (this.menuController.appendChild(child)) {
+            this.syncMenubar();
             return;
         }
 
@@ -29,13 +30,8 @@ export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
     }
 
     public override insertBefore(child: Node, before: Node): void {
-        if (child instanceof MenuNode) {
-            if (before instanceof MenuNode) {
-                this.menu.insertBefore(child, before);
-            } else {
-                this.menu.appendChild(child);
-            }
-            this.container.setMenubar(this.menu.getMenu());
+        if (this.menuController.insertBefore(child, before)) {
+            this.syncMenubar();
             return;
         }
 
@@ -43,12 +39,8 @@ export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
     }
 
     public override removeChild(child: Node): void {
-        if (child instanceof MenuNode) {
-            this.menu.removeChild(child);
-
-            if (this.menu.getMenu().getNItems() === 0) {
-                this.container.setMenubar(null);
-            }
+        if (this.menuController.removeChild(child)) {
+            this.syncMenubar();
             return;
         }
 
@@ -57,5 +49,10 @@ export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
         }
 
         super.removeChild(child);
+    }
+
+    private syncMenubar(): void {
+        const menu = this.menuController.menu.getMenu();
+        this.container.setMenubar(menu.getNItems() > 0 ? menu : null);
     }
 }

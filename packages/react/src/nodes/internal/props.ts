@@ -15,7 +15,7 @@ export const filterProps = <T extends Props>(props: T, excludeKeys: readonly str
 export const hasChanged = <T>(oldProps: T | null, newProps: T, key: keyof T): boolean =>
     !oldProps || oldProps[key] !== newProps[key];
 
-export const shallowArrayEqual = <T extends Record<string, unknown>>(a: T[], b: T[]): boolean => {
+export const shallowArrayEqual = <T extends Record<string, unknown>>(a: readonly T[], b: readonly T[]): boolean => {
     if (a.length !== b.length) return false;
 
     for (let i = 0; i < a.length; i++) {
@@ -36,8 +36,8 @@ export const shallowArrayEqual = <T extends Record<string, unknown>>(a: T[], b: 
 };
 
 export const primitiveArrayEqual = <T extends string | number | boolean>(
-    a: T[] | null | undefined,
-    b: T[] | null | undefined,
+    a: readonly T[] | null | undefined,
+    b: readonly T[] | null | undefined,
 ): boolean => {
     if (a === b) return true;
     if (!a || !b) return false;

@@ -1,9 +1,6 @@
 {
+    "extends": "../../tsconfig.lib.json",
     "compilerOptions": {
-        "outDir": "dist",
-        "rootDir": "src",
-        "emitDeclarationOnly": false
-    },
-    "extends": "../../tsconfig.base.json",
-    "include": ["src/**/*"]
+        "allowJs": true
+    }
 }

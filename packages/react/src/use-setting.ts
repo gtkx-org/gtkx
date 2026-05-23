@@ -12,32 +12,33 @@ interface SettingTypeMap {
 
 type SettingType = keyof SettingTypeMap;
 
-const GETTERS: Record<SettingType, string> = {
-    boolean: "getBoolean",
-    int: "getInt",
-    double: "getDouble",
-    string: "getString",
-    strv: "getStrv",
+const GETTERS: { [K in SettingType]: (settings: Gio.Settings, key: string) => SettingTypeMap[K] } = {
+    boolean: (settings, key) => settings.getBoolean(key),
+    int: (settings, key) => settings.getInt(key),
+    double: (settings, key) => settings.getDouble(key),
+    string: (settings, key) => settings.getString(key) ?? "",
+    strv: (settings, key) => settings.getStrv(key),
 };
 
-const SETTERS: Record<SettingType, string> = {
-    boolean: "setBoolean",
-    int: "setInt",
-    double: "setDouble",
-    string: "setString",
-    strv: "setStrv",
+const SETTERS: { [K in SettingType]: (settings: Gio.Settings, key: string, value: SettingTypeMap[K]) => void } = {
+    boolean: (settings, key, value) => settings.setBoolean(key, value),
+    int: (settings, key, value) => settings.setInt(key, value),
+    double: (settings, key, value) => settings.setDouble(key, value),
+    string: (settings, key, value) => settings.setString(key, value),
+    strv: (settings, key, value) => settings.setStrv(key, value),
 };
 
-type SettingAccessor = (key: string, value?: unknown) => unknown;
-
-function readSetting(settings: Gio.Settings, key: string, type: SettingType): unknown {
-    const getter = (settings as unknown as Record<string, SettingAccessor>)[GETTERS[type]] as SettingAccessor;
-    return getter.call(settings, key);
+function readSetting<T extends SettingType>(settings: Gio.Settings, key: string, type: T): SettingTypeMap[T] {
+    return GETTERS[type](settings, key);
 }
 
-function writeSetting(settings: Gio.Settings, key: string, type: SettingType, value: unknown): void {
-    const setter = (settings as unknown as Record<string, SettingAccessor>)[SETTERS[type]] as SettingAccessor;
-    setter.call(settings, key, value);
+function writeSetting<T extends SettingType>(
+    settings: Gio.Settings,
+    key: string,
+    type: T,
+    value: SettingTypeMap[T],
+): void {
+    SETTERS[type](settings, key, value);
 }
 
 /**
@@ -70,14 +71,14 @@ export function useSetting<T extends SettingType>(
     key: string,
     type: T,
 ): [SettingTypeMap[T], (value: SettingTypeMap[T]) => void] {
-    const settings = useMemo(() => new Gio.Settings(schemaId), [schemaId]);
-    const [value, setValue] = useState<SettingTypeMap[T]>(() => readSetting(settings, key, type) as SettingTypeMap[T]);
+    const settings = useMemo(() => Gio.Settings.new(schemaId), [schemaId]);
+    const [value, setValue] = useState<SettingTypeMap[T]>(() => readSetting(settings, key, type));
 
     useEffect(() => {
-        setValue(readSetting(settings, key, type) as SettingTypeMap[T]);
+        setValue(readSetting(settings, key, type));
 
         const handlerId = settings.connect(`changed::${key}`, () => {
-            setValue(readSetting(settings, key, type) as SettingTypeMap[T]);
+            setValue(readSetting(settings, key, type));
         });
 
         return () => {

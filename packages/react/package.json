@@ -32,18 +32,24 @@
             "default": "./dist/index.js"
         }
     },
-    "sideEffects": false,
+    "sideEffects": [
+        "**/generated/internal.js"
+    ],
     "files": [
         "dist",
-        "src"
+        "src",
+        "scripts",
+        "!dist/generated",
+        "!src/generated",
+        "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "tsc -b && cp ../../README.md .",
-        "typecheck": "tsc -b --emitDeclarationOnly"
+        "build": "tsc -b && pnpm run copy-generated-dts",
+        "copy-generated-dts": "node scripts/copy-generated-dts.ts",
+        "typecheck": "tsc -b --emitDeclarationOnly && pnpm run copy-generated-dts"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
-        "@gtkx/gir": "workspace:*",
         "react-reconciler": "^0.33.0"
     },
     "devDependencies": {

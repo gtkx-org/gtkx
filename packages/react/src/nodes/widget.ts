@@ -1,47 +1,20 @@
-import { getNativeObject, type NativeObject } from "@gtkx/ffi";
-import type * as GObject from "@gtkx/ffi/gobject";
-import {
-    ObjectClass,
-    ParamSpecString,
-    Type,
-    TypeInstance,
-    typeClassRef,
-    typeFromName,
-    typeFundamental,
-    typeNameFromInstance,
-} from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../metadata.js";
 import { Node } from "../node.js";
 import type { Container, Props } from "../types.js";
 import { applyAccessibleProps, isAccessibleProp } from "./internal/accessible.js";
+import { applyProps } from "./internal/apply-props.js";
 import { createContainerWithProperties } from "./internal/construct.js";
 import {
     type InsertableWidget,
     isAddable,
     isAppendable,
-    isEditable,
     isInsertable,
     isRemovable,
     isReorderable,
     isSingleChild,
     type ReorderableWidget,
 } from "./internal/predicates.js";
-import { filterProps } from "./internal/props.js";
-import type { SignalHandler } from "./internal/signal-store.js";
-import { attachChild, detachChild } from "./internal/widget.js";
-
-const EXCLUDED_PROPS = ["children"];
-
-function findProperty(obj: NativeObject, key: string): GObject.ParamSpec | null {
-    const propertyName = key.replace(/([A-Z])/g, "-$1").toLowerCase();
-    const typeInstance = getNativeObject(obj.handle, TypeInstance);
-    const typeName = typeNameFromInstance(typeInstance);
-    const gtype = typeFromName(typeName);
-    const typeClass = typeClassRef(gtype);
-    const objectClass = getNativeObject(typeClass.handle, ObjectClass);
-    return objectClass.findProperty(propertyName) ?? null;
-}
+import { attachChild, detachChild, unparentWidget } from "./internal/widget.js";
 
 export class WidgetNode<
     T extends Gtk.Widget = Gtk.Widget,
@@ -51,11 +24,12 @@ export class WidgetNode<
     TParent extends Node = Node,
 > extends Node<T, P, TParent, TChild> {
     public static override createContainer(
+        typeName: string,
         props: Props,
-        containerClass: typeof Gtk.Widget,
+        _containerClass: typeof Gtk.Widget,
         _rootContainer?: Container,
     ): Container | null {
-        return createContainerWithProperties(containerClass, props);
+        return createContainerWithProperties(typeName, props);
     }
 
     public override isValidChild(_child: Node): boolean {
@@ -115,60 +89,8 @@ export class WidgetNode<
 
     public override commitUpdate(oldProps: P | null, newProps: P): void {
         super.commitUpdate(oldProps, newProps);
-
-        if (!this.container) {
-            throw new Error(`Container is undefined for '${this.typeName}'`);
-        }
-
         applyAccessibleProps(this.container, oldProps, newProps);
-
-        const propNames = new Set([
-            ...Object.keys(filterProps(oldProps ?? {}, EXCLUDED_PROPS)),
-            ...Object.keys(filterProps(newProps ?? {}, EXCLUDED_PROPS)),
-        ]);
-
-        const pendingSignals: Array<{ name: string; newValue: unknown }> = [];
-        const pendingProperties: Array<{ name: string; oldValue: unknown; newValue: unknown }> = [];
-
-        for (const name of propNames) {
-            if (isAccessibleProp(name)) continue;
-            if (isConstructOnlyProp(this.container, name)) continue;
-
-            const oldValue = oldProps?.[name];
-            const newValue = newProps[name];
-
-            if (oldValue === newValue) continue;
-
-            const signalName = resolveSignal(this.container, name);
-
-            if (signalName) {
-                pendingSignals.push({ name, newValue });
-            } else if (newValue !== undefined) {
-                pendingProperties.push({ name, oldValue, newValue });
-            } else if (oldValue !== undefined) {
-                const defaultValue = this.getPropertyDefaultValue(name);
-                if (defaultValue !== undefined) {
-                    pendingProperties.push({ name, oldValue, newValue: defaultValue });
-                }
-            }
-        }
-
-        for (const { name, newValue } of pendingSignals) {
-            const signalName = resolveSignal(this.container, name);
-            if (!signalName) continue;
-            const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-            this.signalStore.set(this, this.container, signalName, handler);
-        }
-
-        for (const { name, oldValue, newValue } of pendingProperties) {
-            if (name === "text" && oldValue !== undefined && isEditable(this.container)) {
-                if (oldValue !== this.container.getText()) {
-                    continue;
-                }
-            }
-
-            this.setProperty(name, newValue);
-        }
+        applyProps(this, oldProps, newProps, { table: this.getPropTable(), exclude: isAccessibleProp });
     }
 
     private appendWidgetChild(child: WidgetNode): void {
@@ -176,7 +98,7 @@ export class WidgetNode<
             if (this.isChildAutowrapped(child)) {
                 this.detachAutowrappedChild(child);
             } else {
-                detachChildFromParent(child);
+                unparentWidget(child.container);
             }
         }
         attachChild(child.container, this.container);
@@ -220,10 +142,10 @@ export class WidgetNode<
 
         const position = this.findAutowrappedPosition(before);
 
-        if (position !== null) {
-            container.insert(child.container, position);
-        } else {
+        if (position === null) {
             container.append(child.container);
+        } else {
+            container.insert(child.container, position);
         }
     }
 
@@ -248,7 +170,8 @@ export class WidgetNode<
 
     private unwrapGtkChild(child: Gtk.Widget): Gtk.Widget | null {
         if ("getChild" in child && typeof child.getChild === "function") {
-            return child.getChild() as Gtk.Widget | null;
+            const inner: unknown = child.getChild();
+            return inner instanceof Gtk.Widget ? inner : null;
         }
         return child;
     }
@@ -270,45 +193,6 @@ export class WidgetNode<
         }
     }
 
-    private getPropertyDefaultValue(key: string): unknown {
-        if (!resolvePropMeta(this.container, key)) return undefined;
-
-        const pspec = findProperty(this.container, key);
-        if (!pspec) return undefined;
-
-        const value = pspec.getDefaultValue();
-        const gtype = value.getType();
-        const fundamental = typeFundamental(gtype);
-
-        if (fundamental === Type.BOOLEAN) return value.getBoolean();
-        if (fundamental === Type.INT) return value.getInt();
-        if (fundamental === Type.UINT) return value.getUint();
-        if (fundamental === Type.LONG) return value.getLong();
-        if (fundamental === Type.ULONG) return value.getUlong();
-        if (fundamental === Type.INT64) return value.getInt64();
-        if (fundamental === Type.UINT64) return value.getUint64();
-        if (fundamental === Type.FLOAT) return value.getFloat();
-        if (fundamental === Type.DOUBLE) return value.getDouble();
-        if (fundamental === Type.STRING) return value.getString();
-        if (fundamental === Type.ENUM) return value.getEnum();
-        if (fundamental === Type.FLAGS) return value.getFlags();
-
-        return undefined;
-    }
-
-    private setProperty(key: string, value: unknown): void {
-        const propName = resolvePropMeta(this.container, key);
-        if (!propName) return;
-
-        const target = this.container as Record<string, unknown>;
-
-        if (findProperty(this.container, key) instanceof ParamSpecString) {
-            if (target[propName] === value) return;
-        }
-
-        target[propName] = value;
-    }
-
     private insertBeforeReorderable(container: ReorderableWidget, child: WidgetNode, before: WidgetNode): void {
         const previousSibling = this.findPreviousSibling(before);
         const currentParent = child.container.getParent();
@@ -317,13 +201,13 @@ export class WidgetNode<
         if (isChildOfThisContainer) {
             container.reorderChildAfter(child.container, previousSibling);
         } else {
-            detachChildFromParent(child);
+            unparentWidget(child.container);
             container.insertChildAfter(child.container, previousSibling);
         }
     }
 
     private insertBeforeInsertable(container: InsertableWidget, child: WidgetNode, before: WidgetNode): void {
-        detachChildFromParent(child);
+        unparentWidget(child.container);
         const position = this.findInsertPosition(before);
         container.insert(child.container, position);
     }
@@ -354,16 +238,5 @@ export class WidgetNode<
         }
 
         throw new Error(`Cannot find 'before' child position in '${this.typeName}'`);
-    }
-}
-
-function detachChildFromParent(child: WidgetNode): void {
-    const currentParent = child.container.getParent();
-    if (currentParent !== null) {
-        if (isRemovable(currentParent)) {
-            currentParent.remove(child.container);
-        } else {
-            child.container.unparent();
-        }
     }
 }

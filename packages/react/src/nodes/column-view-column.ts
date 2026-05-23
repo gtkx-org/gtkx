@@ -1,32 +1,36 @@
-import { getNativeId } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
-import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ColumnViewColumnProps, ListItem } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import type { BoundItem } from "./internal/bound-item.js";
+import { connectFactoryLifecycle, UNBOUND_POSITION } from "./internal/list-factory.js";
+import { MenuChildController } from "./internal/menu-child.js";
 import { hasChanged } from "./internal/props.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
-const UNBOUND_POSITION = -1;
+interface ParentBoundItemsUpdater {
+    scheduleBoundItemsUpdate(): void;
+    queueBoundItemsUpdate(): void;
+}
 
 export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, WidgetNode, MenuNode> {
     private column: Gtk.ColumnViewColumn | null = null;
     private columnFactory: Gtk.SignalListItemFactory | null = null;
-    private containers = new Map<Gtk.ListItem, number>();
-    private containerKeys = new Map<Gtk.ListItem, string>();
-    private menu: MenuModel;
-    private actionGroup: Gio.SimpleActionGroup;
+    private readonly containers = new Map<Gtk.ListItem, number>();
+    private readonly containerKeys = new Map<Gtk.ListItem, string>();
+    private readonly menuController: MenuChildController;
+    private readonly actionGroup: Gio.SimpleActionGroup;
 
     constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.actionGroup = new Gio.SimpleActionGroup();
-        this.menu = new MenuModel("root", {}, rootContainer, this.actionGroup);
-        this.menu.setActionMap(this.actionGroup, props.id);
+        const menu = new MenuModel({ type: "root", props: {}, rootContainer, actionMap: this.actionGroup });
+        menu.setActionMap(this.actionGroup, props.id);
+        this.menuController = new MenuChildController(menu);
     }
 
     public override isValidChild(child: Node): boolean {
@@ -51,22 +55,18 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     }
 
     public override appendChild(child: MenuNode): void {
-        this.menu.appendChild(child);
+        this.menuController.appendChild(child);
         this.updateHeaderMenu();
     }
 
     public override insertBefore(child: MenuNode, before: MenuNode): void {
-        this.menu.insertBefore(child, before);
+        this.menuController.insertBefore(child, before);
         this.updateHeaderMenu();
     }
 
     public override removeChild(child: MenuNode): void {
-        this.menu.removeChild(child);
+        this.menuController.removeChild(child);
         this.updateHeaderMenu();
-    }
-
-    public override detachDeletedInstance(): void {
-        super.detachDeletedInstance();
     }
 
     public getColumn(): Gtk.ColumnViewColumn {
@@ -105,40 +105,22 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
 
     private setupFactory(): void {
         this.columnFactory = new Gtk.SignalListItemFactory();
-
-        this.columnFactory.connect("setup", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            const key = String(getNativeId(listItem.handle));
-            const placeholder = new Gtk.Box();
-            const { width, height } = this.getParentEstimatedItemSize();
-            placeholder.setSizeRequest(width, height);
-            listItem.setChild(placeholder);
-            this.containers.set(listItem, UNBOUND_POSITION);
-            this.containerKeys.set(listItem, key);
-        });
-
-        this.columnFactory.connect("bind", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            this.containers.set(listItem, listItem.getPosition());
-            this.scheduleParentUpdate();
-        });
-
-        this.columnFactory.connect("unbind", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            this.containers.set(listItem, UNBOUND_POSITION);
-            this.scheduleParentUpdate();
-        });
-
-        this.columnFactory.connect("teardown", (_self: GObject.Object, obj: GObject.Object) => {
-            const listItem = obj as unknown as Gtk.ListItem;
-            this.containers.delete(listItem);
-            this.containerKeys.delete(listItem);
-            listItem.setChild(null);
+        connectFactoryLifecycle(this.columnFactory, {
+            containers: this.containers,
+            containerKeys: this.containerKeys,
+            getPosition: (item) => item.getPosition(),
+            onBoundItemsChanged: () => this.queueParentUpdate(),
+            onSetup: (item) => {
+                const placeholder = new Gtk.Box();
+                const { width, height } = this.getParentEstimatedItemSize();
+                placeholder.setSizeRequest(width, height);
+                item.setChild(placeholder);
+            },
         });
     }
 
     private setupColumn(props: ColumnViewColumnProps): void {
-        this.column = new Gtk.ColumnViewColumn(props.title, this.columnFactory);
+        this.column = Gtk.ColumnViewColumn.new(props.title, this.columnFactory);
         this.column.setId(props.id);
 
         if (props.expand !== undefined) this.column.setExpand(props.expand);
@@ -164,7 +146,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
 
     private updateHeaderMenu(): void {
         if (!this.column) return;
-        const menu = this.menu.getMenu();
+        const menu = this.menuController.menu.getMenu();
         this.column.setHeaderMenu(menu.getNItems() > 0 ? menu : null);
     }
 
@@ -178,12 +160,24 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     }
 
     private scheduleParentUpdate(): void {
+        const parent = this.parentBoundItemsUpdater();
+        if (parent) parent.scheduleBoundItemsUpdate();
+    }
+
+    private queueParentUpdate(): void {
+        const parent = this.parentBoundItemsUpdater();
+        if (parent) parent.queueBoundItemsUpdate();
+    }
+
+    private parentBoundItemsUpdater(): ParentBoundItemsUpdater | null {
+        const candidate = this.parent as Partial<ParentBoundItemsUpdater> | null | undefined;
         if (
-            this.parent &&
-            "scheduleBoundItemsUpdate" in this.parent &&
-            typeof this.parent.scheduleBoundItemsUpdate === "function"
+            candidate &&
+            typeof candidate.scheduleBoundItemsUpdate === "function" &&
+            typeof candidate.queueBoundItemsUpdate === "function"
         ) {
-            (this.parent as { scheduleBoundItemsUpdate(): void }).scheduleBoundItemsUpdate();
+            return candidate as ParentBoundItemsUpdater;
         }
+        return null;
     }
 }

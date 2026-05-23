@@ -1,55 +1,33 @@
 import type * as Adw from "@gtkx/ffi/adw";
-import type { AdwAlertDialogProps, AlertDialogResponseProps } from "../jsx.js";
+import type { AlertDialogResponseProps } from "../jsx.js";
 import { DialogNode } from "./dialog.js";
-import { filterProps, hasChanged } from "./internal/props.js";
-
-const OWN_PROPS = ["responses"] as const;
-
-type Props = Pick<AdwAlertDialogProps, (typeof OWN_PROPS)[number]>;
+import { arraySync, type PropDescriptorTable, teardownNode } from "./internal/apply-props.js";
+import { shallowArrayEqual } from "./internal/props.js";
 
 export class AlertDialogNode extends DialogNode {
-    private managedResponseIds: string[] = [];
-
-    public override commitUpdate(oldProps: Props | null, newProps: Props): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
-        this.applyOwnProps(oldProps, newProps);
+    protected override ownPropDescriptors(): PropDescriptorTable {
+        return {
+            ...super.ownPropDescriptors(),
+            responses: arraySync<AlertDialogResponseProps, string>({
+                equal: shallowArrayEqual,
+                clearItem: (id) => (this.container as Adw.AlertDialog).removeResponse(id),
+                add: (response) => {
+                    const dialog = this.container as Adw.AlertDialog;
+                    dialog.addResponse(response.id, response.label);
+                    if (response.appearance !== undefined) {
+                        dialog.setResponseAppearance(response.id, response.appearance);
+                    }
+                    if (response.enabled !== undefined) {
+                        dialog.setResponseEnabled(response.id, response.enabled);
+                    }
+                    return response.id;
+                },
+            }),
+        };
     }
 
     public override detachDeletedInstance(): void {
-        this.clearResponses();
+        teardownNode(this, this.getPropTable());
         super.detachDeletedInstance();
-    }
-
-    private applyOwnProps(oldProps: Props | null, newProps: Props): void {
-        if (hasChanged(oldProps, newProps, "responses")) {
-            this.syncResponses(newProps.responses ?? []);
-        }
-    }
-
-    private syncResponses(newResponses: AlertDialogResponseProps[]): void {
-        const dialog = this.container as Adw.AlertDialog;
-        this.clearResponses();
-
-        for (const response of newResponses) {
-            dialog.addResponse(response.id, response.label);
-
-            if (response.appearance !== undefined) {
-                dialog.setResponseAppearance(response.id, response.appearance);
-            }
-
-            if (response.enabled !== undefined) {
-                dialog.setResponseEnabled(response.id, response.enabled);
-            }
-
-            this.managedResponseIds.push(response.id);
-        }
-    }
-
-    private clearResponses(): void {
-        const dialog = this.container as Adw.AlertDialog;
-        for (const id of this.managedResponseIds) {
-            dialog.removeResponse(id);
-        }
-        this.managedResponseIds = [];
     }
 }

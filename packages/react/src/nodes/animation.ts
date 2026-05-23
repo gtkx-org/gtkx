@@ -4,8 +4,8 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import type { AdwSpringAnimationProps, AdwTimedAnimationProps, AnimatableProperties, AnimationProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
+import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
 import { attachChild, detachChild, isAttachedTo } from "./internal/widget.js";
-import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
 type SetChildContainer = { setChild: (child: Gtk.Widget | null) => void };
@@ -21,14 +21,15 @@ const DEFAULT_SPRING_DAMPING = 1;
 const DEFAULT_SPRING_MASS = 1;
 const DEFAULT_SPRING_STIFFNESS = 100;
 
-export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode> {
-    private className: string;
+export class AnimationNode extends SingleChildVirtualNode<AnimationProps, Node, WidgetNode> {
+    private readonly className: string;
     private provider: Gtk.CssProvider | null = null;
     private display: Gdk.Display | null = null;
     private currentAnimation: Adw.Animation | null = null;
     private currentValues: AnimatableProperties = {};
     private isExiting = false;
     private detachedParentContainer: unknown = null;
+    private classApplied = false;
 
     constructor(typeName: string, props: AnimationProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
@@ -43,35 +44,9 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
         return true;
     }
 
-    public override setParent(parent: Node | null): void {
-        if (!parent && this.parent) {
-            this.detachedParentContainer = this.parent.container;
-        }
-
-        super.setParent(parent);
-
-        if (parent && this.children[0]) {
-            this.onChildChange(null);
-        }
-    }
-
-    public override appendChild(child: WidgetNode): void {
-        const oldChildWidget = this.children[0]?.container ?? null;
-
-        super.appendChild(child);
-
+    protected override onDetach(_oldChild: Gtk.Widget | null): void {
         if (this.parent) {
-            this.onChildChange(oldChildWidget);
-        }
-    }
-
-    public override removeChild(child: WidgetNode): void {
-        const oldChildWidget = child.container;
-
-        super.removeChild(child);
-
-        if (this.parent && oldChildWidget) {
-            this.onChildChange(oldChildWidget);
+            this.detachedParentContainer = this.parent.container;
         }
     }
 
@@ -123,12 +98,13 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
         }
     }
 
-    private onChildChange(oldChild: Gtk.Widget | null): void {
+    protected override onChildChange(oldChild: Gtk.Widget | null): void {
         const parentContainer = this.parent?.container ?? null;
         const childWidget = this.children[0]?.container ?? null;
 
-        if (oldChild && this.provider) {
+        if (oldChild && this.classApplied) {
             oldChild.removeCssClass(this.className);
+            this.classApplied = false;
         }
 
         if (oldChild && parentContainer instanceof Gtk.Widget && isAttachedTo(oldChild, parentContainer)) {
@@ -149,6 +125,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
     private setupAnimatedChild(childWidget: Gtk.Widget): void {
         this.setupCssProvider();
         childWidget.addCssClass(this.className);
+        this.classApplied = true;
 
         const initial = this.props.initial;
         const animate = this.props.animate;
@@ -204,9 +181,10 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
             Gtk.StyleContext.removeProviderForDisplay(this.display, this.provider);
         }
 
-        if (childWidget) {
+        if (childWidget && this.classApplied) {
             childWidget.removeCssClass(this.className);
         }
+        this.classApplied = false;
 
         this.provider = null;
         this.display = null;
@@ -226,7 +204,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
 
         this.props.onAnimationStart?.();
 
-        const callback = new Adw.CallbackAnimationTarget((progress: number) => {
+        const callback = Adw.CallbackAnimationTarget.new((progress: number) => {
             const interpolated = this.interpolate(from, to, progress);
             this.currentValues = interpolated;
             this.applyValues(interpolated);
@@ -243,7 +221,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
 
         this.currentAnimation = animation;
 
-        const delay = (this.props as AdwTimedAnimationProps | AdwSpringAnimationProps).delay ?? 0;
+        const delay = this.props.delay ?? 0;
 
         if (delay > 0) {
             setTimeout(() => {
@@ -268,7 +246,7 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
         const props = this.props as AdwTimedAnimationProps;
         const duration = props.duration ?? DEFAULT_TIMED_DURATION;
 
-        const animation = new Adw.TimedAnimation(widget, 0, 1, duration, target);
+        const animation = Adw.TimedAnimation.new(widget, 0, 1, duration, target);
 
         if (props.easing !== undefined) {
             animation.setEasing(props.easing);
@@ -295,8 +273,8 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
         const mass = props.mass ?? DEFAULT_SPRING_MASS;
         const stiffness = props.stiffness ?? DEFAULT_SPRING_STIFFNESS;
 
-        const springParams = new Adw.SpringParams(damping, mass, stiffness);
-        const animation = new Adw.SpringAnimation(widget, 0, 1, springParams, target);
+        const springParams = Adw.SpringParams.new(damping, mass, stiffness);
+        const animation = Adw.SpringAnimation.new(widget, 0, 1, springParams, target);
 
         if (props.initialVelocity !== undefined) {
             animation.setInitialVelocity(props.initialVelocity);
@@ -315,8 +293,9 @@ export class AnimationNode extends VirtualNode<AnimationProps, Node, WidgetNode>
         }
 
         const childWidget = this.children[0]?.container ?? null;
-        if (childWidget && !childWidget.getCssClasses()?.includes(this.className)) {
+        if (childWidget && !this.classApplied) {
             childWidget.addCssClass(this.className);
+            this.classApplied = true;
         }
 
         const css = this.buildCss(this.className, values);

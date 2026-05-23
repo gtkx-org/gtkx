@@ -1,10 +1,5 @@
-import * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
-import * as GtkSource from "@gtkx/ffi/gtksource";
-import * as WebKit from "@gtkx/ffi/webkit";
 import type { Node } from "./node.js";
 import { AdjustableNode } from "./nodes/adjustable.js";
-
 import { AlertDialogNode } from "./nodes/alert-dialog.js";
 import { AnimationNode } from "./nodes/animation.js";
 import { ApplicationNode } from "./nodes/application.js";
@@ -49,15 +44,10 @@ import { WebViewNode } from "./nodes/web-view.js";
 import { WidgetNode } from "./nodes/widget.js";
 import { WindowNode } from "./nodes/window.js";
 
-export const AdjustableWidgets = [Gtk.SpinButton, Gtk.ScaleButton, Gtk.Range] as const;
-export type AdjustableWidget = InstanceType<(typeof AdjustableWidgets)[number]>;
-
-export const StackWidgets = [Gtk.Stack, Adw.ViewStack] as const;
-export type StackWidget = InstanceType<(typeof StackWidgets)[number]>;
-
-export const PopoverMenuWidgets = [Gtk.PopoverMenu, Gtk.PopoverMenuBar, Gtk.MenuButton] as const;
-export type PopoverMenuWidget = InstanceType<(typeof PopoverMenuWidgets)[number]>;
-
+/**
+ * Constructor shape every reconciler node class satisfies: it is instantiable
+ * as a {@link Node} and exposes the static `createContainer` factory.
+ */
 export type NodeClass = (new (
     // biome-ignore lint/suspicious/noExplicitAny: Registry entries require flexible typing for varied node constructors
     ...args: any[]
@@ -66,18 +56,30 @@ export type NodeClass = (new (
     createContainer(...args: any[]): unknown;
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Class keys require flexible typing for GTK class hierarchy matching
-type ClassKey = new (...args: any[]) => any;
-type RegistryKey = string | ClassKey | readonly (string | ClassKey)[];
-type NodeRegistryEntry = [RegistryKey, NodeClass];
-
-export const NODE_REGISTRY: NodeRegistryEntry[] = [
+/**
+ * Maps a JSX intrinsic element to the reconciler node class that backs it.
+ *
+ * A key is either the name of a virtual element with no backing GLib type
+ * (`"Slot"`, `"StackPage"`, …) or the GLib type name of a widget/object a node
+ * specializes (`"GtkWindow"`, `"GtkEventController"`, …). {@link createNode}
+ * resolves an element by walking its GLib type ancestry against this map, so an
+ * entry keyed on a base type also matches every subtype — `"GtkWidget"` is the
+ * catch-all, and `"GtkEventController"` matches every event controller.
+ *
+ * Keying by string keeps the registry independent of which FFI namespaces a
+ * project generates: an entry for a namespace that was not generated simply
+ * never matches.
+ */
+export const NODE_REGISTRY: ReadonlyMap<string, NodeClass> = new Map<string, NodeClass>([
     ["ContainerSlot", ContainerSlotNode],
-    [["AdwTimedAnimation", "AdwSpringAnimation"], AnimationNode],
+    ["AdwTimedAnimation", AnimationNode],
+    ["AdwSpringAnimation", AnimationNode],
     ["ColumnViewColumn", ColumnViewColumnNode],
     ["FixedChild", FixedChildNode],
     ["GridChild", GridChildNode],
-    [["MenuItem", "MenuSection", "MenuSubmenu"], MenuNode],
+    ["MenuItem", MenuNode],
+    ["MenuSection", MenuNode],
+    ["MenuSubmenu", MenuNode],
     ["NavigationPage", NavigationPageNode],
     ["NotebookPage", NotebookPageNode],
     ["NotebookPageTab", NotebookPageTabNode],
@@ -89,31 +91,41 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     ["TextPaintable", TextPaintableNode],
     ["TextSegment", TextSegmentNode],
     ["TextTag", TextTagNode],
-    [Gtk.Application, ApplicationNode],
-    [Gtk.EventController, EventControllerNode],
-    [GtkSource.View, SourceViewNode],
-    [Gtk.TextView, TextViewNode],
-    [WebKit.WebView, WebViewNode],
-    [Adw.AlertDialog, AlertDialogNode],
-    [Adw.Dialog, DialogNode],
-    [Gtk.Window, WindowNode],
-    [Adw.SpinRow, SpinRowNode],
-    [Adw.SwitchRow, SwitchRowNode],
-    [Gtk.Scale, ScaleNode],
-    [Gtk.LevelBar, LevelBarNode],
-    [Gtk.ScrolledWindow, ScrolledWindowNode],
-    [Gtk.Calendar, CalendarNode],
-    [Gtk.ColorDialogButton, ColorDialogButtonNode],
-    [Gtk.FontDialogButton, FontDialogButtonNode],
-    [Gtk.DrawingArea, DrawingAreaNode],
-    [Gtk.SearchBar, SearchBarNode],
-    [Adw.NavigationView, NavigationViewNode],
-    [Adw.ToggleGroup, ToggleGroupNode],
-    [Gtk.Notebook, NotebookNode],
-    [StackWidgets, StackNode],
-    [[Gtk.ListView, Gtk.ColumnView, Gtk.GridView, Gtk.DropDown, Adw.ComboRow], ListNode],
-    [PopoverMenuWidgets, PopoverMenuNode],
-    [AdjustableWidgets, AdjustableNode],
-    [[Gtk.ListItem, Gtk.ListHeader], ListItemNode],
-    [Gtk.Widget, WidgetNode],
-];
+    ["GtkApplication", ApplicationNode],
+    ["GtkEventController", EventControllerNode],
+    ["GtkSourceView", SourceViewNode],
+    ["GtkTextView", TextViewNode],
+    ["WebKitWebView", WebViewNode],
+    ["AdwAlertDialog", AlertDialogNode],
+    ["AdwDialog", DialogNode],
+    ["GtkWindow", WindowNode],
+    ["AdwSpinRow", SpinRowNode],
+    ["AdwSwitchRow", SwitchRowNode],
+    ["GtkScale", ScaleNode],
+    ["GtkLevelBar", LevelBarNode],
+    ["GtkScrolledWindow", ScrolledWindowNode],
+    ["GtkCalendar", CalendarNode],
+    ["GtkColorDialogButton", ColorDialogButtonNode],
+    ["GtkFontDialogButton", FontDialogButtonNode],
+    ["GtkDrawingArea", DrawingAreaNode],
+    ["GtkSearchBar", SearchBarNode],
+    ["AdwNavigationView", NavigationViewNode],
+    ["AdwToggleGroup", ToggleGroupNode],
+    ["GtkNotebook", NotebookNode],
+    ["GtkStack", StackNode],
+    ["AdwViewStack", StackNode],
+    ["GtkListView", ListNode],
+    ["GtkColumnView", ListNode],
+    ["GtkGridView", ListNode],
+    ["GtkDropDown", ListNode],
+    ["AdwComboRow", ListNode],
+    ["GtkPopoverMenu", PopoverMenuNode],
+    ["GtkPopoverMenuBar", PopoverMenuNode],
+    ["GtkMenuButton", PopoverMenuNode],
+    ["GtkSpinButton", AdjustableNode],
+    ["GtkScaleButton", AdjustableNode],
+    ["GtkRange", AdjustableNode],
+    ["GtkListItem", ListItemNode],
+    ["GtkListHeader", ListItemNode],
+    ["GtkWidget", WidgetNode],
+]);

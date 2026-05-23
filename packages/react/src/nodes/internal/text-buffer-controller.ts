@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import type { GtkTextViewProps } from "../../jsx.js";
 import type { Node } from "../../node.js";
 import { TextAnchorNode } from "../text-anchor.js";
@@ -17,7 +17,7 @@ type BufferProps = Pick<GtkTextViewProps, "enableUndo"> & BufferCallbackProps;
 
 export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffer> {
     private buffer: TBuffer | null = null;
-    private textChildren: TextContentChild[] = [];
+    private readonly textChildren: TextContentChild[] = [];
     private initialMount = true;
     private irreversibleStarted = false;
 
@@ -82,50 +82,33 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         }
     }
 
+    private buildBufferSignalHandlers(buffer: TBuffer, callbacks: BufferCallbackProps) {
+        const { onBufferChanged, onTextInserted, onTextDeleted, onCanUndoChanged, onCanRedoChanged } = callbacks;
+        return {
+            changed: onBufferChanged ? () => onBufferChanged(buffer) : null,
+            insertText: onTextInserted
+                ? (location: Gtk.TextIter, text: string) => onTextInserted(buffer, location.getOffset(), text)
+                : null,
+            deleteRange: onTextDeleted
+                ? (start: Gtk.TextIter, end: Gtk.TextIter) => onTextDeleted(buffer, start.getOffset(), end.getOffset())
+                : null,
+            canUndo: onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null,
+            canRedo: onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null,
+        };
+    }
+
     private setSignalHandlersChanged(callbacks: BufferCallbackProps): void {
         if (!this.buffer) return;
 
         const buffer = this.buffer;
-        const { onBufferChanged, onTextInserted, onTextDeleted, onCanUndoChanged, onCanRedoChanged } = callbacks;
+        const handlers = this.buildBufferSignalHandlers(buffer, callbacks);
 
-        this.owner.signalStore.set(
-            this.owner,
-            buffer,
-            "changed",
-            onBufferChanged ? () => onBufferChanged(buffer) : null,
-        );
-
-        this.owner.signalStore.set(
-            this.owner,
-            buffer,
-            "insert-text",
-            onTextInserted
-                ? (location: Gtk.TextIter, text: string) => onTextInserted(buffer, location.getOffset(), text)
-                : null,
-        );
-
-        this.owner.signalStore.set(
-            this.owner,
-            buffer,
-            "delete-range",
-            onTextDeleted
-                ? (start: Gtk.TextIter, end: Gtk.TextIter) => onTextDeleted(buffer, start.getOffset(), end.getOffset())
-                : null,
-        );
-
-        this.owner.signalStore.set(
-            this.owner,
-            buffer,
-            "notify::can-undo",
-            onCanUndoChanged ? () => onCanUndoChanged(buffer.getCanUndo()) : null,
-        );
-
-        this.owner.signalStore.set(
-            this.owner,
-            buffer,
-            "notify::can-redo",
-            onCanRedoChanged ? () => onCanRedoChanged(buffer.getCanRedo()) : null,
-        );
+        const owner = this.owner;
+        owner.signalStore.set({ owner, obj: buffer, signal: "changed", handler: handlers.changed });
+        owner.signalStore.set({ owner, obj: buffer, signal: "insert-text", handler: handlers.insertText });
+        owner.signalStore.set({ owner, obj: buffer, signal: "delete-range", handler: handlers.deleteRange });
+        owner.signalStore.set({ owner, obj: buffer, signal: "notify::can-undo", handler: handlers.canUndo });
+        owner.signalStore.set({ owner, obj: buffer, signal: "notify::can-redo", handler: handlers.canRedo });
     }
 
     isTextContentChild(child: Node): child is TextContentChild {
@@ -139,46 +122,13 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
     appendChild(child: TextContentChild): void {
         const buffer = this.ensureBuffer();
+        this.beginIrreversibleIfMounting(buffer);
 
-        if (this.initialMount && !this.irreversibleStarted) {
-            buffer.beginIrreversibleAction();
-            this.irreversibleStarted = true;
-        }
-
-        const wasMoved = this.textChildren.indexOf(child) !== -1;
-        if (wasMoved) {
-            const existingIndex = this.textChildren.indexOf(child);
-            const oldOffset = child.getBufferOffset();
-            const oldLength = child.getLength();
-
-            this.textChildren.splice(existingIndex, 1);
-
-            if (oldLength > 0) {
-                this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
-            }
-
-            this.updateChildOffsets(existingIndex);
-        }
+        const wasMoved = this.removeIfPresent(child);
 
         const offset = this.getTotalLength();
-
         this.textChildren.push(child);
-        child.setBufferOffset(offset);
-
-        if (child instanceof TextSegmentNode) {
-            this.insertTextAtOffset(child.getText(), offset);
-        } else if (child instanceof TextTagNode) {
-            const text = child.getText();
-            this.insertTextAtOffset(text, offset);
-            if (!child.hasBuffer()) {
-                child.setBuffer(buffer);
-            }
-            this.setupEmbeddedObjects(child);
-        } else if (child instanceof TextAnchorNode) {
-            child.setTextViewAndBuffer(this.container, buffer);
-        } else if (child instanceof TextPaintableNode) {
-            child.setTextViewAndBuffer(this.container, buffer);
-        }
+        this.placeChildAtOffset(child, offset, buffer);
 
         if (wasMoved) {
             this.updateChildOffsets(0);
@@ -188,28 +138,12 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
 
     insertBefore(child: TextContentChild, before: TextContentChild): void {
         const buffer = this.ensureBuffer();
+        this.beginIrreversibleIfMounting(buffer);
 
-        if (this.initialMount && !this.irreversibleStarted) {
-            buffer.beginIrreversibleAction();
-            this.irreversibleStarted = true;
-        }
-
-        const existingIndex = this.textChildren.indexOf(child);
-        if (existingIndex !== -1) {
-            const oldOffset = child.getBufferOffset();
-            const oldLength = child.getLength();
-
-            this.textChildren.splice(existingIndex, 1);
-
-            if (oldLength > 0) {
-                this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
-            }
-
-            this.updateChildOffsets(existingIndex);
-        }
+        this.removeIfPresent(child);
 
         const beforeIndex = this.textChildren.indexOf(before);
-        const insertIndex = beforeIndex !== -1 ? beforeIndex : this.textChildren.length;
+        const insertIndex = beforeIndex === -1 ? this.textChildren.length : beforeIndex;
 
         let offset = 0;
         for (let i = 0; i < insertIndex; i++) {
@@ -218,25 +152,50 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         }
 
         this.textChildren.splice(insertIndex, 0, child);
+        this.placeChildAtOffset(child, offset, buffer);
+
+        this.updateChildOffsets(0);
+        this.reapplyTagsFromOffset(0);
+    }
+
+    private beginIrreversibleIfMounting(buffer: Gtk.TextBuffer): void {
+        if (this.initialMount && !this.irreversibleStarted) {
+            buffer.beginIrreversibleAction();
+            this.irreversibleStarted = true;
+        }
+    }
+
+    private removeIfPresent(child: TextContentChild): boolean {
+        const existingIndex = this.textChildren.indexOf(child);
+        if (existingIndex === -1) return false;
+
+        const oldOffset = child.getBufferOffset();
+        const oldLength = child.getLength();
+
+        this.textChildren.splice(existingIndex, 1);
+
+        if (oldLength > 0) {
+            this.deleteTextAtRange(oldOffset, oldOffset + oldLength);
+        }
+
+        this.updateChildOffsets(existingIndex);
+        return true;
+    }
+
+    private placeChildAtOffset(child: TextContentChild, offset: number, buffer: Gtk.TextBuffer): void {
         child.setBufferOffset(offset);
 
         if (child instanceof TextSegmentNode) {
             this.insertTextAtOffset(child.getText(), offset);
         } else if (child instanceof TextTagNode) {
-            const text = child.getText();
-            this.insertTextAtOffset(text, offset);
+            this.insertTextAtOffset(child.getText(), offset);
             if (!child.hasBuffer()) {
                 child.setBuffer(buffer);
             }
             this.setupEmbeddedObjects(child);
-        } else if (child instanceof TextAnchorNode) {
-            child.setTextViewAndBuffer(this.container, buffer);
-        } else if (child instanceof TextPaintableNode) {
+        } else if (child instanceof TextAnchorNode || child instanceof TextPaintableNode) {
             child.setTextViewAndBuffer(this.container, buffer);
         }
-
-        this.updateChildOffsets(0);
-        this.reapplyTagsFromOffset(0);
     }
 
     removeChild(child: TextContentChild): void {
@@ -283,8 +242,7 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         const buffer = this.buffer;
         if (!buffer || text.length === 0) return;
 
-        const iter = new Gtk.TextIter();
-        buffer.getIterAtOffset(iter, offset);
+        const iter = buffer.getIterAtOffset(offset);
         buffer.insert(iter, text, -1);
     }
 
@@ -292,11 +250,8 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         const buffer = this.buffer;
         if (!buffer || start >= end) return;
 
-        const startIter = new Gtk.TextIter();
-        const endIter = new Gtk.TextIter();
-
-        buffer.getIterAtOffset(startIter, start);
-        buffer.getIterAtOffset(endIter, end);
+        const startIter = buffer.getIterAtOffset(start);
+        const endIter = buffer.getIterAtOffset(end);
         buffer.delete(startIter, endIter);
     }
 

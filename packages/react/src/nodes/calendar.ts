@@ -3,40 +3,30 @@ import type { GtkCalendarProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
-import { filterProps, primitiveArrayEqual } from "./internal/props.js";
+import { arraySync, type PropDescriptorTable } from "./internal/apply-props.js";
+import { primitiveArrayEqual } from "./internal/props.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-const OWN_PROPS = ["markedDays"] as const;
-
-type CalendarProps = Pick<GtkCalendarProps, (typeof OWN_PROPS)[number]>;
-
+type CalendarProps = Pick<GtkCalendarProps, "markedDays">;
 type CalendarChild = EventControllerNode | SlotNode | ContainerSlotNode;
 
 export class CalendarNode extends WidgetNode<Gtk.Calendar, CalendarProps, CalendarChild> {
     public override isValidChild(child: Node): boolean {
         return child instanceof EventControllerNode || child instanceof SlotNode || child instanceof ContainerSlotNode;
     }
-    private appliedMarks: number[] = [];
 
-    public override commitUpdate(oldProps: CalendarProps | null, newProps: CalendarProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
-        this.applyOwnProps(newProps);
-    }
-
-    private applyOwnProps(newProps: CalendarProps): void {
-        const newMarkedDays = newProps.markedDays ?? [];
-
-        if (primitiveArrayEqual(this.appliedMarks, newMarkedDays)) {
-            return;
-        }
-
-        this.container.clearMarks();
-
-        for (const day of newMarkedDays) {
-            this.container.markDay(day);
-        }
-
-        this.appliedMarks = [...newMarkedDays];
+    protected override ownPropDescriptors(): PropDescriptorTable {
+        return {
+            ...super.ownPropDescriptors(),
+            markedDays: arraySync<number, number>({
+                equal: primitiveArrayEqual,
+                clearAll: () => this.container.clearMarks(),
+                add: (day) => {
+                    this.container.markDay(day);
+                    return day;
+                },
+            }),
+        };
     }
 }

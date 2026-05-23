@@ -1,5 +1,6 @@
 import type { CSSInterpolation } from "@emotion/serialize";
 import { serializeStyles } from "@emotion/serialize";
+import { compile, middleware, rulesheet, serialize, stringify } from "stylis";
 import { getGtkCache } from "./cache.js";
 
 /**
@@ -8,54 +9,26 @@ import { getGtkCache } from "./cache.js";
  */
 type CSSClassName = string & { __brand: "css" };
 
-function expandNestedRules(styles: string, className: string): string {
-    const selector = `.${className}`;
-    const expandedStyles = styles.replace(/&/g, selector);
-
-    const rules: string[] = [];
-    let topLevelProperties = "";
-    let currentSegment = "";
-    let braceDepth = 0;
-
-    for (let i = 0; i < expandedStyles.length; i++) {
-        const char = expandedStyles[i];
-
-        if (char === "{") {
-            currentSegment += char;
-            braceDepth++;
-        } else if (char === "}") {
-            braceDepth--;
-            currentSegment += char;
-            if (braceDepth === 0) {
-                rules.push(currentSegment.trim());
-                currentSegment = "";
-            }
-        } else if (char === ";" && braceDepth === 0) {
-            topLevelProperties += currentSegment + char;
-            currentSegment = "";
-        } else {
-            currentSegment += char;
-        }
-    }
-
-    if (currentSegment.trim() && braceDepth === 0) {
-        topLevelProperties += currentSegment;
-    }
-
-    const allRules: string[] = [];
-    if (topLevelProperties.trim()) {
-        allRules.push(`${selector}{${topLevelProperties.trim()}}`);
-    }
-    allRules.push(...rules);
-
-    return allRules.join("\n");
-}
+const flush = (input: string): void => {
+    const sheet = getGtkCache().sheet;
+    serialize(
+        compile(input),
+        middleware([
+            stringify,
+            rulesheet((rule) => {
+                sheet.insert(rule);
+            }),
+        ]),
+    );
+};
 
 /**
  * Creates a CSS class from style definitions.
  *
- * Uses Emotion's CSS-in-JS system adapted for GTK CSS. Supports nested selectors
- * using `&` for the parent selector reference.
+ * Uses Emotion's serializer for hashing and stylis for nested-rule
+ * expansion, at-rule scoping, and selector compounding. Nested selectors
+ * reference the parent class via `&`, matching Emotion / styled-components
+ * semantics.
  *
  * @param args - CSS style definitions (objects, template literals, or interpolations)
  * @returns A unique class name to use with `cssClasses` prop
@@ -90,13 +63,11 @@ function expandNestedRules(styles: string, className: string): string {
 export const css = (...args: CSSInterpolation[]): CSSClassName => {
     const cache = getGtkCache();
     const serialized = serializeStyles(args, cache.registered);
-
     const className = `${cache.key}-${serialized.name}`;
 
     if (cache.inserted[serialized.name] === undefined) {
-        const cssRule = expandNestedRules(serialized.styles, className);
-        cache.sheet.insert(cssRule);
-        cache.inserted[serialized.name] = serialized.styles;
+        flush(`.${className}{${serialized.styles}}`);
+        cache.inserted[serialized.name] = true;
         cache.registered[className] = serialized.styles;
     }
 
@@ -104,9 +75,13 @@ export const css = (...args: CSSInterpolation[]): CSSClassName => {
 };
 
 /**
- * Combines multiple class names into an array for use with cssClasses prop.
+ * Combines class names into an array suitable for the `cssClasses` prop.
  *
  * Filters out falsy values, allowing conditional class application.
+ *
+ * Note: unlike `@emotion/css`'s `cx`, this does not merge cached styles into a
+ * single class — GTK widgets accept an array via `cssClasses`, so we keep the
+ * names separate. Use it the same way you would use `clsx` or `classnames`.
  *
  * @param classNames - Class names, booleans, undefined, or null values
  * @returns Array of valid class names
@@ -155,9 +130,10 @@ export const cx = (...classNames: (string | boolean | undefined | null)[]): stri
 export const injectGlobal = (...args: CSSInterpolation[]): void => {
     const cache = getGtkCache();
     const serialized = serializeStyles(args, cache.registered);
+    const insertedKey = `global-${serialized.name}`;
 
-    if (cache.inserted[`global-${serialized.name}`] === undefined) {
-        cache.sheet.insert(serialized.styles);
-        cache.inserted[`global-${serialized.name}`] = serialized.styles;
+    if (cache.inserted[insertedKey] === undefined) {
+        flush(serialized.styles);
+        cache.inserted[insertedKey] = true;
     }
 };

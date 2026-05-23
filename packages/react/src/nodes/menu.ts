@@ -16,12 +16,11 @@ export class MenuNode extends MenuModel {
     }
 
     constructor(typeName: string, props: MenuModelProps, _container: undefined, rootContainer: Container) {
-        super(
-            MenuNode.getType(typeName),
+        super({
+            type: MenuNode.getType(typeName),
             props,
             rootContainer,
-            undefined,
-            rootContainer instanceof Gtk.Application ? rootContainer : undefined,
-        );
+            application: rootContainer instanceof Gtk.Application ? rootContainer : undefined,
+        });
     }
 }

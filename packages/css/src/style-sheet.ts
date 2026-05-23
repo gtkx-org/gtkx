@@ -1,33 +1,11 @@
-import { events, isStarted } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 
 type StyleSheetOptions = {
     key: string;
-    container?: unknown;
-    nonce?: string;
-    speedy?: boolean;
-    prepend?: boolean;
 };
 
 const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;
-
-const pendingSheets: StyleSheet[] = [];
-
-const flushPendingStyles = (): void => {
-    for (const sheet of pendingSheets) {
-        sheet.applyQueuedRules();
-    }
-    pendingSheets.length = 0;
-};
-
-const registerStartListener = (): void => {
-    events.once("start", flushPendingStyles);
-};
-
-if (!isStarted()) {
-    registerStartListener();
-}
 
 export class StyleSheet {
     key: string;
@@ -35,7 +13,6 @@ export class StyleSheet {
     private provider: Gtk.CssProvider | null = null;
     private display: Gdk.Display | null = null;
     private isRegistered = false;
-    private hasPendingRules = false;
     private updateScheduled = false;
 
     constructor(options: StyleSheetOptions) {
@@ -77,21 +54,7 @@ export class StyleSheet {
 
     insert(rule: string): void {
         this.rules.push(rule);
-
-        if (isStarted()) {
-            this.scheduleUpdate();
-        } else if (!this.hasPendingRules) {
-            this.hasPendingRules = true;
-            pendingSheets.push(this);
-        }
-    }
-
-    applyQueuedRules(): void {
-        if (this.rules.length > 0) {
-            this.ensureProvider();
-            this.updateProvider();
-        }
-        this.hasPendingRules = false;
+        this.scheduleUpdate();
     }
 
     flush(): void {
@@ -103,9 +66,17 @@ export class StyleSheet {
         this.rules = [];
         this.provider = null;
         this.display = null;
-        this.hasPendingRules = false;
         this.updateScheduled = false;
     }
 
-    hydrate(_elements: unknown[]): void {}
+    /**
+     * No-op stub for emotion-style API compatibility.
+     *
+     * Hydration applies to server-rendered HTML, which has no equivalent in
+     * GTK applications. Provided so that consumers written for browser-based
+     * style-sheet APIs can call it safely.
+     */
+    hydrate(_elements: unknown[]): void {
+        return;
+    }
 }

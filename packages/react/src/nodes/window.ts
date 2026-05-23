@@ -7,7 +7,8 @@ import { AnimationNode } from "./animation.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import type { DialogNode } from "./dialog.js";
 import { EventControllerNode } from "./event-controller.js";
-import { filterProps, hasChanged } from "./internal/props.js";
+import { type PropDescriptorTable, signal } from "./internal/apply-props.js";
+import { MenuChildController } from "./internal/menu-child.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { NavigationPageNode } from "./navigation-page.js";
@@ -17,8 +18,6 @@ import { WidgetNode } from "./widget.js";
 // biome-ignore lint/suspicious/noExplicitAny: Required for matching GTK class constructors with varying signatures
 const isOrExtendsClass = (target: object, cls: abstract new (...args: any[]) => any): boolean =>
     target === cls || Object.prototype.isPrototypeOf.call(cls, target);
-
-const OWN_PROPS = ["onClose"] as const;
 
 type WindowProps = Pick<GtkWindowProps, "onClose"> & Pick<GtkAboutDialogProps, "creditSections">;
 
@@ -34,9 +33,10 @@ type WindowChild =
     | WidgetNode;
 
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild> {
-    private menu: MenuModel;
+    private readonly menuController: MenuChildController;
 
     public static override createContainer(
+        typeName: string,
         props: Props,
         containerClass: typeof Gtk.Window,
         rootContainer: Container | undefined,
@@ -48,24 +48,26 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
             isOrExtendsClass(WindowClass, Adw.ApplicationWindow)
         ) {
             if (!(rootContainer instanceof Gtk.Application)) {
-                throw new Error("Expected ApplicationWindow to be created within Application");
+                throw new TypeError("Expected ApplicationWindow to be created within Application");
             }
 
             if (isOrExtendsClass(WindowClass, Adw.ApplicationWindow)) {
-                return new Adw.ApplicationWindow(rootContainer);
+                return new Adw.ApplicationWindow({ application: rootContainer });
             }
 
-            return new Gtk.ApplicationWindow(rootContainer);
+            return new Gtk.ApplicationWindow({ application: rootContainer });
         }
 
-        return WidgetNode.createContainer(props, containerClass) as Gtk.Window;
+        return WidgetNode.createContainer(typeName, props, containerClass) as Gtk.Window;
     }
 
     constructor(typeName: string, props: WindowProps, container: Gtk.Window, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
         const actionMap = container instanceof Gtk.ApplicationWindow ? container : undefined;
-        this.menu = new MenuModel("root", {}, rootContainer, actionMap, application);
+        this.menuController = new MenuChildController(
+            new MenuModel({ type: "root", props: {}, rootContainer, actionMap, application }),
+        );
 
         if (container instanceof Gtk.AboutDialog && props.creditSections) {
             for (const section of props.creditSections) {
@@ -97,10 +99,7 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
             return;
         }
 
-        if (child instanceof MenuNode) {
-            this.menu.appendChild(child);
-            return;
-        }
+        if (this.menuController.appendChild(child)) return;
 
         super.appendChild(child);
     }
@@ -113,27 +112,19 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
             return;
         }
 
-        if (child instanceof MenuNode) {
-            this.menu.removeChild(child);
-            return;
-        }
+        if (this.menuController.removeChild(child)) return;
 
         super.removeChild(child);
     }
 
     public override insertBefore(child: WindowChild, before: WindowChild): void {
-        if (child instanceof MenuNode) {
-            if (before instanceof MenuNode) {
-                this.menu.insertBefore(child, before);
-            } else {
-                this.menu.appendChild(child);
-            }
+        if (child instanceof WindowNode) {
+            child.container.setTransientFor(this.container);
+            super.insertBefore(child, before);
             return;
         }
 
-        if (child instanceof WindowNode) {
-            child.container.setTransientFor(this.container);
-        }
+        if (this.menuController.insertBefore(child, before)) return;
 
         super.insertBefore(child, before);
     }
@@ -143,9 +134,11 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         return true;
     }
 
-    public override commitUpdate(oldProps: WindowProps | null, newProps: WindowProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
-        this.applyOwnProps(oldProps, newProps);
+    protected override ownPropDescriptors(): PropDescriptorTable {
+        return {
+            ...super.ownPropDescriptors(),
+            onClose: signal("close-request", { getArgs: () => [], returnValue: true }),
+        };
     }
 
     public override commitMount(): void {
@@ -155,18 +148,5 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
     public override detachDeletedInstance(): void {
         super.detachDeletedInstance();
         this.container.destroy();
-    }
-
-    private applyOwnProps(oldProps: WindowProps | null, newProps: WindowProps): void {
-        if (hasChanged(oldProps, newProps, "onClose")) {
-            const userHandler = newProps.onClose;
-            const wrappedHandler = userHandler
-                ? () => {
-                      userHandler();
-                      return true;
-                  }
-                : undefined;
-            this.signalStore.set(this, this.container, "close-request", wrappedHandler);
-        }
     }
 }

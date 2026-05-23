@@ -26,12 +26,29 @@ import type { Container } from "./types.js";
  * };
  * ```
  */
+/**
+ * Runtime shape of a React portal element. React's reconciler consumes a
+ * `react.portal` object carrying `containerInfo` and `implementation`, which
+ * the public `ReactPortal` type (declared as a `ReactElement` with `type` and
+ * `props`) does not describe. This is the single boundary reconciling the
+ * runtime portal structure with its public type.
+ */
+type PortalElement = {
+    $$typeof: symbol;
+    key: string | null;
+    children: ReactNode;
+    containerInfo: Container;
+    implementation: null;
+};
+
 export const createPortal = (children: ReactNode, container: Container, key?: string | null): ReactPortal => {
-    return {
+    const portal: PortalElement = {
         $$typeof: Symbol.for("react.portal"),
         key: key ?? null,
         children,
         containerInfo: container,
         implementation: null,
-    } as unknown as ReactPortal;
+    };
+    const element: unknown = portal;
+    return element as ReactPortal;
 };

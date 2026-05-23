@@ -1,54 +1,22 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { OverlayChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
-import { isRemovable } from "./internal/predicates.js";
+import { AttachOnParentVirtualNode } from "./internal/attach-on-parent-virtual.js";
 import { hasChanged } from "./internal/props.js";
-import { VirtualNode } from "./virtual.js";
+import { unparentWidget } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
 
-export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<Gtk.Overlay>, WidgetNode> {
+export class OverlayChildNode extends AttachOnParentVirtualNode<
+    OverlayChildProps,
+    WidgetNode<Gtk.Overlay>,
+    WidgetNode
+> {
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
     }
 
     public override isValidParent(parent: Node): boolean {
         return parent instanceof WidgetNode && parent.container instanceof Gtk.Overlay;
-    }
-
-    public override setParent(parent: WidgetNode<Gtk.Overlay> | null): void {
-        if (!parent && this.parent) {
-            this.detachAllChildren(this.parent.container);
-        }
-
-        super.setParent(parent);
-
-        if (parent) {
-            for (const child of this.children) {
-                this.attachToParent(parent.container, child.container);
-            }
-        }
-    }
-
-    public override appendChild(child: WidgetNode): void {
-        super.appendChild(child);
-
-        if (this.parent) {
-            this.detachFromGtkParent(child);
-            this.attachToParent(this.parent.container, child.container);
-        }
-    }
-
-    public override insertBefore(child: WidgetNode, before: WidgetNode): void {
-        super.insertBefore(child, before);
-
-        if (this.parent) {
-            this.reinsertAllChildren();
-        }
-    }
-
-    public override removeChild(child: WidgetNode): void {
-        this.detachFromGtkParent(child);
-        super.removeChild(child);
     }
 
     public override commitUpdate(oldProps: OverlayChildProps | null, newProps: OverlayChildProps): void {
@@ -74,14 +42,7 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
         }
     }
 
-    public override detachDeletedInstance(): void {
-        if (this.parent) {
-            this.detachAllChildren(this.parent.container);
-        }
-        super.detachDeletedInstance();
-    }
-
-    private attachToParent(parent: Gtk.Overlay, child: Gtk.Widget): void {
+    protected override attachToParent(parent: Gtk.Overlay, child: Gtk.Widget): void {
         parent.addOverlay(child);
 
         if (this.props.measure !== undefined) {
@@ -93,38 +54,11 @@ export class OverlayChildNode extends VirtualNode<OverlayChildProps, WidgetNode<
         }
     }
 
-    private detachFromGtkParent(child: WidgetNode): void {
-        const currentParent = child.container.getParent();
-        if (currentParent !== null) {
-            if (currentParent instanceof Gtk.Overlay) {
-                currentParent.removeOverlay(child.container);
-            } else if (isRemovable(currentParent)) {
-                currentParent.remove(child.container);
-            } else {
-                child.container.unparent();
-            }
-        }
-    }
-
-    private reinsertAllChildren(): void {
-        if (!this.parent) return;
-        const parent = this.parent.container;
-
-        for (const child of this.children) {
-            this.detachFromGtkParent(child);
-        }
-
-        for (const child of this.children) {
-            this.attachToParent(parent, child.container);
-        }
-    }
-
-    private detachAllChildren(parent: Gtk.Overlay): void {
-        for (const child of this.children) {
-            const currentParent = child.container.getParent();
-            if (currentParent && currentParent === parent) {
-                parent.removeOverlay(child.container);
-            }
+    protected override detachFromParent(parent: Gtk.Overlay, child: Gtk.Widget): void {
+        if (child.getParent() === parent) {
+            parent.removeOverlay(child);
+        } else {
+            unparentWidget(child);
         }
     }
 }

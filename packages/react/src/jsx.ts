@@ -1,6 +1,7 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as cairo from "@gtkx/ffi/cairo";
 import type * as Gdk from "@gtkx/ffi/gdk";
+import type { GType } from "@gtkx/ffi/gobject";
 import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import type * as GtkSource from "@gtkx/ffi/gtksource";
@@ -114,9 +115,7 @@ export type AdwSpringAnimationProps = AnimationBaseProps & {
     delay?: number;
 };
 
-/**
- * @internal Union type used by the AnimationNode internally.
- */
+/** Union of the animation prop shapes accepted by the AnimationNode reconciler. */
 export type AnimationProps = AdwTimedAnimationProps | AdwSpringAnimationProps;
 
 /**
@@ -216,7 +215,7 @@ export type TextTagProps = {
     /** Font size scale factor relative to default */
     scale?: number;
     /** Font weight (use Pango.Weight constants) */
-    weight?: Pango.Weight | number;
+    weight?: Pango.Weight | (number & {});
     /** Font style (use Pango.Style constants) */
     style?: Pango.Style;
     /** Font stretch (use Pango.Stretch constants) */
@@ -362,7 +361,7 @@ export type ListItem<T = unknown, S = unknown> =
     | {
           id: string;
           value: T;
-          section?: false | undefined;
+          section?: false;
           children?: ListItem<T, S>[];
           hideExpander?: boolean;
           indentForDepth?: boolean;
@@ -755,7 +754,7 @@ export type AdjustableProps = {
     /** The size of the visible portion (for scrollbars) */
     pageSize?: number;
     /** Callback fired when the adjustable value changes */
-    onValueChanged?: ((value: number, self: Gtk.Range | Gtk.ScaleButton | Gtk.SpinButton | Adw.SpinRow) => void) | null;
+    onValueChanged?: ((value: number) => void) | null;
 };
 
 interface StackProps {
@@ -856,7 +855,7 @@ declare module "./generated/jsx.js" {
 
     interface GtkRangeProps extends Omit<AdjustableProps, "onValueChanged"> {
         /** Callback fired when the range value changes */
-        onValueChanged?: ((value: number, self: Gtk.Range) => void) | null;
+        onValueChanged?: ((value: number) => void) | null;
     }
 
     interface GtkScaleProps {
@@ -866,22 +865,22 @@ declare module "./generated/jsx.js" {
 
     interface GtkScaleButtonProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
         /** Callback fired when the scale button value changes */
-        onValueChanged?: ((value: number, self: Gtk.ScaleButton) => void) | null;
+        onValueChanged?: ((value: number) => void) | null;
     }
 
     interface GtkSpinButtonProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
         /** Callback fired when the spin button value changes */
-        onValueChanged?: ((value: number, self: Gtk.SpinButton) => void) | null;
+        onValueChanged?: ((value: number) => void) | null;
     }
 
     interface AdwSpinRowProps extends Omit<AdjustableProps, "value" | "onValueChanged"> {
         /** Callback fired when the spin row value changes */
-        onValueChanged?: ((value: number, self: Adw.SpinRow) => void) | null;
+        onValueChanged?: ((value: number) => void) | null;
     }
 
     interface AdwSwitchRowProps {
         /** Callback fired when the switch row active state changes */
-        onActiveChanged?: ((active: boolean, self: Adw.SwitchRow) => void) | null;
+        onActiveChanged?: ((active: boolean) => void) | null;
     }
 
     interface GtkCalendarProps {
@@ -944,12 +943,12 @@ declare module "./generated/jsx.js" {
 
     interface GtkStackProps extends StackProps {
         /** Callback fired when the visible page changes */
-        onPageChanged?: ((page: string | null, self: Gtk.Stack) => void) | null;
+        onPageChanged?: ((page: string | null) => void) | null;
     }
 
     interface AdwViewStackProps extends StackProps {
         /** Callback fired when the visible page changes */
-        onPageChanged?: ((page: string | null, self: Adw.ViewStack) => void) | null;
+        onPageChanged?: ((page: string | null) => void) | null;
     }
 
     interface AdwNavigationViewProps {
@@ -1018,7 +1017,7 @@ declare module "./generated/jsx.js" {
 
     interface GtkDropTargetProps {
         /** GType values for accepted drop content types */
-        types?: number[];
+        types?: GType[];
     }
 }
 

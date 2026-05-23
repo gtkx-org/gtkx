@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { createElement, Fragment, type ReactNode, type Ref, useReducer, useRef } from "react";
+import { createElement, Fragment, type ReactNode, type Ref, useState, useSyncExternalStore } from "react";
 import type {
     AdwComboRowProps,
     GtkColumnViewProps,
@@ -18,9 +18,9 @@ import type {
     MenuSectionProps,
     MenuSubmenuProps,
 } from "../jsx.js";
-import type { BoundItem } from "../nodes/internal/bound-item.js";
 import { createPortal } from "../portal.js";
-import { createMenuChild } from "./compound.js";
+import { BoundItemsStore } from "./bound-items-store.js";
+import { createVirtualChild } from "./compound.js";
 
 type GenericListViewProps<T, S> = Omit<GtkListViewProps, keyof ListViewProps> & ListViewProps<T, S>;
 type GenericGridViewProps<T> = Omit<GtkGridViewProps, keyof GridViewProps> & GridViewProps<T>;
@@ -32,20 +32,19 @@ type GenericColumnViewProps<T, S> = Omit<GtkColumnViewProps, "items" | "renderHe
 };
 
 function useListHandle() {
-    const [, rerender] = useReducer((x: number) => x + 1, 0);
-    const boundItemsRef = useRef<BoundItem[]>([]);
-    const headerBoundItemsRef = useRef<BoundItem[]>([]);
-    return { rerender, boundItemsRef, headerBoundItemsRef };
+    const [store] = useState(() => new BoundItemsStore());
+    const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
+    return { store, snapshot };
 }
 
 function renderListElement(intrinsicName: string, handle: ReturnType<typeof useListHandle>, props: object): ReactNode {
-    const { rerender, boundItemsRef, headerBoundItemsRef } = handle;
+    const { store, snapshot } = handle;
 
     const portals: ReactNode[] = [];
-    for (const [content, container, key] of boundItemsRef.current) {
+    for (const [content, container, key] of snapshot.boundItems) {
         portals.push(createPortal(content, container, key));
     }
-    for (const [content, container, key] of headerBoundItemsRef.current) {
+    for (const [content, container, key] of snapshot.headerBoundItems) {
         portals.push(createPortal(content, container, key));
     }
 
@@ -54,9 +53,7 @@ function renderListElement(intrinsicName: string, handle: ReturnType<typeof useL
         null,
         createElement(intrinsicName, {
             ...(props as Record<string, unknown>),
-            __boundItemsRef: boundItemsRef,
-            __rerender: rerender,
-            __headerBoundItemsRef: headerBoundItemsRef,
+            __boundItemsStore: store,
         }),
         ...portals,
     );
@@ -109,9 +106,9 @@ export const GtkColumnView: typeof GtkColumnViewBase & {
 } = Object.assign(GtkColumnViewBase, {
     Column: <T = unknown>(props: ColumnViewColumnProps<T>): ReactNode =>
         createElement("ColumnViewColumn", props, props.children),
-    MenuItem: createMenuChild<MenuItemProps>("MenuItem"),
-    MenuSection: createMenuChild<MenuSectionProps>("MenuSection"),
-    MenuSubmenu: createMenuChild<MenuSubmenuProps>("MenuSubmenu"),
+    MenuItem: createVirtualChild<MenuItemProps>("MenuItem"),
+    MenuSection: createVirtualChild<MenuSectionProps>("MenuSection"),
+    MenuSubmenu: createVirtualChild<MenuSubmenuProps>("MenuSubmenu"),
 });
 
 /**

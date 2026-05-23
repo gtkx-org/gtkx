@@ -3,14 +3,13 @@ import type { AdwNavigationViewProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { ContainerSlotNode } from "./container-slot.js";
 import { EventControllerNode } from "./event-controller.js";
-import { filterProps, hasChanged, primitiveArrayEqual } from "./internal/props.js";
+import { imperative, type PropDescriptorTable, signal } from "./internal/apply-props.js";
+import { primitiveArrayEqual } from "./internal/props.js";
 import { NavigationPageNode } from "./navigation-page.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
-const OWN_PROPS = ["history", "onHistoryChanged"] as const;
-
-type NavigationViewProps = Pick<AdwNavigationViewProps, (typeof OWN_PROPS)[number]>;
+type NavigationViewProps = Pick<AdwNavigationViewProps, "history" | "onHistoryChanged">;
 type NavigationViewChild = NavigationPageNode | SlotNode | ContainerSlotNode | EventControllerNode | WidgetNode;
 
 export class NavigationViewNode extends WidgetNode<Adw.NavigationView, NavigationViewProps, NavigationViewChild> {
@@ -24,27 +23,20 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
         );
     }
 
-    public override commitUpdate(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
-        super.commitUpdate(oldProps ? filterProps(oldProps, OWN_PROPS) : null, filterProps(newProps, OWN_PROPS));
-        this.applyOwnProps(oldProps, newProps);
-    }
-
-    private applyOwnProps(oldProps: NavigationViewProps | null, newProps: NavigationViewProps): void {
-        const oldHistory = oldProps?.history;
-        const newHistory = newProps.history;
-
-        if (newHistory && !primitiveArrayEqual(oldHistory, newHistory)) {
-            this.container.replaceWithTags(newHistory, newHistory.length);
-        }
-
-        if (hasChanged(oldProps, newProps, "onHistoryChanged")) {
-            const { onHistoryChanged } = newProps;
-            const handler = onHistoryChanged ? () => onHistoryChanged(this.getCurrentHistory()) : undefined;
-
-            this.signalStore.set(this, this.container, "popped", handler);
-            this.signalStore.set(this, this.container, "pushed", handler);
-            this.signalStore.set(this, this.container, "replaced", handler);
-        }
+    protected override ownPropDescriptors(): PropDescriptorTable {
+        return {
+            ...super.ownPropDescriptors(),
+            history: imperative((oldProps) => {
+                const newHistory = this.props.history;
+                const oldHistory = (oldProps as NavigationViewProps | null)?.history;
+                if (newHistory && !primitiveArrayEqual(oldHistory, newHistory)) {
+                    this.container.replaceWithTags(newHistory);
+                }
+            }),
+            onHistoryChanged: signal(["popped", "pushed", "replaced"], {
+                getArgs: () => [this.getCurrentHistory()],
+            }),
+        };
     }
 
     private getCurrentHistory(): string[] {
@@ -53,7 +45,7 @@ export class NavigationViewNode extends WidgetNode<Adw.NavigationView, Navigatio
         const nItems = stack.getNItems();
 
         for (let i = 0; i < nItems; i++) {
-            const page = stack.getObject(i);
+            const page = stack.getItem(i);
             if (!(page instanceof Adw.NavigationPage)) continue;
             const tag = page.getTag();
             if (tag) {

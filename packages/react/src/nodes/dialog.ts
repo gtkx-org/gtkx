@@ -14,7 +14,7 @@ export class DialogNode extends WidgetNode<Adw.Dialog> {
     }
 
     public override commitMount(): void {
-        const parent = this.parent instanceof WindowNode ? this.parent.container : undefined;
+        const parent = this.parent instanceof WindowNode ? this.parent.container : null;
         this.container.present(parent);
     }
 

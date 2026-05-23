@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 
-/** @internal */
+/** Union of GLib instance kinds the reconciler tracks as nodes. */
 export type Container = Gtk.Widget | Gtk.Application | Gtk.EventController | Gtk.ListItem | Gtk.ListHeader;
 
 export type Props = Record<string, unknown>;
