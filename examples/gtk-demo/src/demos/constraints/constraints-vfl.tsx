@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton } from "@gtkx/react";
 import { useCallback, useLayoutEffect, useRef } from "react";
 import type { Demo } from "../types.js";
+import { ThreeButtonsBox } from "./_shared.js";
 import sourceCode from "./constraints-vfl.tsx?raw";
 
 const VFL_CONSTRAINTS = [
@@ -40,7 +40,7 @@ const ConstraintsVflDemo = () => {
         ]);
 
         try {
-            layout.addConstraintsFromDescriptionv(VFL_CONSTRAINTS, VFL_CONSTRAINTS.length, 8, 8, views);
+            layout.addConstraintsFromDescription(VFL_CONSTRAINTS, 8, 8, views);
         } catch (e) {
             console.error("VFL parsing error:", e);
         }
@@ -51,11 +51,13 @@ const ConstraintsVflDemo = () => {
     }, [applyConstraints]);
 
     return (
-        <GtkBox ref={containerRef} hexpand vexpand>
-            <GtkButton ref={button1Ref} label="Child 1" />
-            <GtkButton ref={button2Ref} label="Child 2" />
-            <GtkButton ref={button3Ref} label="Child 3" />
-        </GtkBox>
+        <ThreeButtonsBox
+            containerRef={containerRef}
+            button1Ref={button1Ref}
+            button2Ref={button2Ref}
+            button3Ref={button3Ref}
+            namedButtons
+        />
     );
 };
 
@@ -63,9 +65,10 @@ export const constraintsVflDemo: Demo = {
     id: "constraints-vfl",
     title: "Constraints/VFL",
     description:
-        "GtkConstraintLayout allows defining constraints using a compact syntax called Visual Format Language, or VFL.",
-    keywords: ["constraint", "VFL", "visual format language", "GtkConstraintLayout", "layout"],
+        "GtkConstraintLayout allows defining constraints using a compact syntax called Visual Format Language, or VFL.\n\nA typical example of a VFL specification looks like this:\n\nH:|-[button1(==button2)]-12-[button2]-|",
+    keywords: [],
     component: ConstraintsVflDemo,
     sourceCode,
     defaultWidth: 260,
+    windowTitle: "Constraints — VFL",
 };

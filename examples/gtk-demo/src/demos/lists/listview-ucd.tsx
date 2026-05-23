@@ -154,24 +154,168 @@ const COMBINING_CLASS_NAMES: Record<number, string> = {
     255: "Invalid",
 };
 
-let scriptNameCache: Map<number, string> | null = null;
+const SCRIPT_NAMES = new Map<number, string>([
+    [GLib.UnicodeScript.COMMON, "No script"],
+    [GLib.UnicodeScript.INHERITED, "No script"],
+    [GLib.UnicodeScript.ARABIC, "Arabic"],
+    [GLib.UnicodeScript.ARMENIAN, "Armenian"],
+    [GLib.UnicodeScript.BENGALI, "Bengali"],
+    [GLib.UnicodeScript.BOPOMOFO, "Bopomofo"],
+    [GLib.UnicodeScript.CHEROKEE, "Cherokee"],
+    [GLib.UnicodeScript.COPTIC, "Coptic"],
+    [GLib.UnicodeScript.CYRILLIC, "Cyrillic"],
+    [GLib.UnicodeScript.DESERET, "Deseret"],
+    [GLib.UnicodeScript.DEVANAGARI, "Devanagari"],
+    [GLib.UnicodeScript.ETHIOPIC, "Ethiopic"],
+    [GLib.UnicodeScript.GEORGIAN, "Georgian"],
+    [GLib.UnicodeScript.GOTHIC, "Gothic"],
+    [GLib.UnicodeScript.GREEK, "Greek"],
+    [GLib.UnicodeScript.GUJARATI, "Gujarati"],
+    [GLib.UnicodeScript.GURMUKHI, "Gurmukhi"],
+    [GLib.UnicodeScript.HAN, "Han"],
+    [GLib.UnicodeScript.HANGUL, "Hangul"],
+    [GLib.UnicodeScript.HEBREW, "Hebrew"],
+    [GLib.UnicodeScript.HIRAGANA, "Hiragana"],
+    [GLib.UnicodeScript.KANNADA, "Kannada"],
+    [GLib.UnicodeScript.KATAKANA, "Katakana"],
+    [GLib.UnicodeScript.KHMER, "Khmer"],
+    [GLib.UnicodeScript.LAO, "Lao"],
+    [GLib.UnicodeScript.LATIN, "Latin"],
+    [GLib.UnicodeScript.MALAYALAM, "Malayalam"],
+    [GLib.UnicodeScript.MONGOLIAN, "Mongolian"],
+    [GLib.UnicodeScript.MYANMAR, "Myanmar"],
+    [GLib.UnicodeScript.OGHAM, "Ogham"],
+    [GLib.UnicodeScript.OLD_ITALIC, "Old Italic"],
+    [GLib.UnicodeScript.ORIYA, "Oriya"],
+    [GLib.UnicodeScript.RUNIC, "Runic"],
+    [GLib.UnicodeScript.SINHALA, "Sinhala"],
+    [GLib.UnicodeScript.SYRIAC, "Syriac"],
+    [GLib.UnicodeScript.TAMIL, "Tamil"],
+    [GLib.UnicodeScript.TELUGU, "Telugu"],
+    [GLib.UnicodeScript.THAANA, "Thaana"],
+    [GLib.UnicodeScript.THAI, "Thai"],
+    [GLib.UnicodeScript.TIBETAN, "Tibetan"],
+    [GLib.UnicodeScript.CANADIAN_ABORIGINAL, "Canadian Aboriginal"],
+    [GLib.UnicodeScript.YI, "Yi"],
+    [GLib.UnicodeScript.TAGALOG, "Tagalog"],
+    [GLib.UnicodeScript.HANUNOO, "Hanunoo"],
+    [GLib.UnicodeScript.BUHID, "Buhid"],
+    [GLib.UnicodeScript.TAGBANWA, "Tagbanwa"],
+    [GLib.UnicodeScript.BRAILLE, "Braille"],
+    [GLib.UnicodeScript.CYPRIOT, "Cypriot"],
+    [GLib.UnicodeScript.LIMBU, "Limbu"],
+    [GLib.UnicodeScript.OSMANYA, "Osmanya"],
+    [GLib.UnicodeScript.SHAVIAN, "Shavian"],
+    [GLib.UnicodeScript.LINEAR_B, "Linear B"],
+    [GLib.UnicodeScript.TAI_LE, "Tai Le"],
+    [GLib.UnicodeScript.UGARITIC, "Ugaritic"],
+    [GLib.UnicodeScript.NEW_TAI_LUE, "New Tai Lue"],
+    [GLib.UnicodeScript.BUGINESE, "Buginese"],
+    [GLib.UnicodeScript.GLAGOLITIC, "Glagolitic"],
+    [GLib.UnicodeScript.TIFINAGH, "Tifinagh"],
+    [GLib.UnicodeScript.SYLOTI_NAGRI, "Syloti Nagri"],
+    [GLib.UnicodeScript.OLD_PERSIAN, "Old Persian"],
+    [GLib.UnicodeScript.KHAROSHTHI, "Kharoshthi"],
+    [GLib.UnicodeScript.UNKNOWN, "Unknown"],
+    [GLib.UnicodeScript.BALINESE, "Balinese"],
+    [GLib.UnicodeScript.CUNEIFORM, "Cuneiform"],
+    [GLib.UnicodeScript.PHOENICIAN, "Phoenician"],
+    [GLib.UnicodeScript.PHAGS_PA, "Phags-pa"],
+    [GLib.UnicodeScript.NKO, "N'Ko"],
+    [GLib.UnicodeScript.KAYAH_LI, "Kayah Li"],
+    [GLib.UnicodeScript.LEPCHA, "Lepcha"],
+    [GLib.UnicodeScript.REJANG, "Rejang"],
+    [GLib.UnicodeScript.SUNDANESE, "Sundanese"],
+    [GLib.UnicodeScript.SAURASHTRA, "Saurashtra"],
+    [GLib.UnicodeScript.CHAM, "Cham"],
+    [GLib.UnicodeScript.OL_CHIKI, "Ol Chiki"],
+    [GLib.UnicodeScript.VAI, "Vai"],
+    [GLib.UnicodeScript.CARIAN, "Carian"],
+    [GLib.UnicodeScript.LYCIAN, "Lycian"],
+    [GLib.UnicodeScript.LYDIAN, "Lydian"],
+    [GLib.UnicodeScript.AVESTAN, "Avestan"],
+    [GLib.UnicodeScript.BAMUM, "Bamum"],
+    [GLib.UnicodeScript.EGYPTIAN_HIEROGLYPHS, "Egyptian Hieroglyphs"],
+    [GLib.UnicodeScript.IMPERIAL_ARAMAIC, "Imperial Aramaic"],
+    [GLib.UnicodeScript.INSCRIPTIONAL_PAHLAVI, "Inscriptional Pahlavi"],
+    [GLib.UnicodeScript.INSCRIPTIONAL_PARTHIAN, "Inscriptional Parthian"],
+    [GLib.UnicodeScript.JAVANESE, "Javanese"],
+    [GLib.UnicodeScript.KAITHI, "Kaithi"],
+    [GLib.UnicodeScript.LISU, "Lisu"],
+    [GLib.UnicodeScript.MEETEI_MAYEK, "Meetei Mayek"],
+    [GLib.UnicodeScript.OLD_SOUTH_ARABIAN, "Old South Arabian"],
+    [GLib.UnicodeScript.OLD_TURKIC, "Old Turkic"],
+    [GLib.UnicodeScript.SAMARITAN, "Samaritan"],
+    [GLib.UnicodeScript.TAI_THAM, "Tai Tham"],
+    [GLib.UnicodeScript.TAI_VIET, "Tai Viet"],
+    [GLib.UnicodeScript.BATAK, "Batak"],
+    [GLib.UnicodeScript.BRAHMI, "Brahmi"],
+    [GLib.UnicodeScript.MANDAIC, "Mandaic"],
+    [GLib.UnicodeScript.CHAKMA, "Chakma"],
+    [GLib.UnicodeScript.MEROITIC_CURSIVE, "Meroitic Cursive"],
+    [GLib.UnicodeScript.MEROITIC_HIEROGLYPHS, "Meroitic Hieroglyphs"],
+    [GLib.UnicodeScript.MIAO, "Miao"],
+    [GLib.UnicodeScript.SHARADA, "Sharada"],
+    [GLib.UnicodeScript.SORA_SOMPENG, "Sora Sompeng"],
+    [GLib.UnicodeScript.TAKRI, "Takri"],
+    [GLib.UnicodeScript.BASSA_VAH, "Bassa"],
+    [GLib.UnicodeScript.CAUCASIAN_ALBANIAN, "Caucasian Albanian"],
+    [GLib.UnicodeScript.DUPLOYAN, "Duployan"],
+    [GLib.UnicodeScript.ELBASAN, "Elbasan"],
+    [GLib.UnicodeScript.GRANTHA, "Grantha"],
+    [GLib.UnicodeScript.KHOJKI, "Khojki"],
+    [GLib.UnicodeScript.KHUDAWADI, "Khudawadi, Sindhi"],
+    [GLib.UnicodeScript.LINEAR_A, "Linear A"],
+    [GLib.UnicodeScript.MAHAJANI, "Mahajani"],
+    [GLib.UnicodeScript.MANICHAEAN, "Manichaean"],
+    [GLib.UnicodeScript.MENDE_KIKAKUI, "Mende Kikakui"],
+    [GLib.UnicodeScript.MODI, "Modi"],
+    [GLib.UnicodeScript.MRO, "Mro"],
+    [GLib.UnicodeScript.NABATAEAN, "Nabataean"],
+    [GLib.UnicodeScript.OLD_NORTH_ARABIAN, "Old North Arabian"],
+    [GLib.UnicodeScript.OLD_PERMIC, "Old Permic"],
+    [GLib.UnicodeScript.PAHAWH_HMONG, "Pahawh Hmong"],
+    [GLib.UnicodeScript.PALMYRENE, "Palmyrene"],
+    [GLib.UnicodeScript.PAU_CIN_HAU, "Pau Cin Hau"],
+    [GLib.UnicodeScript.PSALTER_PAHLAVI, "Psalter Pahlavi"],
+    [GLib.UnicodeScript.SIDDHAM, "Siddham"],
+    [GLib.UnicodeScript.TIRHUTA, "Tirhuta"],
+    [GLib.UnicodeScript.WARANG_CITI, "Warang Citi"],
+    [GLib.UnicodeScript.AHOM, "Ahom"],
+    [GLib.UnicodeScript.ANATOLIAN_HIEROGLYPHS, "Anatolian Hieroglyphs"],
+    [GLib.UnicodeScript.HATRAN, "Hatran"],
+    [GLib.UnicodeScript.MULTANI, "Multani"],
+    [GLib.UnicodeScript.OLD_HUNGARIAN, "Old Hungarian"],
+    [GLib.UnicodeScript.SIGNWRITING, "Signwriting"],
+    [GLib.UnicodeScript.ADLAM, "Adlam"],
+    [GLib.UnicodeScript.BHAIKSUKI, "Bhaiksuki"],
+    [GLib.UnicodeScript.MARCHEN, "Marchen"],
+    [GLib.UnicodeScript.NEWA, "Newa"],
+    [GLib.UnicodeScript.OSAGE, "Osage"],
+    [GLib.UnicodeScript.TANGUT, "Tangut"],
+    [GLib.UnicodeScript.MASARAM_GONDI, "Masaram Gondi"],
+    [GLib.UnicodeScript.NUSHU, "Nushu"],
+    [GLib.UnicodeScript.SOYOMBO, "Soyombo"],
+    [GLib.UnicodeScript.ZANABAZAR_SQUARE, "Zanabazar Square"],
+    [GLib.UnicodeScript.DOGRA, "Dogra"],
+    [GLib.UnicodeScript.GUNJALA_GONDI, "Gunjala Gondi"],
+    [GLib.UnicodeScript.HANIFI_ROHINGYA, "Hanifi Rohingya"],
+    [GLib.UnicodeScript.MAKASAR, "Makasar"],
+    [GLib.UnicodeScript.MEDEFAIDRIN, "Medefaidrin"],
+    [GLib.UnicodeScript.OLD_SOGDIAN, "Old Sogdian"],
+    [GLib.UnicodeScript.SOGDIAN, "Sogdian"],
+    [GLib.UnicodeScript.ELYMAIC, "Elym"],
+    [GLib.UnicodeScript.NANDINAGARI, "Nand"],
+    [GLib.UnicodeScript.NYIAKENG_PUACHUE_HMONG, "Rohg"],
+    [GLib.UnicodeScript.WANCHO, "Wcho"],
+    [GLib.UnicodeScript.CHORASMIAN, "Chorasmian"],
+    [GLib.UnicodeScript.DIVES_AKURU, "Dives Akuru"],
+    [GLib.UnicodeScript.KHITAN_SMALL_SCRIPT, "Khitan small script"],
+    [GLib.UnicodeScript.YEZIDI, "Yezidi"],
+]);
 
 function getScriptName(value: number): string {
-    if (!scriptNameCache) {
-        scriptNameCache = new Map<number, string>();
-        for (const [key, val] of Object.entries(GLib.UnicodeScript)) {
-            if (typeof val === "number") {
-                scriptNameCache.set(
-                    val,
-                    key
-                        .split("_")
-                        .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
-                        .join(" "),
-                );
-            }
-        }
-    }
-    return scriptNameCache.get(value) ?? String(value);
+    return SCRIPT_NAMES.get(value) ?? "Unknown";
 }
 
 function parseUcdData(): UcdEntry[] {
@@ -242,14 +386,14 @@ function groupByScript(entries: UcdEntry[]): UcdSection[] {
 
     for (const entry of sorted) {
         const script = getScriptName(GLib.unicharGetScript(entry.char));
-        if (script !== currentScript) {
+        if (script === currentScript) {
+            currentEntries.push(entry);
+        } else {
             if (currentEntries.length > 0) {
                 sections.push({ script: currentScript, entries: currentEntries });
             }
             currentScript = script;
             currentEntries = [entry];
-        } else {
-            currentEntries.push(entry);
         }
     }
     if (currentEntries.length > 0) {
@@ -269,35 +413,123 @@ function getCharacterData() {
     return cachedData;
 }
 
+const renderUcdHeader = (script: string) => (
+    <GtkLabel
+        label={script}
+        halign={Gtk.Align.START}
+        cssClasses={["heading"]}
+        marginTop={20}
+        marginBottom={10}
+        marginStart={10}
+        marginEnd={20}
+    />
+);
+
+const UcdCodepointColumn = () => (
+    <GtkColumnView.Column
+        id="codepoint"
+        title="Codepoint"
+        sortable
+        renderCell={(item: UcdEntry) => (
+            <GtkInscription text={item.codepointStr} cssClasses={["monospace"]} marginTop={4} marginBottom={4} />
+        )}
+    />
+);
+
+const UcdCharColumn = () => (
+    <GtkColumnView.Column
+        id="char"
+        title="Char"
+        renderCell={(item: UcdEntry) => (
+            <GtkInscription text={GLib.unicharIsprint(item.char) ? item.char : ""} marginTop={4} marginBottom={4} />
+        )}
+    />
+);
+
+const UcdNameColumn = () => (
+    <GtkColumnView.Column
+        id="name"
+        title="Name"
+        resizable
+        renderCell={(item: UcdEntry) => (
+            <GtkInscription
+                text={item.name}
+                xalign={0}
+                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
+                natChars={20}
+                marginTop={4}
+                marginBottom={4}
+            />
+        )}
+    />
+);
+
+interface UcdInscriptionColumnProps {
+    id: string;
+    title: string;
+    label: (item: UcdEntry) => string;
+}
+
+const UcdInscriptionColumn = ({ id, title, label }: UcdInscriptionColumnProps) => (
+    <GtkColumnView.Column
+        id={id}
+        title={title}
+        resizable
+        renderCell={(item: UcdEntry) => (
+            <GtkInscription
+                text={label(item)}
+                cssClasses={["dim-label"]}
+                xalign={0}
+                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
+                marginTop={4}
+                marginBottom={4}
+            />
+        )}
+    />
+);
+
+const UcdTypeColumn = () => (
+    <UcdInscriptionColumn
+        id="type"
+        title="Type"
+        label={(item) => UNICODE_TYPE_NAMES[GLib.unicharType(item.char)] ?? "Unknown"}
+    />
+);
+
+const UcdBreakTypeColumn = () => (
+    <UcdInscriptionColumn
+        id="break-type"
+        title="Break Type"
+        label={(item) => BREAK_TYPE_NAMES[GLib.unicharBreakType(item.char)] ?? "Unknown"}
+    />
+);
+
+const UcdCombiningClassColumn = () => (
+    <UcdInscriptionColumn
+        id="combining-class"
+        title="Combining Class"
+        label={(item) => COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.char)] ?? "Unknown"}
+    />
+);
+
 const ListViewUcdDemo = () => {
     const [selectedChar, setSelectedChar] = useState("");
     const { sections: characterSections, flat: flatSorted } = getCharacterData();
 
     const handleActivate = (position: number) => {
         const entry = flatSorted[position];
-        if (entry) {
-            setSelectedChar(entry.char);
-        }
+        if (entry) setSelectedChar(entry.char);
     };
 
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
             <GtkScrolledWindow propagateNaturalWidth vexpand>
                 <GtkColumnView<UcdEntry, string>
+                    name="column-view"
                     showColumnSeparators
                     estimatedRowHeight={32}
                     onActivate={handleActivate}
-                    renderHeader={(script) => (
-                        <GtkLabel
-                            label={script}
-                            halign={Gtk.Align.START}
-                            cssClasses={["heading"]}
-                            marginTop={20}
-                            marginBottom={10}
-                            marginStart={10}
-                            marginEnd={20}
-                        />
-                    )}
+                    renderHeader={renderUcdHeader}
                     items={characterSections.map((section) => ({
                         id: section.script,
                         value: section.script,
@@ -305,90 +537,12 @@ const ListViewUcdDemo = () => {
                         children: section.entries.map((entry) => ({ id: entry.codepointStr, value: entry })),
                     }))}
                 >
-                    <GtkColumnView.Column
-                        id="codepoint"
-                        title="Codepoint"
-                        sortable
-                        renderCell={(item: UcdEntry) => (
-                            <GtkInscription
-                                text={item.codepointStr}
-                                cssClasses={["monospace"]}
-                                marginTop={4}
-                                marginBottom={4}
-                            />
-                        )}
-                    />
-                    <GtkColumnView.Column
-                        id="char"
-                        title="Char"
-                        renderCell={(item: UcdEntry) => (
-                            <GtkInscription
-                                text={GLib.unicharIsprint(item.char) ? item.char : ""}
-                                marginTop={4}
-                                marginBottom={4}
-                            />
-                        )}
-                    />
-                    <GtkColumnView.Column
-                        id="name"
-                        title="Name"
-                        resizable
-                        renderCell={(item: UcdEntry) => (
-                            <GtkInscription
-                                text={item.name}
-                                xalign={0}
-                                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                                natChars={20}
-                                marginTop={4}
-                                marginBottom={4}
-                            />
-                        )}
-                    />
-                    <GtkColumnView.Column
-                        id="type"
-                        title="Type"
-                        resizable
-                        renderCell={(item: UcdEntry) => (
-                            <GtkInscription
-                                text={UNICODE_TYPE_NAMES[GLib.unicharType(item.char)] ?? "Unknown"}
-                                cssClasses={["dim-label"]}
-                                xalign={0}
-                                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                                marginTop={4}
-                                marginBottom={4}
-                            />
-                        )}
-                    />
-                    <GtkColumnView.Column
-                        id="break-type"
-                        title="Break Type"
-                        resizable
-                        renderCell={(item: UcdEntry) => (
-                            <GtkInscription
-                                text={BREAK_TYPE_NAMES[GLib.unicharBreakType(item.char)] ?? "Unknown"}
-                                cssClasses={["dim-label"]}
-                                xalign={0}
-                                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                                marginTop={4}
-                                marginBottom={4}
-                            />
-                        )}
-                    />
-                    <GtkColumnView.Column
-                        id="combining-class"
-                        title="Combining Class"
-                        resizable
-                        renderCell={(item: UcdEntry) => (
-                            <GtkInscription
-                                text={COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.char)] ?? "Unknown"}
-                                cssClasses={["dim-label"]}
-                                xalign={0}
-                                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                                marginTop={4}
-                                marginBottom={4}
-                            />
-                        )}
-                    />
+                    <UcdCodepointColumn />
+                    <UcdCharColumn />
+                    <UcdNameColumn />
+                    <UcdTypeColumn />
+                    <UcdBreakTypeColumn />
+                    <UcdCombiningClassColumn />
                 </GtkColumnView>
             </GtkScrolledWindow>
             <GtkLabel label={selectedChar} cssClasses={[css`font-size: 80px;`]} hexpand widthChars={2} />
@@ -399,8 +553,9 @@ const ListViewUcdDemo = () => {
 export const listviewUcdDemo: Demo = {
     id: "listview-ucd",
     title: "Lists/Characters",
-    description: "Unicode character database browser with grid and list views",
-    keywords: ["listview", "unicode", "characters", "GtkListView", "GtkGridView", "ucd", "codepoint"],
+    description:
+        "This demo shows a multi-column representation of some parts of the Unicode Character Database, or UCD. It also demonstrates the use of sections with headings to group items.\n\nThe dataset used here has 33 796 items.",
+    keywords: [],
     component: ListViewUcdDemo,
     sourceCode,
     defaultWidth: 800,

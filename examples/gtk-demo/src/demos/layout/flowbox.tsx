@@ -704,8 +704,13 @@ const FlowBoxDemo = () => {
     );
 
     return (
-        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-            <GtkFlowBox maxChildrenPerLine={30} selectionMode={Gtk.SelectionMode.NONE} valign={Gtk.Align.START}>
+        <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+            <GtkFlowBox
+                name="flow-box"
+                maxChildrenPerLine={30}
+                selectionMode={Gtk.SelectionMode.NONE}
+                valign={Gtk.Align.START}
+            >
                 {colorItems.map(({ color, rgba }) => (
                     <GtkButton key={color}>
                         <GtkDrawingArea
@@ -724,8 +729,8 @@ export const flowboxDemo: Demo = {
     id: "flowbox",
     title: "Flow Box",
     description:
-        "GtkFlowBox allows flexible and responsive grids which reflow as needed and support sorting and filtering. The children of a GtkFlowBox are regular widgets. The dataset used here has 665 colors.",
-    keywords: ["flowbox", "GtkFlowBox", "grid", "wrap", "responsive"],
+        "GtkFlowBox allows flexible and responsive grids which reflow as needed and support sorting and filtering. The children of a GtkFlowBox are regular widgets\n\nThe dataset used here has 665 colors.",
+    keywords: [],
     component: FlowBoxDemo,
     sourceCode,
     defaultWidth: 400,

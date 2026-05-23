@@ -5,6 +5,7 @@ import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkListBox, GtkListBoxRow, GtkScr
 import { useMemo } from "react";
 import type { Demo } from "../types.js";
 import aliasPath from "./cursors/alias_cursor.png";
+import allResizePath from "./cursors/all_resize_cursor.png";
 import allScrollPath from "./cursors/all_scroll_cursor.png";
 import cellPath from "./cursors/cell_cursor.png";
 import colResizePath from "./cursors/col_resize_cursor.png";
@@ -12,6 +13,7 @@ import contextMenuPath from "./cursors/context_menu_cursor.png";
 import copyPath from "./cursors/copy_cursor.png";
 import crosshairPath from "./cursors/crosshair_cursor.png";
 import defaultPath from "./cursors/default_cursor.png";
+import dndAskPath from "./cursors/dnd_ask_cursor.png";
 import eResizePath from "./cursors/e_resize_cursor.png";
 import ewResizePath from "./cursors/ew_resize_cursor.png";
 import grabPath from "./cursors/grab_cursor.png";
@@ -43,7 +45,7 @@ import zoomOutPath from "./cursors/zoom_out_cursor.png";
 import sourceCode from "./cursors.tsx?raw";
 
 const cursorbgStyle = css`
-    background: linear-gradient(135deg, white 50%, black 50%);
+    background: linear-gradient(to bottom right, white 0%, white 50%, black 50%, black 100%);
 `;
 
 interface CursorInfo {
@@ -53,43 +55,57 @@ interface CursorInfo {
     hotY: number;
 }
 
-const CURSORS: CursorInfo[] = [
-    { name: "default", image: defaultPath, hotX: 5, hotY: 5 },
-    { name: "none", image: nonePath, hotX: 0, hotY: 0 },
-    { name: "gtk-logo", image: gtkLogoPath, hotX: 18, hotY: 2 },
-    { name: "context-menu", image: contextMenuPath, hotX: 5, hotY: 5 },
-    { name: "help", image: helpPath, hotX: 16, hotY: 27 },
-    { name: "pointer", image: pointerPath, hotX: 14, hotY: 9 },
-    { name: "progress", image: progressPath, hotX: 5, hotY: 4 },
-    { name: "wait", image: waitPath, hotX: 11, hotY: 11 },
-    { name: "cell", image: cellPath, hotX: 15, hotY: 15 },
-    { name: "crosshair", image: crosshairPath, hotX: 15, hotY: 15 },
-    { name: "text", image: textPath, hotX: 14, hotY: 15 },
-    { name: "vertical-text", image: verticalTextPath, hotX: 16, hotY: 15 },
-    { name: "alias", image: aliasPath, hotX: 12, hotY: 11 },
-    { name: "copy", image: copyPath, hotX: 12, hotY: 11 },
-    { name: "move", image: movePath, hotX: 12, hotY: 11 },
-    { name: "no-drop", image: noDropPath, hotX: 12, hotY: 11 },
-    { name: "not-allowed", image: notAllowedPath, hotX: 12, hotY: 11 },
-    { name: "grab", image: grabPath, hotX: 10, hotY: 6 },
-    { name: "grabbing", image: grabbingPath, hotX: 15, hotY: 14 },
-    { name: "all-scroll", image: allScrollPath, hotX: 15, hotY: 15 },
-    { name: "col-resize", image: colResizePath, hotX: 16, hotY: 15 },
-    { name: "row-resize", image: rowResizePath, hotX: 15, hotY: 17 },
-    { name: "n-resize", image: nResizePath, hotX: 17, hotY: 7 },
-    { name: "e-resize", image: eResizePath, hotX: 25, hotY: 17 },
-    { name: "s-resize", image: sResizePath, hotX: 17, hotY: 23 },
-    { name: "w-resize", image: wResizePath, hotX: 8, hotY: 17 },
-    { name: "ne-resize", image: neResizePath, hotX: 20, hotY: 13 },
-    { name: "nw-resize", image: nwResizePath, hotX: 13, hotY: 13 },
-    { name: "se-resize", image: seResizePath, hotX: 19, hotY: 19 },
-    { name: "sw-resize", image: swResizePath, hotX: 13, hotY: 19 },
-    { name: "ew-resize", image: ewResizePath, hotX: 16, hotY: 15 },
-    { name: "ns-resize", image: nsResizePath, hotX: 15, hotY: 17 },
-    { name: "nesw-resize", image: neswResizePath, hotX: 14, hotY: 14 },
-    { name: "nwse-resize", image: nwseResizePath, hotX: 14, hotY: 14 },
-    { name: "zoom-in", image: zoomInPath, hotX: 14, hotY: 13 },
-    { name: "zoom-out", image: zoomOutPath, hotX: 14, hotY: 13 },
+const GROUPS: readonly (readonly CursorInfo[])[] = [
+    [
+        { name: "default", image: defaultPath, hotX: 5, hotY: 5 },
+        { name: "none", image: nonePath, hotX: 0, hotY: 0 },
+        { name: "gtk-logo", image: gtkLogoPath, hotX: 18, hotY: 2 },
+    ],
+    [
+        { name: "context-menu", image: contextMenuPath, hotX: 5, hotY: 5 },
+        { name: "help", image: helpPath, hotX: 16, hotY: 27 },
+        { name: "pointer", image: pointerPath, hotX: 14, hotY: 9 },
+        { name: "progress", image: progressPath, hotX: 5, hotY: 4 },
+        { name: "wait", image: waitPath, hotX: 11, hotY: 11 },
+    ],
+    [
+        { name: "cell", image: cellPath, hotX: 15, hotY: 15 },
+        { name: "crosshair", image: crosshairPath, hotX: 15, hotY: 15 },
+        { name: "text", image: textPath, hotX: 14, hotY: 15 },
+        { name: "vertical-text", image: verticalTextPath, hotX: 16, hotY: 15 },
+    ],
+    [
+        { name: "alias", image: aliasPath, hotX: 12, hotY: 11 },
+        { name: "copy", image: copyPath, hotX: 12, hotY: 11 },
+        { name: "move", image: movePath, hotX: 12, hotY: 11 },
+        { name: "dnd-ask", image: dndAskPath, hotX: 12, hotY: 11 },
+        { name: "no-drop", image: noDropPath, hotX: 12, hotY: 11 },
+        { name: "not-allowed", image: notAllowedPath, hotX: 12, hotY: 11 },
+        { name: "grab", image: grabPath, hotX: 10, hotY: 6 },
+        { name: "grabbing", image: grabbingPath, hotX: 15, hotY: 14 },
+    ],
+    [
+        { name: "all-scroll", image: allScrollPath, hotX: 15, hotY: 15 },
+        { name: "all-resize", image: allResizePath, hotX: 15, hotY: 15 },
+        { name: "col-resize", image: colResizePath, hotX: 16, hotY: 15 },
+        { name: "row-resize", image: rowResizePath, hotX: 15, hotY: 17 },
+        { name: "n-resize", image: nResizePath, hotX: 17, hotY: 7 },
+        { name: "e-resize", image: eResizePath, hotX: 25, hotY: 17 },
+        { name: "s-resize", image: sResizePath, hotX: 17, hotY: 23 },
+        { name: "w-resize", image: wResizePath, hotX: 8, hotY: 17 },
+        { name: "ne-resize", image: neResizePath, hotX: 20, hotY: 13 },
+        { name: "nw-resize", image: nwResizePath, hotX: 13, hotY: 13 },
+        { name: "sw-resize", image: swResizePath, hotX: 13, hotY: 19 },
+        { name: "se-resize", image: seResizePath, hotX: 19, hotY: 19 },
+        { name: "ew-resize", image: ewResizePath, hotX: 16, hotY: 15 },
+        { name: "ns-resize", image: nsResizePath, hotX: 15, hotY: 17 },
+        { name: "nesw-resize", image: neswResizePath, hotX: 14, hotY: 14 },
+        { name: "nwse-resize", image: nwseResizePath, hotX: 14, hotY: 14 },
+    ],
+    [
+        { name: "zoom-in", image: zoomInPath, hotX: 14, hotY: 13 },
+        { name: "zoom-out", image: zoomOutPath, hotX: 14, hotY: 13 },
+    ],
 ];
 
 const textureCache = new Map<string, Gdk.Texture>();
@@ -103,77 +119,88 @@ function getCursorTexture(info: CursorInfo): Gdk.Texture {
     return texture;
 }
 
+const gtkLogoTextureCallback: Gdk.CursorGetTextureCallback = (_cursor, _cursorSize, _scale, _data) => {
+    return getCursorTexture({ name: "gtk-logo", image: gtkLogoPath, hotX: 18, hotY: 2 });
+};
+
+const buildCursorVariants = (info: CursorInfo) => {
+    const texture = getCursorTexture(info);
+    const named = Gdk.Cursor.newFromName(info.name, null);
+    const image = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null);
+
+    if (info.name === "gtk-logo") {
+        const fallback = Gdk.Cursor.newFromName("default", null);
+        const callback = Gdk.Cursor.newFromCallback(gtkLogoTextureCallback, fallback);
+        const imageWithFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, fallback);
+        return [named, image, callback, imageWithFallback] as const;
+    }
+
+    const namedWithFallback = Gdk.Cursor.newFromName(
+        info.name,
+        Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null),
+    );
+    const imageWithFallback = Gdk.Cursor.newFromTexture(
+        texture,
+        info.hotX,
+        info.hotY,
+        Gdk.Cursor.newFromName(info.name, null),
+    );
+    return [named, image, namedWithFallback, imageWithFallback] as const;
+};
+
+const buildCursorTooltips = (info: CursorInfo): readonly [string, string, string, string] =>
+    info.name === "gtk-logo"
+        ? [
+              `The "gtk-logo" named cursor`,
+              "An image cursor for the GTK logo",
+              "A callback cursor for the GTK logo",
+              `An image cursor falling back to the "gtk-logo" cursor`,
+          ]
+        : [
+              `The "${info.name}" named cursor`,
+              "An image cursor",
+              `The "${info.name}" named cursor falling back to an image cursor`,
+              `An image cursor falling back to the "${info.name}" cursor`,
+          ];
+
 const CursorPreview = ({ info }: { info: CursorInfo }) => {
     const texture = useMemo(() => getCursorTexture(info), [info]);
     return <GtkImage paintable={texture} />;
 };
 
+const CursorFrame = ({ cursor, tooltip }: { cursor: Gdk.Cursor; tooltip: string }) => (
+    <GtkFrame widthRequest={32} heightRequest={32} cssClasses={[cursorbgStyle]} cursor={cursor} tooltipText={tooltip} />
+);
+
 const CursorRow = ({ info }: { info: CursorInfo }) => {
-    const cursors = useMemo(() => {
-        const texture = getCursorTexture(info);
-        const named = Gdk.Cursor.newFromName(info.name, null);
-        const image = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null);
-
-        if (info.name === "gtk-logo") {
-            const fallback = Gdk.Cursor.newFromName("default", null);
-            const imageWithFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, fallback);
-            return [image, image, imageWithFallback, imageWithFallback] as const;
-        }
-
-        const namedWithFallback = Gdk.Cursor.newFromName(
-            info.name,
-            Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, null),
-        );
-        const imageWithFallback = Gdk.Cursor.newFromTexture(
-            texture,
-            info.hotX,
-            info.hotY,
-            Gdk.Cursor.newFromName(info.name, null),
-        );
-
-        return [named, image, namedWithFallback, imageWithFallback] as const;
-    }, [info]);
-
+    const cursors = useMemo(() => buildCursorVariants(info), [info]);
+    const tooltips = useMemo(() => buildCursorTooltips(info), [info]);
     return (
         <GtkListBoxRow activatable={false}>
             <GtkBox spacing={10} marginStart={10} marginEnd={10} marginTop={10} marginBottom={10}>
                 <CursorPreview info={info} />
-                <GtkLabel label={info.name} hexpand xalign={0} />
-                <GtkFrame
-                    widthRequest={32}
-                    heightRequest={32}
-                    cssClasses={[cursorbgStyle]}
-                    cursor={cursors[0]}
-                    tooltipText={`The '${info.name}' named cursor`}
-                />
-                <GtkFrame
-                    widthRequest={32}
-                    heightRequest={32}
-                    cssClasses={[cursorbgStyle]}
-                    cursor={cursors[1]}
-                    tooltipText={`The '${info.name}' image cursor`}
-                />
-                <GtkFrame
-                    widthRequest={32}
-                    heightRequest={32}
-                    cssClasses={[cursorbgStyle]}
-                    cursor={cursors[2]}
-                    tooltipText={`The '${info.name}' named cursor falling back to an image cursor`}
-                />
-                <GtkFrame
-                    widthRequest={32}
-                    heightRequest={32}
-                    cssClasses={[cursorbgStyle]}
-                    cursor={cursors[3]}
-                    tooltipText={`The '${info.name}' image cursor falling back to a named cursor`}
-                />
+                <GtkLabel label={info.name} halign={Gtk.Align.START} valign={Gtk.Align.BASELINE} hexpand xalign={0} />
+                <CursorFrame cursor={cursors[0]} tooltip={tooltips[0]} />
+                <CursorFrame cursor={cursors[1]} tooltip={tooltips[1]} />
+                <CursorFrame cursor={cursors[2]} tooltip={tooltips[2]} />
+                <CursorFrame cursor={cursors[3]} tooltip={tooltips[3]} />
             </GtkBox>
         </GtkListBoxRow>
     );
 };
 
+const CursorGroup = ({ rows }: { rows: readonly CursorInfo[] }) => (
+    <GtkFrame cssClasses={["view"]}>
+        <GtkListBox selectionMode={Gtk.SelectionMode.NONE}>
+            {rows.map((info) => (
+                <CursorRow key={info.name} info={info} />
+            ))}
+        </GtkListBox>
+    </GtkFrame>
+);
+
 const CursorsDemo = () => (
-    <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight hexpand>
+    <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight hexpand>
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             marginStart={60}
@@ -183,13 +210,9 @@ const CursorsDemo = () => (
             spacing={10}
             halign={Gtk.Align.CENTER}
         >
-            <GtkFrame cssClasses={["view"]}>
-                <GtkListBox selectionMode={Gtk.SelectionMode.NONE}>
-                    {CURSORS.map((info) => (
-                        <CursorRow key={info.name} info={info} />
-                    ))}
-                </GtkListBox>
-            </GtkFrame>
+            {GROUPS.map((rows) => (
+                <CursorGroup key={rows[0]?.name ?? ""} rows={rows} />
+            ))}
         </GtkBox>
     </GtkScrolledWindow>
 );
@@ -197,8 +220,9 @@ const CursorsDemo = () => (
 export const cursorsDemo: Demo = {
     id: "cursors",
     title: "Cursors",
-    description: "Custom cursor themes and cursor types",
-    keywords: ["cursor", "pointer", "mouse", "crosshair", "resize", "Gdk.Cursor"],
+    description:
+        "Demonstrates a useful set of available cursors. The cursors shown here are the ones defined by CSS, which we assume to be available. The example shows creating cursors by name or from an image, with or without a fallback.",
+    keywords: [],
     component: CursorsDemo,
     sourceCode,
     defaultWidth: 300,

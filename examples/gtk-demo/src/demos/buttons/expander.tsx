@@ -39,7 +39,7 @@ const ExpanderDemo = () => {
             <GtkLabel label="<big><b>Something went wrong</b></big>" useMarkup />
             <GtkLabel label="Here are some more details but not the full story" wrap={false} vexpand={false} />
 
-            <GtkExpander label="Details:" vexpand ref={expanderRef} onNotify={handleExpandedNotify}>
+            <GtkExpander name="expander" label="Details:" vexpand ref={expanderRef} onNotify={handleExpandedNotify}>
                 <GtkScrolledWindow
                     minContentHeight={100}
                     hasFrame
@@ -74,8 +74,8 @@ export const expanderDemo: Demo = {
     id: "expander",
     title: "Expander",
     description:
-        'GtkExpander allows to provide additional content that is initially hidden. This is also known as "disclosure triangle". The official GTK demo also demonstrates making the window resizable only when the expander is expanded.',
-    keywords: ["expander", "collapse", "expand", "toggle", "GtkExpander", "disclosure", "triangle", "details"],
+        'GtkExpander allows to provide additional content that is initially hidden. This is also known as "disclosure triangle".\n\nThis example also shows how to make the window resizable only if the expander is expanded.',
+    keywords: ["gtkexpander"],
     component: ExpanderDemo,
     sourceCode,
 };

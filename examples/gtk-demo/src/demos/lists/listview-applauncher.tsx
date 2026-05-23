@@ -49,8 +49,9 @@ const ListViewApplauncherDemo = () => {
     );
 
     return (
-        <GtkScrolledWindow vexpand hexpand>
+        <GtkScrolledWindow name="scrolled" vexpand hexpand>
             <GtkListView
+                name="list-view"
                 estimatedItemHeight={48}
                 selectionMode={Gtk.SelectionMode.SINGLE}
                 onActivate={handleActivate}
@@ -74,10 +75,11 @@ export const listviewApplauncherDemo: Demo = {
     id: "listview-applauncher",
     title: "Lists/Application launcher",
     description:
-        "This demo uses the GtkListView widget as a fancy application launcher. It is also a very small introduction to listviews.",
-    keywords: ["listview", "launcher", "apps", "icons", "GtkListView", "GAppInfo", "GListModel"],
+        "This demo uses the GtkListView widget as a fancy application launcher.\n\nIt is also a very small introduction to listviews.",
+    keywords: ["GtkListItemFactory", "GListModel"],
     component: ListViewApplauncherDemo,
     sourceCode,
     defaultWidth: 640,
     defaultHeight: 320,
+    windowTitle: "Application Launcher",
 };

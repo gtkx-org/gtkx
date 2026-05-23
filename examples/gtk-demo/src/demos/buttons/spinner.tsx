@@ -4,10 +4,6 @@ import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinner.tsx?raw";
 
-/**
- * Spinner demo matching the official GTK gtk-demo.
- * Shows spinners alongside entries in sensitive and insensitive states.
- */
 const SpinnerDemo = () => {
     const [spinning, setSpinning] = useState(true);
 
@@ -40,7 +36,8 @@ export const spinnerDemo: Demo = {
     id: "spinner",
     title: "Spinner",
     description: "GtkSpinner allows to show that background activity is on-going.",
-    keywords: ["spinner", "GtkSpinner"],
+    keywords: ["gtkspinner"],
     component: SpinnerDemo,
     sourceCode,
+    resizable: false,
 };

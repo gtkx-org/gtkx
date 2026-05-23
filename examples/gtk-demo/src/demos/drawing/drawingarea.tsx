@@ -1,23 +1,23 @@
-import { Context, Format, ImageSurface, Operator } from "@gtkx/ffi/cairo";
+import { Content, Context, Format, ImageSurface, LineCap, Operator, Surface } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/react";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import { useCallback, useRef, useState } from "react";
+import type { Demo } from "../types.js";
 import sourceCode from "./drawingarea.tsx?raw";
 
 const CHECK_SIZE = 16;
 
-const ovalPath = (cr: Context, xc: number, yc: number, xr: number, yr: number) => {
+const ovalPath = (cr: Context, { xc, yc, xr, yr }: { xc: number; yc: number; xr: number; yr: number }) => {
     cr.save();
     cr.translate(xc, yc);
     cr.scale(1, yr / xr);
     cr.moveTo(xr, 0);
-    cr.arc(0, 0, xr, 0, 2 * Math.PI);
+    cr.arc({ xc: 0, yc: 0, radius: xr, angle1: 0, angle2: 2 * Math.PI });
     cr.closePath();
     cr.restore();
 };
 
-const fillChecks = (cr: Context, x: number, y: number, width: number, height: number) => {
+const fillChecks = (cr: Context, { x, y, width, height }: { x: number; y: number; width: number; height: number }) => {
     cr.rectangle(x, y, width, height);
     cr.setSourceRgb(0.4, 0.4, 0.4);
     cr.fill();
@@ -37,37 +37,37 @@ const fillChecks = (cr: Context, x: number, y: number, width: number, height: nu
     cr.fill();
 };
 
-const draw3Circles = (cr: Context, xc: number, yc: number, radius: number, alpha: number) => {
+const draw3Circles = (
+    cr: Context,
+    { xc, yc, radius, alpha }: { xc: number; yc: number; radius: number; alpha: number },
+) => {
     const subradius = radius * (2 / 3 - 0.1);
 
     cr.setSourceRgba(1, 0, 0, alpha);
-    ovalPath(
-        cr,
-        xc + (radius / 3) * Math.cos(Math.PI * 0.5),
-        yc - (radius / 3) * Math.sin(Math.PI * 0.5),
-        subradius,
-        subradius,
-    );
+    ovalPath(cr, {
+        xc: xc + (radius / 3) * Math.cos(Math.PI * 0.5),
+        yc: yc - (radius / 3) * Math.sin(Math.PI * 0.5),
+        xr: subradius,
+        yr: subradius,
+    });
     cr.fill();
 
     cr.setSourceRgba(0, 1, 0, alpha);
-    ovalPath(
-        cr,
-        xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 2 / 0.3)),
-        yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 2 / 0.3)),
-        subradius,
-        subradius,
-    );
+    ovalPath(cr, {
+        xc: xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 2 / 0.3)),
+        yc: yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 2 / 0.3)),
+        xr: subradius,
+        yr: subradius,
+    });
     cr.fill();
 
     cr.setSourceRgba(0, 0, 1, alpha);
-    ovalPath(
-        cr,
-        xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 4 / 0.3)),
-        yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 4 / 0.3)),
-        subradius,
-        subradius,
-    );
+    ovalPath(cr, {
+        xc: xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 4 / 0.3)),
+        yc: yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 4 / 0.3)),
+        xr: subradius,
+        yr: subradius,
+    });
     cr.fill();
 };
 
@@ -76,27 +76,27 @@ const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
     const xc = width / 2;
     const yc = height / 2;
 
-    fillChecks(cr, 0, 0, width, height);
+    fillChecks(cr, { x: 0, y: 0, width, height });
 
-    const overlay = cr.getTarget().createSimilar("COLOR_ALPHA", width, height);
-    const punch = cr.getTarget().createSimilar("ALPHA", width, height);
-    const circles = cr.getTarget().createSimilar("COLOR_ALPHA", width, height);
+    const overlay = Surface.createSimilar(cr.getTarget(), Content.COLOR_ALPHA, width, height);
+    const punch = Surface.createSimilar(cr.getTarget(), Content.ALPHA, width, height);
+    const circles = Surface.createSimilar(cr.getTarget(), Content.COLOR_ALPHA, width, height);
 
-    const overlayCr = new Context(overlay);
+    const overlayCr = Context.create(overlay);
     overlayCr.setSourceRgb(0, 0, 0);
-    ovalPath(overlayCr, xc, yc, radius, radius);
+    ovalPath(overlayCr, { xc, yc, xr: radius, yr: radius });
     overlayCr.fill();
 
-    const punchCr = new Context(punch);
-    draw3Circles(punchCr, xc, yc, radius, 1.0);
+    const punchCr = Context.create(punch);
+    draw3Circles(punchCr, { xc, yc, radius, alpha: 1 });
 
     overlayCr.setOperator(Operator.DEST_OUT);
     overlayCr.setSourceSurface(punch, 0, 0);
     overlayCr.paint();
 
-    const circlesCr = new Context(circles);
+    const circlesCr = Context.create(circles);
     circlesCr.setOperator(Operator.OVER);
-    draw3Circles(circlesCr, xc, yc, radius, 0.5);
+    draw3Circles(circlesCr, { xc, yc, radius, alpha: 0.5 });
 
     overlayCr.setOperator(Operator.ADD);
     overlayCr.setSourceSurface(circles, 0, 0);
@@ -107,19 +107,55 @@ const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
 };
 
 const createSurface = (width: number, height: number): ImageSurface => {
-    const surface = new ImageSurface(Format.ARGB32, width, height);
-    const cr = new Context(surface);
+    const surface = ImageSurface.create(Format.ARGB32, width, height);
+    const cr = Context.create(surface);
     cr.setSourceRgb(1, 1, 1);
     cr.paint();
     return surface;
 };
 
 const drawBrush = (surface: ImageSurface, widget: Gtk.DrawingArea, x: number, y: number) => {
-    const cr = new Context(surface);
-    cr.rectangle(x - 3, y - 3, 6, 6);
-    cr.fill();
+    const cr = Context.create(surface);
+    cr.moveTo(x, y);
+    cr.lineTo(x, y);
+    cr.setLineWidth(6);
+    cr.setLineCap(LineCap.ROUND);
+    cr.setSourceRgb(0, 0, 0);
+    cr.stroke();
     widget.queueDraw();
 };
+
+function useScribbleHandlers(
+    ref: React.RefObject<Gtk.DrawingArea | null>,
+    surfaceRef: React.RefObject<ImageSurface | null>,
+    startPointRef: React.RefObject<{ x: number; y: number }>,
+) {
+    const handleDragBegin = useCallback(
+        (startX: number, startY: number) => {
+            startPointRef.current = { x: startX, y: startY };
+            if (surfaceRef.current && ref.current) {
+                drawBrush(surfaceRef.current, ref.current, startX, startY);
+            }
+        },
+        [ref, surfaceRef, startPointRef],
+    );
+
+    const handleDragOffset = useCallback(
+        (offsetX: number, offsetY: number) => {
+            if (surfaceRef.current && ref.current) {
+                drawBrush(
+                    surfaceRef.current,
+                    ref.current,
+                    startPointRef.current.x + offsetX,
+                    startPointRef.current.y + offsetY,
+                );
+            }
+        },
+        [ref, surfaceRef, startPointRef],
+    );
+
+    return { handleDragBegin, handleDragUpdate: handleDragOffset, handleDragEnd: handleDragOffset };
+}
 
 const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Widget[] }) => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
@@ -137,37 +173,11 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
         }
     }, []);
 
-    const handleDragBegin = useCallback((startX: number, startY: number) => {
-        startPointRef.current = { x: startX, y: startY };
-        if (surfaceRef.current && ref.current) {
-            drawBrush(surfaceRef.current, ref.current, startX, startY);
-        }
-    }, []);
-
-    const handleDragUpdate = useCallback((offsetX: number, offsetY: number) => {
-        if (surfaceRef.current && ref.current) {
-            drawBrush(
-                surfaceRef.current,
-                ref.current,
-                startPointRef.current.x + offsetX,
-                startPointRef.current.y + offsetY,
-            );
-        }
-    }, []);
-
-    const handleDragEnd = useCallback((offsetX: number, offsetY: number) => {
-        if (surfaceRef.current && ref.current) {
-            drawBrush(
-                surfaceRef.current,
-                ref.current,
-                startPointRef.current.x + offsetX,
-                startPointRef.current.y + offsetY,
-            );
-        }
-    }, []);
+    const { handleDragBegin, handleDragUpdate, handleDragEnd } = useScribbleHandlers(ref, surfaceRef, startPointRef);
 
     return (
         <GtkDrawingArea
+            name="scribble-area"
             ref={ref}
             contentWidth={100}
             contentHeight={100}
@@ -186,16 +196,9 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
     );
 };
 
-const DrawingAreaDemo = ({ window }: DemoProps) => {
+const DrawingAreaDemo = () => {
     const [knockoutLabel, setKnockoutLabel] = useState<Gtk.Label | null>(null);
     const [scribbleLabel, setScribbleLabel] = useState<Gtk.Label | null>(null);
-
-    useLayoutEffect(() => {
-        const win = window.current;
-        if (win) {
-            win.setDefaultSize(250, -1);
-        }
-    }, [window]);
 
     return (
         <GtkBox
@@ -209,6 +212,7 @@ const DrawingAreaDemo = ({ window }: DemoProps) => {
             <GtkLabel ref={setKnockoutLabel} label="Knockout groups" cssClasses={["heading"]} />
             <GtkFrame vexpand>
                 <GtkDrawingArea
+                    name="knockout-area"
                     render={drawKnockoutGroups}
                     contentWidth={100}
                     contentHeight={100}
@@ -229,8 +233,8 @@ export const drawingAreaDemo: Demo = {
     id: "drawingarea",
     title: "Drawing Area",
     description:
-        "GtkDrawingArea is a blank area where you can draw custom displays of various kinds. This demo has two drawing areas. The checkerboard area shows how you can just draw something; all you have to do is set a function via gtk_drawing_area_set_draw_func. The scribble area is a bit more advanced, and shows how to handle events such as button presses and mouse motion. Click the mouse and drag in the scribble area to draw squiggles.",
-    keywords: ["drawing", "GtkDrawingArea"],
+        'GtkDrawingArea is a blank area where you can draw custom displays of various kinds.\n\nThis demo has two drawing areas. The checkerboard area shows how you can just draw something; all you have to do is set a function via gtk_drawing_area_set_draw_func(), as shown here.\n\nThe "scribble" area is a bit more advanced, and shows how to handle events such as button presses and mouse motion. Click the mouse and drag in the scribble area to draw squiggles. Resize the window to clear the area.',
+    keywords: ["GtkDrawingArea"],
     component: DrawingAreaDemo,
     sourceCode,
     defaultWidth: 250,

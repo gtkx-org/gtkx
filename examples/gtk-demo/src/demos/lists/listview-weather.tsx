@@ -100,7 +100,7 @@ const parseWeatherData = (): WeatherInfo[] => {
         currentTemp = parseTemperature(fields[1] ?? "", currentTemp);
         currentWeather = parseWeatherType(fields[2] ?? "", fields[3] ?? "", currentWeather);
 
-        const last = data[data.length - 1];
+        const last = data.at(-1);
         if (last) {
             last.temperature = currentTemp;
             last.weatherType = currentWeather;
@@ -114,8 +114,9 @@ const ListViewWeatherDemo = () => {
     const weatherData = useMemo(() => parseWeatherData(), []);
 
     return (
-        <GtkScrolledWindow vexpand hexpand>
+        <GtkScrolledWindow name="scrolled" vexpand hexpand>
             <GtkListView
+                name="list-view"
                 estimatedItemWidth={56}
                 estimatedItemHeight={80}
                 orientation={Gtk.Orientation.HORIZONTAL}
@@ -123,12 +124,12 @@ const ListViewWeatherDemo = () => {
                 selectionMode={Gtk.SelectionMode.NONE}
                 renderItem={(item: WeatherInfo) => (
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
+                        <GtkLabel label={item.hour} widthChars={5} valign={Gtk.Align.START} />
                         <GtkImage
                             iconName={WEATHER_ICONS[item.weatherType]}
                             iconSize={Gtk.IconSize.LARGE}
                             valign={Gtk.Align.START}
                         />
-                        <GtkLabel label={item.hour} widthChars={5} valign={Gtk.Align.START} />
                         <GtkLabel
                             label={`${Math.round(item.temperature)}°`}
                             widthChars={4}
@@ -147,8 +148,8 @@ export const listviewWeatherDemo: Demo = {
     id: "listview-weather",
     title: "Lists/Weather",
     description:
-        "This demo shows a few of the rarer features of GtkListView - horizontal orientation and separators. The dataset has 70,000 hourly weather items.",
-    keywords: ["listview", "weather", "horizontal", "GtkListView", "separators", "70000"],
+        "This demo shows a few of the rarer features of GtkListView and how they can be used to display weather information.\n\nThe hourly weather info uses a horizontal listview. This is easy to achieve because GtkListView implements the GtkOrientable interface. To make the items in the list stand out more, the listview uses separators.\n\nA GtkNoSelectionModel is used to make sure no item in the list can be selected. All other interactions with the items is still possible.\n\nThe dataset used here has 70 000 items.",
+    keywords: [],
     component: ListViewWeatherDemo,
     sourceCode,
     defaultWidth: 600,

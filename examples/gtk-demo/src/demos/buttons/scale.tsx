@@ -3,78 +3,49 @@ import { GtkGrid, GtkLabel, GtkScale } from "@gtkx/react";
 import type { Demo } from "../types.js";
 import sourceCode from "./scale.tsx?raw";
 
-const ScaleDemo = () => {
-    return (
-        <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
-            <GtkGrid.Child column={0} row={0}>
-                <GtkLabel label="Plain" xalign={0} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={0}>
-                <GtkScale
-                    widthRequest={200}
-                    drawValue={false}
-                    hexpand
-                    value={2}
-                    upper={4}
-                    stepIncrement={0.1}
-                    pageIncrement={1}
-                />
-            </GtkGrid.Child>
+const INTEGER_MARKS = [0, 1, 2, 3, 4].map((value) => ({ value, position: Gtk.PositionType.BOTTOM }));
 
-            <GtkGrid.Child column={0} row={1}>
-                <GtkLabel label="Marks" xalign={0} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={1}>
-                <GtkScale
-                    widthRequest={200}
-                    drawValue={false}
-                    hexpand
-                    value={2}
-                    upper={4}
-                    stepIncrement={0.1}
-                    pageIncrement={1}
-                    marks={[
-                        { value: 0, position: Gtk.PositionType.BOTTOM },
-                        { value: 1, position: Gtk.PositionType.BOTTOM },
-                        { value: 2, position: Gtk.PositionType.BOTTOM },
-                        { value: 3, position: Gtk.PositionType.BOTTOM },
-                        { value: 4, position: Gtk.PositionType.BOTTOM },
-                    ]}
-                />
-            </GtkGrid.Child>
+interface ScaleRowProps {
+    label: string;
+    row: number;
+    scaleProps?: Partial<React.ComponentProps<typeof GtkScale>>;
+}
 
-            <GtkGrid.Child column={0} row={2}>
-                <GtkLabel label="Discrete" xalign={0} />
-            </GtkGrid.Child>
-            <GtkGrid.Child column={1} row={2}>
-                <GtkScale
-                    widthRequest={200}
-                    roundDigits={0}
-                    drawValue={false}
-                    hexpand
-                    value={2}
-                    upper={4}
-                    stepIncrement={0.1}
-                    pageIncrement={1}
-                    marks={[
-                        { value: 0, position: Gtk.PositionType.BOTTOM },
-                        { value: 1, position: Gtk.PositionType.BOTTOM },
-                        { value: 2, position: Gtk.PositionType.BOTTOM },
-                        { value: 3, position: Gtk.PositionType.BOTTOM },
-                        { value: 4, position: Gtk.PositionType.BOTTOM },
-                    ]}
-                />
-            </GtkGrid.Child>
-        </GtkGrid>
-    );
-};
+const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => (
+    <>
+        <GtkGrid.Child column={0} row={row}>
+            <GtkLabel label={label} xalign={0} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={1} row={row}>
+            <GtkScale
+                widthRequest={200}
+                drawValue={false}
+                hexpand
+                value={2}
+                upper={4}
+                stepIncrement={0.1}
+                pageIncrement={1}
+                {...scaleProps}
+            />
+        </GtkGrid.Child>
+    </>
+);
+
+const ScaleDemo = () => (
+    <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
+        <ScaleRow label="Plain" row={0} />
+        <ScaleRow label="Marks" row={1} scaleProps={{ marks: INTEGER_MARKS }} />
+        <ScaleRow label="Discrete" row={2} scaleProps={{ roundDigits: 0, stepIncrement: 1, marks: INTEGER_MARKS }} />
+    </GtkGrid>
+);
 
 export const scaleDemo: Demo = {
     id: "scale",
     title: "Scales",
     description:
         "GtkScale is a way to select a value from a range. Scales can have marks to help pick special values, and they can also restrict the values that can be chosen.",
-    keywords: ["scale", "slider", "range", "GtkScale", "marks", "discrete", "plain"],
+    keywords: ["gtkscale"],
     component: ScaleDemo,
     sourceCode,
+    resizable: false,
 };

@@ -12,7 +12,7 @@ const LinksDemo = ({ window }: DemoProps) => {
             dialog.setDetail(
                 "The term 'keynav' is a shorthand for keyboard navigation and refers to the process of using a program (exclusively) via keyboard input.",
             );
-            dialog.show(window.current);
+            void dialog.choose(window.current, null);
             return true;
         }
         return false;
@@ -47,7 +47,7 @@ export const linksDemo: Demo = {
     title: "Links",
     description:
         "GtkLabel can show hyperlinks. The default action is to call gtk_show_uri() on their URI, but it is possible to override this with a custom handler.",
-    keywords: ["link", "hyperlink", "url", "uri", "GtkLabel", "markup", "keynav"],
+    keywords: [],
     component: LinksDemo,
     sourceCode,
 };

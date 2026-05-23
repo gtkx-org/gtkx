@@ -83,7 +83,7 @@ function createFaceTransform(face: CubeFace): Gsk.Transform {
     const centeringOffset = new Graphene.Point3D();
     centeringOffset.init(-w, -h, 0);
 
-    let t = new Gsk.Transform();
+    let t = Gsk.Transform.new();
     t = t.translate(centerPoint) ?? t;
     t = t.perspective(p) ?? t;
     t = t.rotate3d(-30, getAxisX()) ?? t;
@@ -111,10 +111,15 @@ const FixedDemo = () => {
     }, []);
 
     return (
-        <GtkScrolledWindow>
-            <GtkFixed halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} overflow={Gtk.Overflow.VISIBLE}>
+        <GtkScrolledWindow name="scrolled">
+            <GtkFixed
+                name="outer-fixed"
+                halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.CENTER}
+                overflow={Gtk.Overflow.VISIBLE}
+            >
                 <GtkFixed.Child x={0} y={0}>
-                    <GtkFixed overflow={Gtk.Overflow.VISIBLE}>
+                    <GtkFixed name="inner-fixed" overflow={Gtk.Overflow.VISIBLE}>
                         {faceTransforms.map(({ face, transform }) => (
                             <GtkFixed.Child key={face.name} x={0} y={0} transform={transform}>
                                 <GtkFrame
@@ -135,8 +140,8 @@ export const fixedDemo: Demo = {
     id: "fixed",
     title: "Fixed Layout / Cube",
     description:
-        "GtkFixed is a container that allows placing and transforming widgets manually. This demo uses a GtkFixed to create a cube out of child widgets.",
-    keywords: ["fixed", "GtkFixed", "GtkLayoutManager", "cube", "transform", "3D"],
+        "GtkFixed is a container that allows placing and transforming widgets manually.\n\nThis demo uses a GtkFixed to create a cube out of child widgets.",
+    keywords: ["GtkLayoutManager"],
     component: FixedDemo,
     sourceCode,
     defaultWidth: 600,
