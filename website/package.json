@@ -4,25 +4,23 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "typedoc": "node scripts/typedoc.js",
+        "typedoc": "node scripts/typedoc.ts",
         "build": "pnpm typedoc && vitepress build",
         "dev": "vitepress dev",
         "preview": "vitepress preview",
         "screenshots": "vitest run --config screenshots/vitest.config.ts"
     },
-    "dependencies": {
+    "devDependencies": {
         "@gtkx/css": "workspace:*",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "react": "^19.2.4"
-    },
-    "devDependencies": {
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
-        "typedoc": "^0.28.18",
+        "react": "^19.2.6",
+        "typedoc": "^0.28.19",
         "typedoc-plugin-markdown": "^4.11.0",
         "typedoc-vitepress-theme": "^1.1.2",
-        "vite": "^8.0.3",
-        "vitepress": "^1.6.4"
+        "vitepress": "^1.6.4",
+        "vitepress-plugin-llms": "^1.12.2"
     }
 }

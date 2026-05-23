@@ -77,8 +77,8 @@ export const overlayDemo: Demo = {
     id: "overlay",
     title: "Overlay/Interactive Overlay",
     description:
-        "Shows widgets in static positions over a main widget. The overlaid widgets can be interactive controls such as the entry in this example, or just decorative, like the big blue label.",
-    keywords: ["overlay", "GtkOverlay", "layer", "stack"],
+        "Shows widgets in static positions over a main widget.\n\nThe overlaid widgets can be interactive controls such as the entry in this example, or just decorative, like the big blue label.",
+    keywords: ["GtkOverlay"],
     component: OverlayDemo,
     sourceCode,
     defaultWidth: 500,

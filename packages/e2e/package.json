@@ -6,15 +6,14 @@
     "scripts": {
         "build": "tsc -b",
         "test": "vitest run",
+        "coverage": "vitest run --coverage",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
-    "dependencies": {
+    "devDependencies": {
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "@gtkx/testing": "workspace:*"
-    },
-    "devDependencies": {
+        "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
-        "react": "^19.2.4"
+        "react": "^19.2.6"
     }
 }

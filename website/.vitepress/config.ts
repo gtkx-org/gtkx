@@ -1,9 +1,46 @@
-import { defineConfig } from "vitepress";
+import { type DefaultTheme, defineConfig } from "vitepress";
+import llmstxt from "vitepress-plugin-llms";
+import cssSidebar from "../api/css/typedoc-sidebar.json" with { type: "json" };
+import ffiSidebar from "../api/ffi/typedoc-sidebar.json" with { type: "json" };
+import reactSidebar from "../api/react/typedoc-sidebar.json" with { type: "json" };
+import testingSidebar from "../api/testing/typedoc-sidebar.json" with { type: "json" };
+
+const prepareTypedocSidebar = (items: DefaultTheme.SidebarItem[]): DefaultTheme.SidebarItem[] =>
+    items.map((item) => {
+        const link = item.link?.replace(/^\/website/, "").replace(/\.md$/, "");
+        const children = item.items ? prepareTypedocSidebar(item.items) : undefined;
+        return { ...item, ...(link ? { link } : {}), ...(children ? { items: children } : {}) };
+    });
 
 export default defineConfig({
     title: "GTKX",
     description: "Linux application development for the modern age powered by GTK4 and React",
     appearance: "force-dark",
+    vite: {
+        plugins: [
+            llmstxt({
+                domain: "https://gtkx.dev",
+                ignoreFiles: ["api/**/*"],
+                customLLMsTxtTemplate: `# {title}
+
+> {description}
+
+{details}
+
+## Table of Contents
+
+{toc}
+
+## Optional
+
+- [GitHub Repository](https://github.com/gtkx-org/gtkx): Source code, examples, issue tracker
+- [GTK4 Documentation](https://docs.gtk.org/gtk4/): Official GTK4 widget reference and concepts
+- [Libadwaita Documentation](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/): Official Libadwaita component reference
+- [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/): Design patterns and UX guidelines for GNOME apps
+`,
+            }),
+        ],
+    },
     head: [["link", { rel: "icon", href: "/favicon.svg" }]],
     themeConfig: {
         logo: "/logo.svg",
@@ -67,18 +104,26 @@ export default defineConfig({
                 {
                     text: "@gtkx/react",
                     link: "/api/react/",
+                    collapsed: false,
+                    items: prepareTypedocSidebar(reactSidebar as DefaultTheme.SidebarItem[]),
                 },
                 {
                     text: "@gtkx/css",
                     link: "/api/css/",
+                    collapsed: true,
+                    items: prepareTypedocSidebar(cssSidebar as DefaultTheme.SidebarItem[]),
                 },
                 {
                     text: "@gtkx/testing",
                     link: "/api/testing/",
+                    collapsed: true,
+                    items: prepareTypedocSidebar(testingSidebar as DefaultTheme.SidebarItem[]),
                 },
                 {
                     text: "@gtkx/ffi",
                     link: "/api/ffi/",
+                    collapsed: true,
+                    items: prepareTypedocSidebar(ffiSidebar as DefaultTheme.SidebarItem[]),
                 },
             ],
         },

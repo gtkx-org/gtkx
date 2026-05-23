@@ -1,0 +1,26 @@
+.footer-logo {
+    display: block;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px;
+}
+
+html .VPHome {
+    margin-bottom: 0;
+}
+
+.VPHero {
+    margin: 64px 0;
+}
+
+html .VPHero .VPImage {
+    max-width: 500px;
+    max-height: 500px;
+}
+
+@media (min-width: 960px) {
+    html .VPHero .VPImage {
+        max-width: 560px;
+        max-height: 560px;
+    }
+}

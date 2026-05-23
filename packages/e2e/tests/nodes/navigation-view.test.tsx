@@ -4,7 +4,7 @@ import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-describe("render - NavigationView", () => {
+describe("render - NavigationView (1)", () => {
     describe("NavigationViewNode", () => {
         it("creates NavigationView widget", async () => {
             const ref = createRef<Adw.NavigationView>();
@@ -15,7 +15,7 @@ describe("render - NavigationView", () => {
         });
     });
 
-    describe("history", () => {
+    describe("history (1)", () => {
         it("sets history via prop", async () => {
             const viewRef = createRef<Adw.NavigationView>();
 
@@ -35,7 +35,11 @@ describe("render - NavigationView", () => {
                 expect(stack?.getNItems()).toBe(2);
             });
         });
+    });
+});
 
+describe("render - NavigationView (2)", () => {
+    describe("history (2)", () => {
         it("updates history when prop changes", async () => {
             const viewRef = createRef<Adw.NavigationView>();
 
@@ -70,8 +74,10 @@ describe("render - NavigationView", () => {
             });
         });
     });
+});
 
-    describe("onHistoryChanged", () => {
+describe("render - NavigationView (3)", () => {
+    describe("onHistoryChanged (1)", () => {
         it("connects callback for navigation events", async () => {
             const viewRef = createRef<Adw.NavigationView>();
             const onHistoryChanged = vi.fn();
@@ -93,7 +99,11 @@ describe("render - NavigationView", () => {
                 expect(onHistoryChanged).toHaveBeenCalled();
             });
         });
+    });
+});
 
+describe("render - NavigationView (4)", () => {
+    describe("onHistoryChanged (2)", () => {
         it("removes callback when unmounted", async () => {
             const viewRef = createRef<Adw.NavigationView>();
             const onHistoryChanged = vi.fn();
@@ -133,7 +143,9 @@ describe("render - NavigationView", () => {
             expect(onHistoryChanged.mock.calls.length).toBe(callCount);
         });
     });
+});
 
+describe("render - NavigationView (5)", () => {
     describe("controlled navigation", () => {
         it("handles controlled navigation with state", async () => {
             function NavigationApp() {
@@ -153,7 +165,7 @@ describe("render - NavigationView", () => {
 
             await render(<NavigationApp />);
 
-            await screen.findByText("Home Page");
+            expect(await screen.findByText("Home Page")).toBeDefined();
         });
     });
 });

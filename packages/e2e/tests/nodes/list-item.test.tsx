@@ -1,18 +1,31 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkDropDown, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
-import { render, screen, tick } from "@gtkx/testing";
-import type { ReactNode } from "react";
-import { createRef } from "react";
+import { GtkDropDown, GtkLabel, GtkListView } from "@gtkx/react";
+import { act, render, screen } from "@gtkx/testing";
+import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+import { renderChildren } from "../helpers/render-children.js";
+import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
-const ScrollWrapper = ({ children }: { children: ReactNode }) => (
-    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
-        {children}
-    </GtkScrolledWindow>
+interface TextItem {
+    id: string;
+    text: string;
+}
+
+const buildTextListView = (items: TextItem[]) => (
+    <ScrollWrapper>
+        <GtkListView
+            items={items.map((item) => ({ id: item.id, value: item }))}
+            renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
+        />
+    </ScrollWrapper>
 );
 
-describe("render - ListItem", () => {
-    describe("ListItem", () => {
+const buildValueDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: string[]) => (
+    <GtkDropDown ref={dropDownRef} items={items.map((item) => ({ id: item, value: item }))} />
+);
+
+describe("render - ListItem (1)", () => {
+    describe("ListItem (1)", () => {
         it("renders list item in ListView", async () => {
             await render(
                 <ScrollWrapper>
@@ -44,7 +57,11 @@ describe("render - ListItem", () => {
             expect(screen.queryAllByText("Second")).toHaveLength(1);
             expect(screen.queryAllByText("Third")).toHaveLength(1);
         });
+    });
+});
 
+describe("render - ListItem (2)", () => {
+    describe("ListItem (2)", () => {
         it("updates item value on prop change", async () => {
             function App({ value }: { value: { text: string } }) {
                 return (
@@ -66,75 +83,53 @@ describe("render - ListItem", () => {
         });
 
         it("removes item from list", async () => {
-            function App({ items }: { items: Array<{ id: string; text: string }> }) {
-                return (
-                    <ScrollWrapper>
-                        <GtkListView
-                            items={items.map((item) => ({ id: item.id, value: item }))}
-                            renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
-                        />
-                    </ScrollWrapper>
-                );
-            }
-
-            await render(
-                <App
-                    items={[
-                        { id: "1", text: "First" },
-                        { id: "2", text: "Second" },
-                        { id: "3", text: "Third" },
-                    ]}
-                />,
+            const { rerender } = await renderChildren(
+                [
+                    { id: "1", text: "First" },
+                    { id: "2", text: "Second" },
+                    { id: "3", text: "Third" },
+                ],
+                buildTextListView,
             );
             expect(screen.queryAllByText("First")).toHaveLength(1);
             expect(screen.queryAllByText("Second")).toHaveLength(1);
             expect(screen.queryAllByText("Third")).toHaveLength(1);
 
-            await render(<App items={[{ id: "1", text: "First" }]} />);
+            await rerender([{ id: "1", text: "First" }]);
             expect(screen.queryAllByText("First")).toHaveLength(1);
             expect(screen.queryAllByText("Second")).toHaveLength(0);
             expect(screen.queryAllByText("Third")).toHaveLength(0);
         });
+    });
+});
 
+describe("render - ListItem (3)", () => {
+    describe("ListItem (3)", () => {
         it("inserts item before existing item", async () => {
-            function App({ items }: { items: Array<{ id: string; text: string }> }) {
-                return (
-                    <ScrollWrapper>
-                        <GtkListView
-                            items={items.map((item) => ({ id: item.id, value: item }))}
-                            renderItem={(item: { text: string }) => <GtkLabel label={item.text} />}
-                        />
-                    </ScrollWrapper>
-                );
-            }
-
-            await render(
-                <App
-                    items={[
-                        { id: "first", text: "First" },
-                        { id: "last", text: "Last" },
-                    ]}
-                />,
+            const { rerender } = await renderChildren(
+                [
+                    { id: "first", text: "First" },
+                    { id: "last", text: "Last" },
+                ],
+                buildTextListView,
             );
             expect(screen.queryAllByText("First")).toHaveLength(1);
             expect(screen.queryAllByText("Last")).toHaveLength(1);
 
-            await render(
-                <App
-                    items={[
-                        { id: "first", text: "First" },
-                        { id: "middle", text: "Middle" },
-                        { id: "last", text: "Last" },
-                    ]}
-                />,
-            );
+            await rerender([
+                { id: "first", text: "First" },
+                { id: "middle", text: "Middle" },
+                { id: "last", text: "Last" },
+            ]);
             expect(screen.queryAllByText("First")).toHaveLength(1);
             expect(screen.queryAllByText("Middle")).toHaveLength(1);
             expect(screen.queryAllByText("Last")).toHaveLength(1);
         });
     });
+});
 
-    describe("ListItem in DropDown", () => {
+describe("render - ListItem (4)", () => {
+    describe("ListItem in DropDown (1)", () => {
         it("renders list item in DropDown", async () => {
             await render(<GtkDropDown items={[{ id: "item1", value: "Item Value" }]} />);
 
@@ -159,7 +154,11 @@ describe("render - ListItem", () => {
             expect(screen.queryAllByText("Updated").length).toBeGreaterThan(0);
             expect(screen.queryAllByText("Initial")).toHaveLength(0);
         });
+    });
+});
 
+describe("render - ListItem (5)", () => {
+    describe("ListItem in DropDown (2)", () => {
         it("maintains order with multiple items", async () => {
             const dropDownRef = createRef<Gtk.DropDown>();
 
@@ -177,39 +176,35 @@ describe("render - ListItem", () => {
             expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
 
             dropDownRef.current?.setSelected(1);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("Second").length).toBeGreaterThan(0);
 
             dropDownRef.current?.setSelected(2);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("Third").length).toBeGreaterThan(0);
         });
 
         it("inserts item before existing item", async () => {
             const dropDownRef = createRef<Gtk.DropDown>();
 
-            function App({ items }: { items: string[] }) {
-                return <GtkDropDown ref={dropDownRef} items={items.map((item) => ({ id: item, value: item }))} />;
-            }
-
-            await render(<App items={["first", "last"]} />);
+            const { rerender } = await renderChildren(["first", "last"], buildValueDropDown(dropDownRef));
             expect(screen.queryAllByText("first").length).toBeGreaterThan(0);
 
             dropDownRef.current?.setSelected(1);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("last").length).toBeGreaterThan(0);
 
-            await render(<App items={["first", "middle", "last"]} />);
+            await rerender(["first", "middle", "last"]);
             dropDownRef.current?.setSelected(0);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("first").length).toBeGreaterThan(0);
 
             dropDownRef.current?.setSelected(1);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("middle").length).toBeGreaterThan(0);
 
             dropDownRef.current?.setSelected(2);
-            await tick();
+            await act(() => {});
             expect(screen.queryAllByText("last").length).toBeGreaterThan(0);
         });
     });

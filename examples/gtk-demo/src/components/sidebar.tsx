@@ -29,6 +29,11 @@ function treeItemToData(item: TreeItem): SidebarItemData {
 
 const EMPTY_SELECTION: string[] = [];
 
+const renderItem = (item: TreeItem) => {
+    const text = item.type === "category" ? item.title : item.displayTitle;
+    return <GtkInscription text={text} natChars={25} textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END} />;
+};
+
 export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
     const { filteredTreeItems, currentDemo, setCurrentDemo, searchQuery, demos } = useDemo();
 
@@ -42,32 +47,14 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
             if (!selectedId?.startsWith("demo-")) return;
             const demoId = selectedId.slice(5);
             const demo = demos.find((d) => d.id === demoId);
-            if (demo) {
-                setCurrentDemo(demo);
-            }
+            if (demo) setCurrentDemo(demo);
         },
         [demos, setCurrentDemo],
     );
 
-    const renderItem = useCallback((item: TreeItem) => {
-        if (item.type === "category") {
-            return (
-                <GtkInscription text={item.title} natChars={25} textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END} />
-            );
-        }
-
-        return (
-            <GtkInscription
-                text={item.displayTitle}
-                natChars={25}
-                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-            />
-        );
-    }, []);
-
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkSearchBar searchModeEnabled={searchMode}>
+            <GtkSearchBar name="sidebar-search-bar" searchModeEnabled={searchMode}>
                 <GtkSearchEntry
                     text={searchQuery}
                     onSearchChanged={(entry: Gtk.SearchEntry) => onSearchChanged(entry.getText())}
@@ -80,6 +67,7 @@ export const Sidebar = ({ searchMode, onSearchChanged }: SidebarProps) => {
                 cssClasses={["sidebar"]}
             >
                 <GtkListView
+                    name="sidebar-list"
                     cssClasses={["navigation-sidebar"]}
                     autoexpand
                     selectionMode={Gtk.SelectionMode.SINGLE}

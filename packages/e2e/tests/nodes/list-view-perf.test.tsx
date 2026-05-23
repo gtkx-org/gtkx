@@ -1,13 +1,8 @@
 import type { ListItem } from "@gtkx/react";
-import { GtkListView, GtkScrolledWindow } from "@gtkx/react";
-import { render, tick } from "@gtkx/testing";
+import { GtkListView } from "@gtkx/react";
+import { act, render } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-
-const ScrollWrapper = ({ children }: { children: React.ReactNode }) => (
-    <GtkScrolledWindow minContentHeight={200} minContentWidth={200}>
-        {children}
-    </GtkScrolledWindow>
-);
+import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 
 function App({ items }: { items: ListItem<string>[] }) {
     return (
@@ -24,11 +19,11 @@ describe("ListView performance", () => {
         const few = items.slice(0, 2);
 
         const { rerender } = await render(<App items={items} />);
-        await tick();
+        await act(() => {});
 
         const start = performance.now();
         await rerender(<App items={few} />);
-        await tick();
+        await act(() => {});
         const elapsed = performance.now() - start;
 
         console.log(`Filter ${n} → ${few.length}: ${elapsed.toFixed(0)}ms`);

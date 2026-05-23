@@ -1,0 +1,12 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
+    "readme": "none",
+    "indexFormat": "table",
+    "parametersFormat": "table",
+    "enumMembersFormat": "table",
+    "typeDeclarationFormat": "table",
+    "groupOrder": ["Functions", "Variables", "Interfaces", "*"],
+    "useHTMLEncodedBrackets": true,
+    "excludeInternal": true
+}

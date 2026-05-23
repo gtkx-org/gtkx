@@ -1,5 +1,6 @@
+import * as Gtk from "@gtkx/ffi/gtk";
 import { render } from "@gtkx/react";
-import pkg from "../package.json" with { type: "json" };
 import { App } from "./app.js";
 
-render(<App />, pkg.gtkx.appId);
+const app = new Gtk.Application({ application_id: "org.gtkx.gtk-demo" });
+render(<App />, app);

@@ -1,8 +1,19 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkLabel, GtkNotebook } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+import { renderChildren } from "../helpers/render-children.js";
+
+const buildLabelNotebook = (ref: RefObject<Gtk.Notebook | null>) => (pages: string[]) => (
+    <GtkNotebook ref={ref}>
+        {pages.map((label) => (
+            <GtkNotebook.Page key={label} label={label}>
+                <GtkLabel label={`Content: ${label}`} />
+            </GtkNotebook.Page>
+        ))}
+    </GtkNotebook>
+);
 
 const getPageLabels = (notebook: Gtk.Notebook): string[] => {
     const labels: string[] = [];
@@ -19,7 +30,7 @@ const getPageLabels = (notebook: Gtk.Notebook): string[] => {
     return labels;
 };
 
-describe("render - Notebook", () => {
+describe("render - Notebook (1)", () => {
     describe("GtkNotebook", () => {
         it("creates Notebook widget", async () => {
             const ref = createRef<Gtk.Notebook>();
@@ -45,26 +56,16 @@ describe("render - Notebook", () => {
             expect(labels).toEqual(["Tab 1"]);
         });
     });
+});
 
+describe("render - Notebook (2)", () => {
     describe("page management", () => {
         it("inserts page before existing page", async () => {
             const notebookRef = createRef<Gtk.Notebook>();
 
-            function App({ pages }: { pages: string[] }) {
-                return (
-                    <GtkNotebook ref={notebookRef}>
-                        {pages.map((label) => (
-                            <GtkNotebook.Page key={label} label={label}>
-                                <GtkLabel label={`Content: ${label}`} />
-                            </GtkNotebook.Page>
-                        ))}
-                    </GtkNotebook>
-                );
-            }
+            const { rerender } = await renderChildren(["First", "Last"], buildLabelNotebook(notebookRef));
 
-            await render(<App pages={["First", "Last"]} />);
-
-            await render(<App pages={["First", "Middle", "Last"]} />);
+            await rerender(["First", "Middle", "Last"]);
 
             const labels = getPageLabels(notebookRef.current as Gtk.Notebook);
             expect(labels).toEqual(["First", "Middle", "Last"]);
@@ -73,21 +74,9 @@ describe("render - Notebook", () => {
         it("removes page", async () => {
             const notebookRef = createRef<Gtk.Notebook>();
 
-            function App({ pages }: { pages: string[] }) {
-                return (
-                    <GtkNotebook ref={notebookRef}>
-                        {pages.map((label) => (
-                            <GtkNotebook.Page key={label} label={label}>
-                                <GtkLabel label={`Content: ${label}`} />
-                            </GtkNotebook.Page>
-                        ))}
-                    </GtkNotebook>
-                );
-            }
+            const { rerender } = await renderChildren(["A", "B", "C"], buildLabelNotebook(notebookRef));
 
-            await render(<App pages={["A", "B", "C"]} />);
-
-            await render(<App pages={["A", "C"]} />);
+            await rerender(["A", "C"]);
 
             const labels = getPageLabels(notebookRef.current as Gtk.Notebook);
             expect(labels).toEqual(["A", "C"]);

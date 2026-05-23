@@ -14,11 +14,11 @@ const revealerConfigs: RevealerConfig[] = [
     { column: 2, row: 2, transition: Gtk.RevealerTransitionType.CROSSFADE },
     { column: 2, row: 1, transition: Gtk.RevealerTransitionType.SLIDE_UP },
     { column: 3, row: 2, transition: Gtk.RevealerTransitionType.SLIDE_RIGHT },
-    { column: 2, row: 3, transition: Gtk.RevealerTransitionType.SLIDE_DOWN },
+    { column: 2, row: 3, transition: Gtk.RevealerTransitionType.NONE },
     { column: 1, row: 2, transition: Gtk.RevealerTransitionType.SLIDE_LEFT },
     { column: 2, row: 0, transition: Gtk.RevealerTransitionType.SLIDE_UP },
     { column: 4, row: 2, transition: Gtk.RevealerTransitionType.SLIDE_RIGHT },
-    { column: 2, row: 4, transition: Gtk.RevealerTransitionType.SLIDE_DOWN },
+    { column: 2, row: 4, transition: Gtk.RevealerTransitionType.NONE },
     { column: 0, row: 2, transition: Gtk.RevealerTransitionType.SLIDE_LEFT },
 ];
 
@@ -86,7 +86,7 @@ export const revealerDemo: Demo = {
     id: "revealer",
     title: "Revealer",
     description: "GtkRevealer is a container that animates showing and hiding of its sole child with nice transitions.",
-    keywords: ["revealer", "GtkRevealer"],
+    keywords: [],
     component: RevealerDemo,
     sourceCode,
     defaultWidth: 300,

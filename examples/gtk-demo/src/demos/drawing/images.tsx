@@ -1,15 +1,16 @@
-import * as Gdk from "@gtkx/ffi/gdk";
-import * as GdkPixbuf from "@gtkx/ffi/gdkpixbuf";
+import { readFileSync } from "node:fs";
 import * as Gio from "@gtkx/ffi/gio";
+import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkToggleButton, GtkVideo } from "@gtkx/react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkSwitch, GtkToggleButton, GtkVideo } from "@gtkx/react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import floppybuddyGifPath from "../gestures/floppybuddy.gif";
 import gtkLogoWebmPath from "../media/gtk-logo.webm";
 import type { Demo, DemoProps } from "../types.js";
-import alphatestPngPath from "./alphatest.png";
+import animatedSvgPath from "./animated.gpa";
 import gtkLogoSvgPath from "./gtk-logo.svg";
 import sourceCode from "./images.tsx?raw";
+import statefulSvgPath from "./stateful.gpa";
 
 let symbolicIcon: Gio.ThemedIcon | undefined;
 function getSymbolicIcon() {
@@ -19,76 +20,104 @@ function getSymbolicIcon() {
     return symbolicIcon;
 }
 
-const PROGRESSIVE_ROWS_PER_TICK = 3;
-const PROGRESSIVE_INTERVAL_MS = 150;
+const loadSvgPaintable = (path: string): Gtk.Svg => {
+    const bytes = readFileSync(path);
+    const svg = Gtk.Svg.newFromBytes(GLib.Bytes.new(Array.from(bytes)));
+    svg.play();
+    svg.setState(0);
+    return svg;
+};
 
-const ImagesDemo = ({ window }: DemoProps) => {
-    const [widgetPaintable, setWidgetPaintable] = useState<Gtk.WidgetPaintable | null>(null);
+function useGifPaintable() {
     const [gifPaintable, setGifPaintable] = useState<Gtk.MediaFile | null>(null);
-    const [progressiveTexture, setProgressiveTexture] = useState<Gdk.Texture | null>(null);
-    const [insensitive, setInsensitive] = useState(false);
-    const progressiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const videoFile = useMemo(() => Gio.fileNewForPath(gtkLogoWebmPath), []);
-
-    useLayoutEffect(() => {
+    useEffect(() => {
         try {
             const mediaFile = Gtk.MediaFile.newForFilename(floppybuddyGifPath);
             mediaFile.setLoop(true);
             mediaFile.play();
             setGifPaintable(mediaFile);
-        } catch {}
+        } catch (e) {
+            const dialog = new Gtk.AlertDialog();
+            dialog.setMessage(`Failure loading GIF '${floppybuddyGifPath}': ${e}`);
+            dialog.show(null);
+        }
     }, []);
+    return gifPaintable;
+}
+
+const ImagesPanel = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+        <GtkLabel label={title} cssClasses={["heading"]} />
+        <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+            {children}
+        </GtkFrame>
+    </GtkBox>
+);
+
+const StatefulIconPanel = () => {
+    const svg = useMemo(() => loadSvgPaintable(statefulSvgPath), []);
+    const imageRef = useRef<Gtk.Image | null>(null);
+    const [state, setState] = useState(false);
+
+    useEffect(() => {
+        const image = imageRef.current;
+        if (!image) return;
+        const frameClock = image.getFrameClock();
+        if (frameClock) svg.setFrameClock(frameClock);
+    }, [svg]);
+
+    useEffect(() => {
+        svg.setState(state ? 1 : 0);
+    }, [svg, state]);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+            <ImagesPanel title="Stateful icon">
+                <GtkImage ref={imageRef} paintable={svg} pixelSize={128} />
+            </ImagesPanel>
+            <GtkSwitch
+                halign={Gtk.Align.START}
+                active={state}
+                onStateSet={(value) => {
+                    setState(value);
+                    return true;
+                }}
+            />
+        </GtkBox>
+    );
+};
+
+const PathAnimationPanel = () => {
+    const svg = useMemo(() => loadSvgPaintable(animatedSvgPath), []);
+    const imageRef = useRef<Gtk.Image | null>(null);
+
+    useEffect(() => {
+        const image = imageRef.current;
+        if (!image) return;
+        const frameClock = image.getFrameClock();
+        if (frameClock) svg.setFrameClock(frameClock);
+    }, [svg]);
+
+    return (
+        <ImagesPanel title="Path animation">
+            <GtkImage ref={imageRef} paintable={svg} pixelSize={128} />
+        </ImagesPanel>
+    );
+};
+
+const ImagesDemo = ({ window }: DemoProps) => {
+    const [widgetPaintable, setWidgetPaintable] = useState<Gtk.WidgetPaintable | null>(null);
+    const gifPaintable = useGifPaintable();
+    const [insensitive, setInsensitive] = useState(false);
+    const videoFile = useMemo(() => Gio.fileNewForPath(gtkLogoWebmPath), []);
 
     useEffect(() => {
         const win = window.current;
         if (win) {
-            const paintable = new Gtk.WidgetPaintable(win);
+            const paintable = Gtk.WidgetPaintable.new(win);
             setWidgetPaintable(paintable);
         }
     }, [window]);
-
-    useEffect(() => {
-        let source: GdkPixbuf.Pixbuf;
-        try {
-            source = GdkPixbuf.Pixbuf.newFromFile(alphatestPngPath);
-        } catch (e) {
-            const dialog = new Gtk.AlertDialog();
-            dialog.setMessage(`Failure reading image file 'alphatest.png': ${e}`);
-            dialog.show(null);
-            return;
-        }
-
-        const width = source.getWidth();
-        const height = source.getHeight();
-        const display = new GdkPixbuf.Pixbuf(
-            GdkPixbuf.Colorspace.RGB,
-            source.getHasAlpha(),
-            source.getBitsPerSample(),
-            width,
-            height,
-        );
-        display.fill(0xaaaaaaff);
-        setProgressiveTexture(new Gdk.Texture(display));
-
-        let row = 0;
-        const revealRows = () => {
-            if (row >= height) return;
-            const count = Math.min(PROGRESSIVE_ROWS_PER_TICK, height - row);
-            source.copyArea(0, row, width, count, display, 0, row);
-            row += count;
-            setProgressiveTexture(new Gdk.Texture(display));
-            if (row < height) {
-                progressiveTimerRef.current = setTimeout(revealRows, PROGRESSIVE_INTERVAL_MS);
-            }
-        };
-        progressiveTimerRef.current = setTimeout(revealRows, PROGRESSIVE_INTERVAL_MS);
-
-        return () => {
-            if (progressiveTimerRef.current) {
-                clearTimeout(progressiveTimerRef.current);
-            }
-        };
-    }, []);
 
     return (
         <GtkBox
@@ -99,50 +128,23 @@ const ImagesDemo = ({ window }: DemoProps) => {
             marginTop={16}
             marginBottom={16}
         >
-            <GtkBox spacing={16} sensitive={!insensitive}>
+            <GtkBox name="image-strip" spacing={16} sensitive={!insensitive}>
+                <ImagesPanel title="Image from a resource">
+                    <GtkImage file={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
+                </ImagesPanel>
+                <ImagesPanel title="Animation from a resource">
+                    <GtkPicture paintable={gifPaintable} canShrink widthRequest={150} heightRequest={150} />
+                </ImagesPanel>
+                <ImagesPanel title="Symbolic themed icon">
+                    <GtkImage gicon={getSymbolicIcon()} iconSize={Gtk.IconSize.LARGE} />
+                </ImagesPanel>
+                <StatefulIconPanel />
+                <PathAnimationPanel />
+                <ImagesPanel title="Displaying video">
+                    <GtkVideo autoplay loop widthRequest={200} heightRequest={150} file={videoFile} />
+                </ImagesPanel>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Image" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkImage file={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
-                    </GtkFrame>
-                </GtkBox>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Animation" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkPicture paintable={gifPaintable} canShrink widthRequest={150} heightRequest={150} />
-                    </GtkFrame>
-                </GtkBox>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Symbolic icon" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkImage gicon={getSymbolicIcon()} iconSize={Gtk.IconSize.LARGE} />
-                    </GtkFrame>
-                </GtkBox>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Progressive" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkPicture
-                            paintable={progressiveTexture}
-                            canShrink
-                            widthRequest={150}
-                            heightRequest={150}
-                            alternativeText="A slowly loading image"
-                        />
-                    </GtkFrame>
-                </GtkBox>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Video" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkVideo autoplay loop widthRequest={200} heightRequest={150} file={videoFile} />
-                    </GtkFrame>
-                </GtkBox>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Paintable" cssClasses={["heading"]} />
+                    <GtkLabel label="GtkWidgetPaintable" cssClasses={["heading"]} />
                     <GtkPicture
                         paintable={widgetPaintable}
                         widthRequest={100}
@@ -170,8 +172,8 @@ export const imagesDemo: Demo = {
     id: "images",
     title: "Images",
     description:
-        "GtkImage and GtkPicture are used to display an image; the image can be in a number of formats. GtkImage is the widget used to display icons or images that should be sized and styled like an icon, while GtkPicture is used for images that should be displayed as-is.",
-    keywords: ["GdkPaintable", "GtkWidgetPaintable", "GtkImage", "GtkPicture", "GtkVideo", "GdkPixbufLoader"],
+        "GtkImage and GtkPicture are used to display an image; the image can be in a number of formats.\n\nGtkImage is the widget used to display icons or images that should be sized and styled like an icon, while GtkPicture is used for images that should be displayed as-is.\n\nThis demo code shows some of the more obscure cases, in the simple case a call to gtk_picture_new_for_file() or gtk_image_new_from_icon_name() is all you need.",
+    keywords: ["GdkPaintable", "GtkWidgetPaintable"],
     component: ImagesDemo,
     sourceCode,
 };

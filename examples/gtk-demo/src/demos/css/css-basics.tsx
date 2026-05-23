@@ -5,13 +5,16 @@ import sourceCode from "./css-basics.tsx?raw";
 import resetCssPath from "./reset.css?url";
 import { useCssEditor } from "./use-css-editor.js";
 
-const DEFAULT_CSS = `@import url("file://${resetCssPath}");
-
-/* You can edit the text in this window to change the
+const DEFAULT_CSS = `/* You can edit the text in this window to change the
  * appearance of this Window.
  * Be careful, if you screw it up, nothing might be visible
  * anymore. :)
  */
+
+/* This resets all properties to their defaults values
+ * and overrides all user settings and the theme in use
+ */
+@import url("file://${resetCssPath}");
 
 /* Set a very futuristic style by default */
 .demo * {
@@ -38,8 +41,8 @@ const CssBasicsDemo = ({ window }: DemoProps) => {
     const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
 
     return (
-        <GtkScrolledWindow hexpand vexpand>
-            <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
+        <GtkScrolledWindow name="scrolled" hexpand vexpand>
+            <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged} />
         </GtkScrolledWindow>
     );
 };
@@ -49,7 +52,7 @@ export const cssBasicsDemo: Demo = {
     title: "Theming/CSS Basics",
     description:
         "GTK themes are written using CSS. Every widget is build of multiple items that you can style very similarly to a regular website.",
-    keywords: ["css", "style", "theme", "theming", "GtkCssProvider"],
+    keywords: [],
     component: CssBasicsDemo,
     sourceCode,
     defaultWidth: 400,

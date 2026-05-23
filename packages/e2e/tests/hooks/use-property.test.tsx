@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkLabel, useProperty } from "@gtkx/react";
-import { render, renderHook, waitFor } from "@gtkx/testing";
+import { act, render, renderHook, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -30,7 +30,7 @@ describe("useProperty", () => {
 
         expect(result.current).toBe("Before");
 
-        label.setLabel("After");
+        await act(() => label.setLabel("After"));
 
         await waitFor(() => {
             expect(result.current).toBe("After");
@@ -58,7 +58,7 @@ describe("useProperty", () => {
 
         await unmount();
 
-        label.setLabel("Changed");
+        await act(() => label.setLabel("Changed"));
 
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(result.current).toBe("Test");

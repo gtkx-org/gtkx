@@ -1,7 +1,8 @@
 import { readdirSync, statSync } from "node:fs";
-import { createRef } from "@gtkx/ffi";
+import * as Gdk from "@gtkx/ffi/gdk";
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type * as Pango from "@gtkx/ffi/pango";
+import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
 import {
     GtkBox,
@@ -9,6 +10,7 @@ import {
     GtkCheckButton,
     GtkDropDown,
     GtkEntry,
+    GtkEventControllerKey,
     GtkImage,
     GtkLabel,
     GtkMenuButton,
@@ -17,7 +19,7 @@ import {
     GtkSeparator,
     GtkSpinButton,
 } from "@gtkx/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
 
@@ -101,10 +103,13 @@ const destinationWords = ["app-mockups", "settings-mockups", "os-mockups", "soft
 
 function loadFontFamilies(): string[] {
     const fontMap = PangoCairo.fontMapGetDefault();
-    const familiesRef = createRef<Pango.FontFamily[]>([]);
-    const countRef = createRef(0);
-    fontMap.listFamilies(familiesRef, countRef);
-    return familiesRef.value.map((f) => f.getName()).sort((a, b) => a.localeCompare(b));
+    const count = fontMap.getNItems();
+    const names: string[] = [];
+    for (let i = 0; i < count; i++) {
+        const family = fontMap.getItem(i);
+        if (family instanceof Pango.FontFamily) names.push(family.getName());
+    }
+    return names.sort((a, b) => a.localeCompare(b));
 }
 
 let fontFamilies: string[] | undefined;
@@ -116,7 +121,7 @@ function getFontFamilies() {
 }
 
 function escapeMarkup(text: string): string {
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
 function highlightMatch(word: string, query: string): string {
@@ -133,54 +138,181 @@ function highlightMatch(word: string, query: string): string {
     return `${before}<b>${match}</b>${after}`;
 }
 
-const SuggestionEntry = ({ words, placeholder }: { words: string[]; placeholder: string }) => {
-    const [text, setText] = useState("");
+interface SuggestionRefs {
+    entryRef: React.RefObject<Gtk.Entry | null>;
+    popoverRef: React.RefObject<Gtk.Popover | null>;
+    listBoxRef: React.RefObject<Gtk.ListBox | null>;
+    suggestionsRef: React.RefObject<string[]>;
+    selectedRef: React.RefObject<number>;
+}
 
-    const suggestions = useMemo(() => {
-        if (text.length < 1) return [];
-        const lower = text.toLowerCase();
-        return words.filter((w) => w.toLowerCase().includes(lower)).slice(0, 10);
-    }, [text, words]);
+const useSuggestionRefs = (): SuggestionRefs => ({
+    entryRef: useRef<Gtk.Entry | null>(null),
+    popoverRef: useRef<Gtk.Popover | null>(null),
+    listBoxRef: useRef<Gtk.ListBox | null>(null),
+    suggestionsRef: useRef<string[]>([]),
+    selectedRef: useRef<number>(-1),
+});
 
-    const hasSuggestions = suggestions.length > 0;
+const clearListBox = (listBox: Gtk.ListBox): void => {
+    let child = listBox.getFirstChild();
+    while (child) {
+        const next = child.getNextSibling();
+        listBox.remove(child);
+        child = next;
+    }
+};
 
+const appendSuggestionRow = (listBox: Gtk.ListBox, word: string, query: string): void => {
+    const row = Gtk.ListBoxRow.new();
+    const label = Gtk.Label.new(null);
+    label.setMarkup(highlightMatch(word, query));
+    label.setXalign(0);
+    label.setHexpand(true);
+    row.setChild(label);
+    listBox.append(row);
+};
+
+const useRebuildSuggestionList = (refs: SuggestionRefs, words: string[]) =>
+    useCallback(
+        (text: string) => {
+            const popover = refs.popoverRef.current;
+            const listBox = refs.listBoxRef.current;
+            if (!popover || !listBox) return;
+            clearListBox(listBox);
+            if (text.length < 1) {
+                refs.suggestionsRef.current = [];
+                refs.selectedRef.current = -1;
+                popover.popdown();
+                return;
+            }
+            const lower = text.toLowerCase();
+            const matches = words.filter((w) => w.toLowerCase().includes(lower)).slice(0, 10);
+            refs.suggestionsRef.current = matches;
+            refs.selectedRef.current = -1;
+            if (matches.length === 0) {
+                popover.popdown();
+                return;
+            }
+            for (const word of matches) appendSuggestionRow(listBox, word, text);
+            popover.popup();
+        },
+        [refs, words],
+    );
+
+const useAcceptSuggestion = (refs: SuggestionRefs) =>
+    useCallback(() => {
+        const popover = refs.popoverRef.current;
+        const entry = refs.entryRef.current;
+        const matches = refs.suggestionsRef.current;
+        const idx = refs.selectedRef.current;
+        if (!popover || !entry || idx < 0 || idx >= matches.length) return false;
+        const word = matches[idx];
+        if (word === undefined) return false;
+        entry.setText(word);
+        entry.setPosition(-1);
+        popover.popdown();
+        return true;
+    }, [refs]);
+
+const useMoveSuggestion = (refs: SuggestionRefs) =>
+    useCallback(
+        (delta: number) => {
+            const listBox = refs.listBoxRef.current;
+            const matches = refs.suggestionsRef.current;
+            if (!listBox || matches.length === 0) return;
+            const next = (refs.selectedRef.current + delta + matches.length) % matches.length;
+            refs.selectedRef.current = next;
+            const row = listBox.getRowAtIndex(next);
+            if (row) listBox.selectRow(row);
+        },
+        [refs],
+    );
+
+const buildSuggestionPopover = (entry: Gtk.Entry): { popover: Gtk.Popover; listBox: Gtk.ListBox } => {
+    const popover = Gtk.Popover.new();
+    popover.setHasArrow(false);
+    popover.setPosition(Gtk.PositionType.BOTTOM);
+    popover.setAutohide(false);
+    const scrolled = Gtk.ScrolledWindow.new();
+    scrolled.setMaxContentHeight(400);
+    scrolled.setPropagateNaturalHeight(true);
+    scrolled.setPolicy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+    const listBox = Gtk.ListBox.new();
+    listBox.setSelectionMode(Gtk.SelectionMode.BROWSE);
+    scrolled.setChild(listBox);
+    popover.setChild(scrolled);
+    popover.setParent(entry);
+    return { popover, listBox };
+};
+
+const useSuggestionPopover = (refs: SuggestionRefs, accept: () => boolean) => {
+    useEffect(() => {
+        const entry = refs.entryRef.current;
+        if (!entry) return;
+        const { popover, listBox } = buildSuggestionPopover(entry);
+        refs.popoverRef.current = popover;
+        refs.listBoxRef.current = listBox;
+        const rowActivatedId = listBox.connect("row-activated", (_lb: Gtk.ListBox, row: Gtk.ListBoxRow) => {
+            refs.selectedRef.current = row.getIndex();
+            accept();
+        });
+        return () => {
+            GObject.signalHandlerDisconnect(listBox, rowActivatedId);
+            popover.unparent();
+            refs.popoverRef.current = null;
+            refs.listBoxRef.current = null;
+        };
+    }, [refs, accept]);
+};
+
+const handleSuggestionKey = (
+    keyval: number,
+    refs: SuggestionRefs,
+    move: (delta: number) => void,
+    accept: () => boolean,
+): boolean => {
+    if (refs.suggestionsRef.current.length === 0) return false;
+    if (keyval === Gdk.KEY_Down) {
+        move(1);
+        return true;
+    }
+    if (keyval === Gdk.KEY_Up) {
+        move(-1);
+        return true;
+    }
+    if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) return accept();
+    if (keyval === Gdk.KEY_Escape) {
+        refs.popoverRef.current?.popdown();
+        return true;
+    }
+    return false;
+};
+
+const SuggestionEntry = ({ words, placeholder, name }: { words: string[]; placeholder: string; name?: string }) => {
+    const refs = useSuggestionRefs();
+    const accept = useAcceptSuggestion(refs);
+    const move = useMoveSuggestion(refs);
+    const rebuild = useRebuildSuggestionList(refs, words);
+    useSuggestionPopover(refs, accept);
+    const handleChanged = useCallback((entry: Gtk.Entry) => rebuild(entry.getText()), [rebuild]);
+    const handleKeyPressed = useCallback(
+        (keyval: number) => handleSuggestionKey(keyval, refs, move, accept),
+        [refs, move, accept],
+    );
     return (
-        <GtkBox cssClasses={["linked"]}>
-            <GtkEntry
-                text={text}
-                hexpand
-                placeholderText={placeholder}
-                onChanged={(entry) => setText(entry.getText())}
-            />
-            <GtkMenuButton
-                iconName="pan-down-symbolic"
-                sensitive={hasSuggestions}
-                popover={
-                    <GtkPopover hasArrow={false} position={Gtk.PositionType.BOTTOM}>
-                        <GtkScrolledWindow
-                            maxContentHeight={400}
-                            propagateNaturalHeight
-                            hscrollbarPolicy={Gtk.PolicyType.NEVER}
-                        >
-                            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
-                                {suggestions.map((word) => (
-                                    <GtkButton key={word} cssClasses={["flat"]} onClicked={() => setText(word)}>
-                                        <GtkLabel
-                                            label={highlightMatch(word, text)}
-                                            useMarkup
-                                            halign={Gtk.Align.START}
-                                            hexpand
-                                        />
-                                    </GtkButton>
-                                ))}
-                            </GtkBox>
-                        </GtkScrolledWindow>
-                    </GtkPopover>
-                }
-            />
-        </GtkBox>
+        <GtkEntry ref={refs.entryRef} name={name} hexpand placeholderText={placeholder} onChanged={handleChanged}>
+            <GtkEventControllerKey onKeyPressed={handleKeyPressed} />
+        </GtkEntry>
     );
 };
+
+const renderSelectableTimeItem = (label: string, selectedId: string) => (
+    <GtkBox spacing={10}>
+        <GtkLabel label={label} xalign={0} hexpand />
+        <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
+    </GtkBox>
+);
 
 const TimesDropDown = () => {
     const [selectedId, setSelectedId] = useState(times[0] ?? "");
@@ -189,12 +321,7 @@ const TimesDropDown = () => {
         <GtkDropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
-            renderListItem={(label: string) => (
-                <GtkBox spacing={10}>
-                    <GtkLabel label={label} xalign={0} hexpand />
-                    <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1.0 : 0.0} />
-                </GtkBox>
-            )}
+            renderListItem={(label: string) => renderSelectableTimeItem(label, selectedId)}
             items={times.map((t) => ({ id: t, value: t }))}
         />
     );
@@ -208,12 +335,7 @@ const TimesSectionedDropDown = () => {
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
             enableSearch
-            renderListItem={(label: string) => (
-                <GtkBox spacing={10}>
-                    <GtkLabel label={label} xalign={0} hexpand />
-                    <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1.0 : 0.0} />
-                </GtkBox>
-            )}
+            renderListItem={(label: string) => renderSelectableTimeItem(label, selectedId)}
             renderHeader={(value: string) => (
                 <GtkLabel
                     label={`<big><b>${escapeMarkup(value)}</b></big>`}
@@ -272,7 +394,7 @@ const DevicesDropDown = () => {
                             <GtkLabel label={device.title} xalign={0} />
                             <GtkLabel label={device.description} xalign={0} cssClasses={["dim-label"]} />
                         </GtkBox>
-                        <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1.0 : 0.0} />
+                        <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
                     </GtkBox>
                 );
             }}
@@ -296,7 +418,9 @@ function loadDirectoryEntries(): DirEntry[] {
             let isDir = false;
             try {
                 isDir = statSync(`${cwd}/${name}`).isDirectory();
-            } catch {}
+            } catch (e) {
+                if (e instanceof Error) console.error(e.message);
+            }
             results.push({
                 path: name,
                 name,
@@ -304,7 +428,8 @@ function loadDirectoryEntries(): DirEntry[] {
             });
         }
         return results.sort((a, b) => a.name.localeCompare(b.name));
-    } catch {
+    } catch (e) {
+        if (e instanceof Error) console.error(e.message);
         return [];
     }
 }
@@ -377,6 +502,7 @@ const ListViewSelectionsDemo = () => {
                 <TimesSectionedDropDown />
 
                 <GtkDropDown
+                    name="fonts-dropdown"
                     selectedId={getFontFamilies()[fontIndex] ?? ""}
                     enableSearch={enableFontSearch}
                     onSelectionChanged={(id) => {
@@ -387,6 +513,7 @@ const ListViewSelectionsDemo = () => {
                 />
 
                 <GtkSpinButton
+                    name="font-spin"
                     halign={Gtk.Align.START}
                     marginStart={20}
                     value={fontIndex}
@@ -397,6 +524,7 @@ const ListViewSelectionsDemo = () => {
                 />
 
                 <GtkCheckButton
+                    name="enable-search-check"
                     label="Enable search"
                     marginStart={20}
                     active={enableFontSearch}
@@ -406,12 +534,12 @@ const ListViewSelectionsDemo = () => {
                 <DevicesDropDown />
             </GtkBox>
 
-            <GtkSeparator orientation={Gtk.Orientation.VERTICAL} />
+            <GtkSeparator name="column-separator" orientation={Gtk.Orientation.VERTICAL} />
 
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={10}>
                 <GtkLabel label="Suggestions" cssClasses={["title-4"]} />
 
-                <SuggestionEntry words={suggestionWords} placeholder="Words with T or G…" />
+                <SuggestionEntry name="words-entry" words={suggestionWords} placeholder="Words with T or G…" />
 
                 <DirectorySuggestionEntry />
 
@@ -425,8 +553,10 @@ export const listviewSelectionsDemo: Demo = {
     id: "listview-selections",
     title: "Lists/Selections",
     description:
-        "GtkDropDown is a modern alternative to GtkComboBox. It uses list models and widgets for content display. This demo also shows suggestion entries for autocompletion.",
-    keywords: ["dropdown", "selection", "GtkDropDown", "suggestion", "completion", "font", "PangoFontMap", "combo"],
+        "The GtkDropDown widget is a modern alternative to GtkComboBox. It uses list models instead of tree models, and the content is displayed using widgets instead of cell renderers.\n\nThis example also shows a custom widget that can replace GtkEntryCompletion or GtkComboBoxText. It is not currently part of GTK.",
+    keywords: ["suggestion", "completion"],
     component: ListViewSelectionsDemo,
     sourceCode,
+    windowTitle: "Selections",
+    resizable: false,
 };

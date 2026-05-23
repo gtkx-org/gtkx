@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkEnums from "@gtkx/ffi/gtk";
 import { createPortal, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, useApplication } from "@gtkx/react";
-import { render, tick } from "@gtkx/testing";
+import { act, render } from "@gtkx/testing";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -10,7 +10,7 @@ const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: stri
     return <>{createPortal(children, app, portalKey)}</>;
 };
 
-describe("createPortal", () => {
+describe("createPortal (1)", () => {
     it("renders children at root level when no container specified", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
@@ -42,7 +42,7 @@ describe("createPortal", () => {
         await render(<App />);
 
         expect(labelRef.current).not.toBeNull();
-        expect(labelRef.current?.getParent()?.handle).toEqual(boxRef.current?.handle);
+        expect(labelRef.current?.getParent()).toBe(boxRef.current);
     });
 
     it("preserves key when provided", async () => {
@@ -54,11 +54,13 @@ describe("createPortal", () => {
             </Portal>,
         );
 
-        await tick();
+        await act(() => {});
         expect(windowRef.current).not.toBeNull();
         expect(windowRef.current?.getTitle()).toBe("Keyed Window");
     });
+});
 
+describe("createPortal (2)", () => {
     it("unmounts portal children when portal is removed", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
@@ -69,7 +71,7 @@ describe("createPortal", () => {
 
         await render(<App showPortal={true} />);
 
-        const windowId = windowRef.current?.handle;
+        const windowId = windowRef.current;
         expect(windowId).not.toBeUndefined();
 
         await render(<App showPortal={false} />);
@@ -89,7 +91,9 @@ describe("createPortal", () => {
         await render(<App title="Second" />);
         expect(windowRef.current?.getTitle()).toBe("Second");
     });
+});
 
+describe("createPortal (3)", () => {
     it("handles multiple portals to same container", async () => {
         const boxRef = createRef<Gtk.Box>();
         const label1Ref = createRef<Gtk.Label>();
@@ -111,8 +115,8 @@ describe("createPortal", () => {
 
         expect(label1Ref.current).not.toBeNull();
         expect(label2Ref.current).not.toBeNull();
-        expect(label1Ref.current?.getParent()?.handle).toEqual(boxRef.current?.handle);
-        expect(label2Ref.current?.getParent()?.handle).toEqual(boxRef.current?.handle);
+        expect(label1Ref.current?.getParent()).toBe(boxRef.current);
+        expect(label2Ref.current?.getParent()).toBe(boxRef.current);
     });
 
     it("handles portal to nested container", async () => {
@@ -135,6 +139,6 @@ describe("createPortal", () => {
         await render(<App />);
 
         expect(buttonRef.current).not.toBeNull();
-        expect(buttonRef.current?.getParent()?.handle).toEqual(innerBoxRef.current?.handle);
+        expect(buttonRef.current?.getParent()).toBe(innerBoxRef.current);
     });
 });

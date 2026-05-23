@@ -5,22 +5,18 @@
     "license": "MPL-2.0",
     "description": "Simple counter app demonstrating GTKX basics",
     "type": "module",
-    "gtkx": {
-        "appId": "com.gtkx.hello-world"
-    },
     "scripts": {
         "build": "gtkx build",
         "typecheck": "tsc -b --noEmit",
-        "dev": "gtkx dev src/dev.tsx",
+        "dev": "gtkx dev",
         "start": "node dist/bundle.js"
     },
     "dependencies": {
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "react": "^19.2.4"
+        "react": "^19.2.6"
     },
     "devDependencies": {
-        "@gtkx/cli": "workspace:*",
-        "vite": "^8.0.3"
+        "@gtkx/cli": "workspace:*"
     }
 }

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="com.gtkx.test.useSetting" path="/com/gtkx/test/useSetting/">
+    <key name="enabled" type="b">
+      <default>false</default>
+      <summary>Enabled flag</summary>
+    </key>
+    <key name="count" type="i">
+      <default>0</default>
+      <summary>Counter</summary>
+    </key>
+    <key name="ratio" type="d">
+      <default>1.0</default>
+      <summary>Ratio</summary>
+    </key>
+    <key name="label" type="s">
+      <default>"initial"</default>
+      <summary>Label string</summary>
+    </key>
+    <key name="tags" type="as">
+      <default>[]</default>
+      <summary>Tag list</summary>
+    </key>
+  </schema>
+</schemalist>

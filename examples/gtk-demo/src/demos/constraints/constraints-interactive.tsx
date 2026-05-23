@@ -1,214 +1,141 @@
-import { createRef } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton } from "@gtkx/react";
-import { useLayoutEffect, useRef } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
+import { ThreeButtonsBox } from "./_shared.js";
 import sourceCode from "./constraints-interactive.tsx?raw";
 
-const ConstraintsInteractiveDemo = () => {
-    const containerRef = useRef<Gtk.Box | null>(null);
-    const button1Ref = useRef<Gtk.Button | null>(null);
-    const button2Ref = useRef<Gtk.Button | null>(null);
-    const button3Ref = useRef<Gtk.Button | null>(null);
-    const guideRef = useRef<Gtk.ConstraintGuide | null>(null);
-    const constraintRef = useRef<Gtk.Constraint | null>(null);
-    const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
+type ConstraintTarget = Gtk.Widget | Gtk.ConstraintGuide | null;
 
-    useLayoutEffect(() => {
-        if (!containerRef.current || !button1Ref.current || !button2Ref.current || !button3Ref.current) return;
+interface ConstraintArgs {
+    target: ConstraintTarget;
+    targetAttribute: Gtk.ConstraintAttribute;
+    source: ConstraintTarget;
+    sourceAttribute: Gtk.ConstraintAttribute;
+    constant: number;
+}
+
+const addConstraint = (layout: Gtk.ConstraintLayout, args: ConstraintArgs) => {
+    layout.addConstraint(
+        Gtk.Constraint.new(
+            args.target,
+            args.targetAttribute,
+            Gtk.ConstraintRelation.EQ,
+            args.source,
+            args.sourceAttribute,
+            1,
+            args.constant,
+            Gtk.ConstraintStrength.REQUIRED,
+        ),
+    );
+};
+
+interface InteractiveRefs {
+    button1: Gtk.Button;
+    button2: Gtk.Button;
+    button3: Gtk.Button;
+    guide: Gtk.ConstraintGuide;
+}
+
+const addInteractiveConstraints = (layout: Gtk.ConstraintLayout, refs: InteractiveRefs) => {
+    const { button1, button2, button3, guide } = refs;
+    const A = Gtk.ConstraintAttribute;
+
+    layout.addConstraint(
+        Gtk.Constraint.newConstant(guide, A.WIDTH, Gtk.ConstraintRelation.EQ, 0, Gtk.ConstraintStrength.REQUIRED),
+    );
+
+    const constraints: ConstraintArgs[] = [
+        { target: button1, targetAttribute: A.START, source: null, sourceAttribute: A.START, constant: 8 },
+        { target: button1, targetAttribute: A.END, source: guide, sourceAttribute: A.START, constant: 0 },
+        { target: button2, targetAttribute: A.START, source: guide, sourceAttribute: A.END, constant: 0 },
+        { target: button2, targetAttribute: A.END, source: null, sourceAttribute: A.END, constant: -8 },
+        { target: button3, targetAttribute: A.START, source: null, sourceAttribute: A.START, constant: 8 },
+        { target: button3, targetAttribute: A.END, source: guide, sourceAttribute: A.START, constant: 0 },
+        { target: button1, targetAttribute: A.TOP, source: null, sourceAttribute: A.TOP, constant: 8 },
+        { target: button2, targetAttribute: A.TOP, source: button1, sourceAttribute: A.BOTTOM, constant: 0 },
+        { target: button3, targetAttribute: A.TOP, source: button2, sourceAttribute: A.BOTTOM, constant: 0 },
+        { target: button3, targetAttribute: A.BOTTOM, source: null, sourceAttribute: A.BOTTOM, constant: -8 },
+    ];
+    for (const c of constraints) addConstraint(layout, c);
+};
+
+interface DragControllerArgs {
+    container: Gtk.Box;
+    layoutRef: RefObject<Gtk.ConstraintLayout>;
+    guideRef: RefObject<Gtk.ConstraintGuide>;
+    constraintRef: RefObject<Gtk.Constraint | null>;
+}
+
+const attachDragController = ({ container, layoutRef, guideRef, constraintRef }: DragControllerArgs) => {
+    const drag = new Gtk.GestureDrag();
+    drag.connect("drag-update", (_gesture: Gtk.GestureDrag, offsetX: number, _offsetY: number) => {
+        if (!layoutRef.current || !guideRef.current) return;
+        const [success, startX] = drag.getStartPoint();
+        if (!success) return;
+
+        if (constraintRef.current) {
+            layoutRef.current.removeConstraint(constraintRef.current);
+        }
+
+        constraintRef.current = Gtk.Constraint.newConstant(
+            guideRef.current,
+            Gtk.ConstraintAttribute.LEFT,
+            Gtk.ConstraintRelation.EQ,
+            startX + offsetX,
+            Gtk.ConstraintStrength.REQUIRED,
+        );
+        layoutRef.current.addConstraint(constraintRef.current);
+        container.queueAllocate();
+    });
+    container.addController(drag);
+};
+
+function ConstraintsInteractive() {
+    const containerRef = useRef<Gtk.Box>(null) as RefObject<Gtk.Box>;
+    const button1Ref = useRef<Gtk.Button>(null) as RefObject<Gtk.Button>;
+    const button2Ref = useRef<Gtk.Button>(null) as RefObject<Gtk.Button>;
+    const button3Ref = useRef<Gtk.Button>(null) as RefObject<Gtk.Button>;
+    const layoutRef = useRef<Gtk.ConstraintLayout>(null) as RefObject<Gtk.ConstraintLayout>;
+    const guideRef = useRef<Gtk.ConstraintGuide>(null) as RefObject<Gtk.ConstraintGuide>;
+    const constraintRef = useRef<Gtk.Constraint>(null) as RefObject<Gtk.Constraint | null>;
+
+    useEffect(() => {
+        const container = containerRef.current;
+        const button1 = button1Ref.current;
+        const button2 = button2Ref.current;
+        const button3 = button3Ref.current;
+        if (!container || !button1 || !button2 || !button3) return;
 
         const layout = new Gtk.ConstraintLayout();
         layoutRef.current = layout;
-        containerRef.current.setLayoutManager(layout);
+        container.setLayoutManager(layout);
 
         const guide = new Gtk.ConstraintGuide();
         guideRef.current = guide;
         layout.addGuide(guide);
 
-        layout.addConstraint(
-            Gtk.Constraint.newConstant(
-                Gtk.ConstraintAttribute.WIDTH,
-                Gtk.ConstraintRelation.EQ,
-                0,
-                Gtk.ConstraintStrength.REQUIRED,
-                guide,
-            ),
-        );
-
-        layout.addConstraint(
-            new Gtk.Constraint(
-                Gtk.ConstraintAttribute.START,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.START,
-                1.0,
-                8,
-                Gtk.ConstraintStrength.REQUIRED,
-                button1Ref.current,
-                undefined,
-            ),
-        );
-
-        layout.addConstraint(
-            new Gtk.Constraint(
-                Gtk.ConstraintAttribute.END,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.START,
-                1.0,
-                0,
-                Gtk.ConstraintStrength.REQUIRED,
-                button1Ref.current,
-                guide,
-            ),
-        );
-
-        layout.addConstraint(
-            new Gtk.Constraint(
-                Gtk.ConstraintAttribute.START,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.END,
-                1.0,
-                0,
-                Gtk.ConstraintStrength.REQUIRED,
-                button2Ref.current,
-                guide,
-            ),
-        );
-
-        layout.addConstraint(
-            new Gtk.Constraint(
-                Gtk.ConstraintAttribute.END,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.END,
-                1.0,
-                -8,
-                Gtk.ConstraintStrength.REQUIRED,
-                button2Ref.current,
-                undefined,
-            ),
-        );
-
-        layout.addConstraint(
-            new Gtk.Constraint(
-                Gtk.ConstraintAttribute.START,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.START,
-                1.0,
-                8,
-                Gtk.ConstraintStrength.REQUIRED,
-                button3Ref.current,
-                undefined,
-            ),
-        );
-
-        layout.addConstraint(
-            new Gtk.Constraint(
-                Gtk.ConstraintAttribute.END,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.START,
-                1.0,
-                0,
-                Gtk.ConstraintStrength.REQUIRED,
-                button3Ref.current,
-                guide,
-            ),
-        );
-
-        layout.addConstraint(
-            new Gtk.Constraint(
-                Gtk.ConstraintAttribute.TOP,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.TOP,
-                1.0,
-                8,
-                Gtk.ConstraintStrength.REQUIRED,
-                button1Ref.current,
-                undefined,
-            ),
-        );
-
-        layout.addConstraint(
-            new Gtk.Constraint(
-                Gtk.ConstraintAttribute.TOP,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.BOTTOM,
-                1.0,
-                0,
-                Gtk.ConstraintStrength.REQUIRED,
-                button2Ref.current,
-                button1Ref.current,
-            ),
-        );
-
-        layout.addConstraint(
-            new Gtk.Constraint(
-                Gtk.ConstraintAttribute.TOP,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.BOTTOM,
-                1.0,
-                0,
-                Gtk.ConstraintStrength.REQUIRED,
-                button3Ref.current,
-                button2Ref.current,
-            ),
-        );
-
-        layout.addConstraint(
-            new Gtk.Constraint(
-                Gtk.ConstraintAttribute.BOTTOM,
-                Gtk.ConstraintRelation.EQ,
-                Gtk.ConstraintAttribute.BOTTOM,
-                1.0,
-                -8,
-                Gtk.ConstraintStrength.REQUIRED,
-                button3Ref.current,
-                undefined,
-            ),
-        );
-
-        const drag = new Gtk.GestureDrag();
-        drag.connect("drag-update", (_gesture: Gtk.GestureDrag, offsetX: number, _offsetY: number) => {
-            if (!layoutRef.current || !guideRef.current) return;
-
-            const startXRef = createRef(0);
-            const startYRef = createRef(0);
-            const success = drag.getStartPoint(startXRef, startYRef);
-            if (!success) return;
-
-            const startX = startXRef.value;
-
-            if (constraintRef.current) {
-                layoutRef.current.removeConstraint(constraintRef.current);
-            }
-
-            constraintRef.current = Gtk.Constraint.newConstant(
-                Gtk.ConstraintAttribute.LEFT,
-                Gtk.ConstraintRelation.EQ,
-                startX + offsetX,
-                Gtk.ConstraintStrength.REQUIRED,
-                guideRef.current,
-            );
-            layoutRef.current.addConstraint(constraintRef.current);
-            containerRef.current?.queueAllocate();
-        });
-        containerRef.current.addController(drag);
+        addInteractiveConstraints(layout, { button1, button2, button3, guide });
+        attachDragController({ container, layoutRef, guideRef, constraintRef });
     }, []);
 
     return (
-        <GtkBox ref={containerRef} hexpand vexpand>
-            <GtkButton ref={button1Ref} label="Child 1" />
-            <GtkButton ref={button2Ref} label="Child 2" />
-            <GtkButton ref={button3Ref} label="Child 3" />
-        </GtkBox>
+        <ThreeButtonsBox
+            containerRef={containerRef}
+            button1Ref={button1Ref}
+            button2Ref={button2Ref}
+            button3Ref={button3Ref}
+            namedButtons
+        />
     );
-};
+}
 
 export const constraintsInteractiveDemo: Demo = {
     id: "constraints-interactive",
     title: "Constraints/Interactive Constraints",
     description:
         "This example shows how constraints can be updated during user interaction. The vertical edge between the buttons can be dragged with the mouse.",
-    keywords: ["constraint", "interactive", "drag", "GtkConstraintLayout", "GtkLayoutManager"],
-    component: ConstraintsInteractiveDemo,
+    keywords: ["GtkConstraintLayout"],
+    component: ConstraintsInteractive,
     sourceCode,
     defaultWidth: 260,
 };

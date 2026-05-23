@@ -55,7 +55,7 @@ const accordionStyle = css`
 `;
 
 const CssAccordionDemo = () => (
-    <GtkFrame cssClasses={[accordionStyle]}>
+    <GtkFrame name="frame" cssClasses={[accordionStyle]}>
         <GtkBox
             orientation={Gtk.Orientation.HORIZONTAL}
             halign={Gtk.Align.CENTER}
@@ -76,7 +76,7 @@ export const cssAccordionDemo: Demo = {
     id: "css-accordion",
     title: "Theming/CSS Accordion",
     description: "A simple accordion demo written using CSS transitions and multiple backgrounds",
-    keywords: ["css", "transition", "animation", "accordion", "hover"],
+    keywords: [],
     component: CssAccordionDemo,
     sourceCode,
     defaultWidth: 600,

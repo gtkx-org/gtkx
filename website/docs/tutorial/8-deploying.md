@@ -174,7 +174,7 @@ The `gtkx build` step compiles imported `.gschema.xml` files into `dist/gschemas
 
 ```bash
 # Bundle the app and create the CJS re-bundle
-gtkx build && tsx scripts/bundle.ts
+gtkx build && node scripts/bundle.ts
 
 # Build the Flatpak
 flatpak-builder \

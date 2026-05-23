@@ -6,5 +6,5 @@
         "strict": true,
         "skipLibCheck": true
     },
-    "include": [".vitepress/**/*.ts", "scripts/**/*.js"]
+    "include": [".vitepress/**/*.ts", "scripts/**/*.ts"]
 }

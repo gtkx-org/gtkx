@@ -21,7 +21,7 @@ claude mcp add gtkx --scope user npx @gtkx/mcp@latest
 Start your application with the dev server:
 
 ```bash
-npx gtkx dev src/dev.tsx
+npx gtkx dev
 ```
 
 The dev server automatically connects to the MCP server when available. You'll see connection messages in the console:

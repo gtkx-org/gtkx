@@ -1,10 +1,10 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPaned, GtkPopover } from "@gtkx/react";
+import { GtkBox, GtkHeaderBar, GtkLabel, GtkMenuButton, GtkPaned, GtkPopover } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { createElement, createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-describe("render - Slot", () => {
+describe("render - Slot (1)", () => {
     it("sets slot child via ReactNode prop", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
         const titleRef = createRef<Gtk.Label>();
@@ -13,7 +13,7 @@ describe("render - Slot", () => {
             <GtkHeaderBar ref={headerBarRef} titleWidget={<GtkLabel ref={titleRef} label="Custom Title" />} />,
         );
 
-        expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(titleRef.current?.handle);
+        expect(headerBarRef.current?.getTitleWidget()).toBe(titleRef.current);
     });
 
     it("calls setSlotName(widget) on parent", async () => {
@@ -22,7 +22,7 @@ describe("render - Slot", () => {
 
         await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef} label="Start Content" />} />);
 
-        expect(panedRef.current?.getStartChild()?.handle).toEqual(labelRef.current?.handle);
+        expect(panedRef.current?.getStartChild()).toBe(labelRef.current);
     });
 
     it("clears slot when child removed", async () => {
@@ -40,7 +40,9 @@ describe("render - Slot", () => {
 
         expect(headerBarRef.current?.getTitleWidget()).toBeNull();
     });
+});
 
+describe("render - Slot (2)", () => {
     it("updates slot when child changes", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
         const label1Ref = createRef<Gtk.Label>();
@@ -63,11 +65,11 @@ describe("render - Slot", () => {
 
         await render(<App first={true} />);
 
-        expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(label1Ref.current?.handle);
+        expect(headerBarRef.current?.getTitleWidget()).toBe(label1Ref.current);
 
         await render(<App first={false} />);
 
-        expect(headerBarRef.current?.getTitleWidget()?.handle).toEqual(label2Ref.current?.handle);
+        expect(headerBarRef.current?.getTitleWidget()).toBe(label2Ref.current);
     });
 
     it("handles Paned.StartChild slot", async () => {
@@ -76,7 +78,7 @@ describe("render - Slot", () => {
 
         await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef} label="Start Child" />} />);
 
-        expect(panedRef.current?.getStartChild()?.handle).toEqual(labelRef.current?.handle);
+        expect(panedRef.current?.getStartChild()).toBe(labelRef.current);
     });
 
     it("handles MenuButton.Popover slot", async () => {
@@ -87,9 +89,11 @@ describe("render - Slot", () => {
             <GtkMenuButton ref={menuButtonRef} popover={<GtkPopover ref={popoverRef}>Popover Content</GtkPopover>} />,
         );
 
-        expect(menuButtonRef.current?.getPopover()?.handle).toEqual(popoverRef.current?.handle);
+        expect(menuButtonRef.current?.getPopover()).toBe(popoverRef.current);
     });
+});
 
+describe("render - Slot (3)", () => {
     it("handles multiple slots on same parent", async () => {
         const panedRef = createRef<Gtk.Paned>();
         const startRef = createRef<Gtk.Label>();
@@ -103,7 +107,13 @@ describe("render - Slot", () => {
             />,
         );
 
-        expect(panedRef.current?.getStartChild()?.handle).toEqual(startRef.current?.handle);
-        expect(panedRef.current?.getEndChild()?.handle).toEqual(endRef.current?.handle);
+        expect(panedRef.current?.getStartChild()).toBe(startRef.current);
+        expect(panedRef.current?.getEndChild()).toBe(endRef.current);
+    });
+
+    it("throws when the slot id has no matching property setter on the parent", async () => {
+        await expect(
+            render(<GtkBox>{createElement("Slot", { id: "non-existent-slot" }, <GtkLabel label="orphan" />)}</GtkBox>),
+        ).rejects.toThrow(/Unable to find property for Slot 'nonExistentSlot'/);
     });
 });

@@ -2,11 +2,18 @@ import type * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { AdwToggleGroup } from "@gtkx/react";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+import { renderChildren } from "../helpers/render-children.js";
 
-describe("render - ToggleGroup", () => {
-    describe("ToggleGroupNode", () => {
+type Toggle = { id: string; label: string };
+
+const buildToggleGroup = (ref: RefObject<Adw.ToggleGroup | null>) => (toggles: Toggle[]) => (
+    <AdwToggleGroup ref={ref} toggles={toggles} />
+);
+
+describe("render - ToggleGroup (1)", () => {
+    describe("ToggleGroupNode (1)", () => {
         it("creates ToggleGroup widget without toggles", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
@@ -53,61 +60,70 @@ describe("render - ToggleGroup", () => {
             expect(ref.current?.getToggleByName("enabled")?.getEnabled()).toBe(true);
             expect(ref.current?.getToggleByName("disabled")?.getEnabled()).toBe(false);
         });
+    });
+});
 
+describe("render - ToggleGroup (2)", () => {
+    describe("ToggleGroupNode (2)", () => {
         it("updates toggle props", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
-            function App({ label }: { label: string }) {
-                return <AdwToggleGroup ref={ref} toggles={[{ id: "test", label }]} />;
-            }
-
-            await render(<App label="Initial" />);
+            const { rerender } = await renderChildren([{ id: "test", label: "Initial" }], buildToggleGroup(ref));
             expect(ref.current?.getToggleByName("test")?.getLabel()).toBe("Initial");
 
-            await render(<App label="Updated" />);
+            await rerender([{ id: "test", label: "Updated" }]);
             expect(ref.current?.getToggleByName("test")?.getLabel()).toBe("Updated");
         });
 
         it("removes toggles when list shrinks", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
-            function App({ showExtra }: { showExtra: boolean }) {
-                const toggles = [{ id: "always", label: "Always" }];
-                if (showExtra) toggles.push({ id: "extra", label: "Extra" });
-                return <AdwToggleGroup ref={ref} toggles={toggles} />;
-            }
-
-            await render(<App showExtra={true} />);
+            const { rerender } = await renderChildren(
+                [
+                    { id: "always", label: "Always" },
+                    { id: "extra", label: "Extra" },
+                ],
+                buildToggleGroup(ref),
+            );
             expect(ref.current?.getNToggles()).toBe(2);
             expect(ref.current?.getToggleByName("always")).not.toBeNull();
             expect(ref.current?.getToggleByName("extra")).not.toBeNull();
 
-            await render(<App showExtra={false} />);
+            await rerender([{ id: "always", label: "Always" }]);
             expect(ref.current?.getNToggles()).toBe(1);
             expect(ref.current?.getToggleByName("always")).not.toBeNull();
             expect(ref.current?.getToggleByName("extra")).toBeNull();
         });
+    });
+});
 
+describe("render - ToggleGroup (3)", () => {
+    describe("ToggleGroupNode (3)", () => {
         it("handles inserting toggles dynamically", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
-            function App({ showMid }: { showMid: boolean }) {
-                const toggles = [{ id: "first", label: "First" }];
-                if (showMid) toggles.push({ id: "middle", label: "Middle" });
-                toggles.push({ id: "last", label: "Last" });
-                return <AdwToggleGroup ref={ref} toggles={toggles} />;
-            }
-
-            await render(<App showMid={false} />);
+            const { rerender } = await renderChildren(
+                [
+                    { id: "first", label: "First" },
+                    { id: "last", label: "Last" },
+                ],
+                buildToggleGroup(ref),
+            );
             expect(ref.current?.getNToggles()).toBe(2);
 
-            await render(<App showMid={true} />);
+            await rerender([
+                { id: "first", label: "First" },
+                { id: "middle", label: "Middle" },
+                { id: "last", label: "Last" },
+            ]);
             expect(ref.current?.getNToggles()).toBe(3);
             expect(ref.current?.getToggleByName("middle")).not.toBeNull();
         });
     });
+});
 
-    describe("user interactions", () => {
+describe("render - ToggleGroup (4)", () => {
+    describe("user interactions (1)", () => {
         it("clicks toggle to activate it", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
@@ -150,7 +166,11 @@ describe("render - ToggleGroup", () => {
                 expect(ref.current?.getActive()).toBe(1);
             });
         });
+    });
+});
 
+describe("render - ToggleGroup (5)", () => {
+    describe("user interactions (2)", () => {
         it("finds all toggles by role in a toggle group", async () => {
             await render(
                 <AdwToggleGroup

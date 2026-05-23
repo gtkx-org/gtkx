@@ -7,7 +7,7 @@ import sourceCode from "./tabs.tsx?raw";
 
 const TabsDemo = () => {
     const tabs = useMemo(() => {
-        const t = new Pango.TabArray(3, true);
+        const t = Pango.TabArray.new(3, true);
         t.setTab(0, Pango.TabAlign.LEFT, 0);
         t.setTab(1, Pango.TabAlign.DECIMAL, 150);
         t.setDecimalPoint(1, ".");
@@ -35,8 +35,8 @@ export const tabsDemo: Demo = {
     id: "tabs",
     title: "Text View/Tabs",
     description:
-        "GtkTextView can position text at fixed positions, using tabs. Tabs can specify alignment, and also allow aligning numbers on the decimal point. The example here has three tabs, with left, numeric and right alignment.",
-    keywords: ["tabs", "textview", "pango", "alignment", "decimal", "PangoTabArray", "GtkTextView"],
+        "GtkTextView can position text at fixed positions, using tabs. Tabs can specify alignment, and also allow aligning numbers on the decimal point.\n\nThe example here has three tabs, with left, numeric and right alignment.",
+    keywords: [],
     component: TabsDemo,
     sourceCode,
     defaultWidth: 330,

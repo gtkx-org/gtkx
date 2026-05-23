@@ -1,173 +1,187 @@
 import * as Adw from "@gtkx/ffi/adw";
 import { AdwAlertDialog } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+import { renderChildren } from "../helpers/render-children.js";
 
 const options = { wrapper: false } as const;
 
-describe("render - AlertDialogResponse", () => {
-    describe("AlertDialogNode", () => {
-        it("creates AlertDialog without responses", async () => {
-            const ref = createRef<Adw.AlertDialog>();
+type Response = { id: string; label: string };
 
-            await render(<AdwAlertDialog ref={ref} heading="Test" />, options);
+const buildAlertDialog = (ref: RefObject<Adw.AlertDialog | null>) => (responses: Response[]) => (
+    <AdwAlertDialog ref={ref} heading="Test" responses={responses} />
+);
 
-            expect(ref.current).not.toBeNull();
-            expect(ref.current?.hasResponse("any")).toBe(false);
-        });
+describe("render - AlertDialogResponse > AlertDialogNode (1)", () => {
+    it("creates AlertDialog without responses", async () => {
+        const ref = createRef<Adw.AlertDialog>();
 
-        it("creates AlertDialog with responses", async () => {
-            const ref = createRef<Adw.AlertDialog>();
+        await render(<AdwAlertDialog ref={ref} heading="Test" />, options);
 
-            await render(
-                <AdwAlertDialog
-                    ref={ref}
-                    heading="Test"
-                    responses={[
-                        { id: "cancel", label: "Cancel" },
-                        { id: "confirm", label: "Confirm" },
-                    ]}
-                />,
-                options,
-            );
+        expect(ref.current).not.toBeNull();
+        expect(ref.current?.hasResponse("any")).toBe(false);
+    });
 
-            expect(ref.current?.hasResponse("cancel")).toBe(true);
-            expect(ref.current?.hasResponse("confirm")).toBe(true);
-        });
+    it("creates AlertDialog with responses", async () => {
+        const ref = createRef<Adw.AlertDialog>();
 
-        it("sets response label", async () => {
-            const ref = createRef<Adw.AlertDialog>();
+        await render(
+            <AdwAlertDialog
+                ref={ref}
+                heading="Test"
+                responses={[
+                    { id: "cancel", label: "Cancel" },
+                    { id: "confirm", label: "Confirm" },
+                ]}
+            />,
+            options,
+        );
 
-            await render(
-                <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "ok", label: "OK Button" }]} />,
-                options,
-            );
+        expect(ref.current?.hasResponse("cancel")).toBe(true);
+        expect(ref.current?.hasResponse("confirm")).toBe(true);
+    });
 
-            expect(ref.current?.getResponseLabel("ok")).toBe("OK Button");
-        });
+    it("sets response label", async () => {
+        const ref = createRef<Adw.AlertDialog>();
 
-        it("sets response appearance", async () => {
-            const ref = createRef<Adw.AlertDialog>();
+        await render(
+            <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "ok", label: "OK Button" }]} />,
+            options,
+        );
 
-            await render(
-                <AdwAlertDialog
-                    ref={ref}
-                    heading="Test"
-                    responses={[
-                        { id: "default", label: "Default" },
-                        { id: "suggested", label: "Suggested", appearance: Adw.ResponseAppearance.SUGGESTED },
-                        { id: "destructive", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
-                    ]}
-                />,
-                options,
-            );
+        expect(ref.current?.getResponseLabel("ok")).toBe("OK Button");
+    });
+});
 
-            expect(ref.current?.getResponseAppearance("default")).toBe(Adw.ResponseAppearance.DEFAULT);
-            expect(ref.current?.getResponseAppearance("suggested")).toBe(Adw.ResponseAppearance.SUGGESTED);
-            expect(ref.current?.getResponseAppearance("destructive")).toBe(Adw.ResponseAppearance.DESTRUCTIVE);
-        });
+describe("render - AlertDialogResponse > AlertDialogNode (2)", () => {
+    it("sets response appearance", async () => {
+        const ref = createRef<Adw.AlertDialog>();
 
-        it("sets response enabled state", async () => {
-            const ref = createRef<Adw.AlertDialog>();
+        await render(
+            <AdwAlertDialog
+                ref={ref}
+                heading="Test"
+                responses={[
+                    { id: "default", label: "Default" },
+                    { id: "suggested", label: "Suggested", appearance: Adw.ResponseAppearance.SUGGESTED },
+                    { id: "destructive", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+                ]}
+            />,
+            options,
+        );
 
-            await render(
-                <AdwAlertDialog
-                    ref={ref}
-                    heading="Test"
-                    responses={[
-                        { id: "enabled", label: "Enabled" },
-                        { id: "disabled", label: "Disabled", enabled: false },
-                    ]}
-                />,
-                options,
-            );
+        expect(ref.current?.getResponseAppearance("default")).toBe(Adw.ResponseAppearance.DEFAULT);
+        expect(ref.current?.getResponseAppearance("suggested")).toBe(Adw.ResponseAppearance.SUGGESTED);
+        expect(ref.current?.getResponseAppearance("destructive")).toBe(Adw.ResponseAppearance.DESTRUCTIVE);
+    });
 
-            expect(ref.current?.getResponseEnabled("enabled")).toBe(true);
-            expect(ref.current?.getResponseEnabled("disabled")).toBe(false);
-        });
+    it("sets response enabled state", async () => {
+        const ref = createRef<Adw.AlertDialog>();
 
-        it("updates response label", async () => {
-            const ref = createRef<Adw.AlertDialog>();
+        await render(
+            <AdwAlertDialog
+                ref={ref}
+                heading="Test"
+                responses={[
+                    { id: "enabled", label: "Enabled" },
+                    { id: "disabled", label: "Disabled", enabled: false },
+                ]}
+            />,
+            options,
+        );
 
-            function App({ label }: { label: string }) {
-                return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label }]} />;
-            }
+        expect(ref.current?.getResponseEnabled("enabled")).toBe(true);
+        expect(ref.current?.getResponseEnabled("disabled")).toBe(false);
+    });
+});
 
-            await render(<App label="Initial" />, options);
-            expect(ref.current?.getResponseLabel("test")).toBe("Initial");
+describe("render - AlertDialogResponse > AlertDialogNode (3)", () => {
+    it("updates response label", async () => {
+        const ref = createRef<Adw.AlertDialog>();
 
-            await render(<App label="Updated" />, options);
-            expect(ref.current?.getResponseLabel("test")).toBe("Updated");
-        });
+        function App({ label }: { label: string }) {
+            return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label }]} />;
+        }
 
-        it("updates response appearance", async () => {
-            const ref = createRef<Adw.AlertDialog>();
+        await render(<App label="Initial" />, options);
+        expect(ref.current?.getResponseLabel("test")).toBe("Initial");
 
-            function App({ appearance }: { appearance: Adw.ResponseAppearance }) {
-                return (
-                    <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", appearance }]} />
-                );
-            }
+        await render(<App label="Updated" />, options);
+        expect(ref.current?.getResponseLabel("test")).toBe("Updated");
+    });
 
-            await render(<App appearance={Adw.ResponseAppearance.DEFAULT} />, options);
-            expect(ref.current?.getResponseAppearance("test")).toBe(Adw.ResponseAppearance.DEFAULT);
+    it("updates response appearance", async () => {
+        const ref = createRef<Adw.AlertDialog>();
 
-            await render(<App appearance={Adw.ResponseAppearance.DESTRUCTIVE} />, options);
-            expect(ref.current?.getResponseAppearance("test")).toBe(Adw.ResponseAppearance.DESTRUCTIVE);
-        });
+        function App({ appearance }: { appearance: Adw.ResponseAppearance }) {
+            return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", appearance }]} />;
+        }
 
-        it("updates response enabled state", async () => {
-            const ref = createRef<Adw.AlertDialog>();
+        await render(<App appearance={Adw.ResponseAppearance.DEFAULT} />, options);
+        expect(ref.current?.getResponseAppearance("test")).toBe(Adw.ResponseAppearance.DEFAULT);
 
-            function App({ enabled }: { enabled: boolean }) {
-                return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", enabled }]} />;
-            }
+        await render(<App appearance={Adw.ResponseAppearance.DESTRUCTIVE} />, options);
+        expect(ref.current?.getResponseAppearance("test")).toBe(Adw.ResponseAppearance.DESTRUCTIVE);
+    });
 
-            await render(<App enabled={true} />, options);
-            expect(ref.current?.getResponseEnabled("test")).toBe(true);
+    it("updates response enabled state", async () => {
+        const ref = createRef<Adw.AlertDialog>();
 
-            await render(<App enabled={false} />, options);
-            expect(ref.current?.getResponseEnabled("test")).toBe(false);
-        });
+        function App({ enabled }: { enabled: boolean }) {
+            return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", enabled }]} />;
+        }
 
-        it("removes responses when list shrinks", async () => {
-            const ref = createRef<Adw.AlertDialog>();
+        await render(<App enabled={true} />, options);
+        expect(ref.current?.getResponseEnabled("test")).toBe(true);
 
-            function App({ showExtra }: { showExtra: boolean }) {
-                const responses = [{ id: "always", label: "Always" }];
-                if (showExtra) responses.push({ id: "extra", label: "Extra" });
-                return <AdwAlertDialog ref={ref} heading="Test" responses={responses} />;
-            }
+        await render(<App enabled={false} />, options);
+        expect(ref.current?.getResponseEnabled("test")).toBe(false);
+    });
+});
 
-            await render(<App showExtra={true} />, options);
-            expect(ref.current?.hasResponse("always")).toBe(true);
-            expect(ref.current?.hasResponse("extra")).toBe(true);
+describe("render - AlertDialogResponse > AlertDialogNode (4)", () => {
+    it("removes responses when list shrinks", async () => {
+        const ref = createRef<Adw.AlertDialog>();
 
-            await render(<App showExtra={false} />, options);
-            expect(ref.current?.hasResponse("always")).toBe(true);
-            expect(ref.current?.hasResponse("extra")).toBe(false);
-        });
+        const { rerender } = await renderChildren(
+            [
+                { id: "always", label: "Always" },
+                { id: "extra", label: "Extra" },
+            ],
+            buildAlertDialog(ref),
+            options,
+        );
+        expect(ref.current?.hasResponse("always")).toBe(true);
+        expect(ref.current?.hasResponse("extra")).toBe(true);
 
-        it("handles inserting responses dynamically", async () => {
-            const ref = createRef<Adw.AlertDialog>();
+        await rerender([{ id: "always", label: "Always" }]);
+        expect(ref.current?.hasResponse("always")).toBe(true);
+        expect(ref.current?.hasResponse("extra")).toBe(false);
+    });
 
-            function App({ showMid }: { showMid: boolean }) {
-                const responses = [{ id: "first", label: "First" }];
-                if (showMid) responses.push({ id: "middle", label: "Middle" });
-                responses.push({ id: "last", label: "Last" });
-                return <AdwAlertDialog ref={ref} heading="Test" responses={responses} />;
-            }
+    it("handles inserting responses dynamically", async () => {
+        const ref = createRef<Adw.AlertDialog>();
 
-            await render(<App showMid={false} />, options);
-            expect(ref.current?.hasResponse("first")).toBe(true);
-            expect(ref.current?.hasResponse("middle")).toBe(false);
-            expect(ref.current?.hasResponse("last")).toBe(true);
+        const { rerender } = await renderChildren(
+            [
+                { id: "first", label: "First" },
+                { id: "last", label: "Last" },
+            ],
+            buildAlertDialog(ref),
+            options,
+        );
+        expect(ref.current?.hasResponse("first")).toBe(true);
+        expect(ref.current?.hasResponse("middle")).toBe(false);
+        expect(ref.current?.hasResponse("last")).toBe(true);
 
-            await render(<App showMid={true} />, options);
-            expect(ref.current?.hasResponse("first")).toBe(true);
-            expect(ref.current?.hasResponse("middle")).toBe(true);
-            expect(ref.current?.hasResponse("last")).toBe(true);
-        });
+        await rerender([
+            { id: "first", label: "First" },
+            { id: "middle", label: "Middle" },
+            { id: "last", label: "Last" },
+        ]);
+        expect(ref.current?.hasResponse("first")).toBe(true);
+        expect(ref.current?.hasResponse("middle")).toBe(true);
+        expect(ref.current?.hasResponse("last")).toBe(true);
     });
 });

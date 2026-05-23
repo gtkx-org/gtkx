@@ -7,15 +7,19 @@ import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";
 import { useCssEditor } from "./use-css-editor.js";
 
-const DEFAULT_CSS = `@import url("file://${resetCssPath}");
-@import url("file://${cssviewCssPath}");
-
-/* You can edit the text in this window to change the
+const DEFAULT_CSS = `/* You can edit the text in this window to change the
  * appearance of this Window.
  * Be careful, if you screw it up, nothing might be visible
  * anymore. :)
  */
 
+/* This CSS resets all properties to their defaults values
+ * and overrides all user settings and the theme in use
+ */
+@import url("file://${resetCssPath}");
+@import url("file://${cssviewCssPath}");
+
+/* Get a nice background for the window */
 window.demo.background {
   background-color: #4870bc;
   background-image: linear-gradient(to left, transparent, rgba(255,255,255,.07) 50%, transparent 50%),
@@ -54,6 +58,7 @@ const CssShadowsDemo = ({ window }: DemoProps) => {
 
     return (
         <GtkPaned
+            name="paned"
             orientation={Gtk.Orientation.VERTICAL}
             resizeStartChild={false}
             startChild={
@@ -65,7 +70,7 @@ const CssShadowsDemo = ({ window }: DemoProps) => {
             }
             endChild={
                 <GtkScrolledWindow>
-                    <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
+                    <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged} />
                 </GtkScrolledWindow>
             }
         />
@@ -75,9 +80,8 @@ const CssShadowsDemo = ({ window }: DemoProps) => {
 export const cssShadowsDemo: Demo = {
     id: "css-shadows",
     title: "Theming/Shadows",
-    description:
-        "Live CSS editing for box-shadow effects. Edit the CSS to experiment with shadows on buttons in real-time.",
-    keywords: ["css", "shadow", "box-shadow", "elevation", "depth", "glow", "live", "editing"],
+    description: "This demo shows how to use CSS shadows.",
+    keywords: [],
     component: CssShadowsDemo,
     sourceCode,
     defaultWidth: 400,

@@ -49,126 +49,183 @@ interface GearGeometry {
     strips: GearStrip[];
 }
 
-function createGear(
-    innerRadius: number,
-    outerRadius: number,
-    width: number,
-    teeth: number,
-    toothDepth: number,
-): GearGeometry {
-    const r0 = innerRadius;
-    const r1 = outerRadius - toothDepth / 2;
-    const r2 = outerRadius + toothDepth / 2;
-    const da = (2 * Math.PI) / teeth / 4;
-    const w2 = width / 2;
+interface GearBuilder {
+    vertices: number[];
+    strips: GearStrip[];
+    vi: number;
+    nx: number;
+    ny: number;
+    nz: number;
+    w2: number;
+    vert: (px: number, py: number, sign: number) => void;
+    startStrip: () => void;
+    endStrip: () => void;
+    quadNormal: (p1x: number, p1y: number, p2x: number, p2y: number) => void;
+}
 
+const createGearBuilder = (width: number): GearBuilder => {
     const vertices: number[] = [];
     const strips: GearStrip[] = [];
-    let vi = 0;
-    let nx = 0;
-    let ny = 0;
-    let nz = 0;
+    const builder: GearBuilder = {
+        vertices,
+        strips,
+        vi: 0,
+        nx: 0,
+        ny: 0,
+        nz: 0,
+        w2: width / 2,
+        vert(px, py, sign) {
+            vertices.push(px, py, sign * builder.w2, builder.nx, builder.ny, builder.nz);
+            builder.vi++;
+        },
+        startStrip() {
+            strips.push({ first: builder.vi, count: 0 });
+        },
+        endStrip() {
+            const strip = strips.at(-1);
+            if (strip) strip.count = builder.vi - strip.first;
+        },
+        quadNormal(p1x, p1y, p2x, p2y) {
+            builder.nx = p1y - p2y;
+            builder.ny = -(p1x - p2x);
+            builder.nz = 0;
+            builder.vert(p1x, p1y, -1);
+            builder.vert(p1x, p1y, 1);
+            builder.vert(p2x, p2y, -1);
+            builder.vert(p2x, p2y, 1);
+        },
+    };
+    return builder;
+};
 
-    function vert(px: number, py: number, sign: number) {
-        vertices.push(px, py, sign * w2, nx, ny, nz);
-        vi++;
-    }
+interface ToothRadii {
+    r0: number;
+    r1: number;
+    r2: number;
+    da: number;
+}
 
-    function startStrip() {
-        strips.push({ first: vi, count: 0 });
-    }
+interface ToothPoints {
+    p0x: number;
+    p0y: number;
+    p1x: number;
+    p1y: number;
+    p2x: number;
+    p2y: number;
+    p3x: number;
+    p3y: number;
+    p4x: number;
+    p4y: number;
+    p5x: number;
+    p5y: number;
+    p6x: number;
+    p6y: number;
+}
 
-    function endStrip() {
-        const strip = strips[strips.length - 1];
-        if (strip) strip.count = vi - strip.first;
-    }
+const computeToothPoints = (radii: ToothRadii, base: number): ToothPoints => {
+    const { r0, r1, r2, da } = radii;
+    const c0 = Math.cos(base);
+    const s0 = Math.sin(base);
+    const c1 = Math.cos(base + da);
+    const s1 = Math.sin(base + da);
+    const c2 = Math.cos(base + 2 * da);
+    const s2 = Math.sin(base + 2 * da);
+    const c3 = Math.cos(base + 3 * da);
+    const s3 = Math.sin(base + 3 * da);
+    const c4 = Math.cos(base + 4 * da);
+    const s4 = Math.sin(base + 4 * da);
 
-    function quadNormal(p1x: number, p1y: number, p2x: number, p2y: number) {
-        nx = p1y - p2y;
-        ny = -(p1x - p2x);
-        nz = 0;
-        vert(p1x, p1y, -1);
-        vert(p1x, p1y, 1);
-        vert(p2x, p2y, -1);
-        vert(p2x, p2y, 1);
-    }
+    return {
+        p0x: r2 * c1,
+        p0y: r2 * s1,
+        p1x: r2 * c2,
+        p1y: r2 * s2,
+        p2x: r1 * c0,
+        p2y: r1 * s0,
+        p3x: r1 * c3,
+        p3y: r1 * s3,
+        p4x: r0 * c0,
+        p4y: r0 * s0,
+        p5x: r1 * c4,
+        p5y: r1 * s4,
+        p6x: r0 * c4,
+        p6y: r0 * s4,
+    };
+};
+
+const emitToothFaces = (builder: GearBuilder, radii: ToothRadii, base: number) => {
+    const p = computeToothPoints(radii, base);
+
+    builder.startStrip();
+    builder.nx = 0;
+    builder.ny = 0;
+    builder.nz = 1;
+    builder.vert(p.p0x, p.p0y, 1);
+    builder.vert(p.p1x, p.p1y, 1);
+    builder.vert(p.p2x, p.p2y, 1);
+    builder.vert(p.p3x, p.p3y, 1);
+    builder.vert(p.p4x, p.p4y, 1);
+    builder.vert(p.p5x, p.p5y, 1);
+    builder.vert(p.p6x, p.p6y, 1);
+    builder.endStrip();
+
+    builder.startStrip();
+    builder.quadNormal(p.p4x, p.p4y, p.p6x, p.p6y);
+    builder.endStrip();
+
+    builder.startStrip();
+    builder.nx = 0;
+    builder.ny = 0;
+    builder.nz = -1;
+    builder.vert(p.p6x, p.p6y, -1);
+    builder.vert(p.p5x, p.p5y, -1);
+    builder.vert(p.p4x, p.p4y, -1);
+    builder.vert(p.p3x, p.p3y, -1);
+    builder.vert(p.p2x, p.p2y, -1);
+    builder.vert(p.p1x, p.p1y, -1);
+    builder.vert(p.p0x, p.p0y, -1);
+    builder.endStrip();
+
+    builder.startStrip();
+    builder.quadNormal(p.p0x, p.p0y, p.p2x, p.p2y);
+    builder.endStrip();
+    builder.startStrip();
+    builder.quadNormal(p.p1x, p.p1y, p.p0x, p.p0y);
+    builder.endStrip();
+    builder.startStrip();
+    builder.quadNormal(p.p3x, p.p3y, p.p1x, p.p1y);
+    builder.endStrip();
+    builder.startStrip();
+    builder.quadNormal(p.p5x, p.p5y, p.p3x, p.p3y);
+    builder.endStrip();
+};
+
+function createGear({
+    innerRadius,
+    outerRadius,
+    width,
+    teeth,
+    toothDepth,
+}: {
+    innerRadius: number;
+    outerRadius: number;
+    width: number;
+    teeth: number;
+    toothDepth: number;
+}): GearGeometry {
+    const builder = createGearBuilder(width);
+    const radii = {
+        r0: innerRadius,
+        r1: outerRadius - toothDepth / 2,
+        r2: outerRadius + toothDepth / 2,
+        da: (2 * Math.PI) / teeth / 4,
+    };
 
     for (let i = 0; i < teeth; i++) {
-        const base = (i * 2 * Math.PI) / teeth;
-        const c0 = Math.cos(base),
-            s0 = Math.sin(base);
-        const c1 = Math.cos(base + da),
-            s1 = Math.sin(base + da);
-        const c2 = Math.cos(base + 2 * da),
-            s2 = Math.sin(base + 2 * da);
-        const c3 = Math.cos(base + 3 * da),
-            s3 = Math.sin(base + 3 * da);
-        const c4 = Math.cos(base + 4 * da),
-            s4 = Math.sin(base + 4 * da);
-
-        const p0x = r2 * c1,
-            p0y = r2 * s1;
-        const p1x = r2 * c2,
-            p1y = r2 * s2;
-        const p2x = r1 * c0,
-            p2y = r1 * s0;
-        const p3x = r1 * c3,
-            p3y = r1 * s3;
-        const p4x = r0 * c0,
-            p4y = r0 * s0;
-        const p5x = r1 * c4,
-            p5y = r1 * s4;
-        const p6x = r0 * c4,
-            p6y = r0 * s4;
-
-        startStrip();
-        nx = 0;
-        ny = 0;
-        nz = 1;
-        vert(p0x, p0y, 1);
-        vert(p1x, p1y, 1);
-        vert(p2x, p2y, 1);
-        vert(p3x, p3y, 1);
-        vert(p4x, p4y, 1);
-        vert(p5x, p5y, 1);
-        vert(p6x, p6y, 1);
-        endStrip();
-
-        startStrip();
-        quadNormal(p4x, p4y, p6x, p6y);
-        endStrip();
-
-        startStrip();
-        nx = 0;
-        ny = 0;
-        nz = -1;
-        vert(p6x, p6y, -1);
-        vert(p5x, p5y, -1);
-        vert(p4x, p4y, -1);
-        vert(p3x, p3y, -1);
-        vert(p2x, p2y, -1);
-        vert(p1x, p1y, -1);
-        vert(p0x, p0y, -1);
-        endStrip();
-
-        startStrip();
-        quadNormal(p0x, p0y, p2x, p2y);
-        endStrip();
-
-        startStrip();
-        quadNormal(p1x, p1y, p0x, p0y);
-        endStrip();
-
-        startStrip();
-        quadNormal(p3x, p3y, p1x, p1y);
-        endStrip();
-
-        startStrip();
-        quadNormal(p5x, p5y, p3x, p3y);
-        endStrip();
+        emitToothFaces(builder, radii, (i * 2 * Math.PI) / teeth);
     }
 
-    return { vertices, nvertices: vi, strips };
+    return { vertices: builder.vertices, nvertices: builder.vi, strips: builder.strips };
 }
 
 function mat4Multiply(a: number[], b: number[]): number[] {
@@ -189,7 +246,7 @@ function mat4Translate(m: number[], x: number, y: number, z: number): number[] {
     return mat4Multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1]);
 }
 
-function mat4Rotate(m: number[], angle: number, x: number, y: number, z: number): number[] {
+function mat4Rotate(m: number[], { angle, x, y, z }: { angle: number; x: number; y: number; z: number }): number[] {
     const s = Math.sin(angle);
     const c = Math.cos(angle);
     return mat4Multiply(m, [
@@ -213,29 +270,30 @@ function mat4Rotate(m: number[], angle: number, x: number, y: number, z: number)
 }
 
 function mat4Perspective(fovy: number, aspect: number, zNear: number, zFar: number): number[] {
-    const f = 1.0 / Math.tan(fovy / 2);
+    const f = 1 / Math.tan(fovy / 2);
     const dz = zFar - zNear;
     return [f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, -(zFar + zNear) / dz, -1, 0, 0, (-2 * zNear * zFar) / dz, 0];
 }
 
 function mat4Transpose(m: number[]): number[] {
+    const at = (i: number) => m[i] ?? 0;
     return [
-        m[0] ?? 0,
-        m[4] ?? 0,
-        m[8] ?? 0,
-        m[12] ?? 0,
-        m[1] ?? 0,
-        m[5] ?? 0,
-        m[9] ?? 0,
-        m[13] ?? 0,
-        m[2] ?? 0,
-        m[6] ?? 0,
-        m[10] ?? 0,
-        m[14] ?? 0,
-        m[3] ?? 0,
-        m[7] ?? 0,
-        m[11] ?? 0,
-        m[15] ?? 0,
+        at(0),
+        at(4),
+        at(8),
+        at(12),
+        at(1),
+        at(5),
+        at(9),
+        at(13),
+        at(2),
+        at(6),
+        at(10),
+        at(14),
+        at(3),
+        at(7),
+        at(11),
+        at(15),
     ];
 }
 
@@ -262,18 +320,18 @@ interface GLState {
 }
 
 const GEAR_COLORS = [
-    [0.8, 0.1, 0.0, 1.0],
-    [0.0, 0.8, 0.2, 1.0],
-    [0.2, 0.2, 1.0, 1.0],
+    [0.8, 0.1, 0, 1],
+    [0, 0.8, 0.2, 1],
+    [0.2, 0.2, 1, 1],
 ];
 
 const GEAR_PARAMS = [
-    { inner: 1.0, outer: 4.0, width: 1.0, teeth: 20, depth: 0.7 },
-    { inner: 0.5, outer: 2.0, width: 2.0, teeth: 10, depth: 0.7 },
-    { inner: 1.3, outer: 2.0, width: 0.5, teeth: 10, depth: 0.7 },
+    { inner: 1, outer: 4, width: 1, teeth: 20, depth: 0.7 },
+    { inner: 0.5, outer: 2, width: 2, teeth: 10, depth: 0.7 },
+    { inner: 1.3, outer: 2, width: 0.5, teeth: 10, depth: 0.7 },
 ];
 
-function initGL(): GLState {
+const createGearsProgram = (): number => {
     const vs = gl.createShader(gl.VERTEX_SHADER);
     gl.shaderSource(vs, VERTEX_SHADER);
     gl.compileShader(vs);
@@ -293,27 +351,28 @@ function initGL(): GLState {
 
     // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
     gl.useProgram(program);
+    return program;
+};
 
-    const uniforms = {
-        mvp: gl.getUniformLocation(program, "ModelViewProjectionMatrix"),
-        normalMatrix: gl.getUniformLocation(program, "NormalMatrix"),
-        lightSourcePosition: gl.getUniformLocation(program, "LightSourcePosition"),
-        materialColor: gl.getUniformLocation(program, "MaterialColor"),
-    };
+const collectUniforms = (program: number) => ({
+    mvp: gl.getUniformLocation(program, "ModelViewProjectionMatrix"),
+    normalMatrix: gl.getUniformLocation(program, "NormalMatrix"),
+    lightSourcePosition: gl.getUniformLocation(program, "LightSourcePosition"),
+    materialColor: gl.getUniformLocation(program, "MaterialColor"),
+});
 
-    gl.uniform4f(uniforms.lightSourcePosition, 5.0, 5.0, 10.0, 1.0);
-
-    const vao = gl.genVertexArray();
-    gl.bindVertexArray(vao);
-
-    gl.enable(gl.CULL_FACE);
-    gl.enable(gl.DEPTH_TEST);
-
+const createGearBuffers = () => {
     const gearVbos: number[] = [];
     const gearGeoms: GearGeometry[] = [];
 
     for (const params of GEAR_PARAMS) {
-        const gear = createGear(params.inner, params.outer, params.width, params.teeth, params.depth);
+        const gear = createGear({
+            innerRadius: params.inner,
+            outerRadius: params.outer,
+            width: params.width,
+            teeth: params.teeth,
+            toothDepth: params.depth,
+        });
         const vbo = gl.genBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
         gl.bufferData(gl.ARRAY_BUFFER, gear.vertices, gl.STATIC_DRAW);
@@ -321,22 +380,40 @@ function initGL(): GLState {
         gearGeoms.push(gear);
     }
 
+    return { gearVbos, gearGeoms };
+};
+
+function initGL(): GLState {
+    const program = createGearsProgram();
+    const uniforms = collectUniforms(program);
+
+    gl.uniform4f(uniforms.lightSourcePosition, { v0: 5, v1: 5, v2: 10, v3: 1 });
+
+    const vao = gl.genVertexArray();
+    gl.bindVertexArray(vao);
+    gl.enable(gl.CULL_FACE);
+    gl.enable(gl.DEPTH_TEST);
+
+    const { gearVbos, gearGeoms } = createGearBuffers();
     return { program, vao, gearVbos, gearGeoms, uniforms };
 }
 
-function drawGear(
-    uniforms: GLState["uniforms"],
-    projection: number[],
-    transform: number[],
-    gear: GearGeometry,
-    vbo: number,
-    x: number,
-    y: number,
-    angle: number,
-    color: number[],
-) {
+interface DrawGearParams {
+    uniforms: GLState["uniforms"];
+    projection: number[];
+    transform: number[];
+    gear: GearGeometry;
+    vbo: number;
+    x: number;
+    y: number;
+    angle: number;
+    color: number[];
+}
+
+function drawGear(params: DrawGearParams) {
+    const { uniforms, projection, transform, gear, vbo, x, y, angle, color } = params;
     let modelView = mat4Translate(transform, x, y, 0);
-    modelView = mat4Rotate(modelView, (2 * Math.PI * angle) / 360, 0, 0, 1);
+    modelView = mat4Rotate(modelView, { angle: (2 * Math.PI * angle) / 360, x: 0, y: 0, z: 1 });
 
     const mvp = mat4Multiply(projection, modelView);
     gl.uniformMatrix4fv(uniforms.mvp, 1, false, mvp);
@@ -344,11 +421,16 @@ function drawGear(
     const normalMatrix = mat4Transpose(mat4Invert(modelView));
     gl.uniformMatrix4fv(uniforms.normalMatrix, 1, false, normalMatrix);
 
-    gl.uniform4f(uniforms.materialColor, color[0] ?? 0, color[1] ?? 0, color[2] ?? 0, color[3] ?? 0);
+    gl.uniform4f(uniforms.materialColor, {
+        v0: color[0] ?? 0,
+        v1: color[1] ?? 0,
+        v2: color[2] ?? 0,
+        v3: color[3] ?? 0,
+    });
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 6 * 4, 0);
-    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 6 * 4, 3 * 4);
+    gl.vertexAttribPointer(0, { size: 3, type: gl.FLOAT, normalized: false, stride: 6 * 4, offset: 0 });
+    gl.vertexAttribPointer(1, { size: 3, type: gl.FLOAT, normalized: false, stride: 6 * 4, offset: 3 * 4 });
     gl.enableVertexAttribArray(0);
     gl.enableVertexAttribArray(1);
 
@@ -378,186 +460,238 @@ const AxisSlider = ({ axis, value, onChange }: { axis: string; value: number; on
     </GtkBox>
 );
 
-const GearsDemo = () => {
-    const glAreaRef = useRef<Gtk.GLArea | null>(null);
-    const glStateRef = useRef<GLState | null>(null);
+function useGearsState() {
     const [viewRotX, setViewRotX] = useState(20);
     const [viewRotY, setViewRotY] = useState(30);
     const [viewRotZ, setViewRotZ] = useState(20);
     const [fps, setFps] = useState(-1);
     const [error, setError] = useState<string | null>(null);
+    return {
+        viewRotX,
+        setViewRotX,
+        viewRotY,
+        setViewRotY,
+        viewRotZ,
+        setViewRotZ,
+        fps,
+        setFps,
+        error,
+        setError,
+    };
+}
+
+type GearsState = ReturnType<typeof useGearsState>;
+
+interface GearsRefs {
+    glAreaRef: React.RefObject<Gtk.GLArea | null>;
+    glStateRef: React.RefObject<GLState | null>;
+    tickIdRef: React.RefObject<number | null>;
+    firstFrameTimeRef: React.RefObject<number>;
+    angleRef: React.RefObject<number>;
+    viewRotXRef: React.RefObject<number>;
+    viewRotYRef: React.RefObject<number>;
+    viewRotZRef: React.RefObject<number>;
+}
+
+function useGearsRefs(state: GearsState): GearsRefs {
+    const glAreaRef = useRef<Gtk.GLArea | null>(null);
+    const glStateRef = useRef<GLState | null>(null);
     const tickIdRef = useRef<number | null>(null);
     const firstFrameTimeRef = useRef(0);
     const angleRef = useRef(0);
-    const viewRotXRef = useRef(viewRotX);
-    const viewRotYRef = useRef(viewRotY);
-    const viewRotZRef = useRef(viewRotZ);
-    viewRotXRef.current = viewRotX;
-    viewRotYRef.current = viewRotY;
-    viewRotZRef.current = viewRotZ;
+    const viewRotXRef = useRef(state.viewRotX);
+    const viewRotYRef = useRef(state.viewRotY);
+    const viewRotZRef = useRef(state.viewRotZ);
+    viewRotXRef.current = state.viewRotX;
+    viewRotYRef.current = state.viewRotY;
+    viewRotZRef.current = state.viewRotZ;
+    return { glAreaRef, glStateRef, tickIdRef, firstFrameTimeRef, angleRef, viewRotXRef, viewRotYRef, viewRotZRef };
+}
 
-    const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
-        const frameTime = frameClock.getFrameTime();
+const computeFps = (frameClock: Gdk.FrameClock, frameTime: number, setFps: (fps: number) => void) => {
+    const frame = frameClock.getFrameCounter();
+    const historyStart = frameClock.getHistoryStart();
+    if (frame % 60 !== 0) return;
+    const historyLen = frame - historyStart;
+    if (historyLen <= 0) return;
+    const previousTimings = frameClock.getTimings(frame - historyLen);
+    if (!previousTimings) return;
+    const previousFrameTime = previousTimings.getFrameTime();
+    setFps((1_000_000 * historyLen) / (frameTime - previousFrameTime));
+};
 
-        if (firstFrameTimeRef.current === 0) {
-            firstFrameTimeRef.current = frameTime;
-            return true;
-        }
-
-        angleRef.current = (((frameTime - firstFrameTimeRef.current) / 1_000_000) * 70) % 360;
-        glAreaRef.current?.queueRender();
-
-        const frame = frameClock.getFrameCounter();
-        const historyStart = frameClock.getHistoryStart();
-
-        if (frame % 60 === 0) {
-            const historyLen = frame - historyStart;
-            if (historyLen > 0) {
-                const previousTimings = frameClock.getTimings(frame - historyLen);
-                if (previousTimings) {
-                    const previousFrameTime = previousTimings.getFrameTime();
-                    setFps((1_000_000 * historyLen) / (frameTime - previousFrameTime));
-                }
+function useGearsAnimation(refs: GearsRefs, setFps: (fps: number) => void) {
+    const tickCallback = useCallback(
+        (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+            const frameTime = frameClock.getFrameTime();
+            if (refs.firstFrameTimeRef.current === 0) {
+                refs.firstFrameTimeRef.current = frameTime;
+                return true;
             }
-        }
-
-        return true;
-    }, []);
+            refs.angleRef.current = (((frameTime - refs.firstFrameTimeRef.current) / 1_000_000) * 70) % 360;
+            refs.glAreaRef.current?.queueRender();
+            computeFps(frameClock, frameTime, setFps);
+            return true;
+        },
+        [refs, setFps],
+    );
 
     const startAnimation = useCallback(() => {
-        const glArea = glAreaRef.current;
-        if (!glArea || tickIdRef.current !== null) return;
-        firstFrameTimeRef.current = 0;
-        tickIdRef.current = glArea.addTickCallback(tickCallback);
-    }, [tickCallback]);
+        const glArea = refs.glAreaRef.current;
+        if (!glArea || refs.tickIdRef.current !== null) return;
+        refs.firstFrameTimeRef.current = 0;
+        refs.tickIdRef.current = glArea.addTickCallback(tickCallback);
+    }, [refs, tickCallback]);
 
     const stopAnimation = useCallback(() => {
-        const glArea = glAreaRef.current;
-        if (!glArea || tickIdRef.current === null) return;
-        glArea.removeTickCallback(tickIdRef.current);
-        tickIdRef.current = null;
-        firstFrameTimeRef.current = 0;
-    }, []);
+        const glArea = refs.glAreaRef.current;
+        if (!glArea || refs.tickIdRef.current === null) return;
+        glArea.removeTickCallback(refs.tickIdRef.current);
+        refs.tickIdRef.current = null;
+        refs.firstFrameTimeRef.current = 0;
+    }, [refs]);
 
     const handleGLAreaRef = useCallback(
         (glArea: Gtk.GLArea | null) => {
-            if (glAreaRef.current && tickIdRef.current !== null) {
-                glAreaRef.current.removeTickCallback(tickIdRef.current);
-                tickIdRef.current = null;
+            if (refs.glAreaRef.current && refs.tickIdRef.current !== null) {
+                refs.glAreaRef.current.removeTickCallback(refs.tickIdRef.current);
+                refs.tickIdRef.current = null;
             }
-            glAreaRef.current = glArea;
-            if (glArea) {
-                startAnimation();
-            }
+            refs.glAreaRef.current = glArea;
+            if (glArea) startAnimation();
         },
-        [startAnimation],
+        [refs, startAnimation],
     );
 
-    useEffect(() => {
-        return stopAnimation;
-    }, [stopAnimation]);
+    useEffect(() => stopAnimation, [stopAnimation]);
 
-    const handleUnrealize = useCallback((_self: Gtk.Widget) => {
+    return { handleGLAreaRef };
+}
+
+function useGearsUnrealize(glStateRef: React.RefObject<GLState | null>) {
+    return useCallback(() => {
         const state = glStateRef.current;
-        if (state) {
-            for (const vbo of state.gearVbos) {
-                gl.deleteBuffer(vbo);
-            }
-            gl.deleteVertexArray(state.vao);
-            gl.deleteProgram(state.program);
-            glStateRef.current = null;
-        }
-    }, []);
+        if (!state) return;
+        for (const vbo of state.gearVbos) gl.deleteBuffer(vbo);
+        gl.deleteVertexArray(state.vao);
+        gl.deleteProgram(state.program);
+        glStateRef.current = null;
+    }, [glStateRef]);
+}
 
-    const handleRender = useCallback((_context: Gdk.GLContext, self: Gtk.GLArea) => {
-        if (!glStateRef.current) {
-            const glError = self.getError();
-            if (glError) {
-                setError(`GL context error: ${glError.message}`);
-                return true;
-            }
-
-            try {
-                glStateRef.current = initGL();
-            } catch (e) {
-                setError(`GL initialization error: ${e}`);
-                return true;
-            }
-        }
-
-        const state = glStateRef.current;
-
-        const scale = self.getScaleFactor();
-        const width = self.getAllocatedWidth() * scale;
-        const height = self.getAllocatedHeight() * scale;
-
-        const projection = mat4Perspective(Math.PI / 3, width / height, 1.0, 1024.0);
-        gl.viewport(0, 0, width, height);
-
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-        gl.bindVertexArray(state.vao);
-
-        // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
-        gl.useProgram(state.program);
-
-        let transform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-        transform = mat4Translate(transform, 0, 0, -20);
-        transform = mat4Rotate(transform, (viewRotXRef.current * 2 * Math.PI) / 360, 1, 0, 0);
-        transform = mat4Rotate(transform, (viewRotYRef.current * 2 * Math.PI) / 360, 0, 1, 0);
-        transform = mat4Rotate(transform, (viewRotZRef.current * 2 * Math.PI) / 360, 0, 0, 1);
-
-        const angle = angleRef.current;
-
-        const gear0 = state.gearGeoms[0];
-        const vbo0 = state.gearVbos[0];
-        const color0 = GEAR_COLORS[0];
-        if (gear0 !== undefined && vbo0 !== undefined && color0) {
-            drawGear(state.uniforms, projection, transform, gear0, vbo0, -3.0, -2.0, angle, color0);
-        }
-
-        const gear1 = state.gearGeoms[1];
-        const vbo1 = state.gearVbos[1];
-        const color1 = GEAR_COLORS[1];
-        if (gear1 !== undefined && vbo1 !== undefined && color1) {
-            drawGear(state.uniforms, projection, transform, gear1, vbo1, 3.1, -2.0, -2 * angle - 9.0, color1);
-        }
-
-        const gear2 = state.gearGeoms[2];
-        const vbo2 = state.gearVbos[2];
-        const color2 = GEAR_COLORS[2];
-        if (gear2 !== undefined && vbo2 !== undefined && color2) {
-            drawGear(state.uniforms, projection, transform, gear2, vbo2, -3.1, 4.2, -2 * angle - 25.0, color2);
-        }
-
-        // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
-        gl.useProgram(0);
-        gl.bindVertexArray(0);
-
-        return true;
-    }, []);
-
-    if (error) {
-        return (
-            <GtkFrame marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
-                <GtkLabel
-                    label={error}
-                    cssClasses={["error"]}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                />
-            </GtkFrame>
-        );
+const initGLOrError = (
+    glStateRef: React.RefObject<GLState | null>,
+    self: Gtk.GLArea,
+    setError: (e: string) => void,
+): boolean => {
+    if (glStateRef.current) return true;
+    const glError = self.getError();
+    if (glError) {
+        setError(`GL context error: ${glError.message}`);
+        return false;
     }
+    try {
+        glStateRef.current = initGL();
+    } catch (e) {
+        setError(`GL initialization error: ${e}`);
+        return false;
+    }
+    return true;
+};
+
+const drawAllGears = (state: GLState, transform: number[], projection: number[], angle: number) => {
+    const configs = [
+        { idx: 0, x: -3, y: -2, angle },
+        { idx: 1, x: 3.1, y: -2, angle: -2 * angle - 9 },
+        { idx: 2, x: -3.1, y: 4.2, angle: -2 * angle - 25 },
+    ];
+    for (const cfg of configs) {
+        const gear = state.gearGeoms[cfg.idx];
+        const vbo = state.gearVbos[cfg.idx];
+        const color = GEAR_COLORS[cfg.idx];
+        if (gear !== undefined && vbo !== undefined && color) {
+            drawGear({
+                uniforms: state.uniforms,
+                projection,
+                transform,
+                gear,
+                vbo,
+                x: cfg.x,
+                y: cfg.y,
+                angle: cfg.angle,
+                color,
+            });
+        }
+    }
+};
+
+const computeViewTransform = (refs: GearsRefs): number[] => {
+    let transform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+    transform = mat4Translate(transform, 0, 0, -20);
+    transform = mat4Rotate(transform, { angle: (refs.viewRotXRef.current * 2 * Math.PI) / 360, x: 1, y: 0, z: 0 });
+    transform = mat4Rotate(transform, { angle: (refs.viewRotYRef.current * 2 * Math.PI) / 360, x: 0, y: 1, z: 0 });
+    transform = mat4Rotate(transform, { angle: (refs.viewRotZRef.current * 2 * Math.PI) / 360, x: 0, y: 0, z: 1 });
+    return transform;
+};
+
+function useGearsRender(refs: GearsRefs, setError: (e: string) => void) {
+    return useCallback(
+        (_context: Gdk.GLContext, self: Gtk.GLArea) => {
+            if (!initGLOrError(refs.glStateRef, self, setError)) return true;
+            const state = refs.glStateRef.current;
+            if (!state) return true;
+
+            const scale = self.getScaleFactor();
+            const width = self.getAllocatedWidth() * scale;
+            const height = self.getAllocatedHeight() * scale;
+
+            const projection = mat4Perspective(Math.PI / 3, width / height, 1, 1024);
+            gl.viewport(0, 0, width, height);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.bindVertexArray(state.vao);
+            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
+            gl.useProgram(state.program);
+
+            const transform = computeViewTransform(refs);
+            drawAllGears(state, transform, projection, refs.angleRef.current);
+
+            // biome-ignore lint/correctness/useHookAtTopLevel: not a hook
+            gl.useProgram(0);
+            gl.bindVertexArray(0);
+            return true;
+        },
+        [refs, setError],
+    );
+}
+
+const GearsError = ({ error }: { error: string }) => (
+    <GtkFrame marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
+        <GtkLabel
+            label={error}
+            cssClasses={["error"]}
+            marginTop={12}
+            marginBottom={12}
+            marginStart={12}
+            marginEnd={12}
+        />
+    </GtkFrame>
+);
+
+const GearsDemo = () => {
+    const state = useGearsState();
+    const refs = useGearsRefs(state);
+    const animation = useGearsAnimation(refs, state.setFps);
+    const handleUnrealize = useGearsUnrealize(refs.glStateRef);
+    const handleRender = useGearsRender(refs, state.setError);
+
+    if (state.error) return <GearsError error={state.error} />;
 
     return (
         <GtkOverlay marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
                 <GtkGLArea
-                    ref={handleGLAreaRef}
+                    ref={animation.handleGLAreaRef}
                     useEs
                     hasDepthBuffer
                     hexpand
@@ -565,13 +699,13 @@ const GearsDemo = () => {
                     onUnrealize={handleUnrealize}
                     onRender={handleRender}
                 />
-                <AxisSlider axis="X" value={viewRotX} onChange={setViewRotX} />
-                <AxisSlider axis="Y" value={viewRotY} onChange={setViewRotY} />
-                <AxisSlider axis="Z" value={viewRotZ} onChange={setViewRotZ} />
+                <AxisSlider axis="X" value={state.viewRotX} onChange={state.setViewRotX} />
+                <AxisSlider axis="Y" value={state.viewRotY} onChange={state.setViewRotY} />
+                <AxisSlider axis="Z" value={state.viewRotZ} onChange={state.setViewRotZ} />
             </GtkBox>
             <GtkOverlay.Child>
                 <GtkLabel
-                    label={fps >= 0 ? `FPS: ${fps.toFixed(1)}` : ""}
+                    label={state.fps >= 0 ? `FPS: ${state.fps.toFixed(1)}` : ""}
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.START}
                     marginStart={12}
@@ -586,8 +720,8 @@ const GearsDemo = () => {
 export const gearsDemo: Demo = {
     id: "gears",
     title: "OpenGL/Gears",
-    description: "Classic OpenGL gears with animation and lighting",
-    keywords: ["opengl", "gl", "gears", "3d", "animation", "lighting", "shading", "classic", "demo"],
+    description: "This is a classic OpenGL demo, running in a GtkGLArea.",
+    keywords: [],
     component: GearsDemo,
     sourceCode,
     defaultWidth: 640,

@@ -39,7 +39,7 @@ try {
     const file = await dialog.openAsync(window, cancellable);
 } catch (error) {
     if (error instanceof NativeError && error.code === Gio.IOErrorEnum.CANCELLED) {
-        console.log("Operation was cancelled");
+        console.log("Operation was canceled");
     }
 }
 ```

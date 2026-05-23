@@ -151,7 +151,7 @@ const CssMultiplebgsDemo = ({ window }: DemoProps) => {
     const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
 
     return (
-        <GtkOverlay>
+        <GtkOverlay name="overlay">
             <GtkDrawingArea name="canvas" hexpand vexpand />
             <GtkOverlay.Child>
                 <GtkButton
@@ -164,11 +164,12 @@ const CssMultiplebgsDemo = ({ window }: DemoProps) => {
             </GtkOverlay.Child>
             <GtkOverlay.Child>
                 <GtkPaned
+                    name="paned"
                     orientation={Gtk.Orientation.VERTICAL}
                     startChild={<GtkBox />}
                     endChild={
                         <GtkScrolledWindow>
-                            <GtkTextView ref={textViewRef} onBufferChanged={onBufferChanged} />
+                            <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged} />
                         </GtkScrolledWindow>
                     }
                 />
@@ -181,8 +182,8 @@ export const cssMultiplebgsDemo: Demo = {
     id: "css-multiplebgs",
     title: "Theming/Multiple Backgrounds",
     description:
-        "Stack multiple CSS background layers with live editing. Experiment with linear, radial, and repeating gradients.",
-    keywords: ["css", "background", "gradient", "layers", "multiple", "radial", "linear", "live", "editing"],
+        "GTK themes are written using CSS. Every widget is build of multiple items that you can style very similarly to a regular website.",
+    keywords: [],
     component: CssMultiplebgsDemo,
     sourceCode,
     defaultWidth: 400,

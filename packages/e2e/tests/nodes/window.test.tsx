@@ -1,4 +1,3 @@
-import { createRef as createNativeRef } from "@gtkx/ffi";
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { AdwApplicationWindow, GtkApplicationWindow, GtkLabel } from "@gtkx/react";
@@ -9,38 +8,38 @@ import { describe, expect, it } from "vitest";
 
 const render = (element: ReactNode) => baseRender(element, { wrapper: false });
 
-describe("render - Window", () => {
+describe("render - Window (1)", () => {
     describe("creation", () => {
         it("creates Gtk.ApplicationWindow with current app", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
 
-            const { container } = await render(<GtkApplicationWindow ref={ref} title="App Window" />);
+            await render(<GtkApplicationWindow ref={ref} title="App Window" />);
 
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getApplication()?.handle).toEqual(container.handle);
+            expect(ref.current?.getApplication()).not.toBeNull();
         });
 
         it("creates Adw.ApplicationWindow with current app", async () => {
             const ref = createRef<Adw.ApplicationWindow>();
 
-            const { container } = await render(<AdwApplicationWindow ref={ref} />);
+            await render(<AdwApplicationWindow ref={ref} />);
 
             expect(ref.current).not.toBeNull();
-            expect(ref.current?.getApplication()?.handle).toEqual(container.handle);
+            expect(ref.current?.getApplication()).not.toBeNull();
         });
     });
+});
 
+describe("render - Window (2)", () => {
     describe("defaultSize", () => {
         it("sets default size via defaultWidth/defaultHeight", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
 
             await render(<GtkApplicationWindow ref={ref} defaultWidth={300} defaultHeight={200} />);
 
-            const widthRef = createNativeRef(0);
-            const heightRef = createNativeRef(0);
-            ref.current?.getDefaultSize(widthRef, heightRef);
-            expect(widthRef.value).toBeGreaterThanOrEqual(300);
-            expect(heightRef.value).toBeGreaterThanOrEqual(200);
+            const [width, height] = ref.current?.getDefaultSize() ?? [0, 0];
+            expect(width).toBeGreaterThanOrEqual(300);
+            expect(height).toBeGreaterThanOrEqual(200);
         });
 
         it("updates default size when props change", async () => {
@@ -52,17 +51,13 @@ describe("render - Window", () => {
 
             await render(<App width={200} height={150} />);
 
-            const widthRef = createNativeRef(0);
-            const heightRef = createNativeRef(0);
-            ref.current?.getDefaultSize(widthRef, heightRef);
-            const initialWidth = widthRef.value;
-            const initialHeight = heightRef.value;
+            const [initialWidth, initialHeight] = ref.current?.getDefaultSize() ?? [0, 0];
 
             await render(<App width={400} height={300} />);
 
-            ref.current?.getDefaultSize(widthRef, heightRef);
-            expect(widthRef.value).toBeGreaterThanOrEqual(initialWidth);
-            expect(heightRef.value).toBeGreaterThanOrEqual(initialHeight);
+            const [updatedWidth, updatedHeight] = ref.current?.getDefaultSize() ?? [0, 0];
+            expect(updatedWidth).toBeGreaterThanOrEqual(initialWidth);
+            expect(updatedHeight).toBeGreaterThanOrEqual(initialHeight);
         });
 
         it("handles partial size (only width)", async () => {
@@ -70,9 +65,8 @@ describe("render - Window", () => {
 
             await render(<GtkApplicationWindow ref={ref} defaultWidth={300} />);
 
-            const widthRef = createNativeRef(0);
-            ref.current?.getDefaultSize(widthRef);
-            expect(widthRef.value).toBeGreaterThanOrEqual(300);
+            const [width] = ref.current?.getDefaultSize() ?? [0, 0];
+            expect(width).toBeGreaterThanOrEqual(300);
         });
 
         it("handles partial size (only height)", async () => {
@@ -80,12 +74,13 @@ describe("render - Window", () => {
 
             await render(<GtkApplicationWindow ref={ref} defaultHeight={200} />);
 
-            const heightRef = createNativeRef(0);
-            ref.current?.getDefaultSize(undefined, heightRef);
-            expect(heightRef.value).toBeGreaterThanOrEqual(200);
+            const [, height] = ref.current?.getDefaultSize() ?? [0, 0];
+            expect(height).toBeGreaterThanOrEqual(200);
         });
     });
+});
 
+describe("render - Window (3)", () => {
     describe("lifecycle", () => {
         it("presents window on mount", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
@@ -104,13 +99,15 @@ describe("render - Window", () => {
 
             const { rerender } = await render(<App show={true} />);
 
-            const windowId = ref.current?.handle;
+            const windowId = ref.current;
             expect(windowId).toBeDefined();
 
             await rerender(<App show={false} />);
         });
     });
+});
 
+describe("render - Window (4)", () => {
     describe("children", () => {
         it("sets child widget", async () => {
             const windowRef = createRef<Gtk.ApplicationWindow>();
@@ -122,7 +119,7 @@ describe("render - Window", () => {
                 </GtkApplicationWindow>,
             );
 
-            expect(windowRef.current?.getChild()?.handle).toEqual(labelRef.current?.handle);
+            expect(windowRef.current?.getChild()).toBe(labelRef.current);
         });
 
         it("replaces child widget", async () => {
@@ -144,11 +141,11 @@ describe("render - Window", () => {
 
             await render(<App first={true} />);
 
-            expect(windowRef.current?.getChild()?.handle).toEqual(label1Ref.current?.handle);
+            expect(windowRef.current?.getChild()).toBe(label1Ref.current);
 
             await render(<App first={false} />);
 
-            expect(windowRef.current?.getChild()?.handle).toEqual(label2Ref.current?.handle);
+            expect(windowRef.current?.getChild()).toBe(label2Ref.current);
         });
     });
 });

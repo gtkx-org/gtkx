@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import { createRef } from "@gtkx/ffi";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
@@ -25,6 +24,247 @@ type LinkInfo = {
     end: number;
 };
 
+interface PageBuilder {
+    nodes: ReactNode[];
+    links: LinkInfo[];
+    offset: number;
+    trackText: (text: string) => ReactNode;
+    trackLink: (id: string, text: string, targetPage: number) => void;
+    trackPlaceholder: () => void;
+}
+
+const createPageBuilder = (): PageBuilder => {
+    const nodes: ReactNode[] = [];
+    const links: LinkInfo[] = [];
+    const builder: PageBuilder = {
+        nodes,
+        links,
+        offset: 0,
+        trackText: (text: string) => {
+            builder.offset += text.length;
+            return text;
+        },
+        trackLink: (id: string, text: string, targetPage: number) => {
+            links.push({ id, targetPage, start: builder.offset, end: builder.offset + text.length });
+            builder.offset += text.length;
+        },
+        trackPlaceholder: () => {
+            builder.offset += 1;
+        },
+    };
+    return builder;
+};
+
+const buildPage1 = (
+    getIconPaintable: (iconName: string, size: number) => Gtk.IconPaintable | null,
+): { content: ReactNode; linkInfos: LinkInfo[] } => {
+    const b = createPageBuilder();
+    b.nodes.push(b.trackText("Some text to show that simple "));
+    b.trackLink("hypertext", "hypertext", 3);
+    b.nodes.push(
+        <GtkTextView.Tag key="link-hypertext" id="link-hypertext" foreground="blue" underline={Pango.Underline.SINGLE}>
+            hypertext
+        </GtkTextView.Tag>,
+    );
+    b.nodes.push(b.trackText(" can easily be realized with "));
+    b.trackLink("tags", "tags", 2);
+    b.nodes.push(
+        <GtkTextView.Tag key="link-tags" id="link-tags" foreground="blue" underline={Pango.Underline.SINGLE}>
+            tags
+        </GtkTextView.Tag>,
+    );
+    b.nodes.push(b.trackText(".\nOf course you can also embed Emoji 😋, "));
+    b.nodes.push(b.trackText("icons "));
+
+    b.trackPlaceholder();
+    const iconPaintable = getIconPaintable("view-conceal-symbolic", 16);
+    b.nodes.push(iconPaintable ? <GtkTextView.Paintable key="icon" paintable={iconPaintable} /> : null);
+
+    b.nodes.push(b.trackText(", or even widgets "));
+    b.trackPlaceholder();
+    b.nodes.push(
+        <GtkTextView.Anchor key="levelbar">
+            <GtkLevelBar value={50} minValue={0} maxValue={100} widthRequest={100} />
+        </GtkTextView.Anchor>,
+    );
+
+    b.nodes.push(b.trackText(" and labels with "));
+    b.trackPlaceholder();
+    b.nodes.push(
+        <GtkTextView.Anchor key="ghost-anchor" replacementChar="👻">
+            <GtkLabel label="ghost" />
+        </GtkTextView.Anchor>,
+    );
+
+    b.nodes.push(b.trackText(" text."));
+    return { content: b.nodes, linkInfos: b.links };
+};
+
+const buildPage2 = (sayWord: (word: string) => void) =>
+    buildDefinitionPage({
+        title: "tag",
+        phonetic: "tag",
+        definition:
+            '\n\nAn attribute that can be applied to some range of text. For example, a tag might be called "bold" and make the text inside the tag bold.\n\nHowever, the tag concept is more general than that; tags don\'t have to affect appearance. They can instead affect the behavior of mouse and key presses, "lock" a range of text so the user can\'t edit it, or countless other things.\n',
+        sayWord,
+    });
+
+const buildPage3 = (sayWord: (word: string) => void) =>
+    buildDefinitionPage({
+        title: "hypertext",
+        phonetic: "ˈhaɪ pərˌtɛkst",
+        definition:
+            "\n\nMachine-readable text that is not sequential but is organized so that related items of information are connected.\n",
+        sayWord,
+    });
+
+interface DefinitionPageArgs {
+    title: string;
+    phonetic: string;
+    definition: string;
+    sayWord: (word: string) => void;
+}
+
+const buildDefinitionPage = ({ title, phonetic, definition, sayWord }: DefinitionPageArgs) => {
+    const b = createPageBuilder();
+    b.trackText(title);
+    b.trackText(" /");
+    b.trackText(" ");
+    b.trackText(phonetic);
+    b.trackText(" /");
+    b.trackText(" ");
+    b.trackPlaceholder();
+    b.nodes.push(
+        <GtkTextView.Tag key="nobreaks" id="nobreaks" allowBreaks={false}>
+            <GtkTextView.Tag key="title" id="title" weight={Pango.Weight.BOLD} scale={1.44}>
+                {title}
+            </GtkTextView.Tag>
+            {" / "}
+            <GtkTextView.Tag key="phonetic" id="phonetic" family="monospace">
+                {phonetic}
+            </GtkTextView.Tag>
+            {" / "}
+            <GtkTextView.Anchor key="speaker">
+                <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer", null)}>
+                    <GtkGestureClick onPressed={() => sayWord(title)} />
+                </GtkImage>
+            </GtkTextView.Anchor>
+        </GtkTextView.Tag>,
+    );
+    b.nodes.push(b.trackText(definition));
+    b.trackLink("goback", "Go back", 1);
+    b.nodes.push(
+        <GtkTextView.Tag key="link-goback" id="link-goback" foreground="blue" underline={Pango.Underline.SINGLE}>
+            Go back
+        </GtkTextView.Tag>,
+    );
+    return { content: b.nodes, linkInfos: b.links };
+};
+
+const buildPageContent = (
+    currentPage: number,
+    getIconPaintable: (iconName: string, size: number) => Gtk.IconPaintable | null,
+    sayWord: (word: string) => void,
+): { content: ReactNode; linkInfos: LinkInfo[] } => {
+    if (currentPage === 1) return buildPage1(getIconPaintable);
+    if (currentPage === 2) return buildPage2(sayWord);
+    if (currentPage === 3) return buildPage3(sayWord);
+    return { content: null, linkInfos: [] };
+};
+
+function useHypertextHandlers(
+    textViewRef: React.RefObject<Gtk.TextView | null>,
+    findLinkAtOffset: (offset: number) => number | null,
+    setCurrentPage: (page: number) => void,
+) {
+    const hoveringRef = useRef(false);
+    const handleClick = useClickHandler(textViewRef, findLinkAtOffset, setCurrentPage);
+    const handleMotion = useMotionHandler(textViewRef, findLinkAtOffset, hoveringRef);
+    const handleKeyPress = useKeyPressHandler(textViewRef, findLinkAtOffset, setCurrentPage);
+    return { handleClick, handleMotion, handleKeyPress };
+}
+
+function useClickHandler(
+    textViewRef: React.RefObject<Gtk.TextView | null>,
+    findLinkAtOffset: (offset: number) => number | null,
+    setCurrentPage: (page: number) => void,
+) {
+    return useCallback(
+        (_nPress: number, clickX: number, clickY: number) => {
+            const textView = textViewRef.current;
+            if (!textView) return;
+            const buffer = textView.getBuffer();
+            const [, startIter, endIter] = buffer.getSelectionBounds();
+            if (startIter.getOffset() !== endIter.getOffset()) return;
+
+            const [bufferX, bufferY] = textView.windowToBufferCoords(
+                Gtk.TextWindowType.WIDGET,
+                Math.trunc(clickX),
+                Math.trunc(clickY),
+            );
+            const [result, iter] = textView.getIterAtPosition(bufferX, bufferY);
+            if (!result) return;
+
+            const targetPage = findLinkAtOffset(iter.getOffset());
+            if (targetPage !== null) setCurrentPage(targetPage);
+        },
+        [textViewRef, findLinkAtOffset, setCurrentPage],
+    );
+}
+
+function useMotionHandler(
+    textViewRef: React.RefObject<Gtk.TextView | null>,
+    findLinkAtOffset: (offset: number) => number | null,
+    hoveringRef: React.RefObject<boolean>,
+) {
+    return useCallback(
+        (motionX: number, motionY: number) => {
+            const textView = textViewRef.current;
+            if (!textView) return;
+            const [bufferX, bufferY] = textView.windowToBufferCoords(
+                Gtk.TextWindowType.WIDGET,
+                Math.trunc(motionX),
+                Math.trunc(motionY),
+            );
+            const [result, iter] = textView.getIterAtPosition(bufferX, bufferY);
+            if (!result) {
+                if (hoveringRef.current) {
+                    textView.setCursor(Gdk.Cursor.newFromName("text", null));
+                    hoveringRef.current = false;
+                }
+                return;
+            }
+            const overLink = findLinkAtOffset(iter.getOffset()) !== null;
+            if (overLink !== hoveringRef.current) {
+                hoveringRef.current = overLink;
+                textView.setCursor(Gdk.Cursor.newFromName(overLink ? "pointer" : "text", null));
+            }
+        },
+        [textViewRef, findLinkAtOffset, hoveringRef],
+    );
+}
+
+function useKeyPressHandler(
+    textViewRef: React.RefObject<Gtk.TextView | null>,
+    findLinkAtOffset: (offset: number) => number | null,
+    setCurrentPage: (page: number) => void,
+) {
+    return useCallback(
+        (keyval: number) => {
+            if (keyval !== Gdk.KEY_Return && keyval !== Gdk.KEY_KP_Enter) return false;
+            const textView = textViewRef.current;
+            if (!textView) return false;
+            const buffer = textView.getBuffer();
+            const iter = buffer.getIterAtMark(buffer.getInsert());
+            const targetPage = findLinkAtOffset(iter.getOffset());
+            if (targetPage === null) return false;
+            setCurrentPage(targetPage);
+            return true;
+        },
+        [textViewRef, findLinkAtOffset, setCurrentPage],
+    );
+}
+
 const HypertextDemo = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const textViewRef = useRef<Gtk.TextView | null>(null);
@@ -34,292 +274,29 @@ const HypertextDemo = () => {
         if (!textView) return null;
         const display = textView.getDisplay();
         const theme = Gtk.IconTheme.getForDisplay(display);
-        return theme.lookupIcon(iconName, size, 1, Gtk.TextDirection.LTR, Gtk.IconLookupFlags.PRELOAD);
+        return theme.lookupIcon(iconName, null, size, 1, Gtk.TextDirection.LTR, Gtk.IconLookupFlags.PRELOAD);
     }, []);
 
     const sayWord = useCallback((word: string): void => {
         spawn("espeak-ng", [word], { stdio: "ignore" });
     }, []);
 
-    const { content, linkInfos } = useMemo((): { content: ReactNode; linkInfos: LinkInfo[] } => {
-        const links: LinkInfo[] = [];
-        let offset = 0;
-
-        const trackLink = (id: string, text: string, targetPage: number): void => {
-            links.push({ id, targetPage, start: offset, end: offset + text.length });
-            offset += text.length;
-        };
-
-        const trackText = (text: string): void => {
-            offset += text.length;
-        };
-
-        const trackPlaceholder = (): void => {
-            offset += 1;
-        };
-
-        if (currentPage === 1) {
-            const nodes: ReactNode[] = [];
-
-            const part1 = "Some text to show that simple ";
-            trackText(part1);
-            nodes.push(part1);
-
-            trackLink("hypertext", "hypertext", 3);
-            nodes.push(
-                <GtkTextView.Tag
-                    key="link-hypertext"
-                    id="link-hypertext"
-                    foreground="blue"
-                    underline={Pango.Underline.SINGLE}
-                >
-                    hypertext
-                </GtkTextView.Tag>,
-            );
-
-            const part2 = " can easily be realized with ";
-            trackText(part2);
-            nodes.push(part2);
-
-            trackLink("tags", "tags", 2);
-            nodes.push(
-                <GtkTextView.Tag key="link-tags" id="link-tags" foreground="blue" underline={Pango.Underline.SINGLE}>
-                    tags
-                </GtkTextView.Tag>,
-            );
-
-            const part3 = ".\n\nOf course you can also embed Emoji 😋, icons ";
-            trackText(part3);
-            nodes.push(part3);
-
-            trackPlaceholder();
-            const iconPaintable = getIconPaintable("view-conceal-symbolic", 16);
-            nodes.push(iconPaintable ? <GtkTextView.Paintable key="icon" paintable={iconPaintable} /> : null);
-
-            const part4 = ", or even widgets ";
-            trackText(part4);
-            nodes.push(part4);
-
-            trackPlaceholder();
-            nodes.push(
-                <GtkTextView.Anchor key="levelbar">
-                    <GtkLevelBar value={50} minValue={0} maxValue={100} widthRequest={100} />
-                </GtkTextView.Anchor>,
-            );
-
-            const part5 = " and labels with ";
-            trackText(part5);
-            nodes.push(part5);
-
-            trackPlaceholder();
-            nodes.push(
-                <GtkTextView.Anchor key="ghost-anchor" replacementChar="👻">
-                    <GtkLabel label="ghost" />
-                </GtkTextView.Anchor>,
-            );
-
-            const part6 = " text.";
-            trackText(part6);
-            nodes.push(part6);
-
-            return { content: nodes, linkInfos: links };
-        }
-
-        if (currentPage === 2) {
-            const nodes: ReactNode[] = [];
-
-            trackText("tag");
-            trackText(" /");
-            trackText("tag");
-            trackText("/ ");
-            trackPlaceholder();
-            nodes.push(
-                <GtkTextView.Tag key="nobreaks" id="nobreaks" allowBreaks={false}>
-                    <GtkTextView.Tag key="title" id="title" weight={Pango.Weight.BOLD} scale={1.44}>
-                        tag
-                    </GtkTextView.Tag>
-                    {" /"}
-                    <GtkTextView.Tag key="phonetic" id="phonetic" family="monospace">
-                        tag
-                    </GtkTextView.Tag>
-                    {"/ "}
-                    <GtkTextView.Anchor key="speaker">
-                        <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer")}>
-                            <GtkGestureClick onPressed={() => sayWord("tag")} />
-                        </GtkImage>
-                    </GtkTextView.Anchor>
-                </GtkTextView.Tag>,
-            );
-
-            const definition =
-                '\n\nAn attribute that can be applied to some range of text. For example, a tag might be called "bold" and make the text inside the tag bold.\n\nHowever, the tag concept is more general than that; tags don\'t have to affect appearance. They can instead affect the behavior of mouse and key presses, "lock" a range of text so the user can\'t edit it, or countless other things.\n';
-            trackText(definition);
-            nodes.push(definition);
-
-            trackLink("goback", "Go back", 1);
-            nodes.push(
-                <GtkTextView.Tag
-                    key="link-goback"
-                    id="link-goback"
-                    foreground="blue"
-                    underline={Pango.Underline.SINGLE}
-                >
-                    Go back
-                </GtkTextView.Tag>,
-            );
-
-            return { content: nodes, linkInfos: links };
-        }
-
-        if (currentPage === 3) {
-            const nodes: ReactNode[] = [];
-
-            trackText("hypertext");
-            trackText(" /");
-            trackText("ˈhaɪ pərˌtɛkst");
-            trackText("/ ");
-            trackPlaceholder();
-            nodes.push(
-                <GtkTextView.Tag key="nobreaks" id="nobreaks" allowBreaks={false}>
-                    <GtkTextView.Tag key="title" id="title" weight={Pango.Weight.BOLD} scale={1.44}>
-                        hypertext
-                    </GtkTextView.Tag>
-                    {" /"}
-                    <GtkTextView.Tag key="phonetic" id="phonetic" family="monospace">
-                        ˈhaɪ pərˌtɛkst
-                    </GtkTextView.Tag>
-                    {"/ "}
-                    <GtkTextView.Anchor key="speaker">
-                        <GtkImage iconName="audio-volume-high-symbolic" cursor={Gdk.Cursor.newFromName("pointer")}>
-                            <GtkGestureClick onPressed={() => sayWord("hypertext")} />
-                        </GtkImage>
-                    </GtkTextView.Anchor>
-                </GtkTextView.Tag>,
-            );
-
-            const definition =
-                "\n\nMachine-readable text that is not sequential but is organized so that related items of information are connected.\n";
-            trackText(definition);
-            nodes.push(definition);
-
-            trackLink("goback", "Go back", 1);
-            nodes.push(
-                <GtkTextView.Tag
-                    key="link-goback"
-                    id="link-goback"
-                    foreground="blue"
-                    underline={Pango.Underline.SINGLE}
-                >
-                    Go back
-                </GtkTextView.Tag>,
-            );
-
-            return { content: nodes, linkInfos: links };
-        }
-
-        return { content: null, linkInfos: [] };
-    }, [currentPage, getIconPaintable, sayWord]);
+    const { content, linkInfos } = useMemo(
+        () => buildPageContent(currentPage, getIconPaintable, sayWord),
+        [currentPage, getIconPaintable, sayWord],
+    );
 
     const findLinkAtOffset = useCallback(
         (offset: number): number | null => {
             for (const link of linkInfos) {
-                if (offset >= link.start && offset < link.end) {
-                    return link.targetPage;
-                }
+                if (offset >= link.start && offset < link.end) return link.targetPage;
             }
             return null;
         },
         [linkInfos],
     );
 
-    const handleClick = useCallback(
-        (_nPress: number, clickX: number, clickY: number) => {
-            const textView = textViewRef.current;
-            if (!textView) return;
-
-            const buffer = textView.getBuffer();
-            const startIter = new Gtk.TextIter();
-            const endIter = new Gtk.TextIter();
-            buffer.getSelectionBounds(startIter, endIter);
-            if (startIter.getOffset() !== endIter.getOffset()) return;
-
-            const bufferX = createRef(0);
-            const bufferY = createRef(0);
-            textView.windowToBufferCoords(
-                Gtk.TextWindowType.WIDGET,
-                Math.trunc(clickX),
-                Math.trunc(clickY),
-                bufferX,
-                bufferY,
-            );
-
-            const iter = new Gtk.TextIter();
-            const result = textView.getIterAtPosition(iter, bufferX.value, bufferY.value);
-            if (!result) return;
-
-            const targetPage = findLinkAtOffset(iter.getOffset());
-            if (targetPage !== null) {
-                setCurrentPage(targetPage);
-            }
-        },
-        [findLinkAtOffset],
-    );
-
-    const hoveringRef = useRef(false);
-
-    const handleMotion = useCallback(
-        (motionX: number, motionY: number) => {
-            const textView = textViewRef.current;
-            if (!textView) return;
-
-            const bufferX = createRef(0);
-            const bufferY = createRef(0);
-            textView.windowToBufferCoords(
-                Gtk.TextWindowType.WIDGET,
-                Math.trunc(motionX),
-                Math.trunc(motionY),
-                bufferX,
-                bufferY,
-            );
-
-            const iter = new Gtk.TextIter();
-            const result = textView.getIterAtPosition(iter, bufferX.value, bufferY.value);
-            if (!result) {
-                if (hoveringRef.current) {
-                    textView.setCursor(Gdk.Cursor.newFromName("text"));
-                    hoveringRef.current = false;
-                }
-                return;
-            }
-
-            const overLink = findLinkAtOffset(iter.getOffset()) !== null;
-            if (overLink !== hoveringRef.current) {
-                hoveringRef.current = overLink;
-                textView.setCursor(Gdk.Cursor.newFromName(overLink ? "pointer" : "text"));
-            }
-        },
-        [findLinkAtOffset],
-    );
-
-    const handleKeyPress = useCallback(
-        (keyval: number) => {
-            if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
-                const textView = textViewRef.current;
-                if (!textView) return false;
-
-                const buffer = textView.getBuffer();
-                const iter = new Gtk.TextIter();
-                buffer.getIterAtMark(iter, buffer.getInsert());
-
-                const targetPage = findLinkAtOffset(iter.getOffset());
-                if (targetPage !== null) {
-                    setCurrentPage(targetPage);
-                }
-            }
-            return false;
-        },
-        [findLinkAtOffset],
-    );
+    const handlers = useHypertextHandlers(textViewRef, findLinkAtOffset, setCurrentPage);
 
     return (
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
@@ -335,9 +312,9 @@ const HypertextDemo = () => {
                 canFocus
                 focusable
             >
-                <GtkGestureClick button={1} onReleased={handleClick} />
-                <GtkEventControllerMotion onMotion={handleMotion} />
-                <GtkEventControllerKey onKeyPressed={handleKeyPress} />
+                <GtkGestureClick button={1} onReleased={handlers.handleClick} />
+                <GtkEventControllerMotion onMotion={handlers.handleMotion} />
+                <GtkEventControllerKey onKeyPressed={handlers.handleKeyPress} />
                 {content}
             </GtkTextView>
         </GtkScrolledWindow>
@@ -348,19 +325,8 @@ export const hypertextDemo: Demo = {
     id: "hypertext",
     title: "Text View/Hypertext",
     description:
-        "Usually, tags modify the appearance of text in the view, e.g. making it bold or colored or underlined. But tags are not restricted to appearance. They can also affect the behavior of mouse and key presses, as this demo shows. It also demonstrates embedded widgets using GtkTextChildAnchor and inline paintables.",
-    keywords: [
-        "text",
-        "link",
-        "hypertext",
-        "GtkTextTag",
-        "GtkTextView",
-        "clickable",
-        "embedded",
-        "widget",
-        "anchor",
-        "paintable",
-    ],
+        "Usually, tags modify the appearance of text in the view, e.g. making it bold or colored or underlined. But tags are not restricted to appearance. They can also affect the behavior of mouse and key presses, as this demo shows.\n\nWe also demonstrate adding other things to a text view, such as clickable icons and widgets which can also replace a character (try copying the ghost text).",
+    keywords: ["GtkTextView", "GtkTextBuffer"],
     component: HypertextDemo,
     sourceCode,
     defaultWidth: 330,

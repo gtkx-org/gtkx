@@ -1,147 +1,94 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkDropDown } from "@gtkx/react";
-import { render, screen, tick } from "@gtkx/testing";
-import { createRef } from "react";
+import { act, render, screen } from "@gtkx/testing";
+import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { renderChildren } from "../helpers/render-children.js";
 
-describe("render - DropDown", () => {
-    describe("DropDownNode", () => {
-        it("creates DropDown widget", async () => {
-            const ref = createRef<Gtk.DropDown>();
+const valueItems = (values: string[]): Array<{ id: string; value: string }> =>
+    values.map((value, index) => ({ id: String(index + 1), value }));
 
-            await render(<GtkDropDown ref={ref} />);
+const buildDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: string[]) => (
+    <GtkDropDown ref={dropDownRef} items={valueItems(items)} />
+);
 
-            expect(ref.current).not.toBeNull();
-        });
+const expectSelectedText = async (dropDown: Gtk.DropDown | null, index: number, text: string): Promise<void> => {
+    await act(() => dropDown?.setSelected(index));
+    expect(screen.queryAllByText(text).length).toBeGreaterThan(0);
+};
 
-        it("populates with items", async () => {
-            const dropDownRef = createRef<Gtk.DropDown>();
+describe("render - DropDown > DropDownNode (1)", () => {
+    it("creates DropDown widget", async () => {
+        const ref = createRef<Gtk.DropDown>();
 
-            await render(
-                <GtkDropDown
-                    ref={dropDownRef}
-                    items={[
-                        { id: "1", value: "Option 1" },
-                        { id: "2", value: "Option 2" },
-                        { id: "3", value: "Option 3" },
-                    ]}
-                />,
-            );
+        await render(<GtkDropDown ref={ref} />);
 
-            expect(screen.queryAllByText("Option 1").length).toBeGreaterThan(0);
+        expect(ref.current).not.toBeNull();
+    });
 
-            dropDownRef.current?.setSelected(1);
-            await tick();
-            expect(screen.queryAllByText("Option 2").length).toBeGreaterThan(0);
+    it("populates with items", async () => {
+        const dropDownRef = createRef<Gtk.DropDown>();
 
-            dropDownRef.current?.setSelected(2);
-            await tick();
-            expect(screen.queryAllByText("Option 3").length).toBeGreaterThan(0);
-        });
+        await render(<GtkDropDown ref={dropDownRef} items={valueItems(["Option 1", "Option 2", "Option 3"])} />);
 
-        it("sets selected item by id", async () => {
-            const dropDownRef = createRef<Gtk.DropDown>();
+        expect(screen.queryAllByText("Option 1").length).toBeGreaterThan(0);
 
-            await render(
-                <GtkDropDown
-                    ref={dropDownRef}
-                    selectedId="2"
-                    items={[
-                        { id: "1", value: "Option 1" },
-                        { id: "2", value: "Option 2" },
-                        { id: "3", value: "Option 3" },
-                    ]}
-                />,
-            );
+        await expectSelectedText(dropDownRef.current, 1, "Option 2");
+        await expectSelectedText(dropDownRef.current, 2, "Option 3");
+    });
 
-            expect(dropDownRef.current?.getSelected()).toBe(1);
-        });
+    it("sets selected item by id", async () => {
+        const dropDownRef = createRef<Gtk.DropDown>();
 
-        it("calls onSelectionChanged when selection changes", async () => {
-            const dropDownRef = createRef<Gtk.DropDown>();
-            const onSelectionChanged = vi.fn();
+        await render(
+            <GtkDropDown ref={dropDownRef} selectedId="2" items={valueItems(["Option 1", "Option 2", "Option 3"])} />,
+        );
 
-            await render(
-                <GtkDropDown
-                    ref={dropDownRef}
-                    onSelectionChanged={onSelectionChanged}
-                    items={[
-                        { id: "1", value: "Option 1" },
-                        { id: "2", value: "Option 2" },
-                    ]}
-                />,
-            );
+        expect(dropDownRef.current?.getSelected()).toBe(1);
+    });
+});
 
-            dropDownRef.current?.setSelected(1);
+describe("render - DropDown > DropDownNode (2)", () => {
+    it("calls onSelectionChanged when selection changes", async () => {
+        const dropDownRef = createRef<Gtk.DropDown>();
+        const onSelectionChanged = vi.fn();
 
-            expect(onSelectionChanged).toHaveBeenCalledWith("2");
-        });
+        await render(
+            <GtkDropDown
+                ref={dropDownRef}
+                onSelectionChanged={onSelectionChanged}
+                items={valueItems(["Option 1", "Option 2"])}
+            />,
+        );
 
-        it("updates items dynamically", async () => {
-            const dropDownRef = createRef<Gtk.DropDown>();
+        await act(() => dropDownRef.current?.setSelected(1));
 
-            function App({ items }: { items: Array<{ id: string; value: string }> }) {
-                return (
-                    <GtkDropDown ref={dropDownRef} items={items.map((item) => ({ id: item.id, value: item.value }))} />
-                );
-            }
+        expect(onSelectionChanged).toHaveBeenCalledWith("2");
+    });
 
-            await render(
-                <App
-                    items={[
-                        { id: "1", value: "First" },
-                        { id: "2", value: "Second" },
-                    ]}
-                />,
-            );
-            expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
+    it("updates items dynamically", async () => {
+        const dropDownRef = createRef<Gtk.DropDown>();
 
-            dropDownRef.current?.setSelected(1);
-            await tick();
-            expect(screen.queryAllByText("Second").length).toBeGreaterThan(0);
+        const { rerender } = await renderChildren(["First", "Second"], buildDropDown(dropDownRef));
+        expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
 
-            await render(
-                <App
-                    items={[
-                        { id: "1", value: "First" },
-                        { id: "2", value: "Second" },
-                        { id: "3", value: "Third" },
-                    ]}
-                />,
-            );
+        await expectSelectedText(dropDownRef.current, 1, "Second");
 
-            dropDownRef.current?.setSelected(2);
-            await tick();
-            expect(screen.queryAllByText("Third").length).toBeGreaterThan(0);
-        });
+        await rerender(["First", "Second", "Third"]);
 
-        it("removes items", async () => {
-            const dropDownRef = createRef<Gtk.DropDown>();
+        await expectSelectedText(dropDownRef.current, 2, "Third");
+    });
 
-            function App({ items }: { items: Array<{ id: string; value: string }> }) {
-                return (
-                    <GtkDropDown ref={dropDownRef} items={items.map((item) => ({ id: item.id, value: item.value }))} />
-                );
-            }
+    it("removes items", async () => {
+        const dropDownRef = createRef<Gtk.DropDown>();
 
-            await render(
-                <App
-                    items={[
-                        { id: "1", value: "First" },
-                        { id: "2", value: "Second" },
-                        { id: "3", value: "Third" },
-                    ]}
-                />,
-            );
+        const { rerender } = await renderChildren(["First", "Second", "Third"], buildDropDown(dropDownRef));
 
-            dropDownRef.current?.setSelected(2);
-            await tick();
-            expect(screen.queryAllByText("Third").length).toBeGreaterThan(0);
+        await expectSelectedText(dropDownRef.current, 2, "Third");
 
-            await render(<App items={[{ id: "1", value: "First" }]} />);
-            expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
-            expect(screen.queryAllByText("Second")).toHaveLength(0);
-            expect(screen.queryAllByText("Third")).toHaveLength(0);
-        });
+        await rerender(["First"]);
+        expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
+        expect(screen.queryAllByText("Second")).toHaveLength(0);
+        expect(screen.queryAllByText("Third")).toHaveLength(0);
     });
 });

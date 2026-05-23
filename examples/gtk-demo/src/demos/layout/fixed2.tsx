@@ -7,6 +7,33 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
 
+const computeFixedTransform = (
+    duration: number,
+    label: Gtk.Label | null,
+    fixed: Gtk.Fixed | null,
+): Gsk.Transform | undefined => {
+    const angle = duration * 90;
+    const scale = 2 + Math.sin(duration * Math.PI);
+
+    const labelWidth = label?.getAllocatedWidth() ?? 50;
+    const labelHeight = label?.getAllocatedHeight() ?? 20;
+    const containerWidth = fixed?.getAllocatedWidth() ?? 400;
+    const containerHeight = fixed?.getAllocatedHeight() ?? 300;
+
+    const centerPoint = new Graphene.Point();
+    centerPoint.init(containerWidth / 2, containerHeight / 2);
+
+    const offsetPoint = new Graphene.Point();
+    offsetPoint.init(-labelWidth / 2, -labelHeight / 2);
+
+    let t: Gsk.Transform | undefined = Gsk.Transform.new();
+    t = t.translate(centerPoint) ?? undefined;
+    t = t?.rotate(angle) ?? undefined;
+    t = t?.scale(scale, scale) ?? undefined;
+    t = t?.translate(offsetPoint) ?? undefined;
+    return t;
+};
+
 const Fixed2Demo = () => {
     const startTimeRef = useRef<number | null>(null);
     const [transform, setTransform] = useState<Gsk.Transform | undefined>(undefined);
@@ -16,43 +43,17 @@ const Fixed2Demo = () => {
 
     const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
         const now = frameClock.getFrameTime();
-
-        if (startTimeRef.current === null) {
-            startTimeRef.current = now;
-        }
-
+        startTimeRef.current ??= now;
         const duration = (now - startTimeRef.current) / 1_000_000;
-        const angle = duration * 90;
-        const scale = 2 + Math.sin(duration * Math.PI);
-
-        const labelWidth = labelRef.current?.getAllocatedWidth() ?? 50;
-        const labelHeight = labelRef.current?.getAllocatedHeight() ?? 20;
-        const containerWidth = fixedRef.current?.getAllocatedWidth() ?? 400;
-        const containerHeight = fixedRef.current?.getAllocatedHeight() ?? 300;
-
-        const centerPoint = new Graphene.Point();
-        centerPoint.init(containerWidth / 2, containerHeight / 2);
-
-        const offsetPoint = new Graphene.Point();
-        offsetPoint.init(-labelWidth / 2, -labelHeight / 2);
-
-        let t: Gsk.Transform | undefined = new Gsk.Transform();
-        t = t.translate(centerPoint) ?? undefined;
-        t = t?.rotate(angle) ?? undefined;
-        t = t?.scale(scale, scale) ?? undefined;
-        t = t?.translate(offsetPoint) ?? undefined;
-
-        setTransform(t);
+        setTransform(computeFixedTransform(duration, labelRef.current, fixedRef.current));
         return true;
     }, []);
 
     useEffect(() => {
         const fixed = fixedRef.current;
         if (!fixed) return;
-
         startTimeRef.current = null;
         tickIdRef.current = fixed.addTickCallback(tickCallback);
-
         return () => {
             if (tickIdRef.current !== null) {
                 fixed.removeTickCallback(tickIdRef.current);
@@ -70,8 +71,8 @@ const Fixed2Demo = () => {
     }, []);
 
     return (
-        <GtkScrolledWindow hexpand vexpand>
-            <GtkFixed ref={handleFixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
+        <GtkScrolledWindow name="scrolled" hexpand vexpand>
+            <GtkFixed name="fixed" ref={handleFixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
                 <GtkFixed.Child x={0} y={0} transform={transform}>
                     <GtkLabel ref={handleLabelRef} label="All fixed?" />
                 </GtkFixed.Child>
@@ -83,8 +84,9 @@ const Fixed2Demo = () => {
 export const fixed2Demo: Demo = {
     id: "fixed2",
     title: "Fixed Layout / Transformations",
-    description: "GtkFixed with GskTransform using GdkFrameClock for smooth animation.",
-    keywords: ["fixed", "transform", "GskTransform", "GdkFrameClock", "addTickCallback", "animation"],
+    description:
+        "GtkFixed is a container that allows placing and transforming widgets manually.\n\nThis demo shows how to rotate and scale a child widget using a transform.",
+    keywords: ["GtkLayoutManager"],
     component: Fixed2Demo,
     sourceCode,
     defaultWidth: 400,

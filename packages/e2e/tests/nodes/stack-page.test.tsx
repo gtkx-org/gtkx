@@ -3,6 +3,7 @@ import { GtkStack } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { renderChildren } from "../helpers/render-children.js";
 
 describe("render - StackPage", () => {
     describe("StackPageNode", () => {
@@ -52,23 +53,20 @@ describe("render - StackPage", () => {
 
         it("removes page from Stack", async () => {
             const stackRef = createRef<Gtk.Stack>();
+            const buildStack = (pages: string[]) => (
+                <GtkStack ref={stackRef}>
+                    {pages.map((name) => (
+                        <GtkStack.Page key={name} id={name}>
+                            {name}
+                        </GtkStack.Page>
+                    ))}
+                </GtkStack>
+            );
 
-            function App({ pages }: { pages: string[] }) {
-                return (
-                    <GtkStack ref={stackRef}>
-                        {pages.map((name) => (
-                            <GtkStack.Page key={name} id={name}>
-                                {name}
-                            </GtkStack.Page>
-                        ))}
-                    </GtkStack>
-                );
-            }
-
-            await render(<App pages={["a", "b"]} />);
+            const { rerender } = await renderChildren(["a", "b"], buildStack);
             expect(stackRef.current?.getChildByName("b")).not.toBeNull();
 
-            await render(<App pages={["a"]} />);
+            await rerender(["a"]);
             expect(stackRef.current?.getChildByName("b")).toBeNull();
         });
     });
