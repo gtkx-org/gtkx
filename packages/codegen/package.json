@@ -34,7 +34,7 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
-        "@ts-for-gir/cli": "3.3.0",
+        "@ts-for-gir/cli": "4.0.1",
         "@ts-for-gir/generator-base": "3.3.0",
         "@ts-for-gir/lib": "3.3.0"
     },
