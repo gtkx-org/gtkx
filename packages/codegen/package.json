@@ -36,7 +36,7 @@
     "dependencies": {
         "@ts-for-gir/cli": "3.3.0",
         "@ts-for-gir/generator-base": "3.3.0",
-        "@ts-for-gir/lib": "3.3.0"
+        "@ts-for-gir/lib": "4.0.1"
     },
     "devDependencies": {
         "@gtkx/native": "workspace:*"
