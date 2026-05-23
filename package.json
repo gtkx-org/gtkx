@@ -8,17 +8,21 @@
     "type": "module",
     "scripts": {
         "build": "turbo build --filter=!website --filter=!gtkx",
+        "changeset": "changeset",
         "codegen": "turbo codegen:run",
         "codegen:sync": "gtkx-codegen sync",
         "codegen:run": "gtkx-codegen run",
         "docs": "turbo build --filter=website",
         "lint": "turbo lint:all && turbo lint --filter=!website --filter=!gtkx",
         "lint:all": "biome check .",
+        "release": "pnpm build && changeset publish",
         "test": "turbo test --filter=!website --filter=!gtkx --concurrency=1",
-        "typecheck": "turbo typecheck --filter=!website --filter=!gtkx"
+        "typecheck": "turbo typecheck --filter=!website --filter=!gtkx",
+        "version-packages": "changeset version"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.9",
+        "@changesets/cli": "^2.27.10",
         "@gtkx/codegen": "workspace:*",
         "@types/node": "^25.5.0",
         "@types/react": "^19.2.14",
