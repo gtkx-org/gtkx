@@ -495,66 +495,6 @@ function useIncrementalSort(colors: ColorItem[], mode: SortMode): { sorted: Colo
     return { sorted, progress };
 }
 
-interface StartGradualFillArgs {
-    widgetRef: RefObject<Gtk.Widget | null>;
-    tickIdRef: RefObject<number | null>;
-    setColors: (items: ColorItem[]) => void;
-    setFilling: (filling: boolean) => void;
-    stopTick: () => void;
-    targetLimit: number;
-}
-
-interface FillContext {
-    accumulated: ColorItem[];
-    targetLimit: number;
-    increment: number;
-    tickIdRef: RefObject<number | null>;
-    setColors: (items: ColorItem[]) => void;
-    setFilling: (filling: boolean) => void;
-}
-
-const createFillTickCallback = (ctx: FillContext): (() => boolean) => {
-    const { accumulated, targetLimit, increment, tickIdRef, setColors, setFilling } = ctx;
-    return () => {
-        const newSize = Math.min(targetLimit, accumulated.length + increment);
-        for (let i = accumulated.length; i < newSize; i++) accumulated.push(createColorItem(i));
-
-        const snapshot = [...accumulated];
-        const done = accumulated.length >= targetLimit;
-
-        setTimeout(() => {
-            setColors(snapshot);
-            if (done) setFilling(false);
-        }, 0);
-
-        if (done) {
-            tickIdRef.current = null;
-            return false;
-        }
-        return true;
-    };
-};
-
-const startGradualFill = ({
-    widgetRef,
-    tickIdRef,
-    setColors,
-    setFilling,
-    stopTick,
-    targetLimit,
-}: StartGradualFillArgs) => {
-    stopTick();
-    const widget = widgetRef.current;
-    if (!widget) return;
-    const accumulated: ColorItem[] = [];
-    setColors([]);
-    setFilling(true);
-    const increment = Math.max(1, Math.floor(targetLimit / 4096));
-    tickIdRef.current = widget.addTickCallback(
-        createFillTickCallback({ accumulated, targetLimit, increment, tickIdRef, setColors, setFilling }),
-    );
-};
-
 function useGradualRefill(
     widgetRef: RefObject<Gtk.Widget | null>,
     limit: ColorLimit,
@@ -565,30 +505,50 @@ function useGradualRefill(
 } {
     const [colors, setColors] = useState<ColorItem[]>([]);
     const [filling, setFilling] = useState(true);
-    const tickIdRef = useRef<number | null>(null);
-    const limitRef = useRef(limit);
+    const [refillToken, setRefillToken] = useState(0);
 
-    const stopTick = useCallback(() => {
-        const widget = widgetRef.current;
-        if (tickIdRef.current !== null && widget) {
-            widget.removeTickCallback(tickIdRef.current);
-            tickIdRef.current = null;
-        }
-    }, [widgetRef]);
-
-    const startFill = useCallback(
-        (targetLimit: number) =>
-            startGradualFill({ widgetRef, tickIdRef, setColors, setFilling, stopTick, targetLimit }),
-        [widgetRef, stopTick],
-    );
-
+    // biome-ignore lint/correctness/useExhaustiveDependencies: refillToken is a re-trigger signal
     useEffect(() => {
-        limitRef.current = limit;
-        startFill(limit);
-        return stopTick;
-    }, [limit, startFill, stopTick]);
+        const widget = widgetRef.current;
+        if (!widget) return;
 
-    const refill = useCallback(() => startFill(limitRef.current), [startFill]);
+        const accumulated: ColorItem[] = [];
+        const increment = Math.max(1, Math.floor(limit / 4096));
+        const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
+        let canceled = false;
+
+        setColors([]);
+        setFilling(true);
+
+        const tickId = widget.addTickCallback(() => {
+            if (canceled) return false;
+
+            const newSize = Math.min(limit, accumulated.length + increment);
+            for (let i = accumulated.length; i < newSize; i++) accumulated.push(createColorItem(i));
+
+            const snapshot = [...accumulated];
+            const done = accumulated.length >= limit;
+
+            const timeoutId = setTimeout(() => {
+                pendingTimeouts.delete(timeoutId);
+                if (canceled) return;
+                setColors(snapshot);
+                if (done) setFilling(false);
+            }, 0);
+            pendingTimeouts.add(timeoutId);
+
+            return !done;
+        });
+
+        return () => {
+            canceled = true;
+            widget.removeTickCallback(tickId);
+            for (const timeoutId of pendingTimeouts) clearTimeout(timeoutId);
+            pendingTimeouts.clear();
+        };
+    }, [limit, refillToken, widgetRef]);
+
+    const refill = useCallback(() => setRefillToken((token) => token + 1), []);
 
     return { colors, filling, refill };
 }
