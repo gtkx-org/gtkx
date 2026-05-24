@@ -357,10 +357,7 @@ fn write_value_to_raw_ptr_null_releases_previous_object() {
         let before = get_gobject_refcount(obj_ptr);
 
         borrowed()
-            .write_value_to_raw_ptr(
-                &mut slot as *mut *mut c_void as *mut c_void,
-                &Value::Null,
-            )
+            .write_value_to_raw_ptr(&mut slot as *mut *mut c_void as *mut c_void, &Value::Null)
             .expect("write_value_to_raw_ptr should succeed");
 
         assert!(slot.is_null());

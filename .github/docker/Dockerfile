@@ -25,6 +25,8 @@ RUN dnf install -y \
     ImageMagick \
     dbus-daemon \
     git \
+    gdb \
+    && dnf debuginfo-install -y glib2 gtk4 libadwaita \
     && dnf clean all \
     && rm -rf /var/cache/dnf/*
 

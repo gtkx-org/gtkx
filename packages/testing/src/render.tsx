@@ -38,6 +38,7 @@ const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.Fibe
             flags: Gio.ApplicationFlags.NON_UNIQUE,
         });
         application.register(null);
+        application.on("activate", () => {});
         application.activate();
     }
 

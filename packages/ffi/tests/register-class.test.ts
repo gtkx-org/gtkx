@@ -141,3 +141,71 @@ describe("registerClass — vfunc self argument convention", () => {
         expect(call.thisRef).toBeInstanceOf(CustomWidget);
     });
 });
+
+describe("registerClass — construction identity", () => {
+    it("delivers the same wrapper to a synchronous vfunc and to user code after `new`", () => {
+        const name = uniqueName("GtkxConstructIdentity");
+        let constructedThis: object | null = null;
+
+        class CustomObject extends GObject {
+            constructed(): void {
+                constructedThis = this;
+            }
+        }
+
+        registerClass(CustomObject, { gtypeName: name });
+
+        const instance = new CustomObject({});
+
+        expect(constructedThis).toBe(instance);
+    });
+
+    it("makes class field initializers visible on the wrapper after construction returns", () => {
+        const name = uniqueName("GtkxConstructFieldVisibility");
+
+        class CustomObject extends GObject {
+            counter = 0;
+
+            constructed(): void {
+                this.counter = (this.counter ?? 0) + 1;
+            }
+        }
+
+        registerClass(CustomObject, { gtypeName: name });
+
+        const instance = new CustomObject({});
+
+        expect(instance.counter).toBe(0);
+    });
+});
+
+describe("registerClass — nested construction", () => {
+    it("preserves identity when one constructed vfunc instantiates another type", () => {
+        const outerName = uniqueName("GtkxConstructOuter");
+        const innerName = uniqueName("GtkxConstructInner");
+        let innerThis: object | null = null;
+        let outerThis: object | null = null;
+        let nestedInstance: object | null = null;
+
+        class InnerObject extends GObject {
+            constructed(): void {
+                innerThis = this;
+            }
+        }
+        registerClass(InnerObject, { gtypeName: innerName });
+
+        class OuterObject extends GObject {
+            constructed(): void {
+                outerThis = this;
+                nestedInstance = new InnerObject({});
+            }
+        }
+        registerClass(OuterObject, { gtypeName: outerName });
+
+        const outer = new OuterObject({});
+
+        expect(outerThis).toBe(outer);
+        expect(innerThis).toBe(nestedInstance);
+        expect(outerThis).not.toBe(innerThis);
+    });
+});

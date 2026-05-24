@@ -85,6 +85,7 @@ let container: unknown = null;
  */
 export const render = (element: ReactNode, app: Gtk.Application): void => {
     app.register(null);
+    app.on("activate", () => {});
     app.activate();
 
     container = reconciler.createContainer(

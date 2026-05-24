@@ -2,8 +2,9 @@ import { alloc, call, type NativeHandle, read, write } from "@gtkx/native";
 import { CONSTRUCTION_META, type ConstructionMeta, type GObjectPropMeta } from "./construction-meta.js";
 import { gvalueFromProp } from "./gobject/gvalue.js";
 import { GVALUE_BORROWED, GVALUE_SIZE, LIBGOBJECT } from "./gtype.js";
-import { getParentClass, type NativeClass, type NativeObject, setHandle } from "./handles.js";
+import { getParentClass, type NativeClass, type NativeObject, setHandle, tryGetHandle } from "./handles.js";
 import { t } from "./helpers.js";
+import { setPendingConstruction } from "./pending-construction.js";
 import { registerNativeObject } from "./registry.js";
 
 /**
@@ -61,8 +62,17 @@ export function constructNativeObject(instance: object, props: object = {}): voi
     }
 
     if (meta.kind === "gobject") {
-        setHandle(instance, constructGObject(ctor, meta, props as Record<string, unknown>));
-        registerNativeObject(instance as NativeObject);
+        const previous = setPendingConstruction(instance);
+        let handle: NativeHandle;
+        try {
+            handle = constructGObject(ctor, meta, props as Record<string, unknown>);
+        } finally {
+            setPendingConstruction(previous);
+        }
+        if (tryGetHandle(instance) === undefined) {
+            setHandle(instance, handle);
+            registerNativeObject(instance as NativeObject);
+        }
     } else {
         setHandle(instance, constructBoxed(meta, props as Record<string, unknown>));
     }

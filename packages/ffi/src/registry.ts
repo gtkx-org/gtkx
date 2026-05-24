@@ -1,7 +1,15 @@
 import { getInstanceGType, getNativeId, type NativeHandle } from "@gtkx/native";
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID, typeFromName, typeIsA, typeParent } from "./gtype.js";
-import { type GTypeStamped, getHandle, type NativeClass, type NativeObject, setHandle } from "./handles.js";
+import {
+    type GTypeStamped,
+    getHandle,
+    type NativeClass,
+    type NativeObject,
+    setHandle,
+    tryGetHandle,
+} from "./handles.js";
+import { getPendingConstruction } from "./pending-construction.js";
 
 const classRegistry = new Map<GType, NativeClass>();
 const gtypeByClass = new WeakMap<NativeClass, GType>();
@@ -276,9 +284,32 @@ export function getNativeObject(handle: NativeHandle | null | undefined, targetT
         throw new Error(`Expected registered GLib type, got gtype ${String(runtimeGtype)}`);
     }
 
+    const adopted = tryAdoptPendingConstruction(handle, cls);
+    if (adopted) return adopted;
+
     const instance = wrapHandle(cls, handle) as NativeObject;
     registerNativeObject(instance);
     return instance;
+}
+
+/**
+ * If a wrapper is mid-construction and matches `cls` exactly, claim it for
+ * `handle` and register it. Returns the adopted wrapper or `null` when no
+ * legitimate adoption applies.
+ *
+ * The match must be exact rather than `instanceof` because adoption installs
+ * the supplied handle on the wrapper: a class-mismatched adoption would bind a
+ * subclass wrapper to a base-class handle and break identity for any later
+ * lookup of the genuine subclass instance.
+ */
+function tryAdoptPendingConstruction(handle: NativeHandle, cls: NativeClass): NativeObject | null {
+    const pending = getPendingConstruction();
+    if (!pending) return null;
+    if (pending.constructor !== cls) return null;
+    if (tryGetHandle(pending) !== undefined) return null;
+    setHandle(pending, handle);
+    registerNativeObject(pending as NativeObject);
+    return pending as NativeObject;
 }
 
 /**
@@ -318,6 +349,8 @@ export function getNativeObjectAsInterface<T extends NativeHandle | null | undef
 
     const interfaceGtype = getInterfaceGType(interfaceClass);
     const cls = findNativeClassForInterface(runtimeGtype, interfaceGtype) ?? interfaceClass;
+    const adopted = tryAdoptPendingConstruction(handle, cls);
+    if (adopted) return adopted as Result;
     const instance = wrapHandle(cls, handle) as NativeObject;
     registerNativeObject(instance);
     return instance as Result;

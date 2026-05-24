@@ -1,8 +1,10 @@
-//! Routes `GLib` log messages to the JavaScript error reporter.
+//! Routes `GLib` log messages to stderr and the JavaScript error reporter.
 //!
-//! The installed handler forwards through [`NativeErrorReporter`], whose
-//! threadsafe function targets the Node.js event loop, so this module is
-//! excluded from coverage instrumentation.
+//! Every log message is written to stderr synchronously so it is observable
+//! even if the process aborts before the JavaScript event loop can drain.
+//! `Error` and `Critical` levels additionally forward through
+//! [`NativeErrorReporter`], which raises them as JavaScript exceptions on the
+//! Node.js event loop.
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
@@ -22,9 +24,18 @@ impl GlibLogHandler {
         let level_str = match level {
             LogLevel::Error => "ERROR",
             LogLevel::Critical => "CRITICAL",
-            LogLevel::Warning | LogLevel::Message | LogLevel::Info | LogLevel::Debug => return,
+            LogLevel::Warning => "WARNING",
+            LogLevel::Message => "MESSAGE",
+            LogLevel::Info => "INFO",
+            LogLevel::Debug => "DEBUG",
         };
         let domain_str = domain.unwrap_or("unknown");
-        NativeErrorReporter::global().report_str(&format!("{domain_str}-{level_str}: {message}"));
+        let formatted = format!("{domain_str}-{level_str}: {message}");
+
+        eprintln!("[gtkx] {formatted}");
+
+        if matches!(level, LogLevel::Error | LogLevel::Critical) {
+            NativeErrorReporter::global().report_str(&formatted);
+        }
     }
 }
