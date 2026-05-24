@@ -35,7 +35,7 @@ const buildWrapper = ({
 }: WrapperArgs): ComponentType<{ children: ReactNode }> => {
     const DemoShell = ({ children }: { children: ReactNode }) => {
         const [windowReady, setWindowReady] = useState(false);
-        const { windowTitle } = useDemo();
+        const { windowTitle, defaultWidget } = useDemo();
         const titlebar = Titlebar ? <Titlebar window={windowRef} onClose={onClose} /> : undefined;
         const handleWindowRef = useCallback((widget: Gtk.Widget | null): void => {
             (windowRef as { current: Gtk.Window | null }).current = (widget as Gtk.Window | null) ?? null;
@@ -51,6 +51,7 @@ const buildWrapper = ({
                     resizable={demo?.resizable ?? true}
                     deletable={demo?.deletable ?? true}
                     cssClasses={demo?.windowCssClasses}
+                    defaultWidget={defaultWidget}
                     titlebar={titlebar}
                 >
                     {windowReady ? children : null}

@@ -62,7 +62,7 @@ interface DemoWindowProps {
 }
 
 const DemoWindow = ({ onClose }: DemoWindowProps) => {
-    const { currentDemo, windowTitle } = useDemo();
+    const { currentDemo, windowTitle, defaultWidget } = useDemo();
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
     const windowRef = useRef<Gtk.Window>(null);
@@ -98,6 +98,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
                 resizable={currentDemo.resizable ?? true}
                 deletable={currentDemo.deletable ?? true}
                 cssClasses={currentDemo.windowCssClasses}
+                defaultWidget={defaultWidget}
                 titlebar={titlebar}
                 onClose={onClose}
             >
