@@ -886,7 +886,11 @@ export class RecordGenerator {
 
     private buildPrimitiveFieldAccessor(options: PrimitiveFieldAccessorOptions): void {
         const { field, fieldName, offset, isReadable, isWritable, cls, bitWidth } = options;
-        const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        const rawMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        const typeMapping =
+            rawMapping.ffi.type === "boxed"
+                ? { ...rawMapping, ffi: { ...rawMapping.ffi, ownership: "borrowed" as const } }
+                : rawMapping;
         const isRawPointerPrimitive = UNSAFE_PRIMITIVE_NAMES.has(String(field.type.name));
         if (typeMapping.unsafe && !isRawPointerPrimitive) return;
         addTypeImports(this.file, typeMapping.imports, this.selfNames);
@@ -1149,6 +1153,7 @@ export class RecordGenerator {
         if (field.readable === false || methodNames.has(fieldName)) return;
         const mapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
         if (mapping.ffi.type !== "struct") return;
+        const ffi = { ...mapping.ffi, ownership: "borrowed" as const };
         const isWritable = field.writable !== false && !methodNames.has(fieldName);
         this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
         const doc = buildJsDocStructure(field.doc, this.options.namespace);
@@ -1156,8 +1161,8 @@ export class RecordGenerator {
         cls.addAccessor(
             accessor(fieldName, {
                 type: "unknown",
-                getBody: this.buildWholeFieldGetBody(mapping.ffi, offset),
-                setBody: isWritable ? this.buildWholeFieldSetBody(mapping.ffi, offset) : undefined,
+                getBody: this.buildWholeFieldGetBody(ffi, offset),
+                setBody: isWritable ? this.buildWholeFieldSetBody(ffi, offset) : undefined,
                 doc: doc?.[0]?.description,
             }),
         );
@@ -1177,7 +1182,7 @@ export class RecordGenerator {
         if (mapping.ffi.type !== "struct") return;
         const size = this.fieldBuilder.getRecordSize(typeName);
         if (size <= 0) return;
-        const structFfi = { ...mapping.ffi, size };
+        const structFfi = { ...mapping.ffi, size, ownership: "borrowed" as const };
         this.file.addImport("../../native.js", ["read", "t"]);
         const doc = buildJsDocStructure(field.doc, this.options.namespace);
 
@@ -1322,7 +1327,7 @@ export class RecordGenerator {
         this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
 
         const context: ArrayAccessorContext = {
-            structTypeExpr: `t.struct("${elementTypeName}", "full", ${lengthExpr} * ${elementSize})`,
+            structTypeExpr: `t.struct("${elementTypeName}", "borrowed", ${lengthExpr} * ${elementSize})`,
             ptrOffset,
             lengthExpr,
             elementSize,

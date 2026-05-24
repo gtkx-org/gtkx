@@ -141,8 +141,11 @@ impl FfiDecoder for BoxedType {
 impl RawPtrCodec for BoxedType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
-            let gtype = self.gtype();
-            let boxed = Boxed::from_glib_none(gtype, ptr)?;
+            let boxed = if self.ownership.is_full() {
+                Boxed::from_glib_full(self.gtype(), ptr)
+            } else {
+                Boxed::from_ptr_unowned(ptr)
+            };
             Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
         })
     }
@@ -276,8 +279,11 @@ impl FfiDecoder for StructType {
 impl RawPtrCodec for StructType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
-            let boxed =
-                Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))?;
+            let boxed = if self.ownership.is_full() {
+                Boxed::from_glib_full(None, ptr)
+            } else {
+                Boxed::from_ptr_unowned(ptr)
+            };
             Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
         })
     }
