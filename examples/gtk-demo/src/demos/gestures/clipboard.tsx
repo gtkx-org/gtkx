@@ -566,8 +566,8 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
             onClicked={() => void onPaste()}
         />
         <GtkLabel label={pastedContent.type} xalign={0} />
-        <GtkStack page={pastedContent.type} halign={Gtk.Align.END} valign={Gtk.Align.CENTER}>
-            <GtkStack.Page id="">
+        <GtkStack page={pastedContent.type || "Empty"} halign={Gtk.Align.END} valign={Gtk.Align.CENTER}>
+            <GtkStack.Page id="Empty">
                 <GtkLabel label="" />
             </GtkStack.Page>
             <GtkStack.Page id="Text">
