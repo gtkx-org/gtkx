@@ -1,9 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { listviewUcdDemo } from "../../../src/demos/lists/listview-ucd.js";
 import { fireEvent, renderDemo, screen } from "../../test-utils.js";
-
-vi.setConfig({ testTimeout: 60000 });
 
 describe("listviewUcdDemo metadata", () => {
     it("exposes the expected metadata", () => {

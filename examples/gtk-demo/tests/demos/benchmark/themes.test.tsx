@@ -1,10 +1,8 @@
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { themesDemo } from "../../../src/demos/benchmark/themes.js";
 import { act, fireEvent, renderDemo, screen } from "../../test-utils.js";
-
-vi.setConfig({ testTimeout: 60000 });
 
 const findAlertDialog = async (): Promise<Adw.AlertDialog> => {
     const warningLabel = await screen.findByText(/photosensitive/i, { exact: false });
