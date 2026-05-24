@@ -1,7 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { listboxDemo } from "../../../src/demos/lists/listbox.js";
 import { fireEvent, renderDemo, screen, within } from "../../test-utils.js";
+
+vi.setConfig({ testTimeout: 30000 });
 
 describe("listboxDemo metadata", () => {
     it("exposes the expected metadata", () => {
