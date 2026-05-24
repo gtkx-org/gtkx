@@ -18,7 +18,6 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 
-import type { RefObject } from "react";
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import colorNamesRaw from "./color.names.txt?raw";
@@ -495,69 +494,22 @@ function useIncrementalSort(colors: ColorItem[], mode: SortMode): { sorted: Colo
     return { sorted, progress };
 }
 
-function useGradualRefill(
-    widgetRef: RefObject<Gtk.Widget | null>,
-    limit: ColorLimit,
-): {
+function useRefillableColors(limit: ColorLimit): {
     colors: ColorItem[];
-    filling: boolean;
     refill: () => void;
 } {
-    const [colors, setColors] = useState<ColorItem[]>([]);
-    const [filling, setFilling] = useState(true);
     const [refillToken, setRefillToken] = useState(0);
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: refillToken is a re-trigger signal
-    useEffect(() => {
-        const widget = widgetRef.current;
-        if (!widget) return;
-
-        const accumulated: ColorItem[] = [];
-        const increment = Math.max(1, Math.floor(limit / 4096));
-        let pendingFlushId: ReturnType<typeof setTimeout> | null = null;
-        let canceled = false;
-
-        setColors([]);
-        setFilling(true);
-
-        const tickId = widget.addTickCallback(() => {
-            if (canceled) return false;
-
-            const busyStart = Date.now();
-            while (Date.now() - busyStart < 30) {
-                /* busy-wait to simulate CI contention */
-            }
-
-            const newSize = Math.min(limit, accumulated.length + increment);
-            for (let i = accumulated.length; i < newSize; i++) accumulated.push(createColorItem(i));
-
-            const done = accumulated.length >= limit;
-
-            if (pendingFlushId === null) {
-                pendingFlushId = setTimeout(() => {
-                    pendingFlushId = null;
-                    if (canceled) return;
-                    setColors([...accumulated]);
-                    if (accumulated.length >= limit) setFilling(false);
-                }, 0);
-            }
-
-            return !done;
-        });
-
-        return () => {
-            canceled = true;
-            widget.removeTickCallback(tickId);
-            if (pendingFlushId !== null) {
-                clearTimeout(pendingFlushId);
-                pendingFlushId = null;
-            }
-        };
-    }, [limit, refillToken, widgetRef]);
+    const colors = useMemo<ColorItem[]>(() => {
+        const items: ColorItem[] = [];
+        for (let i = 0; i < limit; i++) items.push(createColorItem(i));
+        return items;
+    }, [limit, refillToken]);
 
     const refill = useCallback(() => setRefillToken((token) => token + 1), []);
 
-    return { colors, filling, refill };
+    return { colors, refill };
 }
 
 function useColorsState() {
@@ -566,7 +518,6 @@ function useColorsState() {
     const [displayFactory, setDisplayFactory] = useState<DisplayFactory>("colors");
     const [showSelectionInfo, setShowSelectionInfo] = useState(false);
     const [selected, setSelected] = useState<string[]>([]);
-    const buttonRef = useRef<Gtk.Button | null>(null);
     return {
         colorLimit,
         setColorLimit,
@@ -578,15 +529,14 @@ function useColorsState() {
         setShowSelectionInfo,
         selected,
         setSelected,
-        buttonRef,
     };
 }
 
 type ColorsState = ReturnType<typeof useColorsState>;
 
 function useColorsData(state: ColorsState) {
-    const { colorLimit, sortMode, displayFactory, selected, buttonRef } = state;
-    const { colors: baseColors, filling, refill } = useGradualRefill(buttonRef, colorLimit);
+    const { colorLimit, sortMode, displayFactory, selected } = state;
+    const { colors: baseColors, refill } = useRefillableColors(colorLimit);
     const { sorted: sortedColors, progress: sortProgress } = useIncrementalSort(baseColors, sortMode);
     const isSorting = sortProgress < 1 && sortMode !== "unsorted";
 
@@ -609,7 +559,6 @@ function useColorsData(state: ColorsState) {
         baseColors,
         sortedColors,
         sortProgress,
-        filling,
         isSorting,
         selectedColors,
         averageColor,
@@ -686,7 +635,7 @@ const ColorsHeader = () => {
                     active={state.showSelectionInfo}
                     onToggled={(btn) => state.setShowSelectionInfo(btn.getActive())}
                 />
-                <GtkButton ref={state.buttonRef} label="_Refill" useUnderline onClicked={computed.handleRefill} />
+                <GtkButton label="_Refill" useUnderline onClicked={computed.handleRefill} />
                 <GtkLabel
                     label={`${computed.sortedColors.length.toLocaleString("en-US")} /`}
                     attributes={getTnumAttrs()}
@@ -741,13 +690,10 @@ const ColorsGridOverlay = ({ state, computed }: { state: ColorsState; computed: 
                 items={computed.sortedColors.map((color) => ({ id: color.id, value: color }))}
             />
         </GtkScrolledWindow>
-        {(computed.isSorting || computed.filling) && computed.sortedColors.length > 0 && (
+        {computed.isSorting && computed.sortedColors.length > 0 && (
             <GtkOverlay.Child>
                 <GtkProgressBar
-                    fraction={Math.min(
-                        1,
-                        computed.filling ? computed.baseColors.length / state.colorLimit : computed.sortProgress,
-                    )}
+                    fraction={Math.min(1, computed.sortProgress)}
                     halign={Gtk.Align.FILL}
                     valign={Gtk.Align.START}
                 />
