@@ -112,7 +112,7 @@ jobs:
       - name: Build docs
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm docs
+          command: pnpm run docs
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
           extra-env: NODE_OPTIONS
