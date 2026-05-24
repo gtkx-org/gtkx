@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import type { ColumnViewColumnProps, ListItem } from "../jsx.js";
+import type { ColumnViewColumnProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Container } from "../types.js";
 import type { BoundItem } from "./internal/bound-item.js";
@@ -74,7 +74,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
         return this.column;
     }
 
-    public collectBoundItems(flatItems: ListItem[]): BoundItem[] {
+    public collectBoundItems(resolveItem: (position: number) => unknown): BoundItem[] {
         const { renderCell } = this.props;
         if (!renderCell) return [];
 
@@ -86,10 +86,9 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
             const key = this.containerKeys.get(container);
             if (!key) continue;
 
-            const item = flatItems[position];
-            if (!item) continue;
-            const content = renderCell(item.value);
-            items.push([content, container, key]);
+            const value = resolveItem(position);
+            if (value === undefined || value === null) continue;
+            items.push([renderCell(value), container, key]);
         }
 
         return items;

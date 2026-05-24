@@ -1,6 +1,8 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import type * as cairo from "@gtkx/ffi/cairo";
 import type * as Gdk from "@gtkx/ffi/gdk";
+import type * as Gio from "@gtkx/ffi/gio";
+import type * as GObject from "@gtkx/ffi/gobject";
 import type { GType } from "@gtkx/ffi/gobject";
 import type * as Gsk from "@gtkx/ffi/gsk";
 import type * as Gtk from "@gtkx/ffi/gtk";
@@ -430,7 +432,11 @@ export type ColumnViewColumnProps<T = unknown> = {
     sortable?: boolean;
     /** Whether this column is visible */
     visible?: boolean;
-    /** Function to render the cell content for each row */
+    /**
+     * Function to render the cell content for each row. The argument is the row value:
+     * `item.value` in controlled mode, or the `GObject.Object` from `model.getItem(position)`
+     * in uncontrolled mode. Specialize `T` to the appropriate type at the call site.
+     */
     renderCell: (item: T) => ReactNode;
     /** Menu items for the column header context menu */
     children?: ReactNode;
@@ -662,12 +668,16 @@ export type TextBufferProps = {
     onCanRedoChanged?: ((canRedo: boolean) => void) | null;
 };
 
-/** @internal */
-type BaseListViewProps = {
+/** @internal Shared layout/virtualization props applied to every list-view variant. */
+type ListViewSharedProps = {
     /** Estimated item height in pixels for virtualization */
     estimatedItemHeight?: number;
     /** Estimated item width in pixels for virtualization */
     estimatedItemWidth?: number;
+};
+
+/** @internal Controlled-mode selection props (only valid when `items` is used). */
+type ListViewControlledSelectionProps = {
     /** Array of selected item IDs */
     selected?: string[] | null;
     /** Callback fired when the selection changes */
@@ -677,21 +687,49 @@ type BaseListViewProps = {
 };
 
 /**
+ * @internal
+ * Resolves the item type seen by `renderItem` in uncontrolled mode. If the consumer
+ * specializes the generic to a `GObject.Object` subclass, `renderItem` receives that
+ * subclass; otherwise it defaults to `GObject.Object`.
+ */
+type UncontrolledItemType<T> = [T] extends [GObject.Object] ? T : GObject.Object;
+
+/**
  * Props for the {@link GtkListView} compound component.
  *
  * Extends the shared list-view base props with item data, a render
  * callback, optional tree expansion, and section header rendering.
  */
-export type ListViewProps<T = unknown, S = unknown> = BaseListViewProps & {
-    /** Data items to display in the list */
-    items?: ListItem<T, S>[];
-    /** Function to render each list item. The `row` parameter provides tree state for hierarchical lists. */
-    renderItem: (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
-    /** Whether to automatically expand new tree rows (default: false) */
-    autoexpand?: boolean;
-    /** Function to render section headers when items contain section entries */
-    renderHeader?: ((item: S) => ReactNode) | null;
-};
+export type ListViewProps<T = unknown, S = unknown> = ListViewSharedProps &
+    (
+        | (ListViewControlledSelectionProps & {
+              /** Data items to display in the list */
+              items?: ListItem<T, S>[];
+              /** Function to render each list item; `row` provides tree state for hierarchical lists. */
+              renderItem: (item: T, row?: Gtk.TreeListRow | null) => ReactNode;
+              /** Whether to automatically expand new tree rows (default: false) */
+              autoexpand?: boolean;
+              /** Function to render section headers when items contain section entries */
+              renderHeader?: ((item: S) => ReactNode) | null;
+              model?: never;
+          })
+        | {
+              /**
+               * Uncontrolled mode: hands the given `Gio.ListModel` straight to the widget. The
+               * caller owns the model lifecycle and must wrap data in a `Gtk.SingleSelection` or
+               * `Gtk.MultiSelection` so the widget receives a `Gtk.SelectionModel`.
+               */
+              model: Gio.ListModel;
+              /** Function to render each list item; receives the `GObject.Object` from the model. */
+              renderItem: (item: UncontrolledItemType<T>) => ReactNode;
+              items?: never;
+              autoexpand?: never;
+              renderHeader?: never;
+              selected?: never;
+              onSelectionChanged?: never;
+              selectionMode?: never;
+          }
+    );
 
 /**
  * Props for the {@link GtkGridView} compound component.
@@ -699,30 +737,96 @@ export type ListViewProps<T = unknown, S = unknown> = BaseListViewProps & {
  * Extends the shared list-view base props with item data and a
  * render callback for each grid cell.
  */
-export type GridViewProps<T = unknown> = BaseListViewProps & {
-    /** Data items to display in the grid */
-    items?: ListItem<T>[];
-    /** Function to render each grid item */
-    renderItem: (item: T) => ReactNode;
-};
+export type GridViewProps<T = unknown> = ListViewSharedProps &
+    (
+        | (ListViewControlledSelectionProps & {
+              /** Data items to display in the grid */
+              items?: ListItem<T>[];
+              /** Function to render each grid item */
+              renderItem: (item: T) => ReactNode;
+              model?: never;
+          })
+        | {
+              /**
+               * Uncontrolled mode: hands the given `Gio.ListModel` straight to the widget. The
+               * caller owns the model lifecycle and must wrap data in a `Gtk.SingleSelection` or
+               * `Gtk.MultiSelection` so the widget receives a `Gtk.SelectionModel`.
+               */
+              model: Gio.ListModel;
+              /** Function to render each grid item; receives the `GObject.Object` from the model. */
+              renderItem: (item: UncontrolledItemType<T>) => ReactNode;
+              items?: never;
+              selected?: never;
+              onSelectionChanged?: never;
+              selectionMode?: never;
+          }
+    );
+
+/**
+ * Props for the `GtkColumnView` compound component.
+ *
+ * In controlled mode (default), provide `items` (and optionally `selected`, `selectionMode`,
+ * `renderHeader`). In uncontrolled mode, provide a `model` instead — the caller wraps their
+ * data in a `Gtk.SingleSelection`/`Gtk.MultiSelection` and the column view delegates
+ * selection to it.
+ */
+export type ColumnViewProps<T = unknown, S = unknown> =
+    | (ListViewControlledSelectionProps & {
+          /** Data items to display in the column view */
+          items?: ListItem<T, S>[];
+          /** Function to render section headers when items contain section entries */
+          renderHeader?: ((item: S) => ReactNode) | null;
+          model?: never;
+      })
+    | {
+          /**
+           * Uncontrolled mode: hands the given `Gio.ListModel` straight to the widget. The
+           * caller owns the model lifecycle and must wrap data in a `Gtk.SingleSelection` or
+           * `Gtk.MultiSelection` so the widget receives a `Gtk.SelectionModel`.
+           */
+          model: Gio.ListModel;
+          items?: never;
+          renderHeader?: never;
+          selected?: never;
+          onSelectionChanged?: never;
+          selectionMode?: never;
+      };
 
 /**
  * Props shared by single-selection dropdown widgets (GtkDropDown, AdwComboRow).
  */
-export type DropDownProps<T = unknown, S = unknown> = {
-    /** Data items to display in the dropdown */
-    items?: ListItem<T, S>[];
-    /** ID of the currently selected item */
-    selectedId?: string | null;
-    /** Callback fired when the selected item changes */
-    onSelectionChanged?: ((id: string) => void) | null;
-    /** Function to render each item. Sets the primary factory, used for both button and popup list unless overridden by renderListItem. */
-    renderItem?: ((item: T) => ReactNode) | null;
-    /** Function to render items in the popup list only, overriding renderItem for the list. */
-    renderListItem?: ((item: T) => ReactNode) | null;
-    /** Function to render section headers when items contain section entries */
-    renderHeader?: ((item: S) => ReactNode) | null;
-};
+export type DropDownProps<T = unknown, S = unknown> =
+    | {
+          /** Data items to display in the dropdown */
+          items?: ListItem<T, S>[];
+          /** ID of the currently selected item */
+          selectedId?: string | null;
+          /** Callback fired when the selected item changes */
+          onSelectionChanged?: ((id: string) => void) | null;
+          /** Function to render each item; used for both the button and the popup list unless overridden by `renderListItem`. */
+          renderItem?: ((item: T) => ReactNode) | null;
+          /** Function to render items in the popup list only, overriding `renderItem` for the list. */
+          renderListItem?: ((item: T) => ReactNode) | null;
+          /** Function to render section headers when items contain section entries */
+          renderHeader?: ((item: S) => ReactNode) | null;
+          model?: never;
+      }
+    | {
+          /**
+           * Uncontrolled mode: hands the given `Gio.ListModel` straight to the widget. The
+           * caller owns the model lifecycle and reads the active selection from the widget
+           * directly (`dropDown.getSelected()`).
+           */
+          model: Gio.ListModel;
+          /** Function to render each item; receives the `GObject.Object` from the model. */
+          renderItem?: ((item: UncontrolledItemType<T>) => ReactNode) | null;
+          /** Function to render items in the popup list only, overriding `renderItem` for the list. */
+          renderListItem?: ((item: UncontrolledItemType<T>) => ReactNode) | null;
+          items?: never;
+          selectedId?: never;
+          onSelectionChanged?: never;
+          renderHeader?: never;
+      };
 
 /**
  * Props shared by dialog button widgets (GtkColorDialogButton, GtkFontDialogButton).
@@ -912,19 +1016,7 @@ declare module "./generated/jsx.js" {
         onHighlightUpdated?: ((start: Gtk.TextIter, end: Gtk.TextIter) => void) | null;
     }
 
-    interface GtkListViewProps extends ListViewProps {}
-
-    interface GtkGridViewProps extends GridViewProps {}
-
     interface GtkColumnViewProps {
-        /** Data items to display in the column view */
-        items?: ListItem[];
-        /** Array of selected row IDs */
-        selected?: string[] | null;
-        /** Callback fired when the selection changes */
-        onSelectionChanged?: ((ids: string[]) => void) | null;
-        /** Selection behavior (single, multiple, none, etc.) */
-        selectionMode?: Gtk.SelectionMode | null;
         /** ID of the currently sorted column, or null for no sorting */
         sortColumn?: string | null;
         /** Sort direction (ascending or descending) */
@@ -933,13 +1025,7 @@ declare module "./generated/jsx.js" {
         onSortChanged?: ((column: string | null, order: Gtk.SortType) => void) | null;
         /** Estimated row height in pixels for virtualization */
         estimatedRowHeight?: number | null;
-        /** Function to render section headers when items contain section entries */
-        renderHeader?: ((item: unknown) => ReactNode) | null;
     }
-
-    interface GtkDropDownProps extends DropDownProps {}
-
-    interface AdwComboRowProps extends DropDownProps {}
 
     interface GtkStackProps extends StackProps {
         /** Callback fired when the visible page changes */

@@ -10,9 +10,9 @@ import type {
 } from "../generated/jsx.js";
 import type {
     ColumnViewColumnProps,
+    ColumnViewProps,
     DropDownProps,
     GridViewProps,
-    ListItem,
     ListViewProps,
     MenuItemProps,
     MenuSectionProps,
@@ -22,14 +22,32 @@ import { createPortal } from "../portal.js";
 import { BoundItemsStore } from "./bound-items-store.js";
 import { createVirtualChild } from "./compound.js";
 
-type GenericListViewProps<T, S> = Omit<GtkListViewProps, keyof ListViewProps> & ListViewProps<T, S>;
-type GenericGridViewProps<T> = Omit<GtkGridViewProps, keyof GridViewProps> & GridViewProps<T>;
-type GenericDropDownProps<T, S> = Omit<GtkDropDownProps, keyof DropDownProps> & DropDownProps<T, S>;
-type GenericComboRowProps<T, S> = Omit<AdwComboRowProps, keyof DropDownProps> & DropDownProps<T, S>;
-type GenericColumnViewProps<T, S> = Omit<GtkColumnViewProps, "items" | "renderHeader"> & {
-    items?: ListItem<T, S>[];
-    renderHeader?: ((item: S) => ReactNode) | null;
-};
+type ListViewOwnKeys =
+    | "items"
+    | "model"
+    | "renderItem"
+    | "renderHeader"
+    | "autoexpand"
+    | "selected"
+    | "onSelectionChanged"
+    | "selectionMode"
+    | "estimatedItemHeight"
+    | "estimatedItemWidth";
+type DropDownOwnKeys =
+    | "items"
+    | "model"
+    | "renderItem"
+    | "renderListItem"
+    | "renderHeader"
+    | "selectedId"
+    | "onSelectionChanged";
+type ColumnViewOwnKeys = "items" | "model" | "renderHeader" | "selected" | "onSelectionChanged" | "selectionMode";
+
+type GenericListViewProps<T, S> = Omit<GtkListViewProps, ListViewOwnKeys> & ListViewProps<T, S>;
+type GenericGridViewProps<T> = Omit<GtkGridViewProps, ListViewOwnKeys> & GridViewProps<T>;
+type GenericDropDownProps<T, S> = Omit<GtkDropDownProps, DropDownOwnKeys> & DropDownProps<T, S>;
+type GenericComboRowProps<T, S> = Omit<AdwComboRowProps, DropDownOwnKeys> & DropDownProps<T, S>;
+type GenericColumnViewProps<T, S> = Omit<GtkColumnViewProps, ColumnViewOwnKeys> & ColumnViewProps<T, S>;
 
 function useListHandle() {
     const [store] = useState(() => new BoundItemsStore());
