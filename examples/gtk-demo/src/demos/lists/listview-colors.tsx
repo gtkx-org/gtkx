@@ -514,7 +514,7 @@ function useGradualRefill(
 
         const accumulated: ColorItem[] = [];
         const increment = Math.max(1, Math.floor(limit / 4096));
-        const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
+        let pendingFlushId: ReturnType<typeof setTimeout> | null = null;
         let canceled = false;
 
         setColors([]);
@@ -526,16 +526,16 @@ function useGradualRefill(
             const newSize = Math.min(limit, accumulated.length + increment);
             for (let i = accumulated.length; i < newSize; i++) accumulated.push(createColorItem(i));
 
-            const snapshot = [...accumulated];
             const done = accumulated.length >= limit;
 
-            const timeoutId = setTimeout(() => {
-                pendingTimeouts.delete(timeoutId);
-                if (canceled) return;
-                setColors(snapshot);
-                if (done) setFilling(false);
-            }, 0);
-            pendingTimeouts.add(timeoutId);
+            if (pendingFlushId === null) {
+                pendingFlushId = setTimeout(() => {
+                    pendingFlushId = null;
+                    if (canceled) return;
+                    setColors([...accumulated]);
+                    if (accumulated.length >= limit) setFilling(false);
+                }, 0);
+            }
 
             return !done;
         });
@@ -543,8 +543,10 @@ function useGradualRefill(
         return () => {
             canceled = true;
             widget.removeTickCallback(tickId);
-            for (const timeoutId of pendingTimeouts) clearTimeout(timeoutId);
-            pendingTimeouts.clear();
+            if (pendingFlushId !== null) {
+                clearTimeout(pendingFlushId);
+                pendingFlushId = null;
+            }
         };
     }, [limit, refillToken, widgetRef]);
 
