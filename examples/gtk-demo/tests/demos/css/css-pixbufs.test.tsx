@@ -36,12 +36,11 @@ describe("cssPixbufsDemo", () => {
         expect(text).toContain("animation: move-the-image");
     });
 
-    it("adds the demo window class on mount and removes it on unmount", async () => {
-        const { unmount } = await renderDemo(cssPixbufsDemo);
+    it("declares the demo window class on the host window", async () => {
+        expect(cssPixbufsDemo.windowCssClasses).toEqual(["demo"]);
+        await renderDemo(cssPixbufsDemo);
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
         expect(window.hasCssClass("demo")).toBe(true);
-        await unmount();
-        expect(window.hasCssClass("demo")).toBe(false);
     });
 
     it("propagates new buffer text through onBufferChanged", async () => {

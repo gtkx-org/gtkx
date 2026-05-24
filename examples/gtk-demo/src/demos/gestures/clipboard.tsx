@@ -92,7 +92,13 @@ function useClipboardState() {
     const [sourceFile, setSourceFile] = useState<Gio.File | null>(null);
     const [pastedContent, setPastedContent] = useState<PastedContent>({ type: "" });
     const [canPaste, setCanPaste] = useState(false);
-    const [canCopy, setCanCopy] = useState(true);
+
+    const canCopy =
+        sourceType === "Text"
+            ? sourceText.length > 0
+            : sourceType === "File" || sourceType === "Folder"
+              ? sourceFile !== null
+              : true;
 
     return {
         sourceType,
@@ -110,7 +116,6 @@ function useClipboardState() {
         canPaste,
         setCanPaste,
         canCopy,
-        setCanCopy,
     };
 }
 
@@ -140,15 +145,6 @@ function useClipboardChangedListener(setCanPaste: (canPaste: boolean) => void) {
         update();
         clipboard.connect("changed", update);
     }, [setCanPaste]);
-}
-
-function useCanCopyEffect(state: ClipboardState) {
-    const { sourceType, sourceText, sourceFile, setCanCopy } = state;
-    useEffect(() => {
-        if (sourceType === "Text") setCanCopy(sourceText.length > 0);
-        else if (sourceType === "File" || sourceType === "Folder") setCanCopy(sourceFile !== null);
-        else setCanCopy(true);
-    }, [sourceType, sourceText, sourceFile, setCanCopy]);
 }
 
 function useDragProviders(state: ClipboardState) {
@@ -636,7 +632,6 @@ const ClipboardDemo = ({ window }: DemoProps) => {
     const clipboardHandlers = useClipboardHandlers(state, window);
 
     useClipboardChangedListener(state.setCanPaste);
-    useCanCopyEffect(state);
 
     return (
         <GtkBox

@@ -41,14 +41,12 @@ describe("cssShadowsDemo rendering", () => {
 });
 
 describe("cssShadowsDemo behavior", () => {
-    it("adds both demo and background css classes to the host window", async () => {
-        const { unmount } = await renderDemo(cssShadowsDemo);
+    it("declares both demo and background css classes on the host window", async () => {
+        expect(cssShadowsDemo.windowCssClasses).toEqual(["demo", "background"]);
+        await renderDemo(cssShadowsDemo);
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
         expect(window.hasCssClass("demo")).toBe(true);
         expect(window.hasCssClass("background")).toBe(true);
-        await unmount();
-        expect(window.hasCssClass("demo")).toBe(false);
-        expect(window.hasCssClass("background")).toBe(false);
     });
 
     it("propagates user edits in the buffer back through getText", async () => {

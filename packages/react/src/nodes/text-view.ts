@@ -14,6 +14,7 @@ import { TextTagNode } from "./text-tag.js";
 import { WidgetNode } from "./widget.js";
 
 const OWN_PROPS = [
+    "buffer",
     "enableUndo",
     "onBufferChanged",
     "onTextInserted",
@@ -44,6 +45,7 @@ export class TextViewNode extends WidgetNode<Gtk.TextView, TextViewProps, TextVi
     protected ensureBufferController(): TextBufferController {
         if (!this.bufferController) {
             this.bufferController = this.createBufferController();
+            if (this.props.buffer) this.bufferController.setExternalBuffer(this.props.buffer);
         }
         return this.bufferController;
     }

@@ -24,6 +24,8 @@ export type Demo = {
     dialogOnly?: boolean;
     windowTitle?: string;
     resizable?: boolean;
+    deletable?: boolean;
+    windowCssClasses?: string[];
 };
 
 export type TreeItem =

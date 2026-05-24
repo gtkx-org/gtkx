@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
 import gtkLogoCursorPath from "./gtk_logo_cursor.png";
@@ -13,16 +13,12 @@ Do it already!`;
 
 const ExpanderDemo = () => {
     const texture = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoCursorPath), []);
-    const expanderRef = useRef<Gtk.Expander | null>(null);
 
-    const handleExpandedNotify = useCallback((pspec: GObject.ParamSpec) => {
+    const handleExpandedNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Widget) => {
         if (pspec.getName() !== "expanded") return;
-        const expander = expanderRef.current;
-        if (!expander) return;
-
+        const expander = self as Gtk.Expander;
         const root = expander.getRoot();
         if (!root) return;
-
         const win = root instanceof Gtk.Window ? root : null;
         if (win) win.setResizable(expander.getExpanded());
     }, []);
@@ -39,7 +35,7 @@ const ExpanderDemo = () => {
             <GtkLabel label="<big><b>Something went wrong</b></big>" useMarkup />
             <GtkLabel label="Here are some more details but not the full story" wrap={false} vexpand={false} />
 
-            <GtkExpander name="expander" label="Details:" vexpand ref={expanderRef} onNotify={handleExpandedNotify}>
+            <GtkExpander name="expander" label="Details:" vexpand onNotify={handleExpandedNotify}>
                 <GtkScrolledWindow
                     minContentHeight={100}
                     hasFrame

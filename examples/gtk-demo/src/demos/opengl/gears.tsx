@@ -3,6 +3,7 @@ import * as gl from "@gtkx/ffi/gl";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkGLArea, GtkLabel, GtkOverlay, GtkScale } from "@gtkx/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLatest } from "../../use-latest.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./gears.tsx?raw";
 
@@ -499,12 +500,9 @@ function useGearsRefs(state: GearsState): GearsRefs {
     const tickIdRef = useRef<number | null>(null);
     const firstFrameTimeRef = useRef(0);
     const angleRef = useRef(0);
-    const viewRotXRef = useRef(state.viewRotX);
-    const viewRotYRef = useRef(state.viewRotY);
-    const viewRotZRef = useRef(state.viewRotZ);
-    viewRotXRef.current = state.viewRotX;
-    viewRotYRef.current = state.viewRotY;
-    viewRotZRef.current = state.viewRotZ;
+    const viewRotXRef = useLatest(state.viewRotX);
+    const viewRotYRef = useLatest(state.viewRotY);
+    const viewRotZRef = useLatest(state.viewRotZ);
     return { glAreaRef, glStateRef, tickIdRef, firstFrameTimeRef, angleRef, viewRotXRef, viewRotYRef, viewRotZRef };
 }
 

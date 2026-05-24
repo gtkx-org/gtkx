@@ -222,18 +222,15 @@ const MessageDetails = ({ message, expanded }: { message: Message; expanded: boo
 
 const MessageRow = ({ message, expanded, onToggleExpand, onFavorite, onReshare }: MessageRowProps) => {
     const extraButtonsRef = useRef<Gtk.Box>(null);
-    const rowRef = useRef<Gtk.ListBoxRow>(null);
 
-    const handleStateFlagsChanged = useCallback((_previousFlags: number) => {
-        const row = rowRef.current;
-        if (!row) return;
+    const handleStateFlagsChanged = useCallback((_previousFlags: Gtk.StateFlags, row: Gtk.Widget) => {
         const flags = row.getStateFlags();
         const visible = (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0;
         extraButtonsRef.current?.setVisible(visible);
     }, []);
 
     return (
-        <GtkListBoxRow ref={rowRef} onStateFlagsChanged={handleStateFlagsChanged}>
+        <GtkListBoxRow onStateFlagsChanged={handleStateFlagsChanged}>
             <GtkGrid hexpand>
                 <MessageAvatar message={message} />
                 <MessageHeader message={message} />

@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkOverlay, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useMemo } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import type { Demo } from "../types.js";
 import sourceCode from "./css-multiplebgs.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";
@@ -146,9 +145,8 @@ const DEFAULT_CSS = `/* You can edit the text in this window to change the
 
 const WINDOW_CLASSES = ["demo"];
 
-const CssMultiplebgsDemo = ({ window }: DemoProps) => {
-    const windowClasses = useMemo(() => WINDOW_CLASSES, []);
-    const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
+const CssMultiplebgsDemo = () => {
+    const { textViewRef, onBufferChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
         <GtkOverlay name="overlay">
@@ -169,7 +167,9 @@ const CssMultiplebgsDemo = ({ window }: DemoProps) => {
                     startChild={<GtkBox />}
                     endChild={
                         <GtkScrolledWindow>
-                            <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged} />
+                            <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged}>
+                                {DEFAULT_CSS}
+                            </GtkTextView>
                         </GtkScrolledWindow>
                     }
                 />
@@ -188,4 +188,5 @@ export const cssMultiplebgsDemo: Demo = {
     sourceCode,
     defaultWidth: 400,
     defaultHeight: 300,
+    windowCssClasses: WINDOW_CLASSES,
 };

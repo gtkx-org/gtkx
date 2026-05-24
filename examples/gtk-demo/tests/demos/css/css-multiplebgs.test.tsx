@@ -45,11 +45,10 @@ describe("cssMultiplebgsDemo", () => {
         expect(text).toContain("transition-property");
     });
 
-    it("adds the demo window class on mount and removes it on unmount", async () => {
-        const { unmount } = await renderDemo(cssMultiplebgsDemo);
+    it("declares the demo window class on the host window", async () => {
+        expect(cssMultiplebgsDemo.windowCssClasses).toEqual(["demo"]);
+        await renderDemo(cssMultiplebgsDemo);
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
         expect(window.hasCssClass("demo")).toBe(true);
-        await unmount();
-        expect(window.hasCssClass("demo")).toBe(false);
     });
 });

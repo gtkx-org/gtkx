@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, GtkGestureClick, GtkHeaderBar, GtkPicture } from "@gtkx/react";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import nodeEditorSvgPath from "./org.gtk.gtk4.NodeEditor.Devel.svg";
 import sourceCode from "./paintable-svg.tsx?raw";
@@ -51,12 +51,7 @@ const usePaintableSvgContext = (): PaintableSvgContextValue => {
 };
 
 const PaintableSvgProvider = ({ window, children }: DemoProviderProps) => {
-    const [svg, setSvg] = useState<Gtk.Svg | null>(null);
-
-    useEffect(() => {
-        const file = Gio.fileNewForPath(nodeEditorSvgPath);
-        setSvg(loadSvgFromFile(file));
-    }, []);
+    const [svg, setSvg] = useState<Gtk.Svg | null>(() => loadSvgFromFile(Gio.fileNewForPath(nodeEditorSvgPath)));
 
     const handleOpen = useCallback(async () => {
         const file = await pickSvgFile(window.current);

@@ -18,7 +18,7 @@ import {
     useApplication,
     useProperty,
 } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
@@ -62,12 +62,14 @@ interface DemoWindowProps {
 }
 
 const DemoWindow = ({ onClose }: DemoWindowProps) => {
-    const { currentDemo } = useDemo();
+    const { currentDemo, windowTitle } = useDemo();
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
     const windowRef = useRef<Gtk.Window>(null);
     const activeWindowRef = useRef<Gtk.Window | null>(null);
-    activeWindowRef.current = activeWindow ?? null;
+    useLayoutEffect(() => {
+        activeWindowRef.current = activeWindow ?? null;
+    }, [activeWindow]);
 
     if (!currentDemo?.component || !activeWindow) return null;
 
@@ -90,10 +92,12 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
         <DemoStateProvider window={windowRef} onClose={onClose}>
             <GtkWindow
                 ref={windowRef}
-                title={currentDemo.windowTitle ?? displayTitle}
+                title={windowTitle ?? currentDemo.windowTitle ?? displayTitle}
                 defaultWidth={currentDemo.defaultWidth ?? -1}
                 defaultHeight={currentDemo.defaultHeight ?? -1}
                 resizable={currentDemo.resizable ?? true}
+                deletable={currentDemo.deletable ?? true}
+                cssClasses={currentDemo.windowCssClasses}
                 titlebar={titlebar}
                 onClose={onClose}
             >

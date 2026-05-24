@@ -32,12 +32,11 @@ describe("cssBasicsDemo rendering", () => {
         expect(text).toContain("color: green");
     });
 
-    it("adds the demo css class to the host window on mount and removes it on unmount", async () => {
-        const { unmount } = await renderDemo(cssBasicsDemo);
+    it("declares the demo css class on the host window", async () => {
+        expect(cssBasicsDemo.windowCssClasses).toEqual(["demo"]);
+        await renderDemo(cssBasicsDemo);
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
         expect(window.hasCssClass("demo")).toBe(true);
-        await unmount();
-        expect(window.hasCssClass("demo")).toBe(false);
     });
 });
 

@@ -11,8 +11,8 @@ describe("textmaskDemo metadata", () => {
         expect(textmaskDemo.description.length).toBeGreaterThan(0);
         expect(Array.isArray(textmaskDemo.keywords)).toBe(true);
         expect(typeof textmaskDemo.sourceCode).toBe("string");
-        expect(textmaskDemo.defaultWidth).toBeUndefined();
-        expect(textmaskDemo.defaultHeight).toBeUndefined();
+        expect(textmaskDemo.defaultWidth).toBe(400);
+        expect(textmaskDemo.defaultHeight).toBe(240);
         expect(textmaskDemo.keywords).toEqual([]);
     });
 
@@ -24,10 +24,10 @@ describe("textmaskDemo metadata", () => {
 });
 
 describe("textmaskDemo rendering", () => {
-    it("applies the configured size request to the host window", async () => {
+    it("applies the configured default size to the host window", async () => {
         await renderDemo(textmaskDemo);
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        const [width, height] = window.getSizeRequest();
+        const [width, height] = window.getDefaultSize();
         expect(width).toBe(400);
         expect(height).toBe(240);
     });

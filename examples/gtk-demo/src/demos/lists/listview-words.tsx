@@ -14,6 +14,7 @@ import {
 } from "@gtkx/react";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useDemo } from "../../context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-words.tsx?raw";
 
@@ -227,12 +228,14 @@ const ListViewWordsTitlebar = () => {
     );
 };
 
-const ListViewWordsDemo = ({ window }: DemoProps) => {
+const ListViewWordsDemo = (_: DemoProps) => {
     const { searchText, setSearchText, filteredWords, filterProgress } = useWordsContext();
+    const { setWindowTitle } = useDemo();
 
     useEffect(() => {
-        window.current?.setTitle(`${filteredWords.length} lines`);
-    }, [filteredWords.length, window]);
+        setWindowTitle(`${filteredWords.length} lines`);
+        return () => setWindowTitle(null);
+    }, [filteredWords.length, setWindowTitle]);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>

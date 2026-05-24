@@ -1,6 +1,5 @@
 import { GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useMemo } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import type { Demo } from "../types.js";
 import sourceCode from "./css-basics.tsx?raw";
 import resetCssPath from "./reset.css?url";
 import { useCssEditor } from "./use-css-editor.js";
@@ -36,13 +35,14 @@ window.demo {
 
 const WINDOW_CLASSES = ["demo"];
 
-const CssBasicsDemo = ({ window }: DemoProps) => {
-    const windowClasses = useMemo(() => WINDOW_CLASSES, []);
-    const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
+const CssBasicsDemo = () => {
+    const { textViewRef, onBufferChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
         <GtkScrolledWindow name="scrolled" hexpand vexpand>
-            <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged} />
+            <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged}>
+                {DEFAULT_CSS}
+            </GtkTextView>
         </GtkScrolledWindow>
     );
 };
@@ -57,4 +57,5 @@ export const cssBasicsDemo: Demo = {
     sourceCode,
     defaultWidth: 400,
     defaultHeight: 300,
+    windowCssClasses: WINDOW_CLASSES,
 };

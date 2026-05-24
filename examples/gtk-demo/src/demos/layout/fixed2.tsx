@@ -3,7 +3,7 @@ import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkFixed, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./fixed2.tsx?raw";
 
@@ -36,16 +36,19 @@ const computeFixedTransform = (
 
 const Fixed2Demo = () => {
     const startTimeRef = useRef<number | null>(null);
-    const [transform, setTransform] = useState<Gsk.Transform | undefined>(undefined);
     const labelRef = useRef<Gtk.Label | null>(null);
     const fixedRef = useRef<Gtk.Fixed | null>(null);
     const tickIdRef = useRef<number | null>(null);
 
     const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+        const fixed = fixedRef.current;
+        const label = labelRef.current;
+        if (!fixed || !label) return true;
         const now = frameClock.getFrameTime();
         startTimeRef.current ??= now;
         const duration = (now - startTimeRef.current) / 1_000_000;
-        setTransform(computeFixedTransform(duration, labelRef.current, fixedRef.current));
+        const transform = computeFixedTransform(duration, label, fixed) ?? null;
+        fixed.setChildTransform(label, transform);
         return true;
     }, []);
 
@@ -73,7 +76,7 @@ const Fixed2Demo = () => {
     return (
         <GtkScrolledWindow name="scrolled" hexpand vexpand>
             <GtkFixed name="fixed" ref={handleFixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
-                <GtkFixed.Child x={0} y={0} transform={transform}>
+                <GtkFixed.Child x={0} y={0}>
                     <GtkLabel ref={handleLabelRef} name="fixed-label" label="All fixed?" />
                 </GtkFixed.Child>
             </GtkFixed>

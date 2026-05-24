@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
 
@@ -14,18 +14,16 @@ interface AppItem {
 }
 
 const ListViewApplauncherDemo = () => {
-    const [apps, setApps] = useState<AppItem[]>([]);
-
-    useEffect(() => {
-        const allApps = Gio.appInfoGetAll();
-        const appItems: AppItem[] = allApps.map((app) => ({
-            appInfo: app,
-            id: app.getId() ?? crypto.randomUUID(),
-            name: app.getDisplayName(),
-            icon: app.getIcon(),
-        }));
-        setApps(appItems);
-    }, []);
+    const apps = useMemo<AppItem[]>(
+        () =>
+            Gio.appInfoGetAll().map((app) => ({
+                appInfo: app,
+                id: app.getId() ?? crypto.randomUUID(),
+                name: app.getDisplayName(),
+                icon: app.getIcon(),
+            })),
+        [],
+    );
 
     const handleActivate = useCallback(
         (position: number) => {

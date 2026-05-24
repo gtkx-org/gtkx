@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useMemo } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import type { Demo } from "../types.js";
 import appleRedPath from "./apple-red.png";
 import backgroundPath from "./background.jpg";
 import sourceCode from "./css-pixbufs.tsx?raw";
@@ -94,9 +93,8 @@ window.demo .view:selected {
 
 const WINDOW_CLASSES = ["demo"];
 
-const CssPixbufsDemo = ({ window }: DemoProps) => {
-    const windowClasses = useMemo(() => WINDOW_CLASSES, []);
-    const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
+const CssPixbufsDemo = () => {
+    const { textViewRef, onBufferChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
         <GtkPaned
@@ -105,7 +103,9 @@ const CssPixbufsDemo = ({ window }: DemoProps) => {
             startChild={<GtkBox orientation={Gtk.Orientation.VERTICAL} />}
             endChild={
                 <GtkScrolledWindow name="scrolled">
-                    <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged} />
+                    <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged}>
+                        {DEFAULT_CSS}
+                    </GtkTextView>
                 </GtkScrolledWindow>
             }
         />
@@ -122,4 +122,5 @@ export const cssPixbufsDemo: Demo = {
     sourceCode,
     defaultWidth: 400,
     defaultHeight: 300,
+    windowCssClasses: WINDOW_CLASSES,
 };

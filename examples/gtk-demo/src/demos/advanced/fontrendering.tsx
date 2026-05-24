@@ -235,6 +235,11 @@ const easeOutCubic = (t: number) => {
 function useOverlayAnimation(state: FontRenderingState) {
     const { overlays, pixelAlpha, outlineAlpha, setPixelAlpha, setOutlineAlpha, animationRef } = state;
 
+    const pixelAlphaRef = useRef(pixelAlpha);
+    const outlineAlphaRef = useRef(outlineAlpha);
+    pixelAlphaRef.current = pixelAlpha;
+    outlineAlphaRef.current = outlineAlpha;
+
     useEffect(() => {
         let targetPixelAlpha: number;
         if (overlays.showPixels && overlays.showOutlines) targetPixelAlpha = 0.5;
@@ -242,16 +247,14 @@ function useOverlayAnimation(state: FontRenderingState) {
         else targetPixelAlpha = 0;
         const targetOutlineAlpha = overlays.showOutlines ? 1 : 0;
 
-        if (pixelAlpha === targetPixelAlpha && outlineAlpha === targetOutlineAlpha) return;
+        const startPixelAlpha = pixelAlphaRef.current;
+        const startOutlineAlpha = outlineAlphaRef.current;
+        if (startPixelAlpha === targetPixelAlpha && startOutlineAlpha === targetOutlineAlpha) return;
 
-        const startPixelAlpha = pixelAlpha;
-        const startOutlineAlpha = outlineAlpha;
         const startTime = Date.now();
         const duration = 500;
 
-        if (animationRef.current) {
-            clearInterval(animationRef.current);
-        }
+        if (animationRef.current) clearInterval(animationRef.current);
 
         animationRef.current = setInterval(() => {
             const elapsed = Date.now() - startTime;
@@ -273,15 +276,7 @@ function useOverlayAnimation(state: FontRenderingState) {
                 animationRef.current = null;
             }
         };
-    }, [
-        overlays.showPixels,
-        overlays.showOutlines,
-        outlineAlpha,
-        pixelAlpha,
-        setPixelAlpha,
-        setOutlineAlpha,
-        animationRef,
-    ]);
+    }, [overlays.showPixels, overlays.showOutlines, setPixelAlpha, setOutlineAlpha, animationRef]);
 }
 
 interface DrawTextModeContext {

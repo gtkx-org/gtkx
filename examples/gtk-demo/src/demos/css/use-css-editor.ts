@@ -5,7 +5,7 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { cssParserWarningQuark } from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import type { RefObject } from "react";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 
 const clearTags = (buffer: Gtk.TextBuffer) => {
     const startIter = buffer.getStartIter();
@@ -90,7 +90,7 @@ const setupProvider = ({
     };
 };
 
-export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClasses: string[], defaultCss: string) {
+export function useCssEditor(defaultCss: string) {
     const textViewRef = useRef<Gtk.TextView | null>(null);
     const providerRef = useRef<Gtk.CssProvider | null>(null);
     const displayRef = useRef<Gdk.Display | null>(null);
@@ -131,18 +131,9 @@ export function useCssEditor(windowRef: RefObject<Gtk.Window | null>, windowClas
             displayRef,
             handleParsingError,
         });
-        buffer.setText(defaultCss, -1);
+        providerRef.current?.loadFromString(defaultCss);
         return cleanup;
     }, [defaultCss, handleParsingError]);
-
-    useEffect(() => {
-        const win = windowRef.current;
-        if (!win) return;
-        for (const cls of windowClasses) win.addCssClass(cls);
-        return () => {
-            for (const cls of windowClasses) win.removeCssClass(cls);
-        };
-    }, [windowRef, windowClasses]);
 
     return { textViewRef, onBufferChanged };
 }

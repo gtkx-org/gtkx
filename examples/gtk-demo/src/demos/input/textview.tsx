@@ -4,7 +4,7 @@ import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import { GtkButton, GtkDropDown, GtkEntry, GtkPaned, GtkScale, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";
 
@@ -408,6 +408,7 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => (
 const TextViewDemo = () => {
     const textView1Ref = useRef<Gtk.TextView | null>(null);
     const textView2Ref = useRef<Gtk.TextView | null>(null);
+    const [sharedBuffer] = useState(() => new Gtk.TextBuffer());
 
     const handleClickMe = useCallback(() => {
         const tv = textView1Ref.current;
@@ -424,14 +425,10 @@ const TextViewDemo = () => {
     const nuclearPaintable = useMemo(() => createNuclearTexture(), []);
 
     useLayoutEffect(() => {
-        const tv1 = textView1Ref.current;
         const tv2 = textView2Ref.current;
-        if (!tv1 || !tv2) return;
+        if (!tv2) return;
 
-        const buffer = tv1.getBuffer();
-        tv2.setBuffer(buffer);
-
-        const anchors = findChildAnchors(buffer);
+        const anchors = findChildAnchors(sharedBuffer);
         attachWidgetClones(tv2, anchors, () => {
             if (textView2Ref.current) handleEasterEgg(textView2Ref.current);
         });
@@ -442,7 +439,7 @@ const TextViewDemo = () => {
                 easterEggWindow = null;
             }
         };
-    }, []);
+    }, [sharedBuffer]);
 
     return (
         <GtkPaned
@@ -454,7 +451,12 @@ const TextViewDemo = () => {
                     hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 >
-                    <GtkTextView ref={textView1Ref} name="text-view-1" wrapMode={Gtk.WrapMode.WORD}>
+                    <GtkTextView
+                        ref={textView1Ref}
+                        name="text-view-1"
+                        wrapMode={Gtk.WrapMode.WORD}
+                        buffer={sharedBuffer}
+                    >
                         <TextViewIntroSection />
                         <TextViewFontStylesSection />
                         <TextViewColorsSection />
@@ -474,7 +476,12 @@ const TextViewDemo = () => {
                     hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 >
-                    <GtkTextView ref={textView2Ref} name="text-view-2" wrapMode={Gtk.WrapMode.WORD} />
+                    <GtkTextView
+                        ref={textView2Ref}
+                        name="text-view-2"
+                        wrapMode={Gtk.WrapMode.WORD}
+                        buffer={sharedBuffer}
+                    />
                 </GtkScrolledWindow>
             }
         />

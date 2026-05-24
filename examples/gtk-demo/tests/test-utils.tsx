@@ -3,6 +3,7 @@ import { GtkApplicationWindow } from "@gtkx/react";
 import { type RenderResult, render } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
 import { expect } from "vitest";
+import { DemoProvider, useDemo } from "../src/context/demo-context.js";
 import type { Demo, DemoProps, DemoProviderProps } from "../src/demos/types.js";
 
 /**
@@ -32,8 +33,9 @@ const buildWrapper = ({
     Titlebar,
     demo,
 }: WrapperArgs): ComponentType<{ children: ReactNode }> => {
-    return ({ children }: { children: ReactNode }) => {
+    const DemoShell = ({ children }: { children: ReactNode }) => {
         const [windowReady, setWindowReady] = useState(false);
+        const { windowTitle } = useDemo();
         const titlebar = Titlebar ? <Titlebar window={windowRef} onClose={onClose} /> : undefined;
         const handleWindowRef = useCallback((widget: Gtk.Widget | null): void => {
             (windowRef as { current: Gtk.Window | null }).current = (widget as Gtk.Window | null) ?? null;
@@ -43,10 +45,12 @@ const buildWrapper = ({
             <Provider window={windowRef} onClose={onClose}>
                 <GtkApplicationWindow
                     ref={handleWindowRef}
-                    title={demo?.windowTitle}
+                    title={windowTitle ?? demo?.windowTitle}
                     defaultWidth={demo?.defaultWidth ?? 800}
                     defaultHeight={demo?.defaultHeight ?? 600}
                     resizable={demo?.resizable ?? true}
+                    deletable={demo?.deletable ?? true}
+                    cssClasses={demo?.windowCssClasses}
                     titlebar={titlebar}
                 >
                     {windowReady ? children : null}
@@ -54,6 +58,11 @@ const buildWrapper = ({
             </Provider>
         );
     };
+    return ({ children }: { children: ReactNode }) => (
+        <DemoProvider demos={demo ? [demo] : []}>
+            <DemoShell>{children}</DemoShell>
+        </DemoProvider>
+    );
 };
 
 const isDemo = (value: ComponentType<DemoProps> | Demo): value is Demo =>

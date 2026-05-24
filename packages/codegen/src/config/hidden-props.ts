@@ -16,7 +16,6 @@ const HIDDEN_PROPS: Readonly<Record<string, readonly string[]>> = {
     VolumeButton: ["adjustment"],
     SpinButton: ["adjustment", "onValueChanged"],
     SpinRow: ["adjustment", "onValueChanged"],
-    TextView: ["buffer"],
     ColorDialogButton: ["dialog"],
     FontDialogButton: ["dialog"],
     PopoverMenu: ["menuModel"],

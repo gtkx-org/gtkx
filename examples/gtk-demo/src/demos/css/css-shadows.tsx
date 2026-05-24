@@ -1,7 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useMemo } from "react";
-import type { Demo, DemoProps } from "../types.js";
+import type { Demo } from "../types.js";
 import sourceCode from "./css-shadows.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";
@@ -52,9 +51,8 @@ window.demo button:active {
 
 const WINDOW_CLASSES = ["demo", "background"];
 
-const CssShadowsDemo = ({ window }: DemoProps) => {
-    const windowClasses = useMemo(() => WINDOW_CLASSES, []);
-    const { textViewRef, onBufferChanged } = useCssEditor(window, windowClasses, DEFAULT_CSS);
+const CssShadowsDemo = () => {
+    const { textViewRef, onBufferChanged } = useCssEditor(DEFAULT_CSS);
 
     return (
         <GtkPaned
@@ -70,7 +68,9 @@ const CssShadowsDemo = ({ window }: DemoProps) => {
             }
             endChild={
                 <GtkScrolledWindow>
-                    <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged} />
+                    <GtkTextView name="text-view" ref={textViewRef} onBufferChanged={onBufferChanged}>
+                        {DEFAULT_CSS}
+                    </GtkTextView>
                 </GtkScrolledWindow>
             }
         />
@@ -86,4 +86,5 @@ export const cssShadowsDemo: Demo = {
     sourceCode,
     defaultWidth: 400,
     defaultHeight: 300,
+    windowCssClasses: WINDOW_CLASSES,
 };

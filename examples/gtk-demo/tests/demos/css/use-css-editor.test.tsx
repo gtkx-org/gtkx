@@ -1,34 +1,27 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { type RefObject, useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
 import { useCssEditor } from "../../../src/demos/css/use-css-editor.js";
 
 interface HostProps {
-    classes: string[];
     defaultCss: string;
-    onMount?: (win: Gtk.Window | null, tv: Gtk.TextView | null) => void;
+    onMount?: (tv: Gtk.TextView | null) => void;
 }
 
-const Host = ({ classes, defaultCss, onMount }: HostProps) => {
-    const windowRef = useRef<Gtk.Window | null>(null);
-    if (!windowRef.current) windowRef.current = new Gtk.Window();
-
-    const editor = useCssEditor(windowRef as RefObject<Gtk.Window | null>, classes, defaultCss);
+const Host = ({ defaultCss, onMount }: HostProps) => {
+    const editor = useCssEditor(defaultCss);
 
     useEffect(() => {
-        onMount?.(windowRef.current, editor.textViewRef.current);
-        return () => {
-            const win = windowRef.current;
-            if (win) win.destroy();
-            windowRef.current = null;
-        };
+        onMount?.(editor.textViewRef.current);
     }, [onMount, editor.textViewRef]);
 
     return (
         <GtkScrolledWindow>
-            <GtkTextView ref={editor.textViewRef} onBufferChanged={editor.onBufferChanged} />
+            <GtkTextView ref={editor.textViewRef} onBufferChanged={editor.onBufferChanged}>
+                {defaultCss}
+            </GtkTextView>
         </GtkScrolledWindow>
     );
 };
@@ -37,17 +30,8 @@ const DEFAULT_CSS = "window { color: red; }";
 
 describe("useCssEditor buffer", () => {
     it("populates the text buffer with the supplied default css", async () => {
-        const captured: { win: Gtk.Window | null; tv: Gtk.TextView | null } = { win: null, tv: null };
-        await render(
-            <Host
-                classes={["sample"]}
-                defaultCss={DEFAULT_CSS}
-                onMount={(win, tv) => {
-                    captured.win = win;
-                    captured.tv = tv;
-                }}
-            />,
-        );
+        const captured: { tv: Gtk.TextView | null } = { tv: null };
+        await render(<Host defaultCss={DEFAULT_CSS} onMount={(tv) => (captured.tv = tv)} />);
         expect(captured.tv).not.toBeNull();
         if (!captured.tv) return;
         const buffer = captured.tv.getBuffer();
@@ -57,7 +41,7 @@ describe("useCssEditor buffer", () => {
 
     it("registers warning and error text tags on the buffer's tag table", async () => {
         const captured: { tv: Gtk.TextView | null } = { tv: null };
-        await render(<Host classes={["tagged"]} defaultCss={DEFAULT_CSS} onMount={(_, tv) => (captured.tv = tv)} />);
+        await render(<Host defaultCss={DEFAULT_CSS} onMount={(tv) => (captured.tv = tv)} />);
         const textView = captured.tv;
         expect(textView).not.toBeNull();
         if (!textView) return;
@@ -68,24 +52,9 @@ describe("useCssEditor buffer", () => {
 });
 
 describe("useCssEditor lifecycle", () => {
-    it("adds and removes the supplied window classes on mount and unmount", async () => {
-        const captured: { win: Gtk.Window | null } = { win: null };
-        const { unmount } = await render(
-            <Host classes={["alpha", "beta"]} defaultCss={DEFAULT_CSS} onMount={(win) => (captured.win = win)} />,
-        );
-        const win = captured.win;
-        expect(win).not.toBeNull();
-        if (!win) return;
-        expect(win.hasCssClass("alpha")).toBe(true);
-        expect(win.hasCssClass("beta")).toBe(true);
-        await unmount();
-        expect(win.hasCssClass("alpha")).toBe(false);
-        expect(win.hasCssClass("beta")).toBe(false);
-    });
-
     it("updates the css provider when the buffer text changes and applies error tags on invalid css", async () => {
         const captured: { tv: Gtk.TextView | null } = { tv: null };
-        await render(<Host classes={["live"]} defaultCss={DEFAULT_CSS} onMount={(_, tv) => (captured.tv = tv)} />);
+        await render(<Host defaultCss={DEFAULT_CSS} onMount={(tv) => (captured.tv = tv)} />);
         const textView = captured.tv;
         expect(textView).not.toBeNull();
         if (!textView) return;

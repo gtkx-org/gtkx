@@ -74,7 +74,9 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef }: MarkupStac
                     wrapMode={Gtk.WrapMode.WORD}
                     leftMargin={10}
                     rightMargin={10}
-                />
+                >
+                    {SAMPLE_MARKUP}
+                </GtkTextView>
             </GtkScrolledWindow>
         </GtkStack.Page>
     </GtkStack>
@@ -145,15 +147,8 @@ const MarkupDemo = () => {
     const { showSource, formattedViewRef, sourceViewRef, applyMarkup } = useMarkupContext();
 
     useLayoutEffect(() => {
-        const sourceView = sourceViewRef.current;
-        if (sourceView) {
-            const buffer = sourceView.getBuffer();
-            if (buffer) {
-                buffer.setText(SAMPLE_MARKUP, -1);
-            }
-        }
         applyMarkup();
-    }, [applyMarkup, sourceViewRef]);
+    }, [applyMarkup]);
 
     return <MarkupStack showSource={showSource} formattedViewRef={formattedViewRef} sourceViewRef={sourceViewRef} />;
 };

@@ -1,11 +1,6 @@
 {
     "$schema": "https://turborepo.com/schema.json",
-    "globalDependencies": [
-        "tsconfig.base.json",
-        "tsconfig.lib.json",
-        "tsconfig.test.json",
-        "biome.json"
-    ],
+    "globalDependencies": ["tsconfig.base.json", "tsconfig.lib.json", "tsconfig.test.json", "biome.json"],
     "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
     "globalPassThroughEnv": [
         "TURBO_TOKEN",
@@ -33,14 +28,7 @@
                 "@gtkx/testing#build",
                 "@gtkx/vitest#build"
             ],
-            "inputs": [
-                "**/*.ts",
-                "**/*.tsx",
-                "**/package.json",
-                "biome.json",
-                "knip.json",
-                ".dependency-cruiser.cjs"
-            ],
+            "inputs": ["**/*.ts", "**/*.tsx", "**/package.json", "biome.json", "knip.json", ".dependency-cruiser.cjs"],
             "outputLogs": "new-only"
         },
         "//#test:all": {
