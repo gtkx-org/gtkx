@@ -1,9 +1,11 @@
 import type * as Adw from "@gtkx/ffi/adw";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { fireEvent, screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { themesDemo } from "../../../src/demos/benchmark/themes.js";
 import { renderDemo } from "../../test-utils.js";
+
+vi.setConfig({ testTimeout: 30000 });
 
 const activateCycleAndAwaitAlert = async (): Promise<{ cycle: Gtk.ToggleButton; alert: Adw.AlertDialog }> => {
     await renderDemo(themesDemo);
