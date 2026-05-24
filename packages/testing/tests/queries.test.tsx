@@ -355,3 +355,45 @@ describe("findByRole accessible name", () => {
         expect(button).toBeInstanceOf(Gtk.Button);
     });
 });
+
+describe("findByRole level", () => {
+    it("matches a widget by its accessibleLevel JSX prop", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkLabel accessibleLevel={1} label="Top" />
+                <GtkLabel accessibleLevel={2} label="Section" />
+                <GtkLabel accessibleLevel={3} label="Subsection" />
+            </VBox>,
+        );
+        const top = await findByRole(container, Gtk.AccessibleRole.LABEL, { level: 1 });
+        const section = await findByRole(container, Gtk.AccessibleRole.LABEL, { level: 2 });
+        const subsection = await findByRole(container, Gtk.AccessibleRole.LABEL, { level: 3 });
+        expect((top as Gtk.Label).getLabel()).toBe("Top");
+        expect((section as Gtk.Label).getLabel()).toBe("Section");
+        expect((subsection as Gtk.Label).getLabel()).toBe("Subsection");
+    });
+
+    it("rejects widgets whose level differs from the requested value", async () => {
+        const { container } = await render(<GtkLabel accessibleLevel={2} label="Heading" />);
+        await expect(findByRole(container, Gtk.AccessibleRole.LABEL, { level: 3 })).rejects.toThrow();
+    });
+
+    it("rejects widgets that declare no accessibleLevel when one is requested", async () => {
+        const { container } = await render(<GtkLabel label="No level" />);
+        await expect(findByRole(container, Gtk.AccessibleRole.LABEL, { level: 1 })).rejects.toThrow();
+    });
+
+    it("combines with name to disambiguate widgets at the same level", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkLabel accessibleLevel={2} label="First section" />
+                <GtkLabel accessibleLevel={2} label="Second section" />
+            </VBox>,
+        );
+        const second = await findByRole(container, Gtk.AccessibleRole.LABEL, {
+            level: 2,
+            name: "Second section",
+        });
+        expect((second as Gtk.Label).getLabel()).toBe("Second section");
+    });
+});

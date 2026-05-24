@@ -183,3 +183,15 @@ export const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
 
     return null;
 };
+
+/**
+ * Gets the accessible heading level from widgets that declare one via the
+ * `accessibleLevel` JSX prop (mirrors GTK's `AccessibleProperty.LEVEL`).
+ *
+ * @param widget - The widget to get the level from
+ * @returns The numeric level or null if none is set
+ */
+export const getWidgetLevel = (widget: Gtk.Widget): number | null => {
+    const level = getAccessibleMetadata<number>(widget, "accessibleLevel");
+    return typeof level === "number" ? level : null;
+};

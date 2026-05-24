@@ -7,6 +7,7 @@ import {
     getWidgetAccessibleName,
     getWidgetCheckedState,
     getWidgetExpandedState,
+    getWidgetLevel,
     getWidgetName,
     getWidgetPressedState,
     getWidgetSelectedState,
@@ -72,6 +73,7 @@ const matchAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions): bool
     if (options.pressed !== undefined && getWidgetPressedState(widget) !== options.pressed) return false;
     if (options.expanded !== undefined && getWidgetExpandedState(widget) !== options.expanded) return false;
     if (options.selected !== undefined && getWidgetSelectedState(widget) !== options.selected) return false;
+    if (options.level !== undefined && getWidgetLevel(widget) !== options.level) return false;
     return true;
 };
 
