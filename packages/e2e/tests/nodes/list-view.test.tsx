@@ -195,7 +195,7 @@ describe("render - ListView (5)", () => {
             expect(getChildTexts(ref.current)).toEqual(["A", "B", "C"]);
         });
 
-        it("handles large dataset reordering (200 items)", { timeout: 15000 }, async () => {
+        it("handles large dataset reordering (200 items)", async () => {
             const initialItems = Array.from({ length: 200 }, (_, i) => String(i + 1));
             const reversedItems = [...initialItems].reverse();
 

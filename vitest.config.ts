@@ -4,7 +4,6 @@ export default defineConfig({
     test: {
         projects: ["packages/*/vitest.config.ts"],
         bail: 1,
-        hookTimeout: 30000,
         coverage: {
             provider: "v8",
             reporter: ["lcov", "text-summary"],

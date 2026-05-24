@@ -7,7 +7,7 @@ import { getBufferText, getSourceBuffer } from "../helpers/buffer-text.js";
 
 describe("render - SourceView (1)", () => {
     describe("basic rendering", () => {
-        it("creates SourceView widget", { timeout: 10000 }, async () => {
+        it("creates SourceView widget", async () => {
             const ref = createRef<GtkSource.View>();
 
             await render(<GtkSourceView ref={ref} />);

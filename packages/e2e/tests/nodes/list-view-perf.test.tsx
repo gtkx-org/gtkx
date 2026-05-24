@@ -13,7 +13,7 @@ function App({ items }: { items: ListItem<string>[] }) {
 }
 
 describe("ListView performance", () => {
-    it("filters 10k items to 2 in under 4s", { timeout: 30_000 }, async () => {
+    it("filters 10k items to 2 in under 4s", async () => {
         const n = 10_000;
         const items: ListItem<string>[] = Array.from({ length: n }, (_, i) => ({ id: `w-${i}`, value: `w-${i}` }));
         const few = items.slice(0, 2);

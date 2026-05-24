@@ -17,7 +17,7 @@ const buildIdStack = (ref: RefObject<Gtk.Stack | null>) => (pages: string[]) => 
 
 describe("render - Stack (1)", () => {
     describe("GtkStack", () => {
-        it("creates Stack widget", { timeout: 10000 }, async () => {
+        it("creates Stack widget", async () => {
             const ref = createRef<Gtk.Stack>();
 
             await render(<GtkStack ref={ref} />);

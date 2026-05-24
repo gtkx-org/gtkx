@@ -63,9 +63,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation (2)", () => {
 
             await screen.findByText("Test");
 
-            await waitFor(() => expect(onStart).toHaveBeenCalled(), { timeout: 500 });
+            await waitFor(() => expect(onStart).toHaveBeenCalled());
 
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+            await waitFor(() => expect(onComplete).toHaveBeenCalled());
         });
     });
 });
@@ -93,7 +93,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation (3)", () => {
 
             await rerender(<TestComponent targetOpacity={0.5} />);
 
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+            await waitFor(() => expect(onComplete).toHaveBeenCalled());
         });
     });
 });
@@ -126,9 +126,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation (4)", () => {
 
             await rerender(<TestComponent show={false} />);
 
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
+            await waitFor(() => expect(onComplete).toHaveBeenCalled());
 
-            await waitFor(() => expect(screen.queryByText("Fading")).toBeNull(), { timeout: 500 });
+            await waitFor(() => expect(screen.queryByText("Fading")).toBeNull());
         });
     });
 });
@@ -396,7 +396,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation (11)", () => {
 
             await userEvent.click(button);
 
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
+            await waitFor(() => expect(onComplete).toHaveBeenCalled());
         });
     });
 });

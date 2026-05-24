@@ -360,7 +360,7 @@ describe("render - ColumnView (6)", () => {
 
 describe("render - ColumnView (7)", () => {
     describe("React-side sorting with large dataset (1)", () => {
-        it("renders 200 rows in initial order", { timeout: 15000 }, async () => {
+        it("renders 200 rows in initial order", async () => {
             const { latestOrder } = await renderSortableColumnView(200);
 
             const initialOrder = latestOrder();
@@ -370,7 +370,7 @@ describe("render - ColumnView (7)", () => {
             expect(initialOrder?.[199]).toBe("200");
         });
 
-        it("sorts 200 rows when clicking salary column header", { timeout: 15000 }, async () => {
+        it("sorts 200 rows when clicking salary column header", async () => {
             const { ref, employees, latestOrder } = await renderSortableColumnView(200);
 
             const unsortedOrder = latestOrder();
@@ -397,7 +397,7 @@ describe("render - ColumnView (7)", () => {
 
 describe("render - ColumnView (8)", () => {
     describe("React-side sorting with large dataset (2)", () => {
-        it("sorts 200 rows descending when clicking column header with DESC order", { timeout: 30000 }, async () => {
+        it("sorts 200 rows descending when clicking column header with DESC order", async () => {
             const { ref, employees, latestOrder } = await renderSortableColumnView(200);
 
             await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
@@ -417,7 +417,7 @@ describe("render - ColumnView (8)", () => {
             expect(lastInDesc?.id).toBe(firstInAsc?.id);
         });
 
-        it("switches sort column when clicking different column header", { timeout: 15000 }, async () => {
+        it("switches sort column when clicking different column header", async () => {
             const { ref, latestOrder } = await renderSortableColumnView(200);
 
             await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
@@ -438,7 +438,7 @@ describe("render - ColumnView (8)", () => {
 
 describe("render - ColumnView (9)", () => {
     describe("React-side sorting with large dataset (3)", () => {
-        it("maintains model integrity after multiple sort operations on 200 rows", { timeout: 15000 }, async () => {
+        it("maintains model integrity after multiple sort operations on 200 rows", async () => {
             const { ref } = await renderSortableColumnView(200);
 
             expect(ref.current?.getModel()).not.toBeNull();

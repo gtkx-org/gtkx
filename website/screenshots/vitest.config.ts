@@ -6,6 +6,5 @@ export default defineConfig({
     test: {
         include: ["**/*.test.{ts,tsx}"],
         bail: 1,
-        hookTimeout: 30000,
     },
 });

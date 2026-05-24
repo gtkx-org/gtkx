@@ -73,17 +73,14 @@ describe("dialogDemo message dialog", () => {
             if (d.getBody() !== "Has been shown once") throw new Error("body not yet once");
         });
         await fireEvent(messageButton, "clicked");
-        const dialog = await waitFor(
-            () => {
-                const [d] = findAlertDialogs();
-                if (!d) throw new Error("alert dialog not presented");
-                if (d.getBody() !== "Has been shown 2 times") {
-                    throw new Error(`body is "${d.getBody()}" not yet 2 times`);
-                }
-                return d;
-            },
-            { timeout: 3000 },
-        );
+        const dialog = await waitFor(() => {
+            const [d] = findAlertDialogs();
+            if (!d) throw new Error("alert dialog not presented");
+            if (d.getBody() !== "Has been shown 2 times") {
+                throw new Error(`body is "${d.getBody()}" not yet 2 times`);
+            }
+            return d;
+        });
         expect(dialog.getBody()).toBe("Has been shown 2 times");
     });
 

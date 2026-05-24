@@ -25,8 +25,6 @@ export default defineConfig({
         name: "gtk-demo",
         include: ["tests/**/*.test.{ts,tsx}"],
         setupFiles: ["./tests/setup.ts"],
-        testTimeout: 60000,
-        hookTimeout: 60000,
         coverage: {
             provider: "v8",
             include: ["src/**/*.{ts,tsx}"],

@@ -1,5 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.setConfig({ testTimeout: 15000 });
 
 describe("application entry-point", () => {
     it("creates the gtk-demo GtkApplication and attaches a main window", async () => {
