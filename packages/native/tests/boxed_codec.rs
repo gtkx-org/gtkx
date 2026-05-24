@@ -278,6 +278,19 @@ fn ptr_to_value_null_yields_null() {
 }
 
 #[test]
+fn ptr_to_value_full_takes_ownership() {
+    common::run(|| {
+        let gtype = gdk::RGBA::static_type();
+        let original = common::allocate_test_boxed(gtype);
+
+        let value = boxed(Ownership::Full)
+            .ptr_to_value(original, "ctx")
+            .expect("ptr_to_value should succeed");
+        assert!(matches!(value, Value::Object(_)));
+    });
+}
+
+#[test]
 fn read_from_raw_ptr_dereferences_slot() {
     common::run(|| {
         let gtype = gdk::RGBA::static_type();
@@ -580,6 +593,17 @@ fn struct_ptr_to_value_null_yields_null() {
             .ptr_to_value(std::ptr::null_mut(), "ctx")
             .expect("struct null ptr_to_value should succeed");
         assert!(matches!(value, Value::Null));
+    });
+}
+
+#[test]
+fn struct_ptr_to_value_full_takes_ownership() {
+    common::run(|| {
+        let raw = unsafe { glib::ffi::g_malloc0(64) };
+        let value = struct_type(Ownership::Full, Some(64))
+            .ptr_to_value(raw, "ctx")
+            .expect("struct ptr_to_value should succeed");
+        assert!(matches!(value, Value::Object(_)));
     });
 }
 

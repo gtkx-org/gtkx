@@ -80,6 +80,13 @@
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
+        "@gtkx/native#lint": {
+            "dependsOn": ["native-build"],
+            "inputs": ["Cargo.toml", "Cargo.lock", "build.rs", "src/**/*.rs", "tests/**/*.rs"],
+            "outputs": [],
+            "outputLogs": "new-only",
+            "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
+        },
         "build": {
             "dependsOn": ["^build", "native-build"],
             "inputs": [
