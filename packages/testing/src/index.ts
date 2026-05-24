@@ -53,7 +53,14 @@ export type {
     WaitForOptions,
     WrapperComponent,
 } from "./types.js";
-export type { PointerInput, TabOptions, UserEventInstance } from "./user-event.js";
+export type {
+    DragOptions,
+    DropContent,
+    DropOptions,
+    PointerInput,
+    TabOptions,
+    UserEventInstance,
+} from "./user-event.js";
 export { userEvent } from "./user-event.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
 export { within } from "./within.js";

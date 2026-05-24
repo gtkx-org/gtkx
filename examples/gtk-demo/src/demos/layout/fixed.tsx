@@ -123,6 +123,7 @@ const FixedDemo = () => {
                         {faceTransforms.map(({ face, transform }) => (
                             <GtkFixed.Child key={face.name} x={0} y={0} transform={transform}>
                                 <GtkFrame
+                                    name={`cube-face-${face.name}`}
                                     widthRequest={FACE_SIZE}
                                     heightRequest={FACE_SIZE}
                                     cssClasses={[face.style]}

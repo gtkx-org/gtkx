@@ -60,7 +60,7 @@ const AutoScrollTextView = ({ scrollToEnd }: { scrollToEnd: boolean }) => {
 
     return (
         <GtkScrolledWindow hexpand>
-            <GtkTextView ref={textViewRef} />
+            <GtkTextView ref={textViewRef} name={scrollToEnd ? "text-view-end" : "text-view-scroll"} />
         </GtkScrolledWindow>
     );
 };

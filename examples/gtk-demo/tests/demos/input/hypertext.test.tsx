@@ -1,21 +1,8 @@
-import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { hypertextDemo } from "../../../src/demos/input/hypertext.js";
-import { fireEvent, renderDemo, screen, waitFor } from "../../test-utils.js";
-
-const findControllerOfType = <T extends Gtk.EventController>(
-    widget: Gtk.Widget,
-    ctor: new (...args: never[]) => T,
-): T | null => {
-    const observer = widget.observeControllers();
-    const count = observer.getNItems();
-    for (let i = 0; i < count; i++) {
-        const controller = observer.getItem(i);
-        if (controller instanceof ctor) return controller;
-    }
-    return null;
-};
+import { renderDemo } from "../../test-utils.js";
 
 const readBufferText = (view: Gtk.TextView): string => {
     const buffer = view.getBuffer();
@@ -52,46 +39,33 @@ describe("hypertextDemo rendering", () => {
         expect(text).toContain("can easily be realized with ");
         expect(text).toContain("tags");
     });
-
-    it("registers motion, click, and key controllers on the text view", async () => {
-        await renderDemo(hypertextDemo);
-        const textView = await findTextView();
-        expect(findControllerOfType(textView, Gtk.EventControllerMotion)).toBeInstanceOf(Gtk.EventControllerMotion);
-        expect(findControllerOfType(textView, Gtk.EventControllerKey)).toBeInstanceOf(Gtk.EventControllerKey);
-        expect(findControllerOfType(textView, Gtk.GestureClick)).toBeInstanceOf(Gtk.GestureClick);
-    });
 });
 
 describe("hypertextDemo link navigation", () => {
-    it("navigates to the tags definition page when the click gesture identifies the tags link", async () => {
+    it("navigates to the tags definition page when Enter is pressed at the tags link", async () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
         const buffer = textView.getBuffer();
-        const initial = readBufferText(textView);
-        const linkText = "tags";
-        const tagsOffset = initial.indexOf(linkText);
+        const tagsOffset = readBufferText(textView).indexOf("tags");
         expect(tagsOffset).toBeGreaterThan(0);
-        const iter = buffer.getIterAtOffset(tagsOffset);
-        buffer.placeCursor(iter);
-        const keyController = findControllerOfType(textView, Gtk.EventControllerKey);
-        expect(keyController).not.toBeNull();
-        await fireEvent(keyController as Gtk.EventControllerKey, "key-pressed", Gdk.KEY_Return, 0, 0);
-        const after = readBufferText(textView);
-        expect(after).toContain("attribute that can be applied to some range of text");
+        buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
+        await userEvent.keyboard(textView, "{Enter}");
+        await waitFor(() => {
+            expect(readBufferText(textView)).toContain("attribute that can be applied to some range of text");
+        });
     });
 
-    it("navigates to the hypertext definition page when the hypertext link is activated", async () => {
+    it("navigates to the hypertext definition page when Enter is pressed at the hypertext link", async () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
         const buffer = textView.getBuffer();
-        const initial = readBufferText(textView);
-        const linkOffset = initial.indexOf("hypertext");
+        const linkOffset = readBufferText(textView).indexOf("hypertext");
         expect(linkOffset).toBeGreaterThan(0);
         buffer.placeCursor(buffer.getIterAtOffset(linkOffset));
-        const keyController = findControllerOfType(textView, Gtk.EventControllerKey);
-        await fireEvent(keyController as Gtk.EventControllerKey, "key-pressed", Gdk.KEY_KP_Enter, 0, 0);
-        const after = readBufferText(textView);
-        expect(after).toContain("Machine-readable text that is not sequential");
+        await userEvent.keyboard(textView, "{Enter}");
+        await waitFor(() => {
+            expect(readBufferText(textView)).toContain("Machine-readable text that is not sequential");
+        });
     });
 });
 
@@ -99,11 +73,10 @@ describe("hypertextDemo round trip", () => {
     it("navigates from page 2 (tags) back to page 1 via the Go back link", async () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
-        const initial = readBufferText(textView);
-        const tagsOffset = initial.indexOf("tags");
-        textView.getBuffer().placeCursor(textView.getBuffer().getIterAtOffset(tagsOffset));
-        const firstController = findControllerOfType(textView, Gtk.EventControllerKey) as Gtk.EventControllerKey;
-        await fireEvent(firstController, "key-pressed", Gdk.KEY_Return, 0, 0);
+        const buffer = textView.getBuffer();
+        const tagsOffset = readBufferText(textView).indexOf("tags");
+        buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
+        await userEvent.keyboard(textView, "{Enter}");
         const pageTwo = await waitFor(() => {
             const text = readBufferText(textView);
             expect(text).toContain("attribute that can be applied");
@@ -113,8 +86,7 @@ describe("hypertextDemo round trip", () => {
         expect(backOffset).toBeGreaterThanOrEqual(0);
         const bufferAfter = textView.getBuffer();
         bufferAfter.placeCursor(bufferAfter.getIterAtOffset(backOffset + 1));
-        const secondController = findControllerOfType(textView, Gtk.EventControllerKey) as Gtk.EventControllerKey;
-        await fireEvent(secondController, "key-pressed", Gdk.KEY_Return, 0, 0);
+        await userEvent.keyboard(textView, "{Enter}");
         await waitFor(() => {
             const finalText = readBufferText(textView);
             const isBackOnPageOne =
@@ -129,8 +101,7 @@ describe("hypertextDemo input edge cases", () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
         const beforeText = readBufferText(textView);
-        const keyController = findControllerOfType(textView, Gtk.EventControllerKey) as Gtk.EventControllerKey;
-        await fireEvent(keyController, "key-pressed", Gdk.KEY_a, 0, 0);
+        await userEvent.keyboard(textView, "a");
         expect(readBufferText(textView)).toBe(beforeText);
     });
 
@@ -139,27 +110,24 @@ describe("hypertextDemo input edge cases", () => {
         const textView = await findTextView();
         const buffer = textView.getBuffer();
         buffer.placeCursor(buffer.getStartIter());
-        const keyController = findControllerOfType(textView, Gtk.EventControllerKey) as Gtk.EventControllerKey;
         const beforeText = readBufferText(textView);
-        await fireEvent(keyController, "key-pressed", Gdk.KEY_Return, 0, 0);
+        await userEvent.keyboard(textView, "{Enter}");
         expect(readBufferText(textView)).toBe(beforeText);
     });
 
-    it("invokes the motion handler without throwing for both link and non-link positions", async () => {
+    it("invokes the hover handler on the text view without throwing", async () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
-        const motion = findControllerOfType(textView, Gtk.EventControllerMotion) as Gtk.EventControllerMotion;
-        await fireEvent(motion, "motion", 1, 1);
-        await fireEvent(motion, "motion", 10_000, 10_000);
+        await userEvent.hover(textView);
+        await userEvent.unhover(textView);
         expect(readBufferText(textView)).toContain("hypertext");
     });
 
-    it("invokes the click handler at out-of-range coordinates without changing the page", async () => {
+    it("invokes the click handler without changing the current page", async () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
         const before = readBufferText(textView);
-        const click = findControllerOfType(textView, Gtk.GestureClick) as Gtk.GestureClick;
-        await fireEvent(click, "released", 1, 999_999, 999_999);
+        await userEvent.pointer(textView, "click");
         expect(readBufferText(textView)).toBe(before);
     });
 });

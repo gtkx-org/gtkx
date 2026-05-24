@@ -757,6 +757,7 @@ const FontFeaturesColorRows = ({ state, handlers }: { state: FontFeaturesState; 
 
             <GtkGrid.Child column={2} row={3} rowSpan={2}>
                 <GtkButton
+                    name="swap-colors"
                     iconName="object-flip-vertical-symbolic"
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.CENTER}
@@ -834,6 +835,7 @@ const FontFeaturesExpander = ({ state, handlers }: { state: FontFeaturesState; h
     const { checkStates, radioStates } = state;
     return (
         <GtkExpander
+            name="features-expander"
             labelWidget={
                 <GtkLabel
                     label="OpenType Features"
@@ -938,10 +940,11 @@ const FontFeaturesPreviewLabel = ({ state, styles }: { state: FontFeaturesState;
 
     if (viewMode === "waterfall") {
         return (
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+            <GtkBox name="waterfall-box" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                 {WATERFALL_SIZES.map((wfSize) => (
                     <GtkLabel
                         key={wfSize}
+                        name="waterfall-label"
                         label={previewText}
                         cssClasses={[createWaterfallStyle(wfSize)]}
                         wrap
@@ -957,6 +960,7 @@ const FontFeaturesPreviewLabel = ({ state, styles }: { state: FontFeaturesState;
 
     return (
         <GtkLabel
+            name="preview-label"
             ref={previewLabelRef}
             label={previewText}
             cssClasses={[previewStyle]}

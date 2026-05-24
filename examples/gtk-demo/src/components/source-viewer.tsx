@@ -21,6 +21,7 @@ export const SourceViewer = () => {
         <GtkScrolledWindow vexpand hexpand>
             {currentDemo?.sourceCode ? (
                 <GtkSourceView
+                    name="source-view"
                     ref={handleRef}
                     editable={false}
                     showLineNumbers

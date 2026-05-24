@@ -284,6 +284,7 @@ const GLAreaDemo = ({ window }: DemoProps) => {
             hexpand
         >
             <GtkGLArea
+                name="gl-area"
                 ref={glAreaRef}
                 vexpand
                 hexpand

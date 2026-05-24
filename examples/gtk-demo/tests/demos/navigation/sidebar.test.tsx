@@ -1,25 +1,25 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { sidebarDemo } from "../../../src/demos/navigation/sidebar.js";
 import { renderDemo } from "../../test-utils.js";
 
-interface SidebarLayout {
-    box: Gtk.Box;
-    sidebar: Gtk.StackSidebar;
-    stack: Gtk.Stack;
-}
+const PAGE_TITLES = [
+    "Welcome to GTK",
+    "GtkStackSidebar Widget",
+    "Automatic navigation",
+    "Consistent appearance",
+    "Scrolling",
+    "Page 6",
+    "Page 7",
+    "Page 8",
+    "Page 9",
+];
 
-const resolveSidebarLayout = (window: Gtk.Window): SidebarLayout => {
-    const box = window.getChild();
-    if (!(box instanceof Gtk.Box)) throw new Error("expected window child to be a Box");
-    const sidebar = box.getFirstChild();
-    if (!(sidebar instanceof Gtk.StackSidebar)) throw new Error("expected first box child to be a StackSidebar");
-    const stack = box.getLastChild();
-    if (!(stack instanceof Gtk.Stack)) throw new Error("expected last box child to be a Stack");
-    return { box, sidebar, stack };
-};
+const findStack = async (): Promise<Gtk.Stack> => (await screen.findByName("stack")) as Gtk.Stack;
+const findSidebar = async (): Promise<Gtk.StackSidebar> => (await screen.findByName("sidebar")) as Gtk.StackSidebar;
 
-describe("sidebarDemo", () => {
+describe("sidebarDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(sidebarDemo.id).toBe("sidebar");
         expect(sidebarDemo.title).toBe("Stack Sidebar");
@@ -27,45 +27,41 @@ describe("sidebarDemo", () => {
         expect(typeof sidebarDemo.sourceCode).toBe("string");
         expect(Array.isArray(sidebarDemo.keywords)).toBe(true);
     });
+});
 
-    it("renders a GtkStack with the nine declared pages", async () => {
-        const { window } = await renderDemo(sidebarDemo);
-        if (!window.current) throw new Error("expected window ref");
-        const { stack } = resolveSidebarLayout(window.current);
+describe("sidebarDemo structure", () => {
+    it("registers nine stack pages with the expected titles", async () => {
+        await renderDemo(sidebarDemo);
+        const stack = await findStack();
         expect(stack.getPages().getNItems()).toBe(9);
+        for (const title of PAGE_TITLES) {
+            const child = stack.getChildByName(title);
+            expect(child).not.toBeNull();
+            expect(stack.getPage(child as Gtk.Widget).getTitle()).toBe(title);
+        }
     });
 
-    it("renders a GtkStackSidebar bound to the stack", async () => {
-        const { window } = await renderDemo(sidebarDemo);
-        if (!window.current) throw new Error("expected window ref");
-        const { sidebar } = resolveSidebarLayout(window.current);
-        expect(sidebar.getStack()).toBeInstanceOf(Gtk.Stack);
+    it("binds the GtkStackSidebar to the stack", async () => {
+        await renderDemo(sidebarDemo);
+        const sidebar = await findSidebar();
+        const stack = await findStack();
+        expect(sidebar.getStack()).toBe(stack);
     });
 
-    it("uses page titles from the declared pages list", async () => {
-        const { window } = await renderDemo(sidebarDemo);
-        if (!window.current) throw new Error("expected window ref");
-        const { stack } = resolveSidebarLayout(window.current);
+    it("uses a 256px decorated icon for the welcome page", async () => {
+        await renderDemo(sidebarDemo);
+        const stack = await findStack();
         const welcome = stack.getChildByName("Welcome to GTK");
-        if (!welcome) throw new Error("welcome page missing");
-        const page = stack.getPage(welcome);
-        expect(page.getTitle()).toBe("Welcome to GTK");
-    });
-
-    it("renders a GtkImage on the first page and labels on other pages", async () => {
-        const { window } = await renderDemo(sidebarDemo);
-        if (!window.current) throw new Error("expected window ref");
-        const { stack } = resolveSidebarLayout(window.current);
-
-        const welcome = stack.getChildByName("Welcome to GTK");
-        if (!welcome) throw new Error("welcome page missing");
         expect(welcome).toBeInstanceOf(Gtk.Image);
-        const welcomeImage = welcome as Gtk.Image;
-        expect(welcomeImage.getPixelSize()).toBe(256);
-        expect(welcomeImage.hasCssClass("icon-dropshadow")).toBe(true);
+        const image = welcome as Gtk.Image;
+        expect(image.getPixelSize()).toBe(256);
+        expect(image.hasCssClass("icon-dropshadow")).toBe(true);
+    });
 
+    it("uses a plain GtkLabel for non-welcome pages", async () => {
+        await renderDemo(sidebarDemo);
+        const stack = await findStack();
         const scrolling = stack.getChildByName("Scrolling");
-        if (!scrolling) throw new Error("scrolling page missing");
         expect(scrolling).toBeInstanceOf(Gtk.Label);
         expect((scrolling as Gtk.Label).getLabel()).toBe("Scrolling");
     });

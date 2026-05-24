@@ -28,12 +28,13 @@ export default defineConfig({
         coverage: {
             provider: "v8",
             include: ["src/**/*.{ts,tsx}"],
-            exclude: ["src/**/*.d.ts", "src/demos/types.ts", "src/demos/opengl/**", "src/demos/media/video-player.tsx"],
+            exclude: ["src/**/*.d.ts", "src/demos/types.ts"],
             reporter: ["text", "html", "lcov"],
             thresholds: {
-                lines: 75,
-                statements: 75,
-                functions: 75,
+                lines: 85,
+                statements: 85,
+                functions: 85,
+                branches: 60,
             },
         },
     },

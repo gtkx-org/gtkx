@@ -1,14 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { constraintsVflDemo } from "../../../src/demos/constraints/constraints-vfl.js";
-import { renderDemo, screen } from "../../test-utils.js";
-
-const getBox = async (): Promise<Gtk.Box> => {
-    const button = (await screen.findByName("button1")) as Gtk.Button;
-    const box = button.getParent();
-    if (!(box instanceof Gtk.Box)) throw new Error("expected button1 to be inside a GtkBox");
-    return box;
-};
+import { renderDemo } from "../../test-utils.js";
 
 describe("constraintsVflDemo", () => {
     it("exposes the expected metadata", () => {
@@ -22,13 +16,14 @@ describe("constraintsVflDemo", () => {
 
     it("attaches a GtkConstraintLayout manager to the container box", async () => {
         await renderDemo(constraintsVflDemo);
-        const box = await getBox();
+        const box = (await screen.findByName("container")) as Gtk.Box;
+        expect(box).toBeInstanceOf(Gtk.Box);
         expect(box.getLayoutManager()).toBeInstanceOf(Gtk.ConstraintLayout);
     });
 
     it("adds the VFL-derived constraints to the layout", async () => {
         await renderDemo(constraintsVflDemo);
-        const box = await getBox();
+        const box = (await screen.findByName("container")) as Gtk.Box;
         const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
         const observer = layout.observeConstraints();
         expect(observer.getNItems()).toBeGreaterThanOrEqual(10);

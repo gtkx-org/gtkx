@@ -37,7 +37,13 @@ interface MarkupStackProps {
 }
 
 const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef }: MarkupStackProps) => (
-    <GtkStack page={showSource ? "source" : "formatted"} vexpand hexpand transitionType={Gtk.StackTransitionType.NONE}>
+    <GtkStack
+        name="markup-stack"
+        page={showSource ? "source" : "formatted"}
+        vexpand
+        hexpand
+        transitionType={Gtk.StackTransitionType.NONE}
+    >
         <GtkStack.Page id="formatted" title="Formatted">
             <GtkScrolledWindow
                 vexpand
@@ -46,6 +52,7 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef }: MarkupStac
                 vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             >
                 <GtkTextView
+                    name="formatted-view"
                     ref={formattedViewRef}
                     editable={false}
                     wrapMode={Gtk.WrapMode.WORD_CHAR}
@@ -61,7 +68,13 @@ const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef }: MarkupStac
                 hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             >
-                <GtkTextView ref={sourceViewRef} wrapMode={Gtk.WrapMode.WORD} leftMargin={10} rightMargin={10} />
+                <GtkTextView
+                    name="source-view"
+                    ref={sourceViewRef}
+                    wrapMode={Gtk.WrapMode.WORD}
+                    leftMargin={10}
+                    rightMargin={10}
+                />
             </GtkScrolledWindow>
         </GtkStack.Page>
     </GtkStack>

@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewWeatherDemo } from "../../../src/demos/lists/listview-weather.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("listviewWeatherDemo", () => {
     it("exposes the expected metadata", () => {
@@ -33,8 +34,8 @@ describe("listviewWeatherDemo", () => {
         await renderDemo(listviewWeatherDemo);
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
         const model = lv.getModel();
-        const count = model?.getNItems() ?? 0;
-        expect(count).toBeGreaterThan(0);
+        expect(model).not.toBeNull();
+        expect((model as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
     });
 
     it("wraps the list view inside a scrolled window with vexpand and hexpand", async () => {

@@ -133,7 +133,13 @@ const ImagesDemo = ({ window }: DemoProps) => {
                     <GtkImage file={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
                 </ImagesPanel>
                 <ImagesPanel title="Animation from a resource">
-                    <GtkPicture paintable={gifPaintable} canShrink widthRequest={150} heightRequest={150} />
+                    <GtkPicture
+                        name="gif-picture"
+                        paintable={gifPaintable}
+                        canShrink
+                        widthRequest={150}
+                        heightRequest={150}
+                    />
                 </ImagesPanel>
                 <ImagesPanel title="Symbolic themed icon">
                     <GtkImage gicon={getSymbolicIcon()} iconSize={Gtk.IconSize.LARGE} />
@@ -141,11 +147,12 @@ const ImagesDemo = ({ window }: DemoProps) => {
                 <StatefulIconPanel />
                 <PathAnimationPanel />
                 <ImagesPanel title="Displaying video">
-                    <GtkVideo autoplay loop widthRequest={200} heightRequest={150} file={videoFile} />
+                    <GtkVideo name="logo-video" autoplay loop widthRequest={200} heightRequest={150} file={videoFile} />
                 </ImagesPanel>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <GtkLabel label="GtkWidgetPaintable" cssClasses={["heading"]} />
                     <GtkPicture
+                        name="widget-paintable-picture"
                         paintable={widgetPaintable}
                         widthRequest={100}
                         heightRequest={100}

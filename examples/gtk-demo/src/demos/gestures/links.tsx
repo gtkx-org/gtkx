@@ -20,6 +20,7 @@ const LinksDemo = ({ window }: DemoProps) => {
 
     return (
         <GtkLabel
+            name="links-label"
             label={
                 'Some <a href="http://en.wikipedia.org/wiki/Text" title="plain text">text</a> may be marked up ' +
                 "as hyperlinks, which can be clicked " +

@@ -291,7 +291,7 @@ const MainWindowBody = ({
     onNotebookPageChange,
     onSearchChanged,
 }: MainWindowBodyProps) => (
-    <GtkBox vexpand hexpand>
+    <GtkBox name="main-window-body" vexpand hexpand>
         <AppShortcuts
             onSearchToggle={onSearchToggle}
             onKeyboardShortcuts={onKeyboardShortcuts}

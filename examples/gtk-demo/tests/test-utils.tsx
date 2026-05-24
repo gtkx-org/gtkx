@@ -2,9 +2,8 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow } from "@gtkx/react";
 import { type RenderResult, render } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
+import { expect } from "vitest";
 import type { Demo, DemoProps, DemoProviderProps } from "../src/demos/types.js";
-
-export * from "@gtkx/testing";
 
 /**
  * Per-test render options for {@link renderDemo}.
@@ -12,11 +11,6 @@ export * from "@gtkx/testing";
 export interface RenderDemoOptions {
     /** Callback fired when the demo signals it wants to close. */
     onClose?: () => void;
-    /**
-     * Existing ref to populate with the host window once it mounts; useful when
-     * a test needs to capture the ref before the demo body executes.
-     */
-    window?: RefObject<Gtk.Window | null>;
     /** Override the demo's titlebar component. */
     titlebar?: ComponentType<DemoProps>;
     /** Override the demo's state provider component. */
@@ -75,41 +69,24 @@ const PassthroughProvider: ComponentType<DemoProviderProps> = ({ children }) => 
  * Wraps `@gtkx/testing`'s {@link render} so tests do not need to repeat the window/provider
  * scaffolding themselves. Equivalent to React Testing Library's documented custom-render
  * pattern (https://testing-library.com/docs/react-testing-library/setup#custom-render).
+ *
+ * Use `screen.findByRole(Gtk.AccessibleRole.WINDOW)` to locate the host window
+ * in tests; the internal window ref is private to the wrapper.
  */
 export const renderDemo = async (
     componentOrDemo: ComponentType<DemoProps> | Demo,
     options: RenderDemoOptions = {},
-): Promise<RenderResult & { window: RefObject<Gtk.Window | null> }> => {
-    const window = options.window ?? createRef<Gtk.Window | null>();
+): Promise<RenderResult> => {
+    const windowRef = createRef<Gtk.Window | null>();
     const onClose = options.onClose ?? (() => {});
     const Component = isDemo(componentOrDemo) ? componentOrDemo.component : componentOrDemo;
-    if (!Component) throw new Error("renderDemo: demo has no component");
+    expect(Component, "renderDemo: demo has no component").toBeTypeOf("function");
+    const ResolvedComponent = Component as ComponentType<DemoProps>;
     const Titlebar = options.titlebar ?? (isDemo(componentOrDemo) ? componentOrDemo.titlebar : undefined);
     const Provider =
         options.provider ?? (isDemo(componentOrDemo) ? componentOrDemo.provider : undefined) ?? PassthroughProvider;
     const demo = isDemo(componentOrDemo) ? componentOrDemo : undefined;
-    const result = await render(<Component window={window} onClose={onClose} />, {
-        wrapper: buildWrapper({ windowRef: window, onClose, Provider, Titlebar, demo }),
+    return await render(<ResolvedComponent window={windowRef} onClose={onClose} />, {
+        wrapper: buildWrapper({ windowRef, onClose, Provider, Titlebar, demo }),
     });
-    return { ...result, window };
-};
-
-/**
- * Collects every event controller attached to `widget` that is an instance of
- * `ctor`. Required because GTK exposes controllers through a model
- * ({@link Gtk.Widget.observeControllers}) rather than as widget children, so
- * accessibility-based queries cannot reach them.
- */
-export const collectControllersOfType = <T extends Gtk.EventController>(
-    widget: Gtk.Widget,
-    ctor: new (...args: never[]) => T,
-): T[] => {
-    const observer = widget.observeControllers();
-    const out: T[] = [];
-    const count = observer.getNItems();
-    for (let i = 0; i < count; i++) {
-        const controller = observer.getItem(i);
-        if (controller instanceof ctor) out.push(controller);
-    }
-    return out;
 };

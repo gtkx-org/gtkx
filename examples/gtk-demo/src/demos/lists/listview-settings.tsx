@@ -1,5 +1,6 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as GLib from "@gtkx/ffi/glib";
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
@@ -15,7 +16,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/react";
 
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-settings.tsx?raw";
 
@@ -227,34 +228,66 @@ const buildColumnActionGroup = (cols: {
     return actionGroup;
 };
 
-function useColumnVisibilityMenu(columnViewRef: React.RefObject<Gtk.ColumnView | null>) {
-    useLayoutEffect(() => {
-        const cv = columnViewRef.current;
-        if (!cv) return;
+const installVisibilityMenu = (cv: Gtk.ColumnView): (() => void) | null => {
+    const columnsByTitle = collectColumnsByTitle(cv);
+    const typeCol = columnsByTitle.get("Type");
+    const defaultCol = columnsByTitle.get("Default");
+    const summaryCol = columnsByTitle.get("Summary");
+    const descriptionCol = columnsByTitle.get("Description");
 
-        const columnsByTitle = collectColumnsByTitle(cv);
-        const typeCol = columnsByTitle.get("Type");
-        const defaultCol = columnsByTitle.get("Default");
-        const summaryCol = columnsByTitle.get("Summary");
-        const descriptionCol = columnsByTitle.get("Description");
+    if (!typeCol || !defaultCol || !summaryCol || !descriptionCol) return null;
 
-        if (!typeCol || !defaultCol || !summaryCol || !descriptionCol) return;
+    const menu = buildColumnVisibilityMenu();
+    const actionGroup = buildColumnActionGroup({ typeCol, defaultCol, summaryCol, descriptionCol });
+    cv.insertActionGroup("columnview", actionGroup);
 
-        const menu = buildColumnVisibilityMenu();
-        const actionGroup = buildColumnActionGroup({ typeCol, defaultCol, summaryCol, descriptionCol });
-        cv.insertActionGroup("columnview", actionGroup);
+    for (const col of [typeCol, defaultCol, summaryCol, descriptionCol]) {
+        col.setHeaderMenu(menu);
+    }
 
-        const columnsList = cv.getColumns();
-        const nColumns = columnsList.getNItems();
-        for (let i = 0; i < nColumns; i++) {
-            const col = columnsList.getItem(i);
-            if (col instanceof Gtk.ColumnViewColumn) col.setHeaderMenu(menu);
+    return () => cv.insertActionGroup("columnview", null);
+};
+
+function useColumnViewVisibilityMenuRef(
+    forwardRef: React.RefObject<Gtk.ColumnView | null>,
+): (cv: Gtk.ColumnView | null) => void {
+    const teardownRef = useRef<(() => void) | null>(null);
+    const columnsListenerRef = useRef<{ list: Gio.ListModel; handlerId: number } | null>(null);
+
+    const detachColumnsListener = useCallback(() => {
+        const listener = columnsListenerRef.current;
+        if (listener) {
+            GObject.signalHandlerDisconnect(listener.list, listener.handlerId);
+            columnsListenerRef.current = null;
         }
+    }, []);
 
-        return () => {
-            cv.insertActionGroup("columnview", null);
-        };
-    }, [columnViewRef]);
+    return useCallback(
+        (cv: Gtk.ColumnView | null) => {
+            forwardRef.current = cv;
+            teardownRef.current?.();
+            teardownRef.current = null;
+            detachColumnsListener();
+
+            if (!cv) return;
+
+            const tryInstall = () => {
+                const teardown = installVisibilityMenu(cv);
+                if (teardown) {
+                    teardownRef.current = teardown;
+                    detachColumnsListener();
+                }
+            };
+
+            tryInstall();
+            if (teardownRef.current) return;
+
+            const columnsList = cv.getColumns();
+            const handlerId = columnsList.connect("items-changed", tryInstall);
+            columnsListenerRef.current = { list: columnsList, handlerId };
+        },
+        [forwardRef, detachColumnsListener],
+    );
 }
 
 interface CommitKeyInfoEditArgs {
@@ -312,7 +345,7 @@ const SchemaSidebar = ({ onSelectionChanged }: { onSelectionChanged: (ids: strin
 );
 
 interface SettingsColumnViewProps {
-    columnViewRef: React.RefObject<Gtk.ColumnView | null>;
+    columnViewRef: (cv: Gtk.ColumnView | null) => void;
     keySearchActive: boolean;
     onSearchChanged: (entry: Gtk.SearchEntry) => void;
     onStopSearch: () => void;
@@ -393,7 +426,7 @@ const SettingsColumnView = ({
 
 interface SettingsContextValue {
     state: ListViewSettingsState;
-    columnViewRef: React.RefObject<Gtk.ColumnView | null>;
+    columnViewRef: (cv: Gtk.ColumnView | null) => void;
     handleValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
 }
 
@@ -408,7 +441,7 @@ const useSettingsContext = (): SettingsContextValue => {
 const ListViewSettingsProvider = ({ children }: DemoProviderProps) => {
     const state = useListViewSettingsState();
     const columnViewRef = useRef<Gtk.ColumnView | null>(null);
-    useColumnVisibilityMenu(columnViewRef);
+    const columnViewCallbackRef = useColumnViewVisibilityMenuRef(columnViewRef);
 
     const handleValueEdit = useCallback(
         (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) =>
@@ -417,8 +450,8 @@ const ListViewSettingsProvider = ({ children }: DemoProviderProps) => {
     );
 
     const value = useMemo<SettingsContextValue>(
-        () => ({ state, columnViewRef, handleValueEdit }),
-        [state, handleValueEdit],
+        () => ({ state, columnViewRef: columnViewCallbackRef, handleValueEdit }),
+        [state, handleValueEdit, columnViewCallbackRef],
     );
 
     return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

@@ -1,8 +1,9 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
+import { fireEvent, screen, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewApplauncherDemo } from "../../../src/demos/lists/listview-applauncher.js";
-import { fireEvent, renderDemo, screen, within } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("listviewApplauncherDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -39,9 +40,9 @@ describe("listviewApplauncherDemo rows", () => {
         await renderDemo(listviewApplauncherDemo);
         const listView = (await screen.findByName("list-view")) as Gtk.ListView;
         const model = listView.getModel();
-        if (!model) throw new Error("list view has no model");
+        expect(model).not.toBeNull();
         const expectedCount = Gio.appInfoGetAll().length;
-        expect(model.getNItems()).toBe(expectedCount);
+        expect((model as Gtk.SelectionModel).getNItems()).toBe(expectedCount);
     });
 
     it("activates the launch handler when a row is activated", async () => {
@@ -56,9 +57,9 @@ describe("listviewApplauncherDemo rows", () => {
         const images = within(listView).getAllByRole(Gtk.AccessibleRole.IMG);
         expect(images.length).toBeGreaterThan(0);
         const apps = Gio.appInfoGetAll();
-        if (apps.length === 0) throw new Error("expected at least one app to be available");
+        expect(apps.length).toBeGreaterThan(0);
         const firstAppName = apps[0]?.getDisplayName();
-        if (!firstAppName) throw new Error("expected first app to have a display name");
-        expect(await within(listView).findByText(firstAppName)).toBeInstanceOf(Gtk.Widget);
+        expect(firstAppName).toBeTypeOf("string");
+        expect(await within(listView).findByText(firstAppName as string)).toBeInstanceOf(Gtk.Widget);
     });
 });

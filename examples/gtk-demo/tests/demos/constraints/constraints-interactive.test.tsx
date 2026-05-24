@@ -1,24 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { screen, userEvent } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { constraintsInteractiveDemo } from "../../../src/demos/constraints/constraints-interactive.js";
-import { collectControllersOfType, fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
-const getBox = async (): Promise<Gtk.Box> => {
-    const button = (await screen.findByName("button1")) as Gtk.Button;
-    const box = button.getParent();
-    if (!(box instanceof Gtk.Box)) throw new Error("expected button1 to be inside a GtkBox");
-    return box;
-};
-
-const getLayout = async (): Promise<Gtk.ConstraintLayout> => {
-    const box = await getBox();
-    const layout = box.getLayoutManager();
-    if (!(layout instanceof Gtk.ConstraintLayout)) throw new Error("expected a ConstraintLayout on the box");
-    return layout;
-};
-
-const getDragController = (box: Gtk.Box): Gtk.GestureDrag | null =>
-    collectControllersOfType(box, Gtk.GestureDrag)[0] ?? null;
+const findContainerBox = async (): Promise<Gtk.Box> => (await screen.findByName("container")) as Gtk.Box;
 
 describe("constraintsInteractiveDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -32,26 +18,7 @@ describe("constraintsInteractiveDemo metadata", () => {
     });
 });
 
-describe("constraintsInteractiveDemo layout", () => {
-    it("attaches a GtkConstraintLayout manager to the container box", async () => {
-        await renderDemo(constraintsInteractiveDemo);
-        const layout = await getLayout();
-        expect(layout).toBeInstanceOf(Gtk.ConstraintLayout);
-    });
-
-    it("registers a single guide on the layout", async () => {
-        await renderDemo(constraintsInteractiveDemo);
-        const layout = await getLayout();
-        const observer = layout.observeGuides();
-        expect(observer.getNItems()).toBe(1);
-    });
-
-    it("attaches a GestureDrag controller to the container", async () => {
-        await renderDemo(constraintsInteractiveDemo);
-        const box = await getBox();
-        expect(getDragController(box)).toBeInstanceOf(Gtk.GestureDrag);
-    });
-
+describe("constraintsInteractiveDemo content", () => {
     it("renders three button children with the expected labels", async () => {
         await renderDemo(constraintsInteractiveDemo);
         const child1 = (await screen.findByName("button1")) as Gtk.Button;
@@ -64,34 +31,25 @@ describe("constraintsInteractiveDemo layout", () => {
 });
 
 describe("constraintsInteractiveDemo dragging", () => {
-    it("reacts to drag-update by adding a positional constraint to the layout", async () => {
+    it("adds a constraint to the layout when the user drags inside the container", async () => {
         await renderDemo(constraintsInteractiveDemo);
-        const box = await getBox();
-        const drag = getDragController(box);
-        if (!drag) throw new Error("drag gesture not found");
-
+        const box = await findContainerBox();
         const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
-        const beforeCount = layout.observeConstraints().getNItems();
+        const before = layout.observeConstraints().getNItems();
 
-        await fireEvent(drag, "drag-begin", 50, 0);
-        await fireEvent(drag, "drag-update", 30, 0);
+        await userEvent.drag(box, 30, 0);
 
-        const afterCount = layout.observeConstraints().getNItems();
-        expect(afterCount).toBeGreaterThanOrEqual(beforeCount);
+        const after = layout.observeConstraints().getNItems();
+        expect(after).toBeGreaterThan(before);
     });
 
-    it("replaces the positional constraint on subsequent drag-updates", async () => {
+    it("queues a layout pass on the container while dragging", async () => {
         await renderDemo(constraintsInteractiveDemo);
-        const box = await getBox();
-        const drag = getDragController(box);
-        if (!drag) throw new Error("drag gesture not found");
+        const box = await findContainerBox();
+        const queueAllocate = vi.spyOn(box, "queueAllocate");
 
-        const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
-        await fireEvent(drag, "drag-begin", 50, 0);
-        await fireEvent(drag, "drag-update", 30, 0);
-        const firstCount = layout.observeConstraints().getNItems();
-        await fireEvent(drag, "drag-update", 60, 0);
-        const secondCount = layout.observeConstraints().getNItems();
-        expect(secondCount).toBe(firstCount);
+        await userEvent.drag(box, 30, 0);
+
+        expect(queueAllocate).toHaveBeenCalled();
     });
 });

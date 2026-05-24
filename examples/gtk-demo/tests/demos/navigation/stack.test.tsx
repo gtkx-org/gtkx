@@ -1,14 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { stackDemo } from "../../../src/demos/navigation/stack.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
-const findStack = async (): Promise<Gtk.Stack> => {
-    const switcher = (await screen.findByRole(Gtk.AccessibleRole.TAB_LIST)) as Gtk.StackSwitcher;
-    const stack = switcher.getStack();
-    if (!(stack instanceof Gtk.Stack)) throw new Error("expected switcher to be bound to a Stack");
-    return stack;
-};
+const findStack = async (): Promise<Gtk.Stack> => (await screen.findByName("stack")) as Gtk.Stack;
 
 describe("stackDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -31,7 +27,8 @@ describe("stackDemo structure", () => {
         await renderDemo(stackDemo);
         const switcher = (await screen.findByRole(Gtk.AccessibleRole.TAB_LIST)) as Gtk.StackSwitcher;
         expect(switcher).toBeInstanceOf(Gtk.StackSwitcher);
-        expect(switcher.getStack()).toBeInstanceOf(Gtk.Stack);
+        const stack = await findStack();
+        expect(switcher.getStack()).toBe(stack);
     });
 });
 
@@ -44,11 +41,13 @@ describe("stackDemo pages", () => {
         const page2Child = stack.getChildByName("page2");
         const page3Child = stack.getChildByName("page3");
 
-        if (!page1Child || !page2Child || !page3Child) throw new Error("stack pages missing");
+        expect(page1Child).toBeInstanceOf(Gtk.Widget);
+        expect(page2Child).toBeInstanceOf(Gtk.Widget);
+        expect(page3Child).toBeInstanceOf(Gtk.Widget);
 
-        expect(stack.getPage(page1Child).getTitle()).toBe("Page 1");
-        expect(stack.getPage(page2Child).getTitle()).toBe("Page 2");
-        expect(stack.getPage(page3Child).getIconName()).toBe("face-laugh-symbolic");
+        expect(stack.getPage(page1Child as Gtk.Widget).getTitle()).toBe("Page 1");
+        expect(stack.getPage(page2Child as Gtk.Widget).getTitle()).toBe("Page 2");
+        expect(stack.getPage(page3Child as Gtk.Widget).getIconName()).toBe("face-laugh-symbolic");
     });
 
     it("renders the Page 2 check button inside the stack", async () => {

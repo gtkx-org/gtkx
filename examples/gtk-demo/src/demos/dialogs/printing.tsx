@@ -102,14 +102,14 @@ export const configurePrintOperation = (source: string): Gtk.PrintOperation => {
     let linesPerPage = 0;
     let numPages = 0;
 
-    printOp.connect("begin-print", (_self: Gtk.PrintOperation, context: Gtk.PrintContext) => {
+    printOp.connect("begin-print", (context: Gtk.PrintContext) => {
         const height = context.getHeight() - HEADER_HEIGHT - HEADER_GAP;
         linesPerPage = Math.floor(height / FONT_SIZE);
         numPages = Math.ceil(numLines / linesPerPage);
         printOp.setNPages(numPages);
     });
 
-    printOp.connect("draw-page", (_self: Gtk.PrintOperation, context: Gtk.PrintContext, pageNr: number) => {
+    printOp.connect("draw-page", (context: Gtk.PrintContext, pageNr: number) => {
         const cr = context.getCairoContext();
         const width = context.getWidth();
         drawPageHeader({ cr, width, context, pageNr, numPages });

@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { fireEvent, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listboxControlsDemo } from "../../../src/demos/lists/listbox-controls.js";
-import { fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("listboxControlsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -61,11 +62,11 @@ describe("listboxControlsDemo direct toggles", () => {
         expect(sw.getActive()).toBe(!before);
     });
 
-    it("toggles the check button when toggled", async () => {
+    it("toggles the check button when clicked", async () => {
         await renderDemo(listboxControlsDemo);
         const check = (await screen.findByName("check")) as Gtk.CheckButton;
         const before = check.getActive();
-        await fireEvent(check, "toggled");
+        await userEvent.click(check);
         expect(check.getActive()).toBe(!before);
     });
 });
@@ -76,7 +77,7 @@ describe("listboxControlsDemo row activation", () => {
         const list = (await screen.findByName("group-1-list")) as Gtk.ListBox;
         const clickHereImage = (await screen.findByName("click-here-image")) as Gtk.Image;
         const clickRow = list.getRowAtIndex(2);
-        if (!clickRow) throw new Error("click-here row not found");
+        expect(clickRow).toBeInstanceOf(Gtk.ListBoxRow);
         await fireEvent(list, "row-activated", clickRow);
         expect(clickHereImage.getOpacity()).toBe(1);
     });
@@ -87,7 +88,7 @@ describe("listboxControlsDemo row activation", () => {
         const sw = (await screen.findByName("switch")) as Gtk.Switch;
         const before = sw.getActive();
         const switchRow = list.getRowAtIndex(0);
-        if (!switchRow) throw new Error("switch row not found");
+        expect(switchRow).toBeInstanceOf(Gtk.ListBoxRow);
         await fireEvent(list, "row-activated", switchRow);
         expect(sw.getActive()).toBe(!before);
     });

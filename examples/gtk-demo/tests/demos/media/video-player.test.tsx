@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { videoPlayerDemo } from "../../../src/demos/media/video-player.js";
-import { fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("videoPlayerDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -38,10 +39,9 @@ describe("videoPlayerDemo header bar", () => {
 
     it("renders the Big Buck Bunny header button with a 24px image child", async () => {
         await renderDemo(videoPlayerDemo);
-        const bbbButton = (await screen.findByName("bbb-button")) as Gtk.Button;
-        const image = bbbButton.getFirstChild();
-        expect(image).toBeInstanceOf(Gtk.Image);
-        expect((image as Gtk.Image).getPixelSize()).toBe(24);
+        const bbbImage = (await screen.findByName("bbb-image")) as Gtk.Image;
+        expect(bbbImage).toBeInstanceOf(Gtk.Image);
+        expect(bbbImage.getPixelSize()).toBe(24);
     });
 });
 
@@ -55,18 +55,19 @@ describe("videoPlayerDemo video and actions", () => {
         expect(video.getFile()).toBeNull();
     });
 
-    it("loads the GTK Logo source when the first image-only button in the header is clicked", async () => {
+    it("loads the GTK Logo source when the Logo button is clicked", async () => {
         await renderDemo(videoPlayerDemo);
         const logoButton = (await screen.findByName("logo-button")) as Gtk.Button;
-        await fireEvent(logoButton, "clicked");
+        await userEvent.click(logoButton);
         const video = (await screen.findByName("video")) as Gtk.Video;
-        expect(video.getFile()).not.toBeNull();
+        await waitFor(() => expect(video.getFile()).not.toBeNull());
     });
 
     it("requests fullscreen on the host window when the Fullscreen icon button is clicked", async () => {
-        const { window } = await renderDemo(videoPlayerDemo);
+        await renderDemo(videoPlayerDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
         const fullscreenButton = (await screen.findByName("fullscreen-button")) as Gtk.Button;
-        await fireEvent(fullscreenButton, "clicked");
-        expect(window.current).toBeInstanceOf(Gtk.Window);
+        await userEvent.click(fullscreenButton);
+        expect(window).toBeInstanceOf(Gtk.Window);
     });
 });

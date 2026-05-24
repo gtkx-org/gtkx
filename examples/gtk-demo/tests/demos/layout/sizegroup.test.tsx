@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { sizegroupDemo } from "../../../src/demos/layout/sizegroup.js";
-import { act, fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 const MNEMONIC_LABELS = ["_Foreground", "_Background", "_Dashing", "_Line ends"] as const;
 
@@ -56,12 +57,11 @@ describe("sizegroupDemo check button", () => {
         expect(check.getUseUnderline()).toBe(true);
     });
 
-    it("toggles the check button active state when activated", async () => {
+    it("toggles the check button active state when clicked", async () => {
         await renderDemo(sizegroupDemo);
         const check = (await screen.findByName("enable-grouping-check")) as Gtk.CheckButton;
         expect(check.getActive()).toBe(true);
-        await act(() => check.setActive(false));
-        await fireEvent(check, "toggled");
+        await userEvent.click(check);
         expect(check.getActive()).toBe(false);
     });
 });
@@ -80,7 +80,7 @@ describe("sizegroupDemo dropdowns", () => {
         await renderDemo(sizegroupDemo);
         const foreground = (await screen.findByLabelText("_Foreground")) as Gtk.DropDown;
         expect(foreground).toBeInstanceOf(Gtk.DropDown);
-        await act(() => foreground.setSelected(2));
+        await userEvent.selectOptions(foreground, 2);
         expect(foreground.getSelected()).toBe(2);
     });
 });

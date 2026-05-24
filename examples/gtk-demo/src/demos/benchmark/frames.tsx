@@ -70,6 +70,7 @@ declare module "react" {
     namespace JSX {
         interface IntrinsicElements {
             GtkxFramesColorWidget: {
+                name?: string;
                 hexpand?: boolean;
                 vexpand?: boolean;
                 ref?: React.Ref<ColorWidget>;
@@ -133,7 +134,7 @@ const FramesDemo = () => {
 
     return (
         <GtkBox>
-            <GtkxFramesColorWidget ref={setColorWidget} hexpand vexpand />
+            <GtkxFramesColorWidget name="color-widget" ref={setColorWidget} hexpand vexpand />
         </GtkBox>
     );
 };

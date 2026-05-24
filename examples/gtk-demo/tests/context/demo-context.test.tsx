@@ -1,8 +1,8 @@
+import { render } from "@gtkx/testing";
 import { useEffect, useState } from "react";
 import { describe, expect, it } from "vitest";
 import { DemoProvider, parseTitle, useDemo } from "../../src/context/demo-context.js";
 import type { Demo, TreeItem } from "../../src/demos/types.js";
-import { render } from "../test-utils.js";
 
 type Snapshot = ReturnType<typeof useDemo>;
 
@@ -21,8 +21,8 @@ const captureContext = async (demos: Demo[]): Promise<Snapshot> => {
             <Inspector onContext={(ctx) => (snapshot = ctx)} />
         </DemoProvider>,
     );
-    if (!snapshot) throw new Error("expected DemoProvider to publish context");
-    return snapshot;
+    expect(snapshot).not.toBeNull();
+    return snapshot as unknown as Snapshot;
 };
 
 const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
@@ -146,8 +146,8 @@ const SearchHarness = ({
 const captureFiltered = async (demos: Demo[], query: string): Promise<TreeItem[]> => {
     let filtered: TreeItem[] | null = null;
     await render(<SearchHarness demos={demos} query={query} onItems={(items) => (filtered = items)} />);
-    if (!filtered) throw new Error("expected filteredTreeItems to publish");
-    return filtered;
+    expect(filtered).not.toBeNull();
+    return filtered as unknown as TreeItem[];
 };
 
 describe("filteredTreeItems", () => {

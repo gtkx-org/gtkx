@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { act, fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { overlayDecorativeDemo } from "../../../src/demos/layout/overlay-decorative.js";
-import { act, fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("overlayDecorativeDemo metadata", () => {
     it("exposes the expected metadata", () => {

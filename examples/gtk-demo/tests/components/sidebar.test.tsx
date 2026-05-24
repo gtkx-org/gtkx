@@ -1,9 +1,9 @@
+import { render, screen } from "@gtkx/testing";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
 import { Sidebar } from "../../src/components/sidebar.js";
 import { DemoProvider, useDemo } from "../../src/context/demo-context.js";
 import type { Demo } from "../../src/demos/types.js";
-import { render, screen } from "../test-utils.js";
 
 const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
 const buttonDemo: Demo = {
@@ -73,8 +73,7 @@ describe("Sidebar", () => {
                 <QueryPublisher onContext={(ctx) => (snapshot = ctx)} />
             </DemoProvider>,
         );
-        if (!snapshot) throw new Error("expected snapshot");
-        const ctx = snapshot as ReturnType<typeof useDemo>;
-        expect(ctx.currentDemo?.id).toBe("intro");
+        expect(snapshot).not.toBeNull();
+        expect((snapshot as unknown as ReturnType<typeof useDemo>).currentDemo?.id).toBe("intro");
     });
 });

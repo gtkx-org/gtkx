@@ -1,13 +1,13 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { passwordEntryDemo } from "../../../src/demos/input/password-entry.js";
-import { act, fireEvent, renderDemo, screen, waitFor } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
-const findPasswordEntries = async (): Promise<[Gtk.PasswordEntry, Gtk.PasswordEntry]> => {
-    const all = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
-    const entries = all.filter((w): w is Gtk.PasswordEntry => w instanceof Gtk.PasswordEntry);
-    if (entries.length < 2) throw new Error(`expected two password entries, got ${entries.length}`);
-    return [entries[0] as Gtk.PasswordEntry, entries[1] as Gtk.PasswordEntry];
+const findPasswordFields = async (): Promise<{ password: Gtk.PasswordEntry; confirm: Gtk.PasswordEntry }> => {
+    const password = (await screen.findByName("password-entry")) as Gtk.PasswordEntry;
+    const confirm = (await screen.findByName("confirm-entry")) as Gtk.PasswordEntry;
+    return { password, confirm };
 };
 
 const findDoneButton = async (): Promise<Gtk.Button> =>
@@ -28,8 +28,8 @@ describe("passwordEntryDemo metadata", () => {
 describe("passwordEntryDemo form behavior", () => {
     it("renders two password entries and a disabled Done button", async () => {
         await renderDemo(passwordEntryDemo);
-        const [pwd, confirm] = await findPasswordEntries();
-        expect(pwd.getShowPeekIcon()).toBe(true);
+        const { password, confirm } = await findPasswordFields();
+        expect(password.getShowPeekIcon()).toBe(true);
         expect(confirm.getShowPeekIcon()).toBe(true);
         const button = await findDoneButton();
         expect(button.getSensitive()).toBe(false);
@@ -37,9 +37,9 @@ describe("passwordEntryDemo form behavior", () => {
 
     it("enables the Done button when both password fields match", async () => {
         await renderDemo(passwordEntryDemo);
-        const [pwd, confirm] = await findPasswordEntries();
-        await act(() => pwd.setText("hunter2"));
-        await act(() => confirm.setText("hunter2"));
+        const { password, confirm } = await findPasswordFields();
+        await userEvent.type(password, "hunter2");
+        await userEvent.type(confirm, "hunter2");
         await waitFor(async () => {
             const button = await findDoneButton();
             expect(button.getSensitive()).toBe(true);
@@ -48,9 +48,9 @@ describe("passwordEntryDemo form behavior", () => {
 
     it("keeps the Done button disabled when passwords differ", async () => {
         await renderDemo(passwordEntryDemo);
-        const [pwd, confirm] = await findPasswordEntries();
-        await act(() => pwd.setText("hunter2"));
-        await act(() => confirm.setText("different"));
+        const { password, confirm } = await findPasswordFields();
+        await userEvent.type(password, "hunter2");
+        await userEvent.type(confirm, "different");
         await waitFor(async () => {
             const button = await findDoneButton();
             expect(button.getSensitive()).toBe(false);
@@ -60,27 +60,26 @@ describe("passwordEntryDemo form behavior", () => {
     it("invokes onClose when the Done button is activated with matching passwords", async () => {
         const onClose = vi.fn();
         await renderDemo(passwordEntryDemo, { onClose });
-        const [pwd, confirm] = await findPasswordEntries();
-        await act(() => pwd.setText("abc"));
-        await act(() => confirm.setText("abc"));
+        const { password, confirm } = await findPasswordFields();
+        await userEvent.type(password, "abc");
+        await userEvent.type(confirm, "abc");
         const button = await waitFor(async () => {
             const candidate = await findDoneButton();
             expect(candidate.getSensitive()).toBe(true);
             return candidate;
         });
-        await fireEvent(button, "clicked");
-        expect(onClose).toHaveBeenCalled();
+        await userEvent.click(button);
+        await waitFor(() => expect(onClose).toHaveBeenCalled());
     });
 });
 
 describe("passwordEntryDemo window setup", () => {
     it("packs the header bar without showing title buttons and disables the window", async () => {
-        const { window } = await renderDemo(passwordEntryDemo);
-        const win = window.current;
-        if (!win) throw new Error("expected window ref to be populated");
-        const titlebar = win.getTitlebar();
+        await renderDemo(passwordEntryDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        const titlebar = window.getTitlebar();
         expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
         expect((titlebar as Gtk.HeaderBar).getShowTitleButtons()).toBe(false);
-        expect(win.getDeletable()).toBe(false);
+        expect(window.getDeletable()).toBe(false);
     });
 });

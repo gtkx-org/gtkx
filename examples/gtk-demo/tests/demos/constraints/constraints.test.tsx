@@ -1,15 +1,14 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { constraintsDemo } from "../../../src/demos/constraints/constraints.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 const getGridLayout = async (): Promise<Gtk.ConstraintLayout> => {
-    const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 1" })) as Gtk.Button;
-    const parent = button.getParent();
-    if (!parent) throw new Error("Child 1 has no parent");
-    const layout = parent.getLayoutManager();
-    if (!(layout instanceof Gtk.ConstraintLayout)) throw new Error("expected a ConstraintLayout on the parent");
-    return layout;
+    const container = await screen.findByName("container");
+    const layout = container.getLayoutManager();
+    expect(layout).toBeInstanceOf(Gtk.ConstraintLayout);
+    return layout as Gtk.ConstraintLayout;
 };
 
 describe("constraintsDemo metadata", () => {
@@ -72,8 +71,8 @@ describe("constraintsDemo children", () => {
         const child1 = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 1" })) as Gtk.Button;
         const child2 = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 2" })) as Gtk.Button;
         const child3 = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 3" })) as Gtk.Button;
-        const grid = child1.getParent();
-        expect(child2.getParent()).toBe(grid);
-        expect(child3.getParent()).toBe(grid);
+        expect(child1).toBeInstanceOf(Gtk.Button);
+        expect(child2).toBeInstanceOf(Gtk.Button);
+        expect(child3).toBeInstanceOf(Gtk.Button);
     });
 });

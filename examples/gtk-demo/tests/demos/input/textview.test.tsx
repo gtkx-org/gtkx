@@ -1,11 +1,13 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textviewDemo } from "../../../src/demos/input/textview.js";
-import { fireEvent, renderDemo, screen, waitFor } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
-const findTextViews = async (): Promise<Gtk.TextView[]> => {
-    const widgets = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
-    return widgets.filter((w): w is Gtk.TextView => w instanceof Gtk.TextView);
+const findTextViews = async (): Promise<[Gtk.TextView, Gtk.TextView]> => {
+    const view1 = (await screen.findByName("text-view-1")) as Gtk.TextView;
+    const view2 = (await screen.findByName("text-view-2")) as Gtk.TextView;
+    return [view1, view2];
 };
 
 const findClickMeButtons = async (): Promise<Gtk.Button[]> => {
@@ -33,23 +35,18 @@ describe("textviewDemo metadata", () => {
 });
 
 describe("textviewDemo rendering", () => {
-    it("renders a vertical paned with two text views sharing a single buffer", async () => {
-        const { window } = await renderDemo(textviewDemo);
-        const win = window.current;
-        if (!win) throw new Error("window not assigned");
-        const textViews = await findTextViews();
-        expect(textViews).toHaveLength(2);
-        const [view1, view2] = textViews;
-        if (!view1 || !view2) throw new Error("expected two text views");
+    it("renders the host window and two text views sharing a single buffer", async () => {
+        await renderDemo(textviewDemo);
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW);
+        expect(window).toBeInstanceOf(Gtk.Window);
+        const [view1, view2] = await findTextViews();
         expect(view1.getBuffer()).toBe(view2.getBuffer());
     });
 
     it("populates the shared buffer with section headings and international content", async () => {
         await renderDemo(textviewDemo);
-        const textViews = await findTextViews();
-        const view = textViews[0];
-        if (!view) throw new Error("expected at least one text view");
-        const text = readBufferText(view);
+        const [view1] = await findTextViews();
+        const text = readBufferText(view1);
         expect(text).toContain("The text widget can display text with all kinds of nifty attributes");
         expect(text).toContain("Font styles.");
         expect(text).toContain("Colors.");
@@ -66,9 +63,7 @@ describe("textviewDemo rendering", () => {
 
     it("wraps text in word mode in the first text view", async () => {
         await renderDemo(textviewDemo);
-        const textViews = await findTextViews();
-        const view1 = textViews[0];
-        if (!view1) throw new Error("expected first text view");
+        const [view1] = await findTextViews();
         expect(view1.getWrapMode()).toBe(Gtk.WrapMode.WORD);
     });
 });
@@ -86,9 +81,10 @@ describe("textviewDemo easter egg", () => {
         await renderDemo(textviewDemo);
         const buttons = await findClickMeButtons();
         const cloned = buttons[buttons.length - 1];
-        if (!cloned) throw new Error("expected cloned Click Me button");
+        expect(cloned).toBeInstanceOf(Gtk.Button);
         const beforeWindows = Gtk.Window.listToplevels().length;
-        await fireEvent(cloned, "clicked");
+        if (!cloned) return;
+        await userEvent.click(cloned);
         await waitFor(() => {
             expect(Gtk.Window.listToplevels().length).toBeGreaterThan(beforeWindows);
         });
@@ -98,9 +94,10 @@ describe("textviewDemo easter egg", () => {
         await renderDemo(textviewDemo);
         const buttons = await findClickMeButtons();
         const source = buttons[0];
-        if (!source) throw new Error("expected source Click Me button");
+        expect(source).toBeInstanceOf(Gtk.Button);
         const beforeWindows = Gtk.Window.listToplevels().length;
-        await fireEvent(source, "clicked");
+        if (!source) return;
+        await userEvent.click(source);
         await waitFor(() => {
             expect(Gtk.Window.listToplevels().length).toBeGreaterThanOrEqual(beforeWindows);
         });
@@ -110,15 +107,16 @@ describe("textviewDemo easter egg", () => {
         await renderDemo(textviewDemo);
         const buttons = await findClickMeButtons();
         const cloned = buttons[buttons.length - 1];
-        if (!cloned) throw new Error("expected cloned Click Me button");
+        expect(cloned).toBeInstanceOf(Gtk.Button);
         const beforeWindows = Gtk.Window.listToplevels().length;
-        await fireEvent(cloned, "clicked");
+        if (!cloned) return;
+        await userEvent.click(cloned);
         const windowCountAfterFirst = await waitFor(() => {
             const count = Gtk.Window.listToplevels().length;
             expect(count).toBeGreaterThan(beforeWindows);
             return count;
         });
-        await fireEvent(cloned, "clicked");
+        await userEvent.click(cloned);
         await waitFor(() => {
             expect(Gtk.Window.listToplevels().length).toBe(windowCountAfterFirst);
         });

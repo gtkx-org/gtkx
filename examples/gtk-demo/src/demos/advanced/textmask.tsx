@@ -49,7 +49,7 @@ const TextmaskDemo = ({ window }: DemoProps) => {
         cr.restore();
     }, []);
 
-    return <GtkDrawingArea ref={drawingAreaRef} render={drawFunc} />;
+    return <GtkDrawingArea name="textmask-area" ref={drawingAreaRef} render={drawFunc} />;
 };
 
 export const textmaskDemo: Demo = {

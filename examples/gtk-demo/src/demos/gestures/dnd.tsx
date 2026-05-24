@@ -91,7 +91,6 @@ const SWATCH_COLORS = [
     "black",
     "yellow",
     "white",
-    "gray",
     "brown",
     "pink",
     "cyan",
@@ -164,19 +163,19 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
     }, [color]);
 
     return (
-        <GtkBox cssClasses={[swatchStyle, dynamicStyle]}>
+        <GtkBox name={`swatch-${color}`} cssClasses={[swatchStyle, dynamicStyle]}>
             <GtkDragSource onPrepare={createColorProvider} actions={Gdk.DragAction.COPY} />
         </GtkBox>
     );
 }
 
-function CssPatternSwatch({ cssClass }: Readonly<{ cssClass: string }>) {
+function CssPatternSwatch({ id, cssClass }: Readonly<{ id: string; cssClass: string }>) {
     const createClassProvider = useCallback(() => {
         return Gdk.ContentProvider.newForValue(makeValue(GObject.Type.STRING, (v) => v.setString(cssClass)));
     }, [cssClass]);
 
     return (
-        <GtkBox cssClasses={[swatchStyle, cssClass]}>
+        <GtkBox name={`pattern-${id}`} cssClasses={[swatchStyle, cssClass]}>
             <GtkDragSource onPrepare={createClassProvider} actions={Gdk.DragAction.COPY} />
         </GtkBox>
     );
@@ -718,9 +717,9 @@ const DndSwatchPalette = () => (
             {SWATCH_COLORS.map((color) => (
                 <ColorSwatch key={color} color={color} />
             ))}
-            <CssPatternSwatch cssClass={rainbow1Style} />
-            <CssPatternSwatch cssClass={rainbow2Style} />
-            <CssPatternSwatch cssClass={rainbow3Style} />
+            <CssPatternSwatch id="rainbow1" cssClass={rainbow1Style} />
+            <CssPatternSwatch id="rainbow2" cssClass={rainbow2Style} />
+            <CssPatternSwatch id="rainbow3" cssClass={rainbow3Style} />
         </GtkBox>
     </GtkScrolledWindow>
 );

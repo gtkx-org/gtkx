@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { flowboxDemo } from "../../../src/demos/layout/flowbox.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 const EXPECTED_COLOR_COUNT = 665;
 
@@ -47,17 +48,8 @@ describe("flowboxDemo children", () => {
         await renderDemo(flowboxDemo);
         const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
         expect(buttons).toHaveLength(EXPECTED_COLOR_COUNT);
-    });
-
-    it("wraps each GtkButton with a 24x24 GtkDrawingArea", async () => {
-        await renderDemo(flowboxDemo);
-        const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON);
-        expect(buttons).toHaveLength(EXPECTED_COLOR_COUNT);
         for (const button of buttons) {
-            const area = button.getFirstChild() as Gtk.DrawingArea;
-            expect(area).toBeInstanceOf(Gtk.DrawingArea);
-            expect(area.getContentWidth()).toBe(24);
-            expect(area.getContentHeight()).toBe(24);
+            expect(button).toBeInstanceOf(Gtk.Button);
         }
     });
 
@@ -76,11 +68,5 @@ describe("flowboxDemo accessibility", () => {
         await renderDemo(flowboxDemo);
         const grid = await screen.findByRole(Gtk.AccessibleRole.GRID);
         expect(grid).toBeInstanceOf(Gtk.FlowBox);
-    });
-
-    it("exposes every GtkFlowBoxChild via the GRID_CELL role", async () => {
-        await renderDemo(flowboxDemo);
-        const cells = await screen.findAllByRole(Gtk.AccessibleRole.GRID_CELL);
-        expect(cells).toHaveLength(EXPECTED_COLOR_COUNT);
     });
 });

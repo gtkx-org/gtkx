@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { fireEvent, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewSettings2Demo } from "../../../src/demos/lists/listview-settings2.js";
-import { act, fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("listviewSettings2Demo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -52,24 +53,47 @@ describe("listviewSettings2Demo search and editing", () => {
     it("enables the search bar when the titlebar search toggle is activated", async () => {
         await renderDemo(listviewSettings2Demo);
         const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
-        await act(() => toggle.setActive(true));
-        await fireEvent(toggle, "toggled");
+        await userEvent.click(toggle);
         const bar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
-        expect(bar.getSearchMode()).toBe(true);
+        await waitFor(() => expect(bar.getSearchMode()).toBe(true));
     });
 
     it("updates the filter when the search entry text changes", async () => {
         await renderDemo(listviewSettings2Demo);
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
-        await act(() => entry.setText("display"));
+        await userEvent.type(entry, "display");
+        expect(entry.getText()).toBe("display");
+    });
+
+    it("filters the schema-keys items model via the search-changed signal when text matches no key", async () => {
+        await renderDemo(listviewSettings2Demo);
+        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
+        await userEvent.click(toggle);
+        const listView = (await screen.findByName("list-view")) as Gtk.ListView;
+        const initial = (listView.getModel() as Gtk.SelectionModel).getNItems();
+        const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
+        await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
         await fireEvent(entry, "search-changed");
+        await waitFor(() => {
+            const filtered = (listView.getModel() as Gtk.SelectionModel).getNItems();
+            expect(filtered).toBeLessThanOrEqual(initial);
+        });
     });
 
     it("clears the search text when stop-search is emitted", async () => {
         await renderDemo(listviewSettings2Demo);
         const entry = (await screen.findByName("search-entry")) as Gtk.SearchEntry;
-        await act(() => entry.setText("anything"));
-        await fireEvent(entry, "search-changed");
+        await userEvent.type(entry, "anything");
         await fireEvent(entry, "stop-search");
+    });
+
+    it("turns the search bar off when the search toggle is deactivated", async () => {
+        await renderDemo(listviewSettings2Demo);
+        const toggle = (await screen.findByName("search-toggle")) as Gtk.ToggleButton;
+        await userEvent.click(toggle);
+        const bar = (await screen.findByName("search-bar")) as Gtk.SearchBar;
+        await waitFor(() => expect(bar.getSearchMode()).toBe(true));
+        await userEvent.click(toggle);
+        await waitFor(() => expect(bar.getSearchMode()).toBe(false));
     });
 });

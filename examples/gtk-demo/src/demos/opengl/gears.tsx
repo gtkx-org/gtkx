@@ -691,6 +691,7 @@ const GearsDemo = () => {
         <GtkOverlay marginStart={12} marginEnd={12} marginTop={12} marginBottom={12}>
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
                 <GtkGLArea
+                    name="gl-area"
                     ref={animation.handleGLAreaRef}
                     useEs
                     hasDepthBuffer

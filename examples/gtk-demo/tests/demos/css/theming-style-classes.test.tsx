@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { themingStyleClassesDemo } from "../../../src/demos/css/theming-style-classes.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("themingStyleClassesDemo", () => {
     it("exposes the expected metadata", () => {
@@ -22,9 +23,9 @@ describe("themingStyleClassesDemo", () => {
         expect(first).toBeInstanceOf(Gtk.Button);
         expect(second).toBeInstanceOf(Gtk.Button);
         expect(third).toBeInstanceOf(Gtk.Button);
-        const parent = (first as Gtk.Button).getParent();
-        expect(parent).toBeInstanceOf(Gtk.Box);
-        expect((parent as Gtk.Box).hasCssClass("linked")).toBe(true);
+        const linkedBox = (await screen.findByName("linked-buttons")) as Gtk.Box;
+        expect(linkedBox).toBeInstanceOf(Gtk.Box);
+        expect(linkedBox.hasCssClass("linked")).toBe(true);
     });
 
     it("renders the suggested and destructive action buttons with their style classes", async () => {

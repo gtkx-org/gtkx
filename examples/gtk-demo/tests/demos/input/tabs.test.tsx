@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { tabsDemo } from "../../../src/demos/input/tabs.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("tabsDemo", () => {
     it("exposes the expected metadata", () => {
@@ -36,18 +37,13 @@ describe("tabsDemo", () => {
         const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
         const tabs = textView.getTabs();
         expect(tabs).not.toBeNull();
-        if (tabs) {
-            expect(tabs.getSize()).toBe(3);
-        }
+        expect(tabs?.getSize()).toBe(3);
         expect(textView.getWrapMode()).toBe(Gtk.WrapMode.WORD);
     });
 
     it("wraps the text view in a scrolled window with the expected scrollbar policies", async () => {
         await renderDemo(tabsDemo);
-        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
-        const parent = textView.getParent();
-        const sw = parent instanceof Gtk.ScrolledWindow ? parent : parent?.getParent();
-        if (!(sw instanceof Gtk.ScrolledWindow)) throw new Error("expected enclosing scrolled window");
+        const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
         const [hpolicy, vpolicy] = sw.getPolicy();
         expect(hpolicy).toBe(Gtk.PolicyType.NEVER);
         expect(vpolicy).toBe(Gtk.PolicyType.AUTOMATIC);

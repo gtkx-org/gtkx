@@ -1,9 +1,23 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it, vi } from "vitest";
+import { waitFor } from "@gtkx/testing";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { configurePrintOperation, printingDemo } from "../../../src/demos/dialogs/printing.js";
 import { renderDemo } from "../../test-utils.js";
 
-describe("printingDemo", () => {
+let tempDir: string;
+
+beforeAll(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "gtkx-print-"));
+});
+
+afterAll(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+});
+
+describe("printingDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(printingDemo.id).toBe("printing");
         expect(printingDemo.title).toBe("Printing/Printing");
@@ -37,16 +51,14 @@ describe("configurePrintOperation", () => {
         const settings = printOp.getPrintSettings();
         expect(settings?.get(Gtk.PRINT_SETTINGS_OUTPUT_BASENAME)).toBe("gtk-demo");
     });
-});
 
-describe("PrintingDemo component", () => {
-    it("invokes onClose when the async print operation emits done", async () => {
-        const onClose = vi.fn();
-        await renderDemo(printingDemo, { onClose });
+    it("registers a begin-print signal handler", () => {
+        const printOp = configurePrintOperation("line one\nline two\nline three");
+        const handlerId = printOp.connect("begin-print", () => undefined);
+        expect(handlerId).toBeGreaterThan(0);
+        printOp.disconnect(handlerId);
     });
-});
 
-describe("configurePrintOperation signal handlers", () => {
     it("registers a draw-page signal handler that uses the configured Cairo print context", () => {
         const printOp = configurePrintOperation("line one\nline two\nline three");
         const handlerId = printOp.connect("draw-page", () => undefined);
@@ -54,10 +66,46 @@ describe("configurePrintOperation signal handlers", () => {
         printOp.disconnect(handlerId);
     });
 
-    it("registers a begin-print signal handler", () => {
-        const printOp = configurePrintOperation("line one\nline two\nline three");
-        const handlerId = printOp.connect("begin-print", () => undefined);
-        expect(handlerId).toBeGreaterThan(0);
-        printOp.disconnect(handlerId);
+    it("sets the demo's points unit on the print operation", () => {
+        const printOp = configurePrintOperation("alpha\nbeta\ngamma");
+        expect(printOp).toBeInstanceOf(Gtk.PrintOperation);
+        expect(printOp.allowAsync).toBe(true);
+    });
+});
+
+describe("configurePrintOperation export", () => {
+    it("invokes begin-print and draw-page when exporting to a PDF file", async () => {
+        const source = Array.from({ length: 80 }, (_, i) => `line ${i + 1}`).join("\n");
+        const printOp = configurePrintOperation(source);
+        const beginPrint = vi.fn();
+        const drawPage = vi.fn();
+        const done = vi.fn();
+        printOp.connect("begin-print", beginPrint);
+        printOp.connect("draw-page", drawPage);
+        printOp.connect("done", done);
+        printOp.setExportFilename(join(tempDir, "out.pdf"));
+        const result = printOp.run(Gtk.PrintOperationAction.EXPORT, null);
+        expect(result).toBeDefined();
+        await waitFor(() => expect(beginPrint).toHaveBeenCalled());
+        await waitFor(() => expect(drawPage).toHaveBeenCalled());
+    });
+
+    it("invokes the page-header path with a long source needing ellipsization across the page width", async () => {
+        const longLine = "x".repeat(20000);
+        const printOp = configurePrintOperation(`${longLine}\n${longLine}`);
+        const drawPage = vi.fn();
+        printOp.connect("draw-page", drawPage);
+        printOp.setExportFilename(join(tempDir, "out-wide.pdf"));
+        printOp.run(Gtk.PrintOperationAction.EXPORT, null);
+        await waitFor(() => expect(drawPage).toHaveBeenCalled());
+    });
+});
+
+describe("PrintingDemo component", () => {
+    it("mounts and triggers the print dialog runner without throwing in the host window", async () => {
+        const onClose = vi.fn();
+        const rendered = await renderDemo(printingDemo, { onClose });
+        await new Promise((r) => setTimeout(r, 250));
+        expect(rendered).toBeDefined();
     });
 });

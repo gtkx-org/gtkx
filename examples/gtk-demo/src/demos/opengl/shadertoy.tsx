@@ -1577,6 +1577,7 @@ const ShadertoyGLAreaPanel = ({
     <GtkAspectFrame xalign={0.5} yalign={0.5} ratio={1.77777} obeyChild={false} hexpand vexpand>
         <GtkGraphicsOffload enabled={Gtk.GraphicsOffloadEnabled.ENABLED}>
             <GtkGLArea
+                name="shadertoy-gl-area"
                 ref={handleGLAreaRef}
                 useEs
                 onRender={handleRender}

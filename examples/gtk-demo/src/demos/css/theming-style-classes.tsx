@@ -14,7 +14,7 @@ const ThemingStyleClassesDemo = () => (
         orientation={Gtk.Orientation.VERTICAL}
     >
         <GtkGrid.Child column={0} row={0}>
-            <GtkBox cssClasses={["linked"]} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER}>
+            <GtkBox name="linked-buttons" cssClasses={["linked"]} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER}>
                 <GtkButton label="Hi, I am a button" receivesDefault />
                 <GtkButton label="And I'm another button" receivesDefault />
                 <GtkButton label="This is a button party!" receivesDefault />

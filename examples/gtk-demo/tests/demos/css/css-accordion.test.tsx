@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssAccordionDemo } from "../../../src/demos/css/css-accordion.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("cssAccordionDemo", () => {
     it("exposes the expected metadata", () => {
@@ -36,8 +37,7 @@ describe("cssAccordionDemo", () => {
 
     it("centers the horizontal button box without spacing", async () => {
         await renderDemo(cssAccordionDemo);
-        const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This" })) as Gtk.Button;
-        const box = button.getParent() as Gtk.Box;
+        const box = (await screen.findByName("button-box")) as Gtk.Box;
         expect(box).toBeInstanceOf(Gtk.Box);
         expect(box.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
         expect(box.getHalign()).toBe(Gtk.Align.CENTER);

@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { headerbarDemo } from "../../../src/demos/layout/headerbar.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("headerbarDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -17,11 +18,9 @@ describe("headerbarDemo metadata", () => {
     });
 
     it("installs the GtkHeaderBar inside the window titlebar slot", async () => {
-        const { window } = await renderDemo(headerbarDemo);
-        const win = window.current;
-        if (!win) throw new Error("expected window ref to be populated");
-        const titlebar = win.getTitlebar();
-        expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
+        await renderDemo(headerbarDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        expect(window.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
     });
 });
 

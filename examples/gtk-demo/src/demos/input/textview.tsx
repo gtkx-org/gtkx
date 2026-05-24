@@ -454,7 +454,7 @@ const TextViewDemo = () => {
                     hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 >
-                    <GtkTextView ref={textView1Ref} wrapMode={Gtk.WrapMode.WORD}>
+                    <GtkTextView ref={textView1Ref} name="text-view-1" wrapMode={Gtk.WrapMode.WORD}>
                         <TextViewIntroSection />
                         <TextViewFontStylesSection />
                         <TextViewColorsSection />
@@ -474,7 +474,7 @@ const TextViewDemo = () => {
                     hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 >
-                    <GtkTextView ref={textView2Ref} wrapMode={Gtk.WrapMode.WORD} />
+                    <GtkTextView ref={textView2Ref} name="text-view-2" wrapMode={Gtk.WrapMode.WORD} />
                 </GtkScrolledWindow>
             }
         />

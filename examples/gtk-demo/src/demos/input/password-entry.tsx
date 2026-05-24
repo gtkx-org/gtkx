@@ -96,6 +96,7 @@ const PasswordEntryDemo = ({ window }: DemoProps) => {
         >
             <GtkPasswordEntry
                 ref={passwordRef}
+                name="password-entry"
                 showPeekIcon
                 placeholderText="Password"
                 accessibleLabel="Password"
@@ -104,6 +105,7 @@ const PasswordEntryDemo = ({ window }: DemoProps) => {
             />
             <GtkPasswordEntry
                 ref={confirmRef}
+                name="confirm-entry"
                 showPeekIcon
                 placeholderText="Confirm"
                 accessibleLabel="Confirm"

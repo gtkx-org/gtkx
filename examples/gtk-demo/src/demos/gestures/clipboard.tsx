@@ -345,26 +345,32 @@ const openFileDialog = async (
 };
 
 const handleClipboardDrop = (value: GObject.Value, setPastedContent: SetPastedContent): boolean => {
-    const obj = value.getObject();
-    if (obj) {
-        if (GObject.typeIsA(obj.__gtype__, getGdkPaintableType())) {
-            setPastedContent({ type: "Image", paintable: obj as Gdk.Paintable });
-            return true;
+    if (GObject.typeCheckValueHolds(value, GObject.Type.OBJECT)) {
+        const obj = value.getObject();
+        if (obj) {
+            if (GObject.typeIsA(obj.__gtype__, getGdkPaintableType())) {
+                setPastedContent({ type: "Image", paintable: obj as Gdk.Paintable });
+                return true;
+            }
+            if (obj instanceof Gio.File) {
+                setPastedContent({ type: "File", filePath: obj.getPath() ?? obj.getUri() ?? undefined });
+                return true;
+            }
         }
-        if (obj instanceof Gio.File) {
-            setPastedContent({ type: "File", filePath: obj.getPath() ?? obj.getUri() ?? undefined });
+    }
+    if (GObject.typeCheckValueHolds(value, getGdkRgbaType())) {
+        const rgba = value.getBoxed<Gdk.RGBA>();
+        if (rgba) {
+            setPastedContent({ type: "Color", color: makeRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
             return true;
         }
     }
-    const rgba = value.getBoxed<Gdk.RGBA>();
-    if (rgba) {
-        setPastedContent({ type: "Color", color: makeRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha) });
-        return true;
-    }
-    const text = value.getString();
-    if (text) {
-        setPastedContent({ type: "Text", text });
-        return true;
+    if (GObject.typeCheckValueHolds(value, GObject.Type.STRING)) {
+        const text = value.getString();
+        if (text) {
+            setPastedContent({ type: "Text", text });
+            return true;
+        }
     }
     return false;
 };
@@ -388,6 +394,7 @@ const ClipboardSourceSection = ({
 }: ClipboardSourceSectionProps) => (
     <GtkBox spacing={12}>
         <GtkDropDown
+            name="source-type"
             accessibleLabel="Source Type"
             valign={Gtk.Align.CENTER}
             onSelectionChanged={(id) => state.setSourceType(id as SourceType)}
@@ -565,8 +572,13 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
             sensitive={canPaste}
             onClicked={() => void onPaste()}
         />
-        <GtkLabel label={pastedContent.type} xalign={0} />
-        <GtkStack page={pastedContent.type || "Empty"} halign={Gtk.Align.END} valign={Gtk.Align.CENTER}>
+        <GtkLabel name="paste-type-label" label={pastedContent.type} xalign={0} />
+        <GtkStack
+            name="paste-stack"
+            page={pastedContent.type || "Empty"}
+            halign={Gtk.Align.END}
+            valign={Gtk.Align.CENTER}
+        >
             <GtkStack.Page id="Empty">
                 <GtkLabel label="" />
             </GtkStack.Page>

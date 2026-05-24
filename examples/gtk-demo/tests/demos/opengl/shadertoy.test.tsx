@@ -1,10 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-
-vi.mock("@gtkx/react", async () => {
-    const actual = await vi.importActual<Record<string, unknown>>("@gtkx/react");
-    return { ...actual, GtkGLArea: () => null };
-});
-
+import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
+import { describe, expect, it } from "vitest";
 import { shadertoyDemo } from "../../../src/demos/opengl/shadertoy.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -19,7 +15,9 @@ describe("shadertoyDemo", () => {
         expect(shadertoyDemo.component).toBeTypeOf("function");
     });
 
-    it("renders the demo without crashing the worker", async () => {
+    it("renders the main GtkGLArea panel", async () => {
         await renderDemo(shadertoyDemo);
+        const glArea = await screen.findByName("shadertoy-gl-area");
+        expect(glArea).toBeInstanceOf(Gtk.GLArea);
     });
 });

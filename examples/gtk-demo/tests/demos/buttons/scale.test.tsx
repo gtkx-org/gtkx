@@ -1,6 +1,7 @@
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { scaleDemo } from "../../../src/demos/buttons/scale.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("scaleDemo", () => {
     it("exposes the expected metadata", () => {

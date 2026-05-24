@@ -1,9 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkScrolledWindow, GtkTextView } from "@gtkx/react";
+import { render } from "@gtkx/testing";
 import { type RefObject, useEffect, useRef } from "react";
 import { describe, expect, it } from "vitest";
 import { useCssEditor } from "../../../src/demos/css/use-css-editor.js";
-import { render } from "../../test-utils.js";
 
 interface HostProps {
     classes: string[];

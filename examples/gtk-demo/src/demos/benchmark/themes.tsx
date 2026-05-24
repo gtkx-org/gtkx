@@ -108,6 +108,7 @@ const ThemesBody = ({ boxRef }: { boxRef: React.RefObject<Gtk.Box | null> }) => 
 const ThemesWarningDialog = ({ window, onResponse }: { window: Gtk.Window; onResponse: (response: string) => void }) =>
     createPortal(
         <AdwAlertDialog
+            name="warning-dialog"
             heading="Warning"
             body="This demo involves rapidly flashing changes and may be hazardous to photosensitive viewers."
             defaultResponse="ok"

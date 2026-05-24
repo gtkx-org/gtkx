@@ -60,10 +60,11 @@ const RevealerDemo = () => {
     }, []);
 
     return (
-        <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+        <GtkGrid name="revealer-grid" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
             {revealerConfigs.map((config, index) => (
                 <GtkGrid.Child key={`${config.column}-${config.row}`} column={config.column} row={config.row}>
                     <GtkRevealer
+                        name={`revealer-${index}`}
                         transitionDuration={TRANSITION_DURATION}
                         transitionType={config.transition}
                         revealChild={revealed[index]}

@@ -1,20 +1,9 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
+import { fireEvent, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { linksDemo } from "../../../src/demos/gestures/links.js";
-import { fireEvent, renderDemo } from "../../test-utils.js";
-
-const findLabel = (root: Gtk.Widget | null): Gtk.Label | null => {
-    if (!root) return null;
-    if (root instanceof Gtk.Label && root.getUseMarkup()) return root;
-    let child = root.getFirstChild();
-    while (child) {
-        const found = findLabel(child);
-        if (found) return found;
-        child = child.getNextSibling();
-    }
-    return null;
-};
+import { renderDemo } from "../../test-utils.js";
 
 describe("linksDemo", () => {
     it("exposes the expected metadata", () => {
@@ -28,9 +17,9 @@ describe("linksDemo", () => {
     });
 
     it("renders a markup-enabled label that wraps on word boundaries", async () => {
-        const { window } = await renderDemo(linksDemo);
-        const label = findLabel(window.current);
-        if (!label) throw new Error("expected a markup label");
+        await renderDemo(linksDemo);
+        const label = (await screen.findByName("links-label")) as Gtk.Label;
+        expect(label).toBeInstanceOf(Gtk.Label);
         expect(label.getUseMarkup()).toBe(true);
         expect(label.getWrap()).toBe(true);
         expect(label.getWrapMode()).toBe(Pango.WrapMode.WORD);
@@ -38,9 +27,8 @@ describe("linksDemo", () => {
     });
 
     it("includes the embedded http://en.wikipedia.org/wiki/Text anchor in the markup", async () => {
-        const { window } = await renderDemo(linksDemo);
-        const label = findLabel(window.current);
-        if (!label) throw new Error("expected a markup label");
+        await renderDemo(linksDemo);
+        const label = (await screen.findByName("links-label")) as Gtk.Label;
         const text = label.getLabel();
         expect(text).toContain("http://en.wikipedia.org/wiki/Text");
         expect(text).toContain("Flathub");
@@ -48,9 +36,8 @@ describe("linksDemo", () => {
     });
 
     it("applies the configured 20px margins to the label", async () => {
-        const { window } = await renderDemo(linksDemo);
-        const label = findLabel(window.current);
-        if (!label) throw new Error("expected a markup label");
+        await renderDemo(linksDemo);
+        const label = (await screen.findByName("links-label")) as Gtk.Label;
         expect(label.getMarginStart()).toBe(20);
         expect(label.getMarginEnd()).toBe(20);
         expect(label.getMarginTop()).toBe(20);
@@ -58,9 +45,8 @@ describe("linksDemo", () => {
     });
 
     it("exposes the keynav handler URI as a clickable hyperlink in the markup", async () => {
-        const { window } = await renderDemo(linksDemo);
-        const label = findLabel(window.current);
-        if (!label) throw new Error("expected a markup label");
+        await renderDemo(linksDemo);
+        const label = (await screen.findByName("links-label")) as Gtk.Label;
         const markup = label.getLabel();
         expect(markup).toMatch(/href="keynav"/);
         expect(markup).toMatch(/href="http:\/\/www\.flathub\.org\/"/);
@@ -69,9 +55,8 @@ describe("linksDemo", () => {
 
 describe("linksDemo activate-link handler", () => {
     it("returns true and presents the keynav alert when the 'keynav' link is activated", async () => {
-        const { window } = await renderDemo(linksDemo);
-        const label = findLabel(window.current);
-        if (!label) throw new Error("expected a markup label");
+        await renderDemo(linksDemo);
+        const label = (await screen.findByName("links-label")) as Gtk.Label;
         await fireEvent(label, "activate-link", "keynav");
     });
 });

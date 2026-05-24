@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cursorsDemo } from "../../../src/demos/gestures/cursors.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("cursorsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -26,22 +27,23 @@ describe("cursorsDemo list structure", () => {
         expect(sw.getPropagateNaturalHeight()).toBe(true);
     });
 
-    it("groups the cursor rows into six non-selectable list boxes summing to 38 rows", async () => {
+    it("groups the cursor rows into six non-selectable list boxes", async () => {
         await renderDemo(cursorsDemo);
-        const listBoxes = (await screen.findAllByRole(Gtk.AccessibleRole.LIST)) as Gtk.ListBox[];
-        const cursorListBoxes = listBoxes.filter((lb) => lb instanceof Gtk.ListBox);
-        expect(cursorListBoxes.length).toBe(6);
-        let total = 0;
+        const listBoxes = await screen.findAllByRole(Gtk.AccessibleRole.LIST);
+        const cursorListBoxes = listBoxes.filter((widget) => widget instanceof Gtk.ListBox);
+        expect(cursorListBoxes).toHaveLength(6);
         for (const lb of cursorListBoxes) {
             expect(lb.getSelectionMode()).toBe(Gtk.SelectionMode.NONE);
-            let row = lb.getFirstChild();
-            while (row) {
-                expect((row as Gtk.ListBoxRow).getActivatable()).toBe(false);
-                total++;
-                row = row.getNextSibling();
-            }
         }
-        expect(total).toBe(38);
+    });
+
+    it("renders 38 non-activatable list rows in total", async () => {
+        await renderDemo(cursorsDemo);
+        const rows = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+        expect(rows).toHaveLength(38);
+        for (const row of rows) {
+            expect((row as Gtk.ListBoxRow).getActivatable()).toBe(false);
+        }
     });
 });
 

@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textundoDemo } from "../../../src/demos/input/textundo.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("textundoDemo", () => {
     it("exposes the expected metadata", () => {
@@ -30,10 +31,7 @@ describe("textundoDemo", () => {
 
     it("nests the text view inside a scrolled window with automatic scrollbar policies", async () => {
         await renderDemo(textundoDemo);
-        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
-        const parent = textView.getParent();
-        const sw = parent instanceof Gtk.ScrolledWindow ? parent : parent?.getParent();
-        if (!(sw instanceof Gtk.ScrolledWindow)) throw new Error("expected enclosing scrolled window");
+        const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
         const [hpolicy, vpolicy] = sw.getPolicy();
         expect(hpolicy).toBe(Gtk.PolicyType.AUTOMATIC);
         expect(vpolicy).toBe(Gtk.PolicyType.AUTOMATIC);

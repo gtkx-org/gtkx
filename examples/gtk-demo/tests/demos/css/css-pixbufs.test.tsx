@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssPixbufsDemo } from "../../../src/demos/css/css-pixbufs.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("cssPixbufsDemo", () => {
     it("exposes the expected metadata", () => {
@@ -36,13 +37,11 @@ describe("cssPixbufsDemo", () => {
     });
 
     it("adds the demo window class on mount and removes it on unmount", async () => {
-        const { window, unmount } = await renderDemo(cssPixbufsDemo);
-        const win = window.current;
-        expect(win).not.toBeNull();
-        if (!win) return;
-        expect(win.hasCssClass("demo")).toBe(true);
+        const { unmount } = await renderDemo(cssPixbufsDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        expect(window.hasCssClass("demo")).toBe(true);
         await unmount();
-        expect(win.hasCssClass("demo")).toBe(false);
+        expect(window.hasCssClass("demo")).toBe(false);
     });
 
     it("propagates new buffer text through onBufferChanged", async () => {

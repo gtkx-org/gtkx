@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { fireEvent, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewMinesweeperDemo } from "../../../src/demos/games/listview-minesweeper.js";
-import { fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("listviewMinesweeperDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -48,18 +49,17 @@ describe("listviewMinesweeperDemo gameplay", () => {
         const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
         await fireEvent(gridView, "activate", 0);
         const newGameButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Game" })) as Gtk.Button;
-        await fireEvent(newGameButton, "clicked");
+        await userEvent.click(newGameButton);
         expect(gridView.getModel()?.getNItems()).toBe(64);
     });
 
     it("activates every cell without throwing", async () => {
-        const { window } = await renderDemo(listviewMinesweeperDemo);
+        await renderDemo(listviewMinesweeperDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
         const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
         for (let i = 0; i < 64; i++) {
             await fireEvent(gridView, "activate", i);
         }
-        const win = window.current;
-        if (!win) throw new Error("window not assigned");
-        expect(win.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
+        expect(window.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
     });
 });

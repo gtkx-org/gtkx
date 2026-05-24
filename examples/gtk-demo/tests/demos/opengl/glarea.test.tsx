@@ -1,10 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-
-vi.mock("@gtkx/react", async () => {
-    const actual = await vi.importActual<Record<string, unknown>>("@gtkx/react");
-    return { ...actual, GtkGLArea: () => null };
-});
-
+import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
+import { describe, expect, it } from "vitest";
 import { glareaDemo } from "../../../src/demos/opengl/glarea.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -19,7 +15,12 @@ describe("glareaDemo", () => {
         expect(glareaDemo.component).toBeTypeOf("function");
     });
 
-    it("renders the demo without crashing the worker", async () => {
+    it("renders a GtkGLArea with the configured size hints", async () => {
         await renderDemo(glareaDemo);
+        const glArea = (await screen.findByName("gl-area")) as Gtk.GLArea;
+        expect(glArea).toBeInstanceOf(Gtk.GLArea);
+        const [width, height] = glArea.getSizeRequest();
+        expect(width).toBe(100);
+        expect(height).toBe(200);
     });
 });

@@ -1,17 +1,17 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { act, screen, waitFor } from "@gtkx/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { revealerDemo } from "../../../src/demos/navigation/revealer.js";
-import { act, renderDemo, screen, waitFor } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 const REVEALER_COUNT = 9;
 
-const collectRevealers = async (): Promise<Gtk.Revealer[]> => {
-    const images = await screen.findAllByRole(Gtk.AccessibleRole.IMG);
-    return images.map((image) => {
-        const parent = image.getParent();
-        if (!(parent instanceof Gtk.Revealer)) throw new Error("expected image parent to be a Revealer");
-        return parent;
-    });
+const findAllRevealers = async (): Promise<Gtk.Revealer[]> => {
+    const revealers: Gtk.Revealer[] = [];
+    for (let i = 0; i < REVEALER_COUNT; i++) {
+        revealers.push((await screen.findByName(`revealer-${i}`)) as Gtk.Revealer);
+    }
+    return revealers;
 };
 
 describe("revealerDemo metadata", () => {
@@ -29,7 +29,7 @@ describe("revealerDemo metadata", () => {
 describe("revealerDemo structure", () => {
     it("renders nine GtkRevealer widgets initially hidden", async () => {
         await renderDemo(revealerDemo);
-        const revealers = await collectRevealers();
+        const revealers = await findAllRevealers();
         expect(revealers).toHaveLength(REVEALER_COUNT);
         for (const r of revealers) {
             expect(r.getRevealChild()).toBe(false);
@@ -39,7 +39,7 @@ describe("revealerDemo structure", () => {
 
     it("configures each revealer with the expected transition type", async () => {
         await renderDemo(revealerDemo);
-        const revealers = await collectRevealers();
+        const revealers = await findAllRevealers();
         const expectedTransitions = [
             Gtk.RevealerTransitionType.CROSSFADE,
             Gtk.RevealerTransitionType.SLIDE_UP,
@@ -68,13 +68,10 @@ describe("revealerDemo structure", () => {
 
     it("renders the GtkGrid container with center alignment", async () => {
         await renderDemo(revealerDemo);
-        const revealers = await collectRevealers();
-        const firstRevealer = revealers[0];
-        if (!firstRevealer) throw new Error("expected at least one revealer");
-        const grid = firstRevealer.getParent();
+        const grid = (await screen.findByName("revealer-grid")) as Gtk.Grid;
         expect(grid).toBeInstanceOf(Gtk.Grid);
-        expect((grid as Gtk.Grid).getHalign()).toBe(Gtk.Align.CENTER);
-        expect((grid as Gtk.Grid).getValign()).toBe(Gtk.Align.CENTER);
+        expect(grid.getHalign()).toBe(Gtk.Align.CENTER);
+        expect(grid.getValign()).toBe(Gtk.Align.CENTER);
     });
 });
 
@@ -88,7 +85,7 @@ describe("revealerDemo reveal sequence", () => {
 
     it("reveals every revealer after nine timer ticks", async () => {
         await renderDemo(revealerDemo);
-        const revealers = await collectRevealers();
+        const revealers = await findAllRevealers();
         await act(async () => {
             await vi.advanceTimersByTimeAsync(690 * 9);
         });

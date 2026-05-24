@@ -45,6 +45,7 @@ const OverlayDemo = () => {
                     spacing={10}
                 >
                     <GtkLabel
+                        name="numbers-label"
                         label="<span foreground='blue' weight='ultrabold' font='40'>Numbers</span>"
                         useMarkup
                         canTarget={false}

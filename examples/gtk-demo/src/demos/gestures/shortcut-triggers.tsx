@@ -6,7 +6,7 @@ import sourceCode from "./shortcut-triggers.tsx?raw";
 const ShortcutTriggersDemo = () => {
     return (
         <GtkListBox name="list-box" marginTop={6} marginBottom={6} marginStart={6} marginEnd={6}>
-            <GtkLabel label="Press Ctrl-G">
+            <GtkLabel name="label-ctrl-g" label="Press Ctrl-G">
                 <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                     <GtkShortcutController.Shortcut
                         trigger="<Control>g"
@@ -14,7 +14,7 @@ const ShortcutTriggersDemo = () => {
                     />
                 </GtkShortcutController>
             </GtkLabel>
-            <GtkLabel label="Press X">
+            <GtkLabel name="label-x" label="Press X">
                 <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                     <GtkShortcutController.Shortcut trigger="x" onActivate={() => console.log("activated Press X")} />
                 </GtkShortcutController>

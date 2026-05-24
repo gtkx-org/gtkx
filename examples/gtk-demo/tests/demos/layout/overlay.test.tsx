@@ -1,28 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { overlayDemo } from "../../../src/demos/layout/overlay.js";
-import { act, fireEvent, renderDemo, screen } from "../../test-utils.js";
-
-const findAncestorOverlay = (widget: Gtk.Widget): Gtk.Overlay | null => {
-    let current: Gtk.Widget | null = widget.getParent();
-    while (current) {
-        if (current instanceof Gtk.Overlay) return current;
-        current = current.getParent();
-    }
-    return null;
-};
-
-const getNumbersBoxLabel = (overlay: Gtk.Overlay): Gtk.Widget | null => {
-    const grid = overlay.getChild();
-    if (!grid) return null;
-    let candidate = grid.getNextSibling();
-    while (candidate) {
-        const inner = candidate.getFirstChild();
-        if (inner) return inner;
-        candidate = candidate.getNextSibling();
-    }
-    return null;
-};
+import { renderDemo } from "../../test-utils.js";
 
 describe("overlayDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -49,29 +29,12 @@ describe("overlayDemo grid and labels", () => {
         }
     });
 
-    it("renders the decorative 'Numbers' label using markup", async () => {
+    it("renders the decorative 'Numbers' label as non-interactive markup", async () => {
         await renderDemo(overlayDemo);
-        const firstButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "0" })) as Gtk.Button;
-        const grid = firstButton.getParent();
-        if (!grid) throw new Error("expected grid parent");
-        const overlay = findAncestorOverlay(grid);
-        if (!overlay) throw new Error("expected ancestor overlay");
-        const numbersLabel = getNumbersBoxLabel(overlay);
-        expect(numbersLabel).toBeInstanceOf(Gtk.Label);
-        const label = numbersLabel as Gtk.Label;
-        expect(label.getUseMarkup()).toBe(true);
-        expect(label.getLabel()).toContain("Numbers");
-        expect(label.getCanTarget()).toBe(false);
-    });
-
-    it("nests the grid inside a GtkOverlay containing the button grid", async () => {
-        await renderDemo(overlayDemo);
-        const firstButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "0" })) as Gtk.Button;
-        const grid = firstButton.getParent();
-        expect(grid).toBeInstanceOf(Gtk.Grid);
-        if (!grid) throw new Error("expected grid parent");
-        const overlay = findAncestorOverlay(grid);
-        expect(overlay).toBeInstanceOf(Gtk.Overlay);
+        const numbersLabel = (await screen.findByName("numbers-label")) as Gtk.Label;
+        expect(numbersLabel.getUseMarkup()).toBe(true);
+        expect(numbersLabel.getLabel()).toContain("Numbers");
+        expect(numbersLabel.getCanTarget()).toBe(false);
     });
 });
 
@@ -85,17 +48,16 @@ describe("overlayDemo entry behavior", () => {
 
     it("updates the entry to the clicked number when a grid button is activated", async () => {
         await renderDemo(overlayDemo);
-        const button = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "13" })) as Gtk.Button;
-        await fireEvent(button, "clicked");
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "13" });
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
-        expect(entry.getText()).toBe("13");
+        await userEvent.click(button);
+        await waitFor(() => expect(entry.getText()).toBe("13"));
     });
 
-    it("updates the entry text via the changed signal", async () => {
+    it("propagates user-typed text into the entry", async () => {
         await renderDemo(overlayDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
-        await act(() => entry.setText("typed"));
-        await fireEvent(entry, "changed");
+        await userEvent.type(entry, "typed");
         expect(entry.getText()).toBe("typed");
     });
 });

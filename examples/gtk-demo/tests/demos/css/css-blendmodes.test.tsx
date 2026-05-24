@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { fireEvent, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssBlendmodesDemo } from "../../../src/demos/css/css-blendmodes.js";
-import { fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("cssBlendmodesDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -18,29 +19,19 @@ describe("cssBlendmodesDemo metadata", () => {
 });
 
 describe("cssBlendmodesDemo rendering", () => {
-    it("renders the blend mode list and the three pages in the stack", async () => {
+    it("renders the blend mode list and the Blend mode label", async () => {
         await renderDemo(cssBlendmodesDemo);
-        const listbox = (await screen.findByName("blend-list")) as Gtk.ListBox;
-        const rowLabels: string[] = [];
-        for (let i = 0; i < 16; i++) {
-            const row = listbox.getRowAtIndex(i);
-            if (!row) continue;
-            const child = row.getChild() as Gtk.Label | null;
-            if (child) rowLabels.push(child.getLabel());
+        for (const name of ["Normal", "Multiply", "Screen", "Color", "Hue", "Luminosity"]) {
+            expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name })).toBeInstanceOf(Gtk.ListBoxRow);
         }
-        expect(rowLabels).toEqual(
-            expect.arrayContaining(["Normal", "Multiply", "Screen", "Color", "Hue", "Luminosity"]),
-        );
         const blendModeLabel = await screen.findByText("Blend mode:");
         expect(blendModeLabel).toBeDefined();
     });
 
     it("renders all sixteen blend mode rows in the listbox", async () => {
         await renderDemo(cssBlendmodesDemo);
-        const listbox = (await screen.findByName("blend-list")) as Gtk.ListBox;
-        expect(listbox).toBeInstanceOf(Gtk.ListBox);
-        const rows = countChildren(listbox);
-        expect(rows).toBe(16);
+        const rows = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+        expect(rows).toHaveLength(16);
     });
 
     it("renders the stack with the expected page identifiers", async () => {
@@ -56,20 +47,17 @@ describe("cssBlendmodesDemo rendering", () => {
 describe("cssBlendmodesDemo behavior", () => {
     it("selects the Normal row by default once the listbox is mounted", async () => {
         await renderDemo(cssBlendmodesDemo);
-        const listbox = (await screen.findByName("blend-list")) as Gtk.ListBox;
-        const normalRow = listbox.getRowAtIndex(11);
-        expect(normalRow).not.toBeNull();
-        if (!normalRow) return;
-        expect(normalRow.isSelected()).toBe(true);
+        const normalRow = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Normal" });
+        expect((normalRow as Gtk.ListBoxRow).isSelected()).toBe(true);
     });
 
     it("activates a different blend row and switches the active blend mode", async () => {
         await renderDemo(cssBlendmodesDemo);
+        const multiplyRow = (await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: "Multiply",
+        })) as Gtk.ListBoxRow;
         const listbox = (await screen.findByName("blend-list")) as Gtk.ListBox;
-        const multiplyRow = listbox.getRowAtIndex(10);
-        expect(multiplyRow).not.toBeNull();
-        if (!multiplyRow) return;
-        listbox.selectRow(multiplyRow);
+        await userEvent.selectOptions(listbox, multiplyRow.getIndex());
         await fireEvent(listbox, "row-activated", multiplyRow);
         expect(multiplyRow.isSelected()).toBe(true);
     });
@@ -80,18 +68,8 @@ describe("cssBlendmodesDemo behavior", () => {
         const stack = (await screen.findByName("blend-stack")) as Gtk.Stack;
         const initialPage = stack.getVisibleChildName();
         const firstRow = listbox.getRowAtIndex(0);
-        if (!firstRow) throw new Error("expected at least one row");
+        expect(firstRow).toBeInstanceOf(Gtk.ListBoxRow);
         await fireEvent(listbox, "row-activated", firstRow);
         expect(stack.getVisibleChildName()).toBe(initialPage);
     });
 });
-
-const countChildren = (widget: Gtk.Widget): number => {
-    let count = 0;
-    let child = widget.getFirstChild();
-    while (child) {
-        count++;
-        child = child.getNextSibling();
-    }
-    return count;
-};

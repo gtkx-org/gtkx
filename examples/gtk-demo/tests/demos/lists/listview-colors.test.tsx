@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { listviewColorsDemo } from "../../../src/demos/lists/listview-colors.js";
-import { act, fireEvent, renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 vi.setConfig({ testTimeout: 30000 });
 
@@ -74,10 +75,9 @@ describe("listviewColorsDemo selection info revealer", () => {
     it("expands when the selection-info toggle is activated", async () => {
         await renderDemo(listviewColorsDemo);
         const toggle = (await screen.findByName("selection-toggle")) as Gtk.ToggleButton;
-        await act(() => toggle.setActive(true));
-        await fireEvent(toggle, "toggled");
+        await userEvent.click(toggle);
         const revealer = (await screen.findByName("selection-revealer")) as Gtk.Revealer;
-        expect(revealer.getRevealChild()).toBe(true);
+        await waitFor(() => expect(revealer.getRevealChild()).toBe(true));
     });
 });
 
@@ -85,27 +85,71 @@ describe("listviewColorsDemo header actions", () => {
     it("triggers the refill handler when the Refill button is clicked", async () => {
         await renderDemo(listviewColorsDemo);
         const refill = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Refill" });
-        await fireEvent(refill, "clicked");
+        await userEvent.click(refill);
     });
 
     it("changes the sort mode when the sort dropdown selection changes", async () => {
         await renderDemo(listviewColorsDemo);
         const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
-        await act(() => sortDropdown.setSelected(1));
-        await fireEvent(sortDropdown, "notify::selected");
+        await userEvent.selectOptions(sortDropdown, 1);
+        expect(sortDropdown.getSelected()).toBe(1);
     });
 
     it("changes the display factory when the display dropdown selection changes", async () => {
         await renderDemo(listviewColorsDemo);
         const displayDropdown = (await screen.findByName("display-dropdown")) as Gtk.DropDown;
-        await act(() => displayDropdown.setSelected(1));
-        await fireEvent(displayDropdown, "notify::selected");
+        await userEvent.selectOptions(displayDropdown, 1);
+        expect(displayDropdown.getSelected()).toBe(1);
     });
 
     it("changes the color limit when the limit dropdown selection changes", async () => {
         await renderDemo(listviewColorsDemo);
         const limitDropdown = (await screen.findByName("limit-dropdown")) as Gtk.DropDown;
-        await act(() => limitDropdown.setSelected(0));
-        await fireEvent(limitDropdown, "notify::selected");
+        await userEvent.selectOptions(limitDropdown, 0);
+        expect(limitDropdown.getSelected()).toBe(0);
+    });
+});
+
+describe("listviewColorsDemo sort modes", () => {
+    const sortModeIndices = [
+        { label: "name", index: 1 },
+        { label: "red", index: 2 },
+        { label: "green", index: 3 },
+        { label: "blue", index: 4 },
+        { label: "rgb", index: 5 },
+        { label: "hue", index: 6 },
+        { label: "saturation", index: 7 },
+        { label: "value", index: 8 },
+        { label: "hsv", index: 9 },
+    ];
+
+    it.each(sortModeIndices)("applies the $label sort mode", async ({ index }) => {
+        await renderDemo(listviewColorsDemo);
+        const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
+        await userEvent.selectOptions(sortDropdown, index);
+        await waitFor(() => expect(sortDropdown.getSelected()).toBe(index));
+    });
+
+    it("returns to unsorted mode when index 0 is selected", async () => {
+        await renderDemo(listviewColorsDemo);
+        const sortDropdown = (await screen.findByName("sort-dropdown")) as Gtk.DropDown;
+        await userEvent.selectOptions(sortDropdown, 5);
+        await waitFor(() => expect(sortDropdown.getSelected()).toBe(5));
+        await userEvent.selectOptions(sortDropdown, 0);
+        await waitFor(() => expect(sortDropdown.getSelected()).toBe(0));
+    });
+});
+
+describe("listviewColorsDemo selection averages", () => {
+    it("populates the grid model with the color items once filling completes", async () => {
+        await renderDemo(listviewColorsDemo);
+        const grid = (await screen.findByName("color-grid")) as Gtk.GridView;
+        await waitFor(
+            () => {
+                const model = grid.getModel() as Gtk.MultiSelection;
+                expect(model.getNItems()).toBeGreaterThan(0);
+            },
+            { timeout: 10000 },
+        );
     });
 });

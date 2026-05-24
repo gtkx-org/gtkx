@@ -1,8 +1,60 @@
 import * as Gdk from "@gtkx/ffi/gdk";
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { fireEvent } from "./fire-event.js";
 import { act } from "./timing.js";
 import { isEditable } from "./widget.js";
+
+/**
+ * Content payload accepted by {@link userEvent.drop} and
+ * {@link userEvent.dragAndDrop}.
+ *
+ * Primitives are auto-marshalled to a `GObject.Value` of the matching `GType`.
+ * Pre-constructed `GObject.Value` instances are forwarded unchanged so callers
+ * can supply boxed / object types that the auto-marshaller does not cover.
+ */
+export type DropContent = string | number | boolean | GObject.Value;
+
+/**
+ * Optional drop coordinates relative to the target widget.
+ */
+export type DropOptions = {
+    /** X coordinate of the drop, in widget-local pixels (default: 0). */
+    x?: number;
+    /** Y coordinate of the drop, in widget-local pixels (default: 0). */
+    y?: number;
+};
+
+const wrapValue = (content: DropContent): GObject.Value => {
+    if (content instanceof GObject.Value) return content;
+    const value = new GObject.Value();
+    if (typeof content === "string") {
+        value.init(GObject.Type.STRING);
+        value.setString(content);
+        return value;
+    }
+    if (typeof content === "boolean") {
+        value.init(GObject.Type.BOOLEAN);
+        value.setBoolean(content);
+        return value;
+    }
+    value.init(GObject.Type.DOUBLE);
+    value.setDouble(content);
+    return value;
+};
+
+const findController = <T extends Gtk.EventController>(
+    element: Gtk.Widget,
+    controllerType: new (...args: never[]) => T,
+): T => {
+    const controllers = element.observeControllers();
+    const nItems = controllers.getNItems();
+    for (let i = 0; i < nItems; i++) {
+        const controller = controllers.getItem(i);
+        if (controller instanceof controllerType) return controller;
+    }
+    throw new Error(`No ${controllerType.name} controller is attached to the widget`);
+};
 
 /**
  * Options for tab navigation.
@@ -325,7 +377,7 @@ const applyKeyAction = async (
     updateModifierState(state, action);
     const signalName = action.press ? "key-pressed" : "key-released";
     controller.emit(signalName, action.keyval, 0, state.modifierState);
-    if (action.press && action.keyval === Gdk.KEY_Return && isEditable(element)) {
+    if (action.press && action.keyval === Gdk.KEY_Return && isEditable(element) && !(element instanceof Gtk.TextView)) {
         await fireEvent(element, "activate");
     }
 };
@@ -386,6 +438,112 @@ const pointerWith =
 
 const pointer = (element: Gtk.Widget, input: PointerInput): Promise<void> =>
     pointerWith(createInitialState())(element, input);
+
+const rotate = async (element: Gtk.Widget, angle: number, deltaAngle: number = angle): Promise<void> => {
+    await act(() => {
+        const controller = findController(element, Gtk.GestureRotate);
+        controller.emit("angle-changed", angle, deltaAngle);
+    });
+};
+
+const zoom = async (element: Gtk.Widget, scale: number): Promise<void> => {
+    await act(() => {
+        const controller = findController(element, Gtk.GestureZoom);
+        controller.emit("scale-changed", scale);
+    });
+};
+
+const swipe = async (element: Gtk.Widget, velocityX: number, velocityY: number): Promise<void> => {
+    await act(() => {
+        const controller = findController(element, Gtk.GestureSwipe);
+        controller.emit("swipe", velocityX, velocityY);
+    });
+};
+
+const longPress = async (element: Gtk.Widget, x: number = 0, y: number = 0): Promise<void> => {
+    await act(() => {
+        const controller = findController(element, Gtk.GestureLongPress);
+        controller.emit("pressed", x, y);
+    });
+};
+
+/**
+ * Options for {@link userEvent.drag}.
+ */
+export type DragOptions = {
+    /** X coordinate where the drag begins, in widget-local pixels (default: 0). */
+    startX?: number;
+    /** Y coordinate where the drag begins, in widget-local pixels (default: 0). */
+    startY?: number;
+};
+
+interface DragInstancePatch {
+    getStartPoint?: () => [boolean, number, number];
+    getOffset?: () => [boolean, number, number];
+}
+
+const withGestureDragState = <T>(
+    controller: Gtk.GestureDrag,
+    startX: number,
+    startY: number,
+    runWithOffset: (setOffset: (dx: number, dy: number) => void) => T,
+): T => {
+    const instance = controller as unknown as DragInstancePatch;
+    const ownsStartPoint = Object.hasOwn(instance, "getStartPoint");
+    const ownsOffset = Object.hasOwn(instance, "getOffset");
+    const previousStartPoint = instance.getStartPoint;
+    const previousOffset = instance.getOffset;
+    let offsetX = 0;
+    let offsetY = 0;
+    instance.getStartPoint = () => [true, startX, startY];
+    instance.getOffset = () => [true, offsetX, offsetY];
+    const setOffset = (dx: number, dy: number): void => {
+        offsetX = dx;
+        offsetY = dy;
+    };
+    try {
+        return runWithOffset(setOffset);
+    } finally {
+        if (ownsStartPoint) instance.getStartPoint = previousStartPoint;
+        else delete instance.getStartPoint;
+        if (ownsOffset) instance.getOffset = previousOffset;
+        else delete instance.getOffset;
+    }
+};
+
+const drag = async (element: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
+    const startX = options.startX ?? 0;
+    const startY = options.startY ?? 0;
+    await act(() => {
+        const controller = findController(element, Gtk.GestureDrag);
+        withGestureDragState(controller, startX, startY, (setOffset) => {
+            controller.emit("drag-begin", startX, startY);
+            setOffset(dx, dy);
+            controller.emit("drag-update", dx, dy);
+            controller.emit("drag-end", dx, dy);
+        });
+    });
+};
+
+const drop = async (element: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> => {
+    await act(() => {
+        const target = findController(element, Gtk.DropTarget);
+        target.emit("drop", wrapValue(content), options.x ?? 0, options.y ?? 0);
+    });
+};
+
+const dragAndDrop = async (
+    source: Gtk.Widget,
+    target: Gtk.Widget,
+    content: DropContent,
+    options: DropOptions = {},
+): Promise<void> => {
+    await act(() => {
+        findController(source, Gtk.DragSource);
+        const dropTarget = findController(target, Gtk.DropTarget);
+        dropTarget.emit("drop", wrapValue(content), options.x ?? 0, options.y ?? 0);
+    });
+};
 
 /**
  * User interaction utilities for testing.
@@ -508,6 +666,91 @@ export const userEvent = {
      */
     pointer,
     /**
+     * Simulates a rotate gesture on a widget.
+     *
+     * Locates the widget's `Gtk.GestureRotate` controller and emits
+     * `angle-changed` with the given absolute and delta angles in radians.
+     * Throws if the widget has no `GestureRotate` controller attached.
+     *
+     * @param element - The widget receiving the gesture
+     * @param angle - Absolute rotation angle in radians
+     * @param deltaAngle - Angle delta since gesture start, in radians (default: `angle`)
+     */
+    rotate,
+    /**
+     * Simulates a pinch-zoom gesture on a widget.
+     *
+     * Locates the widget's `Gtk.GestureZoom` controller and emits
+     * `scale-changed` with the given scale factor. Throws if the widget
+     * has no `GestureZoom` controller attached.
+     *
+     * @param element - The widget receiving the gesture
+     * @param scale - The new scale factor (1 = no zoom)
+     */
+    zoom,
+    /**
+     * Simulates a swipe gesture on a widget.
+     *
+     * Locates the widget's `Gtk.GestureSwipe` controller and emits `swipe`
+     * with the supplied velocity vector. Throws if the widget has no
+     * `GestureSwipe` controller attached.
+     *
+     * @param element - The widget receiving the gesture
+     * @param velocityX - Horizontal velocity in pixels per second
+     * @param velocityY - Vertical velocity in pixels per second
+     */
+    swipe,
+    /**
+     * Simulates a long-press gesture on a widget.
+     *
+     * Locates the widget's `Gtk.GestureLongPress` controller and emits
+     * `pressed` at the supplied coordinates. Throws if the widget has no
+     * `GestureLongPress` controller attached.
+     *
+     * @param element - The widget receiving the gesture
+     * @param x - X coordinate in widget-local pixels (default: 0)
+     * @param y - Y coordinate in widget-local pixels (default: 0)
+     */
+    longPress,
+    /**
+     * Simulates a click-drag gesture on a widget.
+     *
+     * Locates the widget's `Gtk.GestureDrag` controller and emits the
+     * `drag-begin` → `drag-update` → `drag-end` sequence with the supplied
+     * offset. Throws if the widget has no `GestureDrag` controller attached.
+     *
+     * @param element - The widget receiving the gesture
+     * @param dx - Horizontal offset from the gesture origin
+     * @param dy - Vertical offset from the gesture origin
+     */
+    drag,
+    /**
+     * Simulates a drop onto a widget's `Gtk.DropTarget`.
+     *
+     * Wraps the supplied content in a `GObject.Value` (strings → `G_TYPE_STRING`,
+     * numbers → `G_TYPE_DOUBLE`, booleans → `G_TYPE_BOOLEAN`; pre-constructed
+     * `GObject.Value` instances are forwarded unchanged) and emits `drop`.
+     * Throws if the widget has no `DropTarget` controller attached.
+     *
+     * @param element - The drop target widget
+     * @param content - Payload value (auto-marshalled or a pre-built GObject.Value)
+     * @param options - Drop coordinates relative to the widget
+     */
+    drop,
+    /**
+     * Simulates dragging from one widget and dropping on another.
+     *
+     * Verifies the source widget has a `Gtk.DragSource` controller, then
+     * fires a `drop` on the target widget's `Gtk.DropTarget` with the
+     * supplied content. Throws if either controller is missing.
+     *
+     * @param source - Widget that initiates the drag
+     * @param target - Widget that receives the drop
+     * @param content - Payload value (auto-marshalled or a pre-built GObject.Value)
+     * @param options - Drop coordinates relative to the target
+     */
+    dragAndDrop,
+    /**
      * Creates an isolated user-event instance whose `keyboard` and `pointer`
      * helpers retain modifier and pointer-down state across calls.
      *
@@ -534,6 +777,13 @@ export const userEvent = {
             deselectOptions,
             hover,
             unhover,
+            rotate,
+            zoom,
+            swipe,
+            longPress,
+            drag,
+            drop,
+            dragAndDrop,
             keyboard: keyboardWith(state),
             pointer: pointerWith(state),
         };
@@ -555,6 +805,13 @@ export type UserEventInstance = {
     deselectOptions: typeof deselectOptions;
     hover: typeof hover;
     unhover: typeof unhover;
+    rotate: typeof rotate;
+    zoom: typeof zoom;
+    swipe: typeof swipe;
+    longPress: typeof longPress;
+    drag: typeof drag;
+    drop: typeof drop;
+    dragAndDrop: typeof dragAndDrop;
     keyboard: (element: Gtk.Widget, input: string) => Promise<void>;
     pointer: (element: Gtk.Widget, input: PointerInput) => Promise<void>;
 };

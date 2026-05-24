@@ -1,10 +1,20 @@
+import * as Gdk from "@gtkx/ffi/gdk";
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
+    GtkDragSource,
     GtkDropDown,
+    GtkDropTarget,
     GtkEntry,
+    GtkGestureDrag,
+    GtkGestureLongPress,
+    GtkGestureRotate,
+    GtkGestureSwipe,
+    GtkGestureZoom,
+    GtkLabel,
     GtkListBox,
     GtkListBoxRow,
     GtkSwitch,
@@ -262,5 +272,292 @@ describe("userEvent.deselectOptions", () => {
                 "Cannot deselect options: only ListBox supports deselection",
             );
         });
+    });
+});
+
+describe("userEvent.rotate", () => {
+    it("emits angle-changed on a widget's GestureRotate controller", async () => {
+        const handleAngleChanged = vi.fn();
+        await render(
+            <GtkLabel name="rotated" label="Rotate me">
+                <GtkGestureRotate onAngleChanged={handleAngleChanged} />
+            </GtkLabel>,
+        );
+
+        const label = await screen.findByName("rotated");
+        await userEvent.rotate(label, 1.25);
+
+        const [angle, delta] = handleAngleChanged.mock.calls[0] ?? [];
+        expect(angle).toBe(1.25);
+        expect(delta).toBe(1.25);
+    });
+
+    it("supports a separate delta angle", async () => {
+        const handleAngleChanged = vi.fn();
+        await render(
+            <GtkLabel name="rotated" label="Rotate me">
+                <GtkGestureRotate onAngleChanged={handleAngleChanged} />
+            </GtkLabel>,
+        );
+
+        const label = await screen.findByName("rotated");
+        await userEvent.rotate(label, 2.0, 0.5);
+
+        const [angle, delta] = handleAngleChanged.mock.calls[0] ?? [];
+        expect(angle).toBe(2.0);
+        expect(delta).toBe(0.5);
+    });
+
+    it("throws when the widget has no GestureRotate controller", async () => {
+        await render(<GtkLabel name="no-gesture" label="No gesture" />);
+
+        const label = await screen.findByName("no-gesture");
+        await expect(userEvent.rotate(label, 1)).rejects.toThrow(/GestureRotate/);
+    });
+});
+
+describe("userEvent.zoom", () => {
+    it("emits scale-changed on a widget's GestureZoom controller", async () => {
+        const handleScaleChanged = vi.fn();
+        await render(
+            <GtkLabel name="zoomed" label="Zoom me">
+                <GtkGestureZoom onScaleChanged={handleScaleChanged} />
+            </GtkLabel>,
+        );
+
+        const label = await screen.findByName("zoomed");
+        await userEvent.zoom(label, 1.5);
+
+        const [scale] = handleScaleChanged.mock.calls[0] ?? [];
+        expect(scale).toBe(1.5);
+    });
+});
+
+describe("userEvent.swipe", () => {
+    it("emits swipe with the given velocity vector", async () => {
+        const handleSwipe = vi.fn();
+        await render(
+            <GtkLabel name="swiped" label="Swipe me">
+                <GtkGestureSwipe onSwipe={handleSwipe} />
+            </GtkLabel>,
+        );
+
+        const label = await screen.findByName("swiped");
+        await userEvent.swipe(label, 200, -100);
+
+        const [vx, vy] = handleSwipe.mock.calls[0] ?? [];
+        expect(vx).toBe(200);
+        expect(vy).toBe(-100);
+    });
+});
+
+describe("userEvent.longPress", () => {
+    it("emits pressed at the given coordinates", async () => {
+        const handlePressed = vi.fn();
+        await render(
+            <GtkLabel name="long-pressed" label="Long press me">
+                <GtkGestureLongPress onPressed={handlePressed} />
+            </GtkLabel>,
+        );
+
+        const label = await screen.findByName("long-pressed");
+        await userEvent.longPress(label, 50, 75);
+
+        const [x, y] = handlePressed.mock.calls[0] ?? [];
+        expect(x).toBe(50);
+        expect(y).toBe(75);
+    });
+
+    it("defaults to (0, 0) when no coordinates are given", async () => {
+        const handlePressed = vi.fn();
+        await render(
+            <GtkLabel name="long-pressed" label="Long press me">
+                <GtkGestureLongPress onPressed={handlePressed} />
+            </GtkLabel>,
+        );
+
+        const label = await screen.findByName("long-pressed");
+        await userEvent.longPress(label);
+
+        const [x, y] = handlePressed.mock.calls[0] ?? [];
+        expect(x).toBe(0);
+        expect(y).toBe(0);
+    });
+});
+
+describe("userEvent.drag", () => {
+    it("emits drag-begin, drag-update and drag-end in sequence", async () => {
+        const events: string[] = [];
+        await render(
+            <GtkLabel name="dragged" label="Drag me">
+                <GtkGestureDrag
+                    onDragBegin={() => {
+                        events.push("begin");
+                    }}
+                    onDragUpdate={() => {
+                        events.push("update");
+                    }}
+                    onDragEnd={() => {
+                        events.push("end");
+                    }}
+                />
+            </GtkLabel>,
+        );
+
+        const label = await screen.findByName("dragged");
+        await userEvent.drag(label, 30, -15);
+
+        expect(events).toEqual(["begin", "update", "end"]);
+    });
+
+    it("reports a realistic start point so handlers can call getStartPoint()", async () => {
+        const startPoints: Array<[boolean, number, number]> = [];
+        await render(
+            <GtkLabel name="dragged" label="Drag me">
+                <GtkGestureDrag
+                    onDragUpdate={(_offsetX, _offsetY, self) => {
+                        startPoints.push(self.getStartPoint() as [boolean, number, number]);
+                    }}
+                />
+            </GtkLabel>,
+        );
+
+        const label = await screen.findByName("dragged");
+        await userEvent.drag(label, 30, -15, { startX: 50, startY: 25 });
+
+        expect(startPoints[0]).toEqual([true, 50, 25]);
+    });
+
+    it("reports a realistic offset so handlers can call getOffset()", async () => {
+        const offsets: Array<[boolean, number, number]> = [];
+        await render(
+            <GtkLabel name="dragged" label="Drag me">
+                <GtkGestureDrag
+                    onDragUpdate={(_offsetX, _offsetY, self) => {
+                        offsets.push(self.getOffset() as [boolean, number, number]);
+                    }}
+                />
+            </GtkLabel>,
+        );
+
+        const label = await screen.findByName("dragged");
+        await userEvent.drag(label, 40, -20);
+
+        expect(offsets[0]).toEqual([true, 40, -20]);
+    });
+});
+
+describe("userEvent.drop", () => {
+    it("emits drop on the widget's DropTarget with a string payload", async () => {
+        const handleDrop = vi.fn().mockReturnValue(true);
+        await render(
+            <GtkLabel name="drop-zone" label="Drop here">
+                <GtkDropTarget types={[GObject.Type.STRING]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
+            </GtkLabel>,
+        );
+
+        const target = await screen.findByName("drop-zone");
+        await userEvent.drop(target, "payload", { x: 10, y: 20 });
+
+        expect(handleDrop).toHaveBeenCalledTimes(1);
+        const [value, x, y] = handleDrop.mock.calls[0] ?? [];
+        expect((value as GObject.Value).getString()).toBe("payload");
+        expect(x).toBe(10);
+        expect(y).toBe(20);
+    });
+
+    it("auto-marshals numeric payloads", async () => {
+        const handleDrop = vi.fn().mockReturnValue(true);
+        await render(
+            <GtkLabel name="number-zone" label="Drop a number">
+                <GtkDropTarget types={[GObject.Type.DOUBLE]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
+            </GtkLabel>,
+        );
+
+        const target = await screen.findByName("number-zone");
+        await userEvent.drop(target, 42);
+
+        const [value] = handleDrop.mock.calls[0] ?? [];
+        expect((value as GObject.Value).getDouble()).toBe(42);
+    });
+
+    it("auto-marshals boolean payloads", async () => {
+        const handleDrop = vi.fn().mockReturnValue(true);
+        await render(
+            <GtkLabel name="bool-zone" label="Drop a flag">
+                <GtkDropTarget types={[GObject.Type.BOOLEAN]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
+            </GtkLabel>,
+        );
+
+        const target = await screen.findByName("bool-zone");
+        await userEvent.drop(target, true);
+
+        const [value] = handleDrop.mock.calls[0] ?? [];
+        expect((value as GObject.Value).getBoolean()).toBe(true);
+    });
+});
+
+describe("userEvent.drop — value passthrough and errors", () => {
+    it("forwards a pre-built GObject.Value unchanged", async () => {
+        const handleDrop = vi.fn().mockReturnValue(true);
+        await render(
+            <GtkLabel name="value-zone" label="Drop a value">
+                <GtkDropTarget types={[GObject.Type.STRING]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
+            </GtkLabel>,
+        );
+
+        const target = await screen.findByName("value-zone");
+        const value = new GObject.Value();
+        value.init(GObject.Type.STRING);
+        value.setString("preserved");
+        await userEvent.drop(target, value);
+
+        const [received] = handleDrop.mock.calls[0] ?? [];
+        expect((received as GObject.Value).getString()).toBe("preserved");
+    });
+
+    it("throws when the widget has no DropTarget controller", async () => {
+        await render(<GtkLabel name="no-target" label="Nothing here" />);
+
+        const label = await screen.findByName("no-target");
+        await expect(userEvent.drop(label, "x")).rejects.toThrow(/DropTarget/);
+    });
+});
+
+describe("userEvent.dragAndDrop", () => {
+    it("fires drop on the target after verifying the source's DragSource", async () => {
+        const handleDrop = vi.fn().mockReturnValue(true);
+        await render(
+            <GtkBox>
+                <GtkLabel name="drag-source" label="Drag me">
+                    <GtkDragSource actions={Gdk.DragAction.COPY} />
+                </GtkLabel>
+                <GtkLabel name="drop-target" label="Drop here">
+                    <GtkDropTarget types={[GObject.Type.STRING]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />
+                </GtkLabel>
+            </GtkBox>,
+        );
+
+        const source = await screen.findByName("drag-source");
+        const target = await screen.findByName("drop-target");
+        await userEvent.dragAndDrop(source, target, "payload");
+
+        const [value] = handleDrop.mock.calls[0] ?? [];
+        expect((value as GObject.Value).getString()).toBe("payload");
+    });
+
+    it("throws when the source has no DragSource controller", async () => {
+        await render(
+            <GtkBox>
+                <GtkLabel name="not-a-source" label="No source" />
+                <GtkLabel name="drop-target" label="Drop here">
+                    <GtkDropTarget types={[GObject.Type.STRING]} actions={Gdk.DragAction.COPY} onDrop={() => true} />
+                </GtkLabel>
+            </GtkBox>,
+        );
+
+        const source = await screen.findByName("not-a-source");
+        const target = await screen.findByName("drop-target");
+        await expect(userEvent.dragAndDrop(source, target, "payload")).rejects.toThrow(/DragSource/);
     });
 });

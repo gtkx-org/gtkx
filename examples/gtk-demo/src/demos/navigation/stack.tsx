@@ -17,7 +17,7 @@ const StackDemo = () => {
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} />
-            <GtkStack ref={setStack} transitionType={Gtk.StackTransitionType.CROSSFADE}>
+            <GtkStack name="stack" ref={setStack} transitionType={Gtk.StackTransitionType.CROSSFADE}>
                 <GtkStack.Page id="page1" title="Page 1">
                     <GtkImage gicon={gtkLogo} pixelSize={100} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
                 </GtkStack.Page>

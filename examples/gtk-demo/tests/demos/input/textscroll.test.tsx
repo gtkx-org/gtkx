@@ -1,11 +1,13 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textscrollDemo } from "../../../src/demos/input/textscroll.js";
-import { renderDemo, screen, waitFor } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
-const findTextViews = async (): Promise<Gtk.TextView[]> => {
-    const widgets = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
-    return widgets.filter((w): w is Gtk.TextView => w instanceof Gtk.TextView);
+const findTextViews = async (): Promise<[Gtk.TextView, Gtk.TextView]> => {
+    const end = (await screen.findByName("text-view-end")) as Gtk.TextView;
+    const scroll = (await screen.findByName("text-view-scroll")) as Gtk.TextView;
+    return [end, scroll];
 };
 
 describe("textscrollDemo", () => {
@@ -21,30 +23,27 @@ describe("textscrollDemo", () => {
         expect(textscrollDemo.component).toBeTypeOf("function");
     });
 
-    it("renders two text views inside the demo", async () => {
+    it("renders the scroll-to-end and scroll-to-bottom text views", async () => {
         await renderDemo(textscrollDemo);
-        const textViews = await findTextViews();
-        expect(textViews).toHaveLength(2);
+        const [end, scroll] = await findTextViews();
+        expect(end).toBeInstanceOf(Gtk.TextView);
+        expect(scroll).toBeInstanceOf(Gtk.TextView);
     });
 
-    it("creates 'end' and 'scroll' marks in the two text view buffers", async () => {
+    it("creates the 'end' mark on the scroll-to-end view and 'scroll' on the scroll-to-bottom view", async () => {
         await renderDemo(textscrollDemo);
-        const textViews = await findTextViews();
-        expect(textViews).toHaveLength(2);
-        const markNames = ["end", "scroll"];
-        const found = textViews.map((tv) => {
-            const buffer = tv.getBuffer();
-            return markNames.filter((name) => buffer.getMark(name) !== null);
+        const [end, scroll] = await findTextViews();
+        await waitFor(() => {
+            expect(end.getBuffer().getMark("end")).not.toBeNull();
+            expect(scroll.getBuffer().getMark("scroll")).not.toBeNull();
         });
-        const flatNames = found.flat().sort();
-        expect(flatNames).toEqual(["end", "scroll"]);
     });
 
     it("appends text to the buffers as scroll ticks run", async () => {
         await renderDemo(textscrollDemo);
-        const textViews = await findTextViews();
+        const [end, scroll] = await findTextViews();
         await waitFor(() => {
-            for (const view of textViews) {
+            for (const view of [end, scroll]) {
                 const buffer = view.getBuffer();
                 const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
                 const expected = text.includes("Scroll to end") || text.includes("Scroll to bottom");

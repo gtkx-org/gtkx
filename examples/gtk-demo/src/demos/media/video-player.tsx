@@ -119,7 +119,7 @@ const VideoPlayerTitlebar = () => {
                     <GtkImage paintable={logoPaintable} pixelSize={24} />
                 </GtkButton>
                 <GtkButton name="bbb-button" accessibleLabel="Big Buck Bunny" onClicked={handleBBB}>
-                    <GtkImage paintable={bbbPaintable} pixelSize={24} />
+                    <GtkImage name="bbb-image" paintable={bbbPaintable} pixelSize={24} />
                 </GtkButton>
             </GtkHeaderBar.PackStart>
             <GtkHeaderBar.PackEnd>

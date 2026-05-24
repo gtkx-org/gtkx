@@ -1,19 +1,18 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fixedDemo } from "../../../src/demos/layout/fixed.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
-const FACE_COUNT = 6;
+const FACE_NAMES = ["back", "left", "bottom", "right", "top", "front"] as const;
 const FACE_SIZE = 200;
 
-const collectInnerFixedChildren = (inner: Gtk.Fixed): Gtk.Widget[] => {
-    const children: Gtk.Widget[] = [];
-    let child = inner.getFirstChild();
-    while (child) {
-        children.push(child);
-        child = child.getNextSibling();
+const findCubeFaces = async (): Promise<Gtk.Frame[]> => {
+    const faces: Gtk.Frame[] = [];
+    for (const name of FACE_NAMES) {
+        faces.push((await screen.findByName(`cube-face-${name}`)) as Gtk.Frame);
     }
-    return children;
+    return faces;
 };
 
 describe("fixedDemo metadata", () => {
@@ -52,11 +51,10 @@ describe("fixedDemo containers", () => {
 });
 
 describe("fixedDemo cube faces", () => {
-    it("renders six frames, one per cube face", async () => {
+    it("renders the six named cube-face frames", async () => {
         await renderDemo(fixedDemo);
-        const inner = (await screen.findByName("inner-fixed")) as Gtk.Fixed;
-        const faces = collectInnerFixedChildren(inner);
-        expect(faces).toHaveLength(FACE_COUNT);
+        const faces = await findCubeFaces();
+        expect(faces).toHaveLength(FACE_NAMES.length);
         for (const face of faces) {
             expect(face).toBeInstanceOf(Gtk.Frame);
         }
@@ -64,8 +62,7 @@ describe("fixedDemo cube faces", () => {
 
     it("sizes each cube-face frame to the FACE_SIZE constant of 200 pixels", async () => {
         await renderDemo(fixedDemo);
-        const inner = (await screen.findByName("inner-fixed")) as Gtk.Fixed;
-        const faces = collectInnerFixedChildren(inner);
+        const faces = await findCubeFaces();
         for (const face of faces) {
             const [width, height] = face.getSizeRequest();
             expect(width).toBe(FACE_SIZE);
@@ -76,10 +73,9 @@ describe("fixedDemo cube faces", () => {
     it("applies a non-null GskTransform to each cube face child of the inner fixed", async () => {
         await renderDemo(fixedDemo);
         const inner = (await screen.findByName("inner-fixed")) as Gtk.Fixed;
-        const faces = collectInnerFixedChildren(inner);
-        expect(faces).toHaveLength(FACE_COUNT);
+        const faces = await findCubeFaces();
         for (const face of faces) {
-            const transform = inner.getChildTransform(face as Gtk.Frame);
+            const transform = inner.getChildTransform(face);
             expect(transform).not.toBeNull();
         }
     });

@@ -107,6 +107,7 @@ declare module "react" {
     namespace JSX {
         interface IntrinsicElements {
             GtkxSimpleConstraintGrid: {
+                name?: string;
                 hexpand?: boolean;
                 vexpand?: boolean;
                 ref?: React.Ref<Gtk.Widget>;
@@ -118,7 +119,7 @@ declare module "react" {
 
 const GtkxSimpleConstraintGrid = SIMPLE_GRID_TYPE_NAME;
 
-const ConstraintsDemo = () => <GtkxSimpleConstraintGrid hexpand vexpand />;
+const ConstraintsDemo = () => <GtkxSimpleConstraintGrid name="container" hexpand vexpand />;
 
 export const constraintsDemo: Demo = {
     id: "constraints",

@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssShadowsDemo } from "../../../src/demos/css/css-shadows.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("cssShadowsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -41,15 +42,13 @@ describe("cssShadowsDemo rendering", () => {
 
 describe("cssShadowsDemo behavior", () => {
     it("adds both demo and background css classes to the host window", async () => {
-        const { window, unmount } = await renderDemo(cssShadowsDemo);
-        const win = window.current;
-        expect(win).not.toBeNull();
-        if (!win) return;
-        expect(win.hasCssClass("demo")).toBe(true);
-        expect(win.hasCssClass("background")).toBe(true);
+        const { unmount } = await renderDemo(cssShadowsDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        expect(window.hasCssClass("demo")).toBe(true);
+        expect(window.hasCssClass("background")).toBe(true);
         await unmount();
-        expect(win.hasCssClass("demo")).toBe(false);
-        expect(win.hasCssClass("background")).toBe(false);
+        expect(window.hasCssClass("demo")).toBe(false);
+        expect(window.hasCssClass("background")).toBe(false);
     });
 
     it("propagates user edits in the buffer back through getText", async () => {

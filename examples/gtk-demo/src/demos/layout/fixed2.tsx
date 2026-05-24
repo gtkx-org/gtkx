@@ -74,7 +74,7 @@ const Fixed2Demo = () => {
         <GtkScrolledWindow name="scrolled" hexpand vexpand>
             <GtkFixed name="fixed" ref={handleFixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
                 <GtkFixed.Child x={0} y={0} transform={transform}>
-                    <GtkLabel ref={handleLabelRef} label="All fixed?" />
+                    <GtkLabel ref={handleLabelRef} name="fixed-label" label="All fixed?" />
                 </GtkFixed.Child>
             </GtkFixed>
         </GtkScrolledWindow>

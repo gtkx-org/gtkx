@@ -1,17 +1,43 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import * as Gio from "@gtkx/ffi/gio";
+import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { describe, expect, it } from "vitest";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pickersDemo } from "../../../src/demos/dialogs/pickers.js";
-import { fireEvent, renderDemo, screen, waitFor } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
-const dropTargetsOf = (widget: Gtk.Widget): Gtk.DropTarget[] => {
-    const observer = widget.observeControllers();
-    const out: Gtk.DropTarget[] = [];
-    const count = observer.getNItems();
-    for (let i = 0; i < count; i++) {
-        const controller = observer.getItem(i);
-        if (controller instanceof Gtk.DropTarget) out.push(controller);
-    }
-    return out;
+const MIN_PDF =
+    "%PDF-1.1\n%\xC2\xA5\xC2\xB1\xC3\xAB\n\n1 0 obj\n  << /Type /Catalog\n     /Pages 2 0 R\n  >>\nendobj\n\n2 0 obj\n  << /Type /Pages\n     /Kids [3 0 R]\n     /Count 1\n     /MediaBox [0 0 99 99]\n  >>\nendobj\n\n3 0 obj\n  <<  /Type /Page\n      /Parent 2 0 R\n      /Resources << >>\n      /Contents 4 0 R\n  >>\nendobj\n\n4 0 obj\n  << /Length 0 >>\nstream\nendstream\nendobj\n\nxref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000063 00000 n\n0000000136 00000 n\n0000000221 00000 n\n\ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n264\n%%EOF\n";
+
+let tmpDir: string;
+let pdfPath: string;
+
+beforeAll(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "gtkx-pickers-"));
+    pdfPath = join(tmpDir, "doc.pdf");
+    writeFileSync(pdfPath, MIN_PDF);
+});
+
+afterAll(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+});
+
+const makeFileValue = (path: string): GObject.Value => {
+    const file = Gio.fileNewForPath(path);
+    const value = new GObject.Value();
+    value.init(GObject.typeFromName("GFile"));
+    value.setObject(file);
+    return value;
+};
+
+const makeStringValue = (text: string): GObject.Value => {
+    const value = new GObject.Value();
+    value.init(GObject.typeFromName("gchararray"));
+    value.setString(text);
+    return value;
 };
 
 describe("pickersDemo metadata", () => {
@@ -62,37 +88,85 @@ describe("pickersDemo file buttons", () => {
         expect(printBtn.getSensitive()).toBe(false);
         expect(printBtn.getTooltipText()).toBe("Print File");
     });
-
-    it("attaches a GtkDropTarget to the document-open button so files can be dropped onto it", async () => {
-        await renderDemo(pickersDemo);
-        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
-        expect(dropTargetsOf(selectFile).length).toBeGreaterThan(0);
-    });
 });
 
 describe("pickersDemo handlers", () => {
     it("invokes the file open dialog handler when the select-file button is clicked", async () => {
         await renderDemo(pickersDemo);
         const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
-        await fireEvent(selectFile, "clicked");
-        await waitFor(() => expect(selectFile.getSensitive()).toBe(true));
+        await userEvent.click(selectFile);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        expect(selectFile.getSensitive()).toBe(true);
     });
 
-    it("invokes the launch-app handler when the open-file button is clicked even though no file is selected", async () => {
+    it("invokes the URI launcher handler when the 'www.gtk.org' button is clicked", async () => {
         await renderDemo(pickersDemo);
+        const uri = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+            name: "Open www.gtk.org",
+        })) as Gtk.Button;
+        await userEvent.click(uri);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+    });
+});
+
+describe("pickersDemo drop target", () => {
+    it("accepts a GFile dropped on the select-file button and updates the displayed filename", async () => {
+        await renderDemo(pickersDemo);
+        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        await userEvent.drop(selectFile, makeFileValue("/tmp"));
+        await waitFor(() => {
+            const tmpLabels = screen.queryAllByText("tmp");
+            expect(tmpLabels.length).toBeGreaterThan(0);
+        });
+    });
+
+    it("returns false from the drop handler when a non-file value is dropped on the select-file button", async () => {
+        await renderDemo(pickersDemo);
+        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        await userEvent.drop(selectFile, makeStringValue("not a file"));
+        const fileNameLabel = await screen.findByText("None");
+        expect(fileNameLabel).toBeInstanceOf(Gtk.Widget);
+    });
+
+    it("enables the Open File, Open in Folder buttons once a file is dropped", async () => {
+        await renderDemo(pickersDemo);
+        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        await userEvent.drop(selectFile, makeFileValue("/tmp"));
+        const openFileBtn = (await screen.findByName("open-file-button")) as Gtk.Button;
+        const openFolderBtn = (await screen.findByName("open-folder-button")) as Gtk.Button;
+        await waitFor(() => expect(openFileBtn.getSensitive()).toBe(true));
+        expect(openFolderBtn.getSensitive()).toBe(true);
+    });
+});
+
+describe("pickersDemo file-dependent handlers", () => {
+    it("invokes the launch-app handler with an actual file after dropping a GFile", async () => {
+        await renderDemo(pickersDemo);
+        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        await userEvent.drop(selectFile, makeFileValue("/tmp"));
         const openFile = (await screen.findByName("open-file-button")) as Gtk.Button;
-        await fireEvent(openFile, "clicked");
+        await waitFor(() => expect(openFile.getSensitive()).toBe(true));
+        await userEvent.click(openFile);
+        await new Promise((resolve) => setTimeout(resolve, 250));
     });
 
-    it("invokes the open-folder handler when the folder-symbolic button is clicked", async () => {
+    it("invokes the open-folder handler with an actual file after dropping a GFile", async () => {
         await renderDemo(pickersDemo);
+        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        await userEvent.drop(selectFile, makeFileValue("/tmp"));
         const folder = (await screen.findByName("open-folder-button")) as Gtk.Button;
-        await fireEvent(folder, "clicked");
+        await waitFor(() => expect(folder.getSensitive()).toBe(true));
+        await userEvent.click(folder);
+        await new Promise((resolve) => setTimeout(resolve, 250));
     });
 
-    it("invokes the print handler when the printer-symbolic button is clicked", async () => {
+    it("enables the Print button and runs handlePrintFile after dropping a PDF GFile", async () => {
         await renderDemo(pickersDemo);
-        const print = (await screen.findByName("print-button")) as Gtk.Button;
-        await fireEvent(print, "clicked");
+        const selectFile = (await screen.findByName("select-file-button")) as Gtk.Button;
+        await userEvent.drop(selectFile, makeFileValue(pdfPath));
+        const printBtn = (await screen.findByName("print-button")) as Gtk.Button;
+        await waitFor(() => expect(printBtn.getSensitive()).toBe(true));
+        await userEvent.click(printBtn);
+        await new Promise((resolve) => setTimeout(resolve, 250));
     });
 });

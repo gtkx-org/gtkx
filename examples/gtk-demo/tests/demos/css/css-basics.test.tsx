@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssBasicsDemo } from "../../../src/demos/css/css-basics.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("cssBasicsDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -32,13 +33,11 @@ describe("cssBasicsDemo rendering", () => {
     });
 
     it("adds the demo css class to the host window on mount and removes it on unmount", async () => {
-        const { window, unmount } = await renderDemo(cssBasicsDemo);
-        const win = window.current;
-        expect(win).not.toBeNull();
-        if (!win) return;
-        expect(win.hasCssClass("demo")).toBe(true);
+        const { unmount } = await renderDemo(cssBasicsDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        expect(window.hasCssClass("demo")).toBe(true);
         await unmount();
-        expect(win.hasCssClass("demo")).toBe(false);
+        expect(window.hasCssClass("demo")).toBe(false);
     });
 });
 

@@ -66,6 +66,7 @@ function useDropAndOpenHandlers(window: React.RefObject<Gtk.Window | null>, stat
 
     const handleFileDrop = useCallback(
         (value: GObject.Value) => {
+            if (!GObject.typeCheckValueHolds(value, getGFileType())) return false;
             const file = value.getObject();
             if (file && file instanceof Gio.File) {
                 setFile(file);

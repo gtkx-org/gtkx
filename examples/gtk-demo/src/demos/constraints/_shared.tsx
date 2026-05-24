@@ -29,7 +29,7 @@ export const ThreeButtonsBox = ({
     button3Ref,
     namedButtons = false,
 }: ThreeButtonsRefs) => (
-    <GtkBox ref={containerRef} hexpand vexpand>
+    <GtkBox ref={containerRef} name={namedButtons ? "container" : undefined} hexpand vexpand>
         <GtkButton ref={button1Ref} label="Child 1" name={namedButtons ? "button1" : undefined} />
         <GtkButton ref={button2Ref} label="Child 2" name={namedButtons ? "button2" : undefined} />
         <GtkButton ref={button3Ref} label="Child 3" name={namedButtons ? "button3" : undefined} />

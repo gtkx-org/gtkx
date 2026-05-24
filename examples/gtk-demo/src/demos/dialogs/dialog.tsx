@@ -43,13 +43,23 @@ const DialogEntryRow = ({
                 <GtkLabel label="_Entry 1" useUnderline mnemonicWidget={entry1Widget} />
             </GtkGrid.Child>
             <GtkGrid.Child column={1} row={0}>
-                <GtkEntry ref={setEntry1Widget} text={entry1} onChanged={(e) => setEntry1(e.getText())} />
+                <GtkEntry
+                    name="demo-entry-1"
+                    ref={setEntry1Widget}
+                    text={entry1}
+                    onChanged={(e) => setEntry1(e.getText())}
+                />
             </GtkGrid.Child>
             <GtkGrid.Child column={0} row={1}>
                 <GtkLabel label="E_ntry 2" useUnderline mnemonicWidget={entry2Widget} />
             </GtkGrid.Child>
             <GtkGrid.Child column={1} row={1}>
-                <GtkEntry ref={setEntry2Widget} text={entry2} onChanged={(e) => setEntry2(e.getText())} />
+                <GtkEntry
+                    name="demo-entry-2"
+                    ref={setEntry2Widget}
+                    text={entry2}
+                    onChanged={(e) => setEntry2(e.getText())}
+                />
             </GtkGrid.Child>
         </GtkGrid>
     </GtkBox>
@@ -66,6 +76,7 @@ const MessageDialog = ({
 }) =>
     createPortal(
         <AdwAlertDialog
+            name="message-dialog"
             heading="Test message"
             body={clickCount === 1 ? "Has been shown once" : `Has been shown ${clickCount} times`}
             defaultResponse="ok"
@@ -100,6 +111,7 @@ const InteractiveDialog = ({
     const [dialogEntry2Widget, setDialogEntry2Widget] = useState<Gtk.Entry | null>(null);
     return createPortal(
         <AdwAlertDialog
+            name="interactive-dialog"
             heading="Interactive Dialog"
             defaultResponse="ok"
             closeResponse="cancel"
@@ -118,6 +130,7 @@ const InteractiveDialog = ({
                     </GtkGrid.Child>
                     <GtkGrid.Child column={1} row={0}>
                         <GtkEntry
+                            name="dialog-entry-1"
                             ref={setDialogEntry1Widget}
                             text={entry1Text}
                             onChanged={(e) => setEntry1Text(e.getText())}
@@ -128,6 +141,7 @@ const InteractiveDialog = ({
                     </GtkGrid.Child>
                     <GtkGrid.Child column={1} row={1}>
                         <GtkEntry
+                            name="dialog-entry-2"
                             ref={setDialogEntry2Widget}
                             text={entry2Text}
                             onChanged={(e) => setEntry2Text(e.getText())}

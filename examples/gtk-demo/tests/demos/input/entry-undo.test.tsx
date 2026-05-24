@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { entryUndoDemo } from "../../../src/demos/input/entry-undo.js";
-import { renderDemo, screen, userEvent } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("entryUndoDemo", () => {
     it("exposes the expected metadata", () => {
@@ -18,9 +19,9 @@ describe("entryUndoDemo", () => {
         await renderDemo(entryUndoDemo);
         const box = await screen.findByText("Use Control+z or Control+Shift+z to undo or redo changes");
         expect(box).toBeInstanceOf(Gtk.Box);
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         expect(entry).toBeInstanceOf(Gtk.Entry);
-        expect((entry as Gtk.Entry).getEnableUndo()).toBe(true);
+        expect(entry.getEnableUndo()).toBe(true);
     });
 
     it("accepts typed text into the entry", async () => {
@@ -30,7 +31,16 @@ describe("entryUndoDemo", () => {
         expect(entry.getText()).toBe("hello");
     });
 
-    it("nests the entry inside a vertically-oriented box", async () => {
+    it("supports clearing the entry text via userEvent", async () => {
+        await renderDemo(entryUndoDemo);
+        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
+        await userEvent.type(entry, "discard me");
+        expect(entry.getText()).toBe("discard me");
+        await userEvent.clear(entry);
+        expect(entry.getText()).toBe("");
+    });
+
+    it("nests the entry inside a vertically-oriented box with 12px spacing", async () => {
         await renderDemo(entryUndoDemo);
         const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
         const parent = entry.getParent();

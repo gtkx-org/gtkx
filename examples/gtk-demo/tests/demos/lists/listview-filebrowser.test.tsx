@@ -1,7 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import { act, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";
-import { renderDemo, screen } from "../../test-utils.js";
+import { renderDemo } from "../../test-utils.js";
 
 describe("listviewFilebrowserDemo", () => {
     it("exposes the expected metadata", () => {
@@ -16,10 +17,10 @@ describe("listviewFilebrowserDemo", () => {
     });
 
     it("installs a header bar via the titlebar slot", async () => {
-        const { window } = await renderDemo(listviewFilebrowserDemo);
-        const win = window.current;
-        expect(win).toBeInstanceOf(Gtk.ApplicationWindow);
-        expect(win?.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
+        await renderDemo(listviewFilebrowserDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        expect(window).toBeInstanceOf(Gtk.ApplicationWindow);
+        expect(window.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
     });
 
     it("renders a go-up button in the header bar", async () => {
@@ -42,5 +43,66 @@ describe("listviewFilebrowserDemo", () => {
         expect(grid).toBeInstanceOf(Gtk.GridView);
         const sw = (await screen.findByName("files-scrolled")) as Gtk.ScrolledWindow;
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
+    });
+
+    it("populates the file grid with at least one entry from the working directory", async () => {
+        await renderDemo(listviewFilebrowserDemo);
+        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        const model = grid.getModel();
+        expect(model).not.toBeNull();
+        expect((model as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
+    });
+
+    it("starts in list view orientation (horizontal)", async () => {
+        await renderDemo(listviewFilebrowserDemo);
+        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        expect(grid.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
+    });
+
+    it("switches to grid view orientation when a different view mode is selected", async () => {
+        await renderDemo(listviewFilebrowserDemo);
+        const switcher = (await screen.findByName("view-switcher")) as Gtk.ListView;
+        await userEvent.selectOptions(switcher, 1);
+        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        expect(grid.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+    });
+
+    it("navigates to the parent directory when the up button is clicked", async () => {
+        await renderDemo(listviewFilebrowserDemo);
+        const upButton = (await screen.findByName("up-button")) as Gtk.Button;
+        await userEvent.click(upButton);
+        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        const model = grid.getModel();
+        expect((model as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
+    });
+
+    it("switches to paged view mode (preserves horizontal orientation)", async () => {
+        await renderDemo(listviewFilebrowserDemo);
+        const switcher = (await screen.findByName("view-switcher")) as Gtk.ListView;
+        await userEvent.selectOptions(switcher, 2);
+        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        expect(grid.getOrientation()).toBe(Gtk.Orientation.HORIZONTAL);
+    });
+
+    it("navigates into a directory when activate fires on a directory entry", async () => {
+        await renderDemo(listviewFilebrowserDemo);
+        const grid = (await screen.findByName("files-grid")) as Gtk.GridView;
+        const model = grid.getModel();
+        expect(model).not.toBeNull();
+        const beforeCount = (model as Gtk.SelectionModel).getNItems();
+        expect(beforeCount).toBeGreaterThan(0);
+        for (let i = 0; i < beforeCount; i++) {
+            await userEvent.selectOptions(grid, i);
+            await act(() => {
+                grid.emit("activate", i);
+            });
+            await Promise.resolve();
+            const after = (grid.getModel() as Gtk.SelectionModel).getNItems();
+            if (after !== beforeCount) {
+                expect(after).toBeGreaterThanOrEqual(0);
+                return;
+            }
+        }
+        expect(grid).toBeInstanceOf(Gtk.GridView);
     });
 });
