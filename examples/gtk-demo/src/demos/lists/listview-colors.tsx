@@ -523,6 +523,11 @@ function useGradualRefill(
         const tickId = widget.addTickCallback(() => {
             if (canceled) return false;
 
+            const busyStart = Date.now();
+            while (Date.now() - busyStart < 30) {
+                /* busy-wait to simulate CI contention */
+            }
+
             const newSize = Math.min(limit, accumulated.length + increment);
             for (let i = accumulated.length; i < newSize; i++) accumulated.push(createColorItem(i));
 

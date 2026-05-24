@@ -17,5 +17,5 @@ Fixes #
 
 - [ ] I have tested these changes locally
 - [ ] I have updated documentation if needed
-- [ ] All tests pass (`pnpm turbo test`)
-- [ ] Linting passes (`pnpm turbo lint:all`)
+- [ ] All tests pass (`pnpm test`)
+- [ ] Linting passes (`pnpm lint`)

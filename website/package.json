@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "typedoc": "node scripts/typedoc.ts",
-        "build": "pnpm typedoc && vitepress build",
+        "docs": "pnpm typedoc && vitepress build",
         "dev": "vitepress dev",
         "preview": "vitepress preview",
         "screenshots": "vitest run --config screenshots/vitest.config.ts"

@@ -38,7 +38,7 @@ jobs:
       - name: Build documentation
         uses: ./.github/actions/run-in-container
         with:
-          command: cd website && pnpm turbo build
+          command: pnpm docs
           mount-pnpm-store: "true"
           extra-env: NODE_OPTIONS
 

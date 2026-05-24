@@ -43,7 +43,7 @@ jobs:
       - name: Generate coverage
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm build && pnpm coverage
+          command: pnpm coverage
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
