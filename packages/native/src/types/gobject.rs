@@ -122,7 +122,20 @@ impl RawPtrCodec for GObjectType {
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        write_object_ptr(ptr, value, "GObject field write")
+        let new_ptr = value.object_ptr("GObject field write")?;
+        let old_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
+        if !new_ptr.is_null() {
+            unsafe {
+                glib::gobject_ffi::g_object_ref(new_ptr as *mut glib::gobject_ffi::GObject);
+            }
+        }
+        unsafe { (ptr as *mut *mut c_void).write_unaligned(new_ptr) };
+        if !old_ptr.is_null() {
+            unsafe {
+                glib::gobject_ffi::g_object_unref(old_ptr as *mut glib::gobject_ffi::GObject);
+            }
+        }
+        Ok(())
     }
 }
 

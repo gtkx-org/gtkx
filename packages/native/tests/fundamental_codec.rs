@@ -397,6 +397,7 @@ fn write_return_to_raw_ptr_err_writes_null() {
 fn write_value_to_raw_ptr_writes_fundamental() {
     common::run(|| {
         let pspec = create_param_spec();
+        let before = param_spec_refcount(pspec);
 
         let mut slot: *mut c_void = std::ptr::null_mut();
         fundamental(Ownership::Borrowed)
@@ -405,7 +406,61 @@ fn write_value_to_raw_ptr_writes_fundamental() {
                 &Value::Object(NativeHandle::borrowed(pspec)),
             )
             .expect("write_value_to_raw_ptr should succeed");
+
         assert_eq!(slot, pspec);
+        assert_eq!(param_spec_refcount(pspec), before + 1);
+
+        unsafe { glib::gobject_ffi::g_param_spec_unref(slot.cast()) };
+        unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
+    });
+}
+
+#[test]
+fn write_value_to_raw_ptr_unrefs_previous_fundamental() {
+    common::run(|| {
+        let old = create_param_spec();
+        let new = create_param_spec();
+
+        unsafe { glib::gobject_ffi::g_param_spec_ref(old.cast()) };
+        let mut slot: *mut c_void = old;
+        let old_before = param_spec_refcount(old);
+        let new_before = param_spec_refcount(new);
+
+        fundamental(Ownership::Borrowed)
+            .write_value_to_raw_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Object(NativeHandle::borrowed(new)),
+            )
+            .expect("write_value_to_raw_ptr should succeed");
+
+        assert_eq!(slot, new);
+        assert_eq!(param_spec_refcount(new), new_before + 1);
+        assert_eq!(param_spec_refcount(old), old_before - 1);
+
+        unsafe { glib::gobject_ffi::g_param_spec_unref(slot.cast()) };
+        unsafe { glib::gobject_ffi::g_param_spec_unref(old.cast()) };
+        unsafe { glib::gobject_ffi::g_param_spec_unref(new.cast()) };
+    });
+}
+
+#[test]
+fn write_value_to_raw_ptr_null_releases_previous_fundamental() {
+    common::run(|| {
+        let pspec = create_param_spec();
+
+        unsafe { glib::gobject_ffi::g_param_spec_ref(pspec.cast()) };
+        let mut slot: *mut c_void = pspec;
+        let before = param_spec_refcount(pspec);
+
+        fundamental(Ownership::Borrowed)
+            .write_value_to_raw_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Null,
+            )
+            .expect("write_value_to_raw_ptr should succeed");
+
+        assert!(slot.is_null());
+        assert_eq!(param_spec_refcount(pspec), before - 1);
 
         unsafe { glib::gobject_ffi::g_param_spec_unref(pspec.cast()) };
     });

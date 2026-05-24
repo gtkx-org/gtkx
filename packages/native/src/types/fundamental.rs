@@ -147,7 +147,21 @@ impl RawPtrCodec for FundamentalType {
     }
 
     fn write_value_to_raw_ptr(&self, ptr: *mut c_void, value: &value::Value) -> anyhow::Result<()> {
-        write_object_ptr(ptr, value, "Fundamental field write")
+        let new_ptr = value.object_ptr("Fundamental field write")?;
+        let old_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
+        let (ref_fn, unref_fn) = self.lookup_fns()?;
+        if !new_ptr.is_null()
+            && let Some(ref_fn) = ref_fn
+        {
+            unsafe { ref_fn(new_ptr) };
+        }
+        unsafe { (ptr as *mut *mut c_void).write_unaligned(new_ptr) };
+        if !old_ptr.is_null()
+            && let Some(unref_fn) = unref_fn
+        {
+            unsafe { unref_fn(old_ptr) };
+        }
+        Ok(())
     }
 }
 

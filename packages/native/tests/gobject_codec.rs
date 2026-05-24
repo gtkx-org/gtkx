@@ -301,6 +301,7 @@ fn write_value_to_raw_ptr_writes_object() {
     common::run(|| {
         let obj = glib::Object::new::<glib::Object>();
         let obj_ptr = obj.as_ptr();
+        let before = get_gobject_refcount(obj_ptr);
 
         let mut slot: *mut c_void = std::ptr::null_mut();
         borrowed()
@@ -309,7 +310,61 @@ fn write_value_to_raw_ptr_writes_object() {
                 &Value::Object(NativeHandle::borrowed(obj_ptr as *mut c_void)),
             )
             .expect("write_value_to_raw_ptr should succeed");
+
         assert_eq!(slot, obj_ptr as *mut c_void);
+        assert_eq!(get_gobject_refcount(obj_ptr), before + 1);
+
+        unsafe { glib::gobject_ffi::g_object_unref(slot.cast()) };
+    });
+}
+
+#[test]
+fn write_value_to_raw_ptr_unrefs_previous_object() {
+    common::run(|| {
+        let old = glib::Object::new::<glib::Object>();
+        let new = glib::Object::new::<glib::Object>();
+        let old_ptr = old.as_ptr();
+        let new_ptr = new.as_ptr();
+
+        unsafe { glib::gobject_ffi::g_object_ref(old_ptr.cast()) };
+        let mut slot: *mut c_void = old_ptr as *mut c_void;
+        let old_before = get_gobject_refcount(old_ptr);
+        let new_before = get_gobject_refcount(new_ptr);
+
+        borrowed()
+            .write_value_to_raw_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Object(NativeHandle::borrowed(new_ptr as *mut c_void)),
+            )
+            .expect("write_value_to_raw_ptr should succeed");
+
+        assert_eq!(slot, new_ptr as *mut c_void);
+        assert_eq!(get_gobject_refcount(new_ptr), new_before + 1);
+        assert_eq!(get_gobject_refcount(old_ptr), old_before - 1);
+
+        unsafe { glib::gobject_ffi::g_object_unref(slot.cast()) };
+    });
+}
+
+#[test]
+fn write_value_to_raw_ptr_null_releases_previous_object() {
+    common::run(|| {
+        let obj = glib::Object::new::<glib::Object>();
+        let obj_ptr = obj.as_ptr();
+
+        unsafe { glib::gobject_ffi::g_object_ref(obj_ptr.cast()) };
+        let mut slot: *mut c_void = obj_ptr as *mut c_void;
+        let before = get_gobject_refcount(obj_ptr);
+
+        borrowed()
+            .write_value_to_raw_ptr(
+                &mut slot as *mut *mut c_void as *mut c_void,
+                &Value::Null,
+            )
+            .expect("write_value_to_raw_ptr should succeed");
+
+        assert!(slot.is_null());
+        assert_eq!(get_gobject_refcount(obj_ptr), before - 1);
     });
 }
 
