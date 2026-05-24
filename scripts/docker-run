@@ -79,6 +79,7 @@ add_wayland_args() {
 
 add_engine_args() {
     local engine="$1"
+    RUN_ARGS+=(--pids-limit=-1)
     if [ "$engine" = podman ]; then
         RUN_ARGS+=(--userns=keep-id -e HOME=/tmp)
     fi
