@@ -4,8 +4,7 @@
         "tsconfig.base.json",
         "tsconfig.lib.json",
         "tsconfig.test.json",
-        "biome.json",
-        "vitest.config.ts"
+        "biome.json"
     ],
     "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
     "globalPassThroughEnv": [
@@ -22,11 +21,6 @@
         "LIBGL_ALWAYS_SOFTWARE"
     ],
     "tasks": {
-        // Knip resolves cross-package imports through each package's `exports`
-        // field (which points into `dist/`); without these build dependencies,
-        // knip reports false-positive "unused dependency" findings for any
-        // workspace consumer that imports from a sibling package. New packages
-        // must be added here, or they silently drop out of the build chain.
         "//#lint:all": {
             "dependsOn": [
                 "@gtkx/cli#build",
@@ -39,7 +33,57 @@
                 "@gtkx/testing#build",
                 "@gtkx/vitest#build"
             ],
-            "inputs": ["**/*.ts", "**/*.tsx", "**/package.json", "biome.json", "knip.json"],
+            "inputs": [
+                "**/*.ts",
+                "**/*.tsx",
+                "**/package.json",
+                "biome.json",
+                "knip.json",
+                ".dependency-cruiser.cjs"
+            ],
+            "outputLogs": "new-only"
+        },
+        "//#test:all": {
+            "dependsOn": [
+                "@gtkx/cli#build",
+                "@gtkx/codegen#build",
+                "@gtkx/css#build",
+                "@gtkx/ffi#build",
+                "@gtkx/mcp#build",
+                "@gtkx/native#build",
+                "@gtkx/native#native-build",
+                "@gtkx/react#build",
+                "@gtkx/testing#build",
+                "@gtkx/vitest#build"
+            ],
+            "inputs": [
+                "vitest.config.ts",
+                "packages/*/vitest.config.ts",
+                "packages/*/src/**/*.{ts,tsx}",
+                "packages/*/tests/**/*.{ts,tsx}"
+            ],
+            "outputLogs": "new-only"
+        },
+        "//#coverage:all": {
+            "dependsOn": [
+                "@gtkx/cli#build",
+                "@gtkx/codegen#build",
+                "@gtkx/css#build",
+                "@gtkx/ffi#build",
+                "@gtkx/mcp#build",
+                "@gtkx/native#build",
+                "@gtkx/native#native-build",
+                "@gtkx/react#build",
+                "@gtkx/testing#build",
+                "@gtkx/vitest#build"
+            ],
+            "inputs": [
+                "vitest.config.ts",
+                "packages/*/vitest.config.ts",
+                "packages/*/src/**/*.{ts,tsx}",
+                "packages/*/tests/**/*.{ts,tsx}"
+            ],
+            "outputs": ["coverage/**"],
             "outputLogs": "new-only"
         },
         "lint": {
@@ -56,6 +100,11 @@
                 "bin/**",
                 "src/**/*.ts",
                 "src/**/*.tsx",
+                "src/**/*.d.ts",
+                "src/**/*.js",
+                "scripts/**/*.ts",
+                "tests/**/*.ts",
+                "tests/**/*.tsx",
                 "tsconfig.json",
                 "tsconfig.app.json",
                 "tsconfig.lib.json",
@@ -83,6 +132,13 @@
             "outputLogs": "new-only",
             "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
+        "native-coverage": {
+            "dependsOn": ["native-build"],
+            "inputs": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
+            "outputs": ["coverage/**"],
+            "outputLogs": "new-only",
+            "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
+        },
         "start": {
             "dependsOn": ["build"],
             "persistent": true,
@@ -98,6 +154,11 @@
             "inputs": [
                 "src/**/*.ts",
                 "src/**/*.tsx",
+                "src/**/*.d.ts",
+                "src/**/*.js",
+                "scripts/**/*.ts",
+                "tests/**/*.ts",
+                "tests/**/*.tsx",
                 "tsconfig.json",
                 "tsconfig.app.json",
                 "tsconfig.lib.json",
@@ -111,37 +172,26 @@
             "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
             "outputLogs": "new-only"
         },
-        "coverage": {
-            "dependsOn": ["^build", "native-coverage"],
-            "inputs": ["vitest.config.ts", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
-            "outputs": ["coverage/**"],
+        "docs": {
+            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
+            "inputs": [
+                "package.json",
+                ".vitepress/**",
+                "docs/**",
+                "index.md",
+                "public/**",
+                "scripts/**",
+                "typedoc.config.ts",
+                "typedoc.json",
+                "tsconfig.json"
+            ],
+            "outputs": [".vitepress/dist/**", "api/**"],
             "outputLogs": "new-only"
-        },
-        "native-coverage": {
-            "dependsOn": ["native-build"],
-            "inputs": ["Cargo.toml", "src/**/*.rs", "tests/**/*.rs"],
-            "outputs": ["coverage/**"],
-            "outputLogs": "new-only",
-            "passThroughEnv": ["RUSTUP_TOOLCHAIN"]
         },
         "@gtkx/native#typecheck": {
             "dependsOn": ["^build", "native-build"],
             "inputs": ["*.ts", "tests/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
             "outputs": [],
-            "outputLogs": "new-only"
-        },
-        "website#build": {
-            "dependsOn": ["@gtkx/ffi#build", "@gtkx/react#build"],
-            "inputs": [
-                "package.json",
-                ".vitepress/**",
-                "guide/**",
-                "index.md",
-                "public/**",
-                "scripts/**",
-                "tsconfig.json"
-            ],
-            "outputs": [".vitepress/dist/**", "api/**"],
             "outputLogs": "new-only"
         },
         "website#dev": {

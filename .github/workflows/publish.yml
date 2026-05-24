@@ -76,10 +76,10 @@ jobs:
           name: native-linux-arm64-gnu
           path: packages/native
 
-      - name: Build and publish
+      - name: Release
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm build && pnpm --filter @gtkx/native create-npm-dirs && pnpm --filter @gtkx/native artifacts && pnpm -r publish --access public --no-git-checks
+          command: pnpm release
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
           extra-env: NPM_CONFIG_PROVENANCE

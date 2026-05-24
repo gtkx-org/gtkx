@@ -46,7 +46,7 @@
             "project": ["src/**/*.{ts,tsx}!"]
         },
         "examples/gtk-demo": {
-            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!"],
+            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
             "project": ["src/**/*.{ts,tsx}!"]
         },
         "examples/hello-world": {

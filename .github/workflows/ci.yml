@@ -21,7 +21,28 @@ env:
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Detect changes
+        id: filter
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!website/**'
+              - '!**/*.md'
+
   lint:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -39,6 +60,8 @@ jobs:
           mount-pnpm-store: "true"
 
   test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -51,11 +74,13 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm build && pnpm test
+          command: pnpm test
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
 
   typecheck:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -87,26 +112,8 @@ jobs:
       - name: Build docs
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm run docs
+          command: pnpm docs
           mount-cargo-cache: "true"
           mount-pnpm-store: "true"
           extra-env: NODE_OPTIONS
 
-  native-coverage:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup CI
-        uses: ./.github/actions/setup-ci
-        with:
-          pnpm: "false"
-
-      - name: Native test coverage
-        uses: ./.github/actions/run-in-container
-        with:
-          command: cd packages/native && pnpm native-coverage
-          install: "false"
-          mount-cargo-cache: "true"

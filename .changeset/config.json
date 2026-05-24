@@ -7,9 +7,10 @@
             "@gtkx/cli",
             "@gtkx/css",
             "@gtkx/ffi",
-            "@gtkx/gir",
             "@gtkx/mcp",
             "@gtkx/native",
+            "@gtkx/native-linux-arm64-gnu",
+            "@gtkx/native-linux-x64-gnu",
             "@gtkx/react",
             "@gtkx/testing",
             "@gtkx/vitest"
@@ -19,5 +20,5 @@
     "access": "public",
     "baseBranch": "main",
     "updateInternalDependencies": "patch",
-    "ignore": ["@gtkx/codegen", "@gtkx/e2e", "@gtkx/native-linux-arm64", "@gtkx/native-linux-x64"]
+    "ignore": ["@gtkx/codegen", "@gtkx/e2e"]
 }
