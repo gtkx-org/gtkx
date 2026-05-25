@@ -212,3 +212,51 @@ fn native_value_debug_and_clone() {
         assert!(format!("{cloned:?}").contains("GObject"));
     });
 }
+
+#[test]
+fn size_hint_distinguishes_native_value_variants() {
+    common::run(|| {
+        let obj = glib::Object::new::<glib::Object>();
+        let gobject_hint = NativeValue::GObject(obj).size_hint();
+
+        let gtype = gdk::RGBA::static_type();
+        let boxed_ptr = common::allocate_test_boxed(gtype);
+        let boxed_hint = NativeValue::Boxed(Boxed::from_glib_full(Some(gtype), boxed_ptr)).size_hint();
+
+        let pspec = param_spec_ptr();
+        let fundamental_hint = NativeValue::Fundamental(Fundamental::from_glib_full(
+            pspec,
+            Some(param_spec_ref),
+            Some(param_spec_unref),
+        ))
+        .size_hint();
+
+        assert!(gobject_hint > 0);
+        assert!(boxed_hint > 0);
+        assert!(fundamental_hint > 0);
+        assert_ne!(gobject_hint, boxed_hint);
+        assert_ne!(boxed_hint, fundamental_hint);
+        assert_ne!(gobject_hint, fundamental_hint);
+    });
+}
+
+#[test]
+fn native_handle_caches_size_hint_at_construction() {
+    common::run(|| {
+        let obj = glib::Object::new::<glib::Object>();
+        let value = NativeValue::GObject(obj);
+        let expected = value.size_hint();
+        let handle: NativeHandle = value.into();
+
+        assert_eq!(handle.size_hint(), expected);
+
+        let cloned = handle.clone();
+        assert_eq!(cloned.size_hint(), expected);
+    });
+}
+
+#[test]
+fn borrowed_native_handle_reports_zero_size_hint() {
+    let handle = NativeHandle::borrowed(0xDEAD_BEEFusize as *mut c_void);
+    assert_eq!(handle.size_hint(), 0);
+}
