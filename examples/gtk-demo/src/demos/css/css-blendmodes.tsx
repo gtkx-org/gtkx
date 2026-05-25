@@ -10,7 +10,7 @@ import {
     GtkStack,
     GtkStackSwitcher,
 } from "@gtkx/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Demo } from "../types.js";
 import blendsPath from "./blends.png";
 import cmyPath from "./cmy.jpg";
@@ -198,7 +198,6 @@ const CmykPage = () => (
 
 const CssBlendmodesDemo = () => {
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
-    const [listbox, setListbox] = useState<Gtk.ListBox | null>(null);
     const [blendMode, setBlendMode] = useState("normal");
 
     const blendCss = useMemo(() => createBlendCss(blendMode), [blendMode]);
@@ -209,15 +208,15 @@ const CssBlendmodesDemo = () => {
         if (mode) setBlendMode(mode.id);
     }, []);
 
-    useEffect(() => {
-        if (!listbox) return;
+    const selectAndFocusNormalRow = useCallback((widget: Gtk.Widget) => {
+        const listbox = widget as Gtk.ListBox;
         const normalIndex = BLEND_MODES.findIndex((m) => m.id === "normal");
         const row = listbox.getRowAtIndex(normalIndex);
         if (row) {
             listbox.selectRow(row);
             row.grabFocus();
         }
-    }, [listbox]);
+    }, []);
 
     return (
         <GtkGrid
@@ -235,7 +234,11 @@ const CssBlendmodesDemo = () => {
 
             <GtkGrid.Child column={0} row={1}>
                 <GtkScrolledWindow vexpand hasFrame minContentWidth={150}>
-                    <GtkListBox name="blend-list" ref={setListbox} onRowActivated={handleRowActivated}>
+                    <GtkListBox
+                        name="blend-list"
+                        onRowActivated={handleRowActivated}
+                        onRealize={selectAndFocusNormalRow}
+                    >
                         {BLEND_MODES.map((mode) => (
                             <GtkListBoxRow key={mode.id}>
                                 <GtkLabel label={mode.name} xalign={0} />

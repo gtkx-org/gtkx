@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/ffi/gio";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkSwitch, GtkToggleButton, GtkVideo } from "@gtkx/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import floppybuddyGifPath from "../gestures/floppybuddy.gif";
 import gtkLogoWebmPath from "../media/gtk-logo.webm";
 import type { Demo, DemoProps } from "../types.js";
@@ -56,30 +56,24 @@ const ImagesPanel = ({ title, children }: { title: string; children: React.React
 
 const StatefulIconPanel = () => {
     const svg = useMemo(() => loadSvgPaintable(statefulSvgPath), []);
-    const imageRef = useRef<Gtk.Image | null>(null);
     const [state, setState] = useState(false);
 
-    useEffect(() => {
-        const image = imageRef.current;
-        if (!image) return;
+    const attachFrameClock = (image: Gtk.Widget) => {
         const frameClock = image.getFrameClock();
         if (frameClock) svg.setFrameClock(frameClock);
-    }, [svg]);
-
-    useEffect(() => {
-        svg.setState(state ? 1 : 0);
-    }, [svg, state]);
+    };
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
             <ImagesPanel title="Stateful icon">
-                <GtkImage ref={imageRef} paintable={svg} pixelSize={128} />
+                <GtkImage paintable={svg} pixelSize={128} onRealize={attachFrameClock} />
             </ImagesPanel>
             <GtkSwitch
                 halign={Gtk.Align.START}
                 active={state}
                 onStateSet={(value) => {
                     setState(value);
+                    svg.setState(value ? 1 : 0);
                     return true;
                 }}
             />
@@ -89,18 +83,15 @@ const StatefulIconPanel = () => {
 
 const PathAnimationPanel = () => {
     const svg = useMemo(() => loadSvgPaintable(animatedSvgPath), []);
-    const imageRef = useRef<Gtk.Image | null>(null);
 
-    useEffect(() => {
-        const image = imageRef.current;
-        if (!image) return;
+    const attachFrameClock = (image: Gtk.Widget) => {
         const frameClock = image.getFrameClock();
         if (frameClock) svg.setFrameClock(frameClock);
-    }, [svg]);
+    };
 
     return (
         <ImagesPanel title="Path animation">
-            <GtkImage ref={imageRef} paintable={svg} pixelSize={128} />
+            <GtkImage paintable={svg} pixelSize={128} onRealize={attachFrameClock} />
         </ImagesPanel>
     );
 };

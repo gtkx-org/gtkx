@@ -662,16 +662,13 @@ const loadTrashPaintable = (): Gtk.Svg => {
 
 const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop }: DndTrashZoneProps) => {
     const svg = useMemo(loadTrashPaintable, []);
-    const imageRef = useRef<Gtk.Image | null>(null);
 
-    useEffect(() => {
-        const image = imageRef.current;
-        if (!image) return;
+    const attachFrameClockAndPlay = (image: Gtk.Widget) => {
         const frameClock = image.getFrameClock();
         if (frameClock) svg.setFrameClock(frameClock);
         svg.setState(0);
         svg.play();
-    }, [svg]);
+    };
 
     return (
         <GtkFixed.Child x={20} y={20}>
@@ -703,7 +700,7 @@ const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop
                         return handleTrashDrop(value);
                     }}
                 />
-                <GtkImage ref={imageRef} paintable={svg} pixelSize={64} cssClasses={["error"]} />
+                <GtkImage paintable={svg} pixelSize={64} cssClasses={["error"]} onRealize={attachFrameClockAndPlay} />
             </GtkBox>
         </GtkFixed.Child>
     );

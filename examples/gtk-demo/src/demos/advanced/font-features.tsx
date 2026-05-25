@@ -302,6 +302,7 @@ function useFontFeaturesState() {
     const savedTextRef = useRef("");
     const previewLabelRef = useRef<Gtk.Label | null>(null);
     const editTextViewRef = useRef<Gtk.TextView | null>(null);
+    const editScrolledWindowRef = useRef<Gtk.ScrolledWindow | null>(null);
     const containerRef = useRef<Gtk.Box | null>(null);
 
     return {
@@ -331,6 +332,7 @@ function useFontFeaturesState() {
         savedTextRef,
         previewLabelRef,
         editTextViewRef,
+        editScrolledWindowRef,
         containerRef,
     };
 }
@@ -1097,7 +1099,12 @@ const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttrib
         marginBottom={20}
         spacing={20}
     >
-        <GtkScrolledWindow vexpand propagateNaturalHeight cssClasses={[styles.bgStyle]}>
+        <GtkScrolledWindow
+            ref={state.editScrolledWindowRef}
+            vexpand
+            propagateNaturalHeight
+            cssClasses={[styles.bgStyle]}
+        >
             <GtkStack name="stack" page={stackPage}>
                 <GtkStack.Page id="label">
                     <FontFeaturesPreviewLabel state={state} styles={styles} attributes={previewAttributes} />
@@ -1168,15 +1175,9 @@ const FontFeaturesDemo = () => {
         if (state.viewMode !== "edit") return;
         const tv = state.editTextViewRef.current;
         if (!tv) return;
-        let ancestor: Gtk.Widget | null = tv.getParent();
-        while (ancestor && !(ancestor instanceof Gtk.ScrolledWindow)) {
-            ancestor = ancestor.getParent();
-        }
-        if (ancestor instanceof Gtk.ScrolledWindow) {
-            ancestor.getVadjustment()?.setValue(0);
-        }
+        state.editScrolledWindowRef.current?.getVadjustment()?.setValue(0);
         tv.grabFocus();
-    }, [state.viewMode, state.editTextViewRef]);
+    }, [state.viewMode, state.editTextViewRef, state.editScrolledWindowRef]);
 
     return (
         <>
