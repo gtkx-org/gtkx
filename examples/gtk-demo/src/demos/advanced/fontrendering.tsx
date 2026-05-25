@@ -1,4 +1,15 @@
-import { Antialias, Content, Context, Filter, FontOptions, HintMetrics, HintStyle, Surface } from "@gtkx/ffi/cairo";
+import {
+    Antialias,
+    Content,
+    Context,
+    Filter,
+    FontOptions,
+    Format,
+    HintMetrics,
+    HintStyle,
+    ImageSurface,
+    Surface,
+} from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -18,7 +29,7 @@ import {
     GtkShortcutController,
     GtkToggleButton,
 } from "@gtkx/react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./fontrendering.tsx?raw";
 
@@ -100,6 +111,58 @@ const setupGridLayout = (
 
     enlargeGlyphWidths(glyphItem.glyphs);
     return { logicalRect, ch, iter };
+};
+
+interface MeasurementInputs {
+    text: string;
+    fontDesc: Pango.FontDescription;
+    hintStyle: HintStyle;
+    antialias: boolean;
+    hintMetrics: boolean;
+    scale: number;
+}
+
+const withMeasurementContext = <T,>(inputs: MeasurementInputs, body: (pangoContext: Pango.Context) => T): T => {
+    const fontOptions = createGridFontOptions(inputs.hintStyle, inputs.antialias, inputs.hintMetrics);
+    const target = ImageSurface.create(Format.ARGB32, 1, 1);
+    const cr = Context.create(target);
+    cr.setFontOptions(fontOptions);
+    const pangoContext = PangoCairo.createContext(cr);
+    PangoCairo.contextSetFontOptions(pangoContext, fontOptions);
+    pangoContext.setRoundGlyphPositions(inputs.hintMetrics);
+
+    try {
+        return body(pangoContext);
+    } finally {
+        target.finish();
+    }
+};
+
+const measureTextSurface = (inputs: MeasurementInputs): { width: number; height: number } => {
+    const { width, height } = withMeasurementContext(inputs, (pangoContext) => {
+        const layout = Pango.Layout.new(pangoContext);
+        layout.setFontDescription(inputs.fontDesc);
+        layout.setText(inputs.text || " ", -1);
+        const [inkRect] = layout.getExtents();
+        const inkW = Math.ceil(inkRect.width / PANGO_SCALE);
+        const inkH = Math.ceil(inkRect.height / PANGO_SCALE);
+        return { width: inkW + 20, height: inkH + 20 };
+    });
+    return { width: width * inputs.scale, height: height * inputs.scale };
+};
+
+const measureGridSurface = (inputs: MeasurementInputs): { width: number; height: number } => {
+    const result = withMeasurementContext(inputs, (pangoContext) => {
+        const layoutSetup = setupGridLayout(pangoContext, inputs.fontDesc, inputs.text);
+        if (!layoutSetup) return null;
+        const { logicalRect } = layoutSetup;
+        return {
+            width: Math.round((logicalRect.width * 3) / 2),
+            height: logicalRect.height * 4,
+        };
+    });
+    if (!result) return { width: 0, height: 0 };
+    return { width: result.width * inputs.scale, height: result.height * inputs.scale };
 };
 
 const renderSmallSurface = ({
@@ -544,10 +607,8 @@ function useDrawGridMode(state: FontRenderingState) {
             cr.paint();
             paintSmallSurface({ cr, small, surfaceWidth, surfaceHeight, scale, width, height });
 
-            smallSetup.iter.free();
             small.finish();
             tmpSurface.finish();
-            layoutSetup.iter.free();
         },
         [fontDesc, text, hintStyle, antialias, hintMetrics, scale],
     );
@@ -754,6 +815,7 @@ interface FontRenderingContextValue {
     drawFunc: (cr: Context, width: number, height: number) => void;
     zoomIn: () => void;
     zoomOut: () => void;
+    naturalSize: { width: number; height: number };
 }
 
 const FontRenderingContext = createContext<FontRenderingContextValue | null>(null);
@@ -766,7 +828,7 @@ const useFontRendering = (): FontRenderingContextValue => {
 
 const FontRenderingProvider = ({ children }: DemoProviderProps) => {
     const state = useFontRenderingState();
-    const { mode, setScale } = state;
+    const { mode, text, fontDesc, hintStyle, antialias, hintMetrics, scale, setScale } = state;
 
     useOverlayAnimation(state);
 
@@ -774,18 +836,23 @@ const FontRenderingProvider = ({ children }: DemoProviderProps) => {
     const drawGridMode = useDrawGridMode(state);
     const drawFunc = mode === "text" ? drawTextMode : drawGridMode;
 
+    const naturalSize = useMemo(() => {
+        const inputs: MeasurementInputs = { text, fontDesc, hintStyle, antialias, hintMetrics, scale };
+        return mode === "text" ? measureTextSurface(inputs) : measureGridSurface(inputs);
+    }, [mode, text, fontDesc, hintStyle, antialias, hintMetrics, scale]);
+
     const zoomIn = useCallback(() => setScale((s) => Math.min(32, s + 1)), [setScale]);
     const zoomOut = useCallback(() => setScale((s) => Math.max(1, s - 1)), [setScale]);
 
     return (
-        <FontRenderingContext.Provider value={{ state, drawFunc, zoomIn, zoomOut }}>
+        <FontRenderingContext.Provider value={{ state, drawFunc, zoomIn, zoomOut, naturalSize }}>
             {children}
         </FontRenderingContext.Provider>
     );
 };
 
 const FontRenderingDemo = () => {
-    const { state, drawFunc, zoomIn, zoomOut } = useFontRendering();
+    const { state, drawFunc, zoomIn, zoomOut, naturalSize } = useFontRendering();
 
     return (
         <>
@@ -800,8 +867,10 @@ const FontRenderingDemo = () => {
                     <GtkDrawingArea
                         name="image"
                         render={drawFunc}
-                        vexpand
+                        contentWidth={naturalSize.width}
+                        contentHeight={naturalSize.height}
                         hexpand
+                        vexpand
                         halign={Gtk.Align.CENTER}
                         valign={Gtk.Align.CENTER}
                         accessibleLabel="Font rendering example"
