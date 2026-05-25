@@ -146,7 +146,8 @@ export class InterfaceGenerator {
         });
         this.file.addImport("../../native.js", ["t"]);
         this.file.addImport("../../registry.js", ["registerNativeInterface"]);
-        this.file.addStatement(`\nregisterNativeInterface(${interfaceName}, ${iface.glibGetType}());`);
+        this.file.addStatement(`\n${interfaceName}.prototype.__gtype__ = 0;`);
+        this.file.addStatement(`registerNativeInterface(${interfaceName}, ${iface.glibGetType}());`);
     }
 
     private emitConstructorPropertiesNamespace(iface: GirInterface, interfaceName: string): void {

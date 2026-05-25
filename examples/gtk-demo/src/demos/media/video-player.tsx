@@ -1,6 +1,5 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcutController, GtkVideo } from "@gtkx/react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
@@ -14,7 +13,7 @@ const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Select a video");
 
-    const filters = Gio.ListStore.new(GObject.typeFromName("GtkFileFilter"));
+    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype.__gtype__);
 
     const allFilter = new Gtk.FileFilter();
     allFilter.setName("All Files");

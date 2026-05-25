@@ -52,22 +52,13 @@ function parseMessages(raw: string): Message[] {
 
 const ALL_MESSAGES = parseMessages(messagesRaw);
 
-let appleRedTexture: Gdk.Texture | undefined;
-function getAppleRedTexture() {
-    if (!appleRedTexture) {
-        appleRedTexture = Gdk.Texture.newFromFilename(appleRedPath);
-    }
-    return appleRedTexture;
-}
+const appleRedTexture = Gdk.Texture.newFromFilename(appleRedPath);
 
-let boldAttrs: Pango.AttrList | undefined;
-function getBoldAttrs() {
-    if (!boldAttrs) {
-        boldAttrs = Pango.AttrList.new();
-        boldAttrs.insert(Pango.attrWeightNew(Pango.Weight.BOLD));
-    }
-    return boldAttrs;
-}
+const boldAttrs = (() => {
+    const attrs = Pango.AttrList.new();
+    attrs.insert(Pango.attrWeightNew(Pango.Weight.BOLD));
+    return attrs;
+})();
 
 function formatShortTime(timestamp: number): string {
     const date = new Date(timestamp * 1000);
@@ -97,9 +88,7 @@ interface MessageRowProps {
 const MessageAvatar = ({ message }: { message: Message }) => (
     <GtkGrid.Child column={0} row={0} rowSpan={5}>
         <GtkImage
-            {...(message.senderNick === "GTKtoolkit"
-                ? { iconName: "org.gtk.Demo4" }
-                : { paintable: getAppleRedTexture() })}
+            {...(message.senderNick === "GTKtoolkit" ? { iconName: "org.gtk.Demo4" } : { paintable: appleRedTexture })}
             iconSize={Gtk.IconSize.LARGE}
             widthRequest={32}
             heightRequest={32}
@@ -117,7 +106,7 @@ const MessageHeader = ({ message }: { message: Message }) => (
     <GtkGrid.Child column={1} row={0}>
         <GtkBox hexpand baselinePosition={Gtk.BaselinePosition.TOP}>
             <GtkButton receivesDefault hasFrame={false} valign={Gtk.Align.BASELINE}>
-                <GtkLabel label={message.senderName} valign={Gtk.Align.BASELINE} attributes={getBoldAttrs()} />
+                <GtkLabel label={message.senderName} valign={Gtk.Align.BASELINE} attributes={boldAttrs} />
             </GtkButton>
             <GtkLabel label={message.senderNick} valign={Gtk.Align.BASELINE} cssClasses={["dim-label"]} />
             <GtkLabel

@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { css, cx } from "@gtkx/css";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as GLib from "@gtkx/ffi/glib";
-import type { GType } from "@gtkx/ffi/gobject";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
@@ -122,11 +121,7 @@ interface CanvasItem {
     angleDelta: number;
 }
 
-let gdkRgbaTypeCache: GType | null = null;
-function getGdkRgbaType(): GType {
-    gdkRgbaTypeCache ??= GObject.typeFromName("GdkRGBA");
-    return gdkRgbaTypeCache;
-}
+const gdkRgbaType = Gdk.RGBA.prototype.__gtype__;
 
 interface ContextMenuState {
     x: number;
@@ -161,7 +156,7 @@ function ColorSwatch({ color }: Readonly<{ color: string }>) {
     const createColorProvider = useCallback(() => {
         const rgba = new Gdk.RGBA();
         rgba.parse(color);
-        return Gdk.ContentProvider.newForValue(makeValue(getGdkRgbaType(), (v) => v.setBoxed(rgba)));
+        return Gdk.ContentProvider.newForValue(makeValue(gdkRgbaType, (v) => v.setBoxed(rgba)));
     }, [color]);
 
     return (
@@ -574,7 +569,7 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                     actions={Gdk.DragAction.MOVE}
                 />
                 <GtkDropTarget
-                    types={[getGdkRgbaType(), GObject.Type.STRING]}
+                    types={[gdkRgbaType, GObject.Type.STRING]}
                     actions={Gdk.DragAction.COPY}
                     onMotion={() => Gdk.DragAction.COPY}
                     onDrop={(value: GObject.Value) => handlers.handleItemColorDrop(item.id, value)}

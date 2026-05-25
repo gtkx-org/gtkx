@@ -34,7 +34,7 @@ interface MarkupStackProps {
     showSource: boolean;
     formattedViewRef: React.RefObject<Gtk.TextView | null>;
     sourceViewRef: React.RefObject<Gtk.TextView | null>;
-    onFormattedRealized: () => void;
+    onFormattedRealized: (self: Gtk.Widget) => void;
 }
 
 const MarkupStack = ({ showSource, formattedViewRef, sourceViewRef, onFormattedRealized }: MarkupStackProps) => (

@@ -56,6 +56,7 @@ export function registerNativeClass(cls: NativeClass, gtype: GType): void {
 export function registerNativeInterface(cls: NativeClass, gtype: GType): void {
     if (gtype !== G_TYPE_INVALID) {
         interfaceGtypeByClass.set(cls, gtype);
+        (cls.prototype as GTypeStamped).__gtype__ = gtype;
     }
 }
 
