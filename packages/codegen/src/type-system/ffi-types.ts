@@ -19,7 +19,7 @@ export type ImportType = TypeKind;
 export type FfiTypeDescriptor = {
     type: Type["type"];
 
-    ownership?: "full" | "borrowed";
+    ownership?: "full" | "borrowed" | "none";
 
     innerType?: FfiTypeDescriptor | string;
 
@@ -271,77 +271,60 @@ export const STRUCT_ELEMENT_SIZES = new Map<string, number>([
 ]);
 
 /**
- * Converts a transfer full flag to ownership string.
- * @param transferFull - true means "full" (caller takes ownership), false means "borrowed" (caller must not free)
+ * Lifetime annotation for an FFI type descriptor — see
+ * [`Ownership` in `@gtkx/ffi/helpers`](../../../ffi/src/helpers.ts) for
+ * full semantics.
  */
-const toOwnership = (transferFull: boolean): "full" | "borrowed" => (transferFull ? "full" : "borrowed");
+export type FfiOwnership = "full" | "borrowed" | "none";
 
-/**
- * Creates a string FFI type descriptor.
- * @param transferFull - true for transfer full, false for transfer none
- */
-export const stringType = (transferFull: boolean): FfiTypeDescriptor => ({
+/** Creates a string FFI type descriptor. */
+export const stringType = (ownership: FfiOwnership): FfiTypeDescriptor => ({
     type: "string",
-    ownership: toOwnership(transferFull),
+    ownership,
 });
 
-/**
- * Creates a GObject FFI type descriptor.
- * @param transferFull - true for transfer full, false for transfer none
- */
-export const gobjectType = (transferFull: boolean): FfiTypeDescriptor => ({
+/** Creates a GObject FFI type descriptor. */
+export const gobjectType = (ownership: FfiOwnership): FfiTypeDescriptor => ({
     type: "gobject",
-    ownership: toOwnership(transferFull),
+    ownership,
 });
 
-/**
- * Creates a fundamental type FFI descriptor for types with custom ref/unref functions.
- * @param lib - library containing the ref/unref functions
- * @param refFn - name of the ref function
- * @param unrefFn - name of the unref function
- * @param transferFull - true for transfer full, false for transfer none
- */
+/** Creates a fundamental type FFI descriptor for types with custom ref/unref functions. */
 export const fundamentalType = (opts: {
     lib: string;
     refFn: string;
     unrefFn: string;
-    transferFull: boolean;
+    ownership: FfiOwnership;
     typeName?: string;
 }): FfiTypeDescriptor => ({
     type: "fundamental",
     library: opts.lib,
     refFn: opts.refFn,
     unrefFn: opts.unrefFn,
-    ownership: toOwnership(opts.transferFull),
+    ownership: opts.ownership,
     typeName: opts.typeName,
 });
 
-/**
- * Creates a boxed FFI type descriptor.
- * @param transferFull - true for transfer full, false for transfer none
- */
+/** Creates a boxed FFI type descriptor. */
 export const boxedType = (
     innerType: string,
-    transferFull: boolean,
+    ownership: FfiOwnership,
     lib?: string,
     getTypeFn?: string,
 ): FfiTypeDescriptor => ({
     type: "boxed",
     innerType,
-    ownership: toOwnership(transferFull),
+    ownership,
     library: lib,
     getTypeFn,
 });
 
-/**
- * Creates a struct FFI type descriptor.
- * @param transferFull - true for transfer full, false for transfer none
- */
-export const structType = (innerType: string, transferFull: boolean, size?: number): FfiTypeDescriptor => {
+/** Creates a struct FFI type descriptor. */
+export const structType = (innerType: string, ownership: FfiOwnership, size?: number): FfiTypeDescriptor => {
     const desc: FfiTypeDescriptor = {
         type: "struct",
         innerType,
-        ownership: toOwnership(transferFull),
+        ownership,
     };
     if (size !== undefined) {
         desc.size = size;
@@ -351,21 +334,20 @@ export const structType = (innerType: string, transferFull: boolean, size?: numb
 
 /**
  * Creates an array FFI type descriptor.
- * @param transferFull - true for transfer full, false for transfer none
  * @param sizeParamIndex - for sized arrays, the index of the parameter containing the length
  * @param fixedSize - for fixed-size arrays, the compile-time known size
  */
 export const arrayType = (
     itemType: FfiTypeDescriptor,
     containerKind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed" = "array",
-    transferFull: boolean = true,
+    ownership: FfiOwnership = "full",
     opts: { sizeParamIndex?: number; fixedSize?: number; elementSize?: number } = {},
 ): FfiTypeDescriptor => {
     const result: FfiTypeDescriptor = {
         type: "array",
         itemType,
         kind: containerKind,
-        ownership: toOwnership(transferFull),
+        ownership,
     };
     if (opts.sizeParamIndex !== undefined) {
         result.sizeParamIndex = opts.sizeParamIndex;
@@ -379,57 +361,47 @@ export const arrayType = (
     return result;
 };
 
-/**
- * Creates a GPtrArray FFI type descriptor.
- * @param transferFull - true for transfer full, false for transfer none
- */
-export const ptrArrayType = (itemType: FfiTypeDescriptor, transferFull: boolean): FfiTypeDescriptor => ({
+/** Creates a GPtrArray FFI type descriptor. */
+export const ptrArrayType = (itemType: FfiTypeDescriptor, ownership: FfiOwnership): FfiTypeDescriptor => ({
     type: "array",
     itemType,
     kind: "gptrarray",
-    ownership: toOwnership(transferFull),
+    ownership,
 });
 
-/**
- * Creates a GArray FFI type descriptor with element size.
- * @param transferFull - true for transfer full, false for transfer none
- */
+/** Creates a GArray FFI type descriptor with element size. */
 export const gArrayType = (
     itemType: FfiTypeDescriptor,
     elementSize: number,
-    transferFull: boolean,
+    ownership: FfiOwnership,
 ): FfiTypeDescriptor => ({
     type: "array",
     itemType,
     kind: "garray",
     elementSize,
-    ownership: toOwnership(transferFull),
+    ownership,
 });
 
-/**
- * Creates a GByteArray FFI type descriptor.
- * @param transferFull - true for transfer full, false for transfer none
- */
-export const byteArrayType = (transferFull: boolean): FfiTypeDescriptor => ({
+/** Creates a GByteArray FFI type descriptor. */
+export const byteArrayType = (ownership: FfiOwnership): FfiTypeDescriptor => ({
     type: "array",
     itemType: FFI_UINT8,
     kind: "gbytearray",
-    ownership: toOwnership(transferFull),
+    ownership,
 });
 
 /**
  * Creates a GHashTable FFI type descriptor.
- * @param transferFull - true for transfer full, false for transfer none
  */
 export const hashTableType = (
     keyType: FfiTypeDescriptor,
     valueType: FfiTypeDescriptor,
-    transferFull: boolean,
+    ownership: FfiOwnership,
 ): FfiTypeDescriptor => ({
     type: "hashtable",
     keyType,
     valueType,
-    ownership: toOwnership(transferFull),
+    ownership,
 });
 
 /**

@@ -25,13 +25,20 @@ type FlagsType = { type: "flags"; library: string; getTypeFn: string; signed: bo
 
 type BooleanType = { type: "boolean" };
 
-type Ownership = "full" | "borrowed";
+type Ownership = "full" | "borrowed" | "none";
 
 type StringType = { type: "string"; ownership: Ownership; length?: number };
 
 type GObjectType = { type: "gobject"; ownership: Ownership };
 
-type BoxedType = { type: "boxed"; ownership: Ownership; innerType: string; library?: string; getTypeFn?: string };
+type BoxedType = {
+    type: "boxed";
+    ownership: Ownership;
+    innerType: string;
+    library?: string;
+    getTypeFn?: string;
+    freeFn?: string;
+};
 
 type StructType = { type: "struct"; ownership: Ownership; innerType: string; size?: number };
 

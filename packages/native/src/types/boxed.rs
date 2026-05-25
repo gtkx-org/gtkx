@@ -23,6 +23,7 @@ pub struct BoxedType {
     pub type_name: String,
     pub library: Option<String>,
     pub get_type_fn: Option<String>,
+    pub free_fn: Option<String>,
 }
 
 impl BoxedType {
@@ -42,11 +43,17 @@ impl BoxedType {
             .ok()
             .flatten();
 
+        let free_fn: Option<String> = obj
+            .get_named_property::<Option<String>>("freeFn")
+            .ok()
+            .flatten();
+
         Ok(Self {
             ownership,
             type_name,
             library,
             get_type_fn,
+            free_fn,
         })
     }
 
@@ -61,6 +68,38 @@ impl BoxedType {
                 }
             }
         })
+    }
+
+    fn lookup_free_fn(lib_name: &str, free_fn: &str) -> anyhow::Result<BoxedFreeFn> {
+        GtkThreadState::with(|state| -> anyhow::Result<_> {
+            let library = state.library(lib_name)?;
+            let sym = unsafe {
+                library
+                    .get::<BoxedFreeFn>(free_fn.as_bytes())
+                    .map_err(|e| anyhow::anyhow!("Failed to find free symbol '{free_fn}': {e}"))?
+            };
+            Ok(*sym)
+        })
+    }
+
+    /// Constructs a [`Boxed`] for a descriptor that declares a custom
+    /// destructor. Fails when the symbol cannot be resolved rather than
+    /// falling back to `g_free`, which would call the wrong destructor.
+    fn boxed_with_free_fn(&self, ptr: *mut c_void) -> anyhow::Result<Boxed> {
+        let lib_name = self.library.as_deref().unwrap_or("(no library)");
+        let free_fn_name = self
+            .free_fn
+            .as_deref()
+            .expect("boxed_with_free_fn called without freeFn set");
+
+        let free_fn = Self::lookup_free_fn(lib_name, free_fn_name)
+            .map_err(|e| anyhow::anyhow!("Cannot decode boxed '{}': {e}", self.type_name))?;
+
+        if self.ownership.is_full() {
+            Ok(Boxed::from_glib_full_with_free_fn(ptr, free_fn))
+        } else {
+            Ok(Boxed::from_ptr_unowned(ptr))
+        }
     }
 
     fn try_resolve_gtype_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
@@ -86,6 +125,10 @@ impl BoxedType {
         Ok(Some(gtype))
     }
 }
+
+/// Signature of a custom destructor declared via the `freeFn` descriptor
+/// field — e.g. `cairo_path_destroy` or `cairo_rectangle_list_destroy`.
+pub type BoxedFreeFn = unsafe extern "C" fn(*mut c_void);
 
 impl FfiEncoder for BoxedType {
     fn encode(&self, value: &value::Value, _optional: bool) -> anyhow::Result<ffi::FfiValue> {
@@ -122,16 +165,21 @@ impl FfiDecoder for BoxedType {
             return Ok(value::Value::Null);
         };
 
+        if self.free_fn.is_some() {
+            let boxed = self.boxed_with_free_fn(boxed_ptr)?;
+            return Ok(value::Value::Object(NativeValue::Boxed(boxed).into()));
+        }
+
         let gtype = self.gtype();
-        let boxed = if self.ownership.is_full() {
-            NativeValue::Boxed(Boxed::from_glib_full(gtype, boxed_ptr))
-        } else {
-            NativeValue::Boxed(Boxed::from_glib_none_with_size(
+        let boxed = match self.ownership {
+            Ownership::Full => NativeValue::Boxed(Boxed::from_glib_full(gtype, boxed_ptr)),
+            Ownership::Borrowed => NativeValue::Boxed(Boxed::from_glib_none_with_size(
                 gtype,
                 boxed_ptr,
                 None,
                 Some(&self.type_name),
-            )?)
+            )?),
+            Ownership::None => NativeValue::Boxed(Boxed::from_ptr_unowned(boxed_ptr)),
         };
 
         Ok(value::Value::Object(boxed.into()))
@@ -141,10 +189,13 @@ impl FfiDecoder for BoxedType {
 impl RawPtrCodec for BoxedType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
-            let boxed = if self.ownership.is_full() {
-                Boxed::from_glib_full(self.gtype(), ptr)
-            } else {
-                Boxed::from_ptr_unowned(ptr)
+            if self.free_fn.is_some() {
+                let boxed = self.boxed_with_free_fn(ptr)?;
+                return Ok(value::Value::Object(NativeValue::Boxed(boxed).into()));
+            }
+            let boxed = match self.ownership {
+                Ownership::Full => Boxed::from_glib_full(self.gtype(), ptr),
+                Ownership::Borrowed | Ownership::None => Boxed::from_ptr_unowned(ptr),
             };
             Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
         })
@@ -257,10 +308,9 @@ impl FfiDecoder for StructType {
             return Ok(value::Value::Null);
         };
 
-        let boxed = if self.ownership.is_full() {
-            Boxed::from_glib_full(None, struct_ptr)
-        } else {
-            match self.size {
+        let boxed = match self.ownership {
+            Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
+            Ownership::Borrowed => match self.size {
                 Some(_) => Boxed::from_glib_none_with_size(
                     None,
                     struct_ptr,
@@ -269,7 +319,8 @@ impl FfiDecoder for StructType {
                 )
                 .expect("struct decode with a known size always succeeds"),
                 None => Boxed::from_ptr_unowned(struct_ptr),
-            }
+            },
+            Ownership::None => Boxed::from_ptr_unowned(struct_ptr),
         };
 
         Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
@@ -279,10 +330,9 @@ impl FfiDecoder for StructType {
 impl RawPtrCodec for StructType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
-            let boxed = if self.ownership.is_full() {
-                Boxed::from_glib_full(None, ptr)
-            } else {
-                Boxed::from_ptr_unowned(ptr)
+            let boxed = match self.ownership {
+                Ownership::Full => Boxed::from_glib_full(None, ptr),
+                Ownership::Borrowed | Ownership::None => Boxed::from_ptr_unowned(ptr),
             };
             Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
         })

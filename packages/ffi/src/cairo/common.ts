@@ -5,8 +5,6 @@ import { alloc, read, t, write } from "../native.js";
 export const LIB = "libcairo.so.2";
 const LIB_GOBJECT = "libcairo-gobject.so.2";
 
-const { fn } = t;
-
 const cairoBoxed = (innerType: string, ownership: "borrowed" | "full" = "borrowed", getTypeFn?: string) =>
     t.boxed(innerType, ownership, LIB_GOBJECT, getTypeFn);
 
@@ -34,7 +32,7 @@ export const STRING_FULL = t.string("full");
 export const STRING_BORROWED = t.string("borrowed");
 
 export const RECT_INT_T = t.boxed("cairo_rectangle_int_t", "borrowed", LIB);
-export const PATH_STRUCT_T = t.boxed("cairo_path_t", "borrowed", LIB);
+export const PATH_STRUCT_T = t.boxed("cairo_path_t", "full", LIB, undefined, "cairo_path_destroy");
 export const GLYPH_BUF_T = t.boxed("cairo_glyph_t", "borrowed", LIB);
 export const RECT_LIST_T = t.boxed("cairo_rectangle_list_t", "borrowed", LIB);
 export const MATRIX_T = t.boxed("cairo_matrix_t", "borrowed", LIB);
@@ -108,8 +106,6 @@ export type PathData =
     | { type: "curveTo"; x1: number; y1: number; x2: number; y2: number; x3: number; y3: number }
     | { type: "closePath" };
 
-const cairo_path_destroy = fn(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T }], t.void);
-
 /**
  * Parses `cairo_path_t` struct layout:
  *   offset  0: cairo_status_t status (int32)
@@ -123,14 +119,17 @@ const cairo_path_destroy = fn(LIB, "cairo_path_destroy", [{ type: PATH_STRUCT_T 
  *   Point variant:
  *     offset 0: double x
  *     offset 8: double y
+ *
+ * The path wrapper carries its own `cairo_path_destroy` finalizer (declared
+ * on {@link PATH_STRUCT_T}), so the GC releases it once `pathHandle` is no
+ * longer reachable. The inner data-array read borrows cairo's own buffer
+ * for the duration of the parse and is never freed independently.
  */
 export const parsePath = (pathHandle: NativeHandle): PathData[] => {
     const numData = read(pathHandle, INT_TYPE, 16) as number;
-    if (numData === 0) {
-        cairo_path_destroy(pathHandle);
-        return [];
-    }
-    const dataArray = read(pathHandle, t.struct("cairo_path_data_t", "full", numData * 16), 8) as NativeHandle;
+    if (numData === 0) return [];
+
+    const dataArray = read(pathHandle, t.struct("cairo_path_data_t", "borrowed", numData * 16), 8) as NativeHandle;
     const result: PathData[] = [];
     let i = 0;
     while (i < numData) {
@@ -178,6 +177,5 @@ export const parsePath = (pathHandle: NativeHandle): PathData[] => {
         }
         i += length;
     }
-    cairo_path_destroy(pathHandle);
     return result;
 };

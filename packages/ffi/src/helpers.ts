@@ -2,8 +2,23 @@ import { type Arg, call as nativeCall, type Type } from "@gtkx/native";
 
 export { alloc, call, freeze, getNativeId, read, unfreeze, write } from "@gtkx/native";
 
-/** Whether the caller takes ownership of a returned native value (`"full"`) or only borrows it (`"borrowed"`). */
-export type Ownership = "full" | "borrowed";
+/**
+ * Lifetime of a value crossing the FFI boundary.
+ *
+ * - `"full"` — caller takes ownership of the original pointer (GIR
+ *   `transfer full`). The wrapper invokes the type-specific destructor on
+ *   drop.
+ * - `"borrowed"` — defensive-copy mode: the underlying value's lifetime is
+ *   uncertain, so the codec makes a copy / reference (`g_boxed_copy`,
+ *   `g_object_ref`, `g_strdup`) and owns the copy. Maps to node-gtk's
+ *   `kCopy`.
+ * - `"none"` — borrow the pointer with no copy and no destructor. The
+ *   caller must ensure the wrapped value outlives the JS handle. Used for
+ *   GIR `transfer none` returns that point into memory the parent object
+ *   owns (e.g. `pango_layout_iter_get_run`), where copying would defeat
+ *   in-place mutation. Maps to node-gtk's `kNone`.
+ */
+export type Ownership = "full" | "borrowed" | "none";
 
 /** Container shape for array-like FFI types. */
 export type ArrayKind = "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed";
@@ -71,10 +86,18 @@ const stringT = (ownership: Ownership = "borrowed", length?: number): Type =>
 
 const objectT = (ownership: Ownership = "borrowed"): Type => ({ type: "gobject", ownership });
 
-const boxedT = (innerType: string, ownership: Ownership = "borrowed", library?: string, getTypeFn?: string): Type => {
+// biome-ignore lint/complexity/useMaxParams: positional descriptor mirrors the native BoxedType fields and is the format generated bindings emit
+const boxedT = (
+    innerType: string,
+    ownership: Ownership = "borrowed",
+    library?: string,
+    getTypeFn?: string,
+    freeFn?: string,
+): Type => {
     const result: Type = { type: "boxed", ownership, innerType };
     if (library !== undefined) result.library = library;
     if (getTypeFn !== undefined) result.getTypeFn = getTypeFn;
+    if (freeFn !== undefined) result.freeFn = freeFn;
     return result;
 };
 

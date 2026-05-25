@@ -201,6 +201,7 @@ fn boxed_transfer_none_creates_copy() {
             type_name: "GdkRGBA".to_string(),
             library: None,
             get_type_fn: None,
+            free_fn: None,
         };
         let type_ = Type::Boxed(boxed_type);
 
@@ -228,6 +229,7 @@ fn boxed_full_transfer_takes_ownership() {
             type_name: "GdkRGBA".to_string(),
             library: None,
             get_type_fn: None,
+            free_fn: None,
         };
         let type_ = Type::Boxed(boxed_type);
 
@@ -246,6 +248,7 @@ fn boxed_null_returns_null_value() {
             type_name: "GdkRGBA".to_string(),
             library: None,
             get_type_fn: None,
+            free_fn: None,
         };
         let type_ = Type::Boxed(boxed_type);
 
@@ -840,6 +843,7 @@ fn from_cif_value_ref_boxed() {
             type_name: "GdkRGBA".to_string(),
             library: None,
             get_type_fn: None,
+            free_fn: None,
         }));
         let type_ = Type::Ref(ref_type);
 

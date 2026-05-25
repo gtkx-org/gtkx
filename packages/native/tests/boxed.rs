@@ -272,3 +272,82 @@ fn clone_null_ptr_without_gtype_stays_null() {
         assert_eq!(cloned.gtype(), None);
     });
 }
+
+mod free_fn {
+    use std::ffi::c_void;
+    use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
+
+    use gtk4::glib;
+
+    use native::Boxed;
+
+    use super::common;
+
+    static FREE_CALLS: AtomicUsize = AtomicUsize::new(0);
+    static LAST_FREED_PTR: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
+
+    /// Records each call and `g_free`s the pointer so leak detectors stay
+    /// happy. Tests pre-allocate the pointer with `g_malloc0` for this
+    /// reason.
+    unsafe extern "C" fn record_free(ptr: *mut c_void) {
+        FREE_CALLS.fetch_add(1, Ordering::SeqCst);
+        LAST_FREED_PTR.store(ptr, Ordering::SeqCst);
+        unsafe { glib::ffi::g_free(ptr) };
+    }
+
+    fn snapshot() -> (usize, *mut c_void) {
+        (
+            FREE_CALLS.load(Ordering::SeqCst),
+            LAST_FREED_PTR.load(Ordering::SeqCst),
+        )
+    }
+
+    #[test]
+    fn drop_invokes_free_fn_for_owned_boxed() {
+        common::run(|| {
+            let before = snapshot();
+            let ptr = unsafe { glib::ffi::g_malloc0(16) };
+
+            {
+                let boxed = Boxed::from_glib_full_with_free_fn(ptr, record_free);
+                assert!(boxed.is_owned());
+                assert!(boxed.free_fn().is_some());
+            }
+
+            let after = snapshot();
+            assert_eq!(after.0, before.0 + 1);
+            assert_eq!(after.1, ptr);
+        });
+    }
+
+    #[test]
+    fn clone_of_free_fn_boxed_is_non_owning() {
+        common::run(|| {
+            let ptr = unsafe { glib::ffi::g_malloc0(16) };
+            let boxed = Boxed::from_glib_full_with_free_fn(ptr, record_free);
+
+            let before = snapshot();
+            let cloned = boxed.clone();
+
+            assert_eq!(cloned.as_ptr(), boxed.as_ptr());
+            assert!(!cloned.is_owned());
+            // Dropping the non-owning clone must not call the free fn.
+            drop(cloned);
+            assert_eq!(snapshot().0, before.0);
+
+            // The owning original still runs the destructor exactly once.
+            drop(boxed);
+            assert_eq!(snapshot().0, before.0 + 1);
+        });
+    }
+
+    #[test]
+    fn null_ptr_free_fn_boxed_skips_destructor() {
+        common::run(|| {
+            let before = snapshot();
+            let boxed = Boxed::from_glib_full_with_free_fn(std::ptr::null_mut(), record_free);
+            drop(boxed);
+            assert_eq!(snapshot().0, before.0);
+        });
+    }
+}

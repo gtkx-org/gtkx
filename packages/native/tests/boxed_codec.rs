@@ -27,6 +27,7 @@ fn boxed(ownership: Ownership) -> BoxedType {
         type_name: rgba_type_name(),
         library: None,
         get_type_fn: None,
+        free_fn: None,
     }
 }
 
@@ -54,6 +55,7 @@ fn gtype_resolves_via_library_lookup() {
             type_name: "GBytes".to_owned(),
             library: Some("libgobject-2.0.so.0".to_owned()),
             get_type_fn: Some("g_bytes_get_type".to_owned()),
+            free_fn: None,
         };
         let resolved = bytes_type.gtype();
         assert_eq!(resolved, Some(glib::Bytes::static_type()));
@@ -68,6 +70,7 @@ fn gtype_unknown_without_library_yields_none() {
             type_name: "CompletelyUnknownBoxed".to_owned(),
             library: None,
             get_type_fn: None,
+            free_fn: None,
         };
         assert!(unknown.gtype().is_none());
     });
@@ -81,6 +84,7 @@ fn gtype_unknown_with_library_but_no_get_type_fn_yields_none() {
             type_name: "AnotherUnknownBoxed".to_owned(),
             library: Some("libgobject-2.0.so.0".to_owned()),
             get_type_fn: None,
+            free_fn: None,
         };
         assert!(unknown.gtype().is_none());
     });
@@ -94,6 +98,7 @@ fn gtype_with_missing_symbol_reports_error_and_yields_none() {
             type_name: "BadSymbolBoxed".to_owned(),
             library: Some("libgobject-2.0.so.0".to_owned()),
             get_type_fn: Some("definitely_not_a_real_symbol_xyz".to_owned()),
+            free_fn: None,
         };
         assert!(bad.gtype().is_none());
     });
@@ -233,6 +238,7 @@ fn decode_borrowed_unknown_gtype_bails() {
             type_name: "DecodeUnknownBoxed".to_owned(),
             library: None,
             get_type_fn: None,
+            free_fn: None,
         };
         let result = unknown.decode(&ffi::FfiValue::Ptr(raw));
         assert!(result.is_err());
@@ -274,6 +280,75 @@ fn ptr_to_value_null_yields_null() {
             .ptr_to_value(std::ptr::null_mut(), "ctx")
             .expect("null ptr_to_value should succeed");
         assert!(matches!(value, Value::Null));
+    });
+}
+
+#[test]
+fn decode_none_wraps_without_copying() {
+    common::run(|| {
+        let gtype = gdk::RGBA::static_type();
+        let original = common::allocate_test_boxed(gtype);
+
+        let decoded = boxed(Ownership::None)
+            .decode(&ffi::FfiValue::Ptr(original))
+            .expect("none decode should succeed");
+        let Value::Object(handle) = &decoded else {
+            panic!("expected Object value");
+        };
+        assert_eq!(handle.ptr(), original);
+
+        // Dropping the wrapper must not free the underlying pointer: the
+        // caller (the test) still owns it.
+        drop(decoded);
+        assert!(common::is_valid_boxed_ptr(original, gtype));
+
+        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
+    });
+}
+
+#[test]
+fn decode_none_skips_borrowed_copy_failure() {
+    common::run(|| {
+        // The same descriptor under Borrowed would `bail!` because there is
+        // no GType to copy from; under None it just wraps the pointer.
+        let raw = unsafe { glib::ffi::g_malloc0(64) };
+        let descriptor = BoxedType {
+            ownership: Ownership::None,
+            type_name: "NoneDecodeUnknownBoxed".to_owned(),
+            library: None,
+            get_type_fn: None,
+            free_fn: None,
+        };
+
+        let decoded = descriptor
+            .decode(&ffi::FfiValue::Ptr(raw))
+            .expect("none decode should succeed even without gtype");
+        let Value::Object(handle) = &decoded else {
+            panic!("expected Object value");
+        };
+        assert_eq!(handle.ptr(), raw);
+        drop(decoded);
+
+        unsafe { glib::ffi::g_free(raw) };
+    });
+}
+
+#[test]
+fn ptr_to_value_none_matches_borrowed() {
+    common::run(|| {
+        let gtype = gdk::RGBA::static_type();
+        let original = common::allocate_test_boxed(gtype);
+
+        let value = boxed(Ownership::None)
+            .ptr_to_value(original, "ctx")
+            .expect("ptr_to_value should succeed");
+        let Value::Object(handle) = &value else {
+            panic!("expected Object value");
+        };
+        assert_eq!(handle.ptr(), original);
+        drop(value);
+
+        unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
     });
 }
 
@@ -404,6 +479,7 @@ fn to_glib_value_unknown_gtype_yields_none() {
             type_name: "GtypeUnknownBoxed".to_owned(),
             library: None,
             get_type_fn: None,
+            free_fn: None,
         };
         let result = unknown
             .to_glib_value(&Value::Object(NativeHandle::borrowed(original)))

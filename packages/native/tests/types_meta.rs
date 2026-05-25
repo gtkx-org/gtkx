@@ -30,9 +30,10 @@ fn ownership_default_is_borrowed() {
 }
 
 #[test]
-fn ownership_display_renders_both_variants() {
+fn ownership_display_renders_all_variants() {
     assert_eq!(Ownership::Full.to_string(), "full");
     assert_eq!(Ownership::Borrowed.to_string(), "borrowed");
+    assert_eq!(Ownership::None.to_string(), "none");
 }
 
 #[test]
@@ -45,10 +46,29 @@ fn ownership_from_str_parses_known_and_rejects_unknown() {
         Ownership::from_str("borrowed").unwrap(),
         Ownership::Borrowed
     ));
+    assert!(matches!(
+        Ownership::from_str("none").unwrap(),
+        Ownership::None
+    ));
 
     let err = Ownership::from_str("shared").expect_err("unknown ownership must fail");
-    assert!(err.contains("'full' or 'borrowed'"));
+    assert!(err.contains("'full', 'borrowed', or 'none'"));
     assert!(err.contains("shared"));
+}
+
+#[test]
+fn ownership_predicates_are_mutually_exclusive() {
+    assert!(Ownership::Full.is_full());
+    assert!(!Ownership::Full.is_borrowed());
+    assert!(!Ownership::Full.is_none());
+
+    assert!(Ownership::Borrowed.is_borrowed());
+    assert!(!Ownership::Borrowed.is_full());
+    assert!(!Ownership::Borrowed.is_none());
+
+    assert!(Ownership::None.is_none());
+    assert!(!Ownership::None.is_full());
+    assert!(!Ownership::None.is_borrowed());
 }
 
 fn string_type() -> StringType {
@@ -70,6 +90,7 @@ fn boxed_type() -> BoxedType {
         type_name: "GdkRGBA".to_owned(),
         library: None,
         get_type_fn: None,
+        free_fn: None,
     }
 }
 

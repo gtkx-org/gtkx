@@ -112,27 +112,35 @@ describe("FFI constants", () => {
 
 describe("stringType", () => {
     it("creates string type with full ownership", () => {
-        expect(stringType(true)).toEqual({ type: "string", ownership: "full" });
+        expect(stringType("full")).toEqual({ type: "string", ownership: "full" });
     });
 
     it("creates string type with borrowed ownership", () => {
-        expect(stringType(false)).toEqual({ type: "string", ownership: "borrowed" });
+        expect(stringType("borrowed")).toEqual({ type: "string", ownership: "borrowed" });
+    });
+
+    it("creates string type with none ownership", () => {
+        expect(stringType("none")).toEqual({ type: "string", ownership: "none" });
     });
 });
 
 describe("gobjectType", () => {
     it("creates gobject type with full ownership", () => {
-        expect(gobjectType(true)).toEqual({ type: "gobject", ownership: "full" });
+        expect(gobjectType("full")).toEqual({ type: "gobject", ownership: "full" });
     });
 
     it("creates gobject type with borrowed ownership", () => {
-        expect(gobjectType(false)).toEqual({ type: "gobject", ownership: "borrowed" });
+        expect(gobjectType("borrowed")).toEqual({ type: "gobject", ownership: "borrowed" });
+    });
+
+    it("creates gobject type with none ownership", () => {
+        expect(gobjectType("none")).toEqual({ type: "gobject", ownership: "none" });
     });
 });
 
 describe("boxedType", () => {
     it("creates boxed type with full ownership", () => {
-        expect(boxedType("Rectangle", true)).toEqual({
+        expect(boxedType("Rectangle", "full")).toEqual({
             type: "boxed",
             innerType: "Rectangle",
             ownership: "full",
@@ -142,7 +150,7 @@ describe("boxedType", () => {
     });
 
     it("creates boxed type with borrowed ownership", () => {
-        expect(boxedType("Rectangle", false)).toEqual({
+        expect(boxedType("Rectangle", "borrowed")).toEqual({
             type: "boxed",
             innerType: "Rectangle",
             ownership: "borrowed",
@@ -151,8 +159,18 @@ describe("boxedType", () => {
         });
     });
 
+    it("creates boxed type with none ownership", () => {
+        expect(boxedType("Rectangle", "none")).toEqual({
+            type: "boxed",
+            innerType: "Rectangle",
+            ownership: "none",
+            library: undefined,
+            getTypeFn: undefined,
+        });
+    });
+
     it("creates boxed type with lib and getTypeFn", () => {
-        expect(boxedType("Rectangle", true, "libgdk-4.so.1", "gdk_rectangle_get_type")).toEqual({
+        expect(boxedType("Rectangle", "full", "libgdk-4.so.1", "gdk_rectangle_get_type")).toEqual({
             type: "boxed",
             innerType: "Rectangle",
             ownership: "full",
@@ -164,7 +182,7 @@ describe("boxedType", () => {
 
 describe("structType", () => {
     it("creates struct type with full ownership", () => {
-        expect(structType("Rectangle", true)).toEqual({
+        expect(structType("Rectangle", "full")).toEqual({
             type: "struct",
             innerType: "Rectangle",
             ownership: "full",
@@ -185,7 +203,7 @@ describe("arrayType", () => {
 
     it("creates glist array type", () => {
         const itemType: FfiTypeDescriptor = { type: "gobject", ownership: "borrowed" };
-        expect(arrayType(itemType, "glist", false)).toEqual({
+        expect(arrayType(itemType, "glist", "borrowed")).toEqual({
             type: "array",
             itemType,
             kind: "glist",
@@ -195,7 +213,7 @@ describe("arrayType", () => {
 
     it("creates gslist array type", () => {
         const itemType: FfiTypeDescriptor = { type: "gobject", ownership: "borrowed" };
-        expect(arrayType(itemType, "gslist", true)).toEqual({
+        expect(arrayType(itemType, "gslist", "full")).toEqual({
             type: "array",
             itemType,
             kind: "gslist",
