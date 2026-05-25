@@ -597,37 +597,17 @@ export class FfiMapper {
     }
 
     /**
-     * Default mapping from a GIR `transfer-ownership` annotation to the
-     * FFI ownership tag. Behaves like the pre-`"none"` boolean mode:
-     * transfer-full → `"full"`, anything else falls back to a defensive
-     * `"borrowed"` for returns and an owning `"full"` for parameters.
-     *
-     * Used by codecs where `"borrowed"` and `"none"` are observably the
-     * same — `GObjectType`, `StringType`, container types, fundamentals.
-     * Keeping them on `"borrowed"` preserves any existing predicate that
-     * inspects `is_borrowed()` (notably the transient-storage cleanup in
-     * the array and hashtable encoders).
+     * Maps a GIR `transfer-ownership` annotation to the FFI ownership tag.
+     * `transfer-full` and `transfer-container` produce `"full"`; everything
+     * else falls back to a defensive `"borrowed"` for returns and an owning
+     * `"full"` for parameters. The `"none"` tag is reserved for hand-written
+     * descriptors that intentionally skip the defensive copy (e.g. the
+     * `cairo_path_t` wrapper with its `freeFn`-equipped boxed) and is never
+     * emitted by codegen.
      */
     private computeOwnership(isReturn: boolean, transferOwnership?: string): FfiOwnership {
         if (transferOwnership === "full" || transferOwnership === "container") return "full";
         if (transferOwnership === "none") return "borrowed";
-        return isReturn ? "borrowed" : "full";
-    }
-
-    /**
-     * Boxed-aware mapping that lifts an *explicit* `transfer-none` return
-     * to `"none"` so caller-owned-but-non-copyable structs (e.g.
-     * `cairo_path_t`) and intentionally-borrowed boxeds (e.g.
-     * `pango_layout_iter_get_run`) skip the defensive `g_boxed_copy`.
-     * Unspecified-transfer returns still go to `"borrowed"` so that
-     * refcounted boxeds whose GIR neglects to annotate transfer keep
-     * the safe ref-bump behaviour.
-     */
-    private computeBoxedOwnership(isReturn: boolean, transferOwnership?: string): FfiOwnership {
-        if (transferOwnership === "full" || transferOwnership === "container") return "full";
-        if (transferOwnership === "none") {
-            return isReturn ? "none" : "borrowed";
-        }
         return isReturn ? "borrowed" : "full";
     }
 
@@ -651,21 +631,17 @@ export class FfiMapper {
         };
     }
 
-    // biome-ignore lint/complexity/useMaxParams: positional signature kept symmetric with mapClassOrInterfaceResolved
     private mapRecordResolved(
         resolved: ResolvedType,
         qualifiedName: string,
-        isReturn: boolean,
-        transferOwnership: string | undefined,
+        ownership: FfiOwnership,
         imports: TypeImport[],
     ): MappedType {
-        const boxedOwnership = this.computeBoxedOwnership(isReturn, transferOwnership);
-
         const record = this.repo.getNamespace(resolved.namespace)?.records.get(resolved.name);
         if (record && !canMarshalRecord(record, this.repo, resolved.namespace)) {
             return {
                 ts: "unknown",
-                ffi: structType(resolved.transformedName, boxedOwnership),
+                ffi: structType(resolved.transformedName, ownership),
                 imports: [],
                 kind: "record",
                 unsafe: true,
@@ -681,7 +657,7 @@ export class FfiMapper {
                         lib: sharedLib,
                         refFn: resolved.copyFunction,
                         unrefFn: resolved.freeFunction,
-                        ownership: this.computeOwnership(isReturn, transferOwnership),
+                        ownership,
                         typeName: resolved.glibTypeName,
                     }),
                     imports,
@@ -694,7 +670,7 @@ export class FfiMapper {
         if (!glibTypeName || !glibGetType) {
             return {
                 ts: qualifiedName,
-                ffi: structType(resolved.transformedName, boxedOwnership),
+                ffi: structType(resolved.transformedName, ownership),
                 imports,
                 kind: "record",
             };
@@ -703,7 +679,7 @@ export class FfiMapper {
         const sharedLib = this.repo.getNamespace(resolved.namespace)?.sharedLibrary;
         return {
             ts: qualifiedName,
-            ffi: boxedType(glibTypeName, boxedOwnership, sharedLib, glibGetType),
+            ffi: boxedType(glibTypeName, ownership, sharedLib, glibGetType),
             imports,
             kind: "record",
         };
@@ -785,7 +761,12 @@ export class FfiMapper {
                 return this.mapEnumOrFlagsResolved(resolved, qualifiedName, imports);
 
             case "record":
-                return this.mapRecordResolved(resolved, qualifiedName, isReturn, transferOwnership, imports);
+                return this.mapRecordResolved(
+                    resolved,
+                    qualifiedName,
+                    this.computeOwnership(isReturn, transferOwnership),
+                    imports,
+                );
 
             case "callback":
                 return {

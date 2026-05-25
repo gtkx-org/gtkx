@@ -50,6 +50,7 @@ use crate::dispatch::Mailbox;
 /// the pointer and is safe to clone or drop on any thread.
 pub struct NativeHandle {
     ptr: usize,
+    size_hint: usize,
     inner: Option<SendWrapper<NativeValue>>,
 }
 
@@ -69,8 +70,10 @@ impl From<NativeValue> for NativeHandle {
             NativeValue::Boxed(boxed) => boxed.as_ptr() as usize,
             NativeValue::Fundamental(fundamental) => fundamental.as_ptr() as usize,
         };
+        let size_hint = value.size_hint();
         Self {
             ptr,
+            size_hint,
             inner: Some(SendWrapper::new(value)),
         }
     }
@@ -88,6 +91,7 @@ impl Clone for NativeHandle {
     fn clone(&self) -> Self {
         Self {
             ptr: self.ptr,
+            size_hint: self.size_hint,
             inner: self.inner.clone(),
         }
     }
@@ -104,6 +108,7 @@ impl NativeHandle {
     pub fn borrowed(ptr: *mut c_void) -> Self {
         Self {
             ptr: ptr as usize,
+            size_hint: 0,
             inner: None,
         }
     }
@@ -158,4 +163,36 @@ pub enum NativeValue {
     GObject(glib::Object),
     Boxed(Boxed),
     Fundamental(Fundamental),
+}
+
+/// Rough byte hint reported to V8 for each variant. The exact size of the
+/// underlying `GLib` allocation is generally unknowable to us, but pressuring
+/// the GC proportional to handle count is enough to keep ephemeral wrappers
+/// (e.g. per-frame `PangoLayoutIter`s) from accumulating between collections.
+const GOBJECT_SIZE_HINT: usize = 512;
+const BOXED_SIZE_HINT: usize = 256;
+const FUNDAMENTAL_SIZE_HINT: usize = 128;
+
+impl NativeValue {
+    /// Approximate external-memory size reported to V8 when this value is
+    /// exposed as an `External`. Reversed on finalize.
+    #[must_use]
+    pub fn size_hint(&self) -> usize {
+        match self {
+            Self::GObject(_) => GOBJECT_SIZE_HINT,
+            Self::Boxed(_) => BOXED_SIZE_HINT,
+            Self::Fundamental(_) => FUNDAMENTAL_SIZE_HINT,
+        }
+    }
+}
+
+impl NativeHandle {
+    /// Approximate external-memory size for this handle. Borrowed handles
+    /// carry no native allocation of their own and report zero. The value is
+    /// cached at construction so it can be read from any thread without
+    /// engaging the [`SendWrapper`] thread check.
+    #[must_use]
+    pub fn size_hint(&self) -> usize {
+        self.size_hint
+    }
 }

@@ -52,7 +52,8 @@ impl ModuleResponse for Value {
 impl ModuleResponse for NativeHandle {
     fn to_js_response(self, env: &Env) -> napi::Result<Unknown<'_>> {
         unsafe {
-            let external = External::new(self);
+            let size_hint = self.size_hint();
+            let external = External::new_with_size_hint(self, size_hint);
             let raw = External::<Self>::to_napi_value(env.raw(), external)?;
             Ok(Unknown::from_raw_unchecked(env.raw(), raw))
         }

@@ -190,13 +190,11 @@ impl RawPtrCodec for BoxedType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
             if self.free_fn.is_some() {
-                let boxed = self.boxed_with_free_fn(ptr)?;
-                return Ok(value::Value::Object(NativeValue::Boxed(boxed).into()));
+                return Ok(value::Value::Object(
+                    NativeValue::Boxed(Boxed::from_ptr_unowned(ptr)).into(),
+                ));
             }
-            let boxed = match self.ownership {
-                Ownership::Full => Boxed::from_glib_full(self.gtype(), ptr),
-                Ownership::Borrowed | Ownership::None => Boxed::from_ptr_unowned(ptr),
-            };
+            let boxed = Boxed::from_glib_none(self.gtype(), ptr)?;
             Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
         })
     }
@@ -330,9 +328,12 @@ impl FfiDecoder for StructType {
 impl RawPtrCodec for StructType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
-            let boxed = match self.ownership {
-                Ownership::Full => Boxed::from_glib_full(None, ptr),
-                Ownership::Borrowed | Ownership::None => Boxed::from_ptr_unowned(ptr),
+            let boxed = match self.size {
+                Some(_) => {
+                    Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))
+                        .expect("struct ptr_to_value with a known size always succeeds")
+                }
+                None => Boxed::from_ptr_unowned(ptr),
             };
             Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
         })

@@ -1236,7 +1236,7 @@ describe("FfiMapper - Extended Coverage / mapType - transfer ownership comprehen
         const result = mapper.mapType(type, true);
 
         expect(result.ffi.type).toBe("boxed");
-        expect(result.ffi.ownership).toBe("none");
+        expect(result.ffi.ownership).toBe("borrowed");
     });
 });
 

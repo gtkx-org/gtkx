@@ -381,7 +381,8 @@ impl Value {
                 Ok(Unknown::from_raw_unchecked(env.raw(), raw))
             },
             Self::Object(handle) => unsafe {
-                let external = External::new(handle);
+                let size_hint = handle.size_hint();
+                let external = External::new_with_size_hint(handle, size_hint);
                 let raw = External::<NativeHandle>::to_napi_value(env.raw(), external)?;
                 Ok(Unknown::from_raw_unchecked(env.raw(), raw))
             },

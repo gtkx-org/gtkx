@@ -334,34 +334,28 @@ fn decode_none_skips_borrowed_copy_failure() {
 }
 
 #[test]
-fn ptr_to_value_none_matches_borrowed() {
+fn ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
     common::run(|| {
         let gtype = gdk::RGBA::static_type();
         let original = common::allocate_test_boxed(gtype);
 
-        let value = boxed(Ownership::None)
-            .ptr_to_value(original, "ctx")
-            .expect("ptr_to_value should succeed");
-        let Value::Object(handle) = &value else {
-            panic!("expected Object value");
-        };
-        assert_eq!(handle.ptr(), original);
-        drop(value);
+        for ownership in [Ownership::Borrowed, Ownership::Full, Ownership::None] {
+            let value = boxed(ownership)
+                .ptr_to_value(original, "ctx")
+                .expect("ptr_to_value should succeed");
+            let Value::Object(handle) = &value else {
+                panic!("expected Object value");
+            };
+            assert_ne!(
+                handle.ptr(),
+                original,
+                "ptr_to_value must produce an independent copy, not alias the source"
+            );
+            drop(value);
+            assert!(common::is_valid_boxed_ptr(original, gtype));
+        }
 
         unsafe { glib::gobject_ffi::g_boxed_free(gtype.into_glib(), original) };
-    });
-}
-
-#[test]
-fn ptr_to_value_full_takes_ownership() {
-    common::run(|| {
-        let gtype = gdk::RGBA::static_type();
-        let original = common::allocate_test_boxed(gtype);
-
-        let value = boxed(Ownership::Full)
-            .ptr_to_value(original, "ctx")
-            .expect("ptr_to_value should succeed");
-        assert!(matches!(value, Value::Object(_)));
     });
 }
 
@@ -673,13 +667,48 @@ fn struct_ptr_to_value_null_yields_null() {
 }
 
 #[test]
-fn struct_ptr_to_value_full_takes_ownership() {
+fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
     common::run(|| {
         let raw = unsafe { glib::ffi::g_malloc0(64) };
-        let value = struct_type(Ownership::Full, Some(64))
+
+        for ownership in [Ownership::Borrowed, Ownership::Full, Ownership::None] {
+            let value = struct_type(ownership, Some(64))
+                .ptr_to_value(raw, "ctx")
+                .expect("struct ptr_to_value should succeed");
+            let Value::Object(handle) = &value else {
+                panic!("expected Object value");
+            };
+            assert_ne!(
+                handle.ptr(),
+                raw,
+                "struct ptr_to_value must produce an independent copy when size is known"
+            );
+            drop(value);
+        }
+
+        unsafe { glib::ffi::g_free(raw) };
+    });
+}
+
+#[test]
+fn struct_ptr_to_value_without_size_wraps_unowned() {
+    common::run(|| {
+        let raw = unsafe { glib::ffi::g_malloc0(64) };
+
+        let value = struct_type(Ownership::Borrowed, None)
             .ptr_to_value(raw, "ctx")
-            .expect("struct ptr_to_value should succeed");
-        assert!(matches!(value, Value::Object(_)));
+            .expect("struct ptr_to_value without size should succeed");
+        let Value::Object(handle) = &value else {
+            panic!("expected Object value");
+        };
+        assert_eq!(
+            handle.ptr(),
+            raw,
+            "without size the wrapper aliases the source pointer; the parent allocation owns it"
+        );
+        drop(value);
+
+        unsafe { glib::ffi::g_free(raw) };
     });
 }
 
