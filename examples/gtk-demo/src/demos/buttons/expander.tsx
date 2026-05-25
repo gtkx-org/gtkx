@@ -9,7 +9,8 @@ import gtkLogoCursorPath from "./gtk_logo_cursor.png";
 
 const DETAILS_TEXT = `Finally, the full story with all details. And all the inside information, including error codes, etc etc. Pages of information, you might have to scroll down to read it all, or even resize the window - it works !
 A second paragraph will contain even more innuendo, just to make you scroll down or resize the window.
-Do it already!`;
+Do it already!
+`;
 
 const ExpanderDemo = () => {
     const texture = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoCursorPath), []);

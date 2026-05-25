@@ -19,6 +19,7 @@ describe("fixedDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(fixedDemo.id).toBe("fixed");
         expect(fixedDemo.title).toBe("Fixed Layout / Cube");
+        expect(fixedDemo.windowTitle).toBe("Fixed Layout ‐ Cube");
         expect(fixedDemo.description.length).toBeGreaterThan(0);
         expect(fixedDemo.keywords).toEqual(["GtkLayoutManager"]);
         expect(typeof fixedDemo.sourceCode).toBe("string");

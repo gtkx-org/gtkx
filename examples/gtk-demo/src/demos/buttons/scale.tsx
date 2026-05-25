@@ -35,7 +35,7 @@ const ScaleDemo = () => (
     <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
         <ScaleRow label="Plain" row={0} />
         <ScaleRow label="Marks" row={1} scaleProps={{ marks: INTEGER_MARKS }} />
-        <ScaleRow label="Discrete" row={2} scaleProps={{ roundDigits: 0, stepIncrement: 1, marks: INTEGER_MARKS }} />
+        <ScaleRow label="Discrete" row={2} scaleProps={{ roundDigits: 0, marks: INTEGER_MARKS }} />
     </GtkGrid>
 );
 

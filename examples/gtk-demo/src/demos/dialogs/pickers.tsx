@@ -231,6 +231,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     iconName="system-run-symbolic"
                     accessibleLabel="Open File"
                     accessibleHasPopup
+                    halign={Gtk.Align.END}
                     sensitive={fileState.selectedFile !== null}
                     onClicked={() => void handlers.handleLaunchApp()}
                 />
@@ -239,6 +240,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     iconName="folder-symbolic"
                     accessibleLabel="Open in Folder"
                     accessibleHasPopup
+                    halign={Gtk.Align.END}
                     sensitive={fileState.selectedFile !== null}
                     onClicked={() => void handlers.handleOpenFolder()}
                 />

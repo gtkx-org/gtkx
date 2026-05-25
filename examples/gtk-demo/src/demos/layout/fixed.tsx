@@ -121,6 +121,7 @@ const FixedDemo = () => {
 export const fixedDemo: Demo = {
     id: "fixed",
     title: "Fixed Layout / Cube",
+    windowTitle: "Fixed Layout ‐ Cube",
     description:
         "GtkFixed is a container that allows placing and transforming widgets manually.\n\nThis demo uses a GtkFixed to create a cube out of child widgets.",
     keywords: ["GtkLayoutManager"],
