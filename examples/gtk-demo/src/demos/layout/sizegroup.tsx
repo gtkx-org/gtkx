@@ -209,4 +209,5 @@ export const sizegroupDemo: Demo = {
     keywords: [],
     component: SizeGroupDemo,
     sourceCode,
+    resizable: false,
 };

@@ -13,7 +13,7 @@ describe("listviewColorsDemo metadata", () => {
         expect(listviewColorsDemo.description.length).toBeGreaterThan(0);
         expect(Array.isArray(listviewColorsDemo.keywords)).toBe(true);
         expect(typeof listviewColorsDemo.sourceCode).toBe("string");
-        expect(listviewColorsDemo.defaultWidth).toBe(800);
+        expect(listviewColorsDemo.defaultWidth).toBe(600);
         expect(listviewColorsDemo.defaultHeight).toBe(400);
         expect(listviewColorsDemo.component).toBeTypeOf("function");
     });

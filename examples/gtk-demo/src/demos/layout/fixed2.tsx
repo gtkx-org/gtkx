@@ -94,4 +94,5 @@ export const fixed2Demo: Demo = {
     sourceCode,
     defaultWidth: 400,
     defaultHeight: 300,
+    windowTitle: "Fixed Layout ‐ Transformations",
 };

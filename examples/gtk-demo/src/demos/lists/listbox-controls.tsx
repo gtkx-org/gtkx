@@ -341,4 +341,5 @@ export const listboxControlsDemo: Demo = {
     component: ListBoxControlsDemo,
     sourceCode,
     defaultHeight: 400,
+    windowTitle: "List Box — Controls",
 };

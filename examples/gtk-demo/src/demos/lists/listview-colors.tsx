@@ -678,6 +678,6 @@ export const listviewColorsDemo: Demo = {
     titlebar: ColorsHeader,
     provider: ListViewColorsProvider,
     sourceCode,
-    defaultWidth: 800,
+    defaultWidth: 600,
     defaultHeight: 400,
 };

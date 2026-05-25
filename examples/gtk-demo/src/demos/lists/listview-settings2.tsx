@@ -294,6 +294,7 @@ export const listviewSettings2Demo: Demo = {
     titlebar: ListViewSettings2Titlebar,
     provider: ListViewSettings2Provider,
     sourceCode,
+    windowTitle: "Settings",
     defaultWidth: 640,
     defaultHeight: 480,
 };
