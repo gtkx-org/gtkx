@@ -17,6 +17,7 @@ import {
     GtkLabel,
     GtkListBox,
     GtkListBoxRow,
+    GtkShortcutController,
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/react";
@@ -559,5 +560,53 @@ describe("userEvent.dragAndDrop", () => {
         const source = await screen.findByName("not-a-source");
         const target = await screen.findByName("drop-target");
         await expect(userEvent.dragAndDrop(source, target, "payload")).rejects.toThrow(/DragSource/);
+    });
+});
+
+describe("userEvent.keyboard — shortcut dispatch", () => {
+    it("activates a KeyvalTrigger shortcut when the matching key is pressed", async () => {
+        const onActivate = vi.fn(() => true);
+        await render(
+            <GtkBox name="host">
+                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+                    <GtkShortcutController.Shortcut trigger="F5" onActivate={onActivate} />
+                </GtkShortcutController>
+                <GtkLabel label="anchor" />
+            </GtkBox>,
+        );
+        const host = (await screen.findByName("host")) as Gtk.Widget;
+        await userEvent.keyboard(host, "{F5}");
+        expect(onActivate).toHaveBeenCalled();
+    });
+
+    it("activates an AlternativeTrigger shortcut from either side", async () => {
+        const onActivate = vi.fn(() => true);
+        await render(
+            <GtkBox name="host">
+                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+                    <GtkShortcutController.Shortcut trigger={["F6", "F7"]} onActivate={onActivate} />
+                </GtkShortcutController>
+                <GtkLabel label="anchor" />
+            </GtkBox>,
+        );
+        const host = (await screen.findByName("host")) as Gtk.Widget;
+        await userEvent.keyboard(host, "{F6}");
+        await userEvent.keyboard(host, "{F7}");
+        expect(onActivate).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not activate any shortcut when the key does not match", async () => {
+        const onActivate = vi.fn(() => true);
+        await render(
+            <GtkBox name="host">
+                <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
+                    <GtkShortcutController.Shortcut trigger="F8" onActivate={onActivate} />
+                </GtkShortcutController>
+                <GtkLabel label="anchor" />
+            </GtkBox>,
+        );
+        const host = (await screen.findByName("host")) as Gtk.Widget;
+        await userEvent.keyboard(host, "{F9}");
+        expect(onActivate).not.toHaveBeenCalled();
     });
 });
