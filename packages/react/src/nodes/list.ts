@@ -1022,7 +1022,11 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     public queueBoundItemsUpdate(): void {
         if (this.disposed || this.boundItemsUpdateScheduled) return;
         this.boundItemsUpdateScheduled = true;
-        queueMicrotask(this.flushBoundItemsUpdate);
+        try {
+            this.rebuildBoundItems();
+        } finally {
+            this.boundItemsUpdateScheduled = false;
+        }
     }
 
     private flushBoundItemsUpdate = (): void => {

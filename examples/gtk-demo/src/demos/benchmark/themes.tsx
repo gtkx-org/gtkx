@@ -214,7 +214,7 @@ const ThemesProvider = ({ window, children }: DemoProviderProps) => {
 const ThemesTitlebar = () => {
     const cycling = useThemes();
     return (
-        <GtkHeaderBar>
+        <GtkHeaderBar name="themes-header">
             <GtkHeaderBar.PackStart>
                 <GtkToggleButton
                     label="Cycle"

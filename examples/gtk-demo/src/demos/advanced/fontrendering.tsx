@@ -618,6 +618,7 @@ const FontRenderingTitlebar = () => {
     const [textToggle, setTextToggle] = useState<Gtk.ToggleButton | null>(null);
     return (
         <GtkHeaderBar
+            name="fontrendering-header"
             titleWidget={
                 <GtkBox cssClasses={["linked"]}>
                     <GtkToggleButton

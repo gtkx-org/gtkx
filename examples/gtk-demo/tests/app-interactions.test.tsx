@@ -8,15 +8,18 @@ import logoPath from "../src/icons/org.gtk.Demo4.svg";
 
 const selectFirstDemoWithComponent = async (): Promise<void> => {
     const sidebar = (await screen.findByName("sidebar-list")) as Gtk.ListView;
-    const model = sidebar.getModel();
-    expect(model).not.toBeNull();
-    const selectionModel = model as Gtk.SelectionModel;
+    const selectionModel = sidebar.getModel() as Gtk.SelectionModel;
+    expect(selectionModel).not.toBeNull();
+    let selectedIndex: number | null = null;
     for (let i = 0; i < selectionModel.getNItems(); i++) {
         await userEvent.selectOptions(sidebar, i);
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
-        if (run.getSensitive()) return;
+        if (run.getSensitive()) {
+            selectedIndex = i;
+            break;
+        }
     }
-    expect.fail("no demo with a component found in the sidebar");
+    expect(selectedIndex, "no demo with a runnable component found in the sidebar").not.toBeNull();
 };
 
 describe("App search toggle", () => {
@@ -65,8 +68,8 @@ describe("App about menu", () => {
     it("registers the application icon so the icon theme can resolve it", async () => {
         await render(<App />, { wrapper: false });
         const display = Gdk.Display.getDefault();
-        if (!display) expect.fail("no default display available");
-        const iconTheme = Gtk.IconTheme.getForDisplay(display);
+        expect(display, "no default display available").not.toBeNull();
+        const iconTheme = Gtk.IconTheme.getForDisplay(display as Gdk.Display);
         const iconName = path.basename(logoPath, path.extname(logoPath));
         await waitFor(() => expect(iconTheme.hasIcon(iconName)).toBe(true));
     });
@@ -93,12 +96,10 @@ describe("App keyboard shortcuts dialog", () => {
         await render(<App />, { wrapper: false });
         const menuButton = (await screen.findByName("menu-button")) as Gtk.MenuButton;
         await act(() => menuButton.activateAction("app.shortcuts", null));
-        const dialogs = await waitFor(async () => {
-            const found = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
-            expect(found.length).toBeGreaterThan(0);
-            return found;
+        await waitFor(async () => {
+            const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
+            expect(dialogs.length).toBeGreaterThan(0);
         });
-        expect(dialogs.length).toBeGreaterThan(0);
     });
 });
 
@@ -116,120 +117,52 @@ describe("App inspector activation", () => {
     });
 });
 
-const collectShortcutControllers = (widget: Gtk.Widget): Gtk.ShortcutController[] => {
-    const list = widget.observeControllers();
-    const result: Gtk.ShortcutController[] = [];
-    for (let i = 0; i < list.getNItems(); i++) {
-        const item = list.getItem(i);
-        if (item instanceof Gtk.ShortcutController) result.push(item);
-    }
-    return result;
-};
-
-const activateShortcutMatching = async (host: Gtk.Widget, trigger: string): Promise<boolean> => {
-    const controllers = collectShortcutControllers(host);
-    for (const controller of controllers) {
-        const count = controller.getNItems();
-        for (let i = 0; i < count; i++) {
-            const item = controller.getItem(i);
-            if (item instanceof Gtk.Shortcut) {
-                const t = item.getTrigger();
-                if (t && t.toString() === trigger) {
-                    const action = item.getAction();
-                    if (action) {
-                        await act(() => {
-                            action.activate(0, host, null);
-                        });
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-    return false;
-};
-
 describe("App global shortcuts", () => {
-    it("toggles the search bar when Ctrl+F is activated", async () => {
+    it("toggles the search bar when Ctrl+F is pressed", async () => {
         await render(<App />, { wrapper: false });
-        const body = (await screen.findByName("main-window-body")) as Gtk.Widget;
+        const body = await screen.findByName("main-window-body");
         const searchBar = (await screen.findByName("sidebar-search-bar")) as Gtk.SearchBar;
         expect(searchBar.getSearchMode()).toBe(false);
-        const fired = await activateShortcutMatching(body, "<Control>f");
-        expect(fired).toBe(true);
+        await userEvent.keyboard(body, "{Control>}f{/Control}");
         await waitFor(() => expect(searchBar.getSearchMode()).toBe(true));
     });
 
-    it("activates Gtk.Window.setInteractiveDebugging when Ctrl+Shift+I is activated", async () => {
+    it("activates Gtk.Window.setInteractiveDebugging when Ctrl+Shift+I is pressed", async () => {
         const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation(() => {});
         try {
             await render(<App />, { wrapper: false });
-            const body = (await screen.findByName("main-window-body")) as Gtk.Widget;
-            const controllers = collectShortcutControllers(body);
-            let fired = false;
-            for (const controller of controllers) {
-                const count = controller.getNItems();
-                for (let i = 0; i < count; i++) {
-                    const item = controller.getItem(i);
-                    if (item instanceof Gtk.Shortcut) {
-                        const t = item.getTrigger()?.toString() ?? "";
-                        if (t.includes("Shift") && (t.toLowerCase().includes("i") || t.includes("0x69"))) {
-                            const action = item.getAction();
-                            if (action) {
-                                await act(() => {
-                                    action.activate(0, body, null);
-                                });
-                                fired = true;
-                            }
-                        }
-                    }
-                }
-            }
-            expect(fired).toBe(true);
+            const body = await screen.findByName("main-window-body");
+            await userEvent.keyboard(body, "{Control>}{Shift>}i{/Shift}{/Control}");
             await waitFor(() => expect(debugSpy).toHaveBeenCalledWith(true));
         } finally {
             debugSpy.mockRestore();
         }
     });
 
-    it("advances the notebook page when Ctrl+Page_Down is activated", async () => {
+    it("advances the notebook page when Ctrl+Page_Down is pressed", async () => {
         await render(<App />, { wrapper: false });
-        const body = (await screen.findByName("main-window-body")) as Gtk.Widget;
+        const body = await screen.findByName("main-window-body");
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         expect(notebook.getCurrentPage()).toBe(0);
-        const fired = await activateShortcutMatching(body, "<Control>Page_Down");
-        expect(fired).toBe(true);
+        await userEvent.keyboard(body, "{Control>}{PageDown}{/Control}");
         await waitFor(() => expect(notebook.getCurrentPage()).toBe(1));
     });
 
-    it("returns to the previous notebook page when Ctrl+Page_Up is activated", async () => {
+    it("returns to the previous notebook page when Ctrl+Page_Up is pressed", async () => {
         await render(<App />, { wrapper: false });
-        const body = (await screen.findByName("main-window-body")) as Gtk.Widget;
+        const body = await screen.findByName("main-window-body");
         const notebook = (await screen.findByName("notebook")) as Gtk.Notebook;
         await act(() => notebook.setCurrentPage(1));
         await waitFor(() => expect(notebook.getCurrentPage()).toBe(1));
-        const fired = await activateShortcutMatching(body, "<Control>Page_Up");
-        expect(fired).toBe(true);
+        await userEvent.keyboard(body, "{Control>}{PageUp}{/Control}");
         await waitFor(() => expect(notebook.getCurrentPage()).toBe(0));
     });
 });
 
 describe("App opens demos with custom titlebars and dialog-only demos", () => {
-    const findDemoWithTitlebar = async (): Promise<number | null> => {
-        const sidebar = (await screen.findByName("sidebar-list")) as Gtk.ListView;
-        const model = sidebar.getModel() as Gtk.SelectionModel;
-        for (let i = 0; i < model.getNItems(); i++) {
-            await userEvent.selectOptions(sidebar, i);
-            const runButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
-            if (runButton.getSensitive()) return i;
-        }
-        return null;
-    };
-
     it("renders Run-enabled demo entries from the sidebar (covers DemoWindow titlebar/provider paths)", async () => {
         await render(<App />, { wrapper: false });
-        const idx = await findDemoWithTitlebar();
-        expect(idx).not.toBeNull();
+        await selectFirstDemoWithComponent();
         const run = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Run" })) as Gtk.Button;
         await userEvent.click(run);
         await waitFor(async () => {

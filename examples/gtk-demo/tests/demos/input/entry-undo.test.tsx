@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen, userEvent } from "@gtkx/testing";
+import { screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { entryUndoDemo } from "../../../src/demos/input/entry-undo.js";
 import { renderDemo } from "../../test-utils.js";
@@ -42,10 +42,10 @@ describe("entryUndoDemo", () => {
 
     it("nests the entry inside a vertically-oriented box with 12px spacing", async () => {
         await renderDemo(entryUndoDemo);
-        const entry = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.Entry;
-        const parent = entry.getParent();
-        expect(parent).toBeInstanceOf(Gtk.Box);
-        expect((parent as Gtk.Box).getOrientation()).toBe(Gtk.Orientation.VERTICAL);
-        expect((parent as Gtk.Box).getSpacing()).toBe(12);
+        const box = (await screen.findByName("entry-undo-root")) as Gtk.Box;
+        expect(box).toBeInstanceOf(Gtk.Box);
+        expect(box.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+        expect(box.getSpacing()).toBe(12);
+        expect(within(box).getByRole(Gtk.AccessibleRole.TEXT_BOX)).toBeInstanceOf(Gtk.Entry);
     });
 });

@@ -3,7 +3,7 @@ import type { Demo } from "../types.js";
 import sourceCode from "./headerbar.tsx?raw";
 
 const HeaderBarTitlebar = () => (
-    <GtkHeaderBar>
+    <GtkHeaderBar name="headerbar-titlebar">
         <GtkHeaderBar.PackStart>
             <GtkBox name="nav-box" cssClasses={["linked"]}>
                 <GtkButton name="back-button" iconName="go-previous-symbolic" tooltipText="Back" />

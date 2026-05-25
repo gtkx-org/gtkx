@@ -53,13 +53,16 @@ describe("listviewMinesweeperDemo gameplay", () => {
         expect(gridView.getModel()?.getNItems()).toBe(64);
     });
 
-    it("activates every cell without throwing", async () => {
+    it("activates every cell and either wins or hides cells without losing the model", async () => {
         await renderDemo(listviewMinesweeperDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
         const gridView = (await screen.findByName("grid-view")) as Gtk.GridView;
         for (let i = 0; i < 64; i++) {
             await fireEvent(gridView, "activate", i);
         }
-        expect(window.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
+        expect(gridView.getModel()?.getNItems()).toBe(64);
+        const header = (await screen.findByName("minesweeper-header")) as Gtk.HeaderBar;
+        const newGame = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Game" })) as Gtk.Button;
+        expect(header).toBeInstanceOf(Gtk.HeaderBar);
+        expect(newGame.getSensitive()).toBe(true);
     });
 });

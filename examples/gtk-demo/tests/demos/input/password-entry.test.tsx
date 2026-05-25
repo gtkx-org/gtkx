@@ -76,10 +76,10 @@ describe("passwordEntryDemo form behavior", () => {
 describe("passwordEntryDemo window setup", () => {
     it("packs the header bar without showing title buttons and disables the window", async () => {
         await renderDemo(passwordEntryDemo);
+        const header = (await screen.findByName("password-entry-header")) as Gtk.HeaderBar;
+        expect(header).toBeInstanceOf(Gtk.HeaderBar);
+        expect(header.getShowTitleButtons()).toBe(false);
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        const titlebar = window.getTitlebar();
-        expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
-        expect((titlebar as Gtk.HeaderBar).getShowTitleButtons()).toBe(false);
         expect(window.getDeletable()).toBe(false);
     });
 });

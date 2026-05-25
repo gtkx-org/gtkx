@@ -166,7 +166,10 @@ const MinesweeperProvider = ({ children }: DemoProviderProps) => {
 const ListViewMinesweeperTitlebar = () => {
     const { gameState, resetGame } = useMinesweeperContext();
     return (
-        <GtkHeaderBar titleWidget={gameState === "won" ? <GtkImage iconName="trophy-gold" /> : null}>
+        <GtkHeaderBar
+            name="minesweeper-header"
+            titleWidget={gameState === "won" ? <GtkImage iconName="trophy-gold" /> : null}
+        >
             <GtkHeaderBar.PackStart>
                 <GtkButton label="New Game" onClicked={resetGame} />
             </GtkHeaderBar.PackStart>

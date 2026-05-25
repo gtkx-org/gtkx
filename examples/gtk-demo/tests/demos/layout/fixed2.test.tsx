@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { act, screen } from "@gtkx/testing";
+import { screen, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fixed2Demo } from "../../../src/demos/layout/fixed2.js";
 import { renderDemo } from "../../test-utils.js";
@@ -21,10 +21,10 @@ describe("fixed2Demo metadata", () => {
 describe("fixed2Demo structure", () => {
     it("renders the 'All fixed?' label inside the GtkFixed container", async () => {
         await renderDemo(fixed2Demo);
-        const label = (await screen.findByName("fixed-label")) as Gtk.Label;
+        const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
+        const label = within(fixed).getByName("fixed-label") as Gtk.Label;
         expect(label).toBeInstanceOf(Gtk.Label);
         expect(label.getLabel()).toBe("All fixed?");
-        expect(label.getParent()).toBeInstanceOf(Gtk.Fixed);
     });
 
     it("nests the GtkFixed inside a hexpand+vexpand GtkScrolledWindow", async () => {
@@ -32,8 +32,7 @@ describe("fixed2Demo structure", () => {
         const sw = (await screen.findByName("scrolled")) as Gtk.ScrolledWindow;
         expect(sw.getHexpand()).toBe(true);
         expect(sw.getVexpand()).toBe(true);
-        const fixed = await screen.findByName("fixed");
-        expect(fixed).toBeInstanceOf(Gtk.Fixed);
+        expect(within(sw).getByName("fixed")).toBeInstanceOf(Gtk.Fixed);
     });
 });
 
@@ -46,23 +45,18 @@ describe("fixed2Demo configuration", () => {
         expect(fixed.getVexpand()).toBe(true);
     });
 
-    it("renders only the fixed-label widget inside the GtkFixed", async () => {
+    it("renders exactly one fixed-label widget inside the GtkFixed", async () => {
         await renderDemo(fixed2Demo);
         const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
-        const label = (await screen.findByName("fixed-label")) as Gtk.Label;
-        expect(label.getParent()).toBe(fixed);
-        expect(screen.queryAllByName("fixed-label")).toHaveLength(1);
+        expect(within(fixed).getAllByName("fixed-label")).toHaveLength(1);
     });
 });
 
 describe("fixed2Demo animation tick", () => {
-    it("applies a non-null child transform to the label after the frame clock advances", async () => {
+    it("applies a child transform to the label as the frame clock advances", async () => {
         await renderDemo(fixed2Demo);
         const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
-        const label = (await screen.findByName("fixed-label")) as Gtk.Label;
-        await act(async () => {
-            await new Promise((r) => setTimeout(r, 250));
-        });
-        expect(fixed.getChildTransform(label)).not.toBeNull();
+        const label = within(fixed).getByName("fixed-label") as Gtk.Label;
+        await waitFor(() => expect(fixed.getChildTransform(label)).not.toBeNull());
     });
 });

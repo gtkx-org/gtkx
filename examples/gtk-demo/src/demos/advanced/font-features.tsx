@@ -1144,7 +1144,7 @@ const FontFeaturesProvider = ({ children }: DemoProviderProps) => {
 const FontFeaturesTitlebar = () => {
     const { handlers } = useFontFeatures();
     return (
-        <GtkHeaderBar>
+        <GtkHeaderBar name="font-features-header">
             <GtkHeaderBar.PackStart>
                 <GtkButton
                     name="reset"

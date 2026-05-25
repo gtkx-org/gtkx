@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen } from "@gtkx/testing";
+import { screen, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { headerbarDemo } from "../../../src/demos/layout/headerbar.js";
 import { renderDemo } from "../../test-utils.js";
@@ -17,10 +17,13 @@ describe("headerbarDemo metadata", () => {
         expect(headerbarDemo.component).toBeTypeOf("function");
     });
 
-    it("installs the GtkHeaderBar inside the window titlebar slot", async () => {
+    it("installs the named GtkHeaderBar and packs the nav/check-out buttons into it", async () => {
         await renderDemo(headerbarDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        expect(window.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
+        const headerbar = (await screen.findByName("headerbar-titlebar")) as Gtk.HeaderBar;
+        expect(headerbar).toBeInstanceOf(Gtk.HeaderBar);
+        expect(within(headerbar).getByName("nav-box")).toBeInstanceOf(Gtk.Box);
+        expect(within(headerbar).getByName("check-out-button")).toBeInstanceOf(Gtk.Button);
+        expect(within(headerbar).getByRole(Gtk.AccessibleRole.SWITCH)).toBeInstanceOf(Gtk.Switch);
     });
 });
 

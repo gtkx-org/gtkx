@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { act, fireEvent, screen, userEvent, waitFor } from "@gtkx/testing";
+import { act, fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fontFeaturesDemo } from "../../../src/demos/advanced/font-features.js";
 import { renderDemo } from "../../test-utils.js";
@@ -140,10 +140,9 @@ describe("fontFeaturesDemo feature toggling", () => {
 describe("fontFeaturesDemo titlebar", () => {
     it("sets a GtkHeaderBar as the window titlebar containing the Reset button", async () => {
         await renderDemo(fontFeaturesDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        const titlebar = window.getTitlebar();
-        expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
-        const resetButton = (await screen.findByName("reset")) as Gtk.Button;
+        const header = (await screen.findByName("font-features-header")) as Gtk.HeaderBar;
+        expect(header).toBeInstanceOf(Gtk.HeaderBar);
+        const resetButton = within(header).getByName("reset") as Gtk.Button;
         expect(resetButton).toBeInstanceOf(Gtk.Button);
         expect(resetButton.getIconName()).toBe("view-refresh-symbolic");
     });

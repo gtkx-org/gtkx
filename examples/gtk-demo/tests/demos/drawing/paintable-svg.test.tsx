@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
 import { renderDemo } from "../../test-utils.js";
@@ -37,19 +37,12 @@ describe("paintableSvgDemo rendering", () => {
         expect(height).toBe(16);
     });
 
-    it("renders a header bar containing the Open button", async () => {
+    it("packs the open button into a HeaderBar titlebar", async () => {
         await renderDemo(paintableSvgDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        expect(window.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
-    });
-
-    it("wires the open button as a useUnderline-enabled action button packed into the header bar", async () => {
-        await renderDemo(paintableSvgDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        const openButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" })) as Gtk.Button;
-        const headerBar = window.getTitlebar();
+        const headerBar = (await screen.findByName("paintable-svg-header")) as Gtk.HeaderBar;
         expect(headerBar).toBeInstanceOf(Gtk.HeaderBar);
-        expect(openButton.getRoot()).toBe(window);
+        const openButton = within(headerBar).getByRole(Gtk.AccessibleRole.BUTTON, { name: "_Open" }) as Gtk.Button;
+        expect(openButton).toBeInstanceOf(Gtk.Button);
         expect(openButton.getUseUnderline()).toBe(true);
     });
 

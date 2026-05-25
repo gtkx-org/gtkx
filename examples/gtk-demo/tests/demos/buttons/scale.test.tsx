@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen } from "@gtkx/testing";
+import { act, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { scaleDemo } from "../../../src/demos/buttons/scale.js";
 import { renderDemo } from "../../test-utils.js";
@@ -33,6 +33,25 @@ describe("scaleDemo", () => {
         const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
         expect(scales).toHaveLength(3);
         const discrete = scales[2];
+        expect(discrete?.getRoundDigits()).toBe(0);
+    });
+
+    it("updates the plain scale's value when the adjustment changes", async () => {
+        await renderDemo(scaleDemo);
+        const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
+        const plain = scales[0] as Gtk.Scale;
+        await act(() => plain.getAdjustment().setValue(3.5));
+        await waitFor(() => expect(plain.getValue()).toBeCloseTo(3.5));
+    });
+
+    it("publishes integer-spaced marks on the Marks and Discrete rows", async () => {
+        await renderDemo(scaleDemo);
+        const scales = (await screen.findAllByRole(Gtk.AccessibleRole.SLIDER)) as Gtk.Scale[];
+        const [, marks, discrete] = scales;
+        for (const scale of [marks, discrete]) {
+            expect(scale?.getAdjustment().getLower()).toBe(0);
+            expect(scale?.getAdjustment().getUpper()).toBe(4);
+        }
         expect(discrete?.getRoundDigits()).toBe(0);
     });
 });

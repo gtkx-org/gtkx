@@ -197,7 +197,7 @@ const FilebrowserProvider = ({ children }: DemoProviderProps) => {
 const ListViewFilebrowserTitlebar = () => {
     const { viewMode, setViewMode, navigateUp } = useFilebrowserContext();
     return (
-        <GtkHeaderBar>
+        <GtkHeaderBar name="filebrowser-header">
             <GtkHeaderBar.PackStart>
                 <GtkButton name="up-button" iconName="go-up-symbolic" onClicked={navigateUp} />
             </GtkHeaderBar.PackStart>

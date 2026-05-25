@@ -9,6 +9,7 @@ const EntryUndoDemo = () => {
 
     return (
         <GtkBox
+            name="entry-undo-root"
             orientation={Gtk.Orientation.VERTICAL}
             spacing={12}
             marginStart={18}

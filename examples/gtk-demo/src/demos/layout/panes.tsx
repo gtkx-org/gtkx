@@ -9,6 +9,7 @@ import sourceCode from "./panes.tsx?raw";
  */
 const PanesDemo = () => (
     <GtkBox
+        name="panes-root"
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
         marginStart={8}
@@ -16,13 +17,15 @@ const PanesDemo = () => (
         marginTop={8}
         marginBottom={8}
     >
-        <GtkFrame>
+        <GtkFrame name="panes-frame">
             <GtkPaned
+                name="panes-outer"
                 orientation={Gtk.Orientation.VERTICAL}
                 shrinkStartChild={false}
                 shrinkEndChild={false}
                 startChild={
                     <GtkPaned
+                        name="panes-inner"
                         shrinkStartChild={false}
                         shrinkEndChild={false}
                         startChild={

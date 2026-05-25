@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { act, fireEvent, screen, userEvent } from "@gtkx/testing";
+import { act, fireEvent, screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fontRenderingDemo } from "../../../src/demos/advanced/fontrendering.js";
 import { renderDemo } from "../../test-utils.js";
@@ -24,12 +24,14 @@ describe("fontRenderingDemo metadata", () => {
 describe("fontRenderingDemo titlebar wiring", () => {
     it("mounts the GtkHeaderBar titlebar with Text and Grid toggle buttons", async () => {
         await renderDemo(fontRenderingDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        expect(window.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
-        const textToggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Text" });
-        const gridToggle = await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Grid" });
-        expect(textToggle).toBeInstanceOf(Gtk.ToggleButton);
-        expect(gridToggle).toBeInstanceOf(Gtk.ToggleButton);
+        const header = (await screen.findByName("fontrendering-header")) as Gtk.HeaderBar;
+        expect(header).toBeInstanceOf(Gtk.HeaderBar);
+        expect(within(header).getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Text" })).toBeInstanceOf(
+            Gtk.ToggleButton,
+        );
+        expect(within(header).getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Grid" })).toBeInstanceOf(
+            Gtk.ToggleButton,
+        );
     });
 });
 
@@ -174,28 +176,15 @@ describe("fontRenderingDemo drawing area", () => {
 });
 
 describe("fontRenderingDemo dropdown selection", () => {
-    it("changes the hint-style selection to slight via setSelected", async () => {
+    it.each([
+        ["slight", 1],
+        ["medium", 2],
+        ["full", 3],
+    ])("changes the hint-style selection to %s via userEvent.selectOptions", async (_label, index) => {
         await renderDemo(fontRenderingDemo);
         const dropdown = (await screen.findByName("hinting")) as Gtk.DropDown;
-        await act(() => dropdown.setSelected(1));
-        await fireEvent(dropdown, "notify::selected");
-        expect(dropdown.getSelected()).toBe(1);
-    });
-
-    it("changes the hint-style selection to medium via setSelected", async () => {
-        await renderDemo(fontRenderingDemo);
-        const dropdown = (await screen.findByName("hinting")) as Gtk.DropDown;
-        await act(() => dropdown.setSelected(2));
-        await fireEvent(dropdown, "notify::selected");
-        expect(dropdown.getSelected()).toBe(2);
-    });
-
-    it("changes the hint-style selection to full via setSelected", async () => {
-        await renderDemo(fontRenderingDemo);
-        const dropdown = (await screen.findByName("hinting")) as Gtk.DropDown;
-        await act(() => dropdown.setSelected(3));
-        await fireEvent(dropdown, "notify::selected");
-        expect(dropdown.getSelected()).toBe(3);
+        await userEvent.selectOptions(dropdown, index);
+        expect(dropdown.getSelected()).toBe(index);
     });
 });
 

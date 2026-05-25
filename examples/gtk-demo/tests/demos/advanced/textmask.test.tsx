@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { act, screen } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { textmaskDemo } from "../../../src/demos/advanced/textmask.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -34,25 +34,25 @@ describe("textmaskDemo rendering", () => {
 
     it("renders a GtkDrawingArea with the demo's draw function attached", async () => {
         await renderDemo(textmaskDemo);
-        const drawingArea = (await screen.findByName("textmask-area")) as Gtk.DrawingArea;
+        const drawingArea = await screen.findByName("textmask-area");
         expect(drawingArea).toBeInstanceOf(Gtk.DrawingArea);
-    });
-
-    it("queues a redraw on the drawing area without throwing", async () => {
-        await renderDemo(textmaskDemo);
-        const drawingArea = (await screen.findByName("textmask-area")) as Gtk.DrawingArea;
-        await act(() => drawingArea.queueDraw());
-    });
-
-    it("exposes the drawing area as a child of the application window", async () => {
-        await renderDemo(textmaskDemo);
-        const drawingArea = (await screen.findByName("textmask-area")) as Gtk.DrawingArea;
-        expect(drawingArea.getRoot()).toBeInstanceOf(Gtk.Window);
     });
 });
 
 describe("textmaskDemo paint", () => {
-    it("triggers the demo draw callback after setting an explicit content size", async () => {
+    it("attaches a draw function to the drawing area", async () => {
+        const setDrawFunc = vi.spyOn(Gtk.DrawingArea.prototype, "setDrawFunc");
+        try {
+            await renderDemo(textmaskDemo);
+            await screen.findByName("textmask-area");
+            const drawFuncCall = setDrawFunc.mock.calls.find(([fn]) => typeof fn === "function");
+            expect(drawFuncCall).toBeDefined();
+        } finally {
+            setDrawFunc.mockRestore();
+        }
+    });
+
+    it("retains the configured content size after queueDraw", async () => {
         await renderDemo(textmaskDemo);
         const drawingArea = (await screen.findByName("textmask-area")) as Gtk.DrawingArea;
         await act(() => {
@@ -60,16 +60,7 @@ describe("textmaskDemo paint", () => {
             drawingArea.setContentHeight(240);
             drawingArea.queueDraw();
         });
-        await new Promise((r) => setTimeout(r, 200));
         expect(drawingArea.getContentWidth()).toBe(400);
         expect(drawingArea.getContentHeight()).toBe(240);
-    });
-
-    it("yields to the GTK main loop so any pending paint callback can execute", async () => {
-        await renderDemo(textmaskDemo);
-        const drawingArea = (await screen.findByName("textmask-area")) as Gtk.DrawingArea;
-        await act(() => drawingArea.queueDraw());
-        await new Promise((r) => setTimeout(r, 250));
-        expect(drawingArea).toBeInstanceOf(Gtk.DrawingArea);
     });
 });

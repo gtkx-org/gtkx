@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { fireEvent, screen, userEvent, within } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { drawingAreaDemo } from "../../../src/demos/drawing/drawingarea.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -47,21 +47,25 @@ describe("drawingAreaDemo rendering", () => {
 
     it("wraps each drawing area in a vertical-expanding frame", async () => {
         await renderDemo(drawingAreaDemo);
-        const knockout = (await screen.findByName("knockout-area")) as Gtk.DrawingArea;
-        const scribble = (await screen.findByName("scribble-area")) as Gtk.DrawingArea;
-        for (const area of [knockout, scribble]) {
-            const frame = area.getParent();
+        const knockoutFrame = (await screen.findByName("knockout-frame")) as Gtk.Frame;
+        const scribbleFrame = (await screen.findByName("scribble-frame")) as Gtk.Frame;
+        for (const frame of [knockoutFrame, scribbleFrame]) {
             expect(frame).toBeInstanceOf(Gtk.Frame);
-            expect((frame as Gtk.Frame).getVexpand()).toBe(true);
+            expect(frame.getVexpand()).toBe(true);
         }
+        expect(within(knockoutFrame).getByName("knockout-area")).toBeInstanceOf(Gtk.DrawingArea);
+        expect(within(scribbleFrame).getByName("scribble-area")).toBeInstanceOf(Gtk.DrawingArea);
     });
 });
 
 describe("drawingAreaDemo gestures", () => {
-    it("recognises a drag gesture on the scribble drawing area without resetting its content size", async () => {
+    it("queues a redraw on the scribble area after a drag gesture initialises the scribble surface", async () => {
         await renderDemo(drawingAreaDemo);
         const scribble = (await screen.findByName("scribble-area")) as Gtk.DrawingArea;
+        await fireEvent(scribble, "resize", 100, 100);
+        const queueDraw = vi.spyOn(scribble, "queueDraw");
         await userEvent.drag(scribble, 5, 5, { startX: 10, startY: 10 });
+        expect(queueDraw).toHaveBeenCalled();
         expect(scribble.getContentWidth()).toBe(100);
     });
 });

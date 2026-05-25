@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { act, screen, userEvent } from "@gtkx/testing";
+import { act, screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";
 import { renderDemo } from "../../test-utils.js";
@@ -16,11 +16,12 @@ describe("listviewFilebrowserDemo", () => {
         expect(listviewFilebrowserDemo.component).toBeTypeOf("function");
     });
 
-    it("installs a header bar via the titlebar slot", async () => {
+    it("installs a header bar with the up-button and view-switcher packed into it", async () => {
         await renderDemo(listviewFilebrowserDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        expect(window).toBeInstanceOf(Gtk.ApplicationWindow);
-        expect(window.getTitlebar()).toBeInstanceOf(Gtk.HeaderBar);
+        const header = (await screen.findByName("filebrowser-header")) as Gtk.HeaderBar;
+        expect(header).toBeInstanceOf(Gtk.HeaderBar);
+        expect(within(header).getByName("up-button")).toBeInstanceOf(Gtk.Button);
+        expect(within(header).getByName("view-switcher")).toBeInstanceOf(Gtk.ListView);
     });
 
     it("renders a go-up button in the header bar", async () => {
