@@ -3,7 +3,7 @@ import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import { AdwAlertDialog, createPortal, GtkBox, GtkButton, GtkHeaderBar, GtkLabel, GtkToggleButton } from "@gtkx/react";
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProps, DemoProviderProps } from "../types.js";
 import sourceCode from "./themes.tsx?raw";
 
@@ -35,7 +35,7 @@ const applyNextTheme = (
     window: React.RefObject<Gtk.Window | null>,
     themeIndexRef: React.RefObject<number>,
     frameClock: Gdk.FrameClock,
-    setFps: (value: string) => void,
+    fpsRef: React.RefObject<string>,
 ): boolean => {
     const settings = Gtk.Settings.getDefault();
     const styleManager = Adw.StyleManager.getDefault();
@@ -52,9 +52,11 @@ const applyNextTheme = (
         }
     }
     themeIndexRef.current++;
-    setFps(`${frameClock.getFps().toFixed(2)} fps`);
+    fpsRef.current = `${frameClock.getFps().toFixed(2)} fps`;
     return true;
 };
+
+const FPS_POLL_MS = 500;
 
 function useThemesLifecycle(
     window: React.RefObject<Gtk.Window | null>,
@@ -139,14 +141,21 @@ function useThemesCycling(window: React.RefObject<Gtk.Window | null>) {
     const tickIdRef = useRef<number | null>(null);
     const boxRef = useRef<Gtk.Box | null>(null);
     const originalSettingsRef = useRef<{ themeName: string; colorScheme: Adw.ColorScheme } | null>(null);
+    const fpsRef = useRef("");
 
     useThemesLifecycle(window, originalSettingsRef, tickIdRef);
 
     const tickCallback = useCallback(
         (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean =>
-            applyNextTheme(window, themeIndexRef, frameClock, setFps),
+            applyNextTheme(window, themeIndexRef, frameClock, fpsRef),
         [window],
     );
+
+    useEffect(() => {
+        if (!isRunning) return;
+        const interval = setInterval(() => setFps(fpsRef.current), FPS_POLL_MS);
+        return () => clearInterval(interval);
+    }, [isRunning]);
 
     const startCycling = useCallback(() => {
         const win = window.current;
@@ -163,6 +172,7 @@ function useThemesCycling(window: React.RefObject<Gtk.Window | null>) {
         }
         restoreOriginalSettings(originalSettingsRef);
         setIsRunning(false);
+        fpsRef.current = "";
         setFps("");
     }, [window]);
 

@@ -466,6 +466,7 @@ function useGearsState() {
     const [viewRotY, setViewRotY] = useState(30);
     const [viewRotZ, setViewRotZ] = useState(20);
     const [fps, setFps] = useState(-1);
+    const fpsRef = useRef(-1);
     const [error, setError] = useState<string | null>(null);
     return {
         viewRotX,
@@ -476,6 +477,7 @@ function useGearsState() {
         setViewRotZ,
         fps,
         setFps,
+        fpsRef,
         error,
         setError,
     };
@@ -506,7 +508,11 @@ function useGearsRefs(state: GearsState): GearsRefs {
     return { glAreaRef, glStateRef, tickIdRef, firstFrameTimeRef, angleRef, viewRotXRef, viewRotYRef, viewRotZRef };
 }
 
-const computeFps = (frameClock: Gdk.FrameClock, frameTime: number, setFps: (fps: number) => void) => {
+const sampleFps = (
+    frameClock: Gdk.FrameClock,
+    frameTime: number,
+    fpsRef: React.RefObject<number>,
+): void => {
     const frame = frameClock.getFrameCounter();
     const historyStart = frameClock.getHistoryStart();
     if (frame % 60 !== 0) return;
@@ -515,10 +521,12 @@ const computeFps = (frameClock: Gdk.FrameClock, frameTime: number, setFps: (fps:
     const previousTimings = frameClock.getTimings(frame - historyLen);
     if (!previousTimings) return;
     const previousFrameTime = previousTimings.getFrameTime();
-    setFps((1_000_000 * historyLen) / (frameTime - previousFrameTime));
+    fpsRef.current = (1_000_000 * historyLen) / (frameTime - previousFrameTime);
 };
 
-function useGearsAnimation(refs: GearsRefs, setFps: (fps: number) => void) {
+const FPS_POLL_MS = 500;
+
+function useGearsAnimation(refs: GearsRefs, fpsRef: React.RefObject<number>, setFps: (fps: number) => void) {
     const tickCallback = useCallback(
         (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
             const frameTime = frameClock.getFrameTime();
@@ -528,10 +536,10 @@ function useGearsAnimation(refs: GearsRefs, setFps: (fps: number) => void) {
             }
             refs.angleRef.current = (((frameTime - refs.firstFrameTimeRef.current) / 1_000_000) * 70) % 360;
             refs.glAreaRef.current?.queueRender();
-            computeFps(frameClock, frameTime, setFps);
+            sampleFps(frameClock, frameTime, fpsRef);
             return true;
         },
-        [refs, setFps],
+        [refs, fpsRef],
     );
 
     const startAnimation = useCallback(() => {
@@ -562,6 +570,11 @@ function useGearsAnimation(refs: GearsRefs, setFps: (fps: number) => void) {
     );
 
     useEffect(() => stopAnimation, [stopAnimation]);
+
+    useEffect(() => {
+        const interval = setInterval(() => setFps(fpsRef.current), FPS_POLL_MS);
+        return () => clearInterval(interval);
+    }, [fpsRef, setFps]);
 
     return { handleGLAreaRef };
 }
@@ -679,7 +692,7 @@ const GearsError = ({ error }: { error: string }) => (
 const GearsDemo = () => {
     const state = useGearsState();
     const refs = useGearsRefs(state);
-    const animation = useGearsAnimation(refs, state.setFps);
+    const animation = useGearsAnimation(refs, state.fpsRef, state.setFps);
     const handleUnrealize = useGearsUnrealize(refs.glStateRef);
     const handleRender = useGearsRender(refs, state.setError);
 

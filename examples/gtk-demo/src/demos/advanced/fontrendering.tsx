@@ -259,8 +259,9 @@ function useFontRenderingState() {
         showExtents: false,
         showGrid: false,
     });
-    const [pixelAlpha, setPixelAlpha] = useState(1);
-    const [outlineAlpha, setOutlineAlpha] = useState(0);
+    const pixelAlphaRef = useRef(1);
+    const outlineAlphaRef = useRef(0);
+    const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
     const animationRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     return {
@@ -280,10 +281,9 @@ function useFontRenderingState() {
         setScale,
         overlays,
         setOverlays,
-        pixelAlpha,
-        setPixelAlpha,
-        outlineAlpha,
-        setOutlineAlpha,
+        pixelAlphaRef,
+        outlineAlphaRef,
+        drawingAreaRef,
         animationRef,
     };
 }
@@ -295,13 +295,11 @@ const easeOutCubic = (t: number) => {
     return p * p * p + 1;
 };
 
-function useOverlayAnimation(state: FontRenderingState) {
-    const { overlays, pixelAlpha, outlineAlpha, setPixelAlpha, setOutlineAlpha, animationRef } = state;
+const ANIMATION_FRAME_MS = 16;
+const ANIMATION_DURATION_MS = 500;
 
-    const pixelAlphaRef = useRef(pixelAlpha);
-    const outlineAlphaRef = useRef(outlineAlpha);
-    pixelAlphaRef.current = pixelAlpha;
-    outlineAlphaRef.current = outlineAlpha;
+function useOverlayAnimation(state: FontRenderingState) {
+    const { overlays, pixelAlphaRef, outlineAlphaRef, drawingAreaRef, animationRef } = state;
 
     useEffect(() => {
         let targetPixelAlpha: number;
@@ -315,23 +313,23 @@ function useOverlayAnimation(state: FontRenderingState) {
         if (startPixelAlpha === targetPixelAlpha && startOutlineAlpha === targetOutlineAlpha) return;
 
         const startTime = Date.now();
-        const duration = 500;
 
         if (animationRef.current) clearInterval(animationRef.current);
 
         animationRef.current = setInterval(() => {
             const elapsed = Date.now() - startTime;
-            const t = Math.min(elapsed / duration, 1);
+            const t = Math.min(elapsed / ANIMATION_DURATION_MS, 1);
             const eased = easeOutCubic(t);
 
-            setPixelAlpha(startPixelAlpha + (targetPixelAlpha - startPixelAlpha) * eased);
-            setOutlineAlpha(startOutlineAlpha + (targetOutlineAlpha - startOutlineAlpha) * eased);
+            pixelAlphaRef.current = startPixelAlpha + (targetPixelAlpha - startPixelAlpha) * eased;
+            outlineAlphaRef.current = startOutlineAlpha + (targetOutlineAlpha - startOutlineAlpha) * eased;
+            drawingAreaRef.current?.queueDraw();
 
             if (t >= 1 && animationRef.current) {
                 clearInterval(animationRef.current);
                 animationRef.current = null;
             }
-        }, 16);
+        }, ANIMATION_FRAME_MS);
 
         return () => {
             if (animationRef.current) {
@@ -339,7 +337,7 @@ function useOverlayAnimation(state: FontRenderingState) {
                 animationRef.current = null;
             }
         };
-    }, [overlays.showPixels, overlays.showOutlines, setPixelAlpha, setOutlineAlpha, animationRef]);
+    }, [overlays.showPixels, overlays.showOutlines, pixelAlphaRef, outlineAlphaRef, drawingAreaRef, animationRef]);
 }
 
 interface DrawTextModeContext {
@@ -371,7 +369,7 @@ const drawSmallSurface = (ctx: DrawTextModeContext) => {
     smallLayout.setFontDescription(state.fontDesc);
     smallLayout.setText(state.text || " ", -1);
 
-    smallCr.setSourceRgba(0, 0, 0, state.pixelAlpha);
+    smallCr.setSourceRgba(0, 0, 0, state.pixelAlphaRef.current);
     smallCr.translate(10, 10);
     PangoCairo.showLayout(smallCr, smallLayout);
     PangoCairo.layoutPath(smallCr, smallLayout);
@@ -423,7 +421,7 @@ const drawOverlays = (
         drawExtents({ cr, scale, logicalRect, baseline, inkPixel });
     }
 
-    if (state.outlineAlpha > 0) {
+    if (state.outlineAlphaRef.current > 0) {
         drawOutlineLayer(ctx);
     }
 
@@ -489,7 +487,7 @@ const drawOutlineLayer = (ctx: DrawTextModeContext) => {
     cr.scale(state.scale, state.scale);
     cr.setSourceSurface(outlineSurface, 0, 0);
     cr.getSource().setFilter(Filter.NEAREST);
-    cr.paintWithAlpha(state.outlineAlpha);
+    cr.paintWithAlpha(state.outlineAlphaRef.current);
 
     outlineSurface.finish();
 };
@@ -866,6 +864,7 @@ const FontRenderingDemo = () => {
                 <GtkScrolledWindow hexpand vexpand propagateNaturalHeight>
                     <GtkDrawingArea
                         name="image"
+                        ref={state.drawingAreaRef}
                         render={drawFunc}
                         contentWidth={naturalSize.width}
                         contentHeight={naturalSize.height}

@@ -18,11 +18,12 @@ import {
     useApplication,
     useProperty,
 } from "@gtkx/react";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
+import { useLatest } from "./use-latest.js";
 
 const InfoTab = () => {
     const { currentDemo } = useDemo();
@@ -66,10 +67,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const app = useApplication();
     const activeWindow = useProperty(app, "activeWindow");
     const windowRef = useRef<Gtk.Window>(null);
-    const activeWindowRef = useRef<Gtk.Window | null>(null);
-    useLayoutEffect(() => {
-        activeWindowRef.current = activeWindow ?? null;
-    }, [activeWindow]);
+    const activeWindowRef = useLatest<Gtk.Window | null>(activeWindow ?? null);
 
     if (!currentDemo?.component || !activeWindow) return null;
 

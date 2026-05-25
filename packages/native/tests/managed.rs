@@ -221,7 +221,8 @@ fn size_hint_distinguishes_native_value_variants() {
 
         let gtype = gdk::RGBA::static_type();
         let boxed_ptr = common::allocate_test_boxed(gtype);
-        let boxed_hint = NativeValue::Boxed(Boxed::from_glib_full(Some(gtype), boxed_ptr)).size_hint();
+        let boxed_hint =
+            NativeValue::Boxed(Boxed::from_glib_full(Some(gtype), boxed_ptr)).size_hint();
 
         let pspec = param_spec_ptr();
         let fundamental_hint = NativeValue::Fundamental(Fundamental::from_glib_full(
