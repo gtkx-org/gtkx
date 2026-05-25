@@ -1,9 +1,10 @@
+import * as Adw from "@gtkx/ffi/adw";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { useCallback, useMemo } from "react";
-import type { Demo } from "../types.js";
+import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
 
 interface AppItem {
@@ -13,7 +14,7 @@ interface AppItem {
     icon: Gio.Icon | null;
 }
 
-const ListViewApplauncherDemo = () => {
+const ListViewApplauncherDemo = ({ window }: DemoProps) => {
     const apps = useMemo<AppItem[]>(
         () =>
             Gio.appInfoGetAll().map((app) => ({
@@ -37,13 +38,16 @@ const ListViewApplauncherDemo = () => {
             try {
                 app.appInfo.launch(null, context);
             } catch (error) {
-                const dialog = new Gtk.AlertDialog();
-                dialog.setMessage(`Could not launch ${app.name}`);
-                dialog.setDetail(error instanceof Error ? error.message : String(error));
-                dialog.show(null);
+                const dialog = new Adw.AlertDialog();
+                dialog.setHeading(`Could not launch ${app.name}`);
+                dialog.setBody(error instanceof Error ? error.message : String(error));
+                dialog.addResponse("ok", "_OK");
+                dialog.setDefaultResponse("ok");
+                dialog.setCloseResponse("ok");
+                dialog.present(window.current);
             }
         },
-        [apps],
+        [apps, window],
     );
 
     return (

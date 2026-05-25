@@ -1,49 +1,28 @@
-import { css } from "@gtkx/css";
 import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkFixed, GtkFrame, GtkScrolledWindow } from "@gtkx/react";
 import { useMemo } from "react";
+import { useCssResource } from "../../use-css-resource.js";
 import type { Demo } from "../types.js";
+import fixedCss from "./fixed.css?raw";
 import sourceCode from "./fixed.tsx?raw";
-
-const frontBackStyle = css`
-    frame& {
-        border: 2px solid white;
-        background-color: rgba(228, 0, 0, 0.8);
-    }
-`;
-
-const leftRightStyle = css`
-    frame& {
-        border: 2px solid white;
-        background-color: rgba(127, 231, 25, 0.8);
-    }
-`;
-
-const topBottomStyle = css`
-    frame& {
-        border: 2px solid white;
-        background-color: rgba(114, 159, 207, 0.8);
-    }
-`;
 
 const FACE_SIZE = 200;
 
 interface CubeFace {
     name: string;
-    style: string;
     rotateX: number;
     rotateY: number;
 }
 
 const CUBE_FACES: CubeFace[] = [
-    { name: "back", style: frontBackStyle, rotateX: 0, rotateY: -180 },
-    { name: "left", style: leftRightStyle, rotateX: 0, rotateY: -90 },
-    { name: "bottom", style: topBottomStyle, rotateX: -90, rotateY: 0 },
-    { name: "right", style: leftRightStyle, rotateX: 0, rotateY: 90 },
-    { name: "top", style: topBottomStyle, rotateX: 90, rotateY: 0 },
-    { name: "front", style: frontBackStyle, rotateX: 0, rotateY: 0 },
+    { name: "back", rotateX: 0, rotateY: -180 },
+    { name: "left", rotateX: 0, rotateY: -90 },
+    { name: "bottom", rotateX: -90, rotateY: 0 },
+    { name: "right", rotateX: 0, rotateY: 90 },
+    { name: "top", rotateX: 90, rotateY: 0 },
+    { name: "front", rotateX: 0, rotateY: 0 },
 ];
 
 let AXIS_X: Graphene.Vec3 | null = null;
@@ -103,6 +82,8 @@ function createFaceTransform(face: CubeFace): Gsk.Transform {
  * This demo uses a GtkFixed to create a cube out of child widgets.
  */
 const FixedDemo = () => {
+    useCssResource(fixedCss);
+
     const faceTransforms = useMemo(() => {
         return CUBE_FACES.map((face) => ({
             face,
@@ -126,7 +107,7 @@ const FixedDemo = () => {
                                     name={`cube-face-${face.name}`}
                                     widthRequest={FACE_SIZE}
                                     heightRequest={FACE_SIZE}
-                                    cssClasses={[face.style]}
+                                    cssClasses={[face.name]}
                                 />
                             </GtkFixed.Child>
                         ))}

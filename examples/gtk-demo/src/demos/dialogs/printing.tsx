@@ -1,3 +1,4 @@
+import * as Adw from "@gtkx/ffi/adw";
 import type { Context } from "@gtkx/ffi/cairo";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
@@ -125,9 +126,12 @@ const runPrintOperation = (window: Gtk.Window | null, source: string, onDone: ()
     try {
         printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, window);
     } catch (error) {
-        const dialog = new Gtk.AlertDialog();
-        dialog.setMessage(`${error}`);
-        dialog.show(window);
+        const dialog = new Adw.AlertDialog();
+        dialog.setHeading(`${error}`);
+        dialog.addResponse("ok", "_OK");
+        dialog.setDefaultResponse("ok");
+        dialog.setCloseResponse("ok");
+        dialog.present(window);
         onDone();
     }
 };

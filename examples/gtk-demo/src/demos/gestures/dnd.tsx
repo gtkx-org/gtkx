@@ -25,6 +25,8 @@ import {
 } from "@gtkx/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { makeValue } from "../../gvalue.js";
+import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
+import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
 import trashSvgPath from "./user-trash-opening.gpa";
@@ -224,8 +226,8 @@ function useDndState() {
     const [items, setItems] = useState<CanvasItem[]>(() => createInitialItems());
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [editState, setEditState] = useState<EditState | null>(null);
-    const [isDragging, setIsDragging] = useState<string | null>(null);
     const [trashHovering, setTrashHovering] = useState(false);
+    const trashVisibility = useImperativeDragVisibility<Gtk.Box>();
 
     const refs = useDndRefs();
     const handlers = useDndHandlers({
@@ -234,7 +236,6 @@ function useDndState() {
         contextMenu,
         setContextMenu,
         setEditState,
-        setIsDragging,
         setTrashHovering,
         refs,
     });
@@ -251,9 +252,9 @@ function useDndState() {
         setContextMenu,
         editState,
         setEditState,
-        isDragging,
         trashHovering,
         setTrashHovering,
+        trashVisibility,
         refs,
         handlers,
         editingItem,
@@ -281,12 +282,11 @@ const createInitialItems = (): CanvasItem[] => {
 function useDndRefs() {
     const contextMenuRef = useRef<Gtk.Popover | null>(null);
     const entryRef = useRef<Gtk.Entry | null>(null);
-    const gestureClickRef = useRef<Gtk.GestureClick | null>(null);
     const buttonRefs = useRef<Map<string, Gtk.Widget>>(new Map());
     const itemHalves = useRef<Map<string, { halfW: number; halfH: number }>>(new Map());
     const itemRadii = useRef<Map<string, number>>(new Map());
     const dragHotspotRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-    return { contextMenuRef, entryRef, gestureClickRef, buttonRefs, itemHalves, itemRadii, dragHotspotRef };
+    return { contextMenuRef, entryRef, buttonRefs, itemHalves, itemRadii, dragHotspotRef };
 }
 
 type DndRefs = ReturnType<typeof useDndRefs>;
@@ -322,7 +322,6 @@ interface DndHandlerArgs {
     contextMenu: ContextMenuState | null;
     setContextMenu: (m: ContextMenuState | null) => void;
     setEditState: (e: EditState | null) => void;
-    setIsDragging: (id: string | null) => void;
     setTrashHovering: (v: boolean) => void;
     refs: DndRefs;
 }
@@ -533,7 +532,7 @@ function useDropHandlers(args: DndHandlerArgs) {
 }
 
 const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
-    const { refs, handlers, isDragging } = dnd;
+    const { refs, handlers, trashVisibility } = dnd;
     const halfW = refs.itemHalves.current.get(item.id)?.halfW ?? ITEM_SIZE / 2;
     const halfH = refs.itemHalves.current.get(item.id)?.halfH ?? ITEM_SIZE / 2;
     return (
@@ -549,11 +548,7 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                 }}
                 name={`item${item.id}`}
                 label={item.label}
-                cssClasses={cx(
-                    itemStyle,
-                    ...getItemStyleClass(item.style),
-                    isDragging === item.id && css`opacity: 0.3;`,
-                )}
+                cssClasses={cx(itemStyle, ...getItemStyleClass(item.style))}
             >
                 <GtkGestureClick
                     onReleased={() => {
@@ -569,9 +564,13 @@ const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
                     onDragBegin={() => {
                         handlers.setDragIcon(item.id);
                         handlers.bringToFront(item.id);
-                        dnd.setItems((prev) => prev);
+                        refs.buttonRefs.current.get(item.id)?.setOpacity(0.3);
+                        trashVisibility.show();
                     }}
-                    onDragEnd={() => dnd.setItems((prev) => prev)}
+                    onDragEnd={() => {
+                        refs.buttonRefs.current.get(item.id)?.setOpacity(1);
+                        trashVisibility.hide();
+                    }}
                     actions={Gdk.DragAction.MOVE}
                 />
                 <GtkDropTarget
@@ -650,6 +649,7 @@ const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: Canva
 };
 
 interface DndTrashZoneProps {
+    boxRef: React.RefObject<Gtk.Box | null>;
     trashHovering: boolean;
     setTrashHovering: (v: boolean) => void;
     handleTrashDrop: (value: GObject.Value) => boolean;
@@ -660,7 +660,7 @@ const loadTrashPaintable = (): Gtk.Svg => {
     return Gtk.Svg.newFromBytes(GLib.Bytes.new(Array.from(bytes)));
 };
 
-const DndTrashZone = ({ trashHovering, setTrashHovering, handleTrashDrop }: DndTrashZoneProps) => {
+const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop }: DndTrashZoneProps) => {
     const svg = useMemo(loadTrashPaintable, []);
     const imageRef = useRef<Gtk.Image | null>(null);
 
@@ -676,6 +676,8 @@ const DndTrashZone = ({ trashHovering, setTrashHovering, handleTrashDrop }: DndT
     return (
         <GtkFixed.Child x={20} y={20}>
             <GtkBox
+                ref={boxRef}
+                visible={false}
                 cssClasses={[
                     css`padding: 12px;`,
                     trashHovering ? css`background-color: alpha(@error_color, 0.2); border-radius: 12px;` : "",
@@ -729,6 +731,8 @@ const DndDemo = () => {
     useItemBoundsObserver(dnd.items, dnd.refs);
     useEntryFocusEffect(dnd.editState, dnd.refs.entryRef);
 
+    const contextMenuGesture = useContextMenuGesture({ onContextMenu: dnd.handlers.handleContextMenu });
+
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkFixed name="canvas" hexpand vexpand cssClasses={[css`min-height: 400px;`]}>
@@ -741,12 +745,10 @@ const DndDemo = () => {
                     }
                 />
                 <GtkGestureClick
-                    ref={dnd.refs.gestureClickRef}
+                    ref={contextMenuGesture.ref}
                     button={0}
-                    onPressed={(_nPress: number, pressX: number, pressY: number) => {
-                        const event = dnd.refs.gestureClickRef.current?.getCurrentEvent();
-                        if (event?.triggersContextMenu()) dnd.handlers.handleContextMenu(pressX, pressY);
-                    }}
+                    onPressed={contextMenuGesture.onPressed}
+                    onReleased={contextMenuGesture.onReleased}
                 />
                 {dnd.items.map((item) => (
                     <DndItem key={item.id} item={item} dnd={dnd} />
@@ -754,13 +756,12 @@ const DndDemo = () => {
 
                 <DndContextMenu dnd={dnd} />
                 {dnd.editingItem && <DndItemEditor dnd={dnd} editingItem={dnd.editingItem} />}
-                {dnd.isDragging && (
-                    <DndTrashZone
-                        trashHovering={dnd.trashHovering}
-                        setTrashHovering={dnd.setTrashHovering}
-                        handleTrashDrop={dnd.handlers.handleTrashDrop}
-                    />
-                )}
+                <DndTrashZone
+                    boxRef={dnd.trashVisibility.ref}
+                    trashHovering={dnd.trashHovering}
+                    setTrashHovering={dnd.setTrashHovering}
+                    handleTrashDrop={dnd.handlers.handleTrashDrop}
+                />
             </GtkFixed>
 
             <GtkSeparator orientation={Gtk.Orientation.HORIZONTAL} />
