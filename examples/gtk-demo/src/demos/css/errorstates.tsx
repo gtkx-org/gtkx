@@ -271,4 +271,5 @@ export const errorstatesDemo: Demo = {
     keywords: [],
     component: ErrorstatesDemo,
     sourceCode,
+    dialogOnly: true,
 };
