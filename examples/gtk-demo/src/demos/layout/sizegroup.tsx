@@ -19,13 +19,7 @@ const DropdownRow = ({ labelText, selectedId, options, onSelectionChanged }: Dro
     const [dropdown, setDropdown] = useState<Gtk.DropDown | null>(null);
     return (
         <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={10}>
-            <GtkLabel
-                label={labelText}
-                useUnderline
-                halign={Gtk.Align.START}
-                hexpand
-                mnemonicWidget={dropdown}
-            />
+            <GtkLabel label={labelText} useUnderline halign={Gtk.Align.START} hexpand mnemonicWidget={dropdown} />
             <GtkSizeGroup.Widget>
                 <GtkDropDown
                     ref={setDropdown}

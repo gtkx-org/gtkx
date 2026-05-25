@@ -4,7 +4,7 @@ import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-describe("render - GtkSizeGroup", () => {
+describe("render - GtkSizeGroup wiring", () => {
     it("registers wrapped widgets with the size group", async () => {
         const labelARef = createRef<Gtk.Label>();
         const labelBRef = createRef<Gtk.Label>();
@@ -72,7 +72,9 @@ describe("render - GtkSizeGroup", () => {
         expect(labelBRef.current?.getParent()?.constructor.name).toContain("Frame");
         expect(labelARef.current?.getParent()).not.toBe(labelBRef.current?.getParent());
     });
+});
 
+describe("render - GtkSizeGroup lifecycle", () => {
     it("updates the size group mode when the prop changes", async () => {
         const labelRef = createRef<Gtk.Label>();
 
@@ -127,7 +129,9 @@ describe("render - GtkSizeGroup", () => {
         expect(persistRef.current).not.toBeNull();
         expect(conditionalRef.current).toBeNull();
     });
+});
 
+describe("render - GtkSizeGroup nesting", () => {
     it("uses the innermost SizeGroup when ancestors are nested", async () => {
         const innerARef = createRef<Gtk.Label>();
         const innerBRef = createRef<Gtk.Label>();

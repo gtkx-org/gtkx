@@ -104,9 +104,7 @@ describe("configurePrintOperation export", () => {
 
 describe("PrintingDemo component", () => {
     it("invokes onClose after the print operation completes", async () => {
-        const printSpy = vi.spyOn(Gtk.PrintOperation.prototype, "run").mockReturnValue(
-            Gtk.PrintOperationResult.APPLY,
-        );
+        const printSpy = vi.spyOn(Gtk.PrintOperation.prototype, "run").mockReturnValue(Gtk.PrintOperationResult.APPLY);
         const onClose = vi.fn();
         try {
             await renderDemo(printingDemo, { onClose });

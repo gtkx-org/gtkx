@@ -1,4 +1,4 @@
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { render, screen } from "@gtkx/testing";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";

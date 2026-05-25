@@ -385,26 +385,48 @@ const matchesTrigger = (trigger: Gtk.ShortcutTrigger | null, keyval: number, mod
         return trigger.getKeyval() === keyval && trigger.getModifiers() === modifiers;
     }
     if (trigger instanceof Gtk.AlternativeTrigger) {
-        return matchesTrigger(trigger.getFirst(), keyval, modifiers) || matchesTrigger(trigger.getSecond(), keyval, modifiers);
+        return (
+            matchesTrigger(trigger.getFirst(), keyval, modifiers) ||
+            matchesTrigger(trigger.getSecond(), keyval, modifiers)
+        );
+    }
+    return false;
+};
+
+const activateMatchingShortcut = (
+    controller: Gtk.ShortcutController,
+    widget: Gtk.Widget,
+    keyval: number,
+    modifiers: number,
+): boolean => {
+    const count = controller.getNItems();
+    for (let j = 0; j < count; j++) {
+        const shortcut = controller.getItem(j);
+        if (!(shortcut instanceof Gtk.Shortcut)) continue;
+        if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) continue;
+        const action = shortcut.getAction();
+        if (action?.activate(0, widget, null)) return true;
+    }
+    return false;
+};
+
+const dispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
+    const controllers = widget.observeControllers();
+    for (let i = 0; i < controllers.getNItems(); i++) {
+        const controller = controllers.getItem(i);
+        if (
+            controller instanceof Gtk.ShortcutController &&
+            activateMatchingShortcut(controller, widget, keyval, modifiers)
+        ) {
+            return true;
+        }
     }
     return false;
 };
 
 const dispatchShortcuts = (element: Gtk.Widget, keyval: number, modifiers: number): boolean => {
     for (let widget: Gtk.Widget | null = element; widget; widget = widget.getParent()) {
-        const controllers = widget.observeControllers();
-        for (let i = 0; i < controllers.getNItems(); i++) {
-            const controller = controllers.getItem(i);
-            if (!(controller instanceof Gtk.ShortcutController)) continue;
-            const count = controller.getNItems();
-            for (let j = 0; j < count; j++) {
-                const shortcut = controller.getItem(j);
-                if (!(shortcut instanceof Gtk.Shortcut)) continue;
-                if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) continue;
-                const action = shortcut.getAction();
-                if (action && action.activate(0, widget, null)) return true;
-            }
-        }
+        if (dispatchShortcutsOnWidget(widget, keyval, modifiers)) return true;
     }
     return false;
 };

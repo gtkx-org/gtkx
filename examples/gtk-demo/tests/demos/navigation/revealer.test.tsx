@@ -93,5 +93,4 @@ describe("revealerDemo reveal sequence", () => {
             expect(revealers.every((r) => r.getRevealChild())).toBe(true);
         });
     });
-
 });

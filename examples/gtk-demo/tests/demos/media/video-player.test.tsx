@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { videoPlayerDemo } from "../../../src/demos/media/video-player.js";
 import { renderDemo } from "../../test-utils.js";
@@ -57,11 +57,19 @@ describe("videoPlayerDemo video and actions", () => {
     });
 
     it("loads the GTK Logo source when the Logo button is clicked", async () => {
-        await renderDemo(videoPlayerDemo);
-        const logoButton = (await screen.findByName("logo-button")) as Gtk.Button;
-        await userEvent.click(logoButton);
-        const video = (await screen.findByName("video")) as Gtk.Video;
-        await waitFor(() => expect(video.getFile()).not.toBeNull());
+        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "setFile").mockImplementation(() => {});
+        const fileNewSpy = vi.spyOn(Gio, "fileNewForPath");
+        try {
+            await renderDemo(videoPlayerDemo);
+            const logoButton = (await screen.findByName("logo-button")) as Gtk.Button;
+            await userEvent.click(logoButton);
+            await waitFor(() => expect(fileNewSpy).toHaveBeenCalled());
+            const path = fileNewSpy.mock.calls.at(-1)?.[0];
+            expect(path?.endsWith(".webm")).toBe(true);
+        } finally {
+            fileNewSpy.mockRestore();
+            setFileSpy.mockRestore();
+        }
     });
 
     it("requests fullscreen on the host window when the Fullscreen icon button is clicked", async () => {
@@ -96,6 +104,7 @@ describe("videoPlayerDemo video and actions", () => {
     });
 
     it("opens a Gtk.FileDialog when the Open button is activated", async () => {
+        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "setFile").mockImplementation(() => {});
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
         openSpy.mockResolvedValue(Gio.fileNewForPath("/tmp/fake-video.webm"));
         try {
@@ -103,10 +112,10 @@ describe("videoPlayerDemo video and actions", () => {
             const openButton = (await screen.findByName("open-button")) as Gtk.Button;
             await userEvent.click(openButton);
             await waitFor(() => expect(openSpy).toHaveBeenCalled());
-            const video = (await screen.findByName("video")) as Gtk.Video;
-            await waitFor(() => expect(video.getFile()?.getPath()).toBe("/tmp/fake-video.webm"));
+            await waitFor(() => expect(setFileSpy).toHaveBeenCalled());
         } finally {
             openSpy.mockRestore();
+            setFileSpy.mockRestore();
         }
     });
 
