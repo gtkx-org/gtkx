@@ -435,20 +435,22 @@ interface ColorsProgress {
     isFilling: boolean;
 }
 
-const PROGRESS_POLL_MS = 100;
-
 function useColorsProgress(baseStore: Gio.ListStore, colorLimit: ColorLimit): ColorsProgress {
     const [progress, setProgress] = useState<ColorsProgress>(() => ({ itemCount: 0, isFilling: true }));
 
     useEffect(() => {
-        const id = setInterval(() => {
+        const update = () => {
             const itemCount = baseStore.getNItems();
             const isFilling = itemCount < colorLimit;
             setProgress((prev) =>
                 prev.itemCount === itemCount && prev.isFilling === isFilling ? prev : { itemCount, isFilling },
             );
-        }, PROGRESS_POLL_MS);
-        return () => clearInterval(id);
+        };
+        update();
+        const handlerId = baseStore.connect("items-changed", update);
+        return () => {
+            GObject.signalHandlerDisconnect(baseStore, handlerId);
+        };
     }, [baseStore, colorLimit]);
 
     return progress;

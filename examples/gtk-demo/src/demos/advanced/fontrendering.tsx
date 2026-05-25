@@ -10,6 +10,7 @@ import {
     ImageSurface,
     Surface,
 } from "@gtkx/ffi/cairo";
+import type * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -262,7 +263,7 @@ function useFontRenderingState() {
     const pixelAlphaRef = useRef(1);
     const outlineAlphaRef = useRef(0);
     const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
-    const animationRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const tickIdRef = useRef<number | null>(null);
 
     return {
         mode,
@@ -284,7 +285,7 @@ function useFontRenderingState() {
         pixelAlphaRef,
         outlineAlphaRef,
         drawingAreaRef,
-        animationRef,
+        tickIdRef,
     };
 }
 
@@ -295,13 +296,15 @@ const easeOutCubic = (t: number) => {
     return p * p * p + 1;
 };
 
-const ANIMATION_FRAME_MS = 16;
-const ANIMATION_DURATION_MS = 500;
+const ANIMATION_DURATION_US = 500_000;
 
 function useOverlayAnimation(state: FontRenderingState) {
-    const { overlays, pixelAlphaRef, outlineAlphaRef, drawingAreaRef, animationRef } = state;
+    const { overlays, pixelAlphaRef, outlineAlphaRef, drawingAreaRef, tickIdRef } = state;
 
     useEffect(() => {
+        const area = drawingAreaRef.current;
+        if (!area) return;
+
         let targetPixelAlpha: number;
         if (overlays.showPixels && overlays.showOutlines) targetPixelAlpha = 0.5;
         else if (overlays.showPixels) targetPixelAlpha = 1;
@@ -312,32 +315,36 @@ function useOverlayAnimation(state: FontRenderingState) {
         const startOutlineAlpha = outlineAlphaRef.current;
         if (startPixelAlpha === targetPixelAlpha && startOutlineAlpha === targetOutlineAlpha) return;
 
-        const startTime = Date.now();
+        if (tickIdRef.current !== null) {
+            area.removeTickCallback(tickIdRef.current);
+            tickIdRef.current = null;
+        }
 
-        if (animationRef.current) clearInterval(animationRef.current);
-
-        animationRef.current = setInterval(() => {
-            const elapsed = Date.now() - startTime;
-            const t = Math.min(elapsed / ANIMATION_DURATION_MS, 1);
+        let startFrameTime: number | null = null;
+        tickIdRef.current = area.addTickCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+            const frameTime = frameClock.getFrameTime();
+            startFrameTime ??= frameTime;
+            const t = Math.min((frameTime - startFrameTime) / ANIMATION_DURATION_US, 1);
             const eased = easeOutCubic(t);
 
             pixelAlphaRef.current = startPixelAlpha + (targetPixelAlpha - startPixelAlpha) * eased;
             outlineAlphaRef.current = startOutlineAlpha + (targetOutlineAlpha - startOutlineAlpha) * eased;
-            drawingAreaRef.current?.queueDraw();
+            area.queueDraw();
 
-            if (t >= 1 && animationRef.current) {
-                clearInterval(animationRef.current);
-                animationRef.current = null;
+            if (t >= 1) {
+                tickIdRef.current = null;
+                return false;
             }
-        }, ANIMATION_FRAME_MS);
+            return true;
+        });
 
         return () => {
-            if (animationRef.current) {
-                clearInterval(animationRef.current);
-                animationRef.current = null;
+            if (tickIdRef.current !== null) {
+                area.removeTickCallback(tickIdRef.current);
+                tickIdRef.current = null;
             }
         };
-    }, [overlays.showPixels, overlays.showOutlines, pixelAlphaRef, outlineAlphaRef, drawingAreaRef, animationRef]);
+    }, [overlays.showPixels, overlays.showOutlines, pixelAlphaRef, outlineAlphaRef, drawingAreaRef, tickIdRef]);
 }
 
 interface DrawTextModeContext {
