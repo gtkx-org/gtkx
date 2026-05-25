@@ -729,3 +729,198 @@ fn struct_from_glib_value_bails() {
         );
     });
 }
+
+#[test]
+fn struct_decode_none_wraps_without_copying() {
+    common::run(|| {
+        let raw = unsafe { glib::ffi::g_malloc0(24) };
+
+        let decoded = struct_type(Ownership::None, Some(24))
+            .decode(&ffi::FfiValue::Ptr(raw))
+            .expect("struct none decode should succeed");
+        let Value::Object(handle) = &decoded else {
+            panic!("expected Object value");
+        };
+        assert_eq!(handle.ptr(), raw);
+        drop(decoded);
+
+        unsafe { glib::ffi::g_free(raw) };
+    });
+}
+
+mod free_fn {
+    use std::ffi::c_void;
+
+    use gtk4::glib;
+
+    use native::ffi;
+    use native::types::{BoxedType, FfiDecoder, Ownership, RawPtrCodec};
+    use native::value::Value;
+
+    use super::common;
+
+    const LIBGLIB: &str = "libglib-2.0.so.0";
+    const G_FREE: &str = "g_free";
+
+    fn boxed_with_free_fn(ownership: Ownership) -> BoxedType {
+        BoxedType {
+            ownership,
+            type_name: "FreeFnBoxed".to_owned(),
+            library: Some(LIBGLIB.to_owned()),
+            get_type_fn: None,
+            free_fn: Some(G_FREE.to_owned()),
+        }
+    }
+
+    #[test]
+    fn decode_full_with_free_fn_owns_pointer() {
+        common::run(|| {
+            // g_malloc0 + g_free is a balanced pair via the freeFn hook.
+            let ptr = unsafe { glib::ffi::g_malloc0(16) };
+
+            let decoded = boxed_with_free_fn(Ownership::Full)
+                .decode(&ffi::FfiValue::Ptr(ptr))
+                .expect("full decode with freeFn should succeed");
+            let Value::Object(handle) = &decoded else {
+                panic!("expected Object value");
+            };
+            assert_eq!(handle.ptr(), ptr);
+            // Drop runs the resolved g_free under the GLib thread; if it
+            // didn't, leak detectors and miri would surface the missed
+            // free in CI coverage runs.
+            drop(decoded);
+        });
+    }
+
+    #[test]
+    fn decode_borrowed_with_free_fn_wraps_without_owning() {
+        common::run(|| {
+            let ptr = unsafe { glib::ffi::g_malloc0(16) };
+
+            let decoded = boxed_with_free_fn(Ownership::Borrowed)
+                .decode(&ffi::FfiValue::Ptr(ptr))
+                .expect("borrowed decode with freeFn should succeed");
+            let Value::Object(handle) = &decoded else {
+                panic!("expected Object value");
+            };
+            assert_eq!(handle.ptr(), ptr);
+            // Dropping the borrowed wrapper must NOT call free_fn; the
+            // caller still owns the allocation and frees it manually.
+            drop(decoded);
+
+            unsafe { glib::ffi::g_free(ptr) };
+        });
+    }
+
+    #[test]
+    fn ptr_to_value_full_with_free_fn_owns_pointer() {
+        common::run(|| {
+            let ptr = unsafe { glib::ffi::g_malloc0(16) };
+
+            let value = boxed_with_free_fn(Ownership::Full)
+                .ptr_to_value(ptr, "ctx")
+                .expect("ptr_to_value with freeFn should succeed");
+            let Value::Object(handle) = &value else {
+                panic!("expected Object value");
+            };
+            assert_eq!(handle.ptr(), ptr);
+            drop(value);
+        });
+    }
+
+    #[test]
+    fn ptr_to_value_borrowed_with_free_fn_wraps_without_owning() {
+        common::run(|| {
+            let ptr = unsafe { glib::ffi::g_malloc0(16) };
+
+            let value = boxed_with_free_fn(Ownership::Borrowed)
+                .ptr_to_value(ptr, "ctx")
+                .expect("ptr_to_value with freeFn should succeed");
+            let Value::Object(handle) = &value else {
+                panic!("expected Object value");
+            };
+            assert_eq!(handle.ptr(), ptr);
+            drop(value);
+
+            unsafe { glib::ffi::g_free(ptr) };
+        });
+    }
+
+    #[test]
+    fn decode_with_unresolvable_free_fn_bails() {
+        common::run(|| {
+            let raw = unsafe { glib::ffi::g_malloc0(8) };
+            let descriptor = BoxedType {
+                ownership: Ownership::Full,
+                type_name: "BadFreeFnBoxed".to_owned(),
+                library: Some(LIBGLIB.to_owned()),
+                get_type_fn: None,
+                free_fn: Some("definitely_not_a_real_symbol_xyz".to_owned()),
+            };
+
+            let err = descriptor
+                .decode(&ffi::FfiValue::Ptr(raw))
+                .expect_err("decode with missing free symbol should fail");
+            let msg = format!("{err}");
+            assert!(msg.contains("BadFreeFnBoxed"));
+            assert!(msg.contains("definitely_not_a_real_symbol_xyz"));
+
+            unsafe { glib::ffi::g_free(raw) };
+        });
+    }
+
+    #[test]
+    fn decode_with_unloadable_library_bails() {
+        common::run(|| {
+            let raw = unsafe { glib::ffi::g_malloc0(8) };
+            let descriptor = BoxedType {
+                ownership: Ownership::Full,
+                type_name: "BadLibBoxed".to_owned(),
+                library: Some("libdoes-not-exist-xyz-12345.so.0".to_owned()),
+                get_type_fn: None,
+                free_fn: Some(G_FREE.to_owned()),
+            };
+
+            let err = descriptor
+                .decode(&ffi::FfiValue::Ptr(raw))
+                .expect_err("decode with missing library should fail");
+            assert!(format!("{err}").contains("BadLibBoxed"));
+
+            unsafe { glib::ffi::g_free(raw) };
+        });
+    }
+
+    #[test]
+    fn ptr_to_value_null_with_free_fn_yields_null() {
+        common::run(|| {
+            let value = boxed_with_free_fn(Ownership::Full)
+                .ptr_to_value(std::ptr::null_mut::<c_void>(), "ctx")
+                .expect("null ptr_to_value should succeed");
+            assert!(matches!(value, Value::Null));
+        });
+    }
+
+    #[test]
+    fn descriptor_with_free_fn_falls_back_for_library_lookup() {
+        common::run(|| {
+            // The "(no library)" fallback branch in boxed_with_free_fn is
+            // reached when freeFn is set but library is None. The lookup
+            // unconditionally fails, surfacing the type name in the error.
+            let raw = unsafe { glib::ffi::g_malloc0(8) };
+            let descriptor = BoxedType {
+                ownership: Ownership::Full,
+                type_name: "LibrarylessFreeFn".to_owned(),
+                library: None,
+                get_type_fn: None,
+                free_fn: Some(G_FREE.to_owned()),
+            };
+
+            let err = descriptor
+                .decode(&ffi::FfiValue::Ptr(raw))
+                .expect_err("decode without library should fail");
+            assert!(format!("{err}").contains("LibrarylessFreeFn"));
+
+            unsafe { glib::ffi::g_free(raw) };
+        });
+    }
+}
