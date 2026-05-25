@@ -4,7 +4,7 @@ import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import { GtkButton, GtkDropDown, GtkEntry, GtkPaned, GtkScale, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./textview.tsx?raw";
 
@@ -89,8 +89,6 @@ function attachWidgetClones(view: Gtk.TextView, anchors: Gtk.TextChildAnchor[], 
     }
 }
 
-let easterEggWindow: Gtk.Window | null = null;
-
 function recursiveAttachView(depth: number, view: Gtk.TextView, anchor: Gtk.TextChildAnchor) {
     if (depth > 4) return;
 
@@ -106,9 +104,9 @@ function recursiveAttachView(depth: number, view: Gtk.TextView, anchor: Gtk.Text
     recursiveAttachView(depth + 1, childView, anchor);
 }
 
-function handleEasterEgg(sourceView: Gtk.TextView) {
-    if (easterEggWindow) {
-        easterEggWindow.present();
+function handleEasterEgg(sourceView: Gtk.TextView, windowRef: RefObject<Gtk.Window | null>) {
+    if (windowRef.current) {
+        windowRef.current.present();
         return;
     }
 
@@ -125,7 +123,7 @@ function handleEasterEgg(sourceView: Gtk.TextView) {
     recursiveAttachView(0, view, anchor);
 
     const win = new Gtk.Window();
-    easterEggWindow = win;
+    windowRef.current = win;
 
     const root = sourceView.getRoot();
     if (root instanceof Gtk.Window) {
@@ -134,7 +132,7 @@ function handleEasterEgg(sourceView: Gtk.TextView) {
     }
 
     win.connect("close-request", () => {
-        easterEggWindow = null;
+        windowRef.current = null;
         return false;
     });
 
@@ -408,11 +406,12 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => (
 const TextViewDemo = () => {
     const textView1Ref = useRef<Gtk.TextView | null>(null);
     const textView2Ref = useRef<Gtk.TextView | null>(null);
+    const easterEggWindowRef = useRef<Gtk.Window | null>(null);
     const [sharedBuffer] = useState(() => new Gtk.TextBuffer());
 
     const handleClickMe = useCallback(() => {
         const tv = textView1Ref.current;
-        if (tv) handleEasterEgg(tv);
+        if (tv) handleEasterEgg(tv, easterEggWindowRef);
     }, []);
 
     const iconPaintable = useMemo(() => {
@@ -430,13 +429,13 @@ const TextViewDemo = () => {
 
         const anchors = findChildAnchors(sharedBuffer);
         attachWidgetClones(tv2, anchors, () => {
-            if (textView2Ref.current) handleEasterEgg(textView2Ref.current);
+            if (textView2Ref.current) handleEasterEgg(textView2Ref.current, easterEggWindowRef);
         });
 
         return () => {
-            if (easterEggWindow) {
-                easterEggWindow.destroy();
-                easterEggWindow = null;
+            if (easterEggWindowRef.current) {
+                easterEggWindowRef.current.destroy();
+                easterEggWindowRef.current = null;
             }
         };
     }, [sharedBuffer]);
