@@ -30,15 +30,14 @@ import { useLatest } from "./use-latest.js";
 
 const applicationIconName = path.basename(logoPath, path.extname(logoPath));
 const iconSearchPath = path.dirname(logoPath);
-let iconSearchPathRegistered = false;
+const displaysWithIconPath = new WeakSet<Gdk.Display>();
 
 const useApplicationIcon = (): void => {
     useEffect(() => {
-        if (iconSearchPathRegistered) return;
         const display = Gdk.Display.getDefault();
-        if (!display) return;
+        if (!display || displaysWithIconPath.has(display)) return;
         Gtk.IconTheme.getForDisplay(display).addSearchPath(iconSearchPath);
-        iconSearchPathRegistered = true;
+        displaysWithIconPath.add(display);
     }, []);
 };
 
