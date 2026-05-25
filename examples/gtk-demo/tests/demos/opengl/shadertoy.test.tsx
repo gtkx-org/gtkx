@@ -1,3 +1,4 @@
+import { freeze, unfreeze } from "@gtkx/ffi";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
@@ -8,7 +9,14 @@ vi.setConfig({ testTimeout: 30000 });
 
 const readBufferText = (textView: Gtk.TextView): string => {
     const buffer = textView.getBuffer();
-    return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false) ?? "";
+    freeze();
+    try {
+        const start = buffer.getStartIter();
+        const end = buffer.getEndIter();
+        return buffer.getText(start, end, false) ?? "";
+    } finally {
+        unfreeze();
+    }
 };
 
 describe("shadertoyDemo", () => {
