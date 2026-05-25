@@ -30,4 +30,5 @@ export const entryUndoDemo: Demo = {
     keywords: [],
     component: EntryUndoDemo,
     sourceCode,
+    resizable: false,
 };

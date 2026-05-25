@@ -265,4 +265,5 @@ export const cssBlendmodesDemo: Demo = {
     sourceCode,
     defaultWidth: 400,
     defaultHeight: 300,
+    resizable: false,
 };

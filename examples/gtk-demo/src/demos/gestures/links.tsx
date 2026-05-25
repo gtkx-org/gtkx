@@ -10,7 +10,7 @@ const LinksDemo = ({ window }: DemoProps) => {
             const dialog = new Adw.AlertDialog();
             dialog.setHeading("Keyboard navigation");
             dialog.setBody(
-                "The term 'keynav' is a shorthand for keyboard navigation and refers to the process of using a program (exclusively) via keyboard input.",
+                "The term ‘keynav’ is a shorthand for keyboard navigation and refers to the process of using a program (exclusively) via keyboard input.",
             );
             dialog.addResponse("ok", "_OK");
             dialog.setDefaultResponse("ok");
@@ -54,4 +54,5 @@ export const linksDemo: Demo = {
     keywords: [],
     component: LinksDemo,
     sourceCode,
+    resizable: false,
 };

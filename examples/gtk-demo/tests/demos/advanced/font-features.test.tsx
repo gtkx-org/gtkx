@@ -17,8 +17,8 @@ describe("fontFeaturesDemo metadata", () => {
         expect(fontFeaturesDemo.description.length).toBeGreaterThan(0);
         expect(Array.isArray(fontFeaturesDemo.keywords)).toBe(true);
         expect(typeof fontFeaturesDemo.sourceCode).toBe("string");
-        expect(fontFeaturesDemo.defaultWidth).toBeUndefined();
-        expect(fontFeaturesDemo.defaultHeight).toBeUndefined();
+        expect(fontFeaturesDemo.defaultWidth).toBe(600);
+        expect(fontFeaturesDemo.defaultHeight).toBe(500);
     });
 });
 

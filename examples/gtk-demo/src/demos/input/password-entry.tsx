@@ -103,5 +103,7 @@ export const passwordEntryDemo: Demo = {
     titlebar: PasswordEntryTitlebar,
     provider: PasswordEntryProvider,
     sourceCode,
+    windowTitle: "Choose a Password",
+    resizable: false,
     deletable: false,
 };

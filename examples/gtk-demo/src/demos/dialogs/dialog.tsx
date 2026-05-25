@@ -265,4 +265,5 @@ export const dialogDemo: Demo = {
     keywords: ["GtkMessageDialog"],
     component: DialogDemo,
     sourceCode,
+    resizable: false,
 };

@@ -1,8 +1,8 @@
-import { css } from "@gtkx/css";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/react";
 import { useMemo } from "react";
+import { useCssResource } from "../../use-css-resource.js";
 import type { Demo } from "../types.js";
 import aliasPath from "./cursors/alias_cursor.png";
 import allResizePath from "./cursors/all_resize_cursor.png";
@@ -42,11 +42,8 @@ import wResizePath from "./cursors/w_resize_cursor.png";
 import waitPath from "./cursors/wait_cursor.png";
 import zoomInPath from "./cursors/zoom_in_cursor.png";
 import zoomOutPath from "./cursors/zoom_out_cursor.png";
+import cursorsCss from "./cursors.css?raw";
 import sourceCode from "./cursors.tsx?raw";
-
-const cursorbgStyle = css`
-    background: linear-gradient(to bottom right, white 0%, white 50%, black 50%, black 100%);
-`;
 
 interface CursorInfo {
     name: string;
@@ -169,7 +166,7 @@ const CursorPreview = ({ info }: { info: CursorInfo }) => {
 };
 
 const CursorFrame = ({ cursor, tooltip }: { cursor: Gdk.Cursor; tooltip: string }) => (
-    <GtkFrame widthRequest={32} heightRequest={32} cssClasses={[cursorbgStyle]} cursor={cursor} tooltipText={tooltip} />
+    <GtkFrame widthRequest={32} heightRequest={32} cssClasses={["cursorbg"]} cursor={cursor} tooltipText={tooltip} />
 );
 
 const CursorRow = ({ info }: { info: CursorInfo }) => {
@@ -199,23 +196,26 @@ const CursorGroup = ({ rows }: { rows: readonly CursorInfo[] }) => (
     </GtkFrame>
 );
 
-const CursorsDemo = () => (
-    <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight hexpand>
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            marginStart={60}
-            marginEnd={60}
-            marginTop={60}
-            marginBottom={60}
-            spacing={10}
-            halign={Gtk.Align.CENTER}
-        >
-            {GROUPS.map((rows) => (
-                <CursorGroup key={rows[0]?.name ?? ""} rows={rows} />
-            ))}
-        </GtkBox>
-    </GtkScrolledWindow>
-);
+const CursorsDemo = () => {
+    useCssResource(cursorsCss);
+    return (
+        <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight hexpand>
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                marginStart={60}
+                marginEnd={60}
+                marginTop={60}
+                marginBottom={60}
+                spacing={10}
+                halign={Gtk.Align.CENTER}
+            >
+                {GROUPS.map((rows) => (
+                    <CursorGroup key={rows[0]?.name ?? ""} rows={rows} />
+                ))}
+            </GtkBox>
+        </GtkScrolledWindow>
+    );
+};
 
 export const cursorsDemo: Demo = {
     id: "cursors",

@@ -30,9 +30,7 @@ describe("cssAccordionDemo", () => {
         await renderDemo(cssAccordionDemo);
         const frame = (await screen.findByName("frame")) as Gtk.Frame;
         expect(frame).toBeInstanceOf(Gtk.Frame);
-        const classes = frame.getCssClasses();
-        expect(classes.length).toBeGreaterThan(0);
-        expect(classes.some((c) => c.length > 0)).toBe(true);
+        expect(frame.getCssClasses()).toContain("accordion");
     });
 
     it("centers the horizontal button box without spacing", async () => {

@@ -91,4 +91,5 @@ export const searchEntryDemo: Demo = {
     provider: SearchEntryProvider,
     sourceCode,
     windowTitle: "Type to Search",
+    resizable: false,
 };

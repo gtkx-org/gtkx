@@ -32,4 +32,5 @@ export const shortcutTriggersDemo: Demo = {
     component: ShortcutTriggersDemo,
     sourceCode,
     defaultWidth: 200,
+    resizable: false,
 };

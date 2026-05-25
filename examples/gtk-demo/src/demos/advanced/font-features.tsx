@@ -1214,4 +1214,6 @@ export const fontFeaturesDemo: Demo = {
     titlebar: FontFeaturesTitlebar,
     provider: FontFeaturesProvider,
     sourceCode,
+    defaultWidth: 600,
+    defaultHeight: 500,
 };
