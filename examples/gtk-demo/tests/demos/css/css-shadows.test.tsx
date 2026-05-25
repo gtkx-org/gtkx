@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { act, screen } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { act, screen, waitFor } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { cssShadowsDemo } from "../../../src/demos/css/css-shadows.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -49,12 +49,35 @@ describe("cssShadowsDemo behavior", () => {
         expect(window.hasCssClass("background")).toBe(true);
     });
 
-    it("propagates user edits in the buffer back through getText", async () => {
-        await renderDemo(cssShadowsDemo);
-        const textView = (await screen.findByName("text-view")) as Gtk.TextView;
-        const buffer = textView.getBuffer();
-        await act(() => buffer.setText("button { box-shadow: 0 0 10px red; }", -1));
-        const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toBe("button { box-shadow: 0 0 10px red; }");
+    it("loads the default CSS into a CssProvider when the editor mounts", async () => {
+        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        try {
+            await renderDemo(cssShadowsDemo);
+            const defaultLoad = loadSpy.mock.calls.find(
+                ([css]) => typeof css === "string" && css.includes("text-shadow"),
+            );
+            expect(defaultLoad, "expected the default shadows CSS to be loaded via loadFromString").toBeDefined();
+        } finally {
+            loadSpy.mockRestore();
+        }
+    });
+
+    it("re-applies the CssProvider when the user edits the buffer", async () => {
+        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
+        try {
+            await renderDemo(cssShadowsDemo);
+            const textView = (await screen.findByName("text-view")) as Gtk.TextView;
+            const buffer = textView.getBuffer();
+            loadSpy.mockClear();
+            await act(() => buffer.setText("button { box-shadow: 0 0 10px red; }", -1));
+            await waitFor(() => {
+                const userLoad = loadSpy.mock.calls.find(
+                    ([css]) => typeof css === "string" && css.includes("box-shadow: 0 0 10px red"),
+                );
+                expect(userLoad, "expected the buffer edit to be loaded into a CssProvider").toBeDefined();
+            });
+        } finally {
+            loadSpy.mockRestore();
+        }
     });
 });

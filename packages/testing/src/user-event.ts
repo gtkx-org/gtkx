@@ -96,6 +96,14 @@ const tab = async (element: Gtk.Widget, options?: TabOptions): Promise<void> => 
     });
 };
 
+const getEditableDelegate = (element: Gtk.Widget): Gtk.Widget | null => {
+    if (!isEditable(element)) return null;
+    const getDelegate = (element as { getDelegate?: () => Gtk.Editable | null }).getDelegate;
+    if (typeof getDelegate !== "function") return null;
+    const delegate = getDelegate.call(element);
+    return delegate instanceof Gtk.Widget ? delegate : null;
+};
+
 const type = async (element: Gtk.Widget, text: string): Promise<void> => {
     await act(() => {
         if (!isEditable(element)) {
@@ -104,8 +112,15 @@ const type = async (element: Gtk.Widget, text: string): Promise<void> => {
             );
         }
 
-        const currentText = element.getText();
-        element.setText(currentText + text);
+        const target = getEditableDelegate(element) ?? element;
+        if (target instanceof Gtk.Text || target instanceof Gtk.TextView) {
+            target.emit("insert-at-cursor", text);
+            return;
+        }
+
+        const position = element.getPosition();
+        const newPosition = element.insertText(text, text.length, position);
+        element.setPosition(newPosition);
     });
 };
 
@@ -425,6 +440,8 @@ const dispatchShortcutsOnWidget = (widget: Gtk.Widget, keyval: number, modifiers
 };
 
 const dispatchShortcuts = (element: Gtk.Widget, keyval: number, modifiers: number): boolean => {
+    const delegate = getEditableDelegate(element);
+    if (delegate && dispatchShortcutsOnWidget(delegate, keyval, modifiers)) return true;
     for (let widget: Gtk.Widget | null = element; widget; widget = widget.getParent()) {
         if (dispatchShortcutsOnWidget(widget, keyval, modifiers)) return true;
     }
@@ -441,8 +458,8 @@ const applyKeyAction = async (
     const signalName = action.press ? "key-pressed" : "key-released";
     controller.emit(signalName, action.keyval, 0, state.modifierState);
     if (action.press) {
-        dispatchShortcuts(element, action.keyval, state.modifierState);
-        if (action.keyval === Gdk.KEY_Return && isEditable(element) && !(element instanceof Gtk.TextView)) {
+        const handled = dispatchShortcuts(element, action.keyval, state.modifierState);
+        if (!handled && action.keyval === Gdk.KEY_Return && isEditable(element) && !(element instanceof Gtk.TextView)) {
             await fireEvent(element, "activate");
         }
     }

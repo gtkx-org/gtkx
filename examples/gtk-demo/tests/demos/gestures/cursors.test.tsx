@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { screen } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { cursorsDemo } from "../../../src/demos/gestures/cursors.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -56,5 +56,31 @@ describe("cursorsDemo previews", () => {
         expect(await screen.findByText("gtk-logo")).toBeInstanceOf(Gtk.Widget);
         expect(await screen.findByText("zoom-in")).toBeInstanceOf(Gtk.Widget);
         expect(await screen.findByText("zoom-out")).toBeInstanceOf(Gtk.Widget);
+    });
+
+    it("renders 38 preview images, one per cursor name", async () => {
+        await renderDemo(cursorsDemo);
+        const images = await screen.findAllByRole(Gtk.AccessibleRole.IMG);
+        const previews = images.filter((widget) => widget instanceof Gtk.Image);
+        expect(previews).toHaveLength(38);
+        for (const preview of previews) {
+            expect((preview as Gtk.Image).getPaintable()).not.toBeNull();
+        }
+    });
+});
+
+describe("cursorsDemo css registration", () => {
+    it("adds the cursors CssProvider for the default display when mounted", async () => {
+        const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
+        try {
+            await renderDemo(cursorsDemo);
+            const userPriorityCalls = addSpy.mock.calls.filter(
+                ([, , priority]) => priority === Gtk.STYLE_PROVIDER_PRIORITY_USER,
+            );
+            expect(userPriorityCalls.length).toBeGreaterThan(0);
+            expect(userPriorityCalls.every(([, provider]) => provider instanceof Gtk.CssProvider)).toBe(true);
+        } finally {
+            addSpy.mockRestore();
+        }
     });
 });

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen } from "@gtkx/testing";
+import { screen, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewWeatherDemo } from "../../../src/demos/lists/listview-weather.js";
 import { renderDemo } from "../../test-utils.js";
@@ -30,12 +30,11 @@ describe("listviewWeatherDemo", () => {
         expect(lv.getModel()).toBeInstanceOf(Gtk.NoSelection);
     });
 
-    it("populates the list view with parsed weather entries", async () => {
+    it("populates the list view with at least one full day of hourly weather entries", async () => {
         await renderDemo(listviewWeatherDemo);
         const lv = (await screen.findByName("list-view")) as Gtk.ListView;
-        const model = lv.getModel();
-        expect(model).not.toBeNull();
-        expect((model as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
+        const model = lv.getModel() as Gtk.SelectionModel;
+        expect(model.getNItems()).toBeGreaterThanOrEqual(24);
     });
 
     it("wraps the list view inside a scrolled window with vexpand and hexpand", async () => {
@@ -44,5 +43,26 @@ describe("listviewWeatherDemo", () => {
         expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
         expect(sw.getVexpand()).toBe(true);
         expect(sw.getHexpand()).toBe(true);
+    });
+
+    it("renders weather icon images from the symbolic icon set", async () => {
+        await renderDemo(listviewWeatherDemo);
+        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        const images = within(lv).getAllByRole(Gtk.AccessibleRole.IMG) as Gtk.Image[];
+        expect(images.length).toBeGreaterThan(0);
+        for (const image of images) {
+            expect(image.getIconSize()).toBe(Gtk.IconSize.LARGE);
+            expect(image.getIconName() ?? "").toMatch(/^weather-/);
+        }
+    });
+
+    it("renders hour and temperature labels in the materialized cells", async () => {
+        await renderDemo(listviewWeatherDemo);
+        const lv = (await screen.findByName("list-view")) as Gtk.ListView;
+        const labels = within(lv).getAllByRole(Gtk.AccessibleRole.LABEL) as Gtk.Label[];
+        const hourLabels = labels.filter((label) => /^\d{2}:\d{2}$/.test(label.getLabel() ?? ""));
+        const tempLabels = labels.filter((label) => /^-?\d+°$/.test(label.getLabel() ?? ""));
+        expect(hourLabels.length, "expected at least one HH:MM label").toBeGreaterThan(0);
+        expect(tempLabels.length, "expected at least one temperature label").toBeGreaterThan(0);
     });
 });

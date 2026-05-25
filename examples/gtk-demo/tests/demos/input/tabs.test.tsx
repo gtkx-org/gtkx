@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
+import * as Pango from "@gtkx/ffi/pango";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { tabsDemo } from "../../../src/demos/input/tabs.js";
@@ -23,21 +24,45 @@ describe("tabsDemo", () => {
         expect(textView).toBeInstanceOf(Gtk.TextView);
         const buffer = textView.getBuffer();
         const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toContain("one");
-        expect(text).toContain("2.0");
-        expect(text).toContain("three");
-        expect(text).toContain("seven");
-        expect(text).toContain("88.88");
-        expect(text).toContain("nine");
-        expect(text).toContain("\t");
+        expect(text).toContain("one\t2.0\tthree");
+        expect(text).toContain("four\t5.555\tsix");
+        expect(text).toContain("seven\t88.88\tnine");
     });
 
-    it("configures the text view tabs with the expected alignments", async () => {
+    it("configures three tabs with LEFT, DECIMAL, RIGHT alignments", async () => {
         await renderDemo(tabsDemo);
         const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
         const tabs = textView.getTabs();
         expect(tabs).not.toBeNull();
-        expect(tabs?.getSize()).toBe(3);
+        const tabArray = tabs as Pango.TabArray;
+        expect(tabArray.getSize()).toBe(3);
+
+        const [align0] = tabArray.getTab(0) as [Pango.TabAlign, number];
+        const [align1] = tabArray.getTab(1) as [Pango.TabAlign, number];
+        const [align2] = tabArray.getTab(2) as [Pango.TabAlign, number];
+        expect(align0).toBe(Pango.TabAlign.LEFT);
+        expect(align1).toBe(Pango.TabAlign.DECIMAL);
+        expect(align2).toBe(Pango.TabAlign.RIGHT);
+    });
+
+    it("places the tabs at positions 0, 150 and 290 with '.' as the decimal point", async () => {
+        await renderDemo(tabsDemo);
+        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
+        const tabs = textView.getTabs() as Pango.TabArray;
+
+        const [, pos0] = tabs.getTab(0) as [Pango.TabAlign, number];
+        const [, pos1] = tabs.getTab(1) as [Pango.TabAlign, number];
+        const [, pos2] = tabs.getTab(2) as [Pango.TabAlign, number];
+        expect(pos0).toBe(0);
+        expect(pos1).toBe(150);
+        expect(pos2).toBe(290);
+
+        expect(tabs.getDecimalPoint(1)).toBe(".");
+    });
+
+    it("uses word wrap on the text view", async () => {
+        await renderDemo(tabsDemo);
+        const textView = (await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)) as Gtk.TextView;
         expect(textView.getWrapMode()).toBe(Gtk.WrapMode.WORD);
     });
 
