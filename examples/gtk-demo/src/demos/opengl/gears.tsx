@@ -508,11 +508,7 @@ function useGearsRefs(state: GearsState): GearsRefs {
     return { glAreaRef, glStateRef, tickIdRef, firstFrameTimeRef, angleRef, viewRotXRef, viewRotYRef, viewRotZRef };
 }
 
-const sampleFps = (
-    frameClock: Gdk.FrameClock,
-    frameTime: number,
-    fpsRef: React.RefObject<number>,
-): void => {
+const sampleFps = (frameClock: Gdk.FrameClock, frameTime: number, fpsRef: React.RefObject<number>): void => {
     const frame = frameClock.getFrameCounter();
     const historyStart = frameClock.getHistoryStart();
     if (frame % 60 !== 0) return;
