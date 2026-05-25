@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { render, screen } from "@gtkx/testing";
-import { useEffect } from "react";
+import { render, renderHook, screen } from "@gtkx/testing";
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { Sidebar } from "../../src/components/sidebar.js";
 import { DemoProvider, useDemo } from "../../src/context/demo-context.js";
@@ -26,14 +26,6 @@ const standaloneDemo: Demo = {
     description: "Standalone demo",
     keywords: [],
     component: () => null,
-};
-
-const QueryPublisher = ({ onContext }: { onContext: (ctx: ReturnType<typeof useDemo>) => void }) => {
-    const ctx = useDemo();
-    useEffect(() => {
-        onContext(ctx);
-    });
-    return null;
 };
 
 const noop = () => {};
@@ -72,14 +64,13 @@ describe("Sidebar", () => {
     });
 
     it("exposes the current demo via the context", async () => {
-        let snapshot: ReturnType<typeof useDemo> | null = null;
-        await render(
+        const Wrapper = ({ children }: { children: ReactNode }) => (
             <DemoProvider demos={[intro, buttonDemo, expanderDemo]}>
                 <Sidebar searchMode={false} onSearchChanged={noop} />
-                <QueryPublisher onContext={(ctx) => (snapshot = ctx)} />
-            </DemoProvider>,
+                {children}
+            </DemoProvider>
         );
-        expect(snapshot).not.toBeNull();
-        expect((snapshot as unknown as ReturnType<typeof useDemo>).currentDemo?.id).toBe("intro");
+        const { result } = await renderHook(() => useDemo(), { wrapper: Wrapper });
+        expect(result.current.currentDemo?.id).toBe("intro");
     });
 });

@@ -1,6 +1,5 @@
 import { css } from "@gtkx/css";
 import * as Gdk from "@gtkx/ffi/gdk";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import {
@@ -639,12 +638,12 @@ function usePreviewSelectionTracking(
         };
 
         sync();
-        const cursorId = label.connect("notify::cursor-position", sync);
-        const selectionId = label.connect("notify::selection-bound", sync);
+        label.on("notify::cursor-position", sync);
+        label.on("notify::selection-bound", sync);
 
         return () => {
-            GObject.signalHandlerDisconnect(label, cursorId);
-            GObject.signalHandlerDisconnect(label, selectionId);
+            label.off("notify::cursor-position", sync);
+            label.off("notify::selection-bound", sync);
         };
     }, [previewLabelRef, setPreviewSelection]);
 }

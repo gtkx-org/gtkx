@@ -1,6 +1,5 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as GLib from "@gtkx/ffi/glib";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
@@ -252,12 +251,12 @@ function useColumnViewVisibilityMenuRef(
     forwardRef: React.RefObject<Gtk.ColumnView | null>,
 ): (cv: Gtk.ColumnView | null) => void {
     const teardownRef = useRef<(() => void) | null>(null);
-    const columnsListenerRef = useRef<{ list: Gio.ListModel; handlerId: number } | null>(null);
+    const columnsListenerRef = useRef<{ list: Gio.ListModel; callback: () => void } | null>(null);
 
     const detachColumnsListener = useCallback(() => {
         const listener = columnsListenerRef.current;
         if (listener) {
-            GObject.signalHandlerDisconnect(listener.list, listener.handlerId);
+            listener.list.off("items-changed", listener.callback);
             columnsListenerRef.current = null;
         }
     }, []);
@@ -283,8 +282,8 @@ function useColumnViewVisibilityMenuRef(
             if (teardownRef.current) return;
 
             const columnsList = cv.getColumns();
-            const handlerId = columnsList.connect("items-changed", tryInstall);
-            columnsListenerRef.current = { list: columnsList, handlerId };
+            columnsList.on("items-changed", tryInstall);
+            columnsListenerRef.current = { list: columnsList, callback: tryInstall };
         },
         [forwardRef, detachColumnsListener],
     );

@@ -1,21 +1,12 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { render, screen } from "@gtkx/testing";
-import { useEffect } from "react";
+import { act, render, renderHook, screen } from "@gtkx/testing";
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { SourceViewer } from "../../src/components/source-viewer.js";
 import { DemoProvider, useDemo } from "../../src/context/demo-context.js";
 import type { Demo } from "../../src/demos/types.js";
 
 const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
-
-const Selector = ({ demoId }: { demoId: string | null }) => {
-    const { demos, setCurrentDemo } = useDemo();
-    useEffect(() => {
-        const target = demoId ? (demos.find((d) => d.id === demoId) ?? null) : null;
-        setCurrentDemo(target);
-    }, [demoId, demos, setCurrentDemo]);
-    return null;
-};
 
 describe("SourceViewer", () => {
     it("shows the 'No source' placeholder when no demo is selected", async () => {
@@ -36,12 +27,16 @@ describe("SourceViewer", () => {
             keywords: [],
             component: () => null,
         };
-        await render(
+        const Wrapper = ({ children }: { children: ReactNode }) => (
             <DemoProvider demos={[intro, withoutSource]}>
-                <Selector demoId="no-source" />
                 <SourceViewer />
-            </DemoProvider>,
+                {children}
+            </DemoProvider>
         );
+        const { result } = await renderHook(() => useDemo(), { wrapper: Wrapper });
+        await act(() => {
+            result.current.setCurrentDemo(withoutSource);
+        });
         await screen.findByText("No source");
         expect(screen.queryByName("source-view")).toBeNull();
     });
@@ -56,12 +51,16 @@ describe("SourceViewer", () => {
             component: () => null,
             sourceCode,
         };
-        await render(
+        const Wrapper = ({ children }: { children: ReactNode }) => (
             <DemoProvider demos={[intro, withSource]}>
-                <Selector demoId="with-source" />
                 <SourceViewer />
-            </DemoProvider>,
+                {children}
+            </DemoProvider>
         );
+        const { result } = await renderHook(() => useDemo(), { wrapper: Wrapper });
+        await act(() => {
+            result.current.setCurrentDemo(withSource);
+        });
         const view = (await screen.findByName("source-view")) as Gtk.TextView;
         const buffer = view.getBuffer();
         const start = buffer.getStartIter();

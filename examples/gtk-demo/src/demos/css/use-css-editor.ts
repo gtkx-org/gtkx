@@ -1,6 +1,5 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import type * as GLib from "@gtkx/ffi/glib";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { cssParserWarningQuark } from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
@@ -59,30 +58,23 @@ const setupTags = ({ buffer, errorTagRef, warningTagRef }: SetupTagsArgs) => {
 
 interface SetupProviderArgs {
     providerRef: RefObject<Gtk.CssProvider | null>;
-    parsingErrorHandlerIdRef: RefObject<number | null>;
     displayRef: RefObject<Gdk.Display | null>;
     handleParsingError: (section: Gtk.CssSection, error: GLib.Error) => void;
 }
 
-const setupProvider = ({
-    providerRef,
-    parsingErrorHandlerIdRef,
-    displayRef,
-    handleParsingError,
-}: SetupProviderArgs) => {
+const setupProvider = ({ providerRef, displayRef, handleParsingError }: SetupProviderArgs) => {
     const provider = new Gtk.CssProvider();
     providerRef.current = provider;
 
-    parsingErrorHandlerIdRef.current = provider.connect("parsing-error", handleParsingError);
+    provider.on("parsing-error", handleParsingError);
 
     const display = Gdk.DisplayManager.get().getDefaultDisplay();
     displayRef.current = display;
     if (display) Gtk.StyleContext.addProviderForDisplay(display, provider, 0xffffffff);
 
     return () => {
-        if (parsingErrorHandlerIdRef.current !== null && providerRef.current) {
-            GObject.signalHandlerDisconnect(providerRef.current, parsingErrorHandlerIdRef.current);
-            parsingErrorHandlerIdRef.current = null;
+        if (providerRef.current) {
+            providerRef.current.off("parsing-error", handleParsingError);
         }
         if (displayRef.current && providerRef.current) {
             Gtk.StyleContext.removeProviderForDisplay(displayRef.current, providerRef.current);
@@ -94,7 +86,6 @@ export function useCssEditor(defaultCss: string) {
     const textViewRef = useRef<Gtk.TextView | null>(null);
     const providerRef = useRef<Gtk.CssProvider | null>(null);
     const displayRef = useRef<Gdk.Display | null>(null);
-    const parsingErrorHandlerIdRef = useRef<number | null>(null);
     const errorTagRef = useRef<Gtk.TextTag | null>(null);
     const warningTagRef = useRef<Gtk.TextTag | null>(null);
 
@@ -127,7 +118,6 @@ export function useCssEditor(defaultCss: string) {
         setupTags({ buffer, errorTagRef, warningTagRef });
         const cleanup = setupProvider({
             providerRef,
-            parsingErrorHandlerIdRef,
             displayRef,
             handleParsingError,
         });

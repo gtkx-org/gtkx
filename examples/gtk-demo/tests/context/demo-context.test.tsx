@@ -1,28 +1,24 @@
-import { render } from "@gtkx/testing";
-import { useEffect, useState } from "react";
+import { act, render, renderHook } from "@gtkx/testing";
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { DemoProvider, parseTitle, useDemo } from "../../src/context/demo-context.js";
 import type { Demo, TreeItem } from "../../src/demos/types.js";
 
-type Snapshot = ReturnType<typeof useDemo>;
-
-const Inspector = ({ onContext }: { onContext: (value: Snapshot) => void }) => {
-    const ctx = useDemo();
-    useEffect(() => {
-        onContext(ctx);
-    });
-    return null;
+const buildWrapper = (demos: Demo[]) => {
+    return ({ children }: { children: ReactNode }) => <DemoProvider demos={demos}>{children}</DemoProvider>;
 };
 
-const captureContext = async (demos: Demo[]): Promise<Snapshot> => {
-    let snapshot: Snapshot | null = null;
-    await render(
-        <DemoProvider demos={demos}>
-            <Inspector onContext={(ctx) => (snapshot = ctx)} />
-        </DemoProvider>,
-    );
-    expect(snapshot).not.toBeNull();
-    return snapshot as unknown as Snapshot;
+const captureContext = async (demos: Demo[]) => {
+    const { result } = await renderHook(() => useDemo(), { wrapper: buildWrapper(demos) });
+    return result.current;
+};
+
+const captureFiltered = async (demos: Demo[], query: string): Promise<TreeItem[]> => {
+    const { result } = await renderHook(() => useDemo(), { wrapper: buildWrapper(demos) });
+    await act(() => {
+        result.current.setSearchQuery(query);
+    });
+    return result.current.filteredTreeItems;
 };
 
 const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
@@ -63,9 +59,14 @@ describe("parseTitle", () => {
 
 describe("useDemo", () => {
     it("throws when used outside a DemoProvider", async () => {
-        await expect(render(<Inspector onContext={() => {}} />)).rejects.toThrow(/DemoProvider/);
+        await expect(render(<UnboundConsumer />)).rejects.toThrow(/DemoProvider/);
     });
 });
+
+const UnboundConsumer = () => {
+    useDemo();
+    return null;
+};
 
 describe("DemoProvider", () => {
     it("pins the intro at the top of the tree", async () => {
@@ -113,42 +114,6 @@ describe("DemoProvider", () => {
         expect(ctx.currentDemo).toBeNull();
     });
 });
-
-const SearchHarness = ({
-    demos,
-    query,
-    onItems,
-}: {
-    demos: Demo[];
-    query: string;
-    onItems: (items: TreeItem[]) => void;
-}) => {
-    const Inner = () => {
-        const { setSearchQuery, filteredTreeItems } = useDemo();
-        const [applied, setApplied] = useState(false);
-        useEffect(() => {
-            if (!applied) {
-                setSearchQuery(query);
-                setApplied(true);
-                return;
-            }
-            onItems(filteredTreeItems);
-        }, [applied, filteredTreeItems, setSearchQuery]);
-        return null;
-    };
-    return (
-        <DemoProvider demos={demos}>
-            <Inner />
-        </DemoProvider>
-    );
-};
-
-const captureFiltered = async (demos: Demo[], query: string): Promise<TreeItem[]> => {
-    let filtered: TreeItem[] | null = null;
-    await render(<SearchHarness demos={demos} query={query} onItems={(items) => (filtered = items)} />);
-    expect(filtered).not.toBeNull();
-    return filtered as unknown as TreeItem[];
-};
 
 describe("filteredTreeItems", () => {
     it("returns the full tree when the query is whitespace-only", async () => {

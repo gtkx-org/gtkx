@@ -181,6 +181,10 @@ export const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
         return (widget as Gtk.ListBoxRow).isSelected();
     }
 
+    if (role === Gtk.AccessibleRole.LIST_ITEM && widget instanceof Gtk.ListBoxRow) {
+        return widget.isSelected();
+    }
+
     return null;
 };
 

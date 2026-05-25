@@ -66,7 +66,7 @@ function attachWidgetClones(view: Gtk.TextView, anchors: Gtk.TextChildAnchor[], 
     if (anchors[0]) {
         const btn = new Gtk.Button();
         btn.setLabel("Click Me");
-        if (onClickMe) btn.connect("clicked", onClickMe);
+        if (onClickMe) btn.on("clicked", onClickMe);
         view.addChildAtAnchor(btn, anchors[0]);
     }
 
@@ -131,7 +131,7 @@ function handleEasterEgg(sourceView: Gtk.TextView, windowRef: RefObject<Gtk.Wind
         win.setModal(true);
     }
 
-    win.connect("close-request", () => {
+    win.on("close-request", () => {
         windowRef.current = null;
         return false;
     });

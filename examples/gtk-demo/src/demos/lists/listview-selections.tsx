@@ -1,6 +1,5 @@
 import { readdirSync, statSync } from "node:fs";
 import * as Gdk from "@gtkx/ffi/gdk";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import * as PangoCairo from "@gtkx/ffi/pangocairo";
@@ -253,12 +252,13 @@ const useSuggestionPopover = (refs: SuggestionRefs, accept: () => boolean) => {
         const { popover, listBox } = buildSuggestionPopover(entry);
         refs.popoverRef.current = popover;
         refs.listBoxRef.current = listBox;
-        const rowActivatedId = listBox.connect("row-activated", (_lb: Gtk.ListBox, row: Gtk.ListBoxRow) => {
+        const onRowActivated = (_lb: Gtk.ListBox, row: Gtk.ListBoxRow) => {
             refs.selectedRef.current = row.getIndex();
             accept();
-        });
+        };
+        listBox.on("row-activated", onRowActivated);
         return () => {
-            GObject.signalHandlerDisconnect(listBox, rowActivatedId);
+            listBox.off("row-activated", onRowActivated);
             popover.unparent();
             refs.popoverRef.current = null;
             refs.listBoxRef.current = null;

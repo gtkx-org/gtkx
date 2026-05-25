@@ -68,7 +68,7 @@ interface DragControllerArgs {
 
 const attachDragController = ({ container, layoutRef, guideRef, constraintRef }: DragControllerArgs) => {
     const drag = new Gtk.GestureDrag();
-    drag.connect("drag-update", (_gesture: Gtk.GestureDrag, offsetX: number, _offsetY: number) => {
+    drag.on("drag-update", (_gesture: Gtk.GestureDrag, offsetX: number, _offsetY: number) => {
         if (!layoutRef.current || !guideRef.current) return;
         const [success, startX] = drag.getStartPoint();
         if (!success) return;

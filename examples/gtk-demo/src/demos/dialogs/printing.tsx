@@ -103,14 +103,14 @@ export const configurePrintOperation = (source: string): Gtk.PrintOperation => {
     let linesPerPage = 0;
     let numPages = 0;
 
-    printOp.connect("begin-print", (context: Gtk.PrintContext) => {
+    printOp.on("begin-print", (context: Gtk.PrintContext) => {
         const height = context.getHeight() - HEADER_HEIGHT - HEADER_GAP;
         linesPerPage = Math.floor(height / FONT_SIZE);
         numPages = Math.ceil(numLines / linesPerPage);
         printOp.setNPages(numPages);
     });
 
-    printOp.connect("draw-page", (context: Gtk.PrintContext, pageNr: number) => {
+    printOp.on("draw-page", (context: Gtk.PrintContext, pageNr: number) => {
         const cr = context.getCairoContext();
         const width = context.getWidth();
         drawPageHeader({ cr, width, context, pageNr, numPages });
@@ -122,7 +122,7 @@ export const configurePrintOperation = (source: string): Gtk.PrintOperation => {
 
 const runPrintOperation = (window: Gtk.Window | null, source: string, onDone: () => void) => {
     const printOp = configurePrintOperation(source);
-    printOp.connect("done", () => onDone());
+    printOp.on("done", () => onDone());
     try {
         printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, window);
     } catch (error) {

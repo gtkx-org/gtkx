@@ -1,7 +1,6 @@
 import { homedir } from "node:os";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/ffi/gio";
-import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     GtkBox,
@@ -106,13 +105,13 @@ function useDirectoryFiles(currentPath: string) {
             setFiles(sortFileItems(collectDirectoryItems(dirList)));
         };
 
-        const loadingId = dirList.connect("notify::loading", refresh);
-        const itemsId = dirList.connect("items-changed", refresh);
+        dirList.on("notify::loading", refresh);
+        dirList.on("items-changed", refresh);
         refresh();
 
         return () => {
-            GObject.signalHandlerDisconnect(dirList, loadingId);
-            GObject.signalHandlerDisconnect(dirList, itemsId);
+            dirList.off("notify::loading", refresh);
+            dirList.off("items-changed", refresh);
         };
     }, [currentPath]);
 

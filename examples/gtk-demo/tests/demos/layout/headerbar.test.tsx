@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen, within } from "@gtkx/testing";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { headerbarDemo } from "../../../src/demos/layout/headerbar.js";
 import { renderDemo } from "../../test-utils.js";
@@ -57,5 +57,20 @@ describe("headerbarDemo header content", () => {
     it("renders a GtkTextView in the window body", async () => {
         await renderDemo(headerbarDemo);
         expect(await screen.findByName("text-view")).toBeInstanceOf(Gtk.TextView);
+    });
+});
+
+describe("headerbarDemo interactions", () => {
+    it("toggles the header-bar switch on activation", async () => {
+        await renderDemo(headerbarDemo);
+        const switchEl = (await screen.findByRole(Gtk.AccessibleRole.SWITCH, {
+            name: "Change something",
+            checked: false,
+        })) as Gtk.Switch;
+
+        await userEvent.click(switchEl);
+
+        await waitFor(() => expect(switchEl.getActive()).toBe(true));
+        await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something", checked: true });
     });
 });

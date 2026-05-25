@@ -447,9 +447,9 @@ function useColorsProgress(baseStore: Gio.ListStore, colorLimit: ColorLimit): Co
             );
         };
         update();
-        const handlerId = baseStore.connect("items-changed", update);
+        baseStore.on("items-changed", update);
         return () => {
-            GObject.signalHandlerDisconnect(baseStore, handlerId);
+            baseStore.off("items-changed", update);
         };
     }, [baseStore, colorLimit]);
 
@@ -473,10 +473,10 @@ function useSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
 
     useEffect(() => {
         const update = () => setSelectedColors(collectSelectedColors(selection));
-        const handlerId = selection.connect("selection-changed", update);
+        selection.on("selection-changed", update);
         update();
         return () => {
-            selection.disconnect(handlerId);
+            selection.off("selection-changed", update);
         };
     }, [selection]);
 

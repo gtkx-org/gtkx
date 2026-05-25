@@ -328,8 +328,7 @@ describe("clipboardDemo paste content rendering", () => {
         const label = (await screen.findByName("paste-type-label")) as Gtk.Label;
         await waitFor(() => expect(label.getLabel()).toBe("Color"));
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-        window.setVisible(true);
-        await act(() => {});
+        await act(() => window.setVisible(true));
         await screenshot(window);
         expect(label.getLabel()).toBe("Color");
     });

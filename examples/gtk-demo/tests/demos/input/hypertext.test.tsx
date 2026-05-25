@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { hypertextDemo } from "../../../src/demos/input/hypertext.js";
 import { renderDemo } from "../../test-utils.js";
@@ -48,7 +48,7 @@ describe("hypertextDemo link navigation", () => {
         const buffer = textView.getBuffer();
         const tagsOffset = readBufferText(textView).indexOf("tags");
         expect(tagsOffset).toBeGreaterThan(0);
-        buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
+        await act(() => buffer.placeCursor(buffer.getIterAtOffset(tagsOffset)));
         await userEvent.keyboard(textView, "{Enter}");
         await waitFor(() => {
             expect(readBufferText(textView)).toContain("attribute that can be applied to some range of text");
@@ -61,7 +61,7 @@ describe("hypertextDemo link navigation", () => {
         const buffer = textView.getBuffer();
         const linkOffset = readBufferText(textView).indexOf("hypertext");
         expect(linkOffset).toBeGreaterThan(0);
-        buffer.placeCursor(buffer.getIterAtOffset(linkOffset));
+        await act(() => buffer.placeCursor(buffer.getIterAtOffset(linkOffset)));
         await userEvent.keyboard(textView, "{Enter}");
         await waitFor(() => {
             expect(readBufferText(textView)).toContain("Machine-readable text that is not sequential");
@@ -75,7 +75,7 @@ describe("hypertextDemo round trip", () => {
         const textView = await findTextView();
         const buffer = textView.getBuffer();
         const tagsOffset = readBufferText(textView).indexOf("tags");
-        buffer.placeCursor(buffer.getIterAtOffset(tagsOffset));
+        await act(() => buffer.placeCursor(buffer.getIterAtOffset(tagsOffset)));
         await userEvent.keyboard(textView, "{Enter}");
         const pageTwo = await waitFor(() => {
             const text = readBufferText(textView);
@@ -85,7 +85,7 @@ describe("hypertextDemo round trip", () => {
         const backOffset = pageTwo.indexOf("Go back");
         expect(backOffset).toBeGreaterThanOrEqual(0);
         const bufferAfter = textView.getBuffer();
-        bufferAfter.placeCursor(bufferAfter.getIterAtOffset(backOffset + 1));
+        await act(() => bufferAfter.placeCursor(bufferAfter.getIterAtOffset(backOffset + 1)));
         await userEvent.keyboard(textView, "{Enter}");
         await waitFor(() => {
             const finalText = readBufferText(textView);
@@ -109,7 +109,7 @@ describe("hypertextDemo input edge cases", () => {
         await renderDemo(hypertextDemo);
         const textView = await findTextView();
         const buffer = textView.getBuffer();
-        buffer.placeCursor(buffer.getStartIter());
+        await act(() => buffer.placeCursor(buffer.getStartIter()));
         const beforeText = readBufferText(textView);
         await userEvent.keyboard(textView, "{Enter}");
         expect(readBufferText(textView)).toBe(beforeText);

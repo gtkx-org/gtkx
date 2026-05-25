@@ -1,6 +1,5 @@
-import { GtkApplicationWindow } from "@gtkx/react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 import { act, renderHook } from "../src/index.js";
 
@@ -108,27 +107,29 @@ describe("renderHook unmount", () => {
 });
 
 describe("renderHook wrapper option", () => {
-    it("does not wrap by default (wrapper: false)", async () => {
+    it("hosts the hook in a default GtkApplicationWindow with no options", async () => {
         const { result } = await renderHook(() => useState("test"));
         expect(result.current[0]).toBe("test");
     });
 
-    it("wraps in GtkApplicationWindow when wrapper is true", async () => {
+    it("hosts the hook in a default GtkApplicationWindow when wrapper is true", async () => {
         const { result } = await renderHook(() => useState("wrapped"), { wrapper: true });
         expect(result.current[0]).toBe("wrapped");
     });
 
-    it("uses custom wrapper component", async () => {
+    it("composes a user wrapper inside the default host so it can supply context", async () => {
+        const Ctx = createContext<string>("default");
         let wrapperRendered = false;
 
-        const CustomWrapper = ({ children }: { children: ReactNode }) => {
+        const ContextWrapper = ({ children }: { children: ReactNode }) => {
             wrapperRendered = true;
-            return <GtkApplicationWindow>{children}</GtkApplicationWindow>;
+            return <Ctx.Provider value="from-wrapper">{children}</Ctx.Provider>;
         };
 
-        await renderHook(() => useState(0), { wrapper: CustomWrapper });
+        const { result } = await renderHook(() => useContext(Ctx), { wrapper: ContextWrapper });
 
         expect(wrapperRendered).toBe(true);
+        expect(result.current).toBe("from-wrapper");
     });
 });
 

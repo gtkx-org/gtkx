@@ -1,6 +1,24 @@
+import { GtkApplicationWindow } from "@gtkx/react";
 import { useRef } from "react";
 import { render } from "./render.js";
-import type { RenderHookOptions, RenderHookResult } from "./types.js";
+import type { RenderHookOptions, RenderHookResult, WrapperComponent } from "./types.js";
+
+const composeWithDefaultHost = (userWrapper: boolean | WrapperComponent | undefined): WrapperComponent | false => {
+    if (userWrapper === false) return false;
+    if (userWrapper === true || userWrapper === undefined) {
+        return ({ children }) => (
+            <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>
+                {children}
+            </GtkApplicationWindow>
+        );
+    }
+    const InnerWrapper = userWrapper;
+    return ({ children }) => (
+        <GtkApplicationWindow defaultWidth={800} defaultHeight={600}>
+            <InnerWrapper>{children}</InnerWrapper>
+        </GtkApplicationWindow>
+    );
+};
 
 /**
  * Renders a React hook for testing.
@@ -10,6 +28,11 @@ import type { RenderHookOptions, RenderHookResult } from "./types.js";
  *
  * When the hook callback takes props, `initialProps` is required at the
  * type level. When it takes none, `options` may be omitted entirely.
+ *
+ * A host `GtkApplicationWindow` is always provided so the hook tree has a
+ * widget root. A custom `wrapper` is composed *inside* the host, which lets
+ * tests pass pure context-provider wrappers without having to provide their
+ * own window.
  *
  * @param callback - Function that calls the hook and returns its result
  * @param options - Render options including initialProps and wrapper
@@ -42,6 +65,18 @@ import type { RenderHookOptions, RenderHookResult } from "./types.js";
  *   expect(result.current).toBe(3);
  * });
  * ```
+ *
+ * @example
+ * ```tsx
+ * const Wrapper = ({ children }) => (
+ *   <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+ * );
+ *
+ * test("hook with context", async () => {
+ *   const { result } = await renderHook(() => useTheme(), { wrapper: Wrapper });
+ *   expect(result.current).toBe("dark");
+ * });
+ * ```
  */
 export function renderHook<Result>(
     callback: () => Result,
@@ -55,7 +90,7 @@ export async function renderHook<Result, Props>(
     callback: (props: Props) => Result,
     options?: RenderHookOptions<Props>,
 ): Promise<RenderHookResult<Result, Props>> {
-    const wrapper = options?.wrapper ?? true;
+    const composedWrapper = composeWithDefaultHost(options?.wrapper);
     const initialProps = (options as { initialProps?: Props } | undefined)?.initialProps as Props;
     const resultRef: { current: Result | undefined } = { current: undefined };
     let currentProps: Props = initialProps;
@@ -67,7 +102,7 @@ export async function renderHook<Result, Props>(
         return null;
     };
 
-    const renderResult = await render(<TestComponent props={currentProps} />, { wrapper });
+    const renderResult = await render(<TestComponent props={currentProps} />, { wrapper: composedWrapper });
 
     return {
         result: resultRef as { current: Result },

@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen } from "@gtkx/testing";
+import { act, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { sidebarDemo } from "../../../src/demos/navigation/sidebar.js";
 import { renderDemo } from "../../test-utils.js";
@@ -64,5 +64,33 @@ describe("sidebarDemo structure", () => {
         const scrolling = stack.getChildByName("Scrolling");
         expect(scrolling).toBeInstanceOf(Gtk.Label);
         expect((scrolling as Gtk.Label).getLabel()).toBe("Scrolling");
+    });
+});
+
+describe("sidebarDemo navigation", () => {
+    it("switches the stack to the page whose sidebar row is activated", async () => {
+        await renderDemo(sidebarDemo);
+        const stack = await findStack();
+        expect(stack.getVisibleChildName()).toBe("Welcome to GTK");
+
+        const sidebar = await findSidebar();
+        const scrollingRow = within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Scrolling" });
+        await userEvent.click(scrollingRow);
+
+        await waitFor(() => expect(stack.getVisibleChildName()).toBe("Scrolling"));
+    });
+
+    it("reflects programmatic stack changes back through the sidebar row selection", async () => {
+        await renderDemo(sidebarDemo);
+        const stack = await findStack();
+        const sidebar = await findSidebar();
+
+        await act(() => stack.setVisibleChildName("Page 7"));
+        await waitFor(() => expect(stack.getVisibleChildName()).toBe("Page 7"));
+
+        await waitFor(() => {
+            const row = within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Page 7", selected: true });
+            expect(row).toBeInstanceOf(Gtk.ListBoxRow);
+        });
     });
 });

@@ -143,9 +143,9 @@ function useClipboardChangedListener(setCanPaste: (canPaste: boolean) => void) {
         if (!clipboard) return;
         const update = () => setCanPaste(computeCanPaste(clipboard.getFormats()));
         update();
-        const handlerId = clipboard.connect("changed", update);
+        clipboard.on("changed", update);
         return () => {
-            GObject.signalHandlerDisconnect(clipboard, handlerId);
+            clipboard.off("changed", update);
         };
     }, [setCanPaste]);
 }

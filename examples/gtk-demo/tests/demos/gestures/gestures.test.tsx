@@ -22,8 +22,7 @@ const findControllersOfType = <T extends Gtk.EventController>(
 
 const paintWindow = async (): Promise<void> => {
     const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
-    window.setVisible(true);
-    await act(() => {});
+    await act(() => window.setVisible(true));
     await screenshot(window);
 };
 
