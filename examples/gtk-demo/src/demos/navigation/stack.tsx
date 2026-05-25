@@ -2,8 +2,8 @@ import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkCheckButton, GtkImage, GtkSpinner, GtkStack, GtkStackSwitcher } from "@gtkx/react";
 import { useMemo, useState } from "react";
+import demoIconPath from "../../icons/org.gtk.Demo4.svg";
 import type { Demo } from "../types.js";
-import demoIconPath from "./org.gtk.Demo4.svg";
 import sourceCode from "./stack.tsx?raw";
 
 /**

@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { fireEvent, screen, within } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { fireEvent, screen, waitFor, within } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { listviewApplauncherDemo } from "../../../src/demos/lists/listview-applauncher.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -45,10 +45,31 @@ describe("listviewApplauncherDemo rows", () => {
         expect((model as Gtk.SelectionModel).getNItems()).toBe(expectedCount);
     });
 
-    it("activates the launch handler when a row is activated", async () => {
-        await renderDemo(listviewApplauncherDemo);
-        const listView = (await screen.findByName("list-view")) as Gtk.ListView;
-        await fireEvent(listView, "activate", 0);
+    it("invokes Gio.AppInfo.launch when a row is activated", async () => {
+        const launchSpy = vi.spyOn(Gio.AppInfo.prototype, "launch").mockReturnValue(true);
+        try {
+            await renderDemo(listviewApplauncherDemo);
+            const listView = (await screen.findByName("list-view")) as Gtk.ListView;
+            await fireEvent(listView, "activate", 0);
+            await waitFor(() => expect(launchSpy).toHaveBeenCalled());
+        } finally {
+            launchSpy.mockRestore();
+        }
+    });
+
+    it("presents an alert dialog when launching the selected app throws", async () => {
+        const launchSpy = vi.spyOn(Gio.AppInfo.prototype, "launch").mockImplementation(() => {
+            throw new Error("denied by policy");
+        });
+        try {
+            await renderDemo(listviewApplauncherDemo);
+            const listView = (await screen.findByName("list-view")) as Gtk.ListView;
+            await fireEvent(listView, "activate", 0);
+            await waitFor(() => expect(launchSpy).toHaveBeenCalled());
+            await screen.findByText("denied by policy");
+        } finally {
+            launchSpy.mockRestore();
+        }
     });
 
     it("renders icon and label widgets through the list view factory", async () => {

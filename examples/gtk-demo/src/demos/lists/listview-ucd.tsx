@@ -545,7 +545,13 @@ const ListViewUcdDemo = () => {
                     <UcdCombiningClassColumn />
                 </GtkColumnView>
             </GtkScrolledWindow>
-            <GtkLabel label={selectedChar} cssClasses={[css`font-size: 80px;`]} hexpand widthChars={2} />
+            <GtkLabel
+                name="selected-char"
+                label={selectedChar}
+                cssClasses={[css`font-size: 80px;`]}
+                hexpand
+                widthChars={2}
+            />
         </GtkBox>
     );
 };

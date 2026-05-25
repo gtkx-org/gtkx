@@ -866,6 +866,33 @@ interface StackProps {
     page?: string | null;
 }
 
+/**
+ * Props for the `<GtkSizeGroup>` declarative wrapper.
+ *
+ * Groups widgets so they request the same amount of space. The wrapper is
+ * transparent in the GTK tree: its children render as if they were direct
+ * children of its parent. Widgets opt into the group by being wrapped in
+ * `<GtkSizeGroup.Widget>` anywhere within the subtree.
+ */
+export type GtkSizeGroupProps = {
+    /** Dimensions along which grouped widgets request the same size */
+    mode?: Gtk.SizeGroupMode;
+    /** Subtree containing widgets to group (must include `<GtkSizeGroup.Widget>` markers) */
+    children?: ReactNode;
+};
+
+/**
+ * Props for the `<GtkSizeGroup.Widget>` per-widget marker.
+ *
+ * Wraps exactly one widget and registers it with the nearest ancestor
+ * `<GtkSizeGroup>`. The marker itself is invisible in the GTK tree; the
+ * wrapped widget attaches to the marker's grandparent.
+ */
+export type SizeGroupWidgetProps = {
+    /** Single widget to add to the enclosing size group */
+    children: ReactNode;
+};
+
 declare global {
     namespace React {
         namespace JSX {
@@ -883,6 +910,7 @@ declare global {
                 NotebookPage: NotebookPageProps;
                 NotebookPageTab: NotebookPageTabProps;
                 OverlayChild: OverlayChildProps;
+                SizeGroupWidget: SizeGroupWidgetProps;
                 TextAnchor: TextAnchorProps;
                 TextPaintable: TextPaintableProps;
                 TextTag: TextTagProps;
@@ -1108,6 +1136,7 @@ declare module "./generated/jsx.js" {
 }
 
 export { AdwComboRow, GtkColumnView, GtkDropDown, GtkGridView, GtkListView } from "./components/list.js";
+export { GtkSizeGroup } from "./components/size-group.js";
 export * from "./generated/compounds.js";
 
 /** JSX intrinsic element name for timed (duration-based) Adwaita animations. */

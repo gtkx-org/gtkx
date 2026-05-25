@@ -173,14 +173,16 @@ describe("fontFeaturesDemo size entry", () => {
         expect(sizeEntry.getText()).toBe("24");
     });
 
-    it("ignores out-of-range size values", async () => {
+    it("ignores out-of-range size values without crashing the preview", async () => {
         await renderDemo(fontFeaturesDemo);
         const sizeEntry = (await screen.findByName("size_entry")) as Gtk.Entry;
+        const previousText = sizeEntry.getText();
         await userEvent.clear(sizeEntry);
         await userEvent.type(sizeEntry, "9999");
         await fireEvent(sizeEntry, "activate");
-        const settings = (await screen.findByName("settings")) as Gtk.Label;
-        expect(settings.getLabel()).toBeDefined();
+        const preview = (await screen.findByName("preview-label")) as Gtk.Label;
+        expect(preview.getLabel().length).toBeGreaterThan(0);
+        expect(sizeEntry.getText()).not.toBe(previousText);
     });
 });
 
@@ -216,11 +218,11 @@ describe("fontFeaturesDemo line-height entry", () => {
 });
 
 describe("fontFeaturesDemo color swap", () => {
-    it("renders a swap-colors button that flips fg/bg colors", async () => {
+    it("renders a swap-colors button with the swap tooltip", async () => {
         await renderDemo(fontFeaturesDemo);
         const swap = (await screen.findByName("swap-colors")) as Gtk.Button;
         expect(swap.getTooltipText()).toBe("Swap colors");
+        expect(swap.getIconName()).toBe("object-flip-vertical-symbolic");
         await userEvent.click(swap);
-        expect(swap).toBeInstanceOf(Gtk.Button);
     });
 });

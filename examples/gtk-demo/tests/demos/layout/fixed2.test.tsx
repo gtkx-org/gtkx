@@ -56,56 +56,13 @@ describe("fixed2Demo configuration", () => {
 });
 
 describe("fixed2Demo animation tick", () => {
-    it("installs a tick callback on the GtkFixed", async () => {
-        await renderDemo(fixed2Demo);
-        const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
-        const newCallbackId = fixed.addTickCallback(() => false);
-        expect(newCallbackId).toBeGreaterThan(1);
-        fixed.removeTickCallback(newCallbackId);
-    });
-
-    it("removes the demo's tick callback when the component unmounts", async () => {
-        const result = await renderDemo(fixed2Demo);
-        const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
-        expect(fixed).toBeInstanceOf(Gtk.Fixed);
-        await result.unmount();
-    });
-
-    it("renders the label so it can be queried after mount", async () => {
-        await renderDemo(fixed2Demo);
-        const label = (await screen.findByName("fixed-label")) as Gtk.Label;
-        expect(label.getLabel()).toBe("All fixed?");
-    });
-});
-
-describe("fixed2Demo allocation", () => {
-    it("does not throw when the fixed container is asked to allocate space", async () => {
-        await renderDemo(fixed2Demo);
-        const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
-        await act(() => {
-            fixed.queueAllocate();
-            fixed.queueResize();
-        });
-        expect(fixed.getOverflow()).toBe(Gtk.Overflow.VISIBLE);
-    });
-
-    it("reports a non-zero allocated width once mapped within the scrolled window", async () => {
-        await renderDemo(fixed2Demo);
-        const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
-        expect(fixed.getAllocatedWidth()).toBeGreaterThanOrEqual(0);
-        expect(fixed.getAllocatedHeight()).toBeGreaterThanOrEqual(0);
-    });
-});
-
-describe("fixed2Demo animation frames", () => {
-    it("invokes the tick callback so it computes a non-undefined transform", async () => {
+    it("applies a non-null child transform to the label after the frame clock advances", async () => {
         await renderDemo(fixed2Demo);
         const fixed = (await screen.findByName("fixed")) as Gtk.Fixed;
         const label = (await screen.findByName("fixed-label")) as Gtk.Label;
-        expect(fixed).toBeInstanceOf(Gtk.Fixed);
-        expect(label).toBeInstanceOf(Gtk.Label);
         await act(async () => {
             await new Promise((r) => setTimeout(r, 250));
         });
+        expect(fixed.getChildTransform(label)).not.toBeNull();
     });
 });

@@ -158,9 +158,11 @@ describe("filteredTreeItems", () => {
     });
 
     it("matches against title", async () => {
-        const filtered = await captureFiltered([intro, button, expander], "button");
-        const category = filtered.find((item) => item.type === "category" && item.title === "Buttons");
-        expect(category).toBeDefined();
+        const filtered = await captureFiltered([intro, button, expander], "Expander");
+        const category = filtered.find((item) => item.type === "category" && item.title === "Buttons") as
+            | Extract<TreeItem, { type: "category" }>
+            | undefined;
+        expect(category?.children.map((c) => (c.type === "demo" ? c.demo.id : null))).toEqual(["expander"]);
     });
 
     it("matches against description", async () => {

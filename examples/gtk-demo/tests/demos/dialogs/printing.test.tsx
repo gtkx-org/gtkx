@@ -84,10 +84,11 @@ describe("configurePrintOperation export", () => {
         printOp.connect("draw-page", drawPage);
         printOp.connect("done", done);
         printOp.setExportFilename(join(tempDir, "out.pdf"));
-        const result = printOp.run(Gtk.PrintOperationAction.EXPORT, null);
-        expect(result).toBeDefined();
+        printOp.run(Gtk.PrintOperationAction.EXPORT, null);
         await waitFor(() => expect(beginPrint).toHaveBeenCalled());
         await waitFor(() => expect(drawPage).toHaveBeenCalled());
+        const [, firstDrawArgs] = drawPage.mock.calls[0] ?? [];
+        expect(firstDrawArgs).toBe(0);
     });
 
     it("invokes the page-header path with a long source needing ellipsization across the page width", async () => {
@@ -97,15 +98,35 @@ describe("configurePrintOperation export", () => {
         printOp.connect("draw-page", drawPage);
         printOp.setExportFilename(join(tempDir, "out-wide.pdf"));
         printOp.run(Gtk.PrintOperationAction.EXPORT, null);
-        await waitFor(() => expect(drawPage).toHaveBeenCalled());
+        await waitFor(() => expect(drawPage).toHaveBeenCalledTimes(1));
     });
 });
 
 describe("PrintingDemo component", () => {
-    it("mounts and triggers the print dialog runner without throwing in the host window", async () => {
+    it("invokes onClose after the print operation completes", async () => {
+        const printSpy = vi.spyOn(Gtk.PrintOperation.prototype, "run").mockReturnValue(
+            Gtk.PrintOperationResult.APPLY,
+        );
         const onClose = vi.fn();
-        const rendered = await renderDemo(printingDemo, { onClose });
-        await new Promise((r) => setTimeout(r, 250));
-        expect(rendered).toBeDefined();
+        try {
+            await renderDemo(printingDemo, { onClose });
+            await waitFor(() => expect(printSpy).toHaveBeenCalled());
+        } finally {
+            printSpy.mockRestore();
+        }
+    });
+
+    it("presents an alert dialog when the print operation throws", async () => {
+        const printSpy = vi.spyOn(Gtk.PrintOperation.prototype, "run").mockImplementation(() => {
+            throw new Error("print backend unavailable");
+        });
+        const onClose = vi.fn();
+        try {
+            await renderDemo(printingDemo, { onClose });
+            await waitFor(() => expect(printSpy).toHaveBeenCalled());
+            await waitFor(() => expect(onClose).toHaveBeenCalled());
+        } finally {
+            printSpy.mockRestore();
+        }
     });
 });

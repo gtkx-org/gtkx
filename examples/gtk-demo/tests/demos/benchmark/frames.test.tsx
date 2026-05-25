@@ -18,8 +18,7 @@ describe("framesDemo", () => {
         const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
         const titlebar = window.getTitlebar();
         expect(titlebar).toBeInstanceOf(Gtk.HeaderBar);
-        const fpsContainer = await screen.findByText(/^[0-9]+\.[0-9]{2} fps$/);
-        expect(fpsContainer).toBeDefined();
+        await screen.findByText(/^[0-9]+\.[0-9]{2} fps$/);
     });
 
     it("renders the snapshot color widget in the body", async () => {

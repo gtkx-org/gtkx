@@ -1,33 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { act, screen } from "@gtkx/testing";
+import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { shortcutTriggersDemo } from "../../../src/demos/gestures/shortcut-triggers.js";
 import { renderDemo } from "../../test-utils.js";
-
-const findShortcutController = (widget: Gtk.Widget): Gtk.ShortcutController => {
-    const controllers = widget.observeControllers();
-    for (let i = 0; i < controllers.getNItems(); i++) {
-        const controller = controllers.getItem(i);
-        if (controller instanceof Gtk.ShortcutController) return controller;
-    }
-    return Gtk.ShortcutController.new() as Gtk.ShortcutController;
-};
-
-const activateAllShortcuts = (controller: Gtk.ShortcutController, widget: Gtk.Widget): number => {
-    let activations = 0;
-    const count = controller.getNItems();
-    for (let i = 0; i < count; i++) {
-        const item = controller.getItem(i);
-        if (item instanceof Gtk.Shortcut) {
-            const action = item.getAction();
-            if (action) {
-                action.activate(0, widget, null);
-                activations += 1;
-            }
-        }
-    }
-    return activations;
-};
 
 describe("shortcutTriggersDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -76,10 +51,7 @@ describe("shortcutTriggersDemo activation handlers", () => {
         try {
             await renderDemo(shortcutTriggersDemo);
             const label = (await screen.findByName("label-ctrl-g")) as Gtk.Label;
-            const controller = findShortcutController(label);
-            await act(() => {
-                expect(activateAllShortcuts(controller, label)).toBe(1);
-            });
+            await userEvent.keyboard(label, "{Control>}g{/Control}");
             expect(logSpy).toHaveBeenCalledWith("activated Press Ctrl-G");
         } finally {
             logSpy.mockRestore();
@@ -91,10 +63,7 @@ describe("shortcutTriggersDemo activation handlers", () => {
         try {
             await renderDemo(shortcutTriggersDemo);
             const label = (await screen.findByName("label-x")) as Gtk.Label;
-            const controller = findShortcutController(label);
-            await act(() => {
-                expect(activateAllShortcuts(controller, label)).toBe(1);
-            });
+            await userEvent.keyboard(label, "x");
             expect(logSpy).toHaveBeenCalledWith("activated Press X");
         } finally {
             logSpy.mockRestore();

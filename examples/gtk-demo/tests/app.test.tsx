@@ -12,7 +12,7 @@ describe("App", () => {
 
     it("renders the Info notebook tab label", async () => {
         await render(<App />, { wrapper: false });
-        expect(await screen.findByText("Info")).toBeDefined();
+        await screen.findByText("Info");
     });
 
     it("starts with the Run button disabled because the intro demo has no component", async () => {

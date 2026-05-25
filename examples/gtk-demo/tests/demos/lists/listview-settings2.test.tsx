@@ -96,4 +96,14 @@ describe("listviewSettings2Demo search and editing", () => {
         await userEvent.click(toggle);
         await waitFor(() => expect(bar.getSearchMode()).toBe(false));
     });
+
+    it("does not blow the trampoline stack when typing invalid characters into a numeric schema-key entry", async () => {
+        await renderDemo(listviewSettings2Demo);
+        const entries = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
+        const entry = entries[0] as Gtk.Entry;
+        const initial = entry.getText();
+        await userEvent.clear(entry);
+        await userEvent.type(entry, "x");
+        expect(entry.getText()).toBe(initial);
+    });
 });

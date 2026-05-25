@@ -291,6 +291,18 @@ const KEY_MAP: Record<string, number> = {
     Control: Gdk.KEY_Control_L,
     Alt: Gdk.KEY_Alt_L,
     Meta: Gdk.KEY_Meta_L,
+    F1: Gdk.KEY_F1,
+    F2: Gdk.KEY_F2,
+    F3: Gdk.KEY_F3,
+    F4: Gdk.KEY_F4,
+    F5: Gdk.KEY_F5,
+    F6: Gdk.KEY_F6,
+    F7: Gdk.KEY_F7,
+    F8: Gdk.KEY_F8,
+    F9: Gdk.KEY_F9,
+    F10: Gdk.KEY_F10,
+    F11: Gdk.KEY_F11,
+    F12: Gdk.KEY_F12,
 };
 
 type KeyAction = { keyval: number; press: boolean };
@@ -368,6 +380,35 @@ const updateModifierState = (state: UserEventState, action: KeyAction): void => 
     }
 };
 
+const matchesTrigger = (trigger: Gtk.ShortcutTrigger | null, keyval: number, modifiers: number): boolean => {
+    if (trigger instanceof Gtk.KeyvalTrigger) {
+        return trigger.getKeyval() === keyval && trigger.getModifiers() === modifiers;
+    }
+    if (trigger instanceof Gtk.AlternativeTrigger) {
+        return matchesTrigger(trigger.getFirst(), keyval, modifiers) || matchesTrigger(trigger.getSecond(), keyval, modifiers);
+    }
+    return false;
+};
+
+const dispatchShortcuts = (element: Gtk.Widget, keyval: number, modifiers: number): boolean => {
+    for (let widget: Gtk.Widget | null = element; widget; widget = widget.getParent()) {
+        const controllers = widget.observeControllers();
+        for (let i = 0; i < controllers.getNItems(); i++) {
+            const controller = controllers.getItem(i);
+            if (!(controller instanceof Gtk.ShortcutController)) continue;
+            const count = controller.getNItems();
+            for (let j = 0; j < count; j++) {
+                const shortcut = controller.getItem(j);
+                if (!(shortcut instanceof Gtk.Shortcut)) continue;
+                if (!matchesTrigger(shortcut.getTrigger(), keyval, modifiers)) continue;
+                const action = shortcut.getAction();
+                if (action && action.activate(0, widget, null)) return true;
+            }
+        }
+    }
+    return false;
+};
+
 const applyKeyAction = async (
     element: Gtk.Widget,
     controller: Gtk.EventControllerKey,
@@ -377,8 +418,11 @@ const applyKeyAction = async (
     updateModifierState(state, action);
     const signalName = action.press ? "key-pressed" : "key-released";
     controller.emit(signalName, action.keyval, 0, state.modifierState);
-    if (action.press && action.keyval === Gdk.KEY_Return && isEditable(element) && !(element instanceof Gtk.TextView)) {
-        await fireEvent(element, "activate");
+    if (action.press) {
+        dispatchShortcuts(element, action.keyval, state.modifierState);
+        if (action.keyval === Gdk.KEY_Return && isEditable(element) && !(element instanceof Gtk.TextView)) {
+            await fireEvent(element, "activate");
+        }
     }
 };
 

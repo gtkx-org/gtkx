@@ -101,4 +101,23 @@ describe("dialogDemo interactive dialog", () => {
         expect(demoEntry1.getText()).toBe("");
         expect(demoEntry2.getText()).toBe("");
     });
+
+    it("commits the dialog entries to the demo entries when responding with 'ok'", async () => {
+        await renderDemo(dialogDemo);
+        const interactiveButton = (await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+            name: "_Interactive Dialog",
+        })) as Gtk.Button;
+        await userEvent.click(interactiveButton);
+        const dialogEntry1 = (await screen.findByName("dialog-entry-1")) as Gtk.Entry;
+        const dialogEntry2 = (await screen.findByName("dialog-entry-2")) as Gtk.Entry;
+        await userEvent.type(dialogEntry1, "alpha");
+        await userEvent.type(dialogEntry2, "beta");
+        const interactive = (await screen.findByName("interactive-dialog")) as Adw.AlertDialog;
+        await fireEvent(interactive, "response", "ok");
+        await waitFor(() => expect(screen.queryByName("interactive-dialog")).toBeNull());
+        const demoEntry1 = (await screen.findByName("demo-entry-1")) as Gtk.Entry;
+        const demoEntry2 = (await screen.findByName("demo-entry-2")) as Gtk.Entry;
+        expect(demoEntry1.getText()).toBe("alpha");
+        expect(demoEntry2.getText()).toBe("beta");
+    });
 });

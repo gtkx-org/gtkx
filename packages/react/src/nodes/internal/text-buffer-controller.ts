@@ -370,21 +370,16 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
     onChildTextChanged(child: TextSegmentNode, oldLength: number, _newLength: number): void {
         if (!this.buffer) return;
 
-        this.owner.signalStore.blockAll();
-        try {
-            const offset = child.getBufferOffset();
+        const offset = child.getBufferOffset();
 
-            this.deleteTextAtRange(offset, offset + oldLength);
-            this.insertTextAtOffset(child.getText(), offset);
+        this.deleteTextAtRange(offset, offset + oldLength);
+        this.insertTextAtOffset(child.getText(), offset);
 
-            const containingIndex = this.findDirectChildContaining(offset);
-            if (containingIndex !== -1) {
-                this.updateChildOffsets(containingIndex + 1);
-            }
-
-            this.reapplyTagsFromOffset(offset);
-        } finally {
-            this.owner.signalStore.unblockAll();
+        const containingIndex = this.findDirectChildContaining(offset);
+        if (containingIndex !== -1) {
+            this.updateChildOffsets(containingIndex + 1);
         }
+
+        this.reapplyTagsFromOffset(offset);
     }
 }

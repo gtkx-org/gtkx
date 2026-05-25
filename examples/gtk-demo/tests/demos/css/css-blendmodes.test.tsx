@@ -24,8 +24,7 @@ describe("cssBlendmodesDemo rendering", () => {
         for (const name of ["Normal", "Multiply", "Screen", "Color", "Hue", "Luminosity"]) {
             expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name })).toBeInstanceOf(Gtk.ListBoxRow);
         }
-        const blendModeLabel = await screen.findByText("Blend mode:");
-        expect(blendModeLabel).toBeDefined();
+        await screen.findByText("Blend mode:");
     });
 
     it("renders all sixteen blend mode rows in the listbox", async () => {

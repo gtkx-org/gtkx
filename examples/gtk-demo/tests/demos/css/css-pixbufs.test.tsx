@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen } from "@gtkx/testing";
+import { act, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssPixbufsDemo } from "../../../src/demos/css/css-pixbufs.js";
 import { renderDemo } from "../../test-utils.js";
@@ -47,7 +47,7 @@ describe("cssPixbufsDemo", () => {
         await renderDemo(cssPixbufsDemo);
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         const buffer = textView.getBuffer();
-        buffer.setText("window { background-color: cyan; }", -1);
+        await act(() => buffer.setText("window { background-color: cyan; }", -1));
         const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
         expect(text).toBe("window { background-color: cyan; }");
     });

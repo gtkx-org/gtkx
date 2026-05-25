@@ -1,0 +1,268 @@
+import * as Gtk from "@gtkx/ffi/gtk";
+import type { GtkSizeGroupProps, SizeGroupWidgetProps } from "../jsx.js";
+import type { Node } from "../node.js";
+import { scheduleAfterCommit } from "../post-commit-queue.js";
+import type { Container } from "../types.js";
+import { hasChanged } from "./internal/props.js";
+import { attachChild, unparentWidget } from "./internal/widget.js";
+import { VirtualNode } from "./virtual.js";
+import { WidgetNode } from "./widget.js";
+
+function findWidgetAncestor(node: Node | null): WidgetNode | null {
+    let current: Node | null = node;
+    while (current) {
+        if (current instanceof WidgetNode) return current;
+        current = current.parent;
+    }
+    return null;
+}
+
+abstract class TransparentVirtualNode<TProps, TChild extends Node> extends VirtualNode<TProps, Node, TChild> {
+    private readonly attachedWidgets = new Set<Gtk.Widget>();
+
+    public override isValidChild(child: Node): boolean {
+        return child instanceof WidgetNode;
+    }
+
+    public override isValidParent(_parent: Node): boolean {
+        return true;
+    }
+
+    public override appendChild(child: TChild): void {
+        super.appendChild(child);
+        if (this.parent) {
+            this.attachDescendant(child);
+        }
+    }
+
+    public override removeChild(child: TChild): void {
+        if (this.parent) {
+            this.detachDescendant(child);
+        }
+        super.removeChild(child);
+    }
+
+    public override insertBefore(child: TChild, before: TChild): void {
+        super.insertBefore(child, before);
+        if (this.parent) {
+            this.reattachAllDescendants();
+        }
+    }
+
+    public override setParent(parent: Node | null): void {
+        if (!parent && this.parent) {
+            for (const child of this.children) {
+                this.detachDescendant(child);
+            }
+        }
+        super.setParent(parent);
+        if (parent) {
+            for (const child of this.children) {
+                this.attachDescendant(child);
+            }
+        }
+    }
+
+    public override detachDeletedInstance(): void {
+        for (const widget of this.attachedWidgets) {
+            unparentWidget(widget);
+        }
+        this.attachedWidgets.clear();
+        super.detachDeletedInstance();
+    }
+
+    protected propagateAncestorChange(): void {
+        for (const child of this.children) {
+            this.attachDescendant(child);
+        }
+    }
+
+    private attachDescendant(child: Node): void {
+        if (child instanceof WidgetNode) {
+            const ancestor = findWidgetAncestor(this.parent);
+            if (!ancestor) return;
+            attachChild(child.container, ancestor.container);
+            this.attachedWidgets.add(child.container);
+            return;
+        }
+        if (child instanceof TransparentVirtualNode) {
+            child.propagateAncestorChange();
+        }
+    }
+
+    private detachDescendant(child: Node): void {
+        if (child instanceof WidgetNode) {
+            unparentWidget(child.container);
+            this.attachedWidgets.delete(child.container);
+            return;
+        }
+        if (child instanceof TransparentVirtualNode) {
+            child.detachAllWidgetDescendants();
+        }
+    }
+
+    protected detachAllWidgetDescendants(): void {
+        for (const child of this.children) {
+            this.detachDescendant(child);
+        }
+    }
+
+    private reattachAllDescendants(): void {
+        for (const child of this.children) {
+            this.detachDescendant(child);
+        }
+        for (const child of this.children) {
+            this.attachDescendant(child);
+        }
+    }
+}
+
+/**
+ * Reconciler node backing the `<GtkSizeGroup>` JSX intrinsic.
+ *
+ * Owns a `Gtk.SizeGroup` instance and acts as a transparent wrapper in the
+ * GTK tree: every widget descendant attaches to the nearest enclosing real
+ * widget ancestor, so the SizeGroup itself contributes no widget to the
+ * layout. Descendant {@link SizeGroupWidgetNode}s discover this node by
+ * walking up the React parent chain and call {@link addMember} /
+ * {@link removeMember} to opt their wrapped widget into the group.
+ *
+ * @public
+ */
+export class SizeGroupNode extends TransparentVirtualNode<GtkSizeGroupProps, WidgetNode> {
+    public readonly sizeGroup: Gtk.SizeGroup;
+    private readonly members = new Set<Gtk.Widget>();
+
+    constructor(typeName: string, props: GtkSizeGroupProps, container: undefined, rootContainer: Container) {
+        super(typeName, props, container, rootContainer);
+        this.sizeGroup = Gtk.SizeGroup.new(props.mode ?? Gtk.SizeGroupMode.HORIZONTAL);
+    }
+
+    public override isValidChild(child: Node): boolean {
+        return child instanceof WidgetNode || child instanceof SizeGroupWidgetNode;
+    }
+
+    public override commitUpdate(oldProps: GtkSizeGroupProps | null, newProps: GtkSizeGroupProps): void {
+        super.commitUpdate(oldProps, newProps);
+        if (oldProps && hasChanged(oldProps, newProps, "mode")) {
+            this.sizeGroup.setMode(newProps.mode ?? Gtk.SizeGroupMode.HORIZONTAL);
+        }
+    }
+
+    public override detachDeletedInstance(): void {
+        for (const widget of this.members) {
+            this.sizeGroup.removeWidget(widget);
+        }
+        this.members.clear();
+        super.detachDeletedInstance();
+    }
+
+    public addMember(widget: Gtk.Widget): void {
+        if (this.members.has(widget)) return;
+        this.members.add(widget);
+        this.sizeGroup.addWidget(widget);
+    }
+
+    public removeMember(widget: Gtk.Widget): void {
+        if (!this.members.delete(widget)) return;
+        this.sizeGroup.removeWidget(widget);
+    }
+}
+
+/**
+ * Reconciler node backing the `<GtkSizeGroup.Widget>` JSX intrinsic.
+ *
+ * Wraps a single widget child transparently (the widget attaches to the
+ * nearest enclosing real widget ancestor, not to the marker itself) and
+ * registers that widget with the nearest ancestor {@link SizeGroupNode} in
+ * the React parent chain. Because React commits leaves before their parents,
+ * the registration is deferred to {@link scheduleAfterCommit} so the full
+ * ancestor chain is wired by the time the lookup runs.
+ *
+ * @public
+ */
+export class SizeGroupWidgetNode extends TransparentVirtualNode<SizeGroupWidgetProps, WidgetNode> {
+    private registeredWidget: Gtk.Widget | null = null;
+    private registeredGroup: SizeGroupNode | null = null;
+    private syncScheduled = false;
+
+    public override isValidChild(child: Node): boolean {
+        return child instanceof WidgetNode && this.children.length === 0;
+    }
+
+    public override appendChild(child: WidgetNode): void {
+        super.appendChild(child);
+        this.scheduleSync();
+    }
+
+    public override removeChild(child: WidgetNode): void {
+        super.removeChild(child);
+        this.scheduleSync();
+    }
+
+    public override setParent(parent: Node | null): void {
+        if (!parent && this.registeredWidget) {
+            this.unregister();
+        }
+        super.setParent(parent);
+        if (parent) {
+            this.scheduleSync();
+        }
+    }
+
+    public override detachDeletedInstance(): void {
+        this.unregister();
+        super.detachDeletedInstance();
+    }
+
+    private scheduleSync(): void {
+        if (this.syncScheduled) return;
+        this.syncScheduled = true;
+        scheduleAfterCommit(() => {
+            this.syncScheduled = false;
+            this.syncRegistration();
+        });
+    }
+
+    private syncRegistration(): void {
+        const widget = this.children[0]?.container ?? null;
+        const shouldRegister = this.parent !== null && widget !== null;
+
+        if (!shouldRegister) {
+            this.unregister();
+            return;
+        }
+
+        if (this.registeredWidget === widget) return;
+
+        if (this.registeredWidget) {
+            this.unregister();
+        }
+
+        const group = this.findSizeGroupAncestor();
+        if (!group) {
+            throw new Error("GtkSizeGroup.Widget must be nested inside a GtkSizeGroup");
+        }
+
+        group.addMember(widget);
+        this.registeredWidget = widget;
+        this.registeredGroup = group;
+    }
+
+    private unregister(): void {
+        if (this.registeredGroup && this.registeredWidget) {
+            this.registeredGroup.removeMember(this.registeredWidget);
+        }
+        this.registeredWidget = null;
+        this.registeredGroup = null;
+    }
+
+    private findSizeGroupAncestor(): SizeGroupNode | null {
+        let current: Node | null = this.parent;
+        while (current) {
+            if (current instanceof SizeGroupNode) return current;
+            current = current.parent;
+        }
+        return null;
+    }
+}

@@ -24,7 +24,8 @@ describe("SourceViewer", () => {
                 <SourceViewer />
             </DemoProvider>,
         );
-        expect(await screen.findByText("No source")).toBeDefined();
+        await screen.findByText("No source");
+        expect(screen.queryByName("source-view")).toBeNull();
     });
 
     it("shows the 'No source' placeholder when the current demo has no sourceCode", async () => {
@@ -41,7 +42,8 @@ describe("SourceViewer", () => {
                 <SourceViewer />
             </DemoProvider>,
         );
-        expect(await screen.findByText("No source")).toBeDefined();
+        await screen.findByText("No source");
+        expect(screen.queryByName("source-view")).toBeNull();
     });
 
     it("renders a GtkSourceView and copies the sourceCode into its buffer", async () => {

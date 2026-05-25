@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen } from "@gtkx/testing";
+import { act, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssBasicsDemo } from "../../../src/demos/css/css-basics.js";
 import { renderDemo } from "../../test-utils.js";
@@ -45,17 +45,28 @@ describe("cssBasicsDemo behavior", () => {
         await renderDemo(cssBasicsDemo);
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         const buffer = textView.getBuffer();
-        buffer.setText("/* edited */\nwindow { color: red; }\n", -1);
+        await act(() => buffer.setText("/* edited */\nwindow { color: red; }\n", -1));
         const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
         expect(text).toBe("/* edited */\nwindow { color: red; }\n");
     });
 
-    it("loads invalid CSS without crashing the parsing-error handler", async () => {
+    it("marks invalid CSS by adding an error tag to the buffer", async () => {
         await renderDemo(cssBasicsDemo);
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         const buffer = textView.getBuffer();
-        buffer.setText("window { color: this-is-not-a-valid-color; }", -1);
-        const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
-        expect(text).toContain("this-is-not-a-valid-color");
+        await act(() => buffer.setText("window { color: this-is-not-a-valid-color; }", -1));
+        const errorTag = buffer.getTagTable().lookup("error");
+        expect(errorTag).toBeInstanceOf(Gtk.TextTag);
+        await waitFor(() => {
+            const iter = buffer.getStartIter();
+            let foundError = false;
+            do {
+                if (errorTag && iter.hasTag(errorTag)) {
+                    foundError = true;
+                    break;
+                }
+            } while (iter.forwardChar());
+            expect(foundError).toBe(true);
+        });
     });
 });

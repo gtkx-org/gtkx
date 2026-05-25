@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkScrolledWindow, GtkTextView } from "@gtkx/react";
-import { render } from "@gtkx/testing";
+import { act, render } from "@gtkx/testing";
 import { useEffect } from "react";
 import { describe, expect, it } from "vitest";
 import { useCssEditor } from "../../../src/demos/css/use-css-editor.js";
@@ -59,7 +59,7 @@ describe("useCssEditor lifecycle", () => {
         expect(textView).not.toBeNull();
         if (!textView) return;
         const buffer = textView.getBuffer();
-        buffer.setText("window { color: not-a-real-value; }", -1);
+        await act(() => buffer.setText("window { color: not-a-real-value; }", -1));
         const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
         expect(text).toBe("window { color: not-a-real-value; }");
         const tagTable = buffer.getTagTable();

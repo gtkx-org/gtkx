@@ -73,7 +73,12 @@ export class SignalStore {
             if (this.blockDepth > 0 && blockable && !LIFECYCLE_SIGNALS.has(signal)) {
                 return;
             }
-            return handler(...args, obj);
+            this.blockAll();
+            try {
+                return handler(...args, obj);
+            } finally {
+                this.unblockAll();
+            }
         };
     }
 

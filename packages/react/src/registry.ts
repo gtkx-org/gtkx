@@ -28,6 +28,7 @@ import { ScaleNode } from "./nodes/scale.js";
 import { ScrolledWindowNode } from "./nodes/scrolled-window.js";
 import { SearchBarNode } from "./nodes/search-bar.js";
 import { ShortcutNode } from "./nodes/shortcut.js";
+import { SizeGroupNode, SizeGroupWidgetNode } from "./nodes/size-group.js";
 import { SlotNode } from "./nodes/slot.js";
 import { SourceViewNode } from "./nodes/source-view.js";
 import { SpinRowNode } from "./nodes/spin-row.js";
@@ -85,6 +86,7 @@ export const NODE_REGISTRY: ReadonlyMap<string, NodeClass> = new Map<string, Nod
     ["NotebookPageTab", NotebookPageTabNode],
     ["OverlayChild", OverlayChildNode],
     ["Shortcut", ShortcutNode],
+    ["SizeGroupWidget", SizeGroupWidgetNode],
     ["Slot", SlotNode],
     ["StackPage", StackPageNode],
     ["TextAnchor", TextAnchorNode],
@@ -102,6 +104,7 @@ export const NODE_REGISTRY: ReadonlyMap<string, NodeClass> = new Map<string, Nod
     ["AdwSpinRow", SpinRowNode],
     ["AdwSwitchRow", SwitchRowNode],
     ["GtkScale", ScaleNode],
+    ["GtkSizeGroup", SizeGroupNode],
     ["GtkLevelBar", LevelBarNode],
     ["GtkScrolledWindow", ScrolledWindowNode],
     ["GtkCalendar", CalendarNode],

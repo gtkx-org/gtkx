@@ -12,6 +12,7 @@ import { MenuChildController } from "./internal/menu-child.js";
 import { MenuNode } from "./menu.js";
 import { MenuModel } from "./models/menu.js";
 import { NavigationPageNode } from "./navigation-page.js";
+import { SizeGroupNode } from "./size-group.js";
 import { SlotNode } from "./slot.js";
 import { WidgetNode } from "./widget.js";
 
@@ -30,6 +31,7 @@ type WindowChild =
     | AnimationNode
     | NavigationPageNode
     | EventControllerNode
+    | SizeGroupNode
     | WidgetNode;
 
 export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild> {
@@ -88,7 +90,8 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
             child instanceof AnimationNode ||
             child instanceof NavigationPageNode ||
             child instanceof EventControllerNode ||
-            child instanceof ContainerSlotNode
+            child instanceof ContainerSlotNode ||
+            child instanceof SizeGroupNode
         );
     }
 

@@ -1,4 +1,6 @@
+import * as path from "node:path";
 import * as Adw from "@gtkx/ffi/adw";
+import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
 import {
     AdwAboutDialog,
@@ -18,12 +20,27 @@ import {
     useApplication,
     useProperty,
 } from "@gtkx/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
+import logoPath from "./icons/org.gtk.Demo4.svg";
 import { useLatest } from "./use-latest.js";
+
+const applicationIconName = path.basename(logoPath, path.extname(logoPath));
+const iconSearchPath = path.dirname(logoPath);
+let iconSearchPathRegistered = false;
+
+const useApplicationIcon = (): void => {
+    useEffect(() => {
+        if (iconSearchPathRegistered) return;
+        const display = Gdk.Display.getDefault();
+        if (!display) return;
+        Gtk.IconTheme.getForDisplay(display).addSearchPath(iconSearchPath);
+        iconSearchPathRegistered = true;
+    }, []);
+};
 
 const InfoTab = () => {
     const { currentDemo } = useDemo();
@@ -248,7 +265,7 @@ const AboutDialog = ({ activeWindow, onClose }: AboutDialogProps) =>
     createPortal(
         <AdwAboutDialog
             applicationName="GTK Demo"
-            applicationIcon="application-x-executable"
+            applicationIcon={applicationIconName}
             version="0.14.0"
             copyright="© 2026 The GTKX Team"
             website="https://gtkx.dev"
@@ -364,8 +381,12 @@ const MainWindow = () => {
     );
 };
 
-export const App = () => (
-    <DemoProvider demos={demos}>
-        <MainWindow />
-    </DemoProvider>
-);
+export const App = () => {
+    useApplicationIcon();
+
+    return (
+        <DemoProvider demos={demos}>
+            <MainWindow />
+        </DemoProvider>
+    );
+};

@@ -1,78 +1,61 @@
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkApplicationWindow, GtkLabel } from "@gtkx/react";
-import { render } from "@gtkx/testing";
-import { createRef } from "react";
-import { describe, expect, it } from "vitest";
+import { waitFor } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { pageSetupDemo } from "../../../src/demos/dialogs/pagesetup.js";
-
-const PageSetupComponent = pageSetupDemo.component as NonNullable<typeof pageSetupDemo.component>;
+import { renderDemo } from "../../test-utils.js";
 
 describe("pageSetupDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(pageSetupDemo.id).toBe("pagesetup");
         expect(pageSetupDemo.title).toBe("Printing/Page Setup");
         expect(pageSetupDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(pageSetupDemo.keywords)).toBe(true);
+        expect(pageSetupDemo.keywords).toContain("GtkPageSetup");
         expect(typeof pageSetupDemo.sourceCode).toBe("string");
         expect(pageSetupDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(pageSetupDemo.keywords).toContain("GtkPageSetup");
         expect(pageSetupDemo.component).toBeTypeOf("function");
         expect(pageSetupDemo.dialogOnly).toBe(true);
     });
-
-    it("provides the source code referencing PrintDialog and the setup method", () => {
-        const source = pageSetupDemo.sourceCode ?? "";
-        expect(source).toContain("PrintDialog");
-        expect(source).toContain("setup");
-    });
 });
 
-describe("pageSetupDemo cancellable behavior", () => {
-    it("creates a pre-cancelled Gio.Cancellable that mirrors the unmount cleanup signal", () => {
-        const cancellable = new Gio.Cancellable();
-        expect(cancellable.isCancelled()).toBe(false);
-        cancellable.cancel();
-        expect(cancellable.isCancelled()).toBe(true);
+describe("pageSetupDemo component lifecycle", () => {
+    it("invokes the demo's print dialog and runs onClose when the dialog resolves", async () => {
+        const setupSpy = vi.spyOn(Gtk.PrintDialog.prototype, "setup");
+        setupSpy.mockResolvedValue(new Gtk.PageSetup() as unknown as Gtk.PrintSetup);
+        const onClose = vi.fn();
+        try {
+            await renderDemo(pageSetupDemo, { onClose });
+            await waitFor(() => expect(setupSpy).toHaveBeenCalled());
+            await waitFor(() => expect(onClose).toHaveBeenCalled());
+        } finally {
+            setupSpy.mockRestore();
+        }
     });
 
-    it("can construct a PrintDialog matching the dialog the demo instantiates", () => {
-        const dialog = Gtk.PrintDialog.new();
-        dialog.setTitle("Page Setup");
-        expect(dialog).toBeInstanceOf(Gtk.PrintDialog);
-        expect(dialog.getTitle()).toBe("Page Setup");
-    });
-});
-
-describe("PageSetupDemo component", () => {
-    it("is registered as a function component", () => {
-        expect(pageSetupDemo.component).toBeTypeOf("function");
-    });
-
-    it("renders null and skips the dialog setup when the host window ref is empty", async () => {
-        const windowRef = createRef<Gtk.Window | null>();
-        const result = await render(
-            <GtkApplicationWindow defaultWidth={400} defaultHeight={300}>
-                <GtkLabel label="host" />
-                <PageSetupComponent window={windowRef} onClose={() => {}} />
-            </GtkApplicationWindow>,
-            { wrapper: false },
-        );
-        expect(windowRef.current).toBeNull();
-        await result.unmount();
+    it("swallows dialog rejections and still runs onClose", async () => {
+        const setupSpy = vi.spyOn(Gtk.PrintDialog.prototype, "setup");
+        setupSpy.mockRejectedValue(new Error("dismissed"));
+        const onClose = vi.fn();
+        try {
+            await renderDemo(pageSetupDemo, { onClose });
+            await waitFor(() => expect(onClose).toHaveBeenCalled());
+        } finally {
+            setupSpy.mockRestore();
+        }
     });
 
-    it("invokes the early-return path when the window ref deliberately resolves to null", async () => {
-        const windowRef = createRef<Gtk.Window | null>();
-        (windowRef as { current: Gtk.Window | null }).current = null;
-        const result = await render(
-            <GtkApplicationWindow defaultWidth={400} defaultHeight={300}>
-                <GtkLabel label="host" />
-                <PageSetupComponent window={windowRef} onClose={() => {}} />
-            </GtkApplicationWindow>,
-            { wrapper: false },
-        );
-        expect(windowRef.current).toBeNull();
-        await result.unmount();
+    it("cancels the in-flight Gio.Cancellable when the demo unmounts", async () => {
+        const cancelSpy = vi.spyOn(Gio.Cancellable.prototype, "cancel");
+        const setupSpy = vi.spyOn(Gtk.PrintDialog.prototype, "setup");
+        setupSpy.mockImplementation(() => new Promise(() => {}));
+        try {
+            const result = await renderDemo(pageSetupDemo);
+            await waitFor(() => expect(setupSpy).toHaveBeenCalled());
+            await result.unmount();
+            expect(cancelSpy).toHaveBeenCalled();
+        } finally {
+            setupSpy.mockRestore();
+            cancelSpy.mockRestore();
+        }
     });
 });

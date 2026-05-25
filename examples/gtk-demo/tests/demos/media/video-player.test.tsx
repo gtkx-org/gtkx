@@ -1,6 +1,7 @@
+import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import { videoPlayerDemo } from "../../../src/demos/media/video-player.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -65,9 +66,71 @@ describe("videoPlayerDemo video and actions", () => {
 
     it("requests fullscreen on the host window when the Fullscreen icon button is clicked", async () => {
         await renderDemo(videoPlayerDemo);
-        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        const handler = vi.fn();
         const fullscreenButton = (await screen.findByName("fullscreen-button")) as Gtk.Button;
-        await userEvent.click(fullscreenButton);
-        expect(window).toBeInstanceOf(Gtk.Window);
+        const handlerId = fullscreenButton.connect("clicked", handler);
+        try {
+            await userEvent.click(fullscreenButton);
+            await waitFor(() => expect(handler).toHaveBeenCalled());
+        } finally {
+            fullscreenButton.disconnect(handlerId);
+        }
+    });
+
+    it("loads the Big Buck Bunny URI when the BBB button is clicked", async () => {
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "setFile").mockImplementation(() => {});
+        const fileNewSpy = vi.spyOn(Gio, "fileNewForUri");
+        try {
+            await renderDemo(videoPlayerDemo);
+            const bbbButton = (await screen.findByName("bbb-button")) as Gtk.Button;
+            await userEvent.click(bbbButton);
+            await waitFor(() => expect(fileNewSpy).toHaveBeenCalled());
+            const uri = fileNewSpy.mock.calls.at(-1)?.[0];
+            expect(uri).toMatch(/^https:\/\//);
+        } finally {
+            fileNewSpy.mockRestore();
+            setFileSpy.mockRestore();
+            errorSpy.mockRestore();
+        }
+    });
+
+    it("opens a Gtk.FileDialog when the Open button is activated", async () => {
+        const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
+        openSpy.mockResolvedValue(Gio.fileNewForPath("/tmp/fake-video.webm"));
+        try {
+            await renderDemo(videoPlayerDemo);
+            const openButton = (await screen.findByName("open-button")) as Gtk.Button;
+            await userEvent.click(openButton);
+            await waitFor(() => expect(openSpy).toHaveBeenCalled());
+            const video = (await screen.findByName("video")) as Gtk.Video;
+            await waitFor(() => expect(video.getFile()?.getPath()).toBe("/tmp/fake-video.webm"));
+        } finally {
+            openSpy.mockRestore();
+        }
+    });
+
+    it("logs an error when the open dialog is dismissed", async () => {
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
+        openSpy.mockRejectedValue(new Error("cancelled"));
+        try {
+            await renderDemo(videoPlayerDemo);
+            const openButton = (await screen.findByName("open-button")) as Gtk.Button;
+            await userEvent.click(openButton);
+            await waitFor(() => expect(errorSpy).toHaveBeenCalledWith("cancelled"));
+        } finally {
+            openSpy.mockRestore();
+            errorSpy.mockRestore();
+        }
+    });
+
+    it("activates the F11 shortcut on the host window without throwing", async () => {
+        await renderDemo(videoPlayerDemo);
+        const window = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        await userEvent.keyboard(window, "{F11}");
+        await userEvent.keyboard(window, "{F11}");
+        const stillPresent = (await screen.findByRole(Gtk.AccessibleRole.WINDOW)) as Gtk.Window;
+        expect(stillPresent).toBe(window);
     });
 });

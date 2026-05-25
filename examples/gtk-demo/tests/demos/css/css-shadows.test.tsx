@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { screen } from "@gtkx/testing";
+import { act, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { cssShadowsDemo } from "../../../src/demos/css/css-shadows.js";
 import { renderDemo } from "../../test-utils.js";
@@ -53,7 +53,7 @@ describe("cssShadowsDemo behavior", () => {
         await renderDemo(cssShadowsDemo);
         const textView = (await screen.findByName("text-view")) as Gtk.TextView;
         const buffer = textView.getBuffer();
-        buffer.setText("button { box-shadow: 0 0 10px red; }", -1);
+        await act(() => buffer.setText("button { box-shadow: 0 0 10px red; }", -1));
         const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
         expect(text).toBe("button { box-shadow: 0 0 10px red; }");
     });
