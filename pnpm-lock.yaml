@@ -27,8 +27,8 @@ importers:
         specifier: ^4.1.7
         version: 4.1.7(vitest@4.1.7)
       dependency-cruiser:
-        specifier: ^17.4.0
-        version: 17.4.0
+        specifier: ^17.4.2
+        version: 17.4.2
       knip:
         specifier: ^6.14.1
         version: 6.14.1(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)
@@ -2845,8 +2845,8 @@ packages:
     resolution: {integrity: sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==}
     engines: {node: '>= 0.8'}
 
-  dependency-cruiser@17.4.0:
-    resolution: {integrity: sha512-+WdFoOb+fT1XNC0iPqOyLpfhLd8xVh7eLXJxPAtiXCS+YmXzGrjqVTte7+L8SZIsnJj0aFhb8LxECIBJY5TTIA==}
+  dependency-cruiser@17.4.2:
+    resolution: {integrity: sha512-XbrWY2EkIRoqvJL3feRlwHiYrPD2h6iYZ+LaMZgMLpxDBFXKb3+rXGVAli3/fV+yd9rgTBtFpuAYMDt4RjHQUA==}
     engines: {node: ^20.12||^22||>=24}
     hasBin: true
 
@@ -2911,8 +2911,8 @@ packages:
     resolution: {integrity: sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg==}
     engines: {node: '>= 0.8'}
 
-  enhanced-resolve@5.21.0:
-    resolution: {integrity: sha512-otxSQPw4lkOZWkHpB3zaEQs6gWYEsmX4xQF68ElXC/TWvGxGMSGOvoNbaLXm6/cS/fSfHtsEdw90y20PCd+sCA==}
+  enhanced-resolve@5.22.0:
+    resolution: {integrity: sha512-xYcDWrpELkFzz9SpZ3PlI6Eu6eD93Yf0WLDRxikGhWJ3MAir2SNZTIVCVZqZ/NUyx8AdMc2gT9C0gPiw18kG+A==}
     engines: {node: '>=10.13.0'}
 
   enquirer@2.4.1:
@@ -4007,13 +4007,13 @@ packages:
     resolution: {integrity: sha512-vfD3pmTzGpufjScBh50YHKzEu2lxBWhVEHsNGoEXmCmn2hKGfeNLYMzCJpe8cD7gqX7TJluOVpBkAequ6dgMmA==}
     engines: {node: '>=4'}
 
-  semver@7.7.4:
-    resolution: {integrity: sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==}
+  semver@7.8.0:
+    resolution: {integrity: sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==}
     engines: {node: '>=10'}
     hasBin: true
 
-  semver@7.8.0:
-    resolution: {integrity: sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==}
+  semver@7.8.1:
+    resolution: {integrity: sha512-rkVq3IXh+4FDGch+KwzX3aV9W3kO54GyEgpvBzSyctDA6Xtd7RJQV1xmXbeQp5v7+VzLOfVqiutSE6GICgPFvg==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -6688,7 +6688,7 @@ snapshots:
 
   depd@2.0.0: {}
 
-  dependency-cruiser@17.4.0:
+  dependency-cruiser@17.4.2:
     dependencies:
       acorn: 8.16.0
       acorn-jsx: 5.3.2(acorn@8.16.0)
@@ -6696,7 +6696,7 @@ snapshots:
       acorn-loose: 8.5.2
       acorn-walk: 8.3.5
       commander: 14.0.3
-      enhanced-resolve: 5.21.0
+      enhanced-resolve: 5.22.0
       ignore: 7.0.5
       interpret: 3.1.1
       is-installed-globally: 1.0.0
@@ -6705,7 +6705,7 @@ snapshots:
       prompts: 2.4.2
       rechoir: 0.8.0
       safe-regex: 2.1.1
-      semver: 7.7.4
+      semver: 7.8.1
       tsconfig-paths-webpack-plugin: 4.2.0
       watskeburt: 5.0.3
 
@@ -6749,7 +6749,7 @@ snapshots:
 
   encodeurl@2.0.0: {}
 
-  enhanced-resolve@5.21.0:
+  enhanced-resolve@5.22.0:
     dependencies:
       graceful-fs: 4.2.11
       tapable: 2.3.3
@@ -7358,7 +7358,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.8.0
+      semver: 7.8.1
 
   mark.js@8.11.1: {}
 
@@ -8048,9 +8048,9 @@ snapshots:
       extend-shallow: 2.0.1
       kind-of: 6.0.3
 
-  semver@7.7.4: {}
-
   semver@7.8.0: {}
+
+  semver@7.8.1: {}
 
   send@1.2.1:
     dependencies:
@@ -8243,7 +8243,7 @@ snapshots:
   tsconfig-paths-webpack-plugin@4.2.0:
     dependencies:
       chalk: 4.1.2
-      enhanced-resolve: 5.21.0
+      enhanced-resolve: 5.22.0
       tapable: 2.3.3
       tsconfig-paths: 4.2.0
 
