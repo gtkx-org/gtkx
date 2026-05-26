@@ -19,34 +19,51 @@ describe("exitCodeForSignal", () => {
     });
 });
 
-describe("installGracefulShutdown", () => {
-    let exitSpy: ReturnType<typeof vi.spyOn>;
-    let prevSigInt: NodeJS.SignalsListener[];
-    let prevSigTerm: NodeJS.SignalsListener[];
-    let prevSigHup: NodeJS.SignalsListener[];
+const HANDLED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
-    beforeEach(() => {
-        exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
-        prevSigInt = process.listeners("SIGINT") as NodeJS.SignalsListener[];
-        prevSigTerm = process.listeners("SIGTERM") as NodeJS.SignalsListener[];
-        prevSigHup = process.listeners("SIGHUP") as NodeJS.SignalsListener[];
-    });
+type Snapshot = Record<(typeof HANDLED_SIGNALS)[number], NodeJS.SignalsListener[]>;
 
-    afterEach(() => {
-        exitSpy.mockRestore();
-        for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
-            const prev = sig === "SIGINT" ? prevSigInt : sig === "SIGTERM" ? prevSigTerm : prevSigHup;
-            for (const listener of process.listeners(sig)) {
-                if (!prev.includes(listener as NodeJS.SignalsListener)) {
-                    process.removeListener(sig, listener as NodeJS.SignalsListener);
-                }
+const snapshotListeners = (): Snapshot => {
+    const snap = {} as Snapshot;
+    for (const sig of HANDLED_SIGNALS) {
+        snap[sig] = process.listeners(sig) as NodeJS.SignalsListener[];
+    }
+    return snap;
+};
+
+const restoreListeners = (snap: Snapshot): void => {
+    for (const sig of HANDLED_SIGNALS) {
+        for (const listener of process.listeners(sig)) {
+            if (!snap[sig].includes(listener as NodeJS.SignalsListener)) {
+                process.removeListener(sig, listener as NodeJS.SignalsListener);
             }
         }
+    }
+};
+
+interface ShutdownFixture {
+    exitSpy: ReturnType<typeof vi.spyOn>;
+}
+
+const installFixture = (): ShutdownFixture => {
+    const fixture = {} as ShutdownFixture;
+    let snap: Snapshot;
+    beforeEach(() => {
+        fixture.exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+        snap = snapshotListeners();
     });
+    afterEach(() => {
+        fixture.exitSpy.mockRestore();
+        restoreListeners(snap);
+    });
+    return fixture;
+};
 
-    const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+describe("installGracefulShutdown — basic exit codes", () => {
+    const fixture = installFixture();
 
-    it("calls onSignal then exits with the canonical code", async () => {
+    it("calls onSignal then exits with the canonical code on SIGINT", async () => {
         const onSignal = vi.fn();
         const handle = installGracefulShutdown({ onSignal });
 
@@ -54,7 +71,7 @@ describe("installGracefulShutdown", () => {
         await flush();
 
         expect(onSignal).toHaveBeenCalledWith("SIGINT");
-        expect(exitSpy).toHaveBeenCalledWith(130);
+        expect(fixture.exitSpy).toHaveBeenCalledWith(130);
         handle.uninstall();
     });
 
@@ -66,9 +83,13 @@ describe("installGracefulShutdown", () => {
         await flush();
 
         expect(onSignal).toHaveBeenCalledWith("SIGHUP");
-        expect(exitSpy).toHaveBeenCalledWith(143);
+        expect(fixture.exitSpy).toHaveBeenCalledWith(143);
         handle.uninstall();
     });
+});
+
+describe("installGracefulShutdown — async + force-kill behaviour", () => {
+    const fixture = installFixture();
 
     it("awaits an async onSignal before exiting", async () => {
         let resolveSignal!: () => void;
@@ -79,12 +100,12 @@ describe("installGracefulShutdown", () => {
         await flush();
 
         expect(onSignal).toHaveBeenCalled();
-        expect(exitSpy).not.toHaveBeenCalled();
+        expect(fixture.exitSpy).not.toHaveBeenCalled();
 
         resolveSignal();
         await flush();
 
-        expect(exitSpy).toHaveBeenCalledWith(143);
+        expect(fixture.exitSpy).toHaveBeenCalledWith(143);
         handle.uninstall();
     });
 
@@ -98,9 +119,13 @@ describe("installGracefulShutdown", () => {
         await flush();
 
         expect(onForce).toHaveBeenCalledOnce();
-        expect(exitSpy).toHaveBeenCalledWith(130);
+        expect(fixture.exitSpy).toHaveBeenCalledWith(130);
         handle.uninstall();
     });
+});
+
+describe("installGracefulShutdown — overrides and uninstall", () => {
+    const fixture = installFixture();
 
     it("uses exitCode override when provided", async () => {
         const handle = installGracefulShutdown({
@@ -111,7 +136,7 @@ describe("installGracefulShutdown", () => {
         process.emit("SIGINT", "SIGINT");
         await flush();
 
-        expect(exitSpy).toHaveBeenCalledWith(7);
+        expect(fixture.exitSpy).toHaveBeenCalledWith(7);
         handle.uninstall();
     });
 

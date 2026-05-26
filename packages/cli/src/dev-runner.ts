@@ -57,6 +57,34 @@ const buildConfig = (root: string, plugins: Plugin[], define: Record<string, str
     define,
 });
 
+const requestReload = async (server: ViteDevServer, deps: DevRunnerDeps): Promise<never> => {
+    deps.log("Full reload (process restart)");
+    await server.close();
+    return deps.exit(RELOAD_EXIT_CODE);
+};
+
+const handleFileChange = async (server: ViteDevServer, deps: DevRunnerDeps, changedPath: string): Promise<void> => {
+    const module = server.moduleGraph.getModuleById(changedPath);
+    if (!module) return;
+
+    deps.log(`File changed: ${changedPath}`);
+
+    server.moduleGraph.invalidateModule(module);
+    for (const importer of module.importers) {
+        server.moduleGraph.invalidateModule(importer);
+    }
+
+    const newMod = (await server.ssrLoadModule(changedPath)) as Record<string, unknown>;
+    if (deps.isReactRefreshBoundary(newMod)) {
+        deps.log("Fast refreshing...");
+        deps.performRefresh();
+        deps.log("Fast refresh complete");
+        return;
+    }
+
+    await requestReload(server, deps);
+};
+
 /**
  * Builds a configured dev runner.
  *
@@ -66,73 +94,43 @@ const buildConfig = (root: string, plugins: Plugin[], define: Record<string, str
  * @param deps - Side-effecting collaborators.
  * @returns The configured {@link DevRunner}.
  */
-export const createDevRunner = (deps: DevRunnerDeps): DevRunner => {
-    const requestReload = async (server: ViteDevServer): Promise<never> => {
-        deps.log("Full reload (process restart)");
-        await server.close();
-        return deps.exit(RELOAD_EXIT_CODE);
-    };
+export const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
+    async run(entryPath: string): Promise<void> {
+        const root = process.cwd();
+        const server = await deps.createServer(buildConfig(root, deps.plugins(), deps.define()));
 
-    const handleFileChange = async (server: ViteDevServer, changedPath: string): Promise<void> => {
-        const module = server.moduleGraph.getModuleById(changedPath);
-        if (!module) return;
-
-        deps.log(`File changed: ${changedPath}`);
-
-        server.moduleGraph.invalidateModule(module);
-        for (const importer of module.importers) {
-            server.moduleGraph.invalidateModule(importer);
-        }
-
-        const newMod = (await server.ssrLoadModule(changedPath)) as Record<string, unknown>;
-        if (deps.isReactRefreshBoundary(newMod)) {
-            deps.log("Fast refreshing...");
-            deps.performRefresh();
-            deps.log("Fast refresh complete");
-            return;
-        }
-
-        await requestReload(server);
-    };
-
-    return {
-        async run(entryPath: string): Promise<void> {
-            const root = process.cwd();
-            const server = await deps.createServer(buildConfig(root, deps.plugins(), deps.define()));
-
-            let isShuttingDown = false;
-            deps.whenStopped()
-                .then(async () => {
-                    isShuttingDown = true;
-                    deps.stopMcpClient();
-                    await server.close();
-                })
-                .catch((error: unknown) => {
-                    console.error("[gtkx-dev-runner] Error closing server:", error);
-                });
-
-            server.watcher.on("change", (changedPath) => {
-                if (isShuttingDown) return;
-                handleFileChange(server, changedPath).catch((error) => {
-                    console.error("[gtkx] Hot reload failed:", error);
-                });
+        let isShuttingDown = false;
+        deps.whenStopped()
+            .then(async () => {
+                isShuttingDown = true;
+                deps.stopMcpClient();
+                await server.close();
+            })
+            .catch((error: unknown) => {
+                console.error("[gtkx-dev-runner] Error closing server:", error);
             });
 
-            deps.log(`Loading entry: ${entryPath}`);
-            await server.ssrLoadModule(entryPath);
+        server.watcher.on("change", (changedPath) => {
+            if (isShuttingDown) return;
+            handleFileChange(server, deps, changedPath).catch((error) => {
+                console.error("[gtkx] Hot reload failed:", error);
+            });
+        });
 
-            const appId = deps.getApplicationId();
-            if (appId) {
-                deps.log(`Connected app id: ${appId}`);
-                await deps.startMcpClient(appId);
-            } else {
-                deps.log("Entry did not call render() — MCP client not started.");
-            }
+        deps.log(`Loading entry: ${entryPath}`);
+        await server.ssrLoadModule(entryPath);
 
-            deps.log("HMR enabled - watching for changes...");
-        },
-    };
-};
+        const appId = deps.getApplicationId();
+        if (appId) {
+            deps.log(`Connected app id: ${appId}`);
+            await deps.startMcpClient(appId);
+        } else {
+            deps.log("Entry did not call render() — MCP client not started.");
+        }
+
+        deps.log("HMR enabled - watching for changes...");
+    },
+});
 
 /**
  * Runner entry point invoked by the CLI supervisor.

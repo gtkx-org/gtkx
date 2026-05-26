@@ -119,7 +119,7 @@ describe("runDevSupervisor (child exit handling)", () => {
     });
 });
 
-describe("runDevSupervisor (signal forwarding)", () => {
+describe("runDevSupervisor (signal forwarding — per-signal)", () => {
     const ctx = setupSupervisorCtx();
 
     it("forwards SIGINT to the running child process", async () => {
@@ -149,6 +149,10 @@ describe("runDevSupervisor (signal forwarding)", () => {
 
         expect(child.kill).toHaveBeenCalledWith("SIGHUP");
     });
+});
+
+describe("runDevSupervisor (signal forwarding — exit propagation)", () => {
+    const ctx = setupSupervisorCtx();
 
     it("propagates the child's exit code through the shutdown helper", async () => {
         const child = await startSupervisor();

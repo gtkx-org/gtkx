@@ -53,9 +53,8 @@ const queryPkgConfigGirDir = (): string | undefined => {
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
         const stderr = (error as { stderr?: string | Buffer }).stderr?.toString().trim() ?? "";
-        throw new Error(
-            `pkg-config failed querying gobject-introspection-1.0 girdir${stderr ? `:\n${stderr}` : ""}`,
-            { cause: error },
-        );
+        throw new Error(`pkg-config failed querying gobject-introspection-1.0 girdir${stderr ? `:\n${stderr}` : ""}`, {
+            cause: error,
+        });
     }
 };

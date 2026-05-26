@@ -27,10 +27,7 @@ const compileSchemas = (dir: string): void => {
         const stderr = (error as { stderr?: string }).stderr ?? "";
         const stdout = (error as { stdout?: string }).stdout ?? "";
         const details = [stderr, stdout].filter(Boolean).join("\n").trim();
-        throw new Error(
-            `glib-compile-schemas failed for ${dir}${details ? `:\n${details}` : ""}`,
-            { cause: error },
-        );
+        throw new Error(`glib-compile-schemas failed for ${dir}${details ? `:\n${details}` : ""}`, { cause: error });
     }
 };
 

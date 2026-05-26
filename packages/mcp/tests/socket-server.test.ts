@@ -3,8 +3,8 @@ import * as net from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { IpcMessage, IpcRequest, IpcResponse } from "../src/protocol/types.js";
 import { ConnectionRegistry } from "../src/connection-registry.js";
+import type { IpcMessage, IpcRequest, IpcResponse } from "../src/protocol/types.js";
 import { SocketServer } from "../src/socket-server.js";
 import type { AppConnection } from "../src/transport.js";
 
@@ -251,9 +251,7 @@ describe("ConnectionRegistry send", () => {
     setupSocketServer();
     it("silently drops a message for an unknown connection id", async () => {
         await socketCtx.server.start();
-        expect(() =>
-            socketCtx.registry.send("missing", { id: "x", method: "noop" } as IpcMessage),
-        ).not.toThrow();
+        expect(() => socketCtx.registry.send("missing", { id: "x", method: "noop" } as IpcMessage)).not.toThrow();
     });
 
     it("delivers a message to the connected client", async () => {
