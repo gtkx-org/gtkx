@@ -83,6 +83,11 @@ export class ConstraintLayoutWidgetNode extends VirtualNode<ConstraintLayoutWidg
         }
     }
 
+    public override finalizeInitialChildren(props: ConstraintLayoutWidgetProps): boolean {
+        super.finalizeInitialChildren(props);
+        return true;
+    }
+
     public override commitMount(): void {
         if (this.children.length === 0) return;
         if (!this.findSiblingLayoutNode()) {

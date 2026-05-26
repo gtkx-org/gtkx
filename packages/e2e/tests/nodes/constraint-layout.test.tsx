@@ -363,6 +363,83 @@ describe("render - GtkConstraintLayout.Constraint props", () => {
     });
 });
 
+describe("render - GtkConstraintLayout.Widget lifecycle", () => {
+    it("re-registers when the id prop changes", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const labelRef = createRef<Gtk.Label>();
+
+        function App({ id }: { id: string }) {
+            return (
+                <GtkBox ref={boxRef}>
+                    <GtkConstraintLayout>
+                        <GtkConstraintLayout.Constraint
+                            target={id}
+                            targetAttribute={A.LEFT}
+                            sourceAttribute={A.LEFT}
+                            constant={1}
+                        />
+                    </GtkConstraintLayout>
+                    <GtkConstraintLayout.Widget id={id}>
+                        <GtkLabel ref={labelRef} label="L" />
+                    </GtkConstraintLayout.Widget>
+                </GtkBox>
+            );
+        }
+
+        const { rerender } = await render(<App id="first" />);
+        let layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        let c = collectConstraints(layout)[0] as Gtk.Constraint;
+        expect(c.getTarget()).toBe(labelRef.current);
+
+        await rerender(<App id="second" />);
+        layout = boxRef.current?.getLayoutManager() as Gtk.ConstraintLayout;
+        c = collectConstraints(layout)[0] as Gtk.Constraint;
+        expect(c.getTarget()).toBe(labelRef.current);
+    });
+
+    it("unmounts the wrapper cleanly when conditionally removed", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const persistRef = createRef<Gtk.Label>();
+        const conditionalRef = createRef<Gtk.Label>();
+
+        function App({ show }: { show: boolean }) {
+            return (
+                <GtkBox ref={boxRef}>
+                    <GtkConstraintLayout />
+                    <GtkConstraintLayout.Widget id="persist">
+                        <GtkLabel ref={persistRef} label="P" />
+                    </GtkConstraintLayout.Widget>
+                    {show && (
+                        <GtkConstraintLayout.Widget id="cond">
+                            <GtkLabel ref={conditionalRef} label="C" />
+                        </GtkConstraintLayout.Widget>
+                    )}
+                </GtkBox>
+            );
+        }
+
+        const { rerender } = await render(<App show={true} />);
+        expect(persistRef.current?.getParent()).toBe(boxRef.current);
+        expect(conditionalRef.current?.getParent()).toBe(boxRef.current);
+
+        await rerender(<App show={false} />);
+        expect(persistRef.current?.getParent()).toBe(boxRef.current);
+        expect(conditionalRef.current).toBeNull();
+    });
+
+    it("throws when a Widget has no sibling ConstraintLayout", async () => {
+        await expect(
+            render(
+                <GtkBox>
+                    <GtkConstraintLayout.Widget id="orphan">
+                        <GtkLabel label="Orphan" />
+                    </GtkConstraintLayout.Widget>
+                </GtkBox>,
+            ),
+        ).rejects.toThrow(/must be a sibling of <GtkConstraintLayout>/);
+    });
+});
+
 describe("render - GtkConstraintLayout.Vfl", () => {
     it("parses VFL and adds the resulting constraints", async () => {
         const boxRef = createRef<Gtk.Box>();
