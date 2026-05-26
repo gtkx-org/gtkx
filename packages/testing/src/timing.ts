@@ -32,19 +32,12 @@ setIsReactActEnvironment(true);
 type ActCallback<T> = () => T | PromiseLike<T>;
 type ActImplementation = <T>(callback: ActCallback<T>) => PromiseLike<T>;
 
-interface ActThenable<T> {
-    then<TResult1 = T, TResult2 = never>(
-        onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | null,
-        onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
-    ): unknown;
-}
-
 const isThenable = <T>(value: unknown): value is PromiseLike<T> =>
     value !== null && typeof value === "object" && typeof (value as PromiseLike<T>).then === "function";
 
 const withGlobalActEnvironment =
     (actImplementation: ActImplementation) =>
-    <T>(callback: ActCallback<T>): ActThenable<T> => {
+    <T>(callback: ActCallback<T>): PromiseLike<T> => {
         const previousActEnvironment = getIsReactActEnvironment();
         setIsReactActEnvironment(true);
         try {
@@ -57,22 +50,16 @@ const withGlobalActEnvironment =
                 return result;
             });
             if (callbackNeedsToBeAwaited) {
-                const thenable = actResult;
-                return {
-                    // biome-ignore lint/suspicious/noThenProperty: matches React's act return shape
-                    then: (resolve, reject) => {
-                        thenable.then(
-                            (returnValue) => {
-                                setIsReactActEnvironment(previousActEnvironment);
-                                resolve?.(returnValue);
-                            },
-                            (error) => {
-                                setIsReactActEnvironment(previousActEnvironment);
-                                reject?.(error);
-                            },
-                        );
+                return Promise.resolve(actResult).then(
+                    (value) => {
+                        setIsReactActEnvironment(previousActEnvironment);
+                        return value;
                     },
-                };
+                    (error) => {
+                        setIsReactActEnvironment(previousActEnvironment);
+                        throw error;
+                    },
+                );
             }
             setIsReactActEnvironment(previousActEnvironment);
             return actResult;
