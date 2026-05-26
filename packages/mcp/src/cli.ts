@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
+import { errorMessage } from "./protocol/errors.js";
 import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
 
@@ -209,7 +210,7 @@ const listAppsTool = (cm: AppQueryClient) =>
                 try {
                     await cm.waitForApp(timeout);
                 } catch (error) {
-                    return textError(error instanceof Error ? error.message : "Timeout waiting for app");
+                    return textError(errorMessage(error));
                 }
             }
 

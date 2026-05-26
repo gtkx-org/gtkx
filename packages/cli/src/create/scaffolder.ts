@@ -1,4 +1,5 @@
 import { join, resolve } from "node:path";
+import { errorMessage } from "@gtkx/mcp";
 import { isValidAppId } from "../config.js";
 import type { TemplateContext } from "../templates.js";
 import { isValidProjectName, type TestingOption } from "./options.js";
@@ -280,7 +281,7 @@ const installAllDependencies = async (deps: ScaffolderDeps, options: InstallAllO
         spinner.stop("Dependencies installed!");
     } catch (error) {
         spinner.stop("Failed to install dependencies");
-        deps.prompts.log.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+        deps.prompts.log.error(`Error: ${errorMessage(error)}`);
         deps.prompts.log.info("You can install dependencies manually by running:");
         deps.prompts.log.info(`  cd ${name}`);
     }

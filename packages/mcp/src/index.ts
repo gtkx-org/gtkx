@@ -1,4 +1,5 @@
 export {
+    errorMessage,
     McpError,
     McpErrorCode,
     methodNotFoundError,
