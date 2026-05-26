@@ -7,4 +7,4 @@ export {
 export { getContainerMethodNames } from "./container-methods.js";
 export { getHiddenPropNames } from "./hidden-props.js";
 export { APPLICATION_PARAM_NAME } from "./native-callbacks.js";
-export { getRenderableSlotNames } from "./renderable-slots.js";
+export { RenderableSlotsRegistry, type SlotPropsOverrides } from "./renderable-slots.js";

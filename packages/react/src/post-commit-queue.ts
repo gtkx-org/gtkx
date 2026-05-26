@@ -30,12 +30,10 @@ export function isInCommit(): boolean {
     return commitDepth > 0;
 }
 
-/** @internal */
 export function beginCommit(): void {
     commitDepth++;
 }
 
-/** @internal */
 export function endCommit(): void {
     commitDepth--;
 }

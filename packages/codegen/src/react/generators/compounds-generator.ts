@@ -15,7 +15,7 @@ import {
     type CompoundChildrenConfig,
     getCompoundChildren,
     getContainerMethodNames,
-    getRenderableSlotNames,
+    RenderableSlotsRegistry,
 } from "../../config/index.js";
 import { formatJsDoc } from "../../utils/doc-formatter.js";
 import { toCamelCase, toPascalCase } from "../../utils/naming.js";
@@ -46,6 +46,7 @@ export class CompoundsGenerator {
         private readonly reader: MetadataReader,
         private readonly controllers: readonly CodegenControllerMeta[],
         private readonly namespaceNames: string[],
+        private readonly renderableSlots: RenderableSlotsRegistry = new RenderableSlotsRegistry(),
     ) {}
 
     generate(file: FileBuilder): void {
@@ -127,7 +128,7 @@ export class CompoundsGenerator {
 
         let current: CodegenWidgetMeta | undefined = meta;
         while (current) {
-            for (const slot of getRenderableSlotNames(current.jsxName)) {
+            for (const slot of this.renderableSlots.get(current.jsxName)) {
                 slots.add(slot);
             }
             current =

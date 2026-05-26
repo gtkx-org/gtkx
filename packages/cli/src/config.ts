@@ -64,6 +64,24 @@ export type GtkxConfig = {
      * `/gtkx/app` and `import.meta.env.GTKX_APP_ID` is the empty string.
      */
     applicationId?: string;
+
+    /**
+     * Additional widget-typed properties to expose as renderable JSX child
+     * slots (typed as `ReactNode`) rather than as plain widget-reference props.
+     *
+     * Keys are JSX element names (e.g. `"GtkWindow"`, `"AdwFooBar"`); values
+     * are camelCase property names. Entries merge with the built-in slot map,
+     * so consumer-provided GIRs can opt their own widget-typed properties
+     * into the slot-mounting pipeline without patching the codegen package.
+     *
+     * @example
+     * ```ts
+     * slotProps: {
+     *     MyAppFooBar: ["content"],
+     * }
+     * ```
+     */
+    slotProps?: Record<string, string[]>;
 };
 
 /**
@@ -128,10 +146,42 @@ const validateApplicationId = (applicationId: GtkxConfig["applicationId"]): void
     }
 };
 
+const JSX_NAME_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
+const SLOT_PROP_PATTERN = /^[a-z][A-Za-z0-9]*$/;
+
+const validateSlotProps = (slotProps: GtkxConfig["slotProps"]): void => {
+    if (slotProps === undefined) return;
+    if (typeof slotProps !== "object" || Array.isArray(slotProps) || slotProps === null) {
+        throw new Error(
+            "gtkx.config.ts: `slotProps` must be an object mapping JSX names to arrays of camelCase property names",
+        );
+    }
+    for (const [jsxName, props] of Object.entries(slotProps)) {
+        if (!JSX_NAME_PATTERN.test(jsxName)) {
+            throw new Error(
+                `gtkx.config.ts: invalid \`slotProps\` key "${jsxName}" — must be a PascalCase JSX element name (e.g. "MyAppFooBar")`,
+            );
+        }
+        if (!Array.isArray(props) || props.length === 0) {
+            throw new Error(
+                `gtkx.config.ts: \`slotProps.${jsxName}\` must be a non-empty array of camelCase property names`,
+            );
+        }
+        for (const prop of props) {
+            if (typeof prop !== "string" || !SLOT_PROP_PATTERN.test(prop)) {
+                throw new Error(
+                    `gtkx.config.ts: invalid \`slotProps.${jsxName}\` entry "${String(prop)}" — must be a camelCase property name (e.g. "content")`,
+                );
+            }
+        }
+    }
+};
+
 export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);
     validateApplicationId(config.applicationId);
+    validateSlotProps(config.slotProps);
     return config;
 };
 

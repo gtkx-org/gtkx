@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { RenderableSlotsRegistry } from "../../src/config/index.js";
 import { ReactGenerator } from "../../src/react/react-generator.js";
-import { createButtonMeta, createWidgetMeta } from "../fixtures/metadata-fixtures.js";
+import { createButtonMeta, createCodegenWidgetMeta, createWidgetMeta } from "../fixtures/metadata-fixtures.js";
 
 describe("ReactGenerator", () => {
     it("emits the three expected files in the conventional order", () => {
@@ -44,5 +45,22 @@ describe("ReactGenerator", () => {
         for (let i = 0; i < first.length; i++) {
             expect(first[i]?.path).toBe(second[i]?.path);
         }
+    });
+
+    it("threads a user-supplied RenderableSlotsRegistry into compound generation", () => {
+        const widgets = [
+            createWidgetMeta(),
+            createCodegenWidgetMeta({
+                jsxName: "MyAppFooBar",
+                className: "FooBar",
+                namespace: "MyApp",
+                slots: ["content"],
+            }),
+        ];
+        const registry = new RenderableSlotsRegistry({ MyAppFooBar: ["content"] });
+        const generator = new ReactGenerator(widgets, [], ["MyApp"], registry);
+        const files = generator.generate();
+        const compounds = files.find((f) => f.path === "compounds.ts");
+        expect(compounds?.content).toContain('createSlotWidget<MyAppFooBarProps>("MyAppFooBar", ["content"])');
     });
 });

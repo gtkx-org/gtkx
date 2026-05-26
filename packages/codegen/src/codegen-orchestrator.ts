@@ -1,4 +1,5 @@
 import { CodegenMetadata } from "./codegen-metadata.js";
+import { RenderableSlotsRegistry, type SlotPropsOverrides } from "./config/index.js";
 import { FfiGenerator } from "./ffi/ffi-generator.js";
 import type { GeneratedFile } from "./generated-file-set.js";
 import type { GirRepository } from "./gir/index.js";
@@ -10,6 +11,13 @@ import { ReactGenerator } from "./react/react-generator.js";
 type CodegenOrchestratorOptions = {
     /** The resolved GIR repository to generate bindings from. */
     repository: GirRepository;
+    /**
+     * Optional user-supplied renderable slot overrides, keyed by JSX
+     * element name. Merges with the built-in renderable-slot map so
+     * consumer-provided widget types can opt their widget-typed properties
+     * into the JSX child-slot pipeline.
+     */
+    slotProps?: SlotPropsOverrides;
 };
 
 type CodegenResult = {
@@ -30,12 +38,14 @@ type CodegenStats = {
  */
 export class CodegenOrchestrator {
     private readonly repository: GirRepository;
+    private readonly renderableSlots: RenderableSlotsRegistry;
     private readonly metadata = new CodegenMetadata();
     private readonly ffiGeneratedFiles: GeneratedFile[] = [];
     private readonly reactGeneratedFiles: GeneratedFile[] = [];
 
     constructor(options: CodegenOrchestratorOptions) {
         this.repository = options.repository;
+        this.renderableSlots = new RenderableSlotsRegistry(options.slotProps);
     }
 
     generate(): CodegenResult {
@@ -89,7 +99,7 @@ export class CodegenOrchestrator {
 
         const controllerMeta = this.metadata.getAllControllerMeta();
         const namespaceNames = [...new Set(widgetMeta.map((m) => m.namespace))];
-        const generator = new ReactGenerator(widgetMeta, controllerMeta, namespaceNames);
+        const generator = new ReactGenerator(widgetMeta, controllerMeta, namespaceNames, this.renderableSlots);
         this.reactGeneratedFiles.push(...generator.generate());
     }
 

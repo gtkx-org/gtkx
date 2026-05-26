@@ -72,7 +72,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
 
     const girPath = resolveGirPath(config.girPath);
     const libraries = resolveLibraries(config.libraries, girPath);
-    const inputHash = computeInputHash(libraries, config.girPath, codegenVersion);
+    const inputHash = computeInputHash(libraries, config.girPath, config.slotProps, codegenVersion);
 
     const { ffiOutputDir, reactOutputDir } = resolveOutputDirs(cwd);
 
@@ -87,7 +87,7 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
     }
 
     const loaded = await loadGir(libraries, girPath);
-    const orchestrator = new CodegenOrchestrator({ repository: loaded.repository });
+    const orchestrator = new CodegenOrchestrator({ repository: loaded.repository, slotProps: config.slotProps });
     const result = orchestrator.generate();
 
     const transpiledFfi = transpileCodegenFiles(result.ffiFiles, { emitDeclarations: false });
@@ -134,7 +134,7 @@ const isCodegenNeeded = (cwd: string, config: GtkxConfig): boolean => {
         const girPath = resolveGirPath(config.girPath);
         const libraries = resolveLibraries(config.libraries, girPath);
         const codegenVersion = readCodegenVersion();
-        const inputHash = computeInputHash(libraries, config.girPath, codegenVersion);
+        const inputHash = computeInputHash(libraries, config.girPath, config.slotProps, codegenVersion);
         return !isCacheValid(cwd, inputHash);
     } catch {
         return true;

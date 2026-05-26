@@ -9,35 +9,53 @@ const MANIFEST_FILE = "codegen-manifest.json";
 
 describe("computeInputHash", () => {
     it("produces a stable hex digest for identical inputs", () => {
-        const hash1 = computeInputHash(["Gtk-4.0"], ["/a"], "1.0.0");
-        const hash2 = computeInputHash(["Gtk-4.0"], ["/a"], "1.0.0");
+        const hash1 = computeInputHash(["Gtk-4.0"], ["/a"], undefined, "1.0.0");
+        const hash2 = computeInputHash(["Gtk-4.0"], ["/a"], undefined, "1.0.0");
 
         expect(hash1).toBe(hash2);
         expect(hash1).toMatch(/^[a-f0-9]{64}$/);
     });
 
     it("changes when libraries change", () => {
-        const a = computeInputHash(["Gtk-4.0"], undefined, "1.0.0");
-        const b = computeInputHash(["Gtk-4.0", "Adw-1"], undefined, "1.0.0");
+        const a = computeInputHash(["Gtk-4.0"], undefined, undefined, "1.0.0");
+        const b = computeInputHash(["Gtk-4.0", "Adw-1"], undefined, undefined, "1.0.0");
         expect(a).not.toBe(b);
     });
 
     it("changes when girPath changes", () => {
-        const a = computeInputHash(["Gtk-4.0"], ["/a"], "1.0.0");
-        const b = computeInputHash(["Gtk-4.0"], ["/b"], "1.0.0");
+        const a = computeInputHash(["Gtk-4.0"], ["/a"], undefined, "1.0.0");
+        const b = computeInputHash(["Gtk-4.0"], ["/b"], undefined, "1.0.0");
         expect(a).not.toBe(b);
     });
 
     it("treats undefined and empty girPath identically", () => {
-        const a = computeInputHash(["Gtk-4.0"], undefined, "1.0.0");
-        const b = computeInputHash(["Gtk-4.0"], [], "1.0.0");
+        const a = computeInputHash(["Gtk-4.0"], undefined, undefined, "1.0.0");
+        const b = computeInputHash(["Gtk-4.0"], [], undefined, "1.0.0");
         expect(a).toBe(b);
     });
 
     it("changes when codegen version changes", () => {
-        const a = computeInputHash(["Gtk-4.0"], undefined, "1.0.0");
-        const b = computeInputHash(["Gtk-4.0"], undefined, "1.0.1");
+        const a = computeInputHash(["Gtk-4.0"], undefined, undefined, "1.0.0");
+        const b = computeInputHash(["Gtk-4.0"], undefined, undefined, "1.0.1");
         expect(a).not.toBe(b);
+    });
+
+    it("changes when slotProps change", () => {
+        const a = computeInputHash(["Gtk-4.0"], undefined, undefined, "1.0.0");
+        const b = computeInputHash(["Gtk-4.0"], undefined, { MyAppFooBar: ["content"] }, "1.0.0");
+        expect(a).not.toBe(b);
+    });
+
+    it("treats undefined and empty slotProps identically", () => {
+        const a = computeInputHash(["Gtk-4.0"], undefined, undefined, "1.0.0");
+        const b = computeInputHash(["Gtk-4.0"], undefined, {}, "1.0.0");
+        expect(a).toBe(b);
+    });
+
+    it("is insensitive to slotProps key and entry ordering", () => {
+        const a = computeInputHash(["Gtk-4.0"], undefined, { AdwFoo: ["a", "b"], MyAppBar: ["x"] }, "1.0.0");
+        const b = computeInputHash(["Gtk-4.0"], undefined, { MyAppBar: ["x"], AdwFoo: ["b", "a"] }, "1.0.0");
+        expect(a).toBe(b);
     });
 });
 

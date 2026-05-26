@@ -8,7 +8,7 @@
 
 import type { FileBuilder } from "../../../builders/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../codegen-metadata.js";
-import { getRenderableSlotNames } from "../../../config/index.js";
+import { RenderableSlotsRegistry } from "../../../config/index.js";
 import { toCamelCase } from "../../../utils/naming.js";
 import { type MetadataReader, sortWidgetsByClassName } from "../../metadata-reader.js";
 import { ControllerPropsBuilder } from "./controller-props-builder.js";
@@ -24,17 +24,27 @@ export type JsxWidget = {
     meta: CodegenWidgetMeta;
 };
 
+type JsxTypesGeneratorOptions = {
+    compoundJsxNames?: ReadonlySet<string>;
+    renderableSlots?: RenderableSlotsRegistry;
+};
+
 export class JsxTypesGenerator {
     private readonly propsBuilder = new WidgetPropsBuilder();
     private readonly controllerPropsBuilder = new ControllerPropsBuilder();
     private readonly intrinsicBuilder = new IntrinsicElementsBuilder();
+    private readonly compoundJsxNames: ReadonlySet<string>;
+    private readonly renderableSlots: RenderableSlotsRegistry;
 
     constructor(
         private readonly reader: MetadataReader,
         private readonly controllers: readonly CodegenControllerMeta[],
         private readonly namespaceNames: string[],
-        private readonly compoundJsxNames: ReadonlySet<string> = new Set(),
-    ) {}
+        options: JsxTypesGeneratorOptions = {},
+    ) {
+        this.compoundJsxNames = options.compoundJsxNames ?? new Set();
+        this.renderableSlots = options.renderableSlots ?? new RenderableSlotsRegistry();
+    }
 
     generate(file: FileBuilder): void {
         const widgets = this.getWidgets();
@@ -135,7 +145,7 @@ export class JsxTypesGenerator {
             const filteredProperties = widget.meta.properties.filter((p) => !widget.hiddenProps.has(p.camelName));
             const filteredSignals = widget.meta.signals.filter((s) => !widget.hiddenProps.has(s.handlerName));
 
-            const renderableSlots = getRenderableSlotNames(widget.jsxName);
+            const renderableSlots = this.renderableSlots.get(widget.jsxName);
             const slotPropNames = new Set(
                 widget.slots.map((slot) => toCamelCase(slot)).filter((name) => renderableSlots.has(name)),
             );

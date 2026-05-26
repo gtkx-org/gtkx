@@ -83,6 +83,49 @@ describe("defineConfig (applicationId)", () => {
     });
 });
 
+describe("defineConfig slotProps validation", () => {
+    it("accepts a slotProps map", () => {
+        const config = { libraries: ["Gtk-4.0"], slotProps: { MyAppFooBar: ["content"] } };
+        expect(defineConfig(config)).toBe(config);
+    });
+
+    it("rejects a slotProps value that is not an object", () => {
+        expect(() => defineConfig({ slotProps: "nope" as unknown as Record<string, string[]> })).toThrow(
+            /`slotProps` must be an object/,
+        );
+    });
+
+    it("rejects a slotProps array", () => {
+        expect(() => defineConfig({ slotProps: [] as unknown as Record<string, string[]> })).toThrow(
+            /`slotProps` must be an object/,
+        );
+    });
+
+    it("rejects a slotProps key that is not PascalCase", () => {
+        expect(() => defineConfig({ slotProps: { "kebab-name": ["content"] } })).toThrow(
+            /invalid `slotProps` key "kebab-name"/,
+        );
+    });
+
+    it("rejects a slotProps entry with an empty array", () => {
+        expect(() => defineConfig({ slotProps: { MyAppFooBar: [] } })).toThrow(
+            /`slotProps\.MyAppFooBar` must be a non-empty array/,
+        );
+    });
+
+    it("rejects a slotProps entry that is not an array", () => {
+        expect(() => defineConfig({ slotProps: { MyAppFooBar: "content" as unknown as string[] } })).toThrow(
+            /`slotProps\.MyAppFooBar` must be a non-empty array/,
+        );
+    });
+
+    it("rejects a slotProps prop name that is not camelCase", () => {
+        expect(() => defineConfig({ slotProps: { MyAppFooBar: ["Content"] } })).toThrow(
+            /invalid `slotProps\.MyAppFooBar` entry "Content"/,
+        );
+    });
+});
+
 describe("isValidAppId", () => {
     it("accepts a standard reverse-DNS application ID", () => {
         expect(isValidAppId("com.example.MyApp")).toBe(true);

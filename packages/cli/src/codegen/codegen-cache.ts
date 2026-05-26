@@ -27,19 +27,30 @@ type Manifest = {
  *
  * @param libraries - Resolved GIR namespace identifiers driving this run
  * @param girPath - The user's configured `girPath`, if any
+ * @param slotProps - The user's configured `slotProps` overrides, if any
  * @param codegenVersion - Version of `@gtkx/codegen` driving this run
  * @returns Hex SHA-256 digest of the input hash
  */
 export const computeInputHash = (
     libraries: readonly string[],
     girPath: readonly string[] | undefined,
+    slotProps: Readonly<Record<string, readonly string[]>> | undefined,
     codegenVersion: string,
 ): string => {
     const hash = createHash("sha256");
-    hash.update(JSON.stringify({ libraries, girPath: girPath ?? [] }));
+    hash.update(JSON.stringify({ libraries, girPath: girPath ?? [], slotProps: canonicalizeSlotProps(slotProps) }));
     hash.update("\n");
     hash.update(codegenVersion);
     return hash.digest("hex");
+};
+
+const canonicalizeSlotProps = (
+    slotProps: Readonly<Record<string, readonly string[]>> | undefined,
+): Array<[string, string[]]> => {
+    if (!slotProps) return [];
+    return Object.entries(slotProps)
+        .map(([jsxName, props]) => [jsxName, [...props].sort((a, b) => a.localeCompare(b))] as [string, string[]])
+        .sort(([a], [b]) => a.localeCompare(b));
 };
 
 /**

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder, stringify } from "../../../src/builders/index.js";
 import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../src/codegen-metadata.js";
+import { RenderableSlotsRegistry, type SlotPropsOverrides } from "../../../src/config/index.js";
 import { CompoundsGenerator } from "../../../src/react/generators/compounds-generator.js";
 import { MetadataReader } from "../../../src/react/metadata-reader.js";
 import { createCodegenWidgetMeta } from "../../fixtures/metadata-fixtures.js";
@@ -9,9 +10,15 @@ function generate(
     widgets: readonly CodegenWidgetMeta[],
     controllers: readonly CodegenControllerMeta[] = [],
     namespaces: string[] = ["Gtk", "Adw"],
+    slotPropOverrides?: SlotPropsOverrides,
 ): string {
     const reader = new MetadataReader(widgets);
-    const generator = new CompoundsGenerator(reader, controllers, namespaces);
+    const generator = new CompoundsGenerator(
+        reader,
+        controllers,
+        namespaces,
+        new RenderableSlotsRegistry(slotPropOverrides),
+    );
     const file = fileBuilder();
     generator.generate(file);
     return stringify(file);
@@ -187,6 +194,44 @@ describe("CompoundsGenerator / generate (4)", () => {
     it("falls back to a generic doc comment when no widget doc is provided", () => {
         const code = generate([createCodegenWidgetMeta({ jsxName: "GtkWindow", className: "Window" })]);
         expect(code).toContain("A Gtk.Window widget element");
+    });
+});
+
+describe("CompoundsGenerator / slotProps overrides", () => {
+    it("treats a consumer-declared slot prop as a renderable slot", () => {
+        const code = generate(
+            [
+                createCodegenWidgetMeta({
+                    jsxName: "MyAppFooBar",
+                    className: "FooBar",
+                    namespace: "MyApp",
+                    slots: ["content"],
+                }),
+            ],
+            [],
+            ["MyApp"],
+            { MyAppFooBar: ["content"] },
+        );
+        expect(code).toContain("export const MyAppFooBar");
+        expect(code).toContain('createSlotWidget<MyAppFooBarProps>("MyAppFooBar", ["content"])');
+    });
+
+    it("merges user overrides with the built-in slot map for the same JSX name", () => {
+        const code = generate(
+            [
+                createCodegenWidgetMeta({
+                    jsxName: "GtkWindow",
+                    className: "Window",
+                    slots: ["titlebar", "footer"],
+                }),
+            ],
+            [],
+            ["Gtk", "Adw"],
+            { GtkWindow: ["footer"] },
+        );
+        expect(code).toContain('createSlotWidget<GtkWindowProps>("GtkWindow", ');
+        expect(code).toContain('"titlebar"');
+        expect(code).toContain('"footer"');
     });
 });
 

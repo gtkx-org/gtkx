@@ -45,7 +45,7 @@ describe("runCodegen", () => {
         writeConfig(cwd);
 
         const version = readCodegenVersion();
-        const inputHash = computeInputHash(["Gtk-4.0"], undefined, version);
+        const inputHash = computeInputHash(["Gtk-4.0"], undefined, undefined, version);
         writeCacheManifest(cwd, inputHash, version);
 
         const result = await runCodegen({ cwd });
@@ -61,7 +61,7 @@ describe("runCodegen", () => {
         writeConfig(cwd, "export default {};");
 
         const version = readCodegenVersion();
-        const inputHash = computeInputHash(["Gtk-4.0", "Adw-1"], undefined, version);
+        const inputHash = computeInputHash(["Gtk-4.0", "Adw-1"], undefined, undefined, version);
         writeCacheManifest(cwd, inputHash, version);
 
         const result = await runCodegen({ cwd });

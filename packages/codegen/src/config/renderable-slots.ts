@@ -6,7 +6,7 @@
  *
  * Keys are JSX names (e.g., "GtkWindow"), values are camelCase slot prop names.
  */
-const RENDERABLE_SLOTS: Readonly<Record<string, readonly string[]>> = {
+const BUILTIN_RENDERABLE_SLOTS: Readonly<Record<string, readonly string[]>> = {
     GtkWindow: ["titlebar"],
     AdwWindow: ["content"],
     AdwApplicationWindow: ["content"],
@@ -30,7 +30,38 @@ const RENDERABLE_SLOTS: Readonly<Record<string, readonly string[]>> = {
     AdwToolbarView: ["content"],
 };
 
-export const getRenderableSlotNames = (jsxName: string): ReadonlySet<string> => {
-    const slots = RENDERABLE_SLOTS[jsxName];
-    return slots ? new Set(slots) : new Set();
-};
+const EMPTY: ReadonlySet<string> = new Set();
+
+/**
+ * User-supplied renderable slot overrides keyed by JSX element name and
+ * mapped to the camelCase property names that should be exposed as JSX
+ * child slots.
+ */
+export type SlotPropsOverrides = Readonly<Record<string, readonly string[]>>;
+
+/**
+ * Resolved lookup over the built-in renderable slot map plus any user
+ * overrides. Generators query this instead of calling a module-level
+ * function so consumer-provided JSX elements can opt their widget-typed
+ * properties into the slot-mounting pipeline.
+ */
+export class RenderableSlotsRegistry {
+    private readonly lookup: ReadonlyMap<string, ReadonlySet<string>>;
+
+    constructor(overrides: SlotPropsOverrides = {}) {
+        const merged = new Map<string, Set<string>>();
+        for (const [jsxName, slots] of Object.entries(BUILTIN_RENDERABLE_SLOTS)) {
+            merged.set(jsxName, new Set(slots));
+        }
+        for (const [jsxName, slots] of Object.entries(overrides)) {
+            const existing = merged.get(jsxName) ?? new Set<string>();
+            for (const slot of slots) existing.add(slot);
+            merged.set(jsxName, existing);
+        }
+        this.lookup = merged;
+    }
+
+    get(jsxName: string): ReadonlySet<string> {
+        return this.lookup.get(jsxName) ?? EMPTY;
+    }
+}
