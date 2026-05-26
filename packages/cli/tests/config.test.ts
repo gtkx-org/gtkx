@@ -72,6 +72,15 @@ describe("defineConfig (applicationId)", () => {
         expect(() => defineConfig({ applicationId: "not valid" })).toThrow(/invalid `applicationId`/);
         expect(() => defineConfig({ applicationId: "singletoken" })).toThrow(/invalid `applicationId`/);
     });
+
+    it("rejects a non-string applicationId", () => {
+        expect(() => defineConfig({ applicationId: 123 as unknown as string })).toThrow(/invalid `applicationId`/);
+    });
+
+    it("accepts a config that omits applicationId", () => {
+        expect(() => defineConfig({ libraries: ["Gtk-4.0"] })).not.toThrow();
+        expect(defineConfig({ libraries: ["Gtk-4.0"] }).applicationId).toBeUndefined();
+    });
 });
 
 describe("isValidAppId", () => {

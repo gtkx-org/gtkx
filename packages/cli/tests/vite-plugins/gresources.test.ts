@@ -1,10 +1,12 @@
 import { execFileSync } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     __TEST_BUNDLE_FILENAME,
+    __TEST_escapeXml,
     __TEST_VIRTUAL_INIT,
     __TEST_VIRTUAL_PREFIX,
     deriveResourcePrefix,
@@ -12,6 +14,8 @@ import {
 } from "../../src/vite-plugins/gresources.js";
 
 import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
+
+type ConfigureServerHook = (this: unknown, server: unknown) => void;
 
 type ConfigHook = () => { assetsInclude: RegExp[] };
 type ConfigResolvedHook = (config: { command: "build" | "serve"; root: string }) => void;
@@ -216,5 +220,155 @@ describe("gtkxResources (buildEnd)", () => {
         expect(call.fileName).toBe(__TEST_BUNDLE_FILENAME);
         expect(Buffer.isBuffer(call.source)).toBe(true);
         expect(call.source.length).toBeGreaterThan(0);
+    });
+});
+
+type FakeServer = {
+    watcher: EventEmitter;
+    ssrLoadModule: ReturnType<typeof vi.fn>;
+};
+
+const createFakeServer = (refresh: ReturnType<typeof vi.fn>): FakeServer => ({
+    watcher: new EventEmitter(),
+    ssrLoadModule: vi.fn(async () => ({ __refresh: refresh })),
+});
+
+const waitTicks = async (n = 2): Promise<void> => {
+    for (let i = 0; i < n; i++) {
+        await new Promise((resolve) => setImmediate(resolve));
+    }
+};
+
+const writeTinyPng = (path: string): void => {
+    writeFileSync(path, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+};
+
+describe("gtkxResources (watcher: change event)", () => {
+    setupTmpDir();
+
+    it("re-registers the GResource bundle when a tracked asset changes", async () => {
+        if (!hasGlibCompileResources()) return;
+
+        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
+        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmpDir });
+
+        const assetPath = join(tmpDir, "icon.png");
+        writeTinyPng(assetPath);
+        (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`);
+
+        const refresh = vi.fn();
+        const server = createFakeServer(refresh);
+        (plugin.configureServer as ConfigureServerHook).call(plugin, server);
+
+        server.watcher.emit("change", assetPath);
+        await waitTicks();
+
+        expect(server.ssrLoadModule).toHaveBeenCalledWith(__TEST_VIRTUAL_INIT);
+        expect(refresh).toHaveBeenCalled();
+    });
+});
+
+describe("gtkxResources (watcher: add event)", () => {
+    setupTmpDir();
+
+    it("re-registers the bundle on the 'add' watcher event for a tracked asset", async () => {
+        if (!hasGlibCompileResources()) return;
+
+        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
+        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmpDir });
+
+        const assetPath = join(tmpDir, "addme.png");
+        writeTinyPng(assetPath);
+        (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`);
+
+        const refresh = vi.fn();
+        const server = createFakeServer(refresh);
+        (plugin.configureServer as ConfigureServerHook).call(plugin, server);
+
+        server.watcher.emit("add", assetPath);
+        await waitTicks();
+
+        expect(refresh).toHaveBeenCalled();
+    });
+});
+
+describe("gtkxResources (watcher: untracked event)", () => {
+    setupTmpDir();
+
+    it("ignores file events for untracked paths", async () => {
+        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
+        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmpDir });
+
+        const refresh = vi.fn();
+        const server = createFakeServer(refresh);
+        (plugin.configureServer as ConfigureServerHook).call(plugin, server);
+
+        server.watcher.emit("change", "/nothing/here.png");
+        server.watcher.emit("add", "/nothing/added.png");
+        await waitTicks(1);
+
+        expect(server.ssrLoadModule).not.toHaveBeenCalled();
+        expect(refresh).not.toHaveBeenCalled();
+    });
+});
+
+describe("gtkxResources (watcher: refresh failure)", () => {
+    setupTmpDir();
+
+    it("logs and swallows refresh errors so the watcher keeps running", async () => {
+        if (!hasGlibCompileResources()) return;
+
+        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
+        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmpDir });
+
+        const assetPath = join(tmpDir, "broken.png");
+        writeTinyPng(assetPath);
+        (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`);
+
+        const watcher = new EventEmitter();
+        const server = {
+            watcher,
+            ssrLoadModule: vi.fn(async () => {
+                throw new Error("ssr boom");
+            }),
+        };
+
+        const errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        try {
+            (plugin.configureServer as ConfigureServerHook).call(plugin, server);
+
+            server.watcher.emit("change", assetPath);
+            await waitTicks();
+
+            expect(errSpy).toHaveBeenCalled();
+        } finally {
+            errSpy.mockRestore();
+        }
+    });
+});
+
+describe("escapeXml (internal)", () => {
+    it("escapes < to &lt;", () => {
+        expect(__TEST_escapeXml("<root>")).toBe("&lt;root&gt;");
+    });
+
+    it("escapes & to &amp;", () => {
+        expect(__TEST_escapeXml("a & b")).toBe("a &amp; b");
+    });
+
+    it("escapes the double quote to &quot;", () => {
+        expect(__TEST_escapeXml('say "hi"')).toBe("say &quot;hi&quot;");
+    });
+
+    it("escapes the apostrophe to &apos;", () => {
+        expect(__TEST_escapeXml("it's")).toBe("it&apos;s");
+    });
+
+    it("leaves a plain alphanumeric string untouched", () => {
+        expect(__TEST_escapeXml("plain text 123")).toBe("plain text 123");
+    });
+
+    it("escapes a string containing every reserved character", () => {
+        expect(__TEST_escapeXml(`<a & b="c">'`)).toBe("&lt;a &amp; b=&quot;c&quot;&gt;&apos;");
     });
 });

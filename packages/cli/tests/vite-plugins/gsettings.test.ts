@@ -1,10 +1,13 @@
 import { execFileSync } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { basename, join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gtkxGSettings } from "../../src/vite-plugins/gsettings.js";
 import type { BuildEndHook, ResolveIdHook } from "./plugin-hook-types.js";
+
+type HandleHotUpdateHook = (this: unknown, ctx: { file: string; server: unknown }) => unknown;
 
 type ConfigResolvedHook = (config: { command: "build" | "serve" }) => void;
 type LoadHook = (
@@ -155,5 +158,208 @@ describe("gtkxGSettings (buildEnd)", () => {
         const emitFile = vi.fn();
         expect(() => (plugin.buildEnd as BuildEndHook).call({ emitFile })).not.toThrow();
         expect(emitFile).not.toHaveBeenCalled();
+    });
+
+    it("buildEnd emits a compiled gschemas asset for queued schemas", () => {
+        if (!hasGlibCompileSchemas()) return;
+
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-buildend-"));
+        const schemaPath = join(tmp, "build.gschema.xml");
+        writeFileSync(
+            schemaPath,
+            `<?xml version="1.0"?>
+<schemalist>
+    <schema id="com.example.build" path="/com/example/build/">
+        <key name="x" type="b"><default>false</default></key>
+    </schema>
+</schemalist>`,
+        );
+
+        try {
+            const plugin = gtkxGSettings();
+            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
+            (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`);
+
+            const emitFile = vi.fn();
+            (plugin.buildEnd as BuildEndHook).call({ emitFile });
+
+            expect(emitFile).toHaveBeenCalledTimes(1);
+            const call = emitFile.mock.calls[0]?.[0];
+            expect(call?.type).toBe("asset");
+            expect(call?.fileName).toBe("gschemas.compiled");
+            expect(Buffer.isBuffer(call?.source)).toBe(true);
+            expect((call?.source as Buffer).length).toBeGreaterThan(0);
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+const setupSchemaDirEnv = (): void => {
+    let prevSchemaDir: string | undefined;
+    beforeEach(() => {
+        prevSchemaDir = process.env.GSETTINGS_SCHEMA_DIR;
+        delete process.env.GSETTINGS_SCHEMA_DIR;
+    });
+    afterEach(() => {
+        if (prevSchemaDir === undefined) {
+            delete process.env.GSETTINGS_SCHEMA_DIR;
+        } else {
+            process.env.GSETTINGS_SCHEMA_DIR = prevSchemaDir;
+        }
+    });
+};
+
+const writeSchema = (tmp: string, fileName: string, schemaId: string): string => {
+    const schemaPath = join(tmp, fileName);
+    writeFileSync(
+        schemaPath,
+        `<?xml version="1.0"?>
+<schemalist>
+    <schema id="${schemaId}" path="/${schemaId.replaceAll(".", "/")}/">
+        <key name="x" type="b"><default>false</default></key>
+    </schema>
+</schemalist>`,
+    );
+    return schemaPath;
+};
+
+describe("gtkxGSettings (dev-mode load: fresh schema dir)", () => {
+    setupSchemaDirEnv();
+
+    it("compiles a schema into a temp dir and prepends it to GSETTINGS_SCHEMA_DIR in serve mode", () => {
+        if (!hasGlibCompileSchemas()) return;
+
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-dev-"));
+        const schemaPath = writeSchema(tmp, "dev.gschema.xml", "com.example.dev");
+
+        try {
+            const plugin = gtkxGSettings();
+            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+
+            const code = (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`) as string;
+            expect(code).toContain(`export default "com.example.dev";`);
+            expect(code).not.toContain("gtkx-gsettings-init");
+
+            expect(process.env.GSETTINGS_SCHEMA_DIR).toBeDefined();
+            const first = process.env.GSETTINGS_SCHEMA_DIR?.split(":")[0];
+            expect(first).toMatch(/gtkx-schemas-/);
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("gtkxGSettings (dev-mode load: existing schema dir)", () => {
+    setupSchemaDirEnv();
+
+    it("appends to an existing GSETTINGS_SCHEMA_DIR when one is already set", () => {
+        if (!hasGlibCompileSchemas()) return;
+
+        process.env.GSETTINGS_SCHEMA_DIR = "/existing/dir";
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-dev-existing-"));
+        const schemaPath = writeSchema(tmp, "dev.gschema.xml", "com.example.dev2");
+
+        try {
+            const plugin = gtkxGSettings();
+            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+            (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`);
+
+            expect(process.env.GSETTINGS_SCHEMA_DIR).toMatch(/^.*:\/existing\/dir$/);
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("gtkxGSettings (handleHotUpdate: untracked)", () => {
+    it("ignores files that were never tracked", () => {
+        const plugin = gtkxGSettings();
+        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+
+        const server = {
+            moduleGraph: {
+                getModuleById: vi.fn(),
+                invalidateModule: vi.fn(),
+            },
+            watcher: new EventEmitter(),
+        };
+        const result = (plugin.handleHotUpdate as HandleHotUpdateHook).call(plugin, {
+            file: "/never-seen.gschema.xml",
+            server,
+        });
+        expect(result).toBeUndefined();
+        expect(server.moduleGraph.getModuleById).not.toHaveBeenCalled();
+    });
+});
+
+describe("gtkxGSettings (handleHotUpdate: tracked match)", () => {
+    it("recompiles the schema dir and invalidates the matching module when a tracked file changes", () => {
+        if (!hasGlibCompileSchemas()) return;
+
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-hmr-"));
+        const schemaPath = writeSchema(tmp, "hmr.gschema.xml", "com.example.hmr");
+
+        try {
+            const plugin = gtkxGSettings();
+            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+
+            const virtualId = `\0gtkx-gsettings:${schemaPath}`;
+            (plugin.load as LoadHook).call(stubLoadContext(), virtualId);
+
+            const matchingModule = { id: virtualId };
+            const server = {
+                moduleGraph: {
+                    getModuleById: vi.fn((id: string) => (id === virtualId ? matchingModule : undefined)),
+                    invalidateModule: vi.fn(),
+                },
+            };
+
+            const result = (plugin.handleHotUpdate as HandleHotUpdateHook).call(plugin, {
+                file: schemaPath,
+                server,
+            }) as Array<{ id: string }>;
+
+            expect(server.moduleGraph.getModuleById).toHaveBeenCalledWith(virtualId);
+            expect(server.moduleGraph.invalidateModule).toHaveBeenCalledWith(matchingModule);
+            expect(result).toEqual([matchingModule]);
+            expect(basename(schemaPath)).toBe("hmr.gschema.xml");
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("gtkxGSettings (handleHotUpdate: tracked orphan)", () => {
+    it("returns undefined when the tracked module is not present in the module graph", () => {
+        if (!hasGlibCompileSchemas()) return;
+
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-hmr-orphan-"));
+        const schemaPath = writeSchema(tmp, "orphan.gschema.xml", "com.example.orphan");
+
+        try {
+            const plugin = gtkxGSettings();
+            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+
+            const virtualId = `\0gtkx-gsettings:${schemaPath}`;
+            (plugin.load as LoadHook).call(stubLoadContext(), virtualId);
+
+            const server = {
+                moduleGraph: {
+                    getModuleById: vi.fn(() => undefined),
+                    invalidateModule: vi.fn(),
+                },
+            };
+
+            const result = (plugin.handleHotUpdate as HandleHotUpdateHook).call(plugin, {
+                file: schemaPath,
+                server,
+            });
+
+            expect(result).toBeUndefined();
+            expect(server.moduleGraph.invalidateModule).not.toHaveBeenCalled();
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
     });
 });

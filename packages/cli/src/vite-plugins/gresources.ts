@@ -358,3 +358,11 @@ export const __TEST_VIRTUAL_PREFIX = VIRTUAL_PREFIX;
  * @internal
  */
 export const __TEST_BUNDLE_FILENAME = BUNDLE_FILENAME;
+
+/**
+ * Test-only: XML-escapes the five reserved characters (`<`, `>`, `&`, `"`,
+ * `'`) used inside the generated GResource manifest.
+ *
+ * @internal
+ */
+export const __TEST_escapeXml = escapeXml;
