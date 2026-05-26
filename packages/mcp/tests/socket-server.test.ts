@@ -246,10 +246,11 @@ describe("SocketServer framing — error responses", () => {
 
 describe("SocketServer send", () => {
     setupSocketServer();
-    it("send returns false for an unknown connection id", async () => {
+    it("send silently drops a message for an unknown connection id", async () => {
         await socketCtx.server.start();
-        const ok = socketCtx.server.send("missing", { id: "x", method: "noop" } as IpcMessage);
-        expect(ok).toBe(false);
+        expect(() =>
+            socketCtx.server.send("missing", { id: "x", method: "noop" } as IpcMessage),
+        ).not.toThrow();
     });
 
     it("send delivers a message to the connected client", async () => {
@@ -261,8 +262,7 @@ describe("SocketServer send", () => {
         const connection = await connectionPromise;
 
         const collector = collectLines(client);
-        const ok = server.send(connection.id, { id: "out-1", result: 42 } as IpcMessage);
-        expect(ok).toBe(true);
+        server.send(connection.id, { id: "out-1", result: 42 } as IpcMessage);
 
         await new Promise((resolve) => setTimeout(resolve, 20));
         client.destroy();

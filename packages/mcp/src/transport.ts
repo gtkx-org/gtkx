@@ -1,4 +1,5 @@
 import EventEmitter from "node:events";
+import type { Socket } from "node:net";
 import { invalidRequestError, ipcTimeoutError, McpError, type McpErrorCode } from "./protocol/errors.js";
 import {
     type IpcMessage,
@@ -90,12 +91,47 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
     }
 
     /**
-     * Writes a framed JSON message. Returns `false` if the stream is not
-     * writable.
+     * Writes a framed JSON message. Silently drops the message if the stream
+     * is not writable; callers that need a hard failure should use
+     * {@link sendRequest}, which throws {@link TransportClosedError} in that
+     * case.
      */
-    send(message: IpcMessage): boolean {
-        if (!this.writer.writable) return false;
-        return this.writer.write(`${JSON.stringify(message)}\n`);
+    send(message: IpcMessage): void {
+        if (!this.writer.writable) return;
+        this.writer.write(`${JSON.stringify(message)}\n`);
+    }
+
+    /**
+     * Wraps an open {@link Socket} with a new {@link JsonStreamTransport} and
+     * pre-wires the common data/close/error plumbing both the MCP server and
+     * its GTKX-side client need: `data` is fed into the framing buffer,
+     * `close` rejects every in-flight request, and `error` is forwarded to
+     * the caller-supplied handler. Callers attach their own `request` /
+     * `invalid` / additional close listeners on the returned instance.
+     *
+     * @param socket - The connected socket.
+     * @param options - Hooks invoked after the built-in close / error
+     *   plumbing runs.
+     * @returns The transport bound to `socket`.
+     */
+    static fromSocket(
+        socket: Socket,
+        options: {
+            onClose?: () => void;
+            onError?: (error: Error) => void;
+            closeReason?: string;
+        } = {},
+    ): JsonStreamTransport {
+        const transport = new JsonStreamTransport(socket);
+        socket.on("data", (data: Buffer) => transport.feed(data));
+        socket.on("close", () => {
+            transport.rejectPending(new Error(options.closeReason ?? "Connection closed"));
+            options.onClose?.();
+        });
+        if (options.onError) {
+            socket.on("error", options.onError);
+        }
+        return transport;
     }
 
     /**
@@ -124,8 +160,8 @@ export class JsonStreamTransport extends EventEmitter<JsonStreamTransportEvents>
                 timeout,
             });
 
-            const sent = this.send({ id, method, params });
-            if (!sent) {
+            this.send({ id, method, params });
+            if (!this.writer.writable) {
                 clearTimeout(timeout);
                 this.pending.delete(id);
                 reject(new TransportClosedError());
@@ -220,8 +256,8 @@ export type AppTransportEvents = {
 export interface AppTransport extends EventEmitter<AppTransportEvents> {
     /**
      * Writes a framed message to the connection identified by `connectionId`.
-     * @returns `true` on a successful write, `false` if the connection is
-     *   unknown or its stream is no longer writable.
+     * Silently drops the message if the connection is unknown or its stream
+     * is no longer writable.
      */
-    send(connectionId: string, message: IpcMessage): boolean;
+    send(connectionId: string, message: IpcMessage): void;
 }

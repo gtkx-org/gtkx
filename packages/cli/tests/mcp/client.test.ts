@@ -174,4 +174,13 @@ describe("McpClient.disconnect", () => {
         const [, unregisterLine] = parseLines(ctx.received[0] ?? []);
         expect(unregisterLine?.method).toBe("app.unregister");
     });
+
+    it("rejects an in-flight connect() promise when disconnect is called first", async () => {
+        const client = new McpClient({ socketPath: ctx.socketPath, appId: "com.test.app" });
+
+        const connectPromise = client.connect();
+        client.disconnect();
+
+        await expect(connectPromise).rejects.toThrow(/disconnected before connection registered/);
+    });
 });

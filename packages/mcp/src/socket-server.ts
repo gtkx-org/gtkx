@@ -66,17 +66,21 @@ export class SocketServer extends EventEmitter<AppTransportEvents> implements Ap
         });
     }
 
-    send(connectionId: string, message: IpcMessage): boolean {
+    send(connectionId: string, message: IpcMessage): void {
         const connection = this.connections.get(connectionId);
-        if (!connection) {
-            return false;
-        }
-        return connection.transport.send(message);
+        if (!connection) return;
+        connection.transport.send(message);
     }
 
     private handleConnection(socket: net.Socket): void {
         const id = crypto.randomUUID();
-        const transport = new JsonStreamTransport(socket);
+        const transport = JsonStreamTransport.fromSocket(socket, {
+            onClose: () => {
+                this.connections.delete(id);
+                this.emit("disconnection", connection);
+            },
+            onError: (error) => this.emit("error", error),
+        });
         const connection: AppConnection = { id, transport };
 
         this.connections.set(id, connection);
@@ -84,18 +88,6 @@ export class SocketServer extends EventEmitter<AppTransportEvents> implements Ap
         transport.on("request", (request) => this.emit("request", connection, request));
         transport.on("invalid", ({ id: badId, error }) => {
             transport.send({ id: badId, error: error.toIpcError() });
-        });
-
-        socket.on("data", (data: Buffer) => transport.feed(data));
-
-        socket.on("close", () => {
-            this.connections.delete(id);
-            transport.rejectPending(new Error("Connection closed"));
-            this.emit("disconnection", connection);
-        });
-
-        socket.on("error", (error) => {
-            this.emit("error", error);
         });
 
         this.emit("connection", connection);
