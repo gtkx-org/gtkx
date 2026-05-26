@@ -758,13 +758,7 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
 
         await collapseRow(0);
         await waitFor(() =>
-            expect(getChildTexts(ref.current)).toEqual([
-                "Appearance",
-                "Notifications",
-                "Privacy",
-                "Power",
-                "Network",
-            ]),
+            expect(getChildTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]),
         );
 
         await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
