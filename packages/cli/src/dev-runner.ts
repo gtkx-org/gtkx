@@ -100,8 +100,10 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => {
             const root = process.cwd();
             const server = await deps.createServer(buildConfig(root, deps.plugins(), deps.define()));
 
+            let isShuttingDown = false;
             deps.whenStopped()
                 .then(async () => {
+                    isShuttingDown = true;
                     deps.stopMcpClient();
                     await server.close();
                 })
@@ -110,6 +112,7 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => {
                 });
 
             server.watcher.on("change", (changedPath) => {
+                if (isShuttingDown) return;
                 handleFileChange(server, changedPath).catch((error) => {
                     console.error("[gtkx] Hot reload failed:", error);
                 });
