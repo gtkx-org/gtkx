@@ -1,4 +1,10 @@
 export {
+    exitCodeForSignal,
+    type GracefulShutdownHandle,
+    type GracefulShutdownOptions,
+    installGracefulShutdown,
+} from "./graceful-shutdown.js";
+export {
     errorMessage,
     McpError,
     McpErrorCode,

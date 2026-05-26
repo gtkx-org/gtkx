@@ -337,6 +337,10 @@ importers:
         version: 0.33.0(react@19.2.6)
 
   packages/vitest:
+    dependencies:
+      '@gtkx/mcp':
+        specifier: workspace:*
+        version: link:../mcp
     devDependencies:
       vitest:
         specifier: ^4.1.7

@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
+import { installGracefulShutdown } from "@gtkx/mcp";
 
 const busDir = mkdtempSync(join(tmpdir(), "gtkx-dbus-"));
 const busConfigPath = join(busDir, "session.conf");
@@ -72,16 +73,13 @@ process.on("exit", () => {
     cleanupBusDir();
 });
 
-process.on("SIGTERM", () => {
-    killChildren("SIGTERM");
-    cleanupBusDir();
-    process.exit(143);
-});
-
-process.on("SIGINT", () => {
-    killChildren("SIGTERM");
-    cleanupBusDir();
-    process.exit(130);
+installGracefulShutdown({
+    onSignal: () => {
+        killChildren("SIGTERM");
+        cleanupBusDir();
+    },
+    onForce: () => killChildren("SIGKILL"),
+    forceKillAfterMs: 1000,
 });
 
 const waitForFile = async (path: string, label: string, timeout = 15000): Promise<void> => {

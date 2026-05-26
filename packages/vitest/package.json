@@ -41,6 +41,9 @@
         "build": "tsc -b",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
+    "dependencies": {
+        "@gtkx/mcp": "workspace:*"
+    },
     "devDependencies": {
         "vitest": "^4.1.7"
     },

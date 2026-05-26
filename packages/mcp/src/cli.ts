@@ -4,7 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
-import { errorMessage } from "./protocol/errors.js";
+import { installGracefulShutdown } from "./graceful-shutdown.js";
 import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
 
@@ -210,7 +210,7 @@ const listAppsTool = (cm: AppQueryClient) =>
                 try {
                     await cm.waitForApp(timeout);
                 } catch (error) {
-                    return textError(errorMessage(error));
+                    return textError(error instanceof Error ? error.message : "Timeout waiting for app");
                 }
             }
 
@@ -350,19 +350,11 @@ export async function main() {
     const transport = new StdioServerTransport();
     await mcpServer.connect(transport);
 
-    let isShuttingDown = false;
-    const shutdown = async () => {
-        if (isShuttingDown) return;
-        isShuttingDown = true;
-        try {
+    installGracefulShutdown({
+        onSignal: async () => {
             connectionManager.cleanup();
             await socketServer.stop();
             await mcpServer.close();
-        } finally {
-            process.exit(0);
-        }
-    };
-
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
+        },
+    });
 }
