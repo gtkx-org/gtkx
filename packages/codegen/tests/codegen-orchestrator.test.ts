@@ -16,13 +16,15 @@ vi.mock("../src/ffi/ffi-generator.js", () => ({
 
 vi.mock("../src/react/react-generator.js", () => ({
     ReactGenerator: class {
+        // biome-ignore lint/complexity/useMaxParams: mirrors the real ReactGenerator constructor
         constructor(
             public widgetMeta: unknown,
             public controllerMeta: unknown,
+            public layoutManagerMeta: unknown,
             public namespaceNames: string[],
             public renderableSlots: unknown,
         ) {
-            reactCtorSpy(widgetMeta, controllerMeta, namespaceNames, renderableSlots);
+            reactCtorSpy(widgetMeta, controllerMeta, layoutManagerMeta, namespaceNames, renderableSlots);
         }
         generate() {
             return reactGenerateMock();
@@ -191,7 +193,7 @@ describe("CodegenOrchestrator (2) / generate (2)", () => {
 
         const reactCall = reactCtorSpy.mock.calls[0];
         if (!reactCall) throw new Error("ReactGenerator was not constructed");
-        expect(new Set(reactCall[2] as string[])).toEqual(new Set(["Gtk", "Adw"]));
+        expect(new Set(reactCall[3] as string[])).toEqual(new Set(["Gtk", "Adw"]));
     });
 
     it("forwards slotProps overrides into the ReactGenerator's renderable slot registry", () => {
@@ -208,7 +210,7 @@ describe("CodegenOrchestrator (2) / generate (2)", () => {
 
         const reactCall = reactCtorSpy.mock.calls[0];
         if (!reactCall) throw new Error("ReactGenerator was not constructed");
-        const registry = reactCall[3] as { get: (jsx: string) => ReadonlySet<string> };
+        const registry = reactCall[4] as { get: (jsx: string) => ReadonlySet<string> };
         expect([...registry.get("MyAppFooBar")]).toEqual(["content"]);
     });
 });

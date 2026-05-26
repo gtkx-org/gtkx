@@ -10,7 +10,7 @@
 import type { FileBuilder } from "../../builders/index.js";
 import { raw, variableStatement } from "../../builders/index.js";
 import type { Writer } from "../../builders/text-writer.js";
-import type { CodegenControllerMeta } from "../../codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenLayoutManagerMeta } from "../../codegen-metadata.js";
 import type { PropertyAnalysis, SignalAnalysis } from "../../generator-types.js";
 
 import { type MetadataReader, sortWidgetsByClassName } from "../metadata-reader.js";
@@ -27,6 +27,7 @@ export class InternalGenerator {
     constructor(
         private readonly reader: MetadataReader,
         private readonly controllers: readonly CodegenControllerMeta[],
+        private readonly layoutManagers: readonly CodegenLayoutManagerMeta[],
     ) {}
 
     generate(file: FileBuilder): void {
@@ -59,6 +60,7 @@ export class InternalGenerator {
     private collectClassItems(): ClassItem[] {
         const widgets = sortWidgetsByClassName(this.reader.getAllWidgets());
         const controllers = [...this.controllers].sort((a, b) => a.className.localeCompare(b.className));
+        const layoutManagers = [...this.layoutManagers].sort((a, b) => a.className.localeCompare(b.className));
 
         const metaByJsxName = new Map(this.reader.getAllCodegenMeta().map((m) => [m.jsxName, m]));
 
@@ -73,6 +75,10 @@ export class InternalGenerator {
             items.push(controller);
         }
 
+        for (const layoutManager of layoutManagers) {
+            items.push(layoutManager);
+        }
+
         return items;
     }
 
@@ -83,6 +89,9 @@ export class InternalGenerator {
         }
         for (const controller of this.controllers) {
             namespaces.add(controller.namespace);
+        }
+        for (const layoutManager of this.layoutManagers) {
+            namespaces.add(layoutManager.namespace);
         }
         return [...namespaces].sort((a, b) => a.localeCompare(b));
     }

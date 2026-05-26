@@ -1,21 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder, stringify } from "../../../src/builders/index.js";
-import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../src/codegen-metadata.js";
+import type {
+    CodegenControllerMeta,
+    CodegenLayoutManagerMeta,
+    CodegenWidgetMeta,
+} from "../../../src/codegen-metadata.js";
 import { RenderableSlotsRegistry, type SlotPropsOverrides } from "../../../src/config/index.js";
 import { CompoundsGenerator } from "../../../src/react/generators/compounds-generator.js";
 import { MetadataReader } from "../../../src/react/metadata-reader.js";
 import { createCodegenWidgetMeta } from "../../fixtures/metadata-fixtures.js";
 
+// biome-ignore lint/complexity/useMaxParams: test fixture mirrors CompoundsGenerator constructor shape
 function generate(
     widgets: readonly CodegenWidgetMeta[],
     controllers: readonly CodegenControllerMeta[] = [],
     namespaces: string[] = ["Gtk", "Adw"],
     slotPropOverrides?: SlotPropsOverrides,
+    layoutManagers: readonly CodegenLayoutManagerMeta[] = [],
 ): string {
     const reader = new MetadataReader(widgets);
     const generator = new CompoundsGenerator(
         reader,
         controllers,
+        layoutManagers,
         namespaces,
         new RenderableSlotsRegistry(slotPropOverrides),
     );
@@ -241,7 +248,7 @@ describe("CompoundsGenerator / getCompoundJsxNames", () => {
             createCodegenWidgetMeta({ jsxName: "GtkWindow", className: "Window" }),
             createCodegenWidgetMeta({ jsxName: "GtkLabel", className: "Label" }),
         ]);
-        const generator = new CompoundsGenerator(reader, [], ["Gtk", "Adw"]);
+        const generator = new CompoundsGenerator(reader, [], [], ["Gtk", "Adw"]);
         const names = generator.getCompoundJsxNames();
         expect(names.has("GtkWindow")).toBe(true);
         expect(names.has("GtkLabel")).toBe(false);
@@ -249,7 +256,7 @@ describe("CompoundsGenerator / getCompoundJsxNames", () => {
 
     it("memoizes compound collection across calls", () => {
         const reader = new MetadataReader([createCodegenWidgetMeta({ jsxName: "GtkWindow", className: "Window" })]);
-        const generator = new CompoundsGenerator(reader, [], ["Gtk", "Adw"]);
+        const generator = new CompoundsGenerator(reader, [], [], ["Gtk", "Adw"]);
         const first = generator.getCompoundJsxNames();
         const second = generator.getCompoundJsxNames();
         expect(first).toEqual(second);

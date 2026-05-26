@@ -16,7 +16,7 @@ import {
     namespaceDecl,
     param,
 } from "../../../builders/index.js";
-import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenLayoutManagerMeta, CodegenWidgetMeta } from "../../../codegen-metadata.js";
 import { addMethodStructure, type MethodStructure } from "../../../ffi-emitters/index.js";
 import { resolveNamespaceImportPath } from "../../../ffi-emitters/namespace-import-path.js";
 import type { FfiGeneratorOptions } from "../../../generator-types.js";
@@ -47,12 +47,13 @@ import { SignalBuilder } from "./signal-builder.js";
 import { StaticFunctionBuilder } from "./static-function-builder.js";
 
 /**
- * Result of class generation. Carries widget and controller metadata
- * harvested while emitting the class.
+ * Result of class generation. Carries widget, controller, and layout manager
+ * metadata harvested while emitting the class.
  */
 type ClassGenerationResult = {
     widgetMeta?: CodegenWidgetMeta | null;
     controllerMeta?: CodegenControllerMeta | null;
+    layoutManagerMeta?: CodegenLayoutManagerMeta | null;
 };
 
 /**
@@ -216,8 +217,9 @@ export class ClassGenerator {
 
         const widgetMeta = this.classMetaBuilder.buildCodegenWidgetMeta();
         const controllerMeta = this.classMetaBuilder.buildCodegenControllerMeta();
+        const layoutManagerMeta = this.classMetaBuilder.buildCodegenLayoutManagerMeta();
 
-        return { widgetMeta, controllerMeta };
+        return { widgetMeta, controllerMeta, layoutManagerMeta };
     }
 
     private collectAllMethodStructures(opts: {

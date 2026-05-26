@@ -12,7 +12,7 @@ import {
 
 function createTestSetup(metas = [createWidgetMeta(), createButtonMeta()], namespaceNames = ["Gtk"]) {
     const reader = new MetadataReader(metas);
-    const generator = new JsxTypesGenerator(reader, [], namespaceNames);
+    const generator = new JsxTypesGenerator(reader, [], [], namespaceNames);
     return { reader, generator };
 }
 

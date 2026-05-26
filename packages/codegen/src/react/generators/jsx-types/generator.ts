@@ -7,12 +7,13 @@
  */
 
 import type { FileBuilder } from "../../../builders/index.js";
-import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenLayoutManagerMeta, CodegenWidgetMeta } from "../../../codegen-metadata.js";
 import { RenderableSlotsRegistry } from "../../../config/index.js";
 import { toCamelCase } from "../../../utils/naming.js";
 import { type MetadataReader, sortWidgetsByClassName } from "../../metadata-reader.js";
 import { ControllerPropsBuilder } from "./controller-props-builder.js";
 import { IntrinsicElementsBuilder } from "./intrinsic-elements-builder.js";
+import { LayoutManagerPropsBuilder } from "./layout-manager-props-builder.js";
 import { WidgetPropsBuilder } from "./widget-props-builder.js";
 
 export type JsxWidget = {
@@ -32,13 +33,16 @@ type JsxTypesGeneratorOptions = {
 export class JsxTypesGenerator {
     private readonly propsBuilder = new WidgetPropsBuilder();
     private readonly controllerPropsBuilder = new ControllerPropsBuilder();
+    private readonly layoutManagerPropsBuilder = new LayoutManagerPropsBuilder();
     private readonly intrinsicBuilder = new IntrinsicElementsBuilder();
     private readonly compoundJsxNames: ReadonlySet<string>;
     private readonly renderableSlots: RenderableSlotsRegistry;
 
+    // biome-ignore lint/complexity/useMaxParams: layout-managers parallel widgets and controllers as first-class meta sources
     constructor(
         private readonly reader: MetadataReader,
         private readonly controllers: readonly CodegenControllerMeta[],
+        private readonly layoutManagers: readonly CodegenLayoutManagerMeta[],
         private readonly namespaceNames: string[],
         options: JsxTypesGeneratorOptions = {},
     ) {
@@ -49,24 +53,31 @@ export class JsxTypesGenerator {
     generate(file: FileBuilder): void {
         const widgets = this.getWidgets();
         const controllers = this.getControllers();
+        const layoutManagers = this.getLayoutManagers();
         this.propsBuilder.clearUsedNamespaces();
         this.controllerPropsBuilder.clearUsedNamespaces();
+        this.layoutManagerPropsBuilder.clearUsedNamespaces();
 
         const widgetJsxNames = new Set(widgets.map((w) => w.jsxName));
         const controllerJsxNames = new Set(controllers.map((c) => c.jsxName));
+        const layoutManagerJsxNames = new Set(layoutManagers.map((l) => l.jsxName));
         this.propsBuilder.setKnownJsxNames(widgetJsxNames);
         this.controllerPropsBuilder.setKnownJsxNames(controllerJsxNames);
+        this.layoutManagerPropsBuilder.setKnownJsxNames(layoutManagerJsxNames);
 
         this.generateBaseWidgetProps(file, widgets);
         this.generateWidgetPropsInterfaces(file, widgets);
         this.generateBaseControllerProps(file, controllers);
         this.generateControllerPropsInterfaces(file, controllers);
-        this.addImports(file, widgets, controllers);
+        this.generateBaseLayoutManagerProps(file, layoutManagers);
+        this.generateLayoutManagerPropsInterfaces(file, layoutManagers);
+        this.addImports(file, widgets, controllers, layoutManagers);
 
         this.intrinsicBuilder.buildWidgetSlotNamesType(file, widgets);
         this.intrinsicBuilder.buildWidgetExports(file, widgets, this.compoundJsxNames);
         this.intrinsicBuilder.buildControllerExports(file, controllers, this.compoundJsxNames);
-        this.intrinsicBuilder.buildJsxNamespace(file, widgets, controllers);
+        this.intrinsicBuilder.buildLayoutManagerExports(file, layoutManagers, this.compoundJsxNames);
+        this.intrinsicBuilder.buildJsxNamespace(file, widgets, controllers, layoutManagers);
         this.intrinsicBuilder.addModuleExport(file);
     }
 
@@ -85,6 +96,12 @@ export class JsxTypesGenerator {
             .sort((a, b) => a.jsxName.localeCompare(b.jsxName));
     }
 
+    private getLayoutManagers(): CodegenLayoutManagerMeta[] {
+        return this.layoutManagers
+            .filter((m) => this.namespaceNames.includes(m.namespace))
+            .sort((a, b) => a.jsxName.localeCompare(b.jsxName));
+    }
+
     private toJsxWidget(meta: CodegenWidgetMeta): JsxWidget {
         const hiddenProps = new Set(meta.hiddenPropNames);
         const filteredSlots = meta.slots.filter((slot) => !hiddenProps.has(toCamelCase(slot)));
@@ -99,7 +116,12 @@ export class JsxTypesGenerator {
         };
     }
 
-    private addImports(file: FileBuilder, widgets: JsxWidget[], controllers: CodegenControllerMeta[]): void {
+    private addImports(
+        file: FileBuilder,
+        widgets: JsxWidget[],
+        controllers: CodegenControllerMeta[],
+        layoutManagers: CodegenLayoutManagerMeta[],
+    ): void {
         file.addTypeImport("react", ["ReactNode", "Ref"]);
 
         const usedNamespaces = new Set<string>(["Gtk"]);
@@ -111,11 +133,19 @@ export class JsxTypesGenerator {
             usedNamespaces.add(controller.namespace);
         }
 
+        for (const layoutManager of layoutManagers) {
+            usedNamespaces.add(layoutManager.namespace);
+        }
+
         for (const ns of this.propsBuilder.getUsedNamespaces()) {
             usedNamespaces.add(ns);
         }
 
         for (const ns of this.controllerPropsBuilder.getUsedNamespaces()) {
+            usedNamespaces.add(ns);
+        }
+
+        for (const ns of this.layoutManagerPropsBuilder.getUsedNamespaces()) {
             usedNamespaces.add(ns);
         }
 
@@ -174,6 +204,21 @@ export class JsxTypesGenerator {
     private generateControllerPropsInterfaces(file: FileBuilder, controllers: CodegenControllerMeta[]): void {
         for (const controller of controllers) {
             const iface = this.controllerPropsBuilder.buildControllerPropsInterface(controller);
+            if (iface) file.add(iface);
+        }
+    }
+
+    private generateBaseLayoutManagerProps(file: FileBuilder, layoutManagers: CodegenLayoutManagerMeta[]): void {
+        const layoutManagerMeta = layoutManagers.find((l) => l.className === "LayoutManager");
+        if (!layoutManagerMeta) return;
+
+        const iface = this.layoutManagerPropsBuilder.buildBaseLayoutManagerPropsInterface(layoutManagerMeta);
+        file.add(iface);
+    }
+
+    private generateLayoutManagerPropsInterfaces(file: FileBuilder, layoutManagers: CodegenLayoutManagerMeta[]): void {
+        for (const layoutManager of layoutManagers) {
+            const iface = this.layoutManagerPropsBuilder.buildLayoutManagerPropsInterface(layoutManager);
             if (iface) file.add(iface);
         }
     }

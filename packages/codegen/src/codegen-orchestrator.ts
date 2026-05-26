@@ -88,6 +88,9 @@ export class CodegenOrchestrator {
             for (const meta of result.metadata.getAllControllerMeta()) {
                 this.metadata.addControllerMeta(meta);
             }
+            for (const meta of result.metadata.getAllLayoutManagerMeta()) {
+                this.metadata.addLayoutManagerMeta(meta);
+            }
         }
     }
 
@@ -98,8 +101,15 @@ export class CodegenOrchestrator {
         }
 
         const controllerMeta = this.metadata.getAllControllerMeta();
+        const layoutManagerMeta = this.metadata.getAllLayoutManagerMeta();
         const namespaceNames = [...new Set(widgetMeta.map((m) => m.namespace))];
-        const generator = new ReactGenerator(widgetMeta, controllerMeta, namespaceNames, this.renderableSlots);
+        const generator = new ReactGenerator(
+            widgetMeta,
+            controllerMeta,
+            layoutManagerMeta,
+            namespaceNames,
+            this.renderableSlots,
+        );
         this.reactGeneratedFiles.push(...generator.generate());
     }
 

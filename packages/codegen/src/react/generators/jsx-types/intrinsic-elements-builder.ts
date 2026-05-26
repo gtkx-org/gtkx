@@ -7,7 +7,7 @@
 
 import type { FileBuilder } from "../../../builders/index.js";
 import { raw, typeAlias, variableStatement } from "../../../builders/index.js";
-import type { CodegenControllerMeta } from "../../../codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenLayoutManagerMeta } from "../../../codegen-metadata.js";
 import { formatJsDoc } from "../../../utils/doc-formatter.js";
 import { toCamelCase } from "../../../utils/naming.js";
 import type { JsxWidget } from "./generator.js";
@@ -20,6 +20,14 @@ export class IntrinsicElementsBuilder {
         "GtkDropDown",
         "AdwComboRow",
     ]);
+
+    /**
+     * Layout managers excluded from the React surface.
+     *
+     * `GtkCustomLayout` is driven by virtual function overrides rather than
+     * declarative props, so it has no useful JSX projection.
+     */
+    private static readonly EXCLUDED_LAYOUT_MANAGER_NAMES = new Set(["GtkCustomLayout"]);
 
     buildWidgetExports(
         file: FileBuilder,
@@ -69,7 +77,37 @@ export class IntrinsicElementsBuilder {
         }
     }
 
-    buildJsxNamespace(file: FileBuilder, widgets: JsxWidget[], controllers: CodegenControllerMeta[]): void {
+    buildLayoutManagerExports(
+        file: FileBuilder,
+        layoutManagers: CodegenLayoutManagerMeta[],
+        compoundJsxNames: ReadonlySet<string> = new Set(),
+    ): void {
+        for (const layoutManager of layoutManagers) {
+            if (layoutManager.className === "LayoutManager" || layoutManager.abstract) continue;
+            if (IntrinsicElementsBuilder.EXCLUDED_LAYOUT_MANAGER_NAMES.has(layoutManager.jsxName)) continue;
+            if (compoundJsxNames.has(layoutManager.jsxName)) continue;
+
+            const doc =
+                formatJsDoc(layoutManager.doc, layoutManager.namespace) ??
+                `A ${layoutManager.namespace}.${layoutManager.className} layout manager element.`;
+
+            file.add(
+                variableStatement(layoutManager.jsxName, {
+                    exported: true,
+                    kind: "const",
+                    initializer: `"${layoutManager.jsxName}" as const`,
+                    doc,
+                }),
+            );
+        }
+    }
+
+    buildJsxNamespace(
+        file: FileBuilder,
+        widgets: JsxWidget[],
+        controllers: CodegenControllerMeta[],
+        layoutManagers: CodegenLayoutManagerMeta[],
+    ): void {
         const widgetProperties = widgets
             .filter((w) => w.className !== "Widget")
             .map((w) => `${w.jsxName}: ${w.jsxName}Props;`);
@@ -78,7 +116,16 @@ export class IntrinsicElementsBuilder {
             .filter((c) => c.className !== "EventController" && !c.abstract)
             .map((c) => `${c.jsxName}: ${c.jsxName}Props;`);
 
-        const allProperties = [...widgetProperties, ...controllerProperties];
+        const layoutManagerProperties = layoutManagers
+            .filter(
+                (l) =>
+                    l.className !== "LayoutManager" &&
+                    !l.abstract &&
+                    !IntrinsicElementsBuilder.EXCLUDED_LAYOUT_MANAGER_NAMES.has(l.jsxName),
+            )
+            .map((l) => `${l.jsxName}: ${l.jsxName}Props;`);
+
+        const allProperties = [...widgetProperties, ...controllerProperties, ...layoutManagerProperties];
         const propsBlock = allProperties.map((p) => `        ${p}`).join("\n");
 
         file.add(

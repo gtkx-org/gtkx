@@ -49,6 +49,14 @@ const COMPOUND_CHILDREN: Readonly<Record<string, CompoundChildrenConfig>> = {
     GtkShortcutController: {
         virtualChildren: [{ sub: "Shortcut", intrinsic: "Shortcut", props: "ShortcutProps" }],
     },
+    GtkConstraintLayout: {
+        virtualChildren: [
+            { sub: "Constraint", intrinsic: "Constraint", props: "ConstraintProps" },
+            { sub: "Guide", intrinsic: "ConstraintGuide", props: "ConstraintGuideProps" },
+            { sub: "Vfl", intrinsic: "ConstraintVfl", props: "ConstraintVflProps" },
+            { sub: "Widget", intrinsic: "ConstraintLayoutWidget", props: "ConstraintLayoutWidgetProps" },
+        ],
+    },
     GtkMenuButton: { menuHost: true },
     GtkPopoverMenu: { menuHost: true },
     GtkPopoverMenuBar: { menuHost: true },

@@ -36,12 +36,27 @@ export type CodegenClassMeta = {
 };
 
 /**
- * Controller metadata - extends base with controller-specific fields.
+ * Metadata for a non-widget GObject class attached to a widget by a single
+ * method (`Gtk.EventController` or `Gtk.LayoutManager`).
+ *
+ * Adds the `abstract` flag on top of {@link CodegenClassMeta}; abstract
+ * subclasses are filtered out of the JSX surface because they cannot be
+ * instantiated.
  */
-export type CodegenControllerMeta = CodegenClassMeta & {
-    /** Whether this is an abstract controller (not instantiable) */
+export type CodegenNonWidgetClassMeta = CodegenClassMeta & {
+    /** Whether this class is abstract (not instantiable) */
     readonly abstract: boolean;
 };
+
+/**
+ * Controller metadata for `Gtk.EventController` subclasses.
+ */
+export type CodegenControllerMeta = CodegenNonWidgetClassMeta;
+
+/**
+ * Layout manager metadata for `Gtk.LayoutManager` subclasses.
+ */
+export type CodegenLayoutManagerMeta = CodegenNonWidgetClassMeta;
 
 /**
  * Widget metadata - extends base with widget-specific capabilities.
@@ -63,6 +78,7 @@ export type CodegenWidgetMeta = CodegenClassMeta & {
 export class CodegenMetadata {
     private readonly widgetMeta: CodegenWidgetMeta[] = [];
     private readonly controllerMeta: CodegenControllerMeta[] = [];
+    private readonly layoutManagerMeta: CodegenLayoutManagerMeta[] = [];
 
     addWidgetMeta(meta: CodegenWidgetMeta): void {
         this.widgetMeta.push(meta);
@@ -72,11 +88,19 @@ export class CodegenMetadata {
         this.controllerMeta.push(meta);
     }
 
+    addLayoutManagerMeta(meta: CodegenLayoutManagerMeta): void {
+        this.layoutManagerMeta.push(meta);
+    }
+
     getAllWidgetMeta(): readonly CodegenWidgetMeta[] {
         return this.widgetMeta;
     }
 
     getAllControllerMeta(): readonly CodegenControllerMeta[] {
         return this.controllerMeta;
+    }
+
+    getAllLayoutManagerMeta(): readonly CodegenLayoutManagerMeta[] {
+        return this.layoutManagerMeta;
     }
 }

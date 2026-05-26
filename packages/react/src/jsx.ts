@@ -893,6 +893,93 @@ export type SizeGroupWidgetProps = {
     children: ReactNode;
 };
 
+/**
+ * Props for `<GtkConstraintLayout.Constraint>`.
+ *
+ * Declares one row in the constraint solver. `target` and `source` reference
+ * ids registered by sibling `<GtkConstraintLayout.Widget id="…">` wrappers
+ * or `<GtkConstraintLayout.Guide id="…">` markers; either may be omitted or
+ * set to `"super"` to mean the widget owning the layout. The underlying
+ * `Gtk.Constraint` is immutable, so the reconciler re-creates it on every
+ * prop change.
+ */
+export type ConstraintProps = {
+    /** id of the constrained target (registered widget, guide, or `"super"` / omitted for the container) */
+    target?: string;
+    /** Attribute of the target the constraint sets */
+    targetAttribute: Gtk.ConstraintAttribute;
+    /** Comparison relation between target and source attributes (default `EQ`) */
+    relation?: Gtk.ConstraintRelation;
+    /** id of the constraint's source (registered widget, guide, or `"super"` / omitted for the container) */
+    source?: string;
+    /** Attribute of the source the constraint reads (default `NONE`) */
+    sourceAttribute?: Gtk.ConstraintAttribute;
+    /** Multiplier applied to the source attribute (default 1) */
+    multiplier?: number;
+    /** Constant added to the source attribute (default 0) */
+    constant?: number;
+    /** Strength of the constraint (default `REQUIRED`) */
+    strength?: number;
+};
+
+/**
+ * Props for `<GtkConstraintLayout.Guide>`.
+ *
+ * Adds a `Gtk.ConstraintGuide` to the layout. The `id` doubles as the guide's
+ * internal name (settable via `Gtk.ConstraintGuide.setName`) and the lookup
+ * key used by `<Constraint>` and `<Vfl>` markers.
+ */
+export type ConstraintGuideProps = {
+    /** Identifier for the guide (sets `Gtk.ConstraintGuide.name` and registers in the layout target map) */
+    id: string;
+    /** Minimum width in pixels */
+    minWidth?: number;
+    /** Minimum height in pixels */
+    minHeight?: number;
+    /** Natural width in pixels */
+    natWidth?: number;
+    /** Natural height in pixels */
+    natHeight?: number;
+    /** Maximum width in pixels */
+    maxWidth?: number;
+    /** Maximum height in pixels */
+    maxHeight?: number;
+    /** Strength of the natural-size constraint (default `MEDIUM`) */
+    strength?: number;
+};
+
+/**
+ * Props for `<GtkConstraintLayout.Vfl>`.
+ *
+ * Wraps `Gtk.ConstraintLayout.addConstraintsFromDescription`. The marker builds
+ * the `views` map automatically from sibling `<GtkConstraintLayout.Widget>`
+ * registrations plus any `<Guide>` ids on the same layout.
+ */
+export type ConstraintVflProps = {
+    /** Visual Format Language lines to parse */
+    lines: string[];
+    /** Default horizontal spacing for `-` separators (default 0) */
+    hspacing?: number;
+    /** Default vertical spacing for `-` separators (default 0) */
+    vspacing?: number;
+};
+
+/**
+ * Props for `<GtkConstraintLayout.Widget>`.
+ *
+ * Wraps a single widget that participates in constraints. The wrapper is
+ * transparent in the GTK tree — the wrapped widget attaches to the
+ * grandparent — but registers `id → widget` on the sibling
+ * `<GtkConstraintLayout>`. `<Constraint>` and `<Vfl>` markers then resolve
+ * `id` references against that registry.
+ */
+export type ConstraintLayoutWidgetProps = {
+    /** Identifier used by Constraint/Vfl markers to reference this widget */
+    id: string;
+    /** Single widget to register with the enclosing constraint layout */
+    children: ReactNode;
+};
+
 declare global {
     namespace React {
         namespace JSX {
@@ -902,6 +989,10 @@ declare global {
                 AdwSpringAnimation: AdwSpringAnimationProps;
                 ContainerSlot: ContainerSlotProps;
                 ColumnViewColumn: ColumnViewColumnProps;
+                Constraint: ConstraintProps;
+                ConstraintGuide: ConstraintGuideProps;
+                ConstraintLayoutWidget: ConstraintLayoutWidgetProps;
+                ConstraintVfl: ConstraintVflProps;
                 FixedChild: FixedChildProps;
                 GridChild: GridChildProps;
                 MenuItem: MenuItemProps;

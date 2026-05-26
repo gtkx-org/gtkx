@@ -26,6 +26,7 @@ const traverseWindows = function* (): Generator<Gtk.Widget> {
 const resolveRoot = (container: Container): Gtk.Widget | null => {
     if (container instanceof Gtk.Widget) return container;
     if (container instanceof Gtk.EventController) return container.getWidget();
+    if (container instanceof Gtk.LayoutManager) return container.getWidget();
     if (container instanceof Gtk.ListItem || container instanceof Gtk.ListHeader) return container.getChild();
     return null;
 };

@@ -5,7 +5,7 @@ import { createButtonMeta, createCodegenWidgetMeta, createWidgetMeta } from "../
 
 describe("ReactGenerator", () => {
     it("emits the three expected files in the conventional order", () => {
-        const generator = new ReactGenerator([createWidgetMeta(), createButtonMeta()], [], ["Gtk"]);
+        const generator = new ReactGenerator([createWidgetMeta(), createButtonMeta()], [], [], ["Gtk"]);
         const files = generator.generate();
 
         const paths = files.map((f) => f.path);
@@ -13,7 +13,7 @@ describe("ReactGenerator", () => {
     });
 
     it("produces a string content field for every emitted file", () => {
-        const generator = new ReactGenerator([createWidgetMeta(), createButtonMeta()], [], ["Gtk"]);
+        const generator = new ReactGenerator([createWidgetMeta(), createButtonMeta()], [], [], ["Gtk"]);
         const files = generator.generate();
 
         for (const file of files) {
@@ -22,7 +22,7 @@ describe("ReactGenerator", () => {
     });
 
     it("produces non-empty internal and jsx outputs", () => {
-        const generator = new ReactGenerator([createWidgetMeta(), createButtonMeta()], [], ["Gtk"]);
+        const generator = new ReactGenerator([createWidgetMeta(), createButtonMeta()], [], [], ["Gtk"]);
         const files = generator.generate();
 
         for (const path of ["internal.ts", "jsx.ts"]) {
@@ -32,14 +32,14 @@ describe("ReactGenerator", () => {
     });
 
     it("works with an empty controllers list", () => {
-        const generator = new ReactGenerator([createWidgetMeta()], [], ["Gtk"]);
+        const generator = new ReactGenerator([createWidgetMeta()], [], [], ["Gtk"]);
         expect(() => generator.generate()).not.toThrow();
     });
 
     it("can be instantiated and run multiple times for the same inputs", () => {
         const widgets = [createWidgetMeta(), createButtonMeta()];
-        const first = new ReactGenerator(widgets, [], ["Gtk"]).generate();
-        const second = new ReactGenerator(widgets, [], ["Gtk"]).generate();
+        const first = new ReactGenerator(widgets, [], [], ["Gtk"]).generate();
+        const second = new ReactGenerator(widgets, [], [], ["Gtk"]).generate();
 
         expect(first.length).toBe(second.length);
         for (let i = 0; i < first.length; i++) {
@@ -58,7 +58,7 @@ describe("ReactGenerator", () => {
             }),
         ];
         const registry = new RenderableSlotsRegistry({ MyAppFooBar: ["content"] });
-        const generator = new ReactGenerator(widgets, [], ["MyApp"], registry);
+        const generator = new ReactGenerator(widgets, [], [], ["MyApp"], registry);
         const files = generator.generate();
         const compounds = files.find((f) => f.path === "compounds.ts");
         expect(compounds?.content).toContain('createSlotWidget<MyAppFooBarProps>("MyAppFooBar", ["content"])');

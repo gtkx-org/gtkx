@@ -10,7 +10,7 @@
 
 import type { FileBuilder } from "../../builders/index.js";
 import { raw } from "../../builders/index.js";
-import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../codegen-metadata.js";
+import type { CodegenControllerMeta, CodegenLayoutManagerMeta, CodegenWidgetMeta } from "../../codegen-metadata.js";
 import {
     type CompoundChildrenConfig,
     getCompoundChildren,
@@ -42,9 +42,11 @@ type CompoundEntry = {
 export class CompoundsGenerator {
     private readonly compounds: CompoundEntry[] = [];
 
+    // biome-ignore lint/complexity/useMaxParams: layout-managers parallel widgets and controllers as first-class meta sources
     constructor(
         private readonly reader: MetadataReader,
         private readonly controllers: readonly CodegenControllerMeta[],
+        private readonly layoutManagers: readonly CodegenLayoutManagerMeta[],
         private readonly namespaceNames: string[],
         private readonly renderableSlots: RenderableSlotsRegistry = new RenderableSlotsRegistry(),
     ) {}
@@ -76,6 +78,14 @@ export class CompoundsGenerator {
             metaByClass.set(`${meta.namespace}:${meta.className}`, meta);
         }
 
+        this.collectWidgetCompounds(metaByClass);
+        this.collectNonWidgetCompounds(this.controllers);
+        this.collectNonWidgetCompounds(this.layoutManagers);
+
+        this.compounds.sort((a, b) => a.jsxName.localeCompare(b.jsxName));
+    }
+
+    private collectWidgetCompounds(metaByClass: ReadonlyMap<string, CodegenWidgetMeta>): void {
         for (const meta of this.reader.getAllCodegenMeta()) {
             if (!this.namespaceNames.includes(meta.namespace)) continue;
             if (LIST_WIDGET_NAMES.has(meta.jsxName)) continue;
@@ -96,8 +106,10 @@ export class CompoundsGenerator {
                 children,
             });
         }
+    }
 
-        for (const meta of this.controllers) {
+    private collectNonWidgetCompounds(metas: readonly (CodegenControllerMeta | CodegenLayoutManagerMeta)[]): void {
+        for (const meta of metas) {
             if (!this.namespaceNames.includes(meta.namespace)) continue;
             const children = getCompoundChildren(meta.jsxName);
             if (!children) continue;
@@ -112,8 +124,6 @@ export class CompoundsGenerator {
                 children,
             });
         }
-
-        this.compounds.sort((a, b) => a.jsxName.localeCompare(b.jsxName));
     }
 
     /**

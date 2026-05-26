@@ -249,6 +249,9 @@ export class FfiGenerator {
             if (result.controllerMeta) {
                 this.metadata.addControllerMeta(result.controllerMeta);
             }
+            if (result.layoutManagerMeta) {
+                this.metadata.addLayoutManagerMeta(result.layoutManagerMeta);
+            }
         }
     }
 

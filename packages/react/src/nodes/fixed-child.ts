@@ -5,15 +5,24 @@ import type { FixedChildProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import { AttachOnParentVirtualNode } from "./internal/attach-on-parent-virtual.js";
 import { hasChanged } from "./internal/props.js";
+import { attachChild, unparentWidget } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
 
-export class FixedChildNode extends AttachOnParentVirtualNode<FixedChildProps, WidgetNode<Gtk.Fixed>, WidgetNode> {
+/**
+ * Reconciler node for `<GtkFixed.Child>`.
+ *
+ * Positions a widget at an `(x, y)` offset with an optional 3D transform.
+ * Dispatches off `parent.getLayoutManager() instanceof Gtk.FixedLayout`,
+ * so the marker works against any widget carrying a `Gtk.FixedLayout` —
+ * not only `Gtk.Fixed` (which uses FixedLayout internally by default).
+ */
+export class FixedChildNode extends AttachOnParentVirtualNode<FixedChildProps, WidgetNode, WidgetNode> {
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode;
     }
 
     public override isValidParent(parent: Node): boolean {
-        return parent instanceof WidgetNode && parent.container instanceof Gtk.Fixed;
+        return parent instanceof WidgetNode && parent.container.getLayoutManager() instanceof Gtk.FixedLayout;
     }
 
     public override commitUpdate(oldProps: FixedChildProps | null, newProps: FixedChildProps): void {
@@ -32,18 +41,20 @@ export class FixedChildNode extends AttachOnParentVirtualNode<FixedChildProps, W
         }
     }
 
-    protected override attachToParent(parent: Gtk.Fixed, child: Gtk.Widget): void {
-        const x = this.props.x ?? 0;
-        const y = this.props.y ?? 0;
-        parent.put(child, x, y);
+    protected override attachToParent(parent: Gtk.Widget, child: Gtk.Widget): void {
+        attachChild(child, parent);
         this.applyLayoutTransform();
+    }
+
+    protected override detachFromParent(_parent: Gtk.Widget, child: Gtk.Widget): void {
+        unparentWidget(child);
     }
 
     private applyLayoutTransform(): void {
         if (!this.parent || !this.children[0]) return;
 
         const layoutManager = this.parent.container.getLayoutManager();
-        if (!layoutManager) return;
+        if (!(layoutManager instanceof Gtk.FixedLayout)) return;
 
         const layoutChild = layoutManager.getLayoutChild(this.children[0].container) as Gtk.FixedLayoutChild;
 

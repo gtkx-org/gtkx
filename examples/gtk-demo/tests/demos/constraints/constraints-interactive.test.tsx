@@ -1,10 +1,24 @@
-import type * as Gtk from "@gtkx/ffi/gtk";
+import * as Gtk from "@gtkx/ffi/gtk";
 import { screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { constraintsInteractiveDemo } from "../../../src/demos/constraints/constraints-interactive.js";
 import { renderDemo } from "../../test-utils.js";
 
 const findContainerBox = async (): Promise<Gtk.Box> => (await screen.findByName("container")) as Gtk.Box;
+
+const findDividerLeftConstant = (layout: Gtk.ConstraintLayout): number | null => {
+    const observer = layout.observeConstraints();
+    for (let i = 0; i < observer.getNItems(); i++) {
+        const item = observer.getItem(i);
+        if (!(item instanceof Gtk.Constraint)) continue;
+        if (item.getTargetAttribute() !== Gtk.ConstraintAttribute.LEFT) continue;
+        const target = item.getTarget();
+        if (target instanceof Gtk.ConstraintGuide && target.getName() === "divider") {
+            return item.getConstant();
+        }
+    }
+    return null;
+};
 
 describe("constraintsInteractiveDemo metadata", () => {
     it("exposes the expected metadata", () => {
@@ -31,25 +45,17 @@ describe("constraintsInteractiveDemo content", () => {
 });
 
 describe("constraintsInteractiveDemo dragging", () => {
-    it("adds a constraint to the layout when the user drags inside the container", async () => {
+    it("updates the divider LEFT constraint constant when the user drags", async () => {
         await renderDemo(constraintsInteractiveDemo);
         const box = await findContainerBox();
         const layout = box.getLayoutManager() as Gtk.ConstraintLayout;
-        const before = layout.observeConstraints().getNItems();
+        const before = findDividerLeftConstant(layout);
+        expect(before).not.toBeNull();
 
         await userEvent.drag(box, 30, 0);
 
-        const after = layout.observeConstraints().getNItems();
-        expect(after).toBeGreaterThan(before);
-    });
-
-    it("queues a layout pass on the container while dragging", async () => {
-        await renderDemo(constraintsInteractiveDemo);
-        const box = await findContainerBox();
-        const queueAllocate = vi.spyOn(box, "queueAllocate");
-
-        await userEvent.drag(box, 30, 0);
-
-        expect(queueAllocate).toHaveBeenCalled();
+        const after = findDividerLeftConstant(layout);
+        expect(after).not.toBeNull();
+        expect(after).not.toEqual(before);
     });
 });

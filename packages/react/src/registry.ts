@@ -6,6 +6,11 @@ import { ApplicationNode } from "./nodes/application.js";
 import { CalendarNode } from "./nodes/calendar.js";
 import { ColorDialogButtonNode } from "./nodes/color-dialog-button.js";
 import { ColumnViewColumnNode } from "./nodes/column-view-column.js";
+import { ConstraintNode } from "./nodes/constraint.js";
+import { ConstraintGuideNode } from "./nodes/constraint-guide.js";
+import { ConstraintLayoutNode } from "./nodes/constraint-layout.js";
+import { ConstraintLayoutWidgetNode } from "./nodes/constraint-layout-widget.js";
+import { ConstraintVflNode } from "./nodes/constraint-vfl.js";
 import { ContainerSlotNode } from "./nodes/container-slot.js";
 import { DialogNode } from "./nodes/dialog.js";
 import { DrawingAreaNode } from "./nodes/drawing-area.js";
@@ -13,6 +18,7 @@ import { EventControllerNode } from "./nodes/event-controller.js";
 import { FixedChildNode } from "./nodes/fixed-child.js";
 import { FontDialogButtonNode } from "./nodes/font-dialog-button.js";
 import { GridChildNode } from "./nodes/grid-child.js";
+import { LayoutManagerNode } from "./nodes/layout-manager.js";
 import { LevelBarNode } from "./nodes/level-bar.js";
 import { ListNode } from "./nodes/list.js";
 import { ListItemNode } from "./nodes/list-item-node.js";
@@ -77,6 +83,10 @@ export const NODE_REGISTRY: ReadonlyMap<string, NodeClass> = new Map<string, Nod
     ["AdwTimedAnimation", AnimationNode],
     ["AdwSpringAnimation", AnimationNode],
     ["ColumnViewColumn", ColumnViewColumnNode],
+    ["Constraint", ConstraintNode],
+    ["ConstraintGuide", ConstraintGuideNode],
+    ["ConstraintLayoutWidget", ConstraintLayoutWidgetNode],
+    ["ConstraintVfl", ConstraintVflNode],
     ["FixedChild", FixedChildNode],
     ["GridChild", GridChildNode],
     ["MenuItem", MenuNode],
@@ -96,6 +106,8 @@ export const NODE_REGISTRY: ReadonlyMap<string, NodeClass> = new Map<string, Nod
     ["TextTag", TextTagNode],
     ["GtkApplication", ApplicationNode],
     ["GtkEventController", EventControllerNode],
+    ["GtkConstraintLayout", ConstraintLayoutNode],
+    ["GtkLayoutManager", LayoutManagerNode],
     ["GtkSourceView", SourceViewNode],
     ["GtkTextView", TextViewNode],
     ["WebKitWebView", WebViewNode],

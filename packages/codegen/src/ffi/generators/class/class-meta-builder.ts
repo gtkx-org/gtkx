@@ -6,7 +6,12 @@
  */
 
 import type { PropertyAnalyzer, SignalAnalyzer } from "../../../analyzers/index.js";
-import type { CodegenControllerMeta, CodegenWidgetMeta } from "../../../codegen-metadata.js";
+import type {
+    CodegenControllerMeta,
+    CodegenLayoutManagerMeta,
+    CodegenNonWidgetClassMeta,
+    CodegenWidgetMeta,
+} from "../../../codegen-metadata.js";
 import { getContainerMethodNames, getHiddenPropNames } from "../../../config/index.js";
 import type { GirClass, GirRepository } from "../../../gir/index.js";
 import { normalizeClassName, toKebabCase } from "../../../utils/naming.js";
@@ -21,6 +26,7 @@ export type ClassMetaAnalyzers = {
 export class ClassMetaBuilder {
     private readonly widgetQualifiedName = "Gtk.Widget";
     private readonly eventControllerQualifiedName = "Gtk.EventController";
+    private readonly layoutManagerQualifiedName = "Gtk.LayoutManager";
 
     constructor(
         private readonly cls: GirClass,
@@ -38,11 +44,28 @@ export class ClassMetaBuilder {
         return this.cls.isSubclassOf(this.eventControllerQualifiedName);
     }
 
+    isLayoutManager(): boolean {
+        if (this.cls.qualifiedName === this.layoutManagerQualifiedName) return true;
+        return this.cls.isSubclassOf(this.layoutManagerQualifiedName);
+    }
+
     buildCodegenControllerMeta(): CodegenControllerMeta | null {
         if (!this.isEventController()) {
             return null;
         }
 
+        return this.buildNonWidgetMeta();
+    }
+
+    buildCodegenLayoutManagerMeta(): CodegenLayoutManagerMeta | null {
+        if (!this.isLayoutManager()) {
+            return null;
+        }
+
+        return this.buildNonWidgetMeta();
+    }
+
+    private buildNonWidgetMeta(): CodegenNonWidgetClassMeta {
         const className = normalizeClassName(this.cls.name);
         const properties = this.analyzers.property.analyzeWidgetProperties(this.cls, new Set());
         const signals = this.analyzers.signal.analyzeWidgetSignals(this.cls);

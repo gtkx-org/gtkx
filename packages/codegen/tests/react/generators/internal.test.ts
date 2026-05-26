@@ -11,7 +11,7 @@ import {
 
 function generateCode(metas = [createWidgetMeta(), createButtonMeta()]): string {
     const reader = new MetadataReader(metas);
-    const generator = new InternalGenerator(reader, []);
+    const generator = new InternalGenerator(reader, [], []);
     const file = fileBuilder();
     generator.generate(file);
     return stringify(file);
@@ -20,7 +20,7 @@ function generateCode(metas = [createWidgetMeta(), createButtonMeta()]): string 
 describe("InternalGenerator / constructor", () => {
     it("creates generator with reader and controllers", () => {
         const reader = new MetadataReader([createWidgetMeta()]);
-        const generator = new InternalGenerator(reader, []);
+        const generator = new InternalGenerator(reader, [], []);
         expect(generator).toBeInstanceOf(InternalGenerator);
     });
 });
