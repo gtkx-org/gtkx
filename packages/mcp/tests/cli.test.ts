@@ -39,20 +39,28 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
 const { socketStartMock, socketStopMock, socketServerInstances } = vi.hoisted(() => ({
     socketStartMock: vi.fn(async () => undefined),
     socketStopMock: vi.fn(async () => undefined),
-    socketServerInstances: [] as Array<
-        EventEmitter & { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }
-    >,
+    socketServerInstances: [] as Array<{ start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }>,
 }));
 
 vi.mock("../src/socket-server.js", () => ({
-    SocketServer: class extends EventEmitter {
+    SocketServer: class {
         start = socketStartMock;
         stop = socketStopMock;
-        constructor(_path: string) {
+        constructor(_registry: unknown, _path: string) {
+            socketServerInstances.push(this as { start: typeof socketStartMock; stop: typeof socketStopMock });
+        }
+    },
+}));
+
+const { connectionRegistryInstances } = vi.hoisted(() => ({
+    connectionRegistryInstances: [] as EventEmitter[],
+}));
+
+vi.mock("../src/connection-registry.js", () => ({
+    ConnectionRegistry: class extends EventEmitter {
+        constructor() {
             super();
-            socketServerInstances.push(
-                this as EventEmitter & { start: typeof socketStartMock; stop: typeof socketStopMock },
-            );
+            connectionRegistryInstances.push(this);
         }
     },
 }));
@@ -397,12 +405,12 @@ describe("main — error logging", () => {
 
     it("logs broken-pipe-style socket errors only when the code is not EPIPE/ECONNRESET", async () => {
         await main();
-        const socket = socketServerInstances[0];
-        if (!socket) throw new Error("Socket not registered");
+        const registry = connectionRegistryInstances[0];
+        if (!registry) throw new Error("Registry not created");
 
-        socket.emit("error", Object.assign(new Error("pipe gone"), { code: "EPIPE" }));
-        socket.emit("error", Object.assign(new Error("conn gone"), { code: "ECONNRESET" }));
-        socket.emit("error", Object.assign(new Error("real boom"), { code: "EACCES" }));
+        registry.emit("error", Object.assign(new Error("pipe gone"), { code: "EPIPE" }));
+        registry.emit("error", Object.assign(new Error("conn gone"), { code: "ECONNRESET" }));
+        registry.emit("error", Object.assign(new Error("real boom"), { code: "EACCES" }));
 
         const messages = setup.errorSpy.mock.calls.map((c: unknown[]) => String(c[1] ?? c[0]));
         expect(messages.filter((m: string) => m.includes("real boom"))).toHaveLength(1);

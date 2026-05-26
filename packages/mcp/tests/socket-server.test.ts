@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { IpcMessage, IpcRequest, IpcResponse } from "../src/protocol/types.js";
+import { ConnectionRegistry } from "../src/connection-registry.js";
 import { SocketServer } from "../src/socket-server.js";
 import type { AppConnection } from "../src/transport.js";
 
@@ -42,15 +43,16 @@ const collectLines = (socket: net.Socket): { lines: string[]; promise: Promise<v
     return { lines, promise };
 };
 
-const waitForConnection = (server: SocketServer): Promise<AppConnection> =>
+const waitForConnection = (registry: ConnectionRegistry): Promise<AppConnection> =>
     new Promise((resolve) => {
-        server.once("connection", (connection) => resolve(connection));
+        registry.once("connection", (connection) => resolve(connection));
     });
 
 interface SocketServerCtx {
     tmpDir: string;
     socketPath: string;
     server: SocketServer;
+    registry: ConnectionRegistry;
 }
 
 const socketCtx = {} as SocketServerCtx;
@@ -59,7 +61,8 @@ function setupSocketServer(): void {
     beforeEach(() => {
         socketCtx.tmpDir = mkdtempSync(join(tmpdir(), "gtkx-socket-server-"));
         socketCtx.socketPath = join(socketCtx.tmpDir, "ipc.sock");
-        socketCtx.server = new SocketServer(socketCtx.socketPath);
+        socketCtx.registry = new ConnectionRegistry();
+        socketCtx.server = new SocketServer(socketCtx.registry, socketCtx.socketPath);
     });
 
     afterEach(async () => {
@@ -107,16 +110,16 @@ describe("SocketServer lifecycle", () => {
 describe("SocketServer connections", () => {
     setupSocketServer();
     it("emits connection and disconnection events", async () => {
-        const { server, socketPath } = socketCtx;
+        const { server, socketPath, registry } = socketCtx;
         await server.start();
 
-        const connectionPromise = waitForConnection(server);
+        const connectionPromise = waitForConnection(registry);
         const client = await connectClient(socketPath);
         const connection = await connectionPromise;
         expect(connection.id).toBeTruthy();
 
         const disconnectionPromise = new Promise<AppConnection>((resolve) => {
-            server.once("disconnection", (conn) => resolve(conn));
+            registry.once("disconnection", (conn) => resolve(conn));
         });
         client.end();
         const disconnected = await disconnectionPromise;
@@ -127,12 +130,12 @@ describe("SocketServer connections", () => {
 describe("SocketServer framing — request events", () => {
     setupSocketServer();
     it("emits a request event for valid request frames", async () => {
-        const { server, socketPath } = socketCtx;
+        const { server, socketPath, registry } = socketCtx;
         await server.start();
         const client = await connectClient(socketPath);
 
         const received = new Promise<IpcRequest>((resolve) => {
-            server.once("request", (_conn, req) => resolve(req));
+            registry.once("request", (_conn, req) => resolve(req));
         });
 
         const request: IpcRequest = { id: "r-1", method: "ping", params: { a: 1 } };
@@ -149,12 +152,12 @@ describe("SocketServer framing — request events", () => {
 describe("SocketServer framing — chunking & blanks", () => {
     setupSocketServer();
     it("ignores blank lines between frames", async () => {
-        const { server, socketPath } = socketCtx;
+        const { server, socketPath, registry } = socketCtx;
         await server.start();
         const client = await connectClient(socketPath);
 
         const received = new Promise<IpcRequest>((resolve) => {
-            server.once("request", (_conn, req) => resolve(req));
+            registry.once("request", (_conn, req) => resolve(req));
         });
 
         client.write("\n\n");
@@ -167,12 +170,12 @@ describe("SocketServer framing — chunking & blanks", () => {
     });
 
     it("frames messages spanning multiple TCP chunks", async () => {
-        const { server, socketPath } = socketCtx;
+        const { server, socketPath, registry } = socketCtx;
         await server.start();
         const client = await connectClient(socketPath);
 
         const received = new Promise<IpcRequest>((resolve) => {
-            server.once("request", (_conn, req) => resolve(req));
+            registry.once("request", (_conn, req) => resolve(req));
         });
 
         const message = JSON.stringify({ id: "r-split", method: "ping" });
@@ -244,25 +247,25 @@ describe("SocketServer framing — error responses", () => {
     });
 });
 
-describe("SocketServer send", () => {
+describe("ConnectionRegistry send", () => {
     setupSocketServer();
-    it("send silently drops a message for an unknown connection id", async () => {
+    it("silently drops a message for an unknown connection id", async () => {
         await socketCtx.server.start();
         expect(() =>
-            socketCtx.server.send("missing", { id: "x", method: "noop" } as IpcMessage),
+            socketCtx.registry.send("missing", { id: "x", method: "noop" } as IpcMessage),
         ).not.toThrow();
     });
 
-    it("send delivers a message to the connected client", async () => {
-        const { server, socketPath } = socketCtx;
+    it("delivers a message to the connected client", async () => {
+        const { server, socketPath, registry } = socketCtx;
         await server.start();
 
-        const connectionPromise = waitForConnection(server);
+        const connectionPromise = waitForConnection(registry);
         const client = await connectClient(socketPath);
         const connection = await connectionPromise;
 
         const collector = collectLines(client);
-        server.send(connection.id, { id: "out-1", result: 42 } as IpcMessage);
+        registry.send(connection.id, { id: "out-1", result: 42 } as IpcMessage);
 
         await new Promise((resolve) => setTimeout(resolve, 20));
         client.destroy();
@@ -276,10 +279,11 @@ describe("SocketServer send", () => {
 
 describe("SocketServer errors", () => {
     setupSocketServer();
-    it("rejects start and emits error when binding to an unreachable path", async () => {
-        const bad = new SocketServer(join(socketCtx.tmpDir, "no-such-dir", "ipc.sock"));
+    it("rejects start and routes error to the registry when binding to an unreachable path", async () => {
+        const badRegistry = new ConnectionRegistry();
+        const bad = new SocketServer(badRegistry, join(socketCtx.tmpDir, "no-such-dir", "ipc.sock"));
         const errorReceived = new Promise<Error>((resolve) => {
-            bad.once("error", (err) => resolve(err));
+            badRegistry.once("error", (err) => resolve(err));
         });
 
         await expect(bad.start()).rejects.toThrow();

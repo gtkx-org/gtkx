@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
+import { ConnectionRegistry } from "./connection-registry.js";
 import { installGracefulShutdown } from "./graceful-shutdown.js";
 import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
@@ -317,10 +318,11 @@ export function buildTools(cm: AppQueryClient): ToolDefinition[] {
  * installs SIGINT/SIGTERM handlers for graceful shutdown.
  */
 export async function main() {
-    const socketServer = new SocketServer(DEFAULT_SOCKET_PATH);
-    const connectionManager = new ConnectionManager(socketServer);
+    const registry = new ConnectionRegistry();
+    const socketServer = new SocketServer(registry, DEFAULT_SOCKET_PATH);
+    const connectionManager = new ConnectionManager(registry);
 
-    socketServer.on("error", (error) => {
+    registry.on("error", (error) => {
         const code = (error as NodeJS.ErrnoException).code;
         if (code !== "EPIPE" && code !== "ECONNRESET") {
             console.error("[gtkx] Socket error:", error.message);

@@ -32,11 +32,9 @@ function makeConnection(id: string): TestConnection {
 
 class FakeAppTransport extends EventEmitter<AppTransportEvents> implements AppTransport {
     readonly sent: Array<{ connectionId: string; message: IpcMessage }> = [];
-    sendReturn = true;
 
-    send(connectionId: string, message: IpcMessage): boolean {
+    send(connectionId: string, message: IpcMessage): void {
         this.sent.push({ connectionId, message });
-        return this.sendReturn;
     }
 }
 
