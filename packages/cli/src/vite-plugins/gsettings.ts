@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdtempSync, readFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import type { ModuleNode, Plugin, ViteDevServer } from "vite";
@@ -10,6 +10,29 @@ const SCHEMA_ID_RE = /<schema\s+id="([^"]+)"/g;
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
 const VIRTUAL_INIT = "\0gtkx-gsettings-init";
 const SCHEMA_COMPILER = "glib-compile-schemas";
+const SCHEMA_COMPILE_TIMEOUT_MS = 30_000;
+
+const removeTempDir = (dir: string): void => {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+};
+
+const compileSchemas = (dir: string): void => {
+    try {
+        execFileSync(resolveCliTool(SCHEMA_COMPILER), [dir], {
+            stdio: ["ignore", "pipe", "pipe"],
+            timeout: SCHEMA_COMPILE_TIMEOUT_MS,
+            encoding: "utf-8",
+        });
+    } catch (error) {
+        const stderr = (error as { stderr?: string }).stderr ?? "";
+        const stdout = (error as { stdout?: string }).stdout ?? "";
+        const details = [stderr, stdout].filter(Boolean).join("\n").trim();
+        throw new Error(
+            `glib-compile-schemas failed for ${dir}${details ? `:\n${details}` : ""}`,
+            { cause: error },
+        );
+    }
+};
 
 /**
  * Vite plugin that compiles GSettings schemas when imported.
@@ -41,6 +64,7 @@ type PluginState = {
     isBuild: boolean;
     trackedSchemas: Map<string, string>;
     buildSchemas: Map<string, string>;
+    cleanupProcessExit: (() => void) | null;
 };
 
 type PluginContext = {
@@ -50,14 +74,28 @@ type PluginContext = {
 
 const ensureSchemaDir = (state: PluginState): string => {
     if (!state.schemaDir) {
-        state.schemaDir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
+        const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
+        state.schemaDir = dir;
+        const cleanup = (): void => removeTempDir(dir);
+        state.cleanupProcessExit = cleanup;
+        process.once("exit", cleanup);
     }
     return state.schemaDir;
 };
 
+const releaseSchemaDir = (state: PluginState): void => {
+    if (!state.schemaDir) return;
+    removeTempDir(state.schemaDir);
+    if (state.cleanupProcessExit) {
+        process.removeListener("exit", state.cleanupProcessExit);
+        state.cleanupProcessExit = null;
+    }
+    state.schemaDir = null;
+};
+
 const compileSchemaDir = (state: PluginState): void => {
     if (!state.schemaDir) return;
-    execFileSync(resolveCliTool(SCHEMA_COMPILER), [state.schemaDir]);
+    compileSchemas(state.schemaDir);
     const existing = process.env.GSETTINGS_SCHEMA_DIR;
     process.env.GSETTINGS_SCHEMA_DIR = existing ? `${state.schemaDir}:${existing}` : state.schemaDir;
 };
@@ -123,17 +161,21 @@ const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
     if (!state.isBuild || state.buildSchemas.size === 0) return;
 
     const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-build-"));
-    for (const [filePath, fileName] of state.buildSchemas) {
-        copyFileSync(filePath, join(dir, fileName));
-    }
-    execFileSync(resolveCliTool(SCHEMA_COMPILER), [dir]);
+    try {
+        for (const [filePath, fileName] of state.buildSchemas) {
+            copyFileSync(filePath, join(dir, fileName));
+        }
+        compileSchemas(dir);
 
-    const compiled = readFileSync(join(dir, "gschemas.compiled"));
-    ctx.emitFile({
-        type: "asset",
-        fileName: "gschemas.compiled",
-        source: compiled,
-    });
+        const compiled = readFileSync(join(dir, "gschemas.compiled"));
+        ctx.emitFile({
+            type: "asset",
+            fileName: "gschemas.compiled",
+            source: compiled,
+        });
+    } finally {
+        removeTempDir(dir);
+    }
 
     console.log(`[gtkx] Compiled ${state.buildSchemas.size} GSettings schema(s)`);
 };
@@ -162,6 +204,7 @@ export function gtkxGSettings(): Plugin {
         isBuild: false,
         trackedSchemas: new Map(),
         buildSchemas: new Map(),
+        cleanupProcessExit: null,
     };
 
     return {
@@ -170,6 +213,11 @@ export function gtkxGSettings(): Plugin {
 
         configResolved(config) {
             state.isBuild = config.command === "build";
+        },
+
+        configureServer(server) {
+            server.httpServer?.once("close", () => releaseSchemaDir(state));
+            server.watcher.once("close", () => releaseSchemaDir(state));
         },
 
         async resolveId(source, importer, options) {
@@ -193,6 +241,10 @@ export function gtkxGSettings(): Plugin {
 
         buildEnd() {
             emitCompiledSchemas(this, state);
+        },
+
+        closeBundle() {
+            releaseSchemaDir(state);
         },
 
         handleHotUpdate({ file, server }) {
