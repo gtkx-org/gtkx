@@ -2,7 +2,7 @@ import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkHeaderBar, GtkImage, GtkLabel, GtkStack, GtkStackSidebar } from "@gtkx/react";
 import { useMemo } from "react";
-import demoIconPath from "../../icons/org.gtk.Demo4.svg";
+import demoIconUri from "../../icons/org.gtk.Demo4.svg";
 import type { Demo } from "../types.js";
 import sourceCode from "./sidebar.tsx?raw";
 
@@ -19,7 +19,7 @@ const pages = [
 ];
 
 const SidebarDemo = () => {
-    const demoIcon = useMemo<Gio.Icon>(() => Gio.FileIcon.new(Gio.fileNewForPath(demoIconPath)), []);
+    const demoIcon = useMemo<Gio.Icon>(() => Gio.FileIcon.new(Gio.fileNewForUri(demoIconUri)), []);
 
     return (
         <GtkBox>

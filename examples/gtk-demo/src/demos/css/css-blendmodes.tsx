@@ -39,7 +39,7 @@ const BLEND_MODES = [
 function createBlendCss(blendMode: string) {
     return css`
         & image.duck {
-            background-image: url("file://${duckyPath}");
+            background-image: url("${duckyPath}");
             background-size: cover;
             min-width: 200px;
             min-height: 200px;
@@ -52,37 +52,37 @@ function createBlendCss(blendMode: string) {
         }
 
         & image.red {
-            background: url("file://${blendsPath}") top center;
+            background: url("${blendsPath}") top center;
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.blue {
-            background: url("file://${blendsPath}") bottom center;
+            background: url("${blendsPath}") bottom center;
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.cyan {
-            background: url("file://${cmyPath}") top center;
+            background: url("${cmyPath}") top center;
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.magenta {
-            background: url("file://${cmyPath}") center center;
+            background: url("${cmyPath}") center center;
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.yellow {
-            background: url("file://${cmyPath}") bottom center;
+            background: url("${cmyPath}") bottom center;
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.blend0 {
-            background-image: url("file://${duckyPath}"),
+            background-image: url("${duckyPath}"),
                               linear-gradient(to right, red 0%, green 50%, blue 100%);
             background-size: cover;
             background-blend-mode: ${blendMode};
@@ -91,17 +91,17 @@ function createBlendCss(blendMode: string) {
         }
 
         & image.blend1 {
-            background: url("file://${blendsPath}") top center,
-                        url("file://${blendsPath}") bottom center;
+            background: url("${blendsPath}") top center,
+                        url("${blendsPath}") bottom center;
             background-blend-mode: ${blendMode};
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.blend2 {
-            background: url("file://${cmyPath}") top center,
-                        url("file://${cmyPath}") center center,
-                        url("file://${cmyPath}") bottom center;
+            background: url("${cmyPath}") top center,
+                        url("${cmyPath}") center center,
+                        url("${cmyPath}") bottom center;
             background-blend-mode: ${blendMode};
             min-width: 200px;
             min-height: 200px;

@@ -1,16 +1,14 @@
-import { readFileSync } from "node:fs";
 import * as Gio from "@gtkx/ffi/gio";
-import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkSwitch, GtkToggleButton, GtkVideo } from "@gtkx/react";
 import { useEffect, useMemo, useState } from "react";
-import floppybuddyGifPath from "../gestures/floppybuddy.gif";
-import gtkLogoWebmPath from "../media/gtk-logo.webm";
+import { path as floppybuddyGifPath } from "../gestures/floppybuddy.gif";
+import gtkLogoWebmUri from "../media/gtk-logo.webm";
 import type { Demo, DemoProps } from "../types.js";
-import animatedSvgPath from "./animated.gpa";
-import gtkLogoSvgPath from "./gtk-logo.svg";
+import { path as animatedSvgPath } from "./animated.gpa";
+import { path as gtkLogoSvgPath } from "./gtk-logo.svg";
 import sourceCode from "./images.tsx?raw";
-import statefulSvgPath from "./stateful.gpa";
+import { path as statefulSvgPath } from "./stateful.gpa";
 
 let symbolicIcon: Gio.ThemedIcon | undefined;
 function getSymbolicIcon() {
@@ -20,9 +18,9 @@ function getSymbolicIcon() {
     return symbolicIcon;
 }
 
-const loadSvgPaintable = (path: string): Gtk.Svg => {
-    const bytes = readFileSync(path);
-    const svg = Gtk.Svg.newFromBytes(GLib.Bytes.new(Array.from(bytes)));
+const loadSvgPaintable = (resourcePath: string): Gtk.Svg => {
+    const bytes = Gio.resourcesLookupData(resourcePath, Gio.ResourceLookupFlags.NONE);
+    const svg = Gtk.Svg.newFromBytes(bytes);
     svg.play();
     svg.setState(0);
     return svg;
@@ -32,7 +30,7 @@ function useGifPaintable() {
     const [gifPaintable, setGifPaintable] = useState<Gtk.MediaFile | null>(null);
     useEffect(() => {
         try {
-            const mediaFile = Gtk.MediaFile.newForFilename(floppybuddyGifPath);
+            const mediaFile = Gtk.MediaFile.newForResource(floppybuddyGifPath);
             mediaFile.setLoop(true);
             mediaFile.play();
             setGifPaintable(mediaFile);
@@ -100,7 +98,7 @@ const ImagesDemo = ({ window }: DemoProps) => {
     const [widgetPaintable, setWidgetPaintable] = useState<Gtk.WidgetPaintable | null>(null);
     const gifPaintable = useGifPaintable();
     const [insensitive, setInsensitive] = useState(false);
-    const videoFile = useMemo(() => Gio.fileNewForPath(gtkLogoWebmPath), []);
+    const videoFile = useMemo(() => Gio.fileNewForUri(gtkLogoWebmUri), []);
 
     useEffect(() => {
         const win = window.current;
@@ -122,7 +120,7 @@ const ImagesDemo = ({ window }: DemoProps) => {
             <GtkBox name="image-strip" spacing={16} sensitive={!insensitive}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <ImagesPanel title="Image from a resource">
-                        <GtkImage file={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
+                        <GtkImage resource={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
                     </ImagesPanel>
                     <ImagesPanel title="Animation from a resource">
                         <GtkPicture

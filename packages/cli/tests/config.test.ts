@@ -63,6 +63,17 @@ describe("defineConfig", () => {
     });
 });
 
+describe("defineConfig (applicationId)", () => {
+    it("accepts a valid applicationId", () => {
+        expect(defineConfig({ applicationId: "org.gtk.Demo4" }).applicationId).toBe("org.gtk.Demo4");
+    });
+
+    it("rejects an invalid applicationId", () => {
+        expect(() => defineConfig({ applicationId: "not valid" })).toThrow(/invalid `applicationId`/);
+        expect(() => defineConfig({ applicationId: "singletoken" })).toThrow(/invalid `applicationId`/);
+    });
+});
+
 describe("isValidAppId", () => {
     it("accepts a standard reverse-DNS application ID", () => {
         expect(isValidAppId("com.example.MyApp")).toBe(true);

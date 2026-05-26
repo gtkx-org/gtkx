@@ -1,29 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, statSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, delimiter, join } from "node:path";
+import { basename, join } from "node:path";
 import type { ModuleNode, Plugin, ViteDevServer } from "vite";
+import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 
 const SCHEMA_SUFFIX = ".gschema.xml";
 const SCHEMA_ID_RE = /<schema\s+id="([^"]+)"/g;
 const VIRTUAL_PREFIX = "\0gtkx-gsettings:";
 const VIRTUAL_INIT = "\0gtkx-gsettings-init";
 const SCHEMA_COMPILER = "glib-compile-schemas";
-
-let resolvedSchemaCompiler: string | null = null;
-
-const resolveSchemaCompiler = (): string => {
-    if (resolvedSchemaCompiler) return resolvedSchemaCompiler;
-    const dirs = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
-    for (const dir of dirs) {
-        const candidate = join(dir, SCHEMA_COMPILER);
-        if (existsSync(candidate) && statSync(candidate).isFile()) {
-            resolvedSchemaCompiler = candidate;
-            return candidate;
-        }
-    }
-    throw new Error(`${SCHEMA_COMPILER} not found in PATH`);
-};
 
 /**
  * Vite plugin that compiles GSettings schemas when imported.
@@ -71,7 +57,7 @@ const ensureSchemaDir = (state: PluginState): string => {
 
 const compileSchemaDir = (state: PluginState): void => {
     if (!state.schemaDir) return;
-    execFileSync(resolveSchemaCompiler(), [state.schemaDir]);
+    execFileSync(resolveCliTool(SCHEMA_COMPILER), [state.schemaDir]);
     const existing = process.env.GSETTINGS_SCHEMA_DIR;
     process.env.GSETTINGS_SCHEMA_DIR = existing ? `${state.schemaDir}:${existing}` : state.schemaDir;
 };
@@ -140,7 +126,7 @@ const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
     for (const [filePath, fileName] of state.buildSchemas) {
         copyFileSync(filePath, join(dir, fileName));
     }
-    execFileSync(resolveSchemaCompiler(), [dir]);
+    execFileSync(resolveCliTool(SCHEMA_COMPILER), [dir]);
 
     const compiled = readFileSync(join(dir, "gschemas.compiled"));
     ctx.emitFile({

@@ -9,6 +9,22 @@ vi.mock("../../src/codegen/run-codegen.js", () => ({
     runCodegen: vi.fn(),
 }));
 
+vi.mock("../../src/codegen/config-loader.js", () => {
+    class GtkxConfigNotFoundError extends Error {
+        constructor() {
+            super("not found");
+            this.name = "GtkxConfigNotFoundError";
+        }
+    }
+    return {
+        GtkxConfigNotFoundError,
+        loadGtkxConfig: vi.fn(async () => {
+            throw new GtkxConfigNotFoundError();
+        }),
+        loadApplicationId: vi.fn(async () => undefined),
+    };
+});
+
 import { build } from "../../src/builder.js";
 import { preflightCodegen } from "../../src/codegen/run-codegen.js";
 import { buildCmd } from "../../src/commands/build.js";

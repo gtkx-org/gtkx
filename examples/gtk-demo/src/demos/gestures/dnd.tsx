@@ -1,7 +1,6 @@
-import { readFileSync } from "node:fs";
 import { css, cx } from "@gtkx/css";
 import * as Gdk from "@gtkx/ffi/gdk";
-import * as GLib from "@gtkx/ffi/glib";
+import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Graphene from "@gtkx/ffi/graphene";
 import * as Gsk from "@gtkx/ffi/gsk";
@@ -28,7 +27,7 @@ import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import type { Demo } from "../types.js";
 import sourceCode from "./dnd.tsx?raw";
-import trashSvgPath from "./user-trash-opening.gpa";
+import { path as trashSvgPath } from "./user-trash-opening.gpa";
 
 const makeRectangle = (x: number, y: number, width: number, height: number): Gdk.Rectangle => {
     const rectangle = new Gdk.Rectangle();
@@ -643,8 +642,8 @@ interface DndTrashZoneProps {
 }
 
 const loadTrashPaintable = (): Gtk.Svg => {
-    const bytes = readFileSync(trashSvgPath);
-    return Gtk.Svg.newFromBytes(GLib.Bytes.new(Array.from(bytes)));
+    const bytes = Gio.resourcesLookupData(trashSvgPath, Gio.ResourceLookupFlags.NONE);
+    return Gtk.Svg.newFromBytes(bytes);
 };
 
 const DndTrashZone = ({ boxRef, trashHovering, setTrashHovering, handleTrashDrop }: DndTrashZoneProps) => {

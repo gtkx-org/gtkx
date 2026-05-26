@@ -4,25 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { gtkxGSettings } from "../../src/vite-plugins/gsettings.js";
+import type { BuildEndHook, ResolveIdHook } from "./plugin-hook-types.js";
 
 type ConfigResolvedHook = (config: { command: "build" | "serve" }) => void;
-type ResolveIdHook = (
-    this: {
-        resolve: (
-            source: string,
-            importer?: string,
-            opts?: unknown,
-        ) => Promise<{ id: string; external?: boolean } | null>;
-    },
-    source: string,
-    importer?: string,
-    options?: unknown,
-) => string | undefined | null | Promise<string | undefined | null>;
 type LoadHook = (
     this: { error: (message: string) => never; emitFile: (asset: unknown) => string },
     id: string,
 ) => string | undefined | null;
-type BuildEndHook = (this: { emitFile: (asset: { type: string; fileName: string; source: Buffer }) => string }) => void;
 
 const hasGlibCompileSchemas = (): boolean => {
     try {

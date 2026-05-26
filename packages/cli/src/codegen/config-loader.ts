@@ -38,6 +38,26 @@ export class GtkxConfigNotFoundError extends Error {
 }
 
 /**
+ * Reads `applicationId` from `gtkx.config.ts` in the given directory.
+ *
+ * Returns `undefined` when no config file exists so callers can proceed with
+ * a sensible default (e.g. the GResource fallback prefix `/gtkx/app`).
+ *
+ * @param cwd - Project root to search
+ */
+export const loadApplicationId = async (cwd: string): Promise<string | undefined> => {
+    try {
+        const loaded = await loadGtkxConfig(cwd);
+        return loaded.config.applicationId;
+    } catch (error) {
+        if (error instanceof GtkxConfigNotFoundError) {
+            return undefined;
+        }
+        throw error;
+    }
+};
+
+/**
  * Loads `gtkx.config.{ts,js,mjs,cjs,mts,cts}` from the project root via c12+jiti.
  *
  * The TypeScript file is executed in-process (no separate compile step) and

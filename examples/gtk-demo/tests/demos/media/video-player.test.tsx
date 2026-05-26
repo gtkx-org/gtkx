@@ -58,14 +58,12 @@ describe("videoPlayerDemo video and actions", () => {
 
     it("loads the GTK Logo source when the Logo button is clicked", async () => {
         const setFileSpy = vi.spyOn(Gtk.Video.prototype, "setFile").mockImplementation(() => {});
-        const fileNewSpy = vi.spyOn(Gio, "fileNewForPath");
+        const fileNewSpy = vi.spyOn(Gio, "fileNewForUri");
         try {
             await renderDemo(videoPlayerDemo);
             const logoButton = (await screen.findByName("logo-button")) as Gtk.Button;
             await userEvent.click(logoButton);
-            await waitFor(() => expect(fileNewSpy).toHaveBeenCalled());
-            const path = fileNewSpy.mock.calls.at(-1)?.[0];
-            expect(path?.endsWith(".webm")).toBe(true);
+            await waitFor(() => expect(fileNewSpy.mock.calls.some(([uri]) => uri.endsWith(".webm"))).toBe(true));
         } finally {
             fileNewSpy.mockRestore();
             setFileSpy.mockRestore();

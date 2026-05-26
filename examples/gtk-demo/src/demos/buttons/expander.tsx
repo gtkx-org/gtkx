@@ -5,7 +5,7 @@ import { GtkBox, GtkExpander, GtkLabel, GtkScrolledWindow, GtkTextView } from "@
 import { useCallback, useMemo } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./expander.tsx?raw";
-import gtkLogoCursorPath from "./gtk_logo_cursor.png";
+import { path as gtkLogoCursorPath } from "./gtk_logo_cursor.png";
 
 const DETAILS_TEXT = `Finally, the full story with all details. And all the inside information, including error codes, etc etc. Pages of information, you might have to scroll down to read it all, or even resize the window - it works !
 A second paragraph will contain even more innuendo, just to make you scroll down or resize the window.
@@ -13,7 +13,7 @@ Do it already!
 `;
 
 const ExpanderDemo = () => {
-    const texture = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoCursorPath), []);
+    const texture = useMemo(() => Gdk.Texture.newFromResource(gtkLogoCursorPath), []);
 
     const handleExpandedNotify = useCallback((pspec: GObject.ParamSpec, self: Gtk.Widget) => {
         if (pspec.getName() !== "expanded") return;

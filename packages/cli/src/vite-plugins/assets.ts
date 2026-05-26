@@ -1,67 +1,25 @@
 import { readFileSync } from "node:fs";
 import type { Plugin } from "vite";
 
-const ASSET_EXTENSIONS = [
-    "png",
-    "jpg",
-    "jpeg",
-    "gif",
-    "svg",
-    "webp",
-    "webm",
-    "mp4",
-    "ogg",
-    "mp3",
-    "wav",
-    "flac",
-    "aac",
-    "woff",
-    "woff2",
-    "eot",
-    "ttf",
-    "otf",
-    "ico",
-    "avif",
-    "data",
-    "gpa",
-] as const;
-const ASSET_RE = new RegExp(String.raw`\.(?:${ASSET_EXTENSIONS.join("|")})$`, "i");
 const CSS_RE = /\.css$/i;
 const VIRTUAL_PREFIX = "\0gtkx:";
 
 /**
- * Vite plugin that resolves static asset imports to filesystem paths
- * and handles CSS imports for GTK applications.
+ * Vite plugin that converts bare CSS imports into runtime
+ * `injectGlobal` calls.
  *
- * **Non-CSS assets:** In dev mode, asset imports resolve to the absolute
- * source file path. In build mode, Vite's built-in asset pipeline handles
- * emission and hashing; the `renderBuiltUrl` config in the builder
- * converts the URL to a filesystem path via `import.meta.url`.
+ * Intercepts `import "./style.css"` (side-effect form) and rewrites it to
+ * a virtual module whose body reads the file at build/dev time and calls
+ * `injectGlobal` from `@gtkx/css`, installing the stylesheet into the GTK
+ * CSS provider when the importing module is evaluated.
  *
- * **CSS imports (`import "./style.css"`):** Transformed into a module that
- * calls `injectGlobal` from `@gtkx/css` with the file's contents, injecting
- * the styles into the GTK CSS provider at runtime.
- *
- * **CSS URL imports (`import path from "./style.css?url"`):** Handled by
- * Vite's built-in `?url` mechanism, which emits the file as an asset and
- * resolves it to a filesystem path via `renderBuiltUrl`.
+ * Binary asset imports (images, fonts, video, etc.) are owned by
+ * `gtkxResources`, which routes them through the GResource pipeline.
  */
 export function gtkxAssets(): Plugin {
-    let isBuild = false;
-
     return {
         name: "gtkx:assets",
         enforce: "pre",
-
-        config() {
-            return {
-                assetsInclude: [ASSET_RE],
-            };
-        },
-
-        configResolved(config) {
-            isBuild = config.command === "build";
-        },
 
         async resolveId(source, importer, options) {
             if (!CSS_RE.test(source)) {
@@ -83,11 +41,7 @@ export function gtkxAssets(): Plugin {
                 );
             }
 
-            if (isBuild || !ASSET_RE.test(id)) {
-                return;
-            }
-
-            return `export default ${JSON.stringify(id)};`;
+            return;
         },
     };
 }

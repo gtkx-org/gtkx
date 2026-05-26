@@ -67,15 +67,21 @@ describe("build (core config)", () => {
     });
 });
 
-describe("build (plugins)", () => {
+describe("build (plugin order)", () => {
     beforeEach(resetBuildMocks);
     afterEach(restoreSpies);
 
-    it("registers all four gtkx vite plugins in order", async () => {
+    it("registers all five gtkx vite plugins in order", async () => {
         await build({ entry: "src/index.tsx" });
 
         const pluginNames = getViteConfig().plugins.map((p) => p?.name);
-        expect(pluginNames).toEqual(["gtkx:gsettings", "gtkx:assets", "gtkx:built-url", "gtkx:native"]);
+        expect(pluginNames).toEqual([
+            "gtkx:gsettings",
+            "gtkx:gresources",
+            "gtkx:assets",
+            "gtkx:built-url",
+            "gtkx:native",
+        ]);
     });
 
     it("appends gtkx plugins after user-supplied plugins", async () => {
@@ -84,8 +90,19 @@ describe("build (plugins)", () => {
 
         const pluginNames = getViteConfig().plugins.map((p) => p?.name);
         expect(pluginNames[0]).toBe("user-plugin");
-        expect(pluginNames.slice(1)).toEqual(["gtkx:gsettings", "gtkx:assets", "gtkx:built-url", "gtkx:native"]);
+        expect(pluginNames.slice(1)).toEqual([
+            "gtkx:gsettings",
+            "gtkx:gresources",
+            "gtkx:assets",
+            "gtkx:built-url",
+            "gtkx:native",
+        ]);
     });
+});
+
+describe("build (root resolution)", () => {
+    beforeEach(resetBuildMocks);
+    afterEach(restoreSpies);
 
     it("falls back to process.cwd() for the gtkx-native plugin when no vite root is given", async () => {
         const cwdSpy = vi.spyOn(process, "cwd").mockReturnValue("/fake/project");
@@ -128,6 +145,16 @@ describe("build (define and rolldown)", () => {
         const config = getViteConfig();
         expect(config.define.__APP_VERSION__).toBe(JSON.stringify("1.2.3"));
         expect(config.define["process.env.NODE_ENV"]).toBe(JSON.stringify("production"));
+    });
+
+    it("exposes the application id as import.meta.env.GTKX_APP_ID", async () => {
+        await build({ entry: "src/index.tsx", applicationId: "org.gtk.Demo4" });
+        expect(getViteConfig().define["import.meta.env.GTKX_APP_ID"]).toBe(JSON.stringify("org.gtk.Demo4"));
+    });
+
+    it("defaults import.meta.env.GTKX_APP_ID to the empty string when no application id is set", async () => {
+        await build({ entry: "src/index.tsx" });
+        expect(getViteConfig().define["import.meta.env.GTKX_APP_ID"]).toBe(JSON.stringify(""));
     });
 
     it("preserves user rolldown output options while overriding entryFileNames", async () => {

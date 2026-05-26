@@ -51,6 +51,19 @@ export type GtkxConfig = {
      * Paths are resolved relative to the project root.
      */
     girPath?: string[];
+
+    /**
+     * GLib application id used by the GResource pipeline and exposed to
+     * application code as `import.meta.env.GTKX_APP_ID`.
+     *
+     * When set, asset imports resolve to `resource:///<prefix>/<...>` where
+     * `<prefix>` is derived from the id (`org.gtk.Demo4` → `/org/gtk/Demo4`).
+     * Must match `g_application_id_is_valid` — see {@link isValidAppId}.
+     *
+     * When omitted, the GResource pipeline falls back to the prefix
+     * `/gtkx/app` and `import.meta.env.GTKX_APP_ID` is the empty string.
+     */
+    applicationId?: string;
 };
 
 /**
@@ -105,9 +118,20 @@ const validateGirPath = (girPath: GtkxConfig["girPath"]): void => {
     }
 };
 
+const validateApplicationId = (applicationId: GtkxConfig["applicationId"]): void => {
+    if (applicationId === undefined) return;
+    if (typeof applicationId !== "string" || !isValidAppId(applicationId)) {
+        throw new Error(
+            `gtkx.config.ts: invalid \`applicationId\` "${String(applicationId)}" — ` +
+                `must satisfy g_application_id_is_valid (e.g. "org.example.MyApp")`,
+        );
+    }
+};
+
 export const defineConfig = (config: GtkxConfig): GtkxConfig => {
     validateLibraries(config.libraries);
     validateGirPath(config.girPath);
+    validateApplicationId(config.applicationId);
     return config;
 };
 

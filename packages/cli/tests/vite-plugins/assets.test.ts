@@ -3,22 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { gtkxAssets } from "../../src/vite-plugins/assets.js";
-
-type ConfigHook = () => { assetsInclude: RegExp[] };
-type ConfigResolvedHook = (config: { command: "build" | "serve" }) => void;
-type ResolveIdHook = (
-    this: {
-        resolve: (
-            source: string,
-            importer?: string,
-            opts?: unknown,
-        ) => Promise<{ id: string; external?: boolean } | null>;
-    },
-    source: string,
-    importer?: string,
-    options?: unknown,
-) => Promise<string | undefined | null>;
-type LoadHook = (id: string) => string | undefined | null;
+import type { LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
 
 let tmpDir: string;
 
@@ -40,24 +25,10 @@ const callResolveId = async (
 };
 
 describe("gtkxAssets (plugin shape)", () => {
-    setupAssetsTmpDir();
-
     it("returns a plugin with the expected name and pre-enforce", () => {
         const plugin = gtkxAssets();
         expect(plugin.name).toBe("gtkx:assets");
         expect(plugin.enforce).toBe("pre");
-    });
-
-    it("config declares an assetsInclude regex covering known asset extensions", () => {
-        const plugin = gtkxAssets();
-        const result = (plugin.config as ConfigHook)();
-        expect(result.assetsInclude).toHaveLength(1);
-        const [regex] = result.assetsInclude;
-        if (!regex) throw new Error("assetsInclude regex missing");
-        expect(regex.test("logo.png")).toBe(true);
-        expect(regex.test("song.mp3")).toBe(true);
-        expect(regex.test("font.woff2")).toBe(true);
-        expect(regex.test("data.json")).toBe(false);
     });
 });
 
@@ -102,27 +73,9 @@ describe("gtkxAssets (load)", () => {
         expect(out).toContain(`injectGlobal(${JSON.stringify("body { color: red; }")});`);
     });
 
-    it("load returns an export-default path for asset ids in dev mode", () => {
+    it("load returns undefined for non-virtual ids (binary assets handled by gtkx:gresources)", () => {
         const plugin = gtkxAssets();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-
-        const result = (plugin.load as LoadHook)("/abs/path/logo.png");
-        expect(result).toBe(`export default ${JSON.stringify("/abs/path/logo.png")};`);
-    });
-
-    it("load returns undefined for asset ids in build mode", () => {
-        const plugin = gtkxAssets();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
-
-        const result = (plugin.load as LoadHook)("/abs/path/logo.png");
-        expect(result).toBeUndefined();
-    });
-
-    it("load returns undefined for non-asset, non-virtual ids", () => {
-        const plugin = gtkxAssets();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
-
-        const result = (plugin.load as LoadHook)("/abs/path/module.ts");
-        expect(result).toBeUndefined();
+        expect((plugin.load as LoadHook)("/abs/path/logo.png")).toBeUndefined();
+        expect((plugin.load as LoadHook)("/abs/path/module.ts")).toBeUndefined();
     });
 });

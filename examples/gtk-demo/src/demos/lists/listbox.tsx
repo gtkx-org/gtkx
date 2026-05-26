@@ -15,7 +15,7 @@ import {
     GtkScrolledWindow,
 } from "@gtkx/react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import appleRedPath from "../css/apple-red.png";
+import { path as appleRedPath } from "../css/apple-red.png";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox.tsx?raw";
 import messagesRaw from "./messages.txt?raw";
@@ -52,7 +52,7 @@ function parseMessages(raw: string): Message[] {
 
 const ALL_MESSAGES = parseMessages(messagesRaw);
 
-const appleRedTexture = Gdk.Texture.newFromFilename(appleRedPath);
+const appleRedTexture = Gdk.Texture.newFromResource(appleRedPath);
 
 const boldAttrs = (() => {
     const attrs = Pango.AttrList.new();

@@ -1,7 +1,7 @@
 {
     "extends": "../../tsconfig.test.json",
     "compilerOptions": {
-        "types": ["node", "vite/client"]
+        "types": ["node", "@gtkx/cli/env"]
     },
     "references": [
         {

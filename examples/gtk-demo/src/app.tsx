@@ -1,4 +1,4 @@
-import * as path from "node:path";
+import * as basename from "node:path/posix";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gdk from "@gtkx/ffi/gdk";
 import * as Gtk from "@gtkx/ffi/gtk";
@@ -25,18 +25,18 @@ import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
-import logoPath from "./icons/org.gtk.Demo4.svg";
+import { path as logoResourcePath } from "./icons/org.gtk.Demo4.svg";
 import { useLatest } from "./use-latest.js";
 
-const applicationIconName = path.basename(logoPath, path.extname(logoPath));
-const iconSearchPath = path.dirname(logoPath);
+const applicationIconName = basename.basename(logoResourcePath, basename.extname(logoResourcePath));
+const iconResourceDir = basename.dirname(logoResourcePath);
 const displaysWithIconPath = new WeakSet<Gdk.Display>();
 
 const useApplicationIcon = (): void => {
     useEffect(() => {
         const display = Gdk.Display.getDefault();
         if (!display || displaysWithIconPath.has(display)) return;
-        Gtk.IconTheme.getForDisplay(display).addSearchPath(iconSearchPath);
+        Gtk.IconTheme.getForDisplay(display).addResourcePath(iconResourceDir);
         displaysWithIconPath.add(display);
     }, []);
 };

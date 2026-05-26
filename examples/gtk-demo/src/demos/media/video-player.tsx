@@ -4,9 +4,9 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcutController, GtkVideo } from "@gtkx/react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
-import bbbPngPath from "./bbb.png";
-import gtkLogoCursorPath from "./gtk_logo_cursor.png";
-import gtkLogoPath from "./gtk-logo.webm";
+import { path as bbbPngPath } from "./bbb.png";
+import { path as gtkLogoCursorPath } from "./gtk_logo_cursor.png";
+import gtkLogoUri from "./gtk-logo.webm";
 import sourceCode from "./video-player.tsx?raw";
 
 const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.File) => void) => {
@@ -62,13 +62,13 @@ const useVideoPlayerContext = (): VideoPlayerContextValue => {
 
 const VideoPlayerProvider = ({ window, children }: DemoProviderProps) => {
     const [videoFile, setVideoFile] = useState<Gio.File | null>(null);
-    const logoPaintable = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoCursorPath), []);
-    const bbbPaintable = useMemo(() => Gdk.Texture.newFromFilename(bbbPngPath), []);
+    const logoPaintable = useMemo(() => Gdk.Texture.newFromResource(gtkLogoCursorPath), []);
+    const bbbPaintable = useMemo(() => Gdk.Texture.newFromResource(bbbPngPath), []);
 
     const handleOpen = useCallback(() => {
         void openVideoDialog(window.current, setVideoFile);
     }, [window]);
-    const handleLogo = useCallback(() => setVideoFile(Gio.fileNewForPath(gtkLogoPath)), []);
+    const handleLogo = useCallback(() => setVideoFile(Gio.fileNewForUri(gtkLogoUri)), []);
     const handleBBB = useCallback(
         () => setVideoFile(Gio.fileNewForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg")),
         [],

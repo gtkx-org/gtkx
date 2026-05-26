@@ -18,6 +18,7 @@ describe("renderFile", () => {
         const output = renderFile("gtkx.config.ts.ejs", baseContext);
         expect(output).toContain("defineConfig");
         expect(output).toContain("Gtk-4.0");
+        expect(output).toContain('applicationId: "com.example.MyApp"');
     });
 
     it("includes vitest hooks when testing is 'vitest'", () => {

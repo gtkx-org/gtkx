@@ -1,12 +1,12 @@
-import { readFileSync } from "node:fs";
 import { css } from "@gtkx/css";
+import * as Gio from "@gtkx/ffi/gio";
 import * as GLib from "@gtkx/ffi/glib";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkColumnView, GtkInscription, GtkLabel, GtkScrolledWindow } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-ucd.tsx?raw";
-import ucdDataPath from "./ucdnames.data";
+import { path as ucdDataPath } from "./ucdnames.data";
 
 interface UcdEntry {
     codepoint: number;
@@ -319,7 +319,12 @@ function getScriptName(value: number): string {
 }
 
 function parseUcdData(): UcdEntry[] {
-    const buffer = readFileSync(ucdDataPath);
+    const bytes = Gio.resourcesLookupData(ucdDataPath, Gio.ResourceLookupFlags.NONE);
+    const data = bytes.getData();
+    if (!data) {
+        throw new Error(`UCD data resource is empty: ${ucdDataPath}`);
+    }
+    const buffer = Buffer.from(data);
     const entries: UcdEntry[] = [];
     let offset = 0;
     let lastCp = -1;

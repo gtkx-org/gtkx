@@ -1,10 +1,10 @@
-import * as path from "node:path";
 import * as Gdk from "@gtkx/ffi/gdk";
+import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/app.js";
-import logoPath from "../src/icons/org.gtk.Demo4.svg";
+import { path as logoResourcePath } from "../src/icons/org.gtk.Demo4.svg";
 
 const selectFirstDemoWithComponent = async (): Promise<void> => {
     const sidebar = (await screen.findByName("sidebar-list")) as Gtk.ListView;
@@ -65,13 +65,11 @@ describe("App about menu", () => {
         });
     });
 
-    it("registers the application icon so the icon theme can resolve it", async () => {
+    it("bundles the application icon into the GResource so AdwAboutDialog can resolve it", async () => {
         await render(<App />, { wrapper: false });
         const display = Gdk.Display.getDefault();
         expect(display, "no default display available").not.toBeNull();
-        const iconTheme = Gtk.IconTheme.getForDisplay(display as Gdk.Display);
-        const iconName = path.basename(logoPath, path.extname(logoPath));
-        await waitFor(() => expect(iconTheme.hasIcon(iconName)).toBe(true));
+        expect(() => Gio.resourcesLookupData(logoResourcePath, Gio.ResourceLookupFlags.NONE)).not.toThrow();
     });
 });
 

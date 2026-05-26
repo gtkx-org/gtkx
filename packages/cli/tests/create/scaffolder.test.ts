@@ -195,11 +195,14 @@ describe("createScaffolder (src/* generated files)", () => {
         expect(content).toContain('title="My Cool App"');
     });
 
-    it("uses the supplied app id in src/index.tsx", async () => {
+    it("propagates the app id through gtkx.config.ts and src/index.tsx", async () => {
         await runScaffolder();
 
-        const content = vol.readFileSync(`${TEST_DIR}/test-app/src/index.tsx`, "utf-8") as string;
-        expect(content).toContain('new Gtk.Application(undefined, "org.test.app")');
+        const config = vol.readFileSync(`${TEST_DIR}/test-app/gtkx.config.ts`, "utf-8") as string;
+        expect(config).toContain('applicationId: "org.test.app"');
+
+        const entry = vol.readFileSync(`${TEST_DIR}/test-app/src/index.tsx`, "utf-8") as string;
+        expect(entry).toContain("import.meta.env.GTKX_APP_ID");
     });
 
     it("writes vitest.config.ts when testing=vitest", async () => {

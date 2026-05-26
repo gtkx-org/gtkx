@@ -77,6 +77,7 @@ const buildHarness = (
         performRefresh,
         isReactRefreshBoundary: isBoundary,
         plugins: () => plugins,
+        define: () => ({ "import.meta.env.GTKX_APP_ID": JSON.stringify(appId ?? "") }),
         log,
         exit,
     };
@@ -110,6 +111,7 @@ describe("createDevRunner (vite config)", () => {
         expect(config.server).toEqual({ middlewareMode: true });
         expect(config.optimizeDeps).toEqual({ noDiscovery: true, include: [] });
         expect(config.ssr).toEqual({ external: true });
+        expect(config.define).toEqual({ "import.meta.env.GTKX_APP_ID": '""' });
         const names = (config.plugins as Array<{ name: string }>).map((p) => p.name);
         expect(names).toEqual([
             "gtkx:gsettings",

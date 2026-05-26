@@ -19,6 +19,14 @@ export type DevRunnerDeps = {
     performRefresh(): void;
     isReactRefreshBoundary(module: Record<string, unknown>): boolean;
     plugins(): Plugin[];
+    /**
+     * Compile-time `define` replacements injected into the Vite config.
+     *
+     * Exposes the project's `applicationId` (and any future build-time
+     * constants) to user code via `import.meta.env.GTKX_APP_ID`, mirroring
+     * the `build` pipeline.
+     */
+    define(): Record<string, string>;
     log(message: string): void;
     exit(code: number): never;
 };
@@ -39,13 +47,14 @@ export type DevRunner = {
     run(entryPath: string): Promise<void>;
 };
 
-const buildConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
+const buildConfig = (root: string, plugins: Plugin[], define: Record<string, string>): InlineConfig => ({
     root,
     appType: "custom",
     plugins,
     server: { middlewareMode: true },
     optimizeDeps: { noDiscovery: true, include: [] },
     ssr: { external: true },
+    define,
 });
 
 /**
@@ -89,7 +98,7 @@ export const createDevRunner = (deps: DevRunnerDeps): DevRunner => {
     return {
         async run(entryPath: string): Promise<void> {
             const root = process.cwd();
-            const server = await deps.createServer(buildConfig(root, deps.plugins()));
+            const server = await deps.createServer(buildConfig(root, deps.plugins(), deps.define()));
 
             deps.whenStopped()
                 .then(async () => {
@@ -140,6 +149,6 @@ export const main = async (): Promise<void> => {
 
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./dev-runner-deps.js");
-    const runner = createDevRunner(defaultDevRunnerDeps());
+    const runner = createDevRunner(await defaultDevRunnerDeps(cwd));
     await runner.run(entryPath);
 };

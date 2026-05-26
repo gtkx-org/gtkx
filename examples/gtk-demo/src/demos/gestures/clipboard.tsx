@@ -23,9 +23,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { makeValue } from "../../gvalue.js";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./clipboard.tsx?raw";
-import floppyBuddyPath from "./floppybuddy.gif";
-import demo4LogoPath from "./org.gtk.Demo4.svg";
-import portlandRosePath from "./portland-rose.jpg";
+import { path as floppyBuddyPath } from "./floppybuddy.gif";
+import { path as demo4LogoPath } from "./org.gtk.Demo4.svg";
+import { path as portlandRosePath } from "./portland-rose.jpg";
 
 const setClipboardValue = (clipboard: Gdk.Clipboard, value: GObject.Value): void => clipboard.set(value);
 const readTextureAsync = (clipboard: Gdk.Clipboard): Promise<Gdk.Texture | null> => clipboard.readTextureAsync(null);
@@ -103,9 +103,9 @@ function useClipboardState() {
 type ClipboardState = ReturnType<typeof useClipboardState>;
 
 function useClipboardTextures() {
-    const portlandRoseTexture = useMemo(() => Gdk.Texture.newFromFilename(portlandRosePath), []);
-    const floppyBuddyTexture = useMemo(() => Gdk.Texture.newFromFilename(floppyBuddyPath), []);
-    const demo4LogoTexture = useMemo(() => Gdk.Texture.newFromFilename(demo4LogoPath), []);
+    const portlandRoseTexture = useMemo(() => Gdk.Texture.newFromResource(portlandRosePath), []);
+    const floppyBuddyTexture = useMemo(() => Gdk.Texture.newFromResource(floppyBuddyPath), []);
+    const demo4LogoTexture = useMemo(() => Gdk.Texture.newFromResource(demo4LogoPath), []);
     return { portlandRoseTexture, floppyBuddyTexture, demo4LogoTexture };
 }
 
@@ -147,7 +147,7 @@ function useDragProviders(state: ClipboardState) {
     const createImageDragProvider = useCallback(() => {
         const path = imagePathForIndex(selectedImage);
         try {
-            const texture = Gdk.Texture.newFromFilename(path);
+            const texture = Gdk.Texture.newFromResource(path);
             return Gdk.ContentProvider.newForValue(makeValue(gdkPaintableType, (v) => v.setObject(texture)));
         } catch (e) {
             if (e instanceof Error) console.error(e.message);
@@ -183,7 +183,7 @@ const copyColorToClipboard = (clipboard: Gdk.Clipboard, sourceColor: Gdk.RGBA) =
 const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) => {
     const path = imagePathForIndex(selectedImage);
     try {
-        const texture = Gdk.Texture.newFromFilename(path);
+        const texture = Gdk.Texture.newFromResource(path);
         setClipboardValue(
             clipboard,
             makeValue(gdkPaintableType, (v) => v.setObject(texture)),
