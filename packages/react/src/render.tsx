@@ -3,7 +3,7 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { createContext, type ReactNode, useContext } from "react";
 import { getSignalStore } from "./nodes/internal/signal-store.js";
 import { reconciler } from "./reconciler.js";
-import { setReconcilerErrorHandler } from "./reconciler-error-sink.js";
+import { type ReconcilerErrorHandler, setReconcilerErrorHandler } from "./reconciler-error-sink.js";
 
 /**
  * React Context providing access to the GTK Application instance.
@@ -49,14 +49,32 @@ export const useApplication = (): Gtk.Application => {
     return context;
 };
 
-let container: unknown = null;
+type ActiveRoot = {
+    container: unknown;
+    priorHandler: ReconcilerErrorHandler | null;
+};
+
+const activeRoots = new Set<ActiveRoot>();
+
+/**
+ * Handle returned by {@link render}, allowing callers to tear down a single
+ * rendered tree independently of the rest of the application.
+ */
+export type RenderHandle = {
+    /**
+     * Unmounts the tree, restores the reconciler error handler captured at
+     * mount time, and frees the container. Calling twice is a no-op.
+     */
+    unmount(): void;
+};
 
 /**
  * Renders a React element tree into a GTK4 application window.
  *
  * Registers and activates the supplied application, then begins the React
  * reconciliation process. Mirrors the role of `createRoot().render()` in
- * `react-dom`: call once at module top-level in your entry file.
+ * `react-dom`: call once at module top-level in your entry file, or once per
+ * test that drives the reconciler directly.
  *
  * In the dev server, the entry module runs once per process. Component-level
  * edits are applied via React Refresh; edits that propagate up to the entry
@@ -65,6 +83,7 @@ let container: unknown = null;
  *
  * @param element - The root React element to render
  * @param app - The GTK application to host the rendered tree
+ * @returns A handle whose `unmount()` method tears down this root.
  *
  * @example
  * ```tsx
@@ -84,7 +103,7 @@ let container: unknown = null;
  *
  * @see {@link quit} for shutting down the application
  */
-export const render = (element: ReactNode, app: Gtk.Application): void => {
+export const render = (element: ReactNode, app: Gtk.Application): RenderHandle => {
     app.register(null);
     app.on("activate", () => {});
     app.activate();
@@ -98,9 +117,9 @@ export const render = (element: ReactNode, app: Gtk.Application): void => {
         console.error(error);
     };
 
-    setReconcilerErrorHandler(onUncaughtError);
+    const priorHandler = setReconcilerErrorHandler(onUncaughtError);
 
-    container = reconciler.createContainer(
+    const container = reconciler.createContainer(
         app,
         1,
         null,
@@ -113,19 +132,31 @@ export const render = (element: ReactNode, app: Gtk.Application): void => {
         () => {},
     );
 
+    const root: ActiveRoot = { container, priorHandler };
+    activeRoots.add(root);
+
     reconciler.updateContainer(
         <ApplicationContext.Provider value={app}>{element}</ApplicationContext.Provider>,
         container,
         null,
         () => {},
     );
+
+    return {
+        unmount: () => {
+            if (!activeRoots.delete(root)) return;
+            setReconcilerErrorHandler(root.priorHandler);
+            reconciler.updateContainer(null, root.container, null, () => {});
+        },
+    };
 };
 
 /**
  * Gracefully shuts down the GTK application.
  *
- * Unmounts the React component tree and stops the GTK main loop.
- * Typically used as the `onClose` handler for the application window.
+ * Unmounts every active render root, restores their reconciler error
+ * handlers, and stops the GTK main loop. Typically used as the `onClose`
+ * handler for the application window.
  *
  * @example
  * ```tsx
@@ -141,9 +172,28 @@ export const render = (element: ReactNode, app: Gtk.Application): void => {
  * @see {@link render} for starting the application
  */
 export const quit = (): void => {
-    reconciler.updateContainer(null, container, null, () => {
+    const roots = [...activeRoots];
+    activeRoots.clear();
+
+    const finalize = (): void => {
         setTimeout(() => {
             stop();
         }, 0);
-    });
+    };
+
+    if (roots.length === 0) {
+        finalize();
+        return;
+    }
+
+    let remaining = roots.length;
+    const onRootUnmounted = (): void => {
+        remaining -= 1;
+        if (remaining === 0) finalize();
+    };
+
+    for (const root of roots) {
+        setReconcilerErrorHandler(root.priorHandler);
+        reconciler.updateContainer(null, root.container, null, onRootUnmounted);
+    }
 };

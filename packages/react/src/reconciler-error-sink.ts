@@ -12,11 +12,16 @@
  * This sink lets the host-config catch such throws and forward them to the
  * same handler the renderer wired into `createContainer`, so the failure mode
  * stays consistent regardless of which host-config hook surfaced the error.
- * When no handler is registered, the error is re-thrown asynchronously so it
- * still surfaces (Node's `unhandledRejection`, the browser console, etc.).
+ * When no handler is registered, the error is logged to `console.error` so it
+ * still surfaces without crashing the process.
  */
 
-let errorHandler: ((error: unknown) => void) | null = null;
+/**
+ * The shape of a function that consumes a reconciler error.
+ */
+export type ReconcilerErrorHandler = (error: unknown) => void;
+
+let errorHandler: ReconcilerErrorHandler | null = null;
 
 /**
  * Registers the function that {@link reportReconcilerError} delegates to.
@@ -25,17 +30,23 @@ let errorHandler: ((error: unknown) => void) | null = null;
  * `createContainer` so the same callback that React would deliver
  * `captureCommitPhaseError` errors to also receives sink errors.
  *
+ * Returns the handler that was previously registered, allowing callers to
+ * restore it on teardown.
+ *
  * @public
  */
-export function setReconcilerErrorHandler(handler: ((error: unknown) => void) | null): void {
+export function setReconcilerErrorHandler(handler: ReconcilerErrorHandler | null): ReconcilerErrorHandler | null {
+    const prior = errorHandler;
     errorHandler = handler;
+    return prior;
 }
 
 /**
  * Forwards `error` to the currently registered reconciler error handler.
  *
- * When no handler is registered, the error is queued to throw asynchronously
- * so it still surfaces through the platform's unhandled-error path.
+ * When no handler is registered the error is logged through `console.error`
+ * with a clear prefix; callers that want fatal behaviour can register a
+ * re-throwing handler explicitly.
  *
  * @public
  */
@@ -44,7 +55,5 @@ export function reportReconcilerError(error: unknown): void {
         errorHandler(error);
         return;
     }
-    queueMicrotask(() => {
-        throw error;
-    });
+    console.error("[gtkx-react] unhandled reconciler error:", error);
 }
