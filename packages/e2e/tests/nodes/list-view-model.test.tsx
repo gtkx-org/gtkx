@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkColumnView, GtkDropDown, GtkGridView, GtkLabel, GtkListView } from "@gtkx/react";
-import { act, render, screen } from "@gtkx/testing";
+import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
@@ -55,47 +55,51 @@ describe("ListView model prop", () => {
         await renderListWithModel(["Alpha", "Beta", "Gamma"], ref);
 
         expect(ref.current).not.toBeNull();
-        expect(screen.queryAllByText("Alpha").length).toBeGreaterThan(0);
-        expect(screen.queryAllByText("Beta").length).toBeGreaterThan(0);
-        expect(screen.queryAllByText("Gamma").length).toBeGreaterThan(0);
+        await screen.findAllByText("Alpha");
+        await screen.findAllByText("Beta");
+        await screen.findAllByText("Gamma");
     });
 
     it("reflects items appended to the model after first render", async () => {
         const { store } = await renderListWithModel(["First"]);
 
-        expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
+        await screen.findAllByText("First");
         expect(screen.queryAllByText("Second")).toHaveLength(0);
 
         const next = new NameObject();
         next.name = "Second";
-        await act(() => store.append(next));
+        store.append(next);
 
-        expect(screen.queryAllByText("Second").length).toBeGreaterThan(0);
-        expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
+        await screen.findAllByText("Second");
+        await screen.findAllByText("First");
     });
 
     it("reflects items removed from the model", async () => {
         const { store } = await renderListWithModel(["Keep", "Drop"]);
 
-        expect(screen.queryAllByText("Drop").length).toBeGreaterThan(0);
+        await screen.findAllByText("Drop");
 
-        await act(() => store.remove(1));
+        store.remove(1);
 
-        expect(screen.queryAllByText("Drop")).toHaveLength(0);
-        expect(screen.queryAllByText("Keep").length).toBeGreaterThan(0);
+        await waitFor(() => {
+            expect(screen.queryAllByText("Drop")).toHaveLength(0);
+            expect(screen.queryAllByText("Keep").length).toBeGreaterThan(0);
+        });
     });
 
     it("swaps to a different model when the prop changes", async () => {
         const { rerender } = await renderListWithModel(["Old A", "Old B"]);
 
-        expect(screen.queryAllByText("Old A").length).toBeGreaterThan(0);
+        await screen.findAllByText("Old A");
 
         const nextStore = namedStore(["New X", "New Y"]);
         await rerender(noSelection(nextStore));
 
-        expect(screen.queryAllByText("Old A")).toHaveLength(0);
-        expect(screen.queryAllByText("New X").length).toBeGreaterThan(0);
-        expect(screen.queryAllByText("New Y").length).toBeGreaterThan(0);
+        await waitFor(() => {
+            expect(screen.queryAllByText("Old A")).toHaveLength(0);
+            expect(screen.queryAllByText("New X").length).toBeGreaterThan(0);
+            expect(screen.queryAllByText("New Y").length).toBeGreaterThan(0);
+        });
     });
 });
 
@@ -114,9 +118,9 @@ describe("GridView model prop", () => {
         );
 
         expect(ref.current).not.toBeNull();
-        expect(screen.queryAllByText("One").length).toBeGreaterThan(0);
-        expect(screen.queryAllByText("Two").length).toBeGreaterThan(0);
-        expect(screen.queryAllByText("Three").length).toBeGreaterThan(0);
+        await screen.findAllByText("One");
+        await screen.findAllByText("Two");
+        await screen.findAllByText("Three");
     });
 });
 
@@ -129,7 +133,7 @@ describe("DropDown model prop", () => {
         );
 
         expect(ref.current).not.toBeNull();
-        expect(screen.queryAllByText("Choice A").length).toBeGreaterThan(0);
+        await screen.findAllByText("Choice A");
     });
 });
 
@@ -150,7 +154,7 @@ describe("ColumnView model prop", () => {
         );
 
         expect(ref.current).not.toBeNull();
-        expect(screen.queryAllByText("Row 1").length).toBeGreaterThan(0);
-        expect(screen.queryAllByText("Row 2").length).toBeGreaterThan(0);
+        await screen.findAllByText("Row 1");
+        await screen.findAllByText("Row 2");
     });
 });

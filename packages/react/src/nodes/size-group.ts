@@ -175,9 +175,12 @@ export class SizeGroupNode extends TransparentVirtualNode<GtkSizeGroupProps, Wid
  * Wraps a single widget child transparently (the widget attaches to the
  * nearest enclosing real widget ancestor, not to the marker itself) and
  * registers that widget with the nearest ancestor {@link SizeGroupNode} in
- * the React parent chain. Because React commits leaves before their parents,
- * the registration is deferred to {@link scheduleAfterCommit} so the full
- * ancestor chain is wired by the time the lookup runs.
+ * the React parent chain. The registration itself runs via
+ * {@link scheduleAfterCommit} so the full ancestor chain is wired by the
+ * time the lookup runs; the ancestor-exists invariant is asserted later
+ * from {@link commitMount}, where React wraps the call in a try/catch that
+ * routes throws through its commit-phase error pipeline (so test harnesses
+ * see a rejected `render` instead of an uncaught microtask exception).
  *
  * @public
  */
@@ -188,6 +191,18 @@ export class SizeGroupWidgetNode extends TransparentVirtualNode<SizeGroupWidgetP
 
     public override isValidChild(child: Node): boolean {
         return child instanceof WidgetNode && this.children.length === 0;
+    }
+
+    public override finalizeInitialChildren(props: SizeGroupWidgetProps): boolean {
+        super.finalizeInitialChildren(props);
+        return true;
+    }
+
+    public override commitMount(): void {
+        if (this.children.length === 0) return;
+        if (!this.findSizeGroupAncestor()) {
+            throw new Error("GtkSizeGroup.Widget must be nested inside a GtkSizeGroup");
+        }
     }
 
     public override appendChild(child: WidgetNode): void {
@@ -240,9 +255,7 @@ export class SizeGroupWidgetNode extends TransparentVirtualNode<SizeGroupWidgetP
         }
 
         const group = this.findSizeGroupAncestor();
-        if (!group) {
-            throw new Error("GtkSizeGroup.Widget must be nested inside a GtkSizeGroup");
-        }
+        if (!group) return;
 
         group.addMember(widget);
         this.registeredWidget = widget;

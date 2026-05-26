@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import * as GtkEnums from "@gtkx/ffi/gtk";
 import { createPortal, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel, useApplication } from "@gtkx/react";
-import { act, render } from "@gtkx/testing";
+import { render } from "@gtkx/testing";
 import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -54,7 +54,6 @@ describe("createPortal (1)", () => {
             </Portal>,
         );
 
-        await act(() => {});
         expect(windowRef.current).not.toBeNull();
         expect(windowRef.current?.getTitle()).toBe("Keyed Window");
     });

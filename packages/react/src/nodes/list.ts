@@ -3,10 +3,9 @@ import * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import type { ReactNode } from "react";
-import type { BoundItemsStore } from "../components/bound-items-store.js";
 import type { ListItem } from "../jsx.js";
 import type { Node } from "../node.js";
-import { scheduleAfterCommit } from "../post-commit-queue.js";
+import { isInCommit, scheduleAfterCommit } from "../post-commit-queue.js";
 import type { Container } from "../types.js";
 import { ColumnViewColumnNode } from "./column-view-column.js";
 import { ContainerSlotNode } from "./container-slot.js";
@@ -38,7 +37,9 @@ type ListProps = {
     estimatedItemHeight?: number;
     estimatedItemWidth?: number;
     estimatedRowHeight?: number | null;
-    __boundItemsStore?: BoundItemsStore;
+    __boundItemsRef?: { current: BoundItem[] };
+    __rerender?: () => void;
+    __headerBoundItemsRef?: { current: BoundItem[] };
 };
 
 const OWN_PROPS = [
@@ -59,7 +60,9 @@ const OWN_PROPS = [
     "estimatedItemHeight",
     "estimatedItemWidth",
     "estimatedRowHeight",
-    "__boundItemsStore",
+    "__boundItemsRef",
+    "__rerender",
+    "__headerBoundItemsRef",
 ] as const;
 
 type ListChild = ColumnViewColumnNode | EventControllerNode | SlotNode | ContainerSlotNode;
@@ -1022,10 +1025,10 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     public queueBoundItemsUpdate(): void {
         if (this.disposed || this.boundItemsUpdateScheduled) return;
         this.boundItemsUpdateScheduled = true;
-        try {
-            this.rebuildBoundItems();
-        } finally {
-            this.boundItemsUpdateScheduled = false;
+        if (isInCommit()) {
+            scheduleAfterCommit(this.flushBoundItemsUpdate);
+        } else {
+            queueMicrotask(this.flushBoundItemsUpdate);
         }
     }
 
@@ -1105,19 +1108,22 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private rebuildBoundItems(): void {
-        const { __boundItemsStore, renderItem, renderListItem, renderHeader } = this.props;
-        if (!__boundItemsStore) return;
+        const { __boundItemsRef, __rerender, __headerBoundItemsRef, renderItem, renderListItem, renderHeader } =
+            this.props;
+        if (!__boundItemsRef || !__rerender) return;
 
         const resolveItem = this.buildItemResolver();
         const newBoundItems = this.isColumnView()
             ? this.collectColumnViewBoundItems(resolveItem)
             : this.collectStandardBoundItems(resolveItem, renderItem, renderListItem);
 
-        __boundItemsStore.setBoundItems(newBoundItems);
+        __boundItemsRef.current = newBoundItems;
 
-        if (renderHeader && this.sectionStore !== null) {
-            __boundItemsStore.setHeaderBoundItems(this.collectAllHeaderBoundItems(renderHeader));
+        if (__headerBoundItemsRef && renderHeader && this.sectionStore !== null) {
+            __headerBoundItemsRef.current = this.collectAllHeaderBoundItems(renderHeader);
         }
+
+        __rerender();
     }
 
     private buildItemResolver(): (position: number) => unknown {

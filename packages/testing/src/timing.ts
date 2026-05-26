@@ -24,60 +24,14 @@ export const setIsReactActEnvironment = (value: boolean | undefined): void => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = value;
 };
 
-type ActImplementation = <T>(callback: () => T | Promise<T>) => PromiseLike<T>;
-
-const isThenable = (value: unknown): value is PromiseLike<unknown> =>
-    value !== null && typeof value === "object" && typeof (value as { then?: unknown }).then === "function";
-
-const withGlobalActEnvironment =
-    (actImplementation: ActImplementation) =>
-    <T>(callback: () => T | Promise<T>): PromiseLike<T> => {
-        const previousActEnvironment = getIsReactActEnvironment();
-        setIsReactActEnvironment(true);
-        try {
-            let callbackNeedsToBeAwaited = false;
-            const actResult = actImplementation<T>(() => {
-                const result = callback();
-                if (isThenable(result)) callbackNeedsToBeAwaited = true;
-                return result;
-            });
-            if (callbackNeedsToBeAwaited) {
-                return new Promise<T>((resolve, reject) => {
-                    actResult.then(
-                        (returnValue) => {
-                            setIsReactActEnvironment(previousActEnvironment);
-                            resolve(returnValue);
-                        },
-                        (error) => {
-                            setIsReactActEnvironment(previousActEnvironment);
-                            reject(error);
-                        },
-                    );
-                });
-            }
-            setIsReactActEnvironment(previousActEnvironment);
-            return actResult;
-        } catch (error) {
-            setIsReactActEnvironment(previousActEnvironment);
-            throw error;
-        }
-    };
-
 /**
  * GTK-flavored mirror of `@testing-library/react`'s `act`.
  *
  * Sets `IS_REACT_ACT_ENVIRONMENT` for the duration of the call and runs the
- * callback inside a single React `act` scope. Sync callbacks execute and
- * commit synchronously; the returned thenable carries any remaining work and
- * may be awaited if the caller needs to observe its result. Async callbacks
- * return a thenable that resolves after React has settled and the previous
- * environment value has been restored.
- *
- * Mirrors {@link https://github.com/testing-library/react-testing-library/blob/main/src/act-compat.js | RTL's act-compat} almost verbatim: it is a transparent wrapper around the React `act`
- * implementation that only manages the act-environment flag — it does not
- * drive the GLib runloop, schedule timers, or wait on frame-clock callbacks.
- * Asynchronous settlement is the responsibility of {@link waitFor} and the
- * `findBy*` queries that use it.
+ * callback inside React's async `act` scope. Sync callbacks are wrapped in
+ * an `async` function so React keeps the scope open across the implicit
+ * microtask boundary, capturing any state updates that signal handlers
+ * (e.g. GTK list factory bind/unbind) defer via `queueMicrotask`.
  *
  * @example
  * ```tsx
@@ -89,4 +43,12 @@ const withGlobalActEnvironment =
  * });
  * ```
  */
-export const act = withGlobalActEnvironment(reactAct as ActImplementation);
+export async function act<T>(callback: () => T | Promise<T>): Promise<T> {
+    const previousActEnvironment = getIsReactActEnvironment();
+    setIsReactActEnvironment(true);
+    try {
+        return await reactAct(async () => callback());
+    } finally {
+        setIsReactActEnvironment(previousActEnvironment);
+    }
+}

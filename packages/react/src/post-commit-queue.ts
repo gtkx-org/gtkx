@@ -13,10 +13,32 @@
  * Only call {@link scheduleAfterCommit} from inside a React render or commit;
  * anything queued outside that window sits until the next commit drains it.
  * Callers that fire outside the reconciler (e.g. GTK signal handlers) should
- * defer their work directly with `queueMicrotask`.
+ * gate work behind {@link isInCommit} and fall back to a deferred scheduler
+ * such as `queueMicrotask` when no commit is active.
  */
 
 const queue: Array<() => void> = [];
+let commitDepth = 0;
+
+/**
+ * Returns true while a React commit is on the JS stack between
+ * `prepareForCommit` and `resetAfterCommit`. Use this to choose between
+ * {@link scheduleAfterCommit} (when in a commit, drains inside the same
+ * `act` boundary) and an out-of-commit scheduler (when not).
+ */
+export function isInCommit(): boolean {
+    return commitDepth > 0;
+}
+
+/** @internal */
+export function beginCommit(): void {
+    commitDepth++;
+}
+
+/** @internal */
+export function endCommit(): void {
+    commitDepth--;
+}
 
 /**
  * Drains the queued post-commit work. Called by the host config's

@@ -9,7 +9,7 @@ describe("act / sync callback", () => {
         await result;
     });
 
-    it("runs the callback synchronously", () => {
+    it("runs the callback synchronously before resolving", () => {
         let ran = false;
         act(() => {
             ran = true;
@@ -52,11 +52,11 @@ describe("act / async callback", () => {
 });
 
 describe("act / IS_REACT_ACT_ENVIRONMENT", () => {
-    it("sets the flag inside a sync callback and restores it synchronously", () => {
+    it("sets the flag inside a sync callback and restores it once the act settles", async () => {
         const before = getIsReactActEnvironment();
         setIsReactActEnvironment(false);
         let insideEnv: boolean | undefined;
-        act(() => {
+        await act(() => {
             insideEnv = getIsReactActEnvironment();
         });
         expect(insideEnv).toBe(true);
@@ -80,14 +80,14 @@ describe("act / IS_REACT_ACT_ENVIRONMENT", () => {
         setIsReactActEnvironment(before);
     });
 
-    it("restores the flag after a sync throw", () => {
+    it("restores the flag after a sync throw", async () => {
         const before = getIsReactActEnvironment();
         setIsReactActEnvironment(false);
-        expect(() =>
+        await expect(
             act(() => {
                 throw new Error("boom");
             }),
-        ).toThrow("boom");
+        ).rejects.toThrow("boom");
         expect(getIsReactActEnvironment()).toBe(false);
         setIsReactActEnvironment(before);
     });

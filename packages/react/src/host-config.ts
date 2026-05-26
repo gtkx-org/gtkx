@@ -7,7 +7,7 @@ import { DiscreteEventPriority } from "react-reconciler/constants.js";
 import { createNode, resolveContainerClass } from "./factory.js";
 import type { Node } from "./node.js";
 import { isBuffered } from "./nodes/internal/predicates.js";
-import { drainAfterCommit } from "./post-commit-queue.js";
+import { beginCommit, drainAfterCommit, endCommit } from "./post-commit-queue.js";
 import type { Container, Props } from "./types.js";
 
 declare global {
@@ -203,19 +203,30 @@ const createCommitConfig = (): CommitConfig => ({
     commitUpdate: (instance, _type, oldProps, newProps) =>
         withSignalsBlocked(instance, () => instance.commitUpdate(oldProps, newProps)),
     commitMount: (instance) => {
-        instance.commitMount?.();
+        beginCommit();
+        try {
+            instance.commitMount?.();
+            drainAfterCommit();
+        } finally {
+            endCommit();
+        }
     },
     commitTextUpdate: (textInstance, oldText, newText) => {
         const key = textInstance.typeName === "TextSegment" ? "text" : "label";
         withSignalsBlocked(textInstance, () => textInstance.commitUpdate({ [key]: oldText }, { [key]: newText }));
     },
     prepareForCommit: () => {
+        beginCommit();
         freeze();
         return null;
     },
     resetAfterCommit: () => {
-        drainAfterCommit();
-        unfreeze();
+        try {
+            drainAfterCommit();
+        } finally {
+            endCommit();
+            unfreeze();
+        }
     },
 });
 

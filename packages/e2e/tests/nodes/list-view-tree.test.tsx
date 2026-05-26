@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkLabel, type ListItem } from "@gtkx/react";
-import { act, screen } from "@gtkx/testing";
+import { act, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { type FixtureInput, renderListView } from "../helpers/list-fixtures.js";
 import { getChildTexts } from "../helpers/widget-text.js";
@@ -430,14 +430,13 @@ describe("render - ListView (tree) (6)", () => {
                 },
             ]);
 
-            expect(getChildTexts(ref.current)).toEqual(["Parent"]);
+            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Parent"]));
 
             const row = expandableExpanders()[0]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
             row.setExpanded(true);
-            await act(() => {});
 
-            expect(getChildTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]);
+            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]));
         });
     });
 });
@@ -552,20 +551,19 @@ describe("render - ListView (tree) (9)", () => {
             if (!row) throw new Error("Expected row to exist");
 
             row.setExpanded(true);
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
-            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-            expect(getChildTexts(ref.current)).toEqual([
-                "Appearance",
-                "Notifications",
-                "Alerts",
-                "Notification Sounds",
-                "Do Not Disturb",
-                "Show Badge Count",
-                "Privacy",
-            ]);
+            await waitFor(() => {
+                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+                expect(getChildTexts(ref.current)).toEqual([
+                    "Appearance",
+                    "Notifications",
+                    "Alerts",
+                    "Notification Sounds",
+                    "Do Not Disturb",
+                    "Show Badge Count",
+                    "Privacy",
+                ]);
+            });
         });
     });
 });
@@ -588,10 +586,6 @@ describe("render - ListView (tree) (10)", () => {
             ];
 
             const { ref } = await renderListView(toTreeItems(categories), { autoexpand: true });
-
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             expect(screen.queryAllByText("Loading...")).toHaveLength(0);
             expect(getChildTexts(ref.current)).toEqual([
@@ -680,18 +674,17 @@ describe("render - ListView (tree) (12)", () => {
             if (!row) throw new Error("Expected row to exist");
 
             row.setExpanded(true);
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
-            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-            expect(getChildTexts(ref.current)).toEqual([
-                "Appearance",
-                "Dark Mode",
-                "Large Text",
-                "Enable Animations",
-                "Transparency Effects",
-            ]);
+            await waitFor(() => {
+                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+                expect(getChildTexts(ref.current)).toEqual([
+                    "Appearance",
+                    "Dark Mode",
+                    "Large Text",
+                    "Enable Animations",
+                    "Transparency Effects",
+                ]);
+            });
         });
     });
 });
@@ -722,15 +715,16 @@ describe("render - ListView (tree) (13)", () => {
             if (!row) throw new Error("Expected row to exist");
 
             row.setExpanded(true);
-            await act(() => {});
 
-            expect(getChildTexts(ref.current)).toEqual([
-                "Appearance",
-                "Dark Mode",
-                "Large Text",
-                "Enable Animations",
-                "Transparency Effects",
-            ]);
+            await waitFor(() =>
+                expect(getChildTexts(ref.current)).toEqual([
+                    "Appearance",
+                    "Dark Mode",
+                    "Large Text",
+                    "Enable Animations",
+                    "Transparency Effects",
+                ]),
+            );
         });
     });
 });
@@ -745,28 +739,33 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
             const row = expandableExpanders()[categoryIndex]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
             row.setExpanded(true);
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
-            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-
-            for (const childName of expectedChildren) {
-                expect(screen.queryAllByText(childName)).toHaveLength(1);
-            }
+            await waitFor(() => {
+                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+                for (const childName of expectedChildren) {
+                    expect(screen.queryAllByText(childName)).toHaveLength(1);
+                }
+            });
         };
 
         const collapseRow = async (categoryIndex: number) => {
             const row = expandableExpanders()[categoryIndex]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
             row.setExpanded(false);
-            await act(() => {});
         };
 
         await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
 
         await collapseRow(0);
-        expect(getChildTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]);
+        await waitFor(() =>
+            expect(getChildTexts(ref.current)).toEqual([
+                "Appearance",
+                "Notifications",
+                "Privacy",
+                "Power",
+                "Network",
+            ]),
+        );
 
         await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
 
@@ -778,7 +777,7 @@ describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
 
         await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
 
-        expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+        await waitFor(() => expect(screen.queryAllByText("Loading...")).toHaveLength(0));
     });
 });
 
@@ -786,24 +785,23 @@ describe("render - ListView (tree) (15) > settings tree regression (4)", () => {
     const twoCategories: Array<Category & { children: Setting[] }> = allSettingCategories.slice(0, 2);
     const appearanceChildNames = ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"];
 
-    const assertChildrenVisible = () => {
-        expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-        for (const name of appearanceChildNames) {
-            expect(screen.queryAllByText(name)).toHaveLength(1);
-        }
-    };
+    const assertChildrenVisible = () =>
+        waitFor(() => {
+            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+            for (const name of appearanceChildNames) {
+                expect(screen.queryAllByText(name)).toHaveLength(1);
+            }
+        });
 
-    const assertChildrenHidden = () => {
-        for (const name of appearanceChildNames) {
-            expect(screen.queryAllByText(name)).toHaveLength(0);
-        }
-    };
+    const assertChildrenHidden = () =>
+        waitFor(() => {
+            for (const name of appearanceChildNames) {
+                expect(screen.queryAllByText(name)).toHaveLength(0);
+            }
+        });
 
     const toggleRow = async (row: Gtk.TreeListRow, expanded: boolean) => {
-        row.setExpanded(expanded);
-        await act(() => {});
-        await act(() => {});
-        await act(() => {});
+        await act(() => row.setExpanded(expanded));
     };
 
     it("third child does not remain stuck on Loading after expansion", async () => {
@@ -814,13 +812,13 @@ describe("render - ListView (tree) (15) > settings tree regression (4)", () => {
 
         for (let i = 0; i < 3; i++) {
             await toggleRow(row, true);
-            assertChildrenVisible();
+            await assertChildrenVisible();
             await toggleRow(row, false);
-            assertChildrenHidden();
+            await assertChildrenHidden();
         }
 
         await toggleRow(row, true);
-        assertChildrenVisible();
+        await assertChildrenVisible();
 
         expect(ref.current).not.toBeNull();
     });
@@ -830,9 +828,6 @@ describe("render - ListView (tree) (16)", () => {
     describe("tree filtering (1)", () => {
         it("shows children after filtering from many root items to few", async () => {
             const { ref, rerender } = await renderListView(fullItems, { autoexpand: true });
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual([
                 "Alpha",
@@ -857,9 +852,6 @@ describe("render - ListView (tree) (16)", () => {
                 ],
                 { autoexpand: true },
             );
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
         });
@@ -870,9 +862,6 @@ describe("render - ListView (tree) (17)", () => {
     describe("tree filtering (2)", () => {
         it("shows children after multiple filter transitions", async () => {
             const { ref, rerender } = await renderListView(fullItems, { autoexpand: true });
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             await rerender(
                 [
@@ -885,16 +874,10 @@ describe("render - ListView (tree) (17)", () => {
                 ],
                 { autoexpand: true },
             );
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One"]);
 
             await rerender(fullItems, { autoexpand: true });
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             await rerender(
                 [
@@ -906,9 +889,6 @@ describe("render - ListView (tree) (17)", () => {
                 ],
                 { autoexpand: true },
             );
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
         });
@@ -937,9 +917,6 @@ describe("render - ListView (tree) (18)", () => {
             }
 
             const { ref, rerender } = await renderListView(fullTree, { autoexpand: true, minContentHeight: 400 });
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             await rerender(
                 [
@@ -951,11 +928,8 @@ describe("render - ListView (tree) (18)", () => {
                 ],
                 { autoexpand: true, minContentHeight: 400 },
             );
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
-            expect(getChildTexts(ref.current)).toEqual(["Category 21", "Child 21-1"]);
+            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Category 21", "Child 21-1"]));
         });
     });
 });
@@ -966,17 +940,11 @@ describe("render - ListView (tree) (19) > tree filtering (4)", () => {
             autoexpand: true,
             minContentHeight: 600,
         });
-        await act(() => {});
-        await act(() => {});
-        await act(() => {});
 
         await rerender([demoCat("cat-Lists", "Lists", [demoChild("demo-weather", "Weather")])], {
             autoexpand: true,
             minContentHeight: 600,
         });
-        await act(() => {});
-        await act(() => {});
-        await act(() => {});
 
         expect(getChildTexts(ref.current)).toEqual(["Lists", "Weather"]);
     });
@@ -1010,16 +978,10 @@ describe("render - ListView (tree) (20)", () => {
 
             const viewport = { autoexpand: true, minContentHeight: 100, maxContentHeight: 100 } as const;
             const { ref, rerender } = await renderListView(fullTree, viewport);
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             await rerender([cat("cat-36", "Category 36", [ch("ch-36-0", "Child 36-0")])], viewport);
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
-            expect(getChildTexts(ref.current)).toEqual(["Category 36", "Child 36-0"]);
+            await waitFor(() => expect(getChildTexts(ref.current)).toEqual(["Category 36", "Child 36-0"]));
         });
     });
 });
@@ -1028,9 +990,6 @@ describe("render - ListView (tree) (21)", () => {
     describe("tree filtering (6)", () => {
         it("shows children when transitioning from one filter to another without restoring full list", async () => {
             const { ref, rerender } = await renderListView(fullItems, { autoexpand: true });
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             await rerender(
                 [
@@ -1048,9 +1007,6 @@ describe("render - ListView (tree) (21)", () => {
                 ],
                 { autoexpand: true },
             );
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Alpha", "Bravo", "B-One", "Delta", "D-One"]);
 
@@ -1064,9 +1020,6 @@ describe("render - ListView (tree) (21)", () => {
                 ],
                 { autoexpand: true },
             );
-            await act(() => {});
-            await act(() => {});
-            await act(() => {});
 
             expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
         });

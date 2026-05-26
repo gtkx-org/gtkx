@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkDropDown, GtkLabel, GtkListView } from "@gtkx/react";
-import { act, render, screen } from "@gtkx/testing";
+import { render, screen } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
@@ -173,39 +173,33 @@ describe("render - ListItem (5)", () => {
                 />,
             );
 
-            expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
+            await screen.findAllByText("First");
 
             dropDownRef.current?.setSelected(1);
-            await act(() => {});
-            expect(screen.queryAllByText("Second").length).toBeGreaterThan(0);
+            await screen.findAllByText("Second");
 
             dropDownRef.current?.setSelected(2);
-            await act(() => {});
-            expect(screen.queryAllByText("Third").length).toBeGreaterThan(0);
+            await screen.findAllByText("Third");
         });
 
         it("inserts item before existing item", async () => {
             const dropDownRef = createRef<Gtk.DropDown>();
 
             const { rerender } = await renderChildren(["first", "last"], buildValueDropDown(dropDownRef));
-            expect(screen.queryAllByText("first").length).toBeGreaterThan(0);
+            await screen.findAllByText("first");
 
             dropDownRef.current?.setSelected(1);
-            await act(() => {});
-            expect(screen.queryAllByText("last").length).toBeGreaterThan(0);
+            await screen.findAllByText("last");
 
             await rerender(["first", "middle", "last"]);
             dropDownRef.current?.setSelected(0);
-            await act(() => {});
-            expect(screen.queryAllByText("first").length).toBeGreaterThan(0);
+            await screen.findAllByText("first");
 
             dropDownRef.current?.setSelected(1);
-            await act(() => {});
-            expect(screen.queryAllByText("middle").length).toBeGreaterThan(0);
+            await screen.findAllByText("middle");
 
             dropDownRef.current?.setSelected(2);
-            await act(() => {});
-            expect(screen.queryAllByText("last").length).toBeGreaterThan(0);
+            await screen.findAllByText("last");
         });
     });
 });

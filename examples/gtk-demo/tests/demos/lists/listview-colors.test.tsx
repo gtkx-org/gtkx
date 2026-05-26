@@ -52,8 +52,10 @@ describe("listviewColorsDemo grid view", () => {
     it("renders a GtkGridView with multiple selection and rubberband enabled", async () => {
         await renderDemo(listviewColorsDemo);
         const mainGrid = (await screen.findByName("color-grid")) as Gtk.GridView;
-        expect(mainGrid.getEnableRubberband()).toBe(true);
-        expect(mainGrid.getModel()).toBeInstanceOf(Gtk.MultiSelection);
+        await waitFor(() => {
+            expect(mainGrid.getEnableRubberband()).toBe(true);
+            expect(mainGrid.getModel()).toBeInstanceOf(Gtk.MultiSelection);
+        });
     });
 
     it("wraps the grid view in a scrolled window inside an overlay", async () => {

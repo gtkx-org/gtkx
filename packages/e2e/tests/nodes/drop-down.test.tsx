@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkDropDown } from "@gtkx/react";
-import { act, render, screen } from "@gtkx/testing";
+import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
@@ -13,8 +13,8 @@ const buildDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (items: s
 );
 
 const expectSelectedText = async (dropDown: Gtk.DropDown | null, index: number, text: string): Promise<void> => {
-    await act(() => dropDown?.setSelected(index));
-    expect(screen.queryAllByText(text).length).toBeGreaterThan(0);
+    dropDown?.setSelected(index);
+    await screen.findAllByText(text);
 };
 
 describe("render - DropDown > DropDownNode (1)", () => {
@@ -31,7 +31,7 @@ describe("render - DropDown > DropDownNode (1)", () => {
 
         await render(<GtkDropDown ref={dropDownRef} items={valueItems(["Option 1", "Option 2", "Option 3"])} />);
 
-        expect(screen.queryAllByText("Option 1").length).toBeGreaterThan(0);
+        await screen.findAllByText("Option 1");
 
         await expectSelectedText(dropDownRef.current, 1, "Option 2");
         await expectSelectedText(dropDownRef.current, 2, "Option 3");
@@ -44,7 +44,7 @@ describe("render - DropDown > DropDownNode (1)", () => {
             <GtkDropDown ref={dropDownRef} selectedId="2" items={valueItems(["Option 1", "Option 2", "Option 3"])} />,
         );
 
-        expect(dropDownRef.current?.getSelected()).toBe(1);
+        await waitFor(() => expect(dropDownRef.current?.getSelected()).toBe(1));
     });
 });
 
@@ -61,16 +61,16 @@ describe("render - DropDown > DropDownNode (2)", () => {
             />,
         );
 
-        await act(() => dropDownRef.current?.setSelected(1));
+        dropDownRef.current?.setSelected(1);
 
-        expect(onSelectionChanged).toHaveBeenCalledWith("2");
+        await waitFor(() => expect(onSelectionChanged).toHaveBeenCalledWith("2"));
     });
 
     it("updates items dynamically", async () => {
         const dropDownRef = createRef<Gtk.DropDown>();
 
         const { rerender } = await renderChildren(["First", "Second"], buildDropDown(dropDownRef));
-        expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
+        await screen.findAllByText("First");
 
         await expectSelectedText(dropDownRef.current, 1, "Second");
 
@@ -87,8 +87,10 @@ describe("render - DropDown > DropDownNode (2)", () => {
         await expectSelectedText(dropDownRef.current, 2, "Third");
 
         await rerender(["First"]);
-        expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
-        expect(screen.queryAllByText("Second")).toHaveLength(0);
-        expect(screen.queryAllByText("Third")).toHaveLength(0);
+        await waitFor(() => {
+            expect(screen.queryAllByText("First").length).toBeGreaterThan(0);
+            expect(screen.queryAllByText("Second")).toHaveLength(0);
+            expect(screen.queryAllByText("Third")).toHaveLength(0);
+        });
     });
 });

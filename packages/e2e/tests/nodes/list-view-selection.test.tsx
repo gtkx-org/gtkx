@@ -1,7 +1,7 @@
 import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
-import { act, render, screen, userEvent } from "@gtkx/testing";
+import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderListView } from "../helpers/list-fixtures.js";
@@ -42,8 +42,6 @@ describe("render - ListView - selection (1)", () => {
 
             const listView = ref.current;
             listView.scrollTo(99, Gtk.ListScrollFlags.NONE, null);
-            await act(() => {});
-            await act(() => {});
 
             await userEvent.selectOptions(listView, 99);
 
@@ -104,8 +102,6 @@ describe("render - ListView - selection (4)", () => {
             const onSelectionChanged = vi.fn();
 
             await renderListView(TWO_ITEMS, { selected: ["2"], onSelectionChanged });
-
-            await act(() => {});
 
             expect(onSelectionChanged).toHaveBeenCalledWith(["2"]);
         });
@@ -171,14 +167,10 @@ describe("render - ListView - selection (5)", () => {
                 { autoexpand: true, onSelectionChanged },
             );
 
-            await act(() => {});
-
             const listView = ref.current;
             const model = listView.getModel() as Gio.ListModel;
             const lastPosition = model.getNItems() - 1;
             listView.scrollTo(lastPosition, Gtk.ListScrollFlags.NONE, null);
-            await act(() => {});
-            await act(() => {});
 
             await userEvent.selectOptions(listView, lastPosition);
 
@@ -271,7 +263,6 @@ describe("render - ListView - selection (6) > tree - single (3)", () => {
         const scrollRef = createRef<Gtk.ScrolledWindow>();
 
         await render(<SidebarApp listRef={ref} scrollRef={scrollRef} />);
-        await act(() => {});
 
         const listView = ref.current as Gtk.ListView;
         const selectionModel = listView.getModel() as Gtk.SingleSelection;
@@ -282,25 +273,15 @@ describe("render - ListView - selection (6) > tree - single (3)", () => {
         const vadj = scrolledWindow.getVadjustment();
 
         listView.scrollTo(targetPosition, Gtk.ListScrollFlags.FOCUS, null);
-        await act(() => {});
-        await act(() => {});
-        await act(() => {});
 
         if (vadj.getValue() === 0 && vadj.getUpper() > vadj.getPageSize()) {
             vadj.setValue(vadj.getUpper() - vadj.getPageSize());
-            await act(() => {});
-            await act(() => {});
         }
 
         const scrollPosBefore = vadj.getValue();
         expect(scrollPosBefore).toBeGreaterThan(0);
 
         await userEvent.selectOptions(listView, targetPosition);
-        await act(() => {});
-        await act(() => {});
-        await act(() => {});
-        await act(() => {});
-        await act(() => {});
 
         expect(selectionModel.getSelected()).toBe(targetPosition);
 
