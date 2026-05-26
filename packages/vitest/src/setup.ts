@@ -49,31 +49,38 @@ process.env.GTK_A11Y = "test";
 process.env.LIBGL_ALWAYS_SOFTWARE = "1";
 process.env.GSETTINGS_BACKEND = "memory";
 
-const killChildren = (): void => {
-    if (xvfb.pid !== undefined) {
-        try {
-            process.kill(xvfb.pid, "SIGTERM");
-        } catch {}
-    }
-    if (dbus.pid !== undefined) {
-        try {
-            process.kill(dbus.pid, "SIGTERM");
-        } catch {}
-    }
+const sendSignal = (child: ChildProcess, signal: NodeJS.Signals): void => {
+    if (child.pid === undefined || child.exitCode !== null || child.killed) return;
     try {
-        rmSync(busDir, { recursive: true, force: true });
+        process.kill(child.pid, signal);
     } catch {}
 };
 
-process.on("exit", killChildren);
+const killChildren = (signal: NodeJS.Signals = "SIGTERM"): void => {
+    sendSignal(xvfb, signal);
+    sendSignal(dbus, signal);
+};
+
+const cleanupBusDir = (): void => {
+    try {
+        rmSync(busDir, { recursive: true, force: true, maxRetries: 5 });
+    } catch {}
+};
+
+process.on("exit", () => {
+    killChildren("SIGTERM");
+    cleanupBusDir();
+});
 
 process.on("SIGTERM", () => {
-    killChildren();
+    killChildren("SIGTERM");
+    cleanupBusDir();
     process.exit(143);
 });
 
 process.on("SIGINT", () => {
-    killChildren();
+    killChildren("SIGTERM");
+    cleanupBusDir();
     process.exit(130);
 });
 
