@@ -46,11 +46,16 @@ const queryPkgConfigGirDir = (): string | undefined => {
     try {
         const output = execFileSync("pkg-config", ["--variable=girdir", "gobject-introspection-1.0"], {
             encoding: "utf-8",
-            stdio: ["ignore", "pipe", "ignore"],
+            stdio: ["ignore", "pipe", "pipe"],
         });
         const trimmed = output.trim();
         return trimmed.length > 0 ? trimmed : undefined;
-    } catch {
-        return undefined;
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+        const stderr = (error as { stderr?: string | Buffer }).stderr?.toString().trim() ?? "";
+        throw new Error(
+            `pkg-config failed querying gobject-introspection-1.0 girdir${stderr ? `:\n${stderr}` : ""}`,
+            { cause: error },
+        );
     }
 };
