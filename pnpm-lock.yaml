@@ -345,10 +345,6 @@ importers:
   packages/utils: {}
 
   packages/vitest:
-    dependencies:
-      '@gtkx/utils':
-        specifier: workspace:*
-        version: link:../utils
     devDependencies:
       vitest:
         specifier: ^4.1.7

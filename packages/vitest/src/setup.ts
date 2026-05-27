@@ -3,7 +3,6 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
-import { installGracefulShutdown } from "@gtkx/utils";
 
 const busDir = mkdtempSync(join(tmpdir(), "gtkx-dbus-"));
 const busConfigPath = join(busDir, "session.conf");
@@ -50,36 +49,25 @@ process.env.GTK_A11Y = "test";
 process.env.LIBGL_ALWAYS_SOFTWARE = "1";
 process.env.GSETTINGS_BACKEND = "memory";
 
-const sendSignal = (child: ChildProcess, signal: NodeJS.Signals): void => {
-    if (child.pid === undefined || child.exitCode !== null || child.killed) return;
-    try {
-        process.kill(child.pid, signal);
-    } catch {}
-};
-
-const killChildren = (signal: NodeJS.Signals = "SIGTERM"): void => {
-    sendSignal(xvfb, signal);
-    sendSignal(dbus, signal);
-};
-
-const cleanupBusDir = (): void => {
+/**
+ * On a clean worker exit, signal the helpers down so Xvfb removes its own
+ * lock and socket, and remove this worker's D-Bus scratch directory so a
+ * long run with `isolate: true` does not accumulate one directory per
+ * recycled worker. Dirty exits leak the directory into `/tmp`, where the
+ * container's ephemeral filesystem reaps it when the run ends.
+ */
+process.on("exit", () => {
+    const sendTerm = (child: ChildProcess): void => {
+        if (child.pid === undefined || child.exitCode !== null || child.killed) return;
+        try {
+            process.kill(child.pid, "SIGTERM");
+        } catch {}
+    };
+    sendTerm(xvfb);
+    sendTerm(dbus);
     try {
         rmSync(busDir, { recursive: true, force: true, maxRetries: 5 });
     } catch {}
-};
-
-process.on("exit", () => {
-    killChildren("SIGTERM");
-    cleanupBusDir();
-});
-
-installGracefulShutdown({
-    onSignal: () => {
-        killChildren("SIGTERM");
-        cleanupBusDir();
-    },
-    onForce: () => killChildren("SIGKILL"),
-    forceKillAfterMs: 1000,
 });
 
 const waitForFile = async (path: string, label: string, timeout = 15000): Promise<void> => {
