@@ -18,3 +18,4 @@ packages/**/README.md
 
 # Scratch / working notes
 .tmp/
+packages/vitest/probe/

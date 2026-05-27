@@ -1,5 +1,5 @@
 import { type ChildProcess, type StdioOptions, spawn } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
@@ -48,27 +48,6 @@ process.env.GSK_RENDERER = "cairo";
 process.env.GTK_A11Y = "test";
 process.env.LIBGL_ALWAYS_SOFTWARE = "1";
 process.env.GSETTINGS_BACKEND = "memory";
-
-/**
- * On a clean worker exit, signal the helpers down so Xvfb removes its own
- * lock and socket, and remove this worker's D-Bus scratch directory so a
- * long run with `isolate: true` does not accumulate one directory per
- * recycled worker. Dirty exits leak the directory into `/tmp`, where the
- * container's ephemeral filesystem reaps it when the run ends.
- */
-process.on("exit", () => {
-    const sendTerm = (child: ChildProcess): void => {
-        if (child.pid === undefined || child.exitCode !== null || child.killed) return;
-        try {
-            process.kill(child.pid, "SIGTERM");
-        } catch {}
-    };
-    sendTerm(xvfb);
-    sendTerm(dbus);
-    try {
-        rmSync(busDir, { recursive: true, force: true, maxRetries: 5 });
-    } catch {}
-});
 
 const waitForFile = async (path: string, label: string, timeout = 15000): Promise<void> => {
     const start = Date.now();
