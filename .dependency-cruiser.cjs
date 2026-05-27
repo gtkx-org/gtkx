@@ -9,8 +9,12 @@
  *      permitted to reference it is `@gtkx/codegen`, and only via
  *      `import type { ... }` so the generator can emit binding signatures
  *      without dragging the native module into its runtime graph.
- *   2. `@gtkx/mcp` is a leaf: it must not depend on any other `@gtkx/*`
- *      workspace package.
+ *   2. `@gtkx/mcp` is near-leaf: it may only depend on `@gtkx/utils` (which
+ *      is itself a true leaf — no `@gtkx/*` deps). Any other `@gtkx/*`
+ *      import would couple the MCP server to GTK runtime concerns.
+ *   3. `@gtkx/utils` is the runtime-utilities leaf: it must not depend on
+ *      any other `@gtkx/*` workspace package so every other package can
+ *      pull it in safely.
  *
  * The configuration is consumed via `pnpm depcruise` (see root package.json)
  * and runs as part of `pnpm lint:all`.
@@ -52,13 +56,22 @@ module.exports = {
             },
         },
         {
-            name: "mcp-no-workspace-deps",
+            name: "mcp-only-utils-workspace-deps",
             severity: "error",
             comment:
-                "@gtkx/mcp must remain a leaf package. Importing any other @gtkx/* " +
-                "workspace package would couple the MCP server to GTK runtime concerns.",
+                "@gtkx/mcp is near-leaf: it may import only @gtkx/utils. Any other " +
+                "@gtkx/* workspace dep would couple the MCP server to GTK runtime concerns.",
             from: { path: "^packages/mcp/" },
-            to: { path: "^(packages/(?!mcp/)|@gtkx/(?!mcp(/|$)))" },
+            to: { path: "^(packages/(?!(mcp|utils)/)|@gtkx/(?!(mcp|utils)(/|$)))" },
+        },
+        {
+            name: "utils-no-workspace-deps",
+            severity: "error",
+            comment:
+                "@gtkx/utils is the runtime-utilities leaf. Any other @gtkx/* dependency " +
+                "would block other packages from pulling it in safely.",
+            from: { path: "^packages/utils/" },
+            to: { path: "^(packages/(?!utils/)|@gtkx/(?!utils(/|$)))" },
         },
     ],
     options: {

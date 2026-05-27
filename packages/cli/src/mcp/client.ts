@@ -1,14 +1,8 @@
 import * as net from "node:net";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    DEFAULT_SOCKET_PATH,
-    errorMessage,
-    type IpcRequest,
-    JsonStreamTransport,
-    McpError,
-    McpErrorCode,
-} from "@gtkx/mcp";
+import { DEFAULT_SOCKET_PATH, type IpcRequest, JsonStreamTransport, McpError, McpErrorCode } from "@gtkx/mcp";
+import { errorMessage } from "@gtkx/utils";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
 

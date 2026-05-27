@@ -1,6 +1,6 @@
 import { type ChildProcess, fork } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { exitCodeForSignal, installGracefulShutdown } from "@gtkx/mcp";
+import { exitCodeForSignal, installGracefulShutdown } from "@gtkx/utils";
 import { RELOAD_EXIT_CODE } from "./dev-protocol.js";
 
 const DEV_RUNNER_URL = new URL("../bin/gtkx-dev-runner.js", import.meta.url);

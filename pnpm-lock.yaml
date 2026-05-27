@@ -159,6 +159,9 @@ importers:
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@swc/core':
         specifier: ^1.15.40
         version: 1.15.40
@@ -274,6 +277,9 @@ importers:
 
   packages/mcp:
     dependencies:
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
@@ -336,11 +342,13 @@ importers:
         specifier: ^0.33.0
         version: 0.33.0(react@19.2.6)
 
+  packages/utils: {}
+
   packages/vitest:
     dependencies:
-      '@gtkx/mcp':
+      '@gtkx/utils':
         specifier: workspace:*
-        version: link:../mcp
+        version: link:../utils
     devDependencies:
       vitest:
         specifier: ^4.1.7

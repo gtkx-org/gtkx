@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
-import { installGracefulShutdown } from "@gtkx/mcp";
+import { installGracefulShutdown } from "@gtkx/utils";
 
 const busDir = mkdtempSync(join(tmpdir(), "gtkx-dbus-"));
 const busConfigPath = join(busDir, "session.conf");

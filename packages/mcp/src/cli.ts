@@ -1,11 +1,11 @@
 import { createRequire } from "node:module";
+import { installGracefulShutdown } from "@gtkx/utils";
 import { McpServer, type ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
 import { ConnectionRegistry } from "./connection-registry.js";
-import { installGracefulShutdown } from "./graceful-shutdown.js";
 import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
 import { SocketServer } from "./socket-server.js";
 

@@ -73,6 +73,7 @@
         "@gtkx/codegen": "workspace:*",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/mcp": "workspace:*",
+        "@gtkx/utils": "workspace:*",
         "@swc/core": "^1.15.40",
         "c12": "^3.3.0",
         "citty": "^0.2.2",

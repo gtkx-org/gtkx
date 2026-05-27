@@ -1,5 +1,5 @@
 import { join, resolve } from "node:path";
-import { errorMessage } from "@gtkx/mcp";
+import { errorMessage } from "@gtkx/utils";
 import { isValidAppId } from "../config.js";
 import type { TemplateContext } from "../templates.js";
 import { isValidProjectName, type TestingOption } from "./options.js";

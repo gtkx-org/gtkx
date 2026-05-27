@@ -27,6 +27,9 @@
         "packages/mcp": {
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
+        "packages/utils": {
+            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
+        },
         "packages/native": {
             "entry": ["types.ts!"],
             "project": ["*.ts!", "tests/**/*.{ts,tsx}"]
