@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -324,6 +324,62 @@ describe("gtkxGSettings (handleHotUpdate: tracked match)", () => {
             expect(server.moduleGraph.invalidateModule).toHaveBeenCalledWith(matchingModule);
             expect(result).toEqual([matchingModule]);
             expect(basename(schemaPath)).toBe("hmr.gschema.xml");
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("gtkxGSettings (closeBundle)", () => {
+    setupSchemaDirEnv();
+
+    it("releases the dev-mode schema dir", () => {
+        if (!hasGlibCompileSchemas()) return;
+
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-close-"));
+        const schemaPath = writeSchema(tmp, "close.gschema.xml", "com.example.close");
+
+        try {
+            const plugin = gtkxGSettings();
+            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+            (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`);
+
+            const schemaDir = process.env.GSETTINGS_SCHEMA_DIR?.split(":")[0] ?? "";
+            expect(existsSync(schemaDir)).toBe(true);
+
+            (plugin.closeBundle as () => void).call(plugin);
+
+            expect(existsSync(schemaDir)).toBe(false);
+            (plugin.closeBundle as () => void).call(plugin);
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("gtkxGSettings (configureServer)", () => {
+    setupSchemaDirEnv();
+
+    it("releases the schema dir when the http server closes", () => {
+        if (!hasGlibCompileSchemas()) return;
+
+        const tmp = mkdtempSync(join(tmpdir(), "gtkx-gsettings-server-"));
+        const schemaPath = writeSchema(tmp, "srv.gschema.xml", "com.example.srv");
+
+        try {
+            const plugin = gtkxGSettings();
+            (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve" });
+            (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`);
+
+            const schemaDir = process.env.GSETTINGS_SCHEMA_DIR?.split(":")[0] ?? "";
+            expect(existsSync(schemaDir)).toBe(true);
+
+            const httpServer = new EventEmitter();
+            const watcher = new EventEmitter();
+            (plugin.configureServer as (server: unknown) => void).call(plugin, { httpServer, watcher });
+
+            httpServer.emit("close");
+            expect(existsSync(schemaDir)).toBe(false);
         } finally {
             rmSync(tmp, { recursive: true, force: true });
         }
