@@ -122,6 +122,10 @@ describe("installGracefulShutdown — async + force-kill behaviour", () => {
         expect(fixture.exitSpy).toHaveBeenCalledWith(130);
         handle.uninstall();
     });
+});
+
+describe("installGracefulShutdown — force-kill escalation and error paths", () => {
+    const fixture = installFixture();
 
     it("escalates to onForce when forceKillAfterMs elapses before onSignal settles", async () => {
         vi.useFakeTimers();

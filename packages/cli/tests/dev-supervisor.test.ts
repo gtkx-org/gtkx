@@ -186,6 +186,21 @@ describe("runDevSupervisor (signal forwarding — exit propagation)", () => {
         expect(ctx.exitSpy).toHaveBeenCalledWith(130);
     });
 
+    it("falls back to exitCodeForSignal when the child exits via signal during shutdown", async () => {
+        const child = await startSupervisor();
+
+        process.emit("SIGTERM", "SIGTERM");
+        await flushMicrotasks();
+        child.emit("exit", null, "SIGTERM");
+        await flushMicrotasks();
+
+        expect(ctx.exitSpy).toHaveBeenCalledWith(143);
+    });
+});
+
+describe("runDevSupervisor (signal forwarding — shutdown ordering)", () => {
+    const ctx = setupSupervisorCtx();
+
     it("ignores subsequent child exits once shutting down", async () => {
         const child = await startSupervisor();
 
@@ -197,17 +212,10 @@ describe("runDevSupervisor (signal forwarding — exit propagation)", () => {
 
         expect(ctx.exitSpy).not.toHaveBeenCalledWith(99);
     });
+});
 
-    it("falls back to exitCodeForSignal when the child exits via signal during shutdown", async () => {
-        const child = await startSupervisor();
-
-        process.emit("SIGTERM", "SIGTERM");
-        await flushMicrotasks();
-        child.emit("exit", null, "SIGTERM");
-        await flushMicrotasks();
-
-        expect(ctx.exitSpy).toHaveBeenCalledWith(143);
-    });
+describe("runDevSupervisor (signal forwarding — force kill)", () => {
+    setupSupervisorCtx();
 
     it("force-kills the child via SIGKILL on a second SIGINT", async () => {
         const processKillSpy = vi.spyOn(process, "kill").mockImplementation((() => true) as never);
