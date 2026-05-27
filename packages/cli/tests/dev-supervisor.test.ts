@@ -197,4 +197,32 @@ describe("runDevSupervisor (signal forwarding — exit propagation)", () => {
 
         expect(ctx.exitSpy).not.toHaveBeenCalledWith(99);
     });
+
+    it("falls back to exitCodeForSignal when the child exits via signal during shutdown", async () => {
+        const child = await startSupervisor();
+
+        process.emit("SIGTERM", "SIGTERM");
+        await flushMicrotasks();
+        child.emit("exit", null, "SIGTERM");
+        await flushMicrotasks();
+
+        expect(ctx.exitSpy).toHaveBeenCalledWith(143);
+    });
+
+    it("force-kills the child via SIGKILL on a second SIGINT", async () => {
+        const processKillSpy = vi.spyOn(process, "kill").mockImplementation((() => true) as never);
+        const child = await startSupervisor();
+        (child as unknown as { pid: number }).pid = 12345;
+        (child as unknown as { exitCode: number | null }).exitCode = null;
+
+        process.emit("SIGINT", "SIGINT");
+        await flushMicrotasks();
+        child.killed = false;
+        process.emit("SIGINT", "SIGINT");
+        await flushMicrotasks();
+
+        const kills = processKillSpy.mock.calls.filter((args) => args[1] === "SIGKILL");
+        expect(kills.length).toBeGreaterThanOrEqual(1);
+        processKillSpy.mockRestore();
+    });
 });

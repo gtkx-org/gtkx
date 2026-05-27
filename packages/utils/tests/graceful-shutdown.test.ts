@@ -122,6 +122,39 @@ describe("installGracefulShutdown — async + force-kill behaviour", () => {
         expect(fixture.exitSpy).toHaveBeenCalledWith(130);
         handle.uninstall();
     });
+
+    it("escalates to onForce when forceKillAfterMs elapses before onSignal settles", async () => {
+        vi.useFakeTimers();
+        const onSignal = vi.fn().mockReturnValue(new Promise<void>(() => {}));
+        const onForce = vi.fn();
+        const handle = installGracefulShutdown({ onSignal, onForce, forceKillAfterMs: 50 });
+
+        process.emit("SIGINT", "SIGINT");
+        await vi.advanceTimersByTimeAsync(60);
+        vi.useRealTimers();
+        await flush();
+
+        expect(onForce).toHaveBeenCalledOnce();
+        expect(fixture.exitSpy).toHaveBeenCalledWith(130);
+        handle.uninstall();
+    });
+
+    it("logs an error and still exits when onSignal rejects", async () => {
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        const onSignal = vi.fn().mockRejectedValue(new Error("shutdown boom"));
+        const handle = installGracefulShutdown({ onSignal });
+
+        process.emit("SIGTERM", "SIGTERM");
+        await flush();
+
+        expect(errorSpy).toHaveBeenCalledWith(
+            "[gtkx] Graceful shutdown error:",
+            expect.objectContaining({ message: "shutdown boom" }),
+        );
+        expect(fixture.exitSpy).toHaveBeenCalledWith(143);
+        errorSpy.mockRestore();
+        handle.uninstall();
+    });
 });
 
 describe("installGracefulShutdown — overrides and uninstall", () => {
