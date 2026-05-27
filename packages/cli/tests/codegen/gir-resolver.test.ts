@@ -1,5 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resolveGirPath } from "../../src/codegen/gir-resolver.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const execFileSyncMock = vi.hoisted(() => vi.fn());
+
+vi.mock("node:child_process", async (importOriginal) => {
+    const actual = (await importOriginal()) as typeof import("node:child_process");
+    return { ...actual, execFileSync: execFileSyncMock };
+});
+
+const { resolveGirPath } = await import("../../src/codegen/gir-resolver.js");
 
 let originalGirPath: string | undefined;
 
@@ -11,9 +19,19 @@ const setGirPath = (value: string | undefined): void => {
     }
 };
 
+const enoentError = (): NodeJS.ErrnoException => {
+    const error = new Error("spawn pkg-config ENOENT") as NodeJS.ErrnoException;
+    error.code = "ENOENT";
+    return error;
+};
+
 describe("resolveGirPath", () => {
     beforeEach(() => {
         originalGirPath = process.env.GTKX_GIR_PATH;
+        execFileSyncMock.mockReset();
+        execFileSyncMock.mockImplementation(() => {
+            throw enoentError();
+        });
     });
 
     afterEach(() => {
@@ -63,5 +81,37 @@ describe("resolveGirPath", () => {
         setGirPath("/env");
         const result = resolveGirPath(["/cfg"]);
         expect(result.indexOf("/cfg")).toBeLessThan(result.indexOf("/env"));
+    });
+});
+
+describe("resolveGirPath — pkg-config invocation", () => {
+    beforeEach(() => {
+        originalGirPath = process.env.GTKX_GIR_PATH;
+        setGirPath(undefined);
+        execFileSyncMock.mockReset();
+    });
+
+    afterEach(() => {
+        setGirPath(originalGirPath);
+    });
+
+    it("ignores pkg-config when the binary is missing (ENOENT)", () => {
+        execFileSyncMock.mockImplementation(() => {
+            throw enoentError();
+        });
+
+        expect(() => resolveGirPath(undefined)).not.toThrow();
+    });
+
+    it("surfaces pkg-config failures with stderr included", () => {
+        execFileSyncMock.mockImplementation(() => {
+            const error = new Error("Command failed") as NodeJS.ErrnoException & { stderr: Buffer };
+            error.code = "1";
+            error.stderr = Buffer.from("Package gobject-introspection-1.0 was not found");
+            throw error;
+        });
+
+        expect(() => resolveGirPath(undefined)).toThrow(/pkg-config failed/);
+        expect(() => resolveGirPath(undefined)).toThrow(/gobject-introspection-1.0 was not found/);
     });
 });
