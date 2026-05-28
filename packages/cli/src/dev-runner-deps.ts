@@ -1,3 +1,4 @@
+import { dirname } from "node:path";
 import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import { createServer } from "vite";
@@ -24,10 +25,15 @@ import { gtkxSkipReactDomOptimize } from "./vite-plugins/skip-react-dom-optimize
  * GResource pipeline and `import.meta.env.GTKX_APP_ID` line up with the
  * production build.
  *
+ * @param cwd - Working directory; used to resolve `gtkx.config.ts`.
+ * @param entryPath - Absolute path to the application entry. Its
+ *     directory becomes the GResource `sourceRoot` so bundle paths
+ *     align with GApplication's default `resource_base_path`.
  * @returns The default {@link DevRunnerDeps} used by `main`.
  */
-export const defaultDevRunnerDeps = async (cwd: string = process.cwd()): Promise<DevRunnerDeps> => {
+export const defaultDevRunnerDeps = async (cwd: string, entryPath: string): Promise<DevRunnerDeps> => {
     const applicationId = await loadApplicationId(cwd);
+    const sourceRoot = dirname(entryPath);
     return {
         createServer,
         whenStopped,
@@ -38,7 +44,7 @@ export const defaultDevRunnerDeps = async (cwd: string = process.cwd()): Promise
         isReactRefreshBoundary,
         plugins: () => [
             gtkxGSettings(),
-            gtkxResources({ applicationId }),
+            gtkxResources({ applicationId, sourceRoot }),
             gtkxAssets(),
             swcSsrRefresh(),
             gtkxRefresh(),

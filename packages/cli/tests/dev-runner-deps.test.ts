@@ -58,7 +58,7 @@ describe("defaultDevRunnerDeps (wiring)", () => {
 
     it("wires the production collaborators with the resolved applicationId", async () => {
         writeConfig(`export default { applicationId: "org.gtk.Demo4" };\n`);
-        const deps = await defaultDevRunnerDeps(cwd);
+        const deps = await defaultDevRunnerDeps(cwd, join(cwd, "src/index.tsx"));
 
         expect(deps.createServer).toBe(hoisted.createServer);
         expect(deps.whenStopped).toBe(hoisted.whenStopped);
@@ -70,7 +70,7 @@ describe("defaultDevRunnerDeps (wiring)", () => {
 
     it("assembles the plugin list in the documented order", async () => {
         writeConfig(`export default { applicationId: "org.gtk.Demo4" };\n`);
-        const deps = await defaultDevRunnerDeps(cwd);
+        const deps = await defaultDevRunnerDeps(cwd, join(cwd, "src/index.tsx"));
 
         const plugins = deps.plugins();
         const names = plugins.map((p) => p.name);
@@ -90,7 +90,7 @@ describe("defaultDevRunnerDeps (define)", () => {
 
     it("exposes the applicationId via define()", async () => {
         writeConfig(`export default { applicationId: "org.gtk.Demo4" };\n`);
-        const deps = await defaultDevRunnerDeps(cwd);
+        const deps = await defaultDevRunnerDeps(cwd, join(cwd, "src/index.tsx"));
 
         expect(deps.define()).toEqual({
             "import.meta.env.GTKX_APP_ID": JSON.stringify("org.gtk.Demo4"),
@@ -98,7 +98,7 @@ describe("defaultDevRunnerDeps (define)", () => {
     });
 
     it("emits an empty define when no config file is present", async () => {
-        const deps = await defaultDevRunnerDeps(cwd);
+        const deps = await defaultDevRunnerDeps(cwd, join(cwd, "src/index.tsx"));
 
         expect(deps.define()).toEqual({
             "import.meta.env.GTKX_APP_ID": '""',
@@ -110,21 +110,21 @@ describe("defaultDevRunnerDeps (getApplicationId)", () => {
     setupCwd();
 
     it("returns the registered GLib applicationId", async () => {
-        const deps = await defaultDevRunnerDeps(cwd);
+        const deps = await defaultDevRunnerDeps(cwd, join(cwd, "src/index.tsx"));
         hoisted.getDefault.mockReturnValueOnce({ applicationId: "com.example.app" });
 
         expect(deps.getApplicationId()).toBe("com.example.app");
     });
 
     it("returns null when no Gio.Application is registered", async () => {
-        const deps = await defaultDevRunnerDeps(cwd);
+        const deps = await defaultDevRunnerDeps(cwd, join(cwd, "src/index.tsx"));
         hoisted.getDefault.mockReturnValueOnce(null);
 
         expect(deps.getApplicationId()).toBeNull();
     });
 
     it("returns null when the default Application has no id", async () => {
-        const deps = await defaultDevRunnerDeps(cwd);
+        const deps = await defaultDevRunnerDeps(cwd, join(cwd, "src/index.tsx"));
         hoisted.getDefault.mockReturnValueOnce({ applicationId: null });
 
         expect(deps.getApplicationId()).toBeNull();
@@ -135,7 +135,7 @@ describe("defaultDevRunnerDeps (log and exit)", () => {
     setupCwd();
 
     it("forwards log messages through console.log with the [gtkx] prefix", async () => {
-        const deps = await defaultDevRunnerDeps(cwd);
+        const deps = await defaultDevRunnerDeps(cwd, join(cwd, "src/index.tsx"));
         const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
         try {
             deps.log("hello");
@@ -146,7 +146,7 @@ describe("defaultDevRunnerDeps (log and exit)", () => {
     });
 
     it("delegates exit to process.exit with the given code", async () => {
-        const deps = await defaultDevRunnerDeps(cwd);
+        const deps = await defaultDevRunnerDeps(cwd, join(cwd, "src/index.tsx"));
         const spy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
         try {
             deps.exit(7);

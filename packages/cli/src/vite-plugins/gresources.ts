@@ -25,15 +25,27 @@ export const deriveResourcePrefix = (applicationId?: string): string => {
     return `/${applicationId.replaceAll(".", "/")}`;
 };
 
-const toResourcePath = (prefix: string, root: string, absFile: string): string => {
-    const rel = relative(root, absFile);
+/**
+ * Computes the bundle-relative path for an asset, normalised to forward
+ * slashes, relative to the configured source root.
+ *
+ * The source root is typically the directory containing the application
+ * entry (e.g. `<project>/src`), so a file at `<project>/src/style.css`
+ * lands at `<prefix>/style.css` — exactly where Adw and Gtk auto-load
+ * resources like `style.css`, `gtk/menus.ui`, and `gtk/help-overlay.ui`
+ * relative to GApplication's default `resource_base_path`.
+ *
+ * Throws when the file resolves outside the source root.
+ */
+const computeRelPath = (sourceRoot: string, absFile: string): string => {
+    const rel = relative(sourceRoot, absFile).split(/[/\\]/).join("/");
     if (rel.startsWith("..") || isAbsolute(rel)) {
         throw new Error(
-            `gtkx:gresources: asset "${absFile}" is outside the Vite root "${root}". ` +
-                `Move the file under the project root or import it via a package whose files are under the root.`,
+            `gtkx:gresources: asset "${absFile}" is outside the source root "${sourceRoot}". ` +
+                `Move the file under the source root, or pass a wider \`sourceRoot\` to the plugin.`,
         );
     }
-    return `${prefix}/${rel.split(/[/\\]/).join("/")}`;
+    return rel;
 };
 
 const escapeXml = (value: string): string =>
@@ -62,7 +74,7 @@ type ResourceEntry = {
 type PluginState = {
     prefix: string;
     isBuild: boolean;
-    root: string;
+    sourceRoot: string;
     server: ViteDevServer | null;
     entries: Map<string, ResourceEntry>;
     devStagingDir: string | null;
@@ -173,18 +185,11 @@ const registerEntry = (state: PluginState, absPath: string): ResourceEntry => {
     const existing = state.entries.get(absPath);
     if (existing) return existing;
 
-    const stagedRelPath = relative(state.root, absPath).split(/[/\\]/).join("/");
-    if (stagedRelPath.startsWith("..") || isAbsolute(stagedRelPath)) {
-        throw new Error(
-            `gtkx:gresources: asset "${absPath}" is outside the Vite root "${state.root}". ` +
-                `Move the file under the project root or import it via a package whose files are under the root.`,
-        );
-    }
-
+    const relPath = computeRelPath(state.sourceRoot, absPath);
     const entry: ResourceEntry = {
         sourcePath: absPath,
-        stagedRelPath,
-        resourcePath: toResourcePath(state.prefix, state.root, absPath),
+        stagedRelPath: relPath,
+        resourcePath: `${state.prefix}/${relPath}`,
     };
     state.entries.set(absPath, entry);
     return entry;
@@ -242,6 +247,20 @@ export type GtkxResourcesOptions = {
      * defaults to `/gtkx/app`.
      */
     applicationId?: string;
+    /**
+     * Absolute path to the source root — typically the directory
+     * containing the application entry (`<project>/src`). Resource paths
+     * inside the bundle are computed relative to this directory, so a
+     * file at `<sourceRoot>/style.css` lands at `<prefix>/style.css` and
+     * is picked up by Adw/Gtk auto-loading.
+     *
+     * Assets resolved from outside the source root are rejected with a
+     * clear error.
+     *
+     * When omitted, falls back to the Vite `root`. The CLI passes
+     * `dirname(entry)` automatically.
+     */
+    sourceRoot?: string;
 };
 
 /**
@@ -257,9 +276,13 @@ export type GtkxResourcesOptions = {
  * whenever an asset file changes; the init module exposes a `__refresh`
  * hook that re-registers the bundle without restarting the process.
  *
- * **Path layout:** Assets resolve to
- * `resource:///<prefix>/<path-relative-to-vite-root>` where `<prefix>`
- * comes from {@link deriveResourcePrefix}.
+ * **Path layout:** Assets resolve to `resource:///<prefix>/<rel>` where
+ * `<prefix>` comes from {@link deriveResourcePrefix} and `<rel>` is the
+ * file's path relative to {@link GtkxResourcesOptions.sourceRoot}. The
+ * CLI sets `sourceRoot` to `dirname(entry)`, so a file at
+ * `<project>/src/style.css` lands at `<prefix>/style.css` — matching
+ * GApplication's default `resource_base_path` and picked up by Adw/Gtk
+ * auto-loading.
  *
  * @example
  * ```ts
@@ -272,7 +295,7 @@ export function gtkxResources(options: GtkxResourcesOptions = {}): Plugin {
     const state: PluginState = {
         prefix: deriveResourcePrefix(options.applicationId),
         isBuild: false,
-        root: "",
+        sourceRoot: "",
         server: null,
         entries: new Map(),
         devStagingDir: null,
@@ -294,7 +317,7 @@ export function gtkxResources(options: GtkxResourcesOptions = {}): Plugin {
 
         configResolved(config: ResolvedConfig) {
             state.isBuild = config.command === "build";
-            state.root = config.root;
+            state.sourceRoot = options.sourceRoot ?? config.root;
         },
 
         configureServer(server) {

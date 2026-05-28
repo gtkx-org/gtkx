@@ -168,22 +168,46 @@ describe("gtkxResources (asset load)", () => {
         const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
 
-        const assetPath = join(tmpDir, "src/icons/foo.svg");
+        const assetPath = join(tmpDir, "icons/foo.svg");
         const out = (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`) as string;
 
         expect(out).toContain('import { ensureRegistered } from "\\u0000gtkx-gresources-init";');
         expect(out).toContain("ensureRegistered();");
-        expect(out).toContain(`export default "resource:///org/gtk/Demo4/src/icons/foo.svg";`);
-        expect(out).toContain(`export const path = "/org/gtk/Demo4/src/icons/foo.svg";`);
+        expect(out).toContain(`export default "resource:///org/gtk/Demo4/icons/foo.svg";`);
+        expect(out).toContain(`export const path = "/org/gtk/Demo4/icons/foo.svg";`);
     });
 
-    it("rejects assets outside the Vite root", () => {
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
+    it("computes paths relative to the explicit sourceRoot, not the Vite root", () => {
+        const sourceRoot = join(tmpDir, "src");
+        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4", sourceRoot });
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
 
-        const outsidePath = join(tmpDir, "..", "outside.png");
+        const assetPath = join(sourceRoot, "icons/foo.svg");
+        const out = (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`) as string;
+
+        expect(out).toContain(`export default "resource:///org/gtk/Demo4/icons/foo.svg";`);
+        expect(out).toContain(`export const path = "/org/gtk/Demo4/icons/foo.svg";`);
+    });
+
+    it("places a style.css at the GApplication-default base path so Adw auto-loads it", () => {
+        const sourceRoot = join(tmpDir, "src");
+        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4", sourceRoot });
+        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
+
+        const styleCss = join(sourceRoot, "style.css");
+        const out = (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${styleCss}`) as string;
+
+        expect(out).toContain(`export const path = "/org/gtk/Demo4/style.css";`);
+    });
+
+    it("rejects assets outside the source root", () => {
+        const sourceRoot = join(tmpDir, "src");
+        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4", sourceRoot });
+        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
+
+        const outsidePath = join(tmpDir, "outside.png");
         expect(() => (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${outsidePath}`)).toThrow(
-            /outside the Vite root/,
+            /outside the source root/,
         );
     });
 });

@@ -56,8 +56,12 @@ export type GtkxConfig = {
      * GLib application id used by the GResource pipeline and exposed to
      * application code as `import.meta.env.GTKX_APP_ID`.
      *
-     * When set, asset imports resolve to `resource:///<prefix>/<...>` where
-     * `<prefix>` is derived from the id (`org.gtk.Demo4` → `/org/gtk/Demo4`).
+     * When set, asset imports resolve to `resource:///<prefix>/<rel>` where
+     * `<prefix>` is derived from the id (`org.gtk.Demo4` → `/org/gtk/Demo4`)
+     * and `<rel>` is the file's path relative to the entry directory
+     * (`dirname(entry)`). This makes the bundle layout align with
+     * GApplication's default `resource_base_path` so Adw/Gtk auto-load
+     * (`style.css`, `gtk/menus.ui`, etc.) works without extra wiring.
      * Must match `g_application_id_is_valid` — see {@link isValidAppId}.
      *
      * When omitted, the GResource pipeline falls back to the prefix

@@ -150,6 +150,6 @@ export const main = async (): Promise<void> => {
 
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./dev-runner-deps.js");
-    const runner = createDevRunner(await defaultDevRunnerDeps(cwd));
+    const runner = createDevRunner(await defaultDevRunnerDeps(cwd, entryPath));
     await runner.run(entryPath);
 };
