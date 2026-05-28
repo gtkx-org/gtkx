@@ -1,8 +1,16 @@
 {
     "name": "@gtkx/codegen",
-    "version": "0.0.0",
-    "private": true,
-    "description": "Code generation tools for GTKX",
+    "version": "0.21.0",
+    "description": "GIR-driven TypeScript code generator for GTKX FFI and React bindings",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "gir",
+        "codegen",
+        "typescript",
+        "ffi"
+    ],
     "homepage": "https://gtkx.dev",
     "bugs": {
         "url": "https://github.com/gtkx-org/gtkx/issues"
@@ -23,21 +31,23 @@
             "default": "./dist/index.js"
         }
     },
+    "sideEffects": false,
     "files": [
         "dist",
         "src"
     ],
     "scripts": {
         "build": "tsc -b",
-        "test": "vitest run",
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
-        "@ts-for-gir/cli": "3.3.0",
-        "@ts-for-gir/generator-base": "3.3.0",
-        "@ts-for-gir/lib": "3.3.0"
+        "fast-xml-parser": "4.3.6",
+        "typescript": "^6.0.3"
     },
     "devDependencies": {
-        "@gtkx/native": "workspace:*"
+        "@types/node": "^25.9.1"
+    },
+    "engines": {
+        "node": ">=24"
     }
 }
