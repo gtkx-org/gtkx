@@ -12,6 +12,9 @@
             "path": "packages/codegen/tsconfig.json"
         },
         {
+            "path": "packages/codegen-trace/tsconfig.json"
+        },
+        {
             "path": "packages/mcp/tsconfig.json"
         },
         {

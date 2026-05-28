@@ -18,3 +18,6 @@ packages/**/README.md
 
 # Scratch / working notes
 .tmp/
+
+# Codegen golden trace output (rebuilt by pnpm codegen:capture)
+.codegen-golden/

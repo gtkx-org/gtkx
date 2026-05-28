@@ -9,6 +9,7 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "devDependencies": {
+        "@gtkx/codegen-trace": "workspace:*",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",

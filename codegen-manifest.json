@@ -1,0 +1,803 @@
+{
+  "generatedAt": "2026-05-28T14:03:19.706Z",
+  "entries": [
+    {
+      "testFile": "examples/gtk-demo/tests/app-interactions.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/app-interactions.test.tsx.shapes",
+      "sha256": "13c68fdd32f4fbb07899c84b88b1874f138f3ec67830d26eccc4a57f24b4f539",
+      "shapes": 1220
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/app.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/app.test.tsx.shapes",
+      "sha256": "3f2929cac1bd58c88b4f26be451262e3210dc27008e55893da2e24225220f0b9",
+      "shapes": 1140
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/components/sidebar.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/components/sidebar.test.tsx.shapes",
+      "sha256": "e89c1a4fac6b386695f1edc428396fd6bf480c13e5b0ca115b755286758c4f56",
+      "shapes": 1057
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/components/source-viewer.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/components/source-viewer.test.tsx.shapes",
+      "sha256": "fd1a8a13e71d51a8acaa817ae00c0b50d3ca02fe3ea01f70a1a17889f182ab51",
+      "shapes": 1041
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/context/demo-context.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/context/demo-context.test.tsx.shapes",
+      "sha256": "d756d615ec9bf71909fbc92951db38e7aee0454d465d6d95acca794c26a343e6",
+      "shapes": 997
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/advanced/font-features.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/advanced/font-features.test.tsx.shapes",
+      "sha256": "b45cf158151c114ade1f02cd4307a159c94506b346223551decc0acc9d2aef67",
+      "shapes": 1144
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/advanced/fontrendering.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/advanced/fontrendering.test.tsx.shapes",
+      "sha256": "9fadb1ac75fd919601e6fa7cf885987159aec41a817cbbcda176439dfed13185",
+      "shapes": 1209
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/advanced/markup.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/advanced/markup.test.tsx.shapes",
+      "sha256": "630eb54aa8b19f82cc70bc84ee736d4316c10cbe294d7d16d73b80ce7b0a4dde",
+      "shapes": 1053
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/advanced/textmask.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/advanced/textmask.test.tsx.shapes",
+      "sha256": "af97789f8258446607f57a624064018259bec80d44e7cb73d2987db1530d6026",
+      "shapes": 1015
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/benchmark/frames.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/benchmark/frames.test.tsx.shapes",
+      "sha256": "704ce88637ef1ae3fed0d89d7a9ba022bf1b4a064a95d1a85df484e683c10eea",
+      "shapes": 1044
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/benchmark/themes.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/benchmark/themes.test.tsx.shapes",
+      "sha256": "44bc1d18082d78ca62e37a95cf617c3510356519644b0463dacdfbf69b8d8b3f",
+      "shapes": 1067
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/buttons/expander.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/buttons/expander.test.tsx.shapes",
+      "sha256": "de0fe502630ce83d7e6d4fcd7591ec0b6048185a98a95ed53aa08b82fcb34369",
+      "shapes": 1075
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/buttons/scale.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/buttons/scale.test.tsx.shapes",
+      "sha256": "e6e8272dafaaa3dc1a58a9aa90661d42db2b2ba3b1be42637a34d5e131a342c2",
+      "shapes": 1040
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/buttons/spinbutton.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/buttons/spinbutton.test.tsx.shapes",
+      "sha256": "fbd7d446949bc611301ad9ca93633819b5c19d1de8f669526d4235d7b501fa53",
+      "shapes": 1054
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/buttons/spinner.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/buttons/spinner.test.tsx.shapes",
+      "sha256": "1add810631187335004aac5bcd3277cdfc433c15c668e06b13b1bfb2fddcd1a4",
+      "shapes": 1021
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/constraints/constraints-interactive.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/constraints/constraints-interactive.test.tsx.shapes",
+      "sha256": "62c23876a172975d2501115f6c6404c4b232a2264956df4c491a680ff5c22331",
+      "shapes": 1040
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/constraints/constraints-vfl.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/constraints/constraints-vfl.test.tsx.shapes",
+      "sha256": "28cf5886c9ef93a2b494f79aa11b51666ff54fc7aeff043043e7a85cf0f08fa7",
+      "shapes": 1028
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/constraints/constraints.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/constraints/constraints.test.tsx.shapes",
+      "sha256": "ddfd2ef32fde22def0bbf6058dbfdb2dabae0d72addc64b8e3ca81321ef55fb7",
+      "shapes": 1034
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/css/css-accordion.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/css-accordion.test.tsx.shapes",
+      "sha256": "83d80ed9272ff47a0003d6dc07eca81effed263a33d885e06bf84ab9770a4de9",
+      "shapes": 1030
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/css/css-basics.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/css-basics.test.tsx.shapes",
+      "sha256": "f184b350138e684aef6bac80fe0d4e14d1c710bab2f6ee158078c9f2707ccb35",
+      "shapes": 1047
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/css/css-blendmodes.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/css-blendmodes.test.tsx.shapes",
+      "sha256": "ce2c9b472f4ecc63f68c18c0ac15b8f1b3f26420ace304f7234459dd21b52702",
+      "shapes": 1069
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/css/css-multiplebgs.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/css-multiplebgs.test.tsx.shapes",
+      "sha256": "0b055beeb4ceb9f7097306ff993ff00eddcadbec663449fdaffa050cfd0a0d4b",
+      "shapes": 1057
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/css/css-pixbufs.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/css-pixbufs.test.tsx.shapes",
+      "sha256": "0b714cfab8c700cc63ca027f4daa936a9bc18bf226e87940f2e951bfb3d75a8d",
+      "shapes": 1047
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/css/css-shadows.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/css-shadows.test.tsx.shapes",
+      "sha256": "2d2ae97074cd14de76a8e2d78ea50615882b62cab19202f49b0ee6fcda41908e",
+      "shapes": 1055
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/css/errorstates.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/errorstates.test.tsx.shapes",
+      "sha256": "be76250e5610a0235edc1c7fd62e27d939537dd63ed77ac9d98923fa97c56ae8",
+      "shapes": 1074
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/css/theming-style-classes.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/theming-style-classes.test.tsx.shapes",
+      "sha256": "e9a4072f597e0b82d7b4663ed481d16dc029db465aeb4c7289264692d41b4917",
+      "shapes": 1040
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/css/use-css-editor.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/use-css-editor.test.tsx.shapes",
+      "sha256": "f161605d4e9c4524d4348fa1eee98ee418a734b79ee6936eb5d574e3a10a9587",
+      "shapes": 1032
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/dialogs/dialog.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/dialogs/dialog.test.tsx.shapes",
+      "sha256": "6fa85093670f658e01f16dc444bfea365619f06f3585c57fd48885fad29f413b",
+      "shapes": 1060
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/dialogs/pagesetup.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/dialogs/pagesetup.test.tsx.shapes",
+      "sha256": "9b8590d11a5739f005a2a65715f96fe762a310d9df3dce8fea1ccc572a12fa83",
+      "shapes": 1000
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/dialogs/pickers.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/dialogs/pickers.test.tsx.shapes",
+      "sha256": "d9c82e6d07f2ada59c3a6438072c4b57b804ecb93ab67e91e8db45035fc67666",
+      "shapes": 1082
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/dialogs/printing.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/dialogs/printing.test.tsx.shapes",
+      "sha256": "5526743edd6d2ca0a73dfd303392889b539bb38b2f2056b5e3b8392d97d2499f",
+      "shapes": 1048
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/drawing/drawingarea.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/drawing/drawingarea.test.tsx.shapes",
+      "sha256": "7f7ef616ee6691bfa50069d8261e6c04f116c7f7b24cec9f460b3a3ddb7baf88",
+      "shapes": 1066
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/drawing/images.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/drawing/images.test.tsx.shapes",
+      "sha256": "8d155718beb5d0f2991f33da57adeaf8791cb6a82553dd354f5948fb85b43d40",
+      "shapes": 1068
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/drawing/paintable-svg.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/drawing/paintable-svg.test.tsx.shapes",
+      "sha256": "d08fdb77c914de9c9392d176859d16ce5a8bdb85e8ba02418dea43a4ecba39d5",
+      "shapes": 1047
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/games/listview-minesweeper.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/games/listview-minesweeper.test.tsx.shapes",
+      "sha256": "d652ee8c29fd60329c0382e04b3d6d74b333b5c69d0f0fdcc1fb5eb30e4df8a2",
+      "shapes": 1049
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/gestures/clipboard.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/gestures/clipboard.test.tsx.shapes",
+      "sha256": "6b2b3b6f6db9f2d05933e0c05083e31c68153103c802ef293667ec24750e8d99",
+      "shapes": 1136
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/gestures/cursors.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/gestures/cursors.test.tsx.shapes",
+      "sha256": "20b04b92dba35e954266a42ca86f0be414ffbc6b03515d7895f0fd8d10c56a87",
+      "shapes": 1055
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/gestures/dnd.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/gestures/dnd.test.tsx.shapes",
+      "sha256": "f62f4de1d0c501c384c9bba543bcf7bdc9c1ca8cbc358bebd9918abddcae60b0",
+      "shapes": 1133
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/gestures/gestures.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/gestures/gestures.test.tsx.shapes",
+      "sha256": "587768d7f8bbaaa584818fc88ea3e9c6f457c6566a2940b56bcf21d9cc73bd2d",
+      "shapes": 1062
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/gestures/links.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/gestures/links.test.tsx.shapes",
+      "sha256": "59ac21486f60c904c694e970702f6f726026e2f1fa0e59127271c628f0e675fe",
+      "shapes": 1035
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/gestures/shortcut-triggers.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/gestures/shortcut-triggers.test.tsx.shapes",
+      "sha256": "d9923823cd9dfe5365ed14ef249c188bd98c2a75a7f74a27f1ea14b6f2f70f46",
+      "shapes": 1045
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/index.test.ts",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/index.test.ts.shapes",
+      "sha256": "098be15b2e2fc3aa989740f70ef55dbf59cc111adda5cde4129cea2852aff192",
+      "shapes": 993
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/input/entry-undo.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/input/entry-undo.test.tsx.shapes",
+      "sha256": "3e109116de822818f8a987e108735f3a5e080fc88f38ed487de47aeb43eb1970",
+      "shapes": 1044
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/input/hypertext.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/input/hypertext.test.tsx.shapes",
+      "sha256": "ba7113895cbfef7e3a1d56bc03f0eb2b7bb1331159c86e25f91a85891e512412",
+      "shapes": 1101
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/input/password-entry.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/input/password-entry.test.tsx.shapes",
+      "sha256": "cd1e85807cfa5f925125264755b2b10c7a6fa8a0d2dd06bd84a2462647d17303",
+      "shapes": 1045
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/input/search-entry.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/input/search-entry.test.tsx.shapes",
+      "sha256": "eba7d730154c24afe526e7650fb31793b4f07fb61c8a0c201d9b288b9abb74b0",
+      "shapes": 1047
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/input/tabs.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/input/tabs.test.tsx.shapes",
+      "sha256": "bf3ca521bada8de18017451d6454a5118698a768821649e1475ec7a9b5efb4d4",
+      "shapes": 1037
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/input/textscroll.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/input/textscroll.test.tsx.shapes",
+      "sha256": "0a0a97f2c8c1fc11c29c2ae9c16f154cca7cb2237104273b1a2bcba33b42145b",
+      "shapes": 1023
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/input/textundo.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/input/textundo.test.tsx.shapes",
+      "sha256": "69df87d425057b87711de623c75220d30b39467e0abbf25998a21cd1f80eaeb0",
+      "shapes": 1054
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/input/textview.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/input/textview.test.tsx.shapes",
+      "sha256": "17c017963eb60eeefd67f554b5a3fb29d83604b257bb68027b5afb2a3a228e24",
+      "shapes": 5215
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/layout/fixed.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/layout/fixed.test.tsx.shapes",
+      "sha256": "26940310ebe26b7bd7852081ed35eb7d8662c21b1321f456b005ced2fde101bd",
+      "shapes": 1046
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/layout/fixed2.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/layout/fixed2.test.tsx.shapes",
+      "sha256": "372cdf205b8a400703ac0ec3d992ac542bda49b88814ef3943dca915c304bfcd",
+      "shapes": 1031
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/layout/flowbox.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/layout/flowbox.test.tsx.shapes",
+      "sha256": "7cf14e188393cc873ebd353957ebcc06b7fb8974fbd7085dd211526ade05d7bb",
+      "shapes": 1034
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/layout/headerbar.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/layout/headerbar.test.tsx.shapes",
+      "sha256": "888b12ab2dba7fb1deeeccbc5361c7c199ab8bacb6f2f9a53f52ed2220798c39",
+      "shapes": 1022
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/layout/overlay-decorative.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/layout/overlay-decorative.test.tsx.shapes",
+      "sha256": "010da04075cb4052f7e0ffcd0bd81870084352db88977e7c0a96a1a67d343664",
+      "shapes": 1070
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/layout/overlay.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/layout/overlay.test.tsx.shapes",
+      "sha256": "f15b6a43ee8c11d3b0974e9503fc7d74fd332e5146e7a2ea858699d99824a0d8",
+      "shapes": 1046
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/layout/panes.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/layout/panes.test.tsx.shapes",
+      "sha256": "f30a78da2248400652604a215cc4436a8bd9ac2af5a0845cc25903f9de26a649",
+      "shapes": 1027
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/layout/sizegroup.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/layout/sizegroup.test.tsx.shapes",
+      "sha256": "039cf88d131093044fa797555de733127bb26a59f5f4e22f6724e66b73047096",
+      "shapes": 1049
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listbox-controls.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listbox-controls.test.tsx.shapes",
+      "sha256": "7510d2b4c20c21cc98f6a4714ba4ed0751ad1aaa4a76d559ead1798cd728a5b6",
+      "shapes": 1077
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listbox.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listbox.test.tsx.shapes",
+      "sha256": "41c406d13587944de9cbe818574e4d8e4c69b2eaee6180787d484c6b80009c89",
+      "shapes": 1097
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listview-applauncher.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listview-applauncher.test.tsx.shapes",
+      "sha256": "ac7dce7b8ee856cd6a6bc2e7e47b25b32baf2bd792d0cc7bda4cf2479d2e9639",
+      "shapes": 1053
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listview-colors.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listview-colors.test.tsx.shapes",
+      "sha256": "43030bae70a646a6d24126c0c0adb48817b7bebe28ecd66ffcd32e6ab6a1aca9",
+      "shapes": 1110
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listview-filebrowser.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listview-filebrowser.test.tsx.shapes",
+      "sha256": "a3d59d760408de80c491af22643b9c6e6ff4624a113296ffbf22725e9ee551cf",
+      "shapes": 1082
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listview-selections.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listview-selections.test.tsx.shapes",
+      "sha256": "98db3dd93d0f4d2eb871fc1cf835e377800522e0e488b937f0587f3a711511f0",
+      "shapes": 1122
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listview-settings.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listview-settings.test.tsx.shapes",
+      "sha256": "e54c5ea48f6605ad6a051f7a389fd8a2ccf8f940c437ce9ee879d0b609bb7a9e",
+      "shapes": 1114
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listview-settings2.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listview-settings2.test.tsx.shapes",
+      "sha256": "66bba6502856c051bca0c93964a47934bd0f3579188d0bc0be4423e773af76b5",
+      "shapes": 1081
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listview-ucd.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listview-ucd.test.tsx.shapes",
+      "sha256": "9e351d11882cbc5f0fe74aebff935b01f4b75af3f268d95eab6157f3df7cd372",
+      "shapes": 1081
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listview-weather.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listview-weather.test.tsx.shapes",
+      "sha256": "76edc79935841c5cf233e344d8a2fbe1be8b34075d214023a37c56a9fe3c0900",
+      "shapes": 1037
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/lists/listview-words.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/lists/listview-words.test.tsx.shapes",
+      "sha256": "ec4d10ad96d302c9a809d3fe4f8a97612a645ae34a0f27347553f2308d7206bf",
+      "shapes": 1064
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/media/video-player.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/media/video-player.test.tsx.shapes",
+      "sha256": "4f2567bfb84af82bfce2a5ee23a1a3bea794669bd7384cc3050ca28c680bb0f6",
+      "shapes": 1071
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/navigation/revealer.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/navigation/revealer.test.tsx.shapes",
+      "sha256": "19c731aab6ad2298cc6f7743eafb9dacd7eda96982511e80c3f975867801f322",
+      "shapes": 1038
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/navigation/sidebar.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/navigation/sidebar.test.tsx.shapes",
+      "sha256": "34514267298103d21e3cea4fdaa1ca8a75cfb317e097370c6b08acb8ddca1218",
+      "shapes": 1048
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/navigation/stack.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/navigation/stack.test.tsx.shapes",
+      "sha256": "5799636afab3fdcbbea68691c837ea319975f3db019ea8c65685ecfbe3b39d74",
+      "shapes": 1051
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/opengl/gears.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/opengl/gears.test.tsx.shapes",
+      "sha256": "ba30706a1edaa911a6d95cb157e045f53876a961db9801fbf77ea39321f5e123",
+      "shapes": 1082
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/opengl/glarea.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/opengl/glarea.test.tsx.shapes",
+      "sha256": "499c8d9bc8a5f459cc73d2c64318cf4986635e5be26e05698814f59d75b321a9",
+      "shapes": 1044
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/opengl/shadertoy.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/opengl/shadertoy.test.tsx.shapes",
+      "sha256": "914847c364a1f78a51ea7ca0b1b4c1d09585cc5c42870542124972722345a782",
+      "shapes": 1102
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/demos/types.test.ts",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/types.test.ts.shapes",
+      "sha256": "cadcd9f05955c52232a7296f2f66e8c2f73d312a25c38eb88917893b649db62c",
+      "shapes": 973
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/gvalue.test.ts",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/gvalue.test.ts.shapes",
+      "sha256": "b3d75a8777f1eaed321fdcfe7c0b04af947af91c78045ed1fc24a6c38b79c6c4",
+      "shapes": 979
+    },
+    {
+      "testFile": "examples/gtk-demo/tests/index.test.tsx",
+      "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/index.test.tsx.shapes",
+      "sha256": "3be617b2536f03b3409f728767ba5437d08e7f54f6062a812e2eb43cb822896f",
+      "shapes": 1120
+    },
+    {
+      "testFile": "packages/e2e/tests/animation.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/animation.test.tsx.shapes",
+      "sha256": "fbc0e76754a59ac8f0d73512ff0f53d87b40a0ba12ac94e4304b631b205f78d6",
+      "shapes": 1024
+    },
+    {
+      "testFile": "packages/e2e/tests/hooks/use-property.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/hooks/use-property.test.tsx.shapes",
+      "sha256": "95f88036033a393546753e0fcfe77cc7ad0b5aa228015eaa4393391cebe5ad0a",
+      "shapes": 1004
+    },
+    {
+      "testFile": "packages/e2e/tests/hooks/use-setting.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/hooks/use-setting.test.tsx.shapes",
+      "sha256": "ad999bf2946fd8374da13d69ba3f44edce187e98671be972e4cde3a909972a33",
+      "shapes": 1012
+    },
+    {
+      "testFile": "packages/e2e/tests/host-config.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/host-config.test.tsx.shapes",
+      "sha256": "f596a2da045613b5363e2c917eb4f814eaea03dd3cc73e154159ad2fb1dfcf81",
+      "shapes": 1015
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/accessible-props.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/accessible-props.test.tsx.shapes",
+      "sha256": "e6e4ded75af7a1efee2ac1e7c97016d5b789a1f718605e49055416287b9d96f2",
+      "shapes": 1009
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/adjustable.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/adjustable.test.tsx.shapes",
+      "sha256": "9ee08f4c53bc380784ca2b04e43dfbefe7006ebe65a425739d1506c6a3fd86bf",
+      "shapes": 1014
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/alert-dialog-response.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/alert-dialog-response.test.tsx.shapes",
+      "sha256": "20b1e32f235d518d3872bf61b0e7d51efefcc6a096c546f243e4af3d44c0aa36",
+      "shapes": 997
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/application.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/application.test.tsx.shapes",
+      "sha256": "13be02ff5be197d396f13b21ce0f859a1a6e2ed6469830055c41d29a133be14f",
+      "shapes": 1011
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/calendar.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/calendar.test.tsx.shapes",
+      "sha256": "93ae19081377107d47617705d229b506dfff2ba6f2f14fd268b360122be94296",
+      "shapes": 1001
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/color-dialog-button.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/color-dialog-button.test.tsx.shapes",
+      "sha256": "f53dad838196be971968f29924dae93c0994a77b58dd48063472b02794d1fcbf",
+      "shapes": 1016
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/column-view-column.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/column-view-column.test.tsx.shapes",
+      "sha256": "5f531bf03b382f9006f08203b80b6219676ede1d3ccc14042fb56f0f5b38dc7d",
+      "shapes": 1047
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/column-view.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/column-view.test.tsx.shapes",
+      "sha256": "d2c1dea7b6e156f420813a8369eda5efb2667e571e970976962e723bd9bfae44",
+      "shapes": 1041
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/constraint-layout.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/constraint-layout.test.tsx.shapes",
+      "sha256": "c4155c69b1d3a301cab7e8e708bbf903505f036287c5bef72d9f66c2efe1274b",
+      "shapes": 1032
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/construct-only.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/construct-only.test.tsx.shapes",
+      "sha256": "55882c0b33785cf991d38401c3613164eaa69afef0f97cba3607d1205accd1a0",
+      "shapes": 999
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/container-slot.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/container-slot.test.tsx.shapes",
+      "sha256": "fc5ae476e90df012ff64b106a61fd9c94167f646fe195fc1c1e2bedee6826f8b",
+      "shapes": 1021
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/drawing-area.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/drawing-area.test.tsx.shapes",
+      "sha256": "3b5381ddd99e0d58014919eeb4bea93aaa0c2d09a900e6fe676a90f4b6e029ef",
+      "shapes": 1008
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/drop-down.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/drop-down.test.tsx.shapes",
+      "sha256": "0b668ab0bf99b5c7ccc29c216ce8386e2957efe74f55f3faa74f2a5e21ce10b2",
+      "shapes": 1016
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/fixed-child.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/fixed-child.test.tsx.shapes",
+      "sha256": "e03a5579265bb586cb7a567eab59c98042b42beb4a2e11ee29d30d5d0f813c44",
+      "shapes": 1012
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/font-dialog-button.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/font-dialog-button.test.tsx.shapes",
+      "sha256": "ead33347560b8aa7875f3a6afbc1abf6f31d2b6077f5355c6937c54e7030083c",
+      "shapes": 1013
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/grid-child.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/grid-child.test.tsx.shapes",
+      "sha256": "2e7d459f3e47b2059ec6effec0a0e5d96d678b019a3dc8c66355fbdf29918ab6",
+      "shapes": 1009
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/layout-manager.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/layout-manager.test.tsx.shapes",
+      "sha256": "a5b9f7ee634b9b32458d0f8ef15a90be3b16ec82e40724b1b26d36835b337344",
+      "shapes": 1020
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/level-bar.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/level-bar.test.tsx.shapes",
+      "sha256": "566e80bafea884bd79ddd2b4dd7fd2d4bb2e28ddafad838e3e34f1f8e6ee081d",
+      "shapes": 1001
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/list-item.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/list-item.test.tsx.shapes",
+      "sha256": "46cdd65ee4f20d6de8128fe94a036237d8111fbd999b0e5edc089f6d42daa9c5",
+      "shapes": 1021
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/list-view-model.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/list-view-model.test.tsx.shapes",
+      "sha256": "4b8822b7b4fd571194d351a20f691fc47a6472574091b9b73583b3c6150fd08d",
+      "shapes": 1037
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/list-view-perf.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/list-view-perf.test.tsx.shapes",
+      "sha256": "a0a52841a30ccb6f0e373b6825f35d33db647d46711e36fbd6981913abf1d7b5",
+      "shapes": 1013
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/list-view-selection.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/list-view-selection.test.tsx.shapes",
+      "sha256": "2995d3c9207822eccb3fb37f2f8c8c16327a8f04b7c898377896e7f2a1111531",
+      "shapes": 1061
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/list-view-tree.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/list-view-tree.test.tsx.shapes",
+      "sha256": "cd1fc0be7bd0bd2c103a99d3131b6897b012a82c10541f864a63ebaf363acaf2",
+      "shapes": 1037
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/list-view.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/list-view.test.tsx.shapes",
+      "sha256": "6329c3e23de66d6aace17adf7db00fb865c5dcfbd7a57c7ebb9c0eb8743c7afa",
+      "shapes": 1023
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/menu.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/menu.test.tsx.shapes",
+      "sha256": "ca2d7ae34498dd0392e2efdf53adbdc3f0ec19c9a4944e00e6295e8403b91edd",
+      "shapes": 1018
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/navigation-page.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/navigation-page.test.tsx.shapes",
+      "sha256": "38d7ce0de12276f3b1e33a5a2265525fdacf0392718f9c6e476575776f3b1ae8",
+      "shapes": 1012
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/navigation-view.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/navigation-view.test.tsx.shapes",
+      "sha256": "16735f55042ec92ea8e5e3bd2a51f4db6b5f4c044e74ab16d77d6a24271fffdb",
+      "shapes": 1020
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/notebook-page-tab.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/notebook-page-tab.test.tsx.shapes",
+      "sha256": "45371e41ed7dcbc122e3c64fa48bfb797e2ef2d381a04dbd43dc35b6eb6eb85f",
+      "shapes": 1009
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/notebook-page.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/notebook-page.test.tsx.shapes",
+      "sha256": "8b9753856f3bb653c0c6cf9054f3b092337e2e953fe73ea93a3c14300ae77429",
+      "shapes": 1008
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/notebook.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/notebook.test.tsx.shapes",
+      "sha256": "0050c0b9346370f8f91e7574d25fc9705052faaf438ab59283c6e96c3ef10d58",
+      "shapes": 1009
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/overlay-child.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/overlay-child.test.tsx.shapes",
+      "sha256": "2c197e2821e21ea35ceb1e7f7209ed057ec10136bee1b95031f17d712cb9794e",
+      "shapes": 1011
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/popover-menu.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/popover-menu.test.tsx.shapes",
+      "sha256": "a9be2661e63d6c6dce714df74c63cdeed3ceca3cb36c2463f527840ed1d77382",
+      "shapes": 1015
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/preference-rows.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/preference-rows.test.tsx.shapes",
+      "sha256": "4ba567796177ea833131c7fec756655f873302c7d2238631393e6718f0e26670",
+      "shapes": 1011
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/scale.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/scale.test.tsx.shapes",
+      "sha256": "20535c91f674d8925c9498e74c231b60da726bf1dc0f1774cc2762c08b13d5b7",
+      "shapes": 1006
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/scrolled-window.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/scrolled-window.test.tsx.shapes",
+      "sha256": "60983f1ab416c694c09e9f8ba7a7ae717c4d12fede20fd559e9e3c156dc2271c",
+      "shapes": 1008
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/shortcut.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/shortcut.test.tsx.shapes",
+      "sha256": "5b47ac6ff02e6103fe68ef528d0e2aa13b276290f8c3f10d0c67772f72f8c8f3",
+      "shapes": 1010
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/size-group.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/size-group.test.tsx.shapes",
+      "sha256": "84ccd2026e5853e05ce88faa597de956da8591588c596e8209c4fc881ea53585",
+      "shapes": 1009
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/slot.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/slot.test.tsx.shapes",
+      "sha256": "278915fdc8e96b265035037823fe18ecf4a0052916a1b9b378d3837787595328",
+      "shapes": 1012
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/source-view.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/source-view.test.tsx.shapes",
+      "sha256": "66c786ad7db4a79c7d0385a47da46d182c2670f90b17be4261f230c02133b7aa",
+      "shapes": 1038
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/stack-navigation.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/stack-navigation.test.tsx.shapes",
+      "sha256": "bb694ae61d75f96df7423c1a6247565505968351a6e2fc36c9c3264d3e85c60c",
+      "shapes": 1028
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/stack-page.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/stack-page.test.tsx.shapes",
+      "sha256": "c4a751a58217d724dcf8a08219c5b9e3ffb38f280952d0000b914fe65fd489ed",
+      "shapes": 1012
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/stack.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/stack.test.tsx.shapes",
+      "sha256": "3186997879f41c3263628cf812b60034a53df193dfaebd9f4672ed962450f0e3",
+      "shapes": 1020
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/text-paintable.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/text-paintable.test.tsx.shapes",
+      "sha256": "10077e56967d85a90353a6aa4562dad95783526a4d075eedad2ebc60c2ffd374",
+      "shapes": 1012
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/text-view.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/text-view.test.tsx.shapes",
+      "sha256": "75347d3d0d9eb06d550526abf0e28e6fe79fdbbee0adbb81a42ae3f5e77ab4c0",
+      "shapes": 1033
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/toggle-group.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/toggle-group.test.tsx.shapes",
+      "sha256": "09a4fbf0e368fb00c7cb031b09e39d63620d8a6f52cacfb57e7a30b00261df27",
+      "shapes": 1015
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/widget.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/widget.test.tsx.shapes",
+      "sha256": "d035ba933ccb21b1981761ad28ba5158d6a547922823842d3021410a721a8ce4",
+      "shapes": 1074
+    },
+    {
+      "testFile": "packages/e2e/tests/nodes/window.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/nodes/window.test.tsx.shapes",
+      "sha256": "1dab6a73d7ac44b02c5df543e5ae1b7b81defbeae73f0ea2e5202448ae9cdedf",
+      "shapes": 1005
+    },
+    {
+      "testFile": "packages/e2e/tests/portal.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/portal.test.tsx.shapes",
+      "sha256": "0246954c17053e9795774754e922ad70f4d92ba00e30aa8da4e58e2654620fca",
+      "shapes": 1007
+    },
+    {
+      "testFile": "packages/e2e/tests/render-quit.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/render-quit.test.tsx.shapes",
+      "sha256": "49a6965bc244110e91899c3220ddc063d2af7a45a9acbb0f046f91f4be2ca1a2",
+      "shapes": 998
+    },
+    {
+      "testFile": "packages/e2e/tests/use-application.test.tsx",
+      "snapshotFile": ".codegen-golden/packages/e2e/tests/use-application.test.tsx.shapes",
+      "sha256": "d756d615ec9bf71909fbc92951db38e7aee0454d465d6d95acca794c26a343e6",
+      "shapes": 997
+    }
+  ]
+}

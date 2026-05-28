@@ -1,0 +1,55 @@
+{
+    "name": "@gtkx/codegen-trace",
+    "version": "0.0.0",
+    "description": "Captures every @gtkx/native call made by the test suite to build a deterministic golden manifest of the FFI surface codegen produces",
+    "private": true,
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./plugin": {
+            "types": "./dist/plugin.d.ts",
+            "default": "./dist/plugin.js"
+        },
+        "./wrapper": {
+            "types": "./dist/wrapper.d.ts",
+            "default": "./dist/wrapper.js"
+        },
+        "./setup": {
+            "types": "./dist/setup.d.ts",
+            "default": "./dist/setup.js"
+        },
+        "./manifest": {
+            "types": "./dist/manifest.d.ts",
+            "default": "./dist/manifest.js"
+        }
+    },
+    "bin": {
+        "gtkx-codegen-manifest": "./bin/build-manifest.js",
+        "gtkx-codegen-diff": "./bin/diff-manifest.js"
+    },
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "bin",
+        "src"
+    ],
+    "scripts": {
+        "build": "tsc -b",
+        "typecheck": "tsc -b --emitDeclarationOnly"
+    },
+    "dependencies": {
+        "@gtkx/native": "workspace:*"
+    },
+    "devDependencies": {
+        "vitest": "^4.1.7"
+    },
+    "peerDependencies": {
+        "vitest": ">=4"
+    }
+}
