@@ -42,13 +42,9 @@
             "types": "./dist/refresh-runtime.d.ts",
             "default": "./dist/refresh-runtime.js"
         },
-        "./vite-plugins/assets": {
-            "types": "./dist/vite-plugins/assets.d.ts",
-            "default": "./dist/vite-plugins/assets.js"
-        },
-        "./vite-plugins/gresources": {
-            "types": "./dist/vite-plugins/gresources.d.ts",
-            "default": "./dist/vite-plugins/gresources.js"
+        "./vitest": {
+            "types": "./dist/vitest.d.ts",
+            "default": "./dist/vitest.js"
         },
         "./env": "./env.d.ts"
     },
@@ -74,6 +70,7 @@
         "@gtkx/ffi": "workspace:*",
         "@gtkx/mcp": "workspace:*",
         "@gtkx/utils": "workspace:*",
+        "@gtkx/vitest": "workspace:*",
         "@swc/core": "^1.15.40",
         "c12": "^3.3.0",
         "citty": "^0.2.2",
@@ -93,14 +90,10 @@
     },
     "peerDependencies": {
         "@gtkx/react": "workspace:*",
-        "@gtkx/testing": "workspace:*",
         "react": "^19"
     },
     "peerDependenciesMeta": {
         "@gtkx/react": {
-            "optional": true
-        },
-        "@gtkx/testing": {
             "optional": true
         }
     }

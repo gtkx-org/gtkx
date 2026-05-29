@@ -2,7 +2,8 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative } from "node:path";
-import type { Plugin, ResolvedConfig, ViteDevServer } from "vite";
+import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
+import { loadApplicationId } from "../codegen/config-loader.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
 
@@ -284,15 +285,35 @@ const refreshDevRegistration = async (server: ViteDevServer, state: PluginState)
 };
 
 /**
- * Options accepted by {@link gtkxResources}.
+ * Loads `applicationId` from `gtkx.config.ts`, fixes the plugin's resource
+ * prefix from it, and returns the partial Vite config: the asset matcher and
+ * the single `import.meta.env.GTKX_APP_ID` define.
  */
-export type GtkxResourcesOptions = {
-    /**
-     * GLib application id (e.g. `"org.gtk.Demo4"`). When provided, the
-     * GResource prefix is derived as `/org/gtk/Demo4`. When omitted,
-     * defaults to `/gtkx/app`.
-     */
-    applicationId?: string;
+const resolveResourceConfig = async (state: PluginState, config: UserConfig) => {
+    const applicationId = await loadApplicationId(config.root ?? process.cwd());
+    state.prefix = deriveResourcePrefix(applicationId);
+    return {
+        assetsInclude: [ASSET_RE],
+        define: {
+            "import.meta.env.GTKX_APP_ID": JSON.stringify(applicationId ?? ""),
+        },
+    };
+};
+
+/**
+ * Wires the dev server's watcher so a change to any tracked asset recompiles
+ * and re-registers the GResource bundle without a process restart.
+ */
+const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void => {
+    state.server = server;
+    const onFileEvent = (file: string): void => {
+        if (!isTrackedSource(state, file)) return;
+        refreshDevRegistration(server, state).catch((error) => {
+            console.error("[gtkx] GResource refresh failed:", error);
+        });
+    };
+    server.watcher.on("change", onFileEvent);
+    server.watcher.on("add", onFileEvent);
 };
 
 /**
@@ -309,9 +330,11 @@ export type GtkxResourcesOptions = {
  * hook that re-registers the bundle without restarting the process.
  *
  * **Path layout:** By default an asset resolves to
- * `resource:///<prefix>/<path-relative-to-vite-root>`, where `<prefix>`
- * comes from {@link deriveResourcePrefix}. The exact value is incidental —
- * callers use the import's returned `path`/URI rather than depending on it.
+ * `resource:///<prefix>/<path-relative-to-vite-root>`, where `<prefix>` is
+ * derived by {@link deriveResourcePrefix} from the `applicationId` declared
+ * in `gtkx.config.ts` (loaded during the `config` hook). The exact value is
+ * incidental — callers use the import's returned `path`/URI rather than
+ * depending on it.
  *
  * **Explicit paths:** Append `?resource=<path>` to pin where an asset
  * lands. A relative override nests under `<prefix>` (e.g.
@@ -322,16 +345,11 @@ export type GtkxResourcesOptions = {
  * `?resource=/css_multiplebgs/brick.png` →
  * `resource:///css_multiplebgs/brick.png`).
  *
- * @example
- * ```ts
- * import { gtkxResources } from "@gtkx/cli/vite-plugins/gresources";
- *
- * export default { plugins: [gtkxResources({ applicationId: "org.gtk.Demo4" })] };
- * ```
+ * @internal
  */
-export function gtkxResources(options: GtkxResourcesOptions = {}): Plugin {
+export function gtkxResources(): Plugin {
     const state: PluginState = {
-        prefix: deriveResourcePrefix(options.applicationId),
+        prefix: DEFAULT_RESOURCE_PREFIX,
         isBuild: false,
         root: "",
         server: null,
@@ -344,13 +362,8 @@ export function gtkxResources(options: GtkxResourcesOptions = {}): Plugin {
         name: "gtkx:gresources",
         enforce: "pre",
 
-        config() {
-            return {
-                assetsInclude: [ASSET_RE],
-                define: {
-                    "import.meta.env.GTKX_APP_ID": JSON.stringify(options.applicationId ?? ""),
-                },
-            };
+        config(config: UserConfig) {
+            return resolveResourceConfig(state, config);
         },
 
         configResolved(config: ResolvedConfig) {
@@ -359,15 +372,7 @@ export function gtkxResources(options: GtkxResourcesOptions = {}): Plugin {
         },
 
         configureServer(server) {
-            state.server = server;
-            const onFileEvent = (file: string): void => {
-                if (!isTrackedSource(state, file)) return;
-                refreshDevRegistration(server, state).catch((error) => {
-                    console.error("[gtkx] GResource refresh failed:", error);
-                });
-            };
-            server.watcher.on("change", onFileEvent);
-            server.watcher.on("add", onFileEvent);
+            attachResourceWatcher(state, server);
         },
 
         async resolveId(source, importer, opts) {

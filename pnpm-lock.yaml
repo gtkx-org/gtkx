@@ -88,9 +88,6 @@ importers:
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../../packages/testing
-      '@gtkx/vitest':
-        specifier: workspace:*
-        version: link:../../packages/vitest
       '@vitest/coverage-v8':
         specifier: ^4.1.7
         version: 4.1.7(vitest@4.1.7)
@@ -162,6 +159,9 @@ importers:
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../vitest
       '@swc/core':
         specifier: ^1.15.40
         version: 1.15.40

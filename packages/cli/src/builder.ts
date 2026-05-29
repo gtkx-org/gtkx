@@ -1,8 +1,6 @@
 import { type InlineConfig, build as viteBuild } from "vite";
-import { gtkxAssets } from "./vite-plugins/assets.js";
 import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
-import { gtkxResources } from "./vite-plugins/gresources.js";
-import { gtkxGSettings } from "./vite-plugins/gsettings.js";
+import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxNative } from "./vite-plugins/native.js";
 
 /**
@@ -11,14 +9,6 @@ import { gtkxNative } from "./vite-plugins/native.js";
 export type BuildOptions = {
     /** Path to the entry file (e.g., "src/index.tsx") */
     entry: string;
-    /**
-     * GLib application id used by the GResource pipeline and exposed to
-     * application code as `import.meta.env.GTKX_APP_ID`.
-     *
-     * Typically sourced from `gtkx.config.ts` by the CLI. See
-     * {@link GtkxConfig.applicationId} for path-prefix semantics.
-     */
-    applicationId?: string;
     /**
      * Base path for resolving asset imports at runtime, relative to the
      * executable directory.
@@ -67,7 +57,6 @@ export type BuildOptions = {
  *
  * await build({
  *     entry: "./src/index.tsx",
- *     applicationId: "org.example.MyApp",
  *     vite: { root: process.cwd() },
  * });
  * ```
@@ -75,19 +64,12 @@ export type BuildOptions = {
  * @see {@link BuildOptions} for configuration options
  */
 export const build = async (options: BuildOptions): Promise<void> => {
-    const { entry, applicationId, assetBase, vite: viteConfig } = options;
+    const { entry, assetBase, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
 
     await viteBuild({
         ...viteConfig,
-        plugins: [
-            ...(viteConfig?.plugins ?? []),
-            gtkxGSettings(),
-            gtkxResources({ applicationId }),
-            gtkxAssets(),
-            gtkxBuiltUrl(assetBase),
-            gtkxNative(root),
-        ],
+        plugins: [...(viteConfig?.plugins ?? []), ...gtkxVitePlugins(), gtkxBuiltUrl(assetBase), gtkxNative(root)],
         build: {
             ...viteConfig?.build,
             ssr: entry,
@@ -107,7 +89,6 @@ export const build = async (options: BuildOptions): Promise<void> => {
         define: {
             ...viteConfig?.define,
             "process.env.NODE_ENV": JSON.stringify("production"),
-            "import.meta.env.GTKX_APP_ID": JSON.stringify(applicationId ?? ""),
         },
         ssr: {
             ...viteConfig?.ssr,

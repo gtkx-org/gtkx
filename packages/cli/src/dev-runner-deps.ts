@@ -1,13 +1,10 @@
 import { whenStopped } from "@gtkx/ffi";
 import * as Gio from "@gtkx/ffi/gio";
 import { createServer } from "vite";
-import { loadApplicationId } from "./codegen/config-loader.js";
 import type { DevRunnerDeps } from "./dev-runner.js";
 import { startMcpClient, stopMcpClient } from "./mcp/index.js";
 import { isReactRefreshBoundary, performRefresh } from "./refresh-runtime.js";
-import { gtkxAssets } from "./vite-plugins/assets.js";
-import { gtkxResources } from "./vite-plugins/gresources.js";
-import { gtkxGSettings } from "./vite-plugins/gsettings.js";
+import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxRefresh } from "./vite-plugins/react-refresh-runtime.js";
 import { swcSsrRefresh } from "./vite-plugins/react-refresh-transform.js";
 import { gtkxSkipReactDomOptimize } from "./vite-plugins/skip-react-dom-optimize.js";
@@ -20,35 +17,20 @@ import { gtkxSkipReactDomOptimize } from "./vite-plugins/skip-react-dom-optimize
  * factory file (`dev-runner.ts`) can be imported in unit tests without
  * pulling the GTK FFI bindings into the test process.
  *
- * Reads `applicationId` from `gtkx.config.ts` (if present) so the
- * GResource pipeline and `import.meta.env.GTKX_APP_ID` line up with the
- * production build.
+ * The GResource plugin self-loads `applicationId` from `gtkx.config.ts`, so
+ * no build-time configuration is threaded through here.
  *
- * @param cwd - Working directory; used to resolve `gtkx.config.ts`.
  * @returns The default {@link DevRunnerDeps} used by `main`.
  */
-export const defaultDevRunnerDeps = async (cwd: string = process.cwd()): Promise<DevRunnerDeps> => {
-    const applicationId = await loadApplicationId(cwd);
-    return {
-        createServer,
-        whenStopped,
-        getApplicationId: () => Gio.Application.getDefault()?.applicationId ?? null,
-        startMcpClient,
-        stopMcpClient,
-        performRefresh,
-        isReactRefreshBoundary,
-        plugins: () => [
-            gtkxGSettings(),
-            gtkxResources({ applicationId }),
-            gtkxAssets(),
-            swcSsrRefresh(),
-            gtkxRefresh(),
-            gtkxSkipReactDomOptimize(),
-        ],
-        define: () => ({
-            "import.meta.env.GTKX_APP_ID": JSON.stringify(applicationId ?? ""),
-        }),
-        log: (message: string) => console.log(`[gtkx] ${message}`),
-        exit: (code: number): never => process.exit(code),
-    };
-};
+export const defaultDevRunnerDeps = (): DevRunnerDeps => ({
+    createServer,
+    whenStopped,
+    getApplicationId: () => Gio.Application.getDefault()?.applicationId ?? null,
+    startMcpClient,
+    stopMcpClient,
+    performRefresh,
+    isReactRefreshBoundary,
+    plugins: () => [...gtkxVitePlugins(), swcSsrRefresh(), gtkxRefresh(), gtkxSkipReactDomOptimize()],
+    log: (message: string) => console.log(`[gtkx] ${message}`),
+    exit: (code: number): never => process.exit(code),
+});

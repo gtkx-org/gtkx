@@ -147,16 +147,6 @@ describe("build (define and rolldown)", () => {
         expect(config.define["process.env.NODE_ENV"]).toBe(JSON.stringify("production"));
     });
 
-    it("exposes the application id as import.meta.env.GTKX_APP_ID", async () => {
-        await build({ entry: "src/index.tsx", applicationId: "org.gtk.Demo4" });
-        expect(getViteConfig().define["import.meta.env.GTKX_APP_ID"]).toBe(JSON.stringify("org.gtk.Demo4"));
-    });
-
-    it("defaults import.meta.env.GTKX_APP_ID to the empty string when no application id is set", async () => {
-        await build({ entry: "src/index.tsx" });
-        expect(getViteConfig().define["import.meta.env.GTKX_APP_ID"]).toBe(JSON.stringify(""));
-    });
-
     it("preserves user rolldown output options while overriding entryFileNames", async () => {
         const userOutput = { format: "es" as const, sourcemap: true };
         await build({

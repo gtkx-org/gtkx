@@ -18,8 +18,10 @@ import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.
 
 type ConfigureServerHook = (this: unknown, server: unknown) => void;
 
-type ConfigHook = () => { assetsInclude: RegExp[] };
+type ConfigHook = (config: { root?: string }) => Promise<{ assetsInclude: RegExp[]; define: Record<string, string> }>;
 type ConfigResolvedHook = (config: { command: "build" | "serve"; root: string }) => void;
+
+type GresourcesPlugin = ReturnType<typeof gtkxResources>;
 
 const hasGlibCompileResources = (): boolean => {
     try {
@@ -31,6 +33,29 @@ const hasGlibCompileResources = (): boolean => {
 };
 
 let tmpDir: string;
+
+const writeAppConfig = (root: string, applicationId: string): void => {
+    writeFileSync(
+        join(root, "gtkx.config.ts"),
+        `export default { applicationId: ${JSON.stringify(applicationId)} };\n`,
+    );
+};
+
+/**
+ * Drives the plugin's async `config` hook (which self-loads `applicationId`
+ * from `gtkx.config.ts`) followed by `configResolved`, mirroring Vite's own
+ * lifecycle so `load` sees the resolved prefix.
+ */
+const initPlugin = async (
+    plugin: GresourcesPlugin,
+    command: "build" | "serve",
+    root: string,
+    applicationId?: string,
+): Promise<void> => {
+    if (applicationId !== undefined) writeAppConfig(root, applicationId);
+    await (plugin.config as ConfigHook).call(plugin, { root });
+    (plugin.configResolved as ConfigResolvedHook).call(plugin, { command, root });
+};
 
 const setupTmpDir = (): void => {
     beforeEach(() => {
@@ -63,9 +88,9 @@ describe("gtkxResources (plugin shape)", () => {
         expect(plugin.enforce).toBe("pre");
     });
 
-    it("config declares an assetsInclude regex covering known asset extensions", () => {
+    it("config declares an assetsInclude regex covering known asset extensions", async () => {
         const plugin = gtkxResources();
-        const result = (plugin.config as ConfigHook)();
+        const result = await (plugin.config as ConfigHook).call(plugin, {});
         expect(result.assetsInclude).toHaveLength(1);
         const [regex] = result.assetsInclude;
         if (!regex) throw new Error("assetsInclude regex missing");
@@ -73,6 +98,27 @@ describe("gtkxResources (plugin shape)", () => {
         expect(regex.test("song.mp3")).toBe(true);
         expect(regex.test("font.woff2")).toBe(true);
         expect(regex.test("data.json")).toBe(false);
+    });
+});
+
+describe("gtkxResources (define)", () => {
+    setupTmpDir();
+
+    it("exposes the configured applicationId as import.meta.env.GTKX_APP_ID", async () => {
+        writeAppConfig(tmpDir, "org.gtk.Demo4");
+        const plugin = gtkxResources();
+        const result = await (plugin.config as ConfigHook).call(plugin, { root: tmpDir });
+        expect(result.define).toEqual({
+            "import.meta.env.GTKX_APP_ID": JSON.stringify("org.gtk.Demo4"),
+        });
+    });
+
+    it("defaults GTKX_APP_ID to the empty string when no config is present", async () => {
+        const plugin = gtkxResources();
+        const result = await (plugin.config as ConfigHook).call(plugin, { root: tmpDir });
+        expect(result.define).toEqual({
+            "import.meta.env.GTKX_APP_ID": JSON.stringify(""),
+        });
     });
 });
 
@@ -125,7 +171,10 @@ describe("gtkxResources (resolveId)", () => {
     it("strips a ?resource= query before resolving and encodes the override", async () => {
         const plugin = gtkxResources();
         const resolve = vi.fn(() => Promise.resolve({ id: "/abs/logo.png" }));
-        const result = await (plugin.resolveId as ResolveIdHook).call({ resolve }, "./logo.png?resource=icons/logo.png");
+        const result = await (plugin.resolveId as ResolveIdHook).call(
+            { resolve },
+            "./logo.png?resource=icons/logo.png",
+        );
         expect(resolve).toHaveBeenCalledWith("./logo.png", undefined, expect.objectContaining({ skipSelf: true }));
         expect(result).toBe(`${__TEST_VIRTUAL_PREFIX}/abs/logo.png${__TEST_OVERRIDE_SEPARATOR}icons/logo.png`);
     });
@@ -134,9 +183,9 @@ describe("gtkxResources (resolveId)", () => {
 describe("gtkxResources (init module)", () => {
     setupTmpDir();
 
-    it("renders the build-mode init module with resourceLoad bootstrap", () => {
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
+    it("renders the build-mode init module with resourceLoad bootstrap", async () => {
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
         const out = (plugin.load as LoadHook)(__TEST_VIRTUAL_INIT) as string;
         expect(out).toContain("resourceLoad");
@@ -146,11 +195,11 @@ describe("gtkxResources (init module)", () => {
         expect(out).toContain("export function ensureRegistered");
     });
 
-    it("renders the dev-mode init module with refresh-capable resourceLoad", () => {
+    it("renders the dev-mode init module with refresh-capable resourceLoad", async () => {
         if (!hasGlibCompileResources()) return;
 
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmpDir });
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "serve", tmpDir, "org.gtk.Demo4");
 
         const assetPath = join(tmpDir, "logo.png");
         writeFileSync(assetPath, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
@@ -167,15 +216,15 @@ describe("gtkxResources (init module)", () => {
 describe("gtkxResources (asset load)", () => {
     setupTmpDir();
 
-    it("returns undefined for non-virtual ids", () => {
+    it("returns undefined for non-virtual ids", async () => {
         const plugin = gtkxResources();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
+        await initPlugin(plugin, "build", tmpDir);
         expect((plugin.load as LoadHook)("/abs/path/foo.ts")).toBeUndefined();
     });
 
-    it("rewrites a tracked asset import to a resource URI in build mode", () => {
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
+    it("rewrites a tracked asset import to a resource URI in build mode", async () => {
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
         const assetPath = join(tmpDir, "icons/foo.svg");
         const out = (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`) as string;
@@ -186,9 +235,9 @@ describe("gtkxResources (asset load)", () => {
         expect(out).toContain(`export const path = "/org/gtk/Demo4/icons/foo.svg";`);
     });
 
-    it("nests a relative ?resource= override under the app prefix", () => {
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
+    it("nests a relative ?resource= override under the app prefix", async () => {
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
         const assetPath = join(tmpDir, "src/theme/dark.css");
         const virtualId = `${__TEST_VIRTUAL_PREFIX}${assetPath}${__TEST_OVERRIDE_SEPARATOR}style.css`;
@@ -198,9 +247,9 @@ describe("gtkxResources (asset load)", () => {
         expect(out).toContain(`export const path = "/org/gtk/Demo4/style.css";`);
     });
 
-    it("treats a leading-slash ?resource= override as absolute, bypassing the prefix", () => {
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
+    it("treats a leading-slash ?resource= override as absolute, bypassing the prefix", async () => {
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
         const assetPath = join(tmpDir, "src/demos/css/brick.png");
         const virtualId = `${__TEST_VIRTUAL_PREFIX}${assetPath}${__TEST_OVERRIDE_SEPARATOR}/css_multiplebgs/brick.png`;
@@ -210,10 +259,10 @@ describe("gtkxResources (asset load)", () => {
         expect(out).toContain(`export const path = "/css_multiplebgs/brick.png";`);
     });
 
-    it("rejects assets outside the Vite root when no override is given", () => {
+    it("rejects assets outside the Vite root when no override is given", async () => {
         const root = join(tmpDir, "src");
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root });
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "build", root);
 
         const outsidePath = join(tmpDir, "outside.png");
         expect(() => (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${outsidePath}`)).toThrow(
@@ -225,20 +274,20 @@ describe("gtkxResources (asset load)", () => {
 describe("gtkxResources (buildEnd)", () => {
     setupTmpDir();
 
-    it("is a no-op when no assets were imported", () => {
+    it("is a no-op when no assets were imported", async () => {
         const plugin = gtkxResources();
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
+        await initPlugin(plugin, "build", tmpDir);
 
         const emitFile = vi.fn();
         expect(() => (plugin.buildEnd as BuildEndHook).call({ emitFile })).not.toThrow();
         expect(emitFile).not.toHaveBeenCalled();
     });
 
-    it("compiles tracked assets into a single .gresource and emits it", () => {
+    it("compiles tracked assets into a single .gresource and emits it", async () => {
         if (!hasGlibCompileResources()) return;
 
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
         const assetPath = join(tmpDir, "logo.png");
         writeFileSync(assetPath, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
@@ -283,8 +332,8 @@ describe("gtkxResources (watcher: change event)", () => {
     it("re-registers the GResource bundle when a tracked asset changes", async () => {
         if (!hasGlibCompileResources()) return;
 
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmpDir });
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "serve", tmpDir);
 
         const assetPath = join(tmpDir, "icon.png");
         writeTinyPng(assetPath);
@@ -308,8 +357,8 @@ describe("gtkxResources (watcher: add event)", () => {
     it("re-registers the bundle on the 'add' watcher event for a tracked asset", async () => {
         if (!hasGlibCompileResources()) return;
 
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmpDir });
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "serve", tmpDir);
 
         const assetPath = join(tmpDir, "addme.png");
         writeTinyPng(assetPath);
@@ -330,8 +379,8 @@ describe("gtkxResources (watcher: untracked event)", () => {
     setupTmpDir();
 
     it("ignores file events for untracked paths", async () => {
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmpDir });
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "serve", tmpDir);
 
         const refresh = vi.fn();
         const server = createFakeServer(refresh);
@@ -352,8 +401,8 @@ describe("gtkxResources (watcher: refresh failure)", () => {
     it("logs and swallows refresh errors so the watcher keeps running", async () => {
         if (!hasGlibCompileResources()) return;
 
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "serve", root: tmpDir });
+        const plugin = gtkxResources();
+        await initPlugin(plugin, "serve", tmpDir);
 
         const assetPath = join(tmpDir, "broken.png");
         writeTinyPng(assetPath);

@@ -1,16 +1,14 @@
 import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import { build } from "../builder.js";
-import { loadApplicationId } from "../codegen/config-loader.js";
 import { preflightCodegen } from "../codegen/run-codegen.js";
 
 /**
  * `gtkx build` — bundle the project for production.
  *
- * Runs codegen preflight, reads `applicationId` from `gtkx.config.ts`
- * (used for the GResource path prefix and `import.meta.env.GTKX_APP_ID`),
- * then invokes {@link build} with the resolved entry and the optional
- * asset base path.
+ * Runs codegen preflight, then invokes {@link build} with the resolved entry
+ * and the optional asset base path. The GResource pipeline reads
+ * `applicationId` directly from `gtkx.config.ts`.
  */
 export const buildCmd = defineCommand({
     meta: {
@@ -34,11 +32,9 @@ export const buildCmd = defineCommand({
         console.log(`[gtkx] Building ${entry}`);
 
         await preflightCodegen(cwd);
-        const applicationId = await loadApplicationId(cwd);
 
         await build({
             entry,
-            applicationId,
             assetBase: args["asset-base"],
             vite: {
                 root: cwd,

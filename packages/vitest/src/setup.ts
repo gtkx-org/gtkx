@@ -39,7 +39,7 @@ const spawnWorkerChild = (command: string, args: string[], stdio: StdioOptions):
 };
 
 const xvfb = spawnWorkerChild("Xvfb", ["-displayfd", "1", "-screen", "0", "1024x768x24"], ["ignore", "pipe", "pipe"]);
-const dbus = spawnWorkerChild("dbus-daemon", [`--config-file=${busConfigPath}`], "ignore");
+spawnWorkerChild("dbus-daemon", [`--config-file=${busConfigPath}`], "ignore");
 
 process.env.DBUS_SESSION_BUS_ADDRESS = `unix:path=${busSocketPath}`;
 process.env.GDK_BACKEND = "x11";

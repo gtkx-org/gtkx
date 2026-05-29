@@ -99,7 +99,7 @@ const DEPENDENCIES = ["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"];
 
 const DEV_DEPENDENCIES = ["@gtkx/cli", "@types/react", "typescript", "vite"];
 
-const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "@gtkx/vitest", "vitest"];
+const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
 
 const RUN_DEV_COMMAND: Record<PackageManager, string> = {
     pnpm: "pnpm dev",

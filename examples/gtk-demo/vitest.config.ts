@@ -1,14 +1,8 @@
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { gtkxResources } from "@gtkx/cli/vite-plugins/gresources";
-import gtkx from "@gtkx/vitest";
+import gtkx from "@gtkx/cli/vitest";
 import { defineConfig } from "vitest/config";
-import gtkxConfig from "./gtkx.config.js";
-
-const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-    plugins: [gtkxResources({ applicationId: gtkxConfig.applicationId, sourceRoot: resolve(here, "src") }), gtkx()],
+    plugins: [gtkx()],
     test: {
         name: "gtk-demo",
         include: ["tests/**/*.test.{ts,tsx}"],

@@ -241,9 +241,7 @@ describe("createScaffolder (dependency installation)", () => {
         expect(prod?.dev).toBe(false);
         expect(prod?.dependencies).toEqual(["@gtkx/css", "@gtkx/ffi", "@gtkx/react", "react"]);
         expect(dev?.dev).toBe(true);
-        expect(dev?.dependencies).toEqual(
-            expect.arrayContaining(["@gtkx/cli", "vitest", "@gtkx/testing", "@gtkx/vitest"]),
-        );
+        expect(dev?.dependencies).toEqual(expect.arrayContaining(["@gtkx/cli", "vitest", "@gtkx/testing"]));
     });
 
     it("forwards the chosen package manager", async () => {
