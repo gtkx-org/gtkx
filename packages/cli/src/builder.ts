@@ -1,4 +1,3 @@
-import { dirname, resolve as resolvePath } from "node:path";
 import { type InlineConfig, build as viteBuild } from "vite";
 import { gtkxAssets } from "./vite-plugins/assets.js";
 import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
@@ -78,14 +77,13 @@ export type BuildOptions = {
 export const build = async (options: BuildOptions): Promise<void> => {
     const { entry, applicationId, assetBase, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
-    const sourceRoot = dirname(resolvePath(root, entry));
 
     await viteBuild({
         ...viteConfig,
         plugins: [
             ...(viteConfig?.plugins ?? []),
             gtkxGSettings(),
-            gtkxResources({ applicationId, sourceRoot }),
+            gtkxResources({ applicationId }),
             gtkxAssets(),
             gtkxBuiltUrl(assetBase),
             gtkxNative(root),

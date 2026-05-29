@@ -58,10 +58,10 @@ export type GtkxConfig = {
      *
      * When set, asset imports resolve to `resource:///<prefix>/<rel>` where
      * `<prefix>` is derived from the id (`org.gtk.Demo4` → `/org/gtk/Demo4`)
-     * and `<rel>` is the file's path relative to the entry directory
-     * (`dirname(entry)`). This makes the bundle layout align with
-     * GApplication's default `resource_base_path` so Adw/Gtk auto-load
-     * (`style.css`, `gtk/menus.ui`, etc.) works without extra wiring.
+     * and `<rel>` is the file's path relative to the Vite `root`. To land an
+     * asset at an exact path — e.g. `style.css` at the GApplication default
+     * `resource_base_path` for Adw/Gtk auto-loading — pin it with a
+     * `?resource=<path>` import query.
      * Must match `g_application_id_is_valid` — see {@link isValidAppId}.
      *
      * When omitted, the GResource pipeline falls back to the prefix

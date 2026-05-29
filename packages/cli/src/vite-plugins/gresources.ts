@@ -11,6 +11,9 @@ const VIRTUAL_INIT = "\0gtkx-gresources-init";
 const RESOURCE_COMPILER = "glib-compile-resources";
 const BUNDLE_FILENAME = "gtkx.gresource";
 const DEFAULT_RESOURCE_PREFIX = "/gtkx/app";
+const RESOURCE_QUERY = "resource";
+const OVERRIDE_SEPARATOR = "\0resource=";
+const MANIFEST_PREFIX = "/";
 
 /**
  * Converts a GLib application id like `org.gtk.Demo4` into the standard
@@ -25,27 +28,52 @@ export const deriveResourcePrefix = (applicationId?: string): string => {
     return `/${applicationId.replaceAll(".", "/")}`;
 };
 
+const toForwardSlashes = (value: string): string => value.split(/[/\\]/).join("/");
+
 /**
- * Computes the bundle-relative path for an asset, normalised to forward
- * slashes, relative to the configured source root.
- *
- * The source root is typically the directory containing the application
- * entry (e.g. `<project>/src`), so a file at `<project>/src/style.css`
- * lands at `<prefix>/style.css` — exactly where Adw and Gtk auto-load
- * resources like `style.css`, `gtk/menus.ui`, and `gtk/help-overlay.ui`
- * relative to GApplication's default `resource_base_path`.
- *
- * Throws when the file resolves outside the source root.
+ * Splits an import specifier into its path and an optional `?resource=`
+ * override. Returns `override: null` when the query is absent; an empty
+ * `?resource=` yields an empty-string override (a deliberate request for
+ * the bundle root).
  */
-const computeRelPath = (sourceRoot: string, absFile: string): string => {
-    const rel = relative(sourceRoot, absFile).split(/[/\\]/).join("/");
+const parseResourceQuery = (source: string): { path: string; override: string | null } => {
+    const queryIndex = source.indexOf("?");
+    if (queryIndex === -1) return { path: source, override: null };
+    const params = new URLSearchParams(source.slice(queryIndex + 1));
+    return { path: source.slice(0, queryIndex), override: params.get(RESOURCE_QUERY) };
+};
+
+/**
+ * Computes an asset's GResource path.
+ *
+ * With no `?resource=` override, the path is the file's location relative
+ * to the Vite `root`, nested under `prefix` — the caller does not care
+ * about the exact value and simply uses the import's returned `path`.
+ * Throws when the file resolves outside the Vite root.
+ *
+ * With a `?resource=<path>` override, the path is taken verbatim: a
+ * relative override nests under `prefix` (e.g. `?resource=style.css` →
+ * `<prefix>/style.css`, matching GApplication's default
+ * `resource_base_path` so Adw/Gtk auto-load it), while an override with a
+ * leading slash is absolute and bypasses `prefix` entirely (e.g.
+ * `?resource=/css_multiplebgs/brick.png`).
+ */
+const computeResourcePath = (state: PluginState, absFile: string, override: string | null): string => {
+    if (override !== null) {
+        const normalized = toForwardSlashes(override);
+        if (normalized.startsWith("/")) {
+            return `/${normalized.replace(/^\/+/, "")}`;
+        }
+        return `${state.prefix}/${normalized}`;
+    }
+    const rel = toForwardSlashes(relative(state.root, absFile));
     if (rel.startsWith("..") || isAbsolute(rel)) {
         throw new Error(
-            `gtkx:gresources: asset "${absFile}" is outside the source root "${sourceRoot}". ` +
-                `Move the file under the source root, or pass a wider \`sourceRoot\` to the plugin.`,
+            `gtkx:gresources: asset "${absFile}" is outside the Vite root "${state.root}". ` +
+                `Move the file under the root, or pin its location with an explicit \`?resource=<path>\` import query.`,
         );
     }
-    return rel;
+    return `${state.prefix}/${rel}`;
 };
 
 const escapeXml = (value: string): string =>
@@ -74,7 +102,7 @@ type ResourceEntry = {
 type PluginState = {
     prefix: string;
     isBuild: boolean;
-    sourceRoot: string;
+    root: string;
     server: ViteDevServer | null;
     entries: Map<string, ResourceEntry>;
     devStagingDir: string | null;
@@ -83,7 +111,7 @@ type PluginState = {
 
 const compileBundle = (state: PluginState, outputPath: string): Buffer => {
     const entries = state.entries.size === 0 ? new Map<string, ResourceEntry>() : state.entries;
-    const staged = stageBundle(state, entries);
+    const staged = stageBundle(entries);
     try {
         return runCompiler(staged.dir, staged.manifest, outputPath);
     } finally {
@@ -93,7 +121,7 @@ const compileBundle = (state: PluginState, outputPath: string): Buffer => {
 
 type StagedBundle = { dir: string; manifest: string };
 
-const stageBundle = (state: PluginState, entries: Map<string, ResourceEntry>): StagedBundle => {
+const stageBundle = (entries: Map<string, ResourceEntry>): StagedBundle => {
     const dir = mkdtempSync(join(tmpdir(), "gtkx-gresources-"));
     const fileNodes: string[] = [];
     for (const entry of entries.values()) {
@@ -102,7 +130,7 @@ const stageBundle = (state: PluginState, entries: Map<string, ResourceEntry>): S
         copyFileSync(entry.sourcePath, targetPath);
         fileNodes.push(`        <file>${escapeXml(entry.stagedRelPath)}</file>`);
     }
-    const prefix = escapeXml(state.prefix);
+    const prefix = escapeXml(MANIFEST_PREFIX);
     const manifest = join(dir, "gtkx.gresource.xml");
     const xml = [
         `<?xml version="1.0" encoding="UTF-8"?>`,
@@ -181,23 +209,41 @@ const devInitModuleSource = (bundlePath: string): string => {
 const renderInitModule = (state: PluginState): string =>
     state.isBuild ? buildInitModuleSource() : devInitModuleSource(state.devBundlePath);
 
-const registerEntry = (state: PluginState, absPath: string): ResourceEntry => {
-    const existing = state.entries.get(absPath);
+const registerEntry = (state: PluginState, absPath: string, override: string | null): ResourceEntry => {
+    const key = `${absPath}\0${override ?? ""}`;
+    const existing = state.entries.get(key);
     if (existing) return existing;
 
-    const relPath = computeRelPath(state.sourceRoot, absPath);
+    const resourcePath = computeResourcePath(state, absPath, override);
     const entry: ResourceEntry = {
         sourcePath: absPath,
-        stagedRelPath: relPath,
-        resourcePath: `${state.prefix}/${relPath}`,
+        stagedRelPath: resourcePath.replace(/^\/+/, ""),
+        resourcePath,
     };
-    state.entries.set(absPath, entry);
+    state.entries.set(key, entry);
     return entry;
 };
 
+const isTrackedSource = (state: PluginState, file: string): boolean => {
+    for (const entry of state.entries.values()) {
+        if (entry.sourcePath === file) return true;
+    }
+    return false;
+};
+
+const decodeVirtualAsset = (virtualId: string): { absPath: string; override: string | null } => {
+    const rest = virtualId.slice(VIRTUAL_PREFIX.length);
+    const sepIndex = rest.indexOf(OVERRIDE_SEPARATOR);
+    if (sepIndex === -1) return { absPath: rest, override: null };
+    return {
+        absPath: rest.slice(0, sepIndex),
+        override: rest.slice(sepIndex + OVERRIDE_SEPARATOR.length),
+    };
+};
+
 const loadAssetModule = (state: PluginState, virtualId: string): string => {
-    const absPath = virtualId.slice(VIRTUAL_PREFIX.length);
-    const entry = registerEntry(state, absPath);
+    const { absPath, override } = decodeVirtualAsset(virtualId);
+    const entry = registerEntry(state, absPath, override);
     const uri = `resource://${entry.resourcePath}`;
 
     if (!state.isBuild) {
@@ -247,20 +293,6 @@ export type GtkxResourcesOptions = {
      * defaults to `/gtkx/app`.
      */
     applicationId?: string;
-    /**
-     * Absolute path to the source root — typically the directory
-     * containing the application entry (`<project>/src`). Resource paths
-     * inside the bundle are computed relative to this directory, so a
-     * file at `<sourceRoot>/style.css` lands at `<prefix>/style.css` and
-     * is picked up by Adw/Gtk auto-loading.
-     *
-     * Assets resolved from outside the source root are rejected with a
-     * clear error.
-     *
-     * When omitted, falls back to the Vite `root`. The CLI passes
-     * `dirname(entry)` automatically.
-     */
-    sourceRoot?: string;
 };
 
 /**
@@ -276,13 +308,19 @@ export type GtkxResourcesOptions = {
  * whenever an asset file changes; the init module exposes a `__refresh`
  * hook that re-registers the bundle without restarting the process.
  *
- * **Path layout:** Assets resolve to `resource:///<prefix>/<rel>` where
- * `<prefix>` comes from {@link deriveResourcePrefix} and `<rel>` is the
- * file's path relative to {@link GtkxResourcesOptions.sourceRoot}. The
- * CLI sets `sourceRoot` to `dirname(entry)`, so a file at
- * `<project>/src/style.css` lands at `<prefix>/style.css` — matching
- * GApplication's default `resource_base_path` and picked up by Adw/Gtk
- * auto-loading.
+ * **Path layout:** By default an asset resolves to
+ * `resource:///<prefix>/<path-relative-to-vite-root>`, where `<prefix>`
+ * comes from {@link deriveResourcePrefix}. The exact value is incidental —
+ * callers use the import's returned `path`/URI rather than depending on it.
+ *
+ * **Explicit paths:** Append `?resource=<path>` to pin where an asset
+ * lands. A relative override nests under `<prefix>` (e.g.
+ * `import css from "./style.css?resource=style.css"` →
+ * `resource:///<prefix>/style.css`, matching GApplication's default
+ * `resource_base_path` so Adw/Gtk auto-load it). A leading slash makes the
+ * override absolute and bypasses `<prefix>` (e.g.
+ * `?resource=/css_multiplebgs/brick.png` →
+ * `resource:///css_multiplebgs/brick.png`).
  *
  * @example
  * ```ts
@@ -295,7 +333,7 @@ export function gtkxResources(options: GtkxResourcesOptions = {}): Plugin {
     const state: PluginState = {
         prefix: deriveResourcePrefix(options.applicationId),
         isBuild: false,
-        sourceRoot: "",
+        root: "",
         server: null,
         entries: new Map(),
         devStagingDir: null,
@@ -317,33 +355,31 @@ export function gtkxResources(options: GtkxResourcesOptions = {}): Plugin {
 
         configResolved(config: ResolvedConfig) {
             state.isBuild = config.command === "build";
-            state.sourceRoot = options.sourceRoot ?? config.root;
+            state.root = config.root;
         },
 
         configureServer(server) {
             state.server = server;
-            server.watcher.on("change", (file) => {
-                if (!state.entries.has(file)) return;
+            const onFileEvent = (file: string): void => {
+                if (!isTrackedSource(state, file)) return;
                 refreshDevRegistration(server, state).catch((error) => {
                     console.error("[gtkx] GResource refresh failed:", error);
                 });
-            });
-            server.watcher.on("add", (file) => {
-                if (!state.entries.has(file)) return;
-                refreshDevRegistration(server, state).catch((error) => {
-                    console.error("[gtkx] GResource refresh failed:", error);
-                });
-            });
+            };
+            server.watcher.on("change", onFileEvent);
+            server.watcher.on("add", onFileEvent);
         },
 
         async resolveId(source, importer, opts) {
             if (source === VIRTUAL_INIT) return VIRTUAL_INIT;
             if (!ASSET_PATH_RE.test(source)) return;
 
-            const resolved = await this.resolve(source, importer, { ...opts, skipSelf: true });
+            const { path: rawSource, override } = parseResourceQuery(source);
+            const resolved = await this.resolve(rawSource, importer, { ...opts, skipSelf: true });
             if (!resolved || resolved.external) return;
 
-            return VIRTUAL_PREFIX + resolved.id;
+            const suffix = override === null ? "" : `${OVERRIDE_SEPARATOR}${override}`;
+            return VIRTUAL_PREFIX + resolved.id + suffix;
         },
 
         load(id) {
@@ -374,6 +410,14 @@ export const __TEST_VIRTUAL_INIT = VIRTUAL_INIT;
  * @internal
  */
 export const __TEST_VIRTUAL_PREFIX = VIRTUAL_PREFIX;
+
+/**
+ * Test-only: separator joining an asset's resolved id to its
+ * `?resource=` override inside a virtual asset module id.
+ *
+ * @internal
+ */
+export const __TEST_OVERRIDE_SEPARATOR = OVERRIDE_SEPARATOR;
 
 /**
  * Test-only: filename of the compiled bundle emitted by the build hook.

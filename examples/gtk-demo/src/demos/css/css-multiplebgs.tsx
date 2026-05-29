@@ -1,6 +1,8 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkButton, GtkDrawingArea, GtkOverlay, GtkPaned, GtkScrolledWindow, GtkTextView } from "@gtkx/react";
 import type { Demo } from "../types.js";
+import brickUri from "./brick.png";
+import brick2Uri from "./brick2.png";
 import sourceCode from "./css-multiplebgs.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";
@@ -64,7 +66,7 @@ const DEFAULT_CSS = `/* You can edit the text in this window to change the
 /*
 #bricks-button {
     background-color: #eef;
-    background-image: -gtk-scaled(url('resource:///css_multiplebgs/brick.png'),url('resource:///css_multiplebgs/brick2.png'));
+    background-image: -gtk-scaled(url('${brickUri}'),url('${brick2Uri}'));
     background-repeat: no-repeat;
     background-position: center;
 }

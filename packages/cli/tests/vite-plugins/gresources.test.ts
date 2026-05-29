@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     __TEST_BUNDLE_FILENAME,
     __TEST_escapeXml,
+    __TEST_OVERRIDE_SEPARATOR,
     __TEST_VIRTUAL_INIT,
     __TEST_VIRTUAL_PREFIX,
     deriveResourcePrefix,
@@ -120,6 +121,14 @@ describe("gtkxResources (resolveId)", () => {
         );
         expect(result).toBe(`${__TEST_VIRTUAL_PREFIX}/abs/logo.png?import`);
     });
+
+    it("strips a ?resource= query before resolving and encodes the override", async () => {
+        const plugin = gtkxResources();
+        const resolve = vi.fn(() => Promise.resolve({ id: "/abs/logo.png" }));
+        const result = await (plugin.resolveId as ResolveIdHook).call({ resolve }, "./logo.png?resource=icons/logo.png");
+        expect(resolve).toHaveBeenCalledWith("./logo.png", undefined, expect.objectContaining({ skipSelf: true }));
+        expect(result).toBe(`${__TEST_VIRTUAL_PREFIX}/abs/logo.png${__TEST_OVERRIDE_SEPARATOR}icons/logo.png`);
+    });
 });
 
 describe("gtkxResources (init module)", () => {
@@ -177,37 +186,38 @@ describe("gtkxResources (asset load)", () => {
         expect(out).toContain(`export const path = "/org/gtk/Demo4/icons/foo.svg";`);
     });
 
-    it("computes paths relative to the explicit sourceRoot, not the Vite root", () => {
-        const sourceRoot = join(tmpDir, "src");
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4", sourceRoot });
+    it("nests a relative ?resource= override under the app prefix", () => {
+        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
 
-        const assetPath = join(sourceRoot, "icons/foo.svg");
-        const out = (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`) as string;
+        const assetPath = join(tmpDir, "src/theme/dark.css");
+        const virtualId = `${__TEST_VIRTUAL_PREFIX}${assetPath}${__TEST_OVERRIDE_SEPARATOR}style.css`;
+        const out = (plugin.load as LoadHook)(virtualId) as string;
 
-        expect(out).toContain(`export default "resource:///org/gtk/Demo4/icons/foo.svg";`);
-        expect(out).toContain(`export const path = "/org/gtk/Demo4/icons/foo.svg";`);
-    });
-
-    it("places a style.css at the GApplication-default base path so Adw auto-loads it", () => {
-        const sourceRoot = join(tmpDir, "src");
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4", sourceRoot });
-        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
-
-        const styleCss = join(sourceRoot, "style.css");
-        const out = (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${styleCss}`) as string;
-
+        expect(out).toContain(`export default "resource:///org/gtk/Demo4/style.css";`);
         expect(out).toContain(`export const path = "/org/gtk/Demo4/style.css";`);
     });
 
-    it("rejects assets outside the source root", () => {
-        const sourceRoot = join(tmpDir, "src");
-        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4", sourceRoot });
+    it("treats a leading-slash ?resource= override as absolute, bypassing the prefix", () => {
+        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root: tmpDir });
+
+        const assetPath = join(tmpDir, "src/demos/css/brick.png");
+        const virtualId = `${__TEST_VIRTUAL_PREFIX}${assetPath}${__TEST_OVERRIDE_SEPARATOR}/css_multiplebgs/brick.png`;
+        const out = (plugin.load as LoadHook)(virtualId) as string;
+
+        expect(out).toContain(`export default "resource:///css_multiplebgs/brick.png";`);
+        expect(out).toContain(`export const path = "/css_multiplebgs/brick.png";`);
+    });
+
+    it("rejects assets outside the Vite root when no override is given", () => {
+        const root = join(tmpDir, "src");
+        const plugin = gtkxResources({ applicationId: "org.gtk.Demo4" });
+        (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build", root });
 
         const outsidePath = join(tmpDir, "outside.png");
         expect(() => (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${outsidePath}`)).toThrow(
-            /outside the source root/,
+            /outside the Vite root/,
         );
     });
 });
