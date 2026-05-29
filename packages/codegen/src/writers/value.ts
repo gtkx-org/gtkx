@@ -2,9 +2,9 @@ import type { ModuleContext } from "../dsl/context.js";
 import { joinArgs, quote } from "../dsl/emit.js";
 import { callbackFromNode, type GirCallback } from "../gir/callback.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import { type GirParameter, isOutParameter, type ParameterTransfer } from "../gir/parameter.js";
+import { type GirParameter, isInoutParameter, isOutParameter, type ParameterTransfer } from "../gir/parameter.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
-import type { ResolvedNamed } from "../gir/repository.js";
+import type { GirRepository, ResolvedNamed } from "../gir/repository.js";
 import type { ArrayTypeRef, GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
 import { computeBoxedFieldSlots } from "./boxed-field-accessor.js";
 
@@ -115,6 +115,50 @@ export const resolveCallbackType = (ctx: ModuleContext, ref: GirTypeRef | undefi
 };
 
 /**
+ * Whether a type reference is a scalar the native trampoline can read and
+ * write through a `Ref` cell: a non-string, non-void primitive, an enum or
+ * flags type, or an alias resolving to one. Pointer-shaped types (strings,
+ * objects, boxed records, arrays) are excluded — their out-parameter slots may
+ * be uninitialized, so reading the incoming value would be unsound.
+ *
+ * @param repository - The GIR repository
+ * @param namespaceName - The namespace the reference is resolved against
+ * @param ref - The type reference
+ */
+export const isScalarRef = (
+    repository: GirRepository,
+    namespaceName: string,
+    ref: GirTypeRef | undefined,
+): boolean => {
+    if (ref === undefined) return false;
+    if (ref.kind === "primitive") return ref.category !== "string" && ref.category !== "void";
+    if (ref.kind !== "named") return false;
+    const resolved = repository.resolveNamed(ref.namespaceName ?? namespaceName, ref.typeName);
+    if (resolved === undefined) return false;
+    if (resolved.kind === "enum") return true;
+    if (resolved.kind === "alias") {
+        return resolved.targetRef !== undefined && isScalarRef(repository, resolved.namespace.name, resolved.targetRef);
+    }
+    return false;
+};
+
+/**
+ * Whether an inout parameter marshals through a readable-and-writable `Ref`
+ * cell rather than being passed by handle and mutated in place.
+ *
+ * True for scalar inout parameters (see {@link isScalarRef}): the native
+ * trampoline seeds the cell with the incoming value, the handler returns its
+ * replacement in the tuple, and the cell is flushed back through the pointer.
+ * Handle-passing inout parameters (objects, interfaces, boxed records) stay
+ * plain arguments the handler mutates directly.
+ *
+ * @param ctx - The module context
+ * @param parameter - The parameter to test
+ */
+export const isCellInout = (ctx: ModuleContext, parameter: GirParameter): boolean =>
+    isInoutParameter(parameter) && isScalarRef(ctx.repository, ctx.namespace.name, parameter.type);
+
+/**
  * Renders the `t.trampoline(...)` FFI descriptor for a callback parameter.
  *
  * The trampoline carries the callback's own argument and return FFI types,
@@ -137,7 +181,7 @@ export const writeTrampolineType = (
     const { callback, namespaceName } = resolved;
     const argTypes = callback.parameters.map((parameter) => {
         const ffi = writeFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership);
-        return isOutParameter(parameter) ? `t.ref(${ffi})` : ffi;
+        return isOutParameter(parameter) || isCellInout(ctx, parameter) ? `t.ref(${ffi})` : ffi;
     });
     let userDataIndex: number | undefined;
     callback.parameters.forEach((parameter, index) => {

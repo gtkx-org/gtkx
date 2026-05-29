@@ -129,7 +129,7 @@ impl TrampolineData {
                 let inner_ptr = unsafe { *(arg_ptr as *const *mut c_void) };
                 out_cell_indices.push(values.len());
                 out_targets.push((inner_ptr, &ref_type.inner_type));
-                values.push(Value::Null);
+                values.push(seed_ref_cell(inner_ptr, &ref_type.inner_type));
                 continue;
             }
             match ty.read_from_raw_ptr(arg_ptr, "trampoline arg") {
@@ -177,6 +177,29 @@ impl TrampolineData {
         state_ptr
     }
 
+}
+
+/// Seeds a trampoline out/inout cell with the value currently behind its C
+/// pointer.
+///
+/// Scalar inner types (integer, float, enum/flags, boolean, unichar) are read
+/// directly so an `inout` parameter exposes its incoming value to the JS
+/// handler; the codegen wrapper passes that value in and writes the handler's
+/// result back. Pointer-typed inner types are left `Null`: a pure-out slot may
+/// be uninitialized, so dereferencing it to read a pointer would be unsound,
+/// and the handler overwrites the cell regardless.
+fn seed_ref_cell(inner_ptr: *mut c_void, inner_type: &Type) -> Value {
+    if inner_ptr.is_null() {
+        return Value::Null;
+    }
+    match inner_type {
+        Type::Integer(_) | Type::Float(_) | Type::Tagged(_) | Type::Boolean(_) | Type::Unichar(_) => {
+            inner_type
+                .read_from_raw_ptr(inner_ptr.cast_const(), "inout cell seed")
+                .unwrap_or(Value::Null)
+        }
+        _ => Value::Null,
+    }
 }
 
 /// Writes each `{ value }` cell the JS handler populated back through its `Ref`

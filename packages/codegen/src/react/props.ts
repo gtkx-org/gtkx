@@ -1,7 +1,7 @@
 import { camelCase, pascalCase } from "../dsl/identifier.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import { type GirParameter, isOutParameter } from "../gir/parameter.js";
+import { type GirParameter, isInoutParameter, isOutParameter } from "../gir/parameter.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { GirProperty } from "../gir/property.js";
 import { resolveQualifiedClass, splitQualifiedName } from "../gir/qualified-name.js";
@@ -9,6 +9,7 @@ import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
+import { isScalarRef } from "../writers/value.js";
 import { signalHandlerName } from "./widgets.js";
 
 /**
@@ -246,7 +247,11 @@ const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly 
     const qualifiedReturn = qualifyTypeRef(signal.returnValue.type, owningNamespace);
     const baseReturn = renderTsType(repository, qualifiedReturn, signal.returnValue.nullable, imports);
     const outTypes = visible
-        .filter(isOutParameter)
+        .filter(
+            (parameter) =>
+                isOutParameter(parameter) ||
+                (isInoutParameter(parameter) && isScalarRef(repository, owningNamespace, parameter.type)),
+        )
         .map((parameter) => renderTsType(repository, qualifyTypeRef(parameter.type, owningNamespace), false, imports));
     if (outTypes.length === 0) {
         return baseReturn === "void" ? "void" : `${baseReturn} | void`;

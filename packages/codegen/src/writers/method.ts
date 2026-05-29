@@ -12,7 +12,7 @@ import { qualifyTypeRef } from "../gir/qualify.js";
 import type { ResolvedNamed } from "../gir/repository.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
 import { writeTsType } from "./types-ts.js";
-import { type ResolvedCallback, resolveCallbackType } from "./value.js";
+import { isCellInout, type ResolvedCallback, resolveCallbackType } from "./value.js";
 
 /**
  * Returns the camelCased JS export name for a callable's method or static.
@@ -618,14 +618,14 @@ const renderCallbackArgument = (ctx: ModuleContext, resolved: ResolvedCallback, 
                       ref: qualifyTypeRef(parameter.type, namespaceName),
                       transfer: parameter.transferOwnership,
                       nullable: parameter.nullable,
-                      valueExpression: `args[${index}]`,
+                      valueExpression: isCellInout(ctx, parameter) ? `args[${index}].value` : `args[${index}]`,
                   }),
         )
         .filter((expression): expression is string => expression !== undefined)
         .join(", ");
     const returnRef = qualifyTypeRef(callback.returnValue.type, namespaceName);
     const outArgIndices = callback.parameters
-        .map((parameter, index) => (isOutParameter(parameter) ? index : -1))
+        .map((parameter, index) => (isOutParameter(parameter) || isCellInout(ctx, parameter) ? index : -1))
         .filter((index) => index >= 0);
     if (outArgIndices.length > 0) {
         const body = renderTupleWriteback(ctx, `${name}(${callArgs})`, outArgIndices, returnRef);

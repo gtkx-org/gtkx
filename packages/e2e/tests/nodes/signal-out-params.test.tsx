@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/ffi/gdk";
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkLabel, GtkOverlay, GtkSpinButton } from "@gtkx/react";
+import { GtkBox, GtkLabel, GtkOverlay, GtkSpinButton, GtkText } from "@gtkx/react";
 import { act, render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -58,6 +58,40 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
         await act(() => spin.update());
 
         expect(spin.getValue()).toBe(256);
+    });
+});
+
+describe("signal inout-parameters - GtkEditable::insert-text", () => {
+    it("seeds the handler with the incoming position read from the inout pointer", async () => {
+        const textRef = createRef<Gtk.Text>();
+
+        await render(<GtkText ref={textRef} />);
+
+        const text = textRef.current as Gtk.Text;
+        const seenPositions: number[] = [];
+        text.connect("insert-text", (_text: string, _length: number, position: number) => {
+            seenPositions.push(position);
+            return position;
+        });
+
+        await act(() => text.insertText("abc", 3, 0));
+
+        expect(seenPositions[0]).toBe(0);
+        expect(text.getText()).toBe("abc");
+    });
+
+    it("writes the handler's returned position back so the default insertion honors it", async () => {
+        const textRef = createRef<Gtk.Text>();
+
+        await render(<GtkText ref={textRef} />);
+
+        const text = textRef.current as Gtk.Text;
+        await act(() => text.insertText("XXXX", 4, 0));
+        text.connect("insert-text", () => 1);
+
+        await act(() => text.insertText("Y", 1, 4));
+
+        expect(text.getText()).toBe("XYXXX");
     });
 });
 

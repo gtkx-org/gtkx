@@ -10,7 +10,7 @@ import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
 import { forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
 import { isHandlePassing, renderTupleWriteback, wrapReturnValue } from "./method.js";
-import { writeFfiType } from "./value.js";
+import { isCellInout, writeFfiType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 
@@ -130,7 +130,7 @@ const renderSignalEntry = (ctx: ModuleContext, collected: CollectedSignal): stri
         writeFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership),
     );
     const trampolineParamFfi = params.map((parameter, index) =>
-        isOutParameter(parameter) ? `t.ref(${paramFfi[index]})` : paramFfi[index],
+        isOutParameter(parameter) || isCellInout(ctx, parameter) ? `t.ref(${paramFfi[index]})` : paramFfi[index],
     );
     const returnRef = qualifyTypeRef(signal.returnValue.type, namespaceName);
     const isVoid = isVoidRef(returnRef);
@@ -164,13 +164,13 @@ const renderInvokeClosure = (
                       ref: qualifyTypeRef(parameter.type, namespaceName),
                       transfer: parameter.transferOwnership,
                       nullable: parameter.nullable,
-                      valueExpression: `args[${index + 1}]`,
+                      valueExpression: isCellInout(ctx, parameter) ? `args[${index + 1}].value` : `args[${index + 1}]`,
                   }),
         )
         .filter((expression): expression is string => expression !== undefined)
         .join(", ");
     const outArgIndices = params
-        .map((parameter, index) => (isOutParameter(parameter) ? index + 1 : -1))
+        .map((parameter, index) => (isOutParameter(parameter) || isCellInout(ctx, parameter) ? index + 1 : -1))
         .filter((index) => index >= 0);
     if (outArgIndices.length === 0) {
         if (returnRef !== undefined && isHandlePassing(ctx, returnRef)) {
