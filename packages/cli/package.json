@@ -69,7 +69,7 @@
         "typecheck": "tsc -b --emitDeclarationOnly"
     },
     "dependencies": {
-        "@clack/prompts": "^1.4.0",
+        "@clack/prompts": "^1.5.0",
         "@gtkx/codegen": "workspace:*",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/mcp": "workspace:*",
