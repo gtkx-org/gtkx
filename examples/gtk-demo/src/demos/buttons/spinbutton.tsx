@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkGrid, GtkLabel, GtkSpinButton } from "@gtkx/react";
-import { type Ref, useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./spinbutton.tsx?raw";
 
@@ -21,17 +21,14 @@ const MONTHS = [
 
 const GTK_INPUT_ERROR = -1;
 
-const handleHexInput = (newValue: Ref<number>, spin: Gtk.SpinButton) => {
-    if (!newValue || typeof newValue !== "object" || !("value" in newValue)) return GTK_INPUT_ERROR;
-    newValue.value = 0;
+const handleHexInput = (spin: Gtk.SpinButton): [number, number] => {
     const text = spin.getText();
     const match = text.match(/^\s*([+-]?)(?:0[xX])?([0-9a-fA-F]+)$/);
-    if (!match) return GTK_INPUT_ERROR;
+    if (!match) return [GTK_INPUT_ERROR, 0];
     const sign = match[1] === "-" ? -1 : 1;
     const parsed = sign * Number.parseInt(match[2] ?? "", 16);
-    if (Number.isNaN(parsed)) return GTK_INPUT_ERROR;
-    newValue.value = parsed;
-    return 1;
+    if (Number.isNaN(parsed)) return [GTK_INPUT_ERROR, 0];
+    return [1, parsed];
 };
 
 const handleHexOutput = (spin: Gtk.SpinButton) => {
@@ -41,18 +38,15 @@ const handleHexOutput = (spin: Gtk.SpinButton) => {
     return true;
 };
 
-const handleTimeInput = (newValue: Ref<number>, spin: Gtk.SpinButton) => {
+const handleTimeInput = (spin: Gtk.SpinButton): [number, number] => {
     const text = spin.getText();
-    if (!newValue || typeof newValue !== "object" || !("value" in newValue)) return GTK_INPUT_ERROR;
-    newValue.value = 0;
     const parts = text.split(":");
-    if (parts.length !== 2) return GTK_INPUT_ERROR;
+    if (parts.length !== 2) return [GTK_INPUT_ERROR, 0];
     const hours = Number.parseInt(parts[0] ?? "", 10);
     const minutes = Number.parseInt(parts[1] ?? "", 10);
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) return GTK_INPUT_ERROR;
-    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return GTK_INPUT_ERROR;
-    newValue.value = hours * 60 + minutes;
-    return 1;
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return [GTK_INPUT_ERROR, 0];
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return [GTK_INPUT_ERROR, 0];
+    return [1, hours * 60 + minutes];
 };
 
 const handleTimeOutput = (spin: Gtk.SpinButton) => {
@@ -63,23 +57,16 @@ const handleTimeOutput = (spin: Gtk.SpinButton) => {
     return true;
 };
 
-function useMonthSpinHandlers(monthSpinRef: React.RefObject<Gtk.SpinButton | null>) {
-    const handleMonthInput = useCallback(
-        (newValue: Ref<number>) => {
-            const spin = monthSpinRef.current;
-            if (!spin || !newValue || typeof newValue !== "object" || !("value" in newValue)) return GTK_INPUT_ERROR;
-            newValue.value = 0;
-            const text = spin.getText().toLowerCase();
-            for (let i = 0; i < MONTHS.length; i++) {
-                if (MONTHS[i]?.toLowerCase().startsWith(text)) {
-                    newValue.value = i + 1;
-                    return 1;
-                }
+function useMonthSpinHandlers() {
+    const handleMonthInput = useCallback((spin: Gtk.SpinButton): [number, number] => {
+        const text = spin.getText().toLowerCase();
+        for (let i = 0; i < MONTHS.length; i++) {
+            if (MONTHS[i]?.toLowerCase().startsWith(text)) {
+                return [1, i + 1];
             }
-            return GTK_INPUT_ERROR;
-        },
-        [monthSpinRef],
-    );
+        }
+        return [GTK_INPUT_ERROR, 0];
+    }, []);
 
     const handleMonthOutput = useCallback((spin: Gtk.SpinButton) => {
         const value = spin.getValue();
@@ -183,7 +170,7 @@ const TimeSpinRow = (props: SpinRowProps) => (
 );
 
 interface MonthSpinRowProps extends SpinRowProps {
-    onInput: (newValue: Ref<number>) => number;
+    onInput: (spin: Gtk.SpinButton) => [number, number];
     onOutput: (spin: Gtk.SpinButton) => boolean;
 }
 
@@ -220,7 +207,7 @@ const SpinButtonDemo = () => {
     const timeSpinRef = useRef<Gtk.SpinButton | null>(null);
     const monthSpinRef = useRef<Gtk.SpinButton | null>(null);
 
-    const monthHandlers = useMonthSpinHandlers(monthSpinRef);
+    const monthHandlers = useMonthSpinHandlers();
 
     return (
         <GtkGrid rowSpacing={10} columnSpacing={10} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>

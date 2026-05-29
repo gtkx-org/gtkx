@@ -11,9 +11,9 @@ use std::sync::{Arc, mpsc};
 
 use napi::bindgen_prelude::{FromNapiValue, Unknown};
 use napi::threadsafe_function::ThreadsafeFunctionCallMode;
-use napi::{Env, JsFunction};
+use napi::{Env, JsFunction, JsObject, NapiValue as _};
 
-use super::{GlibDisconnectedError, Mailbox, NodeCallback, WakeJsTsfn};
+use super::{GlibDisconnectedError, Mailbox, NodeCallback, NodeCallbackResult, WakeJsTsfn};
 use crate::error_reporter::NativeErrorReporter;
 use crate::value::{JsRef, Value};
 
@@ -99,6 +99,23 @@ impl Mailbox {
         args: Vec<Value>,
         capture_result: bool,
     ) -> anyhow::Result<Value> {
+        let (value, _) = self.invoke_node_and_wait_with_cells(callback, args, capture_result, Vec::new())?;
+        Ok(value)
+    }
+
+    /// Like [`Self::invoke_node_and_wait`] but, for each index in
+    /// `out_cell_indices`, passes that argument to JS wrapped in a mutable
+    /// `{ value }` cell and reads the cell's `value` back after the callback
+    /// returns. Used by the trampoline path to flush signal out-parameters the
+    /// handler wrote into their cells.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn invoke_node_and_wait_with_cells(
+        &self,
+        callback: &Arc<JsRef<JsFunction>>,
+        args: Vec<Value>,
+        capture_result: bool,
+        out_cell_indices: Vec<usize>,
+    ) -> anyhow::Result<super::NodeCallbackResult> {
         let callback_depth = self.callback_depth.load(Ordering::Acquire) + 1;
         let (tx, rx) = mpsc::channel();
 
@@ -106,6 +123,7 @@ impl Mailbox {
             callback: callback.clone(),
             args,
             capture_result,
+            out_cell_indices,
             result_tx: tx,
         });
 
@@ -122,9 +140,9 @@ impl Mailbox {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn wait_for_node_result(
         &self,
-        rx: &mpsc::Receiver<anyhow::Result<Value>>,
+        rx: &mpsc::Receiver<anyhow::Result<NodeCallbackResult>>,
         callback_depth: usize,
-    ) -> anyhow::Result<Value> {
+    ) -> anyhow::Result<NodeCallbackResult> {
         loop {
             self.dispatch_pending_from_depth(callback_depth);
 
@@ -149,10 +167,11 @@ impl Mailbox {
                 callback,
                 args,
                 capture_result,
+                out_cell_indices,
                 result_tx,
             } = pending;
             self.enter_callback();
-            let result = Self::execute_callback(env, &callback, args, capture_result);
+            let result = Self::execute_callback(env, &callback, args, capture_result, &out_cell_indices);
             self.leave_callback();
             if result_tx.send(result).is_err() {
                 NativeErrorReporter::global()
@@ -162,20 +181,59 @@ impl Mailbox {
         }
     }
 
+    /// Wraps `value` in a fresh `{ value }` JavaScript object so a callback can
+    /// mutate the slot in place — the cell a trampoline out-parameter is
+    /// written through.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn wrap_out_cell<'env>(env: &'env Env, value: Unknown<'env>) -> napi::Result<Unknown<'env>> {
+        let mut cell = env.create_object()?;
+        cell.set_named_property("value", value)?;
+        Ok(unsafe { Unknown::from_raw_unchecked(env.raw(), napi::NapiRaw::raw(&cell)) })
+    }
+
+    /// Reads the `value` slot of each out-cell argument back into a [`Value`],
+    /// paired with the argument's index, after the callback has run.
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn read_out_cells(
+        env: &Env,
+        js_args: &[Unknown<'_>],
+        out_cell_indices: &[usize],
+    ) -> napi::Result<Vec<(usize, Value)>> {
+        let mut cells = Vec::with_capacity(out_cell_indices.len());
+        for &index in out_cell_indices {
+            let Some(arg) = js_args.get(index) else {
+                continue;
+            };
+            let cell: JsObject = unsafe { JsObject::from_raw_unchecked(env.raw(), napi::JsValue::raw(arg)) };
+            let slot: Unknown<'_> = cell.get_named_property("value")?;
+            cells.push((index, Value::from_js_value(env, slot)?));
+        }
+        Ok(cells)
+    }
+
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn execute_callback(
         env: Env,
         callback: &Arc<JsRef<JsFunction>>,
         args: Vec<Value>,
         capture_result: bool,
-    ) -> anyhow::Result<Value> {
+        out_cell_indices: &[usize],
+    ) -> anyhow::Result<NodeCallbackResult> {
         use napi::sys;
 
         let js_args: Vec<Unknown<'_>> = args
             .into_iter()
-            .map(|v| {
-                v.to_js_value(&env)
-                    .map_err(|e| anyhow::anyhow!("converting callback arg: {e}"))
+            .enumerate()
+            .map(|(index, v)| {
+                let converted = v
+                    .to_js_value(&env)
+                    .map_err(|e| anyhow::anyhow!("converting callback arg: {e}"))?;
+                if out_cell_indices.contains(&index) {
+                    Self::wrap_out_cell(&env, converted)
+                        .map_err(|e| anyhow::anyhow!("wrapping out-cell arg: {e}"))
+                } else {
+                    Ok(converted)
+                }
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
 
@@ -220,13 +278,17 @@ impl Mailbox {
             return Err(anyhow::anyhow!("napi_call_function failed: {status:?}"));
         }
 
-        if capture_result {
+        let cells = Self::read_out_cells(&env, &js_args, out_cell_indices)
+            .map_err(|e| anyhow::anyhow!("reading out-cell args: {e}"))?;
+
+        let value = if capture_result {
             let unknown = unsafe { Unknown::from_raw_unchecked(env.raw(), return_value) };
             Value::from_js_value(&env, unknown)
-                .map_err(|e| anyhow::anyhow!("converting callback result: {e}"))
+                .map_err(|e| anyhow::anyhow!("converting callback result: {e}"))?
         } else {
-            Ok(Value::Undefined)
-        }
+            Value::Undefined
+        };
+        Ok((value, cells))
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]

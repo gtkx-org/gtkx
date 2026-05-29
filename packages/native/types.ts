@@ -40,7 +40,7 @@ type BoxedType = {
     freeFn?: string;
 };
 
-type StructType = { type: "struct"; ownership: Ownership; innerType: string; size?: number };
+type StructType = { type: "struct"; ownership: Ownership; size?: number };
 
 type FundamentalType = {
     type: "fundamental";

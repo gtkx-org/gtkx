@@ -101,8 +101,8 @@ const boxedT = (
     return result;
 };
 
-const structT = (innerType: string, ownership: Ownership = "borrowed", size?: number): Type => {
-    const result: Type = { type: "struct", ownership, innerType };
+const structT = (ownership: Ownership = "borrowed", size?: number): Type => {
+    const result: Type = { type: "struct", ownership };
     if (size !== undefined) result.size = size;
     return result;
 };

@@ -64,11 +64,16 @@ type DepthTaggedTask = (usize, GlibTask);
 
 pub type WakeJsTsfn = ThreadsafeFunction<(), (), (), Status, false, true>;
 
+/// A node callback's outcome: the JS return value plus, for each out-cell
+/// argument index, the value the callback left in that cell's `value` slot.
+pub type NodeCallbackResult = (Value, Vec<(usize, Value)>);
+
 struct NodeCallback {
     callback: Arc<JsRef<JsFunction>>,
     args: Vec<Value>,
     capture_result: bool,
-    result_tx: mpsc::Sender<anyhow::Result<Value>>,
+    out_cell_indices: Vec<usize>,
+    result_tx: mpsc::Sender<anyhow::Result<NodeCallbackResult>>,
 }
 
 /// Bidirectional message queues coordinating the JS and `GLib` threads.

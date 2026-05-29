@@ -28,7 +28,11 @@ export type SignalDescriptor = {
      * returns the value handed back to native code.
      *
      * The raw `args` carry the emitting instance first and the trampoline
-     * user-data last; the closure selects and wraps the signal parameters.
+     * user-data last; the closure selects and wraps the in-parameters. A
+     * signal with `direction="out"` parameters omits them from the handler call
+     * and instead expects the handler to return them in a `[primary, ...outs]`
+     * tuple, which the native trampoline writes back through each out
+     * parameter's pointer — the same convention method out-parameters use.
      */
     readonly invoke: (handler: SignalHandler, args: readonly unknown[]) => unknown;
     /** FFI type of each emit-side `GValue`, in signal-parameter order. */

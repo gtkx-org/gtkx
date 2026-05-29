@@ -201,7 +201,7 @@ function emitImpl(this: GObject, sigName: string, ...args: unknown[]): void {
     if (paramCount > 0) {
         const paramTypes = read(
             query,
-            t.struct("GTypeArray", "borrowed", paramCount * GTYPE_SIZE),
+            t.struct("borrowed", paramCount * GTYPE_SIZE),
             SIGNAL_QUERY_PARAM_TYPES_OFFSET,
         ) as NativeHandle;
         for (let i = 0; i < paramCount; i++) {

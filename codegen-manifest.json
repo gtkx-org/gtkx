@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-28T14:03:19.706Z",
+  "generatedAt": "2026-05-29T12:23:19.487Z",
   "entries": [
     {
       "testFile": "examples/gtk-demo/tests/app-interactions.test.tsx",
@@ -34,13 +34,13 @@
     {
       "testFile": "examples/gtk-demo/tests/demos/advanced/font-features.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/advanced/font-features.test.tsx.shapes",
-      "sha256": "b45cf158151c114ade1f02cd4307a159c94506b346223551decc0acc9d2aef67",
+      "sha256": "3d6d1e751a5ea75de9239556c5e3ae3f62d34f898218d0e438c7fe41d3bf9e74",
       "shapes": 1144
     },
     {
       "testFile": "examples/gtk-demo/tests/demos/advanced/fontrendering.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/advanced/fontrendering.test.tsx.shapes",
-      "sha256": "9fadb1ac75fd919601e6fa7cf885987159aec41a817cbbcda176439dfed13185",
+      "sha256": "71ddcef5f95987721b6572d58f2a47f46ba3e9d4121ff40a026204cc9a545938",
       "shapes": 1209
     },
     {
@@ -58,8 +58,8 @@
     {
       "testFile": "examples/gtk-demo/tests/demos/benchmark/frames.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/benchmark/frames.test.tsx.shapes",
-      "sha256": "704ce88637ef1ae3fed0d89d7a9ba022bf1b4a064a95d1a85df484e683c10eea",
-      "shapes": 1044
+      "sha256": "8702c4077f0cab8cdb9bef93da86d4c5da3b0c6ef6e4fced202548ef0de941ea",
+      "shapes": 1034
     },
     {
       "testFile": "examples/gtk-demo/tests/demos/benchmark/themes.test.tsx",
@@ -118,7 +118,7 @@
     {
       "testFile": "examples/gtk-demo/tests/demos/css/css-basics.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/css-basics.test.tsx.shapes",
-      "sha256": "f184b350138e684aef6bac80fe0d4e14d1c710bab2f6ee158078c9f2707ccb35",
+      "sha256": "3a1e7e95788a226b33a47cdfb446b85ca51630566ecfdc399cb724d19010468b",
       "shapes": 1047
     },
     {
@@ -130,19 +130,19 @@
     {
       "testFile": "examples/gtk-demo/tests/demos/css/css-multiplebgs.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/css-multiplebgs.test.tsx.shapes",
-      "sha256": "0b055beeb4ceb9f7097306ff993ff00eddcadbec663449fdaffa050cfd0a0d4b",
+      "sha256": "a95913c1278790629420dc997795e0b9fdddc3dd62a00985d5bf5a2055fa8a9e",
       "shapes": 1057
     },
     {
       "testFile": "examples/gtk-demo/tests/demos/css/css-pixbufs.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/css-pixbufs.test.tsx.shapes",
-      "sha256": "0b714cfab8c700cc63ca027f4daa936a9bc18bf226e87940f2e951bfb3d75a8d",
+      "sha256": "8128afb97c9835b46d0597e575b1667fde20252a09307f3238b0415643d0ff21",
       "shapes": 1047
     },
     {
       "testFile": "examples/gtk-demo/tests/demos/css/css-shadows.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/css-shadows.test.tsx.shapes",
-      "sha256": "2d2ae97074cd14de76a8e2d78ea50615882b62cab19202f49b0ee6fcda41908e",
+      "sha256": "299f295579bd44e1473273a9b3a5daceb39c344ae9356aab0a27076ebb8b51e6",
       "shapes": 1055
     },
     {
@@ -160,7 +160,7 @@
     {
       "testFile": "examples/gtk-demo/tests/demos/css/use-css-editor.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/css/use-css-editor.test.tsx.shapes",
-      "sha256": "f161605d4e9c4524d4348fa1eee98ee418a734b79ee6936eb5d574e3a10a9587",
+      "sha256": "493300e9bbe2917d1b3fb3aa7edd98b597c034634a540dd203034fe9733e8cfa",
       "shapes": 1032
     },
     {
@@ -184,7 +184,7 @@
     {
       "testFile": "examples/gtk-demo/tests/demos/dialogs/printing.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/dialogs/printing.test.tsx.shapes",
-      "sha256": "5526743edd6d2ca0a73dfd303392889b539bb38b2f2056b5e3b8392d97d2499f",
+      "sha256": "9f35aa6c65df66320ce6b575c1c40c1631413ae0efe1511a5f66bfeaccff87a8",
       "shapes": 1048
     },
     {
@@ -274,7 +274,7 @@
     {
       "testFile": "examples/gtk-demo/tests/demos/input/search-entry.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/input/search-entry.test.tsx.shapes",
-      "sha256": "eba7d730154c24afe526e7650fb31793b4f07fb61c8a0c201d9b288b9abb74b0",
+      "sha256": "d732b49340929c2d7894c91163445bf99d0870be0e7dea273c036d0fa38f5512",
       "shapes": 1047
     },
     {
@@ -298,7 +298,7 @@
     {
       "testFile": "examples/gtk-demo/tests/demos/input/textview.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/input/textview.test.tsx.shapes",
-      "sha256": "17c017963eb60eeefd67f554b5a3fb29d83604b257bb68027b5afb2a3a228e24",
+      "sha256": "8eca7ffd883cd3edcc41e5cf9f1658e9d8c2d66d6cd18447f112fff49a295664",
       "shapes": 5215
     },
     {
@@ -310,8 +310,8 @@
     {
       "testFile": "examples/gtk-demo/tests/demos/layout/fixed2.test.tsx",
       "snapshotFile": ".codegen-golden/examples/gtk-demo/tests/demos/layout/fixed2.test.tsx.shapes",
-      "sha256": "372cdf205b8a400703ac0ec3d992ac542bda49b88814ef3943dca915c304bfcd",
-      "shapes": 1031
+      "sha256": "73efcc9c10035d875695673b20dc108b074d9088a296db2be670b559d9545af8",
+      "shapes": 1037
     },
     {
       "testFile": "examples/gtk-demo/tests/demos/layout/flowbox.test.tsx",

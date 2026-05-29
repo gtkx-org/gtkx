@@ -63,7 +63,7 @@ export class ImageSurface extends Surface {
             LIB,
             "cairo_image_surface_get_data",
             [{ type: SURFACE_T_NONE, value: getHandle(this) }],
-            t.struct("guint8*", "borrowed", totalBytes),
+            t.struct("borrowed", totalBytes),
         ) as NativeHandle | null;
         if (ptr === null) return new Uint8Array(0);
         const result = new Uint8Array(totalBytes);

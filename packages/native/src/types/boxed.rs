@@ -282,7 +282,6 @@ impl GlibValueCodec for BoxedType {
 #[derive(Debug, Clone)]
 pub struct StructType {
     pub ownership: Ownership,
-    pub type_name: String,
     pub size: Option<usize>,
 }
 
@@ -291,19 +290,13 @@ impl StructType {
     pub fn from_js_value(_env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let ownership = Ownership::from_js_value(obj, "struct")?;
 
-        let type_name: String = obj.get_named_property("innerType")?;
-
         let size: Option<usize> = obj
             .get_named_property::<Option<f64>>("size")
             .ok()
             .flatten()
             .map(|n| n as usize);
 
-        Ok(Self {
-            ownership,
-            type_name,
-            size,
-        })
+        Ok(Self { ownership, size })
     }
 }
 
@@ -323,13 +316,8 @@ impl FfiDecoder for StructType {
         let boxed = match self.ownership {
             Ownership::Full => Boxed::from_glib_full(None, struct_ptr),
             Ownership::Borrowed => match self.size {
-                Some(_) => Boxed::from_glib_none_with_size(
-                    None,
-                    struct_ptr,
-                    self.size,
-                    Some(&self.type_name),
-                )
-                .expect("struct decode with a known size always succeeds"),
+                Some(_) => Boxed::from_glib_none_with_size(None, struct_ptr, self.size, None)
+                    .expect("struct decode with a known size always succeeds"),
                 None => Boxed::from_ptr_unowned(struct_ptr),
             },
             Ownership::None => Boxed::from_ptr_unowned(struct_ptr),
@@ -343,10 +331,8 @@ impl RawPtrCodec for StructType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
             let boxed = match self.size {
-                Some(_) => {
-                    Boxed::from_glib_none_with_size(None, ptr, self.size, Some(&self.type_name))
-                        .expect("struct ptr_to_value with a known size always succeeds")
-                }
+                Some(_) => Boxed::from_glib_none_with_size(None, ptr, self.size, None)
+                    .expect("struct ptr_to_value with a known size always succeeds"),
                 None => Boxed::from_ptr_unowned(ptr),
             };
             Ok(value::Value::Object(NativeValue::Boxed(boxed).into()))
@@ -366,10 +352,7 @@ impl RawPtrCodec for StructType {
             }
             let dst_ptr = unsafe { (ptr as *const *mut c_void).read_unaligned() };
             if dst_ptr.is_null() {
-                bail!(
-                    "Struct field write into null pointer slot for type '{}'",
-                    self.type_name
-                )
+                bail!("Struct field write into null pointer slot")
             }
             unsafe {
                 std::ptr::copy_nonoverlapping(src_ptr as *const u8, dst_ptr as *mut u8, size);

@@ -116,6 +116,8 @@ impl TrampolineData {
         result: *mut c_void,
     ) -> Option<*mut TrampolineState> {
         let mut values = Vec::with_capacity(self.arg_types.len());
+        let mut out_cell_indices: Vec<usize> = Vec::new();
+        let mut out_targets: Vec<(*mut c_void, &Type)> = Vec::new();
 
         for (i, ty) in self.arg_types.iter().enumerate() {
             if self.user_data_index == Some(i) {
@@ -123,6 +125,13 @@ impl TrampolineData {
             }
 
             let arg_ptr = unsafe { *args.add(i) };
+            if let Type::Ref(ref_type) = ty {
+                let inner_ptr = unsafe { *(arg_ptr as *const *mut c_void) };
+                out_cell_indices.push(values.len());
+                out_targets.push((inner_ptr, &ref_type.inner_type));
+                values.push(Value::Null);
+                continue;
+            }
             match ty.read_from_raw_ptr(arg_ptr, "trampoline arg") {
                 Ok(val) => values.push(val),
                 Err(e) => {
@@ -144,21 +153,49 @@ impl TrampolineData {
             None
         };
 
-        let js_result =
-            Mailbox::global().invoke_node_and_wait(&self.js_func, values, capture_result);
+        let js_result = Mailbox::global().invoke_node_and_wait_with_cells(
+            &self.js_func,
+            values,
+            capture_result,
+            out_cell_indices,
+        );
 
-        if let Err(ref e) = js_result {
-            NativeErrorReporter::global().report(&anyhow::anyhow!(
-                "trampoline: JS callback error (return type: {}): {e:#}",
-                self.return_type
-            ));
+        match js_result {
+            Ok((value, cells)) => {
+                flush_out_cells(&cells, &out_targets);
+                self.return_type.write_return_to_raw_ptr(result, &Ok(value));
+            }
+            Err(ref e) => {
+                NativeErrorReporter::global().report(&anyhow::anyhow!(
+                    "trampoline: JS callback error (return type: {}): {e:#}",
+                    self.return_type
+                ));
+                self.return_type.write_return_to_raw_ptr(result, &Err(()));
+            }
         }
 
-        let write_result = js_result.map_err(|_| ());
-        self.return_type
-            .write_return_to_raw_ptr(result, &write_result);
-
         state_ptr
+    }
+
+}
+
+/// Writes each `{ value }` cell the JS handler populated back through its `Ref`
+/// out-parameter's C pointer. The codegen-side `invoke` closure owns the
+/// tuple-to-cell mapping; native only flushes the cells, so its behaviour stays
+/// a generic out-parameter write-back independent of any signal-specific return
+/// shape.
+///
+/// `cells` arrive in the same order as the `Ref` arguments were collected, so
+/// they pair positionally with `out_targets`; null target pointers are skipped.
+fn flush_out_cells(cells: &[(usize, Value)], out_targets: &[(*mut c_void, &Type)]) {
+    for ((_, new_value), (ptr, inner_type)) in cells.iter().zip(out_targets.iter()) {
+        if ptr.is_null() {
+            continue;
+        }
+        if let Err(e) = inner_type.write_value_to_raw_ptr(*ptr, new_value) {
+            NativeErrorReporter::global()
+                .report(&e.context("trampoline: failed to write out-parameter"));
+        }
     }
 }
 

@@ -1,0 +1,419 @@
+import type { ModuleContext } from "../dsl/context.js";
+import { joinArgs, quote } from "../dsl/emit.js";
+import { callbackFromNode, type GirCallback } from "../gir/callback.js";
+import type { GirNamespace } from "../gir/namespace.js";
+import type { GirParameter, ParameterTransfer } from "../gir/parameter.js";
+import { qualifyTypeRef } from "../gir/qualify.js";
+import type { ResolvedNamed } from "../gir/repository.js";
+import type { ArrayTypeRef, GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
+import { computeBoxedFieldSlots } from "./boxed-field-accessor.js";
+
+/**
+ * Inline byte sizes for boxed value types whose GIR record is opaque, so the
+ * field layout cannot be computed but the type is still passed by value in
+ * arrays (e.g. the `GValue` cells `g_signal_emitv` consumes).
+ */
+const HARDCODED_INLINE_ELEMENT_SIZES: ReadonlyMap<string, number> = new Map([["GObject.Value", 24]]);
+
+/**
+ * Maps a GIR transfer-ownership value to the FFI runtime's ownership
+ * vocabulary.
+ *
+ * The runtime treats `"none"` as `"borrowed"` for incoming values and as
+ * `"full"` for return values that already own the pointer. Callers pass
+ * the GIR string directly; this helper does the translation.
+ *
+ * @param transfer - GIR transfer-ownership (`"none"`, `"full"`, `"container"`)
+ */
+export const ffiOwnership = (transfer: ParameterTransfer): "borrowed" | "full" | "none" => {
+    if (transfer === "full") return "full";
+    if (transfer === "container") return "full";
+    return "borrowed";
+};
+
+/**
+ * Derives the transfer of a container's elements from the container's own
+ * transfer. A `"container"` transfer owns the container but borrows its
+ * elements, so they marshal as `"none"`; otherwise elements inherit the
+ * container's transfer.
+ *
+ * @param transfer - The container's GIR transfer-ownership
+ */
+const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =>
+    transfer === "container" ? "none" : transfer;
+
+/**
+ * Renders a TypeScript expression that materialises the FFI type
+ * descriptor for `ref`.
+ *
+ * @param ctx - The module context (used for cross-namespace imports)
+ * @param ref - The GIR type reference, or `undefined` for void
+ * @param transfer - GIR transfer-ownership conveyed onto the descriptor
+ * @param argIndexOffset - Shift applied to a sized array's length-parameter
+ *     index so it addresses the FFI argument list (which includes the
+ *     instance receiver) rather than the GIR parameter list
+ */
+export const writeFfiType = (
+    ctx: ModuleContext,
+    ref: GirTypeRef | undefined,
+    transfer: ParameterTransfer = "none",
+    argIndexOffset = 0,
+): string => {
+    if (ref === undefined) return "t.void";
+    const ownership = ffiOwnership(transfer);
+    switch (ref.kind) {
+        case "primitive":
+            return primitiveExpression(ref.category, ownership);
+        case "varargs":
+            return "t.void";
+        case "callback":
+            return "t.void";
+        case "named":
+            return namedExpression(ctx, ref, ownership);
+        case "array":
+            return arrayExpression(ctx, ref, transfer, argIndexOffset);
+        case "list": {
+            if (ref.flavor === "gbytearray") return `t.byteArray(${quote(ownership)})`;
+            const element = writeFfiType(ctx, ref.element, deriveElementTransfer(transfer), argIndexOffset);
+            const helper = LIST_HELPERS[ref.flavor];
+            return `t.${helper}(${element}, ${quote(ownership)})`;
+        }
+        case "hashtable": {
+            const elementTransfer = deriveElementTransfer(transfer);
+            const key = writeFfiType(ctx, ref.key, elementTransfer, argIndexOffset);
+            const value = writeFfiType(ctx, ref.value, elementTransfer, argIndexOffset);
+            return `t.hashTable(${key}, ${value}, ${quote(ownership)})`;
+        }
+    }
+};
+
+/**
+ * A callback declaration resolved from a parameter type, together with the
+ * namespace its parameter and return references belong to.
+ */
+export type ResolvedCallback = {
+    readonly callback: GirCallback;
+    readonly namespaceName: string;
+};
+
+/**
+ * Resolves a parameter type reference to its callback declaration, whether
+ * declared inline (`<callback>` child) or by name (a namespace-level
+ * `<callback>`). Returns `undefined` for non-callback references.
+ *
+ * @param ctx - The module context
+ * @param ref - The parameter type reference
+ */
+export const resolveCallbackType = (ctx: ModuleContext, ref: GirTypeRef | undefined): ResolvedCallback | undefined => {
+    if (ref === undefined) return undefined;
+    if (ref.kind === "callback") return { callback: callbackFromNode(ref.callback), namespaceName: ctx.namespace.name };
+    if (ref.kind !== "named") return undefined;
+    const owner = ref.namespaceName ?? ctx.namespace.name;
+    const resolved = ctx.repository.resolveNamed(owner, ref.typeName);
+    if (resolved === undefined || resolved.kind !== "callback") return undefined;
+    return { callback: resolved.value, namespaceName: resolved.namespace.name };
+};
+
+/**
+ * Renders the `t.trampoline(...)` FFI descriptor for a callback parameter.
+ *
+ * The trampoline carries the callback's own argument and return FFI types,
+ * the index of its `user_data` slot, and the owning parameter's `scope` plus
+ * whether a paired `GDestroyNotify` is present. The native marshaller folds
+ * the C-level callback, `user_data`, and destroy arguments into this single
+ * descriptor. Returns `undefined` when `ref` is not a callback.
+ *
+ * @param ctx - The module context
+ * @param ref - The parameter type reference
+ * @param owningParameter - The parameter that carries the callback, for scope/destroy
+ */
+export const writeTrampolineType = (
+    ctx: ModuleContext,
+    ref: GirTypeRef | undefined,
+    owningParameter: GirParameter,
+): string | undefined => {
+    const resolved = resolveCallbackType(ctx, ref);
+    if (resolved === undefined) return undefined;
+    const { callback, namespaceName } = resolved;
+    const argTypes = callback.parameters.map((parameter) =>
+        writeFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership),
+    );
+    let userDataIndex: number | undefined;
+    callback.parameters.forEach((parameter, index) => {
+        if (parameter.name === "user_data" || parameter.name === "data") userDataIndex = index;
+    });
+    const returnRef = qualifyTypeRef(callback.returnValue.type, namespaceName);
+    const isVoid = returnRef === undefined || (returnRef.kind === "primitive" && returnRef.category === "void");
+    const returnType = isVoid ? "t.void" : writeFfiType(ctx, returnRef, callback.returnValue.transferOwnership);
+    const options: string[] = [];
+    if (owningParameter.destroyIndex !== undefined) options.push("hasDestroy: true");
+    if (userDataIndex !== undefined) options.push(`userDataIndex: ${userDataIndex}`);
+    if (owningParameter.scope !== undefined) options.push(`scope: ${quote(owningParameter.scope)}`);
+    const optionsArg = options.length > 0 ? `, { ${options.join(", ")} }` : "";
+    return `t.trampoline([${argTypes.join(", ")}], ${returnType}${optionsArg})`;
+};
+
+const LIST_HELPERS: Readonly<Record<"glist" | "gslist" | "gptrarray" | "garray" | "gbytearray", string>> = {
+    glist: "list",
+    gslist: "slist",
+    gptrarray: "ptrArray",
+    garray: "gArray",
+    gbytearray: "byteArray",
+};
+
+const primitiveExpression = (
+    category:
+        | "void"
+        | "boolean"
+        | "int8"
+        | "uint8"
+        | "int16"
+        | "uint16"
+        | "int32"
+        | "uint32"
+        | "int64"
+        | "uint64"
+        | "float32"
+        | "float64"
+        | "string"
+        | "unichar"
+        | "pointer",
+    ownership: "borrowed" | "full" | "none",
+): string => {
+    if (category === "void") return "t.void";
+    if (category === "string") return `t.string(${quote(ownership)})`;
+    if (category === "pointer") return "t.uint64";
+    return `t.${category}`;
+};
+
+const namedExpression = (ctx: ModuleContext, ref: NamedTypeRef, ownership: "borrowed" | "full" | "none"): string => {
+    const namespaceName = ref.namespaceName ?? ctx.namespace.name;
+    const resolved = ctx.repository.resolveNamed(namespaceName, ref.typeName);
+    if (resolved === undefined) {
+        return `t.object(${quote(ownership)})`;
+    }
+    return expressionForResolved(ctx, resolved, ownership);
+};
+
+/**
+ * Ref/unref functions for fundamental types whose GIR record omits
+ * `glib:ref-func`/`glib:unref-func` but which are nonetheless ref-counted
+ * fundamentals (their `GType` is not a boxed type, so `g_boxed_free` aborts).
+ * Keyed by GLib type name.
+ */
+const INTRINSIC_FUNDAMENTAL_FUNCS: ReadonlyMap<string, { readonly ref: string; readonly unref: string }> = new Map([
+    ["GVariant", { ref: "g_variant_ref_sink", unref: "g_variant_unref" }],
+]);
+
+type FundamentalDescriptor = {
+    readonly lib: string;
+    readonly refFunc: string;
+    readonly unrefFunc: string;
+    readonly glibTypeName: string | undefined;
+    readonly ownership: "borrowed" | "full" | "none";
+};
+
+const renderFundamental = (descriptor: FundamentalDescriptor): string => {
+    const { lib, refFunc, unrefFunc, glibTypeName, ownership } = descriptor;
+    const parts = [`ownership: ${quote(ownership)}`];
+    if (glibTypeName !== undefined) parts.push(`typeName: ${quote(glibTypeName)}`);
+    return `t.fundamental(${quote(lib)}, ${quote(refFunc)}, ${quote(unrefFunc)}, { ${parts.join(", ")} })`;
+};
+
+const classOrInterfaceExpression = (
+    resolved: Extract<ResolvedNamed, { kind: "class" | "interface" }>,
+    ownership: "borrowed" | "full" | "none",
+): string => {
+    const cls = resolved.value;
+    if (cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
+        return `t.object(${quote(ownership)})`;
+    }
+    return renderFundamental({
+        lib: resolved.namespace.sharedLibrary ?? "",
+        refFunc: cls.glibRefFunc,
+        unrefFunc: cls.glibUnrefFunc,
+        glibTypeName: cls.glibTypeName,
+        ownership,
+    });
+};
+
+type AncestorFundamental = {
+    readonly lib: string;
+    readonly refFunc: string;
+    readonly unrefFunc: string;
+    readonly glibTypeName: string | undefined;
+};
+
+const fundamentalAncestor = (
+    ctx: ModuleContext,
+    namespaceName: string,
+    typeName: string,
+): AncestorFundamental | undefined => {
+    const seen = new Set<string>();
+    let owner = namespaceName;
+    let name = typeName;
+    while (!seen.has(`${owner}.${name}`)) {
+        seen.add(`${owner}.${name}`);
+        const resolved = ctx.repository.resolveNamed(owner, name);
+        if (resolved === undefined || (resolved.kind !== "class" && resolved.kind !== "interface")) return undefined;
+        const cls = resolved.value;
+        if (cls.fundamental && cls.glibRefFunc !== undefined && cls.glibUnrefFunc !== undefined) {
+            return {
+                lib: resolved.namespace.sharedLibrary ?? "",
+                refFunc: cls.glibRefFunc,
+                unrefFunc: cls.glibUnrefFunc,
+                glibTypeName: cls.glibTypeName,
+            };
+        }
+        if (cls.parent === undefined) return undefined;
+        const dot = cls.parent.indexOf(".");
+        owner = dot === -1 ? resolved.namespace.name : cls.parent.slice(0, dot);
+        name = dot === -1 ? cls.parent : cls.parent.slice(dot + 1);
+    }
+    return undefined;
+};
+
+/**
+ * Renders the FFI descriptor for a method's instance (`self`) parameter.
+ *
+ * The receiver is always passed as a borrowed pointer regardless of the GIR
+ * instance-parameter transfer (`transfer="full"` on e.g. `gdk_event_unref`
+ * describes C-side consumption, not FFI ownership). A receiver whose ancestry
+ * reaches a ref-counted fundamental (e.g. `GskRenderNode`) is marshalled as
+ * `t.fundamental`; every other receiver — GObject subclasses and opaque
+ * records alike — is a borrowed `t.object`.
+ *
+ * @param ctx - The module context
+ * @param instance - The instance parameter
+ */
+export const writeSelfFfiType = (ctx: ModuleContext, instance: GirParameter): string => {
+    const ref = instance.type;
+    if (ref === undefined || ref.kind !== "named") return `t.object("borrowed")`;
+    const owner = ref.namespaceName ?? ctx.namespace.name;
+    const resolved = ctx.repository.resolveNamed(owner, ref.typeName);
+    if (resolved === undefined) return `t.object("borrowed")`;
+    if (resolved.kind === "class" || resolved.kind === "interface") {
+        const ancestor = fundamentalAncestor(ctx, owner, ref.typeName);
+        return ancestor === undefined
+            ? `t.object("borrowed")`
+            : renderFundamental({ ...ancestor, ownership: "borrowed" });
+    }
+    if (resolved.kind === "boxed" && isReferenceableBoxed(resolved.value)) {
+        return boxedExpression(resolved, ffiOwnership(instance.transferOwnership));
+    }
+    return `t.object("borrowed")`;
+};
+
+const isReferenceableBoxed = (boxed: Extract<ResolvedNamed, { kind: "boxed" }>["value"]): boolean => {
+    const hasRefPair =
+        (boxed.glibRefFunc ?? boxed.copyFunc) !== undefined && (boxed.glibUnrefFunc ?? boxed.freeFunc) !== undefined;
+    const hasIntrinsic = boxed.glibTypeName !== undefined && INTRINSIC_FUNDAMENTAL_FUNCS.has(boxed.glibTypeName);
+    return hasRefPair || hasIntrinsic || boxed.glibGetType !== undefined;
+};
+
+const boxedExpression = (
+    resolved: Extract<ResolvedNamed, { kind: "boxed" }>,
+    ownership: "borrowed" | "full" | "none",
+): string => {
+    const boxed = resolved.value;
+    const intrinsic =
+        boxed.glibTypeName === undefined ? undefined : INTRINSIC_FUNDAMENTAL_FUNCS.get(boxed.glibTypeName);
+    const refFunc = boxed.glibRefFunc ?? boxed.copyFunc ?? intrinsic?.ref;
+    const unrefFunc = boxed.glibUnrefFunc ?? boxed.freeFunc ?? intrinsic?.unref;
+    if (refFunc !== undefined && unrefFunc !== undefined) {
+        const lib = resolved.namespace.sharedLibrary ?? "";
+        return renderFundamental({ lib, refFunc, unrefFunc, glibTypeName: boxed.glibTypeName, ownership });
+    }
+    if (boxed.glibGetType === undefined) {
+        return `t.struct(${quote(ownership)})`;
+    }
+    const glibName = boxed.glibTypeName ?? boxed.cType ?? boxed.name;
+    const lib = resolved.namespace.sharedLibrary;
+    const libExpr = lib === undefined ? "undefined" : quote(lib);
+    return `t.boxed(${joinArgs([quote(glibName), quote(ownership), libExpr, quote(boxed.glibGetType)])})`;
+};
+
+const expressionForResolved = (
+    ctx: ModuleContext,
+    resolved: ResolvedNamed,
+    ownership: "borrowed" | "full" | "none",
+): string => {
+    switch (resolved.kind) {
+        case "class":
+        case "interface":
+            return classOrInterfaceExpression(resolved, ownership);
+        case "boxed":
+            return boxedExpression(resolved, ownership);
+        case "enum": {
+            const getter = resolved.value.glibGetType;
+            const signed = resolved.value.members.some((member) => member.value.startsWith("-"));
+            if (getter === undefined || getter === "") return signed ? "t.int32" : "t.uint32";
+            const lib = resolved.namespace.sharedLibrary ?? "";
+            const helper = resolved.value.flavor === "bitfield" ? "flags" : "enum";
+            return `t.${helper}(${quote(lib)}, ${quote(getter)}, ${String(signed)})`;
+        }
+        case "callback":
+            return "t.void";
+        case "alias":
+            return aliasExpression(ctx, {
+                namespace: resolved.namespace,
+                targetRef: resolved.targetRef,
+                ownership,
+            });
+    }
+};
+
+const arrayExpression = (
+    ctx: ModuleContext,
+    ref: ArrayTypeRef,
+    transfer: ParameterTransfer,
+    argIndexOffset: number,
+): string => {
+    const ownership = ffiOwnership(transfer);
+    const element = writeFfiType(ctx, ref.element, deriveElementTransfer(transfer), argIndexOffset);
+    const size = inlineElementSize(ctx, ref.element);
+    const sizeArg = size === undefined ? "" : `, ${size}`;
+    if (ref.lengthParameterIndex !== undefined) {
+        return `t.sizedArray(${element}, ${ref.lengthParameterIndex + argIndexOffset}, ${quote(ownership)}${sizeArg})`;
+    }
+    if (ref.fixedSize !== undefined) {
+        return `t.fixedArray(${element}, ${ref.fixedSize}, ${quote(ownership)}${sizeArg})`;
+    }
+    const optionsArg = size === undefined ? "" : `, { elementSize: ${size} }`;
+    return `t.array(${element}, "array", ${quote(ownership)}${optionsArg})`;
+};
+
+/**
+ * Computes the inline byte size of an array element when it is a by-value
+ * boxed struct, so the native marshaller can lay out a contiguous element
+ * buffer. Returns `undefined` for pointer elements (objects, strings, boxed
+ * pointers) and primitives, which the native layer already sizes.
+ */
+const inlineElementSize = (ctx: ModuleContext, element: GirTypeRef | undefined): number | undefined => {
+    if (element === undefined || element.kind !== "named") return undefined;
+    const owner = element.namespaceName ?? ctx.namespace.name;
+    const hardcoded = HARDCODED_INLINE_ELEMENT_SIZES.get(`${owner}.${element.typeName}`);
+    if (hardcoded !== undefined) return hardcoded;
+    if (element.cType?.includes("*")) return undefined;
+    const resolved = ctx.repository.resolveNamed(owner, element.typeName);
+    if (resolved === undefined || resolved.kind !== "boxed") return undefined;
+    const boxed = resolved.value;
+    if (boxed.opaque || boxed.disguised || boxed.fields.length === 0) return undefined;
+    const { size } = computeBoxedFieldSlots(ctx, boxed.fields, boxed.isUnion);
+    return size > 0 ? size : undefined;
+};
+
+type AliasExpressionOptions = {
+    readonly namespace: GirNamespace;
+    readonly targetRef: GirTypeRef | undefined;
+    readonly ownership: "borrowed" | "full" | "none";
+};
+
+const aliasExpression = (ctx: ModuleContext, options: AliasExpressionOptions): string => {
+    const { namespace, targetRef, ownership } = options;
+    const qualified = qualifyTypeRef(targetRef, namespace.name);
+    if (qualified === undefined) {
+        return `t.object(${quote(ownership)})`;
+    }
+    return writeFfiType(ctx, qualified, ownership === "full" ? "full" : "none");
+};

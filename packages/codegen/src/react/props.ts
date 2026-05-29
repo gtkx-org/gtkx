@@ -1,0 +1,323 @@
+import { camelCase, pascalCase } from "../dsl/identifier.js";
+import type { GirClass } from "../gir/class.js";
+import type { GirNamespace } from "../gir/namespace.js";
+import type { GirParameter } from "../gir/parameter.js";
+import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
+import type { GirProperty } from "../gir/property.js";
+import { resolveQualifiedClass, splitQualifiedName } from "../gir/qualified-name.js";
+import { qualifyTypeRef } from "../gir/qualify.js";
+import type { GirRepository } from "../gir/repository.js";
+import type { GirSignal } from "../gir/signal.js";
+import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
+import { isOutParameter } from "../writers/method.js";
+import { signalHandlerName } from "./widgets.js";
+
+/**
+ * Rendered prop entries for a single widget's Props interface, together
+ * with imports the writer must request to keep type references valid.
+ */
+export type WidgetPropsEntries = {
+    /** Rendered prop lines, indented one level inside the interface body. */
+    readonly propLines: readonly string[];
+    /** Cross-namespace imports the writer must add to the surrounding module. */
+    readonly imports: ReadonlyMap<string, string>;
+};
+
+/**
+ * Options for {@link buildWidgetPropsEntries}.
+ */
+export type WidgetPropsOptions = {
+    /** The full GIR repository. */
+    readonly repository: GirRepository;
+    /** The widget class whose props bag is being built. */
+    readonly klass: GirClass;
+    /** Property names that should be widened to `ReactNode` slot children. */
+    readonly slotPropNames?: ReadonlySet<string>;
+    /** Returns `true` when `candidate` already has its own widget Props interface. */
+    readonly isWidgetAncestor?: (candidate: GirClass) => boolean;
+};
+
+type SignalRenderOptions = {
+    readonly repository: GirRepository;
+    readonly signal: GirSignal;
+    readonly imports: Map<string, string>;
+    readonly selfType: string;
+    readonly owningNamespace: string;
+};
+
+type ParentRef = { readonly klass: GirClass; readonly namespaceName: string };
+
+/**
+ * Builds a typed prop bag for one widget intrinsic.
+ *
+ * Combines the widget's own properties + signal handlers with those declared
+ * by its directly-implemented interfaces and by every non-widget ancestor up
+ * to the first widget parent (whose props are inherited via `extends`).
+ * Property types are written as TypeScript surface types resolved against the
+ * loaded GIR repository.
+ *
+ * @param options - {@link WidgetPropsOptions}
+ */
+export const buildWidgetPropsEntries = (options: WidgetPropsOptions): WidgetPropsEntries => {
+    const { repository, klass, slotPropNames = new Set<string>(), isWidgetAncestor = () => false } = options;
+    const imports = new Map<string, string>();
+    const propEntries: string[] = [];
+    const seen = new Set<string>();
+
+    const ownerName = klass.glibTypeName ?? klass.cType ?? klass.name;
+    const selfNamespace = currentNamespaceKey(repository, klass);
+    const selfTypeName = resolveSelfTypeName(klass, selfNamespace, imports);
+
+    const acceptProperty = (property: GirProperty, owningNamespace: string): void => {
+        const jsName = camelCase(property.name);
+        if (seen.has(jsName)) return;
+        seen.add(jsName);
+        if (isPropOverridden(ownerName, jsName)) return;
+        if (slotPropNames.has(jsName)) {
+            propEntries.push(`${jsName}?: ReactNode | null;`);
+            return;
+        }
+        const qualified = qualifyTypeRef(property.type, owningNamespace);
+        const tsType = renderTsType(repository, qualified, true, imports);
+        propEntries.push(`${jsName}?: ${tsType} | null;`);
+    };
+
+    const acceptSignal = (signal: GirSignal, owningNamespace: string): void => {
+        const handlerName = signalHandlerName(signal.name);
+        if (seen.has(handlerName)) return;
+        seen.add(handlerName);
+        if (isSignalOverridden(ownerName, handlerName)) return;
+        const signature = renderSignalHandler({
+            repository,
+            signal,
+            imports,
+            selfType: selfTypeName,
+            owningNamespace,
+        });
+        propEntries.push(`${handlerName}?: ${signature};`);
+    };
+
+    visitClassAndAncestors({ repository, klass, selfNamespace, isWidgetAncestor }, acceptProperty, acceptSignal);
+
+    return { propLines: propEntries, imports };
+};
+
+const resolveSelfTypeName = (klass: GirClass, selfNamespace: string, imports: Map<string, string>): string => {
+    if (selfNamespace === "?") return pascalCase(klass.name);
+    imports.set(selfNamespace, selfNamespace);
+    return `${selfNamespace}.${pascalCase(klass.name)}`;
+};
+
+type WalkContext = {
+    readonly repository: GirRepository;
+    readonly klass: GirClass;
+    readonly selfNamespace: string;
+    readonly isWidgetAncestor: (candidate: GirClass) => boolean;
+};
+
+const visitClassAndAncestors = (
+    walk: WalkContext,
+    acceptProperty: (property: GirProperty, owningNamespace: string) => void,
+    acceptSignal: (signal: GirSignal, owningNamespace: string) => void,
+): void => {
+    const visit = (current: GirClass, owningNamespace: string): void => {
+        for (const property of current.properties) acceptProperty(property, owningNamespace);
+        for (const signal of current.signals) acceptSignal(signal, owningNamespace);
+        for (const implementsName of current.implements) {
+            const resolved = resolveInterface(walk.repository, current, implementsName);
+            if (resolved === undefined) continue;
+            for (const property of resolved.value.properties) acceptProperty(property, resolved.namespace.name);
+            for (const signal of resolved.value.signals) acceptSignal(signal, resolved.namespace.name);
+        }
+    };
+
+    visit(walk.klass, walk.selfNamespace);
+    const visited = new Set<string>([`${walk.selfNamespace}.${walk.klass.name}`]);
+    let parentRef = resolveParent(walk.repository, walk.klass, walk.selfNamespace);
+    while (parentRef !== undefined && !walk.isWidgetAncestor(parentRef.klass)) {
+        const key = `${parentRef.namespaceName}.${parentRef.klass.name}`;
+        if (visited.has(key)) break;
+        visited.add(key);
+        visit(parentRef.klass, parentRef.namespaceName);
+        parentRef = resolveParent(walk.repository, parentRef.klass, parentRef.namespaceName);
+    }
+};
+
+const resolveParent = (repository: GirRepository, klass: GirClass, defaultNamespace: string): ParentRef | undefined => {
+    if (klass.parent === undefined) return undefined;
+    return resolveQualifiedClass(repository, klass.parent, defaultNamespace);
+};
+
+const currentNamespaceKey = (repository: GirRepository, klass: GirClass): string => {
+    for (const namespace of repository.namespaces.values()) {
+        if (namespace.classes.includes(klass) || namespace.interfaces.includes(klass)) {
+            return namespace.name;
+        }
+    }
+    return "?";
+};
+
+const resolveInterface = (
+    repository: GirRepository,
+    declaringClass: GirClass,
+    implementsName: string,
+): { readonly namespace: GirNamespace; readonly value: GirClass } | undefined => {
+    const { namespaceName, typeName } = splitQualifiedName(
+        implementsName,
+        currentNamespaceKey(repository, declaringClass),
+    );
+    const resolved = repository.resolveNamed(namespaceName, typeName);
+    if (resolved === undefined) return undefined;
+    if (resolved.kind !== "interface") return undefined;
+    return { namespace: resolved.namespace, value: resolved.value };
+};
+
+/**
+ * Per-widget prop names that the React package re-types in a hand-written
+ * `declare module` augmentation. Skipping them in the generated bag
+ * prevents TS2717 "subsequent property declarations must have the same
+ * type" when the augmentation widens the GIR property to a declarative
+ * React shape (e.g. an array of child-props instead of a raw GObject
+ * model).
+ *
+ * Entries are matched against the widget's GLib type name (e.g.
+ * `"AdwToggleGroup"`); values are the JS prop names to skip.
+ */
+const PROP_OVERRIDES_BY_WIDGET: Readonly<Record<string, ReadonlySet<string>>> = {
+    AdwToggleGroup: new Set(["toggles"]),
+    AdwAlertDialog: new Set(["responses"]),
+    GtkColumnView: new Set(["columns"]),
+    GtkScale: new Set(["marks"]),
+};
+
+const isPropOverridden = (ownerName: string, propName: string): boolean => {
+    const overrides = PROP_OVERRIDES_BY_WIDGET[ownerName];
+    return overrides?.has(propName) ?? false;
+};
+
+/**
+ * Per-widget signal-handler names whose generated emission is skipped so
+ * a hand-written `declare module` augmentation can supply a refined
+ * signature without triggering TS2717.
+ */
+const SIGNAL_OVERRIDES_BY_WIDGET: Readonly<Record<string, ReadonlySet<string>>> = {
+    GtkRange: new Set(["onValueChanged"]),
+    GtkScale: new Set(["onValueChanged"]),
+    GtkScaleButton: new Set(["onValueChanged"]),
+    GtkSpinButton: new Set(["onValueChanged"]),
+    AdwSpinRow: new Set(["onValueChanged"]),
+    AdwSwitchRow: new Set(["onActivated"]),
+};
+
+const isSignalOverridden = (ownerName: string, handlerName: string): boolean => {
+    const overrides = SIGNAL_OVERRIDES_BY_WIDGET[ownerName];
+    return overrides?.has(handlerName) ?? false;
+};
+
+const renderSignalHandler = (options: SignalRenderOptions): string => {
+    const { repository, signal, imports, selfType, owningNamespace } = options;
+    const visible = signal.parameters.filter((parameter) => !parameter.isVarargs);
+    const params = visible
+        .filter((parameter) => !isOutParameter(parameter))
+        .map((parameter, index) => {
+            const name = parameter.name.length === 0 ? `arg${index + 1}` : camelCase(parameter.name);
+            const qualified = qualifyTypeRef(parameter.type, owningNamespace);
+            const baseType = renderTsType(repository, qualified, false, imports);
+            return `${name}: ${baseType}`;
+        });
+    params.push(`self: ${selfType}`);
+    return `(${params.join(", ")}) => ${renderSignalReturnType(options, visible)}`;
+};
+
+/**
+ * Computes a signal handler's return type.
+ *
+ * Pure out-parameters (`direction="out"`, not caller-allocated) are surfaced
+ * through the return value as a tuple `[primary, ...outs]`, mirroring the
+ * convention {@link writeMethodReturnType} produces for methods: a value return
+ * with no outs stays scalar (with `| void` so handlers may opt out); a void
+ * return with a single out unwraps to that out's type; otherwise the primary
+ * (when present) leads a tuple of the out types.
+ *
+ * @param options - The signal render options
+ * @param visible - The signal's non-varargs parameters
+ */
+const renderSignalReturnType = (options: SignalRenderOptions, visible: readonly GirParameter[]): string => {
+    const { repository, signal, imports, owningNamespace } = options;
+    const qualifiedReturn = qualifyTypeRef(signal.returnValue.type, owningNamespace);
+    const baseReturn = renderTsType(repository, qualifiedReturn, signal.returnValue.nullable, imports);
+    const outTypes = visible
+        .filter(isOutParameter)
+        .map((parameter) => renderTsType(repository, qualifyTypeRef(parameter.type, owningNamespace), false, imports));
+    if (outTypes.length === 0) {
+        return baseReturn === "void" ? "void" : `${baseReturn} | void`;
+    }
+    if (baseReturn !== "void") {
+        return `[${baseReturn}, ${outTypes.join(", ")}]`;
+    }
+    const [single, ...rest] = outTypes;
+    if (rest.length === 0 && single !== undefined) return single;
+    return `[${outTypes.join(", ")}]`;
+};
+
+const renderTsType = (
+    repository: GirRepository,
+    ref: GirTypeRef | undefined,
+    nullableHint: boolean,
+    imports: Map<string, string>,
+): string => {
+    const base = renderBaseType(repository, ref, imports);
+    return nullableHint ? `${base} | null` : base;
+};
+
+const renderBaseType = (
+    repository: GirRepository,
+    ref: GirTypeRef | undefined,
+    imports: Map<string, string>,
+): string => {
+    if (ref === undefined) return "void";
+    switch (ref.kind) {
+        case "primitive":
+            return primitiveTsType(ref);
+        case "varargs":
+            return "unknown[]";
+        case "callback":
+            return "(...args: unknown[]) => unknown";
+        case "named":
+            return namedTsType(repository, ref, imports);
+        case "array":
+        case "list":
+            return `${renderTsType(repository, ref.element, false, imports)}[]`;
+        case "hashtable": {
+            const key = renderTsType(repository, ref.key, false, imports);
+            const value = renderTsType(repository, ref.value, false, imports);
+            return `Record<${key}, ${value}>`;
+        }
+    }
+};
+
+const primitiveTsType = (ref: PrimitiveTypeRef): string => PRIMITIVE_TS_TYPE[ref.category];
+
+const namedTsType = (repository: GirRepository, ref: NamedTypeRef, imports: Map<string, string>): string => {
+    const namespaceName = ref.namespaceName;
+    if (namespaceName === undefined) {
+        return pascalCase(ref.typeName);
+    }
+    const resolved = repository.resolveNamed(namespaceName, ref.typeName);
+    if (resolved === undefined) {
+        imports.set(namespaceName, namespaceName);
+        return `${namespaceName}.${pascalCase(ref.typeName)}`;
+    }
+    if (resolved.kind === "enum") return "number";
+    if (resolved.kind === "callback") return "(...args: unknown[]) => unknown";
+    if (resolved.kind === "alias") {
+        if (resolved.target === undefined) return "number";
+        return namedTsType(
+            repository,
+            { kind: "named", namespaceName: resolved.namespace.name, typeName: resolved.target, cType: undefined },
+            imports,
+        );
+    }
+    imports.set(namespaceName, namespaceName);
+    return `${namespaceName}.${pascalCase(ref.typeName)}`;
+};

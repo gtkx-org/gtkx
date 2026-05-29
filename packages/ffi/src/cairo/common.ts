@@ -129,7 +129,7 @@ export const parsePath = (pathHandle: NativeHandle): PathData[] => {
     const numData = read(pathHandle, INT_TYPE, 16) as number;
     if (numData === 0) return [];
 
-    const dataArray = read(pathHandle, t.struct("cairo_path_data_t", "borrowed", numData * 16), 8) as NativeHandle;
+    const dataArray = read(pathHandle, t.struct("borrowed", numData * 16), 8) as NativeHandle;
     const result: PathData[] = [];
     let i = 0;
     while (i < numData) {

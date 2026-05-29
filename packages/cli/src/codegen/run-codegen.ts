@@ -2,14 +2,13 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { CodegenOrchestrator, loadGir, runTypesPipeline, writeGeneratedDir } from "@gtkx/codegen";
+import { CodegenRunner } from "@gtkx/codegen";
 import type { GtkxConfig } from "../config.js";
 import { computeInputHash, isCacheValid, writeCacheManifest } from "./codegen-cache.js";
 import { GtkxConfigNotFoundError, loadGtkxConfig } from "./config-loader.js";
 import { resolveGirPath } from "./gir-resolver.js";
 import { resolveLibraries } from "./library-resolver.js";
 import { resolveOutputDirs } from "./output-resolver.js";
-import { transpileCodegenFiles } from "./transpile.js";
 
 /**
  * Options for {@link runCodegen}.
@@ -49,11 +48,10 @@ export type RunCodegenResult = {
 /**
  * Runs the codegen pipeline end-to-end against a user project.
  *
- * Loads `gtkx.config.ts`, resolves GIR search paths, locates the user's
- * installed `@gtkx/ffi` and (optional) `@gtkx/react` directories, runs the
- * codegen orchestrator, transpiles the resulting `.ts` source to `.js` and
- * `.d.ts` pairs, and writes the output into the resolved `dist/generated/`
- * subtrees.
+ * Loads `gtkx.config.ts`, resolves GIR search paths and the resolved
+ * library list, locates the user's installed `@gtkx/ffi` and (optional)
+ * `@gtkx/react` directories, and delegates to {@link CodegenRunner} which
+ * owns the generation, transpile, and disk-write steps.
  *
  * Skips work when the input hash matches the cache manifest, unless `force`.
  *
@@ -86,26 +84,22 @@ export const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCo
         );
     }
 
-    const loaded = await loadGir(libraries, girPath);
-    const orchestrator = new CodegenOrchestrator({ repository: loaded.repository, slotProps: config.slotProps });
-    const result = orchestrator.generate();
-
-    const transpiledFfi = transpileCodegenFiles(result.ffiFiles, { emitDeclarations: false });
-    writeGeneratedDir(ffiOutputDir, transpiledFfi);
-    await runTypesPipeline(loaded, ffiOutputDir);
-
-    if (reactOutputDir !== null && result.reactFiles.size > 0) {
-        const transpiledReact = transpileCodegenFiles(result.reactFiles);
-        writeGeneratedDir(reactOutputDir, transpiledReact);
-    }
+    const runner = new CodegenRunner({
+        libraries,
+        girPath,
+        slotProps: config.slotProps,
+        ffiOutDir: ffiOutputDir,
+        reactOutDir: reactOutputDir ?? undefined,
+    });
+    const result = await runner.run();
 
     writeCacheManifest(cwd, inputHash, codegenVersion);
 
     return {
         ran: true,
-        namespaces: result.stats.namespaces,
-        widgets: result.stats.widgets,
-        duration: result.stats.duration,
+        namespaces: result.namespaces,
+        widgets: result.widgets,
+        duration: result.duration,
         config,
         girPath,
         configFile,

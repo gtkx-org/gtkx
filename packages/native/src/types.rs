@@ -323,7 +323,7 @@ impl std::fmt::Display for Type {
             Self::Boolean(_) => write!(f, "Boolean"),
             Self::GObject(_) => write!(f, "GObject"),
             Self::Boxed(t) => write!(f, "Boxed({})", t.type_name),
-            Self::Struct(t) => write!(f, "Struct({})", t.type_name),
+            Self::Struct(t) => write!(f, "Struct({})", t.ownership),
             Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
             Self::Array(_) => write!(f, "Array"),
             Self::HashTable(_) => write!(f, "HashTable"),
