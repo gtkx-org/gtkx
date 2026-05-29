@@ -1,28 +1,6 @@
 import { call } from "../../../index.js";
 import type { Type } from "../../../types.js";
-import { BOOLEAN, GOBJECT_BORROWED, GOBJECT_LIB, GTK_LIB, STRING, VOID } from "../utils.js";
-
-export function connectCancelledSignal(cancellable: unknown, callback: (obj: unknown) => void): void {
-    call(
-        GOBJECT_LIB,
-        "g_signal_connect_closure",
-        [
-            { type: GOBJECT_BORROWED, value: cancellable },
-            { type: STRING, value: "cancelled" },
-            {
-                type: {
-                    type: "callback",
-                    kind: "closure",
-                    argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                    returnType: { type: "void" },
-                },
-                value: callback,
-            },
-            { type: BOOLEAN, value: false },
-        ],
-        VOID,
-    );
-}
+import { BOOLEAN, GOBJECT_BORROWED, GTK_LIB, VOID } from "../utils.js";
 
 export function setLabelSelectable(label: unknown, value: boolean): void {
     call(

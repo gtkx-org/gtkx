@@ -128,11 +128,15 @@ export function connectSignalReturning(
             { type: GOBJECT_BORROWED, value: obj },
             { type: STRING, value: signalName },
             {
-                type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
+                type: {
+                    type: "trampoline",
+                    argTypes: [GOBJECT_BORROWED, UINT64],
+                    returnType: { type: "void" },
+                    hasDestroy: true,
+                    userDataIndex: 1,
+                },
                 value: callback,
             },
-            { type: POINTER, value: 0 },
-            { type: POINTER, value: 0 },
             { type: INT32, value: 0 },
         ],
         returnType,

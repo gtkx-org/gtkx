@@ -84,14 +84,6 @@ pub fn param_spec_refcount(ptr: *mut c_void) -> u32 {
 }
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn get_closure_refcount(closure_ptr: *mut glib::gobject_ffi::GClosure) -> u32 {
-    if closure_ptr.is_null() {
-        return 0;
-    }
-    unsafe { (*closure_ptr).ref_count }
-}
-
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn get_gobject_refcount(obj_ptr: *mut glib::gobject_ffi::GObject) -> u32 {
     if obj_ptr.is_null() {
         return 0;

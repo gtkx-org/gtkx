@@ -53,7 +53,6 @@
 mod macros;
 
 pub mod arg;
-pub mod callback;
 pub mod dispatch;
 pub mod error_reporter;
 pub mod ffi;

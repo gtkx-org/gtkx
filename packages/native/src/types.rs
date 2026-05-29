@@ -10,15 +10,19 @@
 //! Type
 //! ├── Integer(IntegerKind)    - Sized integers (i8..i64, u8..u64)
 //! ├── Float(FloatKind)        - Floating point (f32, f64)
+//! ├── Tagged(TaggedType)      - Enums and flags (GType-tagged integers)
 //! ├── String(StringType)      - UTF-8 strings (owned or borrowed)
-//! ├── Boolean                 - Boolean values
-//! ├── Null / Undefined        - Null pointer / void return
+//! ├── Void(VoidType)          - Void return / no value
+//! ├── Boolean(BooleanType)    - Boolean values
 //! ├── GObject(GObjectType)    - GObject instances
 //! ├── Boxed(BoxedType)        - GObject boxed types (e.g., GdkRGBA)
+//! ├── Struct(StructType)      - Plain C structs passed by pointer
 //! ├── Fundamental(FundamentalType) - Fundamental types (GVariant, GParamSpec, etc.)
 //! ├── Array(ArrayType)        - Arrays, GLists, GSLists
-//! ├── Callback(CallbackType)  - JavaScript callback functions
-//! └── Ref(RefType)            - Pointers to values (out parameters)
+//! ├── HashTable(HashTableType) - GHashTables
+//! ├── Trampoline(TrampolineType) - JavaScript callbacks invoked from native
+//! ├── Ref(RefType)            - Pointers to values (out parameters)
+//! └── Unichar(UnicharType)    - Unicode code points
 //! ```
 //!
 //! ## Ownership
@@ -42,11 +46,11 @@ use napi::{Env, JsObject};
 
 use crate::{ffi, value};
 
-/// Shared parser for the `argTypes` and `returnType` properties used by both
-/// `CallbackType` and `TrampolineType`. Returns the parsed argument types and
-/// return type or returns a JS type error referencing `kind` (e.g. `"callback"`).
+/// Parses the `argTypes` and `returnType` properties of a [`TrampolineType`]
+/// descriptor. Returns the parsed argument types and return type, or a JS type
+/// error referencing `kind` (e.g. `"trampoline"`).
 #[cfg_attr(coverage_nightly, coverage(off))]
-pub(crate) fn parse_callback_arg_and_return_types(
+pub(crate) fn parse_trampoline_arg_and_return_types(
     env: &Env,
     obj: &JsObject,
     kind: &str,
@@ -75,7 +79,6 @@ pub(crate) fn parse_callback_arg_and_return_types(
 mod array;
 mod boolean;
 mod boxed;
-mod callback;
 mod fundamental;
 mod gobject;
 mod hashtable;
@@ -92,7 +95,6 @@ pub use array::ArrayKind;
 pub use array::ArrayType;
 pub use boolean::BooleanType;
 pub use boxed::{BoxedFreeFn, BoxedType, StructType};
-pub use callback::CallbackType;
 pub use fundamental::FundamentalType;
 pub use gobject::GObjectType;
 pub use hashtable::{HashTableEntryEncoder, HashTableType};
@@ -303,7 +305,6 @@ pub enum Type {
     Fundamental(FundamentalType),
     Array(ArrayType),
     HashTable(HashTableType),
-    Callback(CallbackType),
     Trampoline(TrampolineType),
     Ref(RefType),
     Unichar(UnicharType),
@@ -327,7 +328,6 @@ impl std::fmt::Display for Type {
             Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_func),
             Self::Array(_) => write!(f, "Array"),
             Self::HashTable(_) => write!(f, "HashTable"),
-            Self::Callback(_) => write!(f, "Callback"),
             Self::Trampoline(_) => write!(f, "Trampoline"),
             Self::Ref(t) => write!(f, "Ref({})", t.inner_type),
             Self::Unichar(_) => write!(f, "Unichar"),
@@ -370,7 +370,6 @@ impl Type {
             "struct" => Ok(Self::Struct(StructType::from_js_value(env, &obj)?)),
             "array" => Ok(Self::Array(ArrayType::from_js_value(env, &obj)?)),
             "hashtable" => Ok(Self::HashTable(HashTableType::from_js_value(env, &obj)?)),
-            "callback" => Ok(Self::Callback(CallbackType::from_js_value(env, &obj)?)),
             "trampoline" => Ok(Self::Trampoline(TrampolineType::from_js_value(env, &obj)?)),
             "ref" => Ok(Self::Ref(RefType::from_js_value(env, &obj)?)),
             "unichar" => Ok(Self::Unichar(UnicharType)),
@@ -386,14 +385,14 @@ impl Type {
 
     /// Whether this type may occupy a function's return slot.
     ///
-    /// `Callback`, `Trampoline`, and `Ref` describe argument-only shapes — a
-    /// callback handler or an out-parameter — and have no return-slot codec
-    /// (their [`FfiEncoder::call_cif`] implementations bail). Callers consult
-    /// this at the descriptor-parsing boundary to reject a malformed return
-    /// type with a precise `InvalidArg` error.
+    /// `Trampoline` and `Ref` describe argument-only shapes — a callback
+    /// handler or an out-parameter — and have no return-slot codec (their
+    /// [`FfiEncoder::call_cif`] implementations bail). Callers consult this at
+    /// the descriptor-parsing boundary to reject a malformed return type with a
+    /// precise `InvalidArg` error.
     #[must_use]
     pub fn can_be_return_type(&self) -> bool {
-        !matches!(self, Self::Callback(_) | Self::Trampoline(_) | Self::Ref(_))
+        !matches!(self, Self::Trampoline(_) | Self::Ref(_))
     }
 }
 
@@ -407,15 +406,6 @@ mod tests {
         assert!(Type::Void(VoidType).can_be_return_type());
         assert!(Type::Integer(IntegerKind::I32).can_be_return_type());
         assert!(Type::Boolean(BooleanType).can_be_return_type());
-    }
-
-    #[test]
-    fn callback_cannot_be_return_type() {
-        let callback = CallbackType {
-            arg_types: Vec::new(),
-            return_type: Box::new(Type::Void(VoidType)),
-        };
-        assert!(!Type::Callback(callback).can_be_return_type());
     }
 
     #[test]

@@ -46,7 +46,7 @@ impl TrampolineType {
     #[cfg_attr(coverage_nightly, coverage(off))]
     pub fn from_js_value(env: &Env, obj: &JsObject) -> napi::Result<Self> {
         let (arg_types, return_type) =
-            super::parse_callback_arg_and_return_types(env, obj, "trampoline")?;
+            super::parse_trampoline_arg_and_return_types(env, obj, "trampoline")?;
 
         let has_destroy = obj
             .get_named_property::<Option<bool>>("hasDestroy")

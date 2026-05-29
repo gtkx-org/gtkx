@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
-import { createLabel, GOBJECT, GOBJECT_BORROWED, GTK_LIB, INT32, POINTER, STRING, VOID } from "../utils.js";
+import { createLabel, GOBJECT, GOBJECT_BORROWED, GOBJECT_LIB, GTK_LIB, INT32, STRING, UINT64, VOID } from "../utils.js";
 
 describe("call - error handling - symbol errors", () => {
     it("throws on invalid symbol name", () => {
@@ -112,22 +112,21 @@ describe("call - error handling - value errors", () => {
     it("throws on non-function for callback", () => {
         expect(() => {
             call(
-                GTK_LIB,
+                GOBJECT_LIB,
                 "g_signal_connect_data",
                 [
                     { type: GOBJECT_BORROWED, value: createLabel("Test") },
                     { type: STRING, value: "clicked" },
                     {
                         type: {
-                            type: "callback",
-                            kind: "closure",
-                            argTypes: [],
+                            type: "trampoline",
+                            argTypes: [GOBJECT_BORROWED, UINT64],
                             returnType: { type: "void" },
+                            hasDestroy: true,
+                            userDataIndex: 1,
                         },
                         value: "not a function",
                     },
-                    { type: POINTER, value: 0 },
-                    { type: POINTER, value: 0 },
                     { type: INT32, value: 0 },
                 ],
                 { type: "uint64" as const },

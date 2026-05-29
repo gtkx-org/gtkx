@@ -15,9 +15,8 @@ import {
     startMemoryMeasurement,
     VOID,
 } from "../utils.js";
-import { connectCancelledSignal } from "./_helpers.js";
 
-describe("call - callback types - closure connect", () => {
+describe("call - trampoline - connect", () => {
     it("connects callback to signal", () => {
         const button = createButton("Test");
 
@@ -28,12 +27,12 @@ describe("call - callback types - closure connect", () => {
     });
 });
 
-describe("call - callback types - closure invoke", () => {
+describe("call - trampoline - invoke", () => {
     it("invokes callback when signal emits", () => {
         const cancellable = createCancellable();
         let callbackInvoked = false;
 
-        connectCancelledSignal(cancellable, () => {
+        connectSignalTrampoline(cancellable, "cancelled", () => {
             callbackInvoked = true;
         });
 
@@ -43,12 +42,12 @@ describe("call - callback types - closure invoke", () => {
     });
 });
 
-describe("call - callback types - closure args", () => {
+describe("call - trampoline - args", () => {
     it("receives signal arguments in callback", () => {
         const cancellable = createCancellable();
         let receivedArg: unknown = null;
 
-        connectCancelledSignal(cancellable, (arg) => {
+        connectSignalTrampoline(cancellable, "cancelled", (arg) => {
             receivedArg = arg;
         });
 
@@ -58,7 +57,7 @@ describe("call - callback types - closure args", () => {
     });
 });
 
-describe("call - callback types - closure disconnect", () => {
+describe("call - trampoline - disconnect", () => {
     it("disconnects callback correctly", () => {
         const button = createButton("Test");
 
@@ -70,16 +69,16 @@ describe("call - callback types - closure disconnect", () => {
     });
 });
 
-describe("call - callback types - closure multiple", () => {
+describe("call - trampoline - multiple", () => {
     it("handles multiple callbacks on same signal", () => {
         const cancellable = createCancellable();
         let count1 = 0;
         let count2 = 0;
 
-        connectCancelledSignal(cancellable, () => {
+        connectSignalTrampoline(cancellable, "cancelled", () => {
             count1++;
         });
-        connectCancelledSignal(cancellable, () => {
+        connectSignalTrampoline(cancellable, "cancelled", () => {
             count2++;
         });
 
@@ -90,7 +89,7 @@ describe("call - callback types - closure multiple", () => {
     });
 });
 
-describe("call - callback types - destroy trampoline", () => {
+describe("call - trampoline - destroy notify", () => {
     it("connects signal with trampoline destroy handler", () => {
         const cancellable = createCancellable();
         let callbackInvoked = false;
@@ -108,12 +107,12 @@ describe("call - callback types - destroy trampoline", () => {
     });
 });
 
-describe("call - callback types - argument types", () => {
+describe("call - trampoline - argument types", () => {
     it("passes gobject arguments to callback", () => {
         const cancellable = createCancellable();
         let receivedObject: unknown = null;
 
-        connectCancelledSignal(cancellable, (obj) => {
+        connectSignalTrampoline(cancellable, "cancelled", (obj) => {
             receivedObject = obj;
         });
 
@@ -123,7 +122,7 @@ describe("call - callback types - argument types", () => {
     });
 });
 
-describe("call - callback types - memory leaks disconnect", () => {
+describe("call - trampoline - memory leaks disconnect", () => {
     it("does not leak closure when signal handler disconnects", () => {
         const button = createButton("Test");
         const buttonRefCount = getRefCount(button);
@@ -138,7 +137,7 @@ describe("call - callback types - memory leaks disconnect", () => {
     });
 });
 
-describe("call - callback types - memory leaks many", () => {
+describe("call - trampoline - memory leaks many", () => {
     it("does not leak when connecting many handlers in loop", () => {
         const mem = startMemoryMeasurement();
 
@@ -151,7 +150,7 @@ describe("call - callback types - memory leaks many", () => {
     });
 });
 
-describe("call - callback types - memory leaks trampoline", () => {
+describe("call - trampoline - memory leaks trampoline", () => {
     it("does not leak trampoline memory on disconnect", () => {
         const mem = startMemoryMeasurement();
 
@@ -167,11 +166,11 @@ describe("call - callback types - memory leaks trampoline", () => {
     });
 });
 
-describe("call - callback types - edge cases throw", () => {
+describe("call - trampoline - edge cases throw", () => {
     it("handles callback that throws exception gracefully", async () => {
         const cancellable = createCancellable();
 
-        connectCancelledSignal(cancellable, () => {
+        connectSignalTrampoline(cancellable, "cancelled", () => {
             throw new Error("Test error in callback");
         });
 
@@ -183,7 +182,7 @@ describe("call - callback types - edge cases throw", () => {
     });
 });
 
-describe("call - callback types - edge cases multiple object", () => {
+describe("call - trampoline - edge cases multiple object", () => {
     it("handles multiple callbacks on same object", () => {
         const button = createButton("Test");
         const handlers: number[] = [];
@@ -199,16 +198,5 @@ describe("call - callback types - edge cases multiple object", () => {
         for (const handlerId of handlers) {
             disconnectSignal(button, handlerId);
         }
-    });
-});
-
-describe("call - callback types - edge cases closure trampoline", () => {
-    it("handles closure callback trampoline", () => {
-        const button = createButton("Test");
-
-        const handlerId = connectSignal(button, "clicked", () => {});
-
-        expect(typeof handlerId).toBe("number");
-        expect(handlerId).toBeGreaterThan(0);
     });
 });

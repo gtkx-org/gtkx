@@ -74,13 +74,6 @@ type UnicharType = { type: "unichar" };
 
 type VoidType = { type: "void" };
 
-export type CallbackType = {
-    type: "callback";
-    kind: "closure";
-    argTypes: Type[];
-    returnType: Type;
-};
-
 export type TrampolineType = {
     type: "trampoline";
     argTypes: Type[];
@@ -117,7 +110,6 @@ export type Type =
     | ArrayType
     | HashTableType
     | RefType
-    | CallbackType
     | TrampolineType
     | UnicharType
     | VoidType;

@@ -61,7 +61,6 @@ pub struct HashTableData {
 #[derive(Debug)]
 pub enum FfiStorageKind {
     Unit,
-    GClosure,
     U8Vec(Vec<u8>),
     I8Vec(Vec<i8>),
     U16Vec(Vec<u16>),
@@ -164,13 +163,6 @@ impl FfiStorage {
             _ => anyhow::bail!("FfiStorage does not contain object array data"),
         }
     }
-
-    pub fn closure(closure_ptr: *mut glib::gobject_ffi::GClosure) -> Self {
-        Self {
-            ptr: closure_ptr as *mut c_void,
-            kind: FfiStorageKind::GClosure,
-        }
-    }
 }
 
 /// Frees a `GList`/`GSList` of duplicated string elements, dispatching to the
@@ -200,14 +192,6 @@ fn free_string_list<F, G>(
 }
 
 impl FfiStorage {
-    fn drop_gclosure(&self) {
-        if !self.ptr.is_null() {
-            unsafe {
-                glib::gobject_ffi::g_closure_unref(self.ptr as *mut glib::gobject_ffi::GClosure);
-            };
-        }
-    }
-
     fn drop_string_glist(data: &StringGListData) {
         free_string_list(
             data.should_free,
@@ -261,7 +245,6 @@ impl FfiStorage {
 impl Drop for FfiStorage {
     fn drop(&mut self) {
         match &self.kind {
-            FfiStorageKind::GClosure => self.drop_gclosure(),
             FfiStorageKind::HashTable(data) => Self::drop_hash_table(data),
             FfiStorageKind::GList(data) => Self::drop_glist(data),
             FfiStorageKind::GSList(data) => Self::drop_gslist(data),

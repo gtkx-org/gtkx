@@ -193,7 +193,6 @@ impl ItemCodec {
             Type::Void(_)
             | Type::Array(_)
             | Type::HashTable(_)
-            | Type::Callback(_)
             | Type::Trampoline(_)
             | Type::Ref(_)
             | Type::Unichar(_) => return None,
