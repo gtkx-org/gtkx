@@ -17,7 +17,9 @@ export type RoleInfo = {
  * @returns Lowercase role name (e.g., "button", "checkbox")
  */
 const ROLE_NAMES_BY_VALUE = new Map<number, string>(
-    Object.entries(Gtk.AccessibleRole).map(([name, value]) => [value as number, name]),
+    Object.entries(Gtk.AccessibleRole)
+        .filter((entry): entry is [string, number] => typeof entry[1] === "number")
+        .map(([name, value]) => [value, name]),
 );
 
 export const formatRole = (role: Gtk.AccessibleRole | undefined): string => {

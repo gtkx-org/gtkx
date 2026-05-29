@@ -40,22 +40,51 @@ const renderInputParameters = (
     skip: (parameter: GirParameter) => boolean,
     isOptionalExtra: (parameter: GirParameter) => boolean,
 ): string => {
+    const parts: string[] = [];
+    for (const { parameter, index } of inputParameters(fn)) {
+        if (skip(parameter)) continue;
+        const name = parameterIdentifier(parameter, index);
+        const optional = parameter.nullable || parameter.optional || isOptionalExtra(parameter);
+        const annotation = writeTsType(ctx, parameter.type, parameter.nullable);
+        parts.push(optional ? `${name}?: ${annotation}` : `${name}: ${annotation}`);
+    }
+    return parts.join(", ");
+};
+
+/**
+ * A callable input parameter paired with its original GIR position.
+ */
+export type InputParameter = {
+    /** The GIR parameter. */
+    readonly parameter: GirParameter;
+    /** The parameter's index in the callable's full parameter list. */
+    readonly index: number;
+};
+
+/**
+ * The input parameters a callable's TypeScript signature exposes.
+ *
+ * Drops `<varargs>` slots, out-only and caller-allocated-out parameters,
+ * array-length parameters computed from a sibling array, and the
+ * `user_data`/`GDestroyNotify` slots folded into a callback descriptor —
+ * the same positions {@link writeMethodSignature} omits. Each surviving
+ * parameter keeps its original index so callers can recover argument names.
+ *
+ * @param fn - The callable
+ */
+export const inputParameters = (fn: GirFunction): readonly InputParameter[] => {
     const lengthIndices = arrayLengthIndices(fn);
     const closureIndices = closureAndDestroyIndices(fn);
-    const parts: string[] = [];
+    const result: InputParameter[] = [];
     fn.parameters.forEach((parameter, index) => {
         if (parameter.isVarargs) return;
         if (isOutParameter(parameter)) return;
         if (isCallerAllocatedOut(parameter)) return;
         if (lengthIndices.has(index)) return;
         if (closureIndices.has(index)) return;
-        if (skip(parameter)) return;
-        const name = parameterIdentifier(parameter, index);
-        const optional = parameter.nullable || parameter.optional || isOptionalExtra(parameter);
-        const annotation = writeTsType(ctx, parameter.type, parameter.nullable);
-        parts.push(optional ? `${name}?: ${annotation}` : `${name}: ${annotation}`);
+        result.push({ parameter, index });
     });
-    return parts.join(", ");
+    return result;
 };
 
 /**

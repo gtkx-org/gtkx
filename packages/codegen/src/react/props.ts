@@ -308,7 +308,6 @@ const namedTsType = (repository: GirRepository, ref: NamedTypeRef, imports: Map<
         imports.set(namespaceName, namespaceName);
         return `${namespaceName}.${pascalCase(ref.typeName)}`;
     }
-    if (resolved.kind === "enum") return "number";
     if (resolved.kind === "callback") return "(...args: unknown[]) => unknown";
     if (resolved.kind === "alias") {
         if (resolved.target === undefined) return "number";

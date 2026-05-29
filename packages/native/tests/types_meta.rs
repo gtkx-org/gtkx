@@ -97,7 +97,6 @@ fn boxed_type() -> BoxedType {
 fn struct_type() -> StructType {
     StructType {
         ownership: Ownership::Borrowed,
-        type_name: "TestStruct".to_owned(),
         size: Some(8),
     }
 }
@@ -167,10 +166,7 @@ fn type_display_renders_every_variant() {
     assert_eq!(Type::Boolean(BooleanType).to_string(), "Boolean");
     assert_eq!(Type::GObject(gobject_type()).to_string(), "GObject");
     assert_eq!(Type::Boxed(boxed_type()).to_string(), "Boxed(GdkRGBA)");
-    assert_eq!(
-        Type::Struct(struct_type()).to_string(),
-        "Struct(TestStruct)"
-    );
+    assert_eq!(Type::Struct(struct_type()).to_string(), "Struct(borrowed)");
     assert_eq!(
         Type::Fundamental(fundamental_type()).to_string(),
         "Fundamental(g_object_unref)"

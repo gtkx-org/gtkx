@@ -406,7 +406,6 @@ fn value_to_libffi_arg_owned_ptr() {
 fn try_from_struct_null() {
     let struct_type = native::types::StructType {
         ownership: Ownership::Borrowed,
-        type_name: "TestStruct".to_string(),
         size: Some(16),
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Null);
@@ -419,7 +418,6 @@ fn try_from_struct_null() {
 fn try_from_struct_undefined() {
     let struct_type = native::types::StructType {
         ownership: Ownership::Full,
-        type_name: "TestRect".to_string(),
         size: None,
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Undefined);
@@ -432,7 +430,6 @@ fn try_from_struct_undefined() {
 fn try_from_struct_invalid_type() {
     let struct_type = native::types::StructType {
         ownership: Ownership::Borrowed,
-        type_name: "TestStruct".to_string(),
         size: Some(16),
     };
     let arg = Arg::new(
@@ -447,7 +444,6 @@ fn try_from_struct_invalid_type() {
 fn try_from_struct_invalid_number() {
     let struct_type = native::types::StructType {
         ownership: Ownership::Borrowed,
-        type_name: "TestStruct".to_string(),
         size: Some(16),
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Number(42.0));
@@ -459,7 +455,6 @@ fn try_from_struct_invalid_number() {
 fn try_from_struct_invalid_boolean() {
     let struct_type = native::types::StructType {
         ownership: Ownership::Full,
-        type_name: "TestRect".to_string(),
         size: Some(8),
     };
     let arg = Arg::new(Type::Struct(struct_type), value::Value::Boolean(true));
@@ -521,12 +516,10 @@ fn try_from_array_f32_storage_converts_to_libffi_arg() {
 fn try_from_struct_transfer_none_vs_full() {
     let transfer_none_type = native::types::StructType {
         ownership: Ownership::Full,
-        type_name: "TestStruct".to_string(),
         size: Some(16),
     };
     let transfer_full_type = native::types::StructType {
         ownership: Ownership::Borrowed,
-        type_name: "TestStruct".to_string(),
         size: Some(16),
     };
 

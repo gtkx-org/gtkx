@@ -17,7 +17,6 @@ use native::value::Value;
 fn struct_item_type() -> Type {
     Type::Struct(StructType {
         ownership: Ownership::Borrowed,
-        type_name: "TestStruct".to_string(),
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
     })
 }

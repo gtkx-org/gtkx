@@ -25,7 +25,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent, waitFor } from "../src/index.js";
 import { isEditable } from "../src/widget.js";
 
-const widgetHasFocus = (w: Gtk.Widget): boolean => (w as unknown as { hasFocus: boolean }).hasFocus;
+const widgetHasFocus = (w: Gtk.Widget): boolean => w.hasFocus();
 
 describe("userEvent.click", () => {
     it("emits clicked signal on button", async () => {

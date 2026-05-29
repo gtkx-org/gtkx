@@ -5,6 +5,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import { splitQualifiedName } from "../gir/qualified-name.js";
 import { qualifyFunction, qualifyTypeRef } from "../gir/qualify.js";
+import type { GirTypeRef } from "../gir/type-ref.js";
 import { matchAsyncFinishName } from "./async.js";
 import {
     appendMethodBinding,
@@ -21,7 +22,7 @@ import { emitClassStruct } from "./class-struct.js";
 import { emitClassConstructionMeta } from "./construction-meta.js";
 import { renderGetTypeCall } from "./gtype-binding.js";
 import { collectInterfaceProperties, forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
-import { methodExportName, writePromisifiedBody, writePromisifiedSignature } from "./method.js";
+import { inputParameters, methodExportName, writePromisifiedBody, writePromisifiedSignature } from "./method.js";
 import { renderPropertyAccessor } from "./property-accessor.js";
 import { renderRuntimeOverride } from "./runtime-override.js";
 import { renderSignalMembers } from "./signal.js";
@@ -90,7 +91,7 @@ const buildClassMembers = (
         ctx,
         methods: callables.methods,
         methodByName,
-        inheritedReturnTypes: inherited.returnTypes,
+        inherited,
         members,
         claimedNames,
     });
@@ -112,15 +113,15 @@ type AppendInstanceMethodsOptions = {
     readonly ctx: ModuleContext;
     readonly methods: readonly GirFunction[];
     readonly methodByName: ReadonlyMap<string, GirFunction>;
-    readonly inheritedReturnTypes: ReadonlyMap<string, string>;
+    readonly inherited: InheritedMethods;
     readonly members: string[];
     readonly claimedNames: Set<string>;
 };
 
 const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
-    const { ctx, methods, methodByName, inheritedReturnTypes, members, claimedNames } = options;
+    const { ctx, methods, methodByName, inherited, members, claimedNames } = options;
     for (const callable of methods) {
-        if (conflictsWithInherited(ctx, callable, inheritedReturnTypes)) continue;
+        if (conflictsWithInherited(ctx, callable, inherited)) continue;
         const block = renderClassInstanceMember(ctx, callable, methodByName);
         if (block === undefined) continue;
         members.push(block);
@@ -242,34 +243,53 @@ const resolveImplementsReference = (ctx: ModuleContext, name: string): Interface
     return { typeExpression: qualified, runtimeExpression: qualified };
 };
 
+/** An ancestor method together with the namespace its type references resolve against. */
+type InheritedMethod = {
+    readonly method: GirFunction;
+    readonly namespaceName: string;
+};
+
 type InheritedMethods = {
     /** camelCase method name → its TypeScript return type, for ancestor class methods. */
     readonly returnTypes: ReadonlyMap<string, string>;
+    /** camelCase method name → the nearest ancestor definition it overrides. */
+    readonly definitions: ReadonlyMap<string, InheritedMethod>;
     /** camelCase names of every method reachable through ancestors and the interfaces they implement. */
     readonly names: ReadonlySet<string>;
 };
 
+/** Mutable accumulator threaded through ancestor traversal. */
+type InheritedMethodsAccumulator = {
+    readonly returnTypes: Map<string, string>;
+    readonly definitions: Map<string, InheritedMethod>;
+    readonly names: Set<string>;
+};
+
 const collectInheritedMethods = (ctx: ModuleContext, klass: GirClass): InheritedMethods => {
-    const returnTypes = new Map<string, string>();
-    const names = new Set<string>();
+    const accumulator: InheritedMethodsAccumulator = {
+        returnTypes: new Map<string, string>(),
+        definitions: new Map<string, InheritedMethod>(),
+        names: new Set<string>(),
+    };
     forEachAncestor(ctx, klass, (ancestor) => {
-        absorbInheritedMethods(ctx, ancestor, returnTypes, names);
-        absorbInheritedInterfaceMethodNames(ctx, ancestor, names);
+        absorbInheritedMethods(ctx, ancestor, accumulator);
+        absorbInheritedInterfaceMethodNames(ctx, ancestor, accumulator.names);
     });
-    return { returnTypes, names };
+    return accumulator;
 };
 
 const absorbInheritedMethods = (
     ctx: ModuleContext,
     resolved: { readonly klass: GirClass; readonly namespaceName: string },
-    returnTypes: Map<string, string>,
-    names: Set<string>,
+    accumulator: InheritedMethodsAccumulator,
 ): void => {
+    const { returnTypes, definitions, names } = accumulator;
     for (const method of resolved.klass.methods) {
         if (!method.introspectable) continue;
         const name = camelCaseMember(method.name);
         names.add(name);
         if (returnTypes.has(name)) continue;
+        definitions.set(name, { method, namespaceName: resolved.namespaceName });
         const qualifiedType = qualifyTypeRef(method.returnValue.type, resolved.namespaceName);
         returnTypes.set(name, writeTsType(ctx, qualifiedType, method.returnValue.nullable));
     }
@@ -290,17 +310,55 @@ const absorbInheritedInterfaceMethodNames = (
     }
 };
 
-const conflictsWithInherited = (
-    ctx: ModuleContext,
-    callable: GirFunction,
-    inheritedReturnTypes: ReadonlyMap<string, string>,
-): boolean => {
+const conflictsWithInherited = (ctx: ModuleContext, callable: GirFunction, inherited: InheritedMethods): boolean => {
     if (!callable.introspectable) return false;
     const name = methodExportName(callable);
-    const inheritedReturn = inheritedReturnTypes.get(name);
+    const inheritedReturn = inherited.returnTypes.get(name);
     if (inheritedReturn === undefined) return false;
     const ownReturn = writeTsType(ctx, callable.returnValue.type, callable.returnValue.nullable);
-    return inheritedReturn !== ownReturn;
+    if (inheritedReturn !== ownReturn) return true;
+    const inheritedMethod = inherited.definitions.get(name);
+    return inheritedMethod !== undefined && parameterEnumConflict(ctx, callable, inheritedMethod);
+};
+
+/**
+ * Whether an override pairs a distinct enum against the inherited method at
+ * any input-parameter position.
+ *
+ * Numeric enums are mutually assignable with `number`, so a `number`/enum
+ * pairing is compatible; two *different* enums are not, which would make the
+ * derived class structurally unassignable to its base. Such an override is
+ * dropped so the inherited signature stands.
+ *
+ * @param ctx - The module context
+ * @param own - The override declared on the derived class
+ * @param inherited - The nearest ancestor definition of the same name
+ */
+const parameterEnumConflict = (ctx: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
+    const ownParams = inputParameters(own);
+    const inheritedParams = inputParameters(inherited.method);
+    const count = Math.min(ownParams.length, inheritedParams.length);
+    for (let index = 0; index < count; index += 1) {
+        const ownParam = ownParams[index];
+        const inheritedParam = inheritedParams[index];
+        if (ownParam === undefined || inheritedParam === undefined) continue;
+        const ownEnum = enumIdentity(ctx, ownParam.parameter.type, ctx.namespace.name);
+        const inheritedEnum = enumIdentity(ctx, inheritedParam.parameter.type, inherited.namespaceName);
+        if (ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum) return true;
+    }
+    return false;
+};
+
+const enumIdentity = (
+    ctx: ModuleContext,
+    ref: GirTypeRef | undefined,
+    defaultNamespace: string,
+): string | undefined => {
+    const qualified = qualifyTypeRef(ref, defaultNamespace);
+    if (qualified === undefined || qualified.kind !== "named") return undefined;
+    const resolved = ctx.repository.resolveNamed(qualified.namespaceName ?? defaultNamespace, qualified.typeName);
+    if (resolved === undefined || resolved.kind !== "enum") return undefined;
+    return `${resolved.namespace.name}.${resolved.value.name}`;
 };
 
 const resolveParent = (ctx: ModuleContext, klass: GirClass): string | undefined => {

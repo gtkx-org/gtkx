@@ -68,12 +68,12 @@ export class CodegenRunner {
             const { path, source } = generateNamespaceModule(namespace, repository);
             ffiFiles.set(path, source);
         }
-        writeTranspiledTree(this.options.ffiOutDir, ffiFiles);
+        writeTree(this.options.ffiOutDir, ffiFiles);
 
         let widgetCount = 0;
         if (this.options.reactOutDir !== undefined) {
             const reactPipeline = generateReactFiles(repository, this.options.slotProps);
-            writeTranspiledTree(this.options.reactOutDir, reactPipeline.files);
+            writeTree(this.options.reactOutDir, reactPipeline.files);
             widgetCount = reactPipeline.widgetCount;
         }
 
@@ -85,7 +85,7 @@ export class CodegenRunner {
     }
 }
 
-const writeTranspiledTree = (outDir: string, sources: ReadonlyMap<string, string>): void => {
+const writeTree = (outDir: string, sources: ReadonlyMap<string, string>): void => {
     rmSync(outDir, { recursive: true, force: true });
     mkdirSync(outDir, { recursive: true });
     for (const [relativePath, source] of sources) {

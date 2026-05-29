@@ -15,7 +15,6 @@ use native::{NativeHandle, value};
 fn struct_type() -> StructType {
     StructType {
         ownership: Ownership::Borrowed,
-        type_name: "TestStruct".to_owned(),
         size: None,
     }
 }

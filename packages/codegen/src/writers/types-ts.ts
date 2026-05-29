@@ -27,8 +27,8 @@ import type {
 /**
  * Renders a TypeScript type annotation for a `GirTypeRef`.
  *
- * Routes through resolution (classes/interfaces/boxeds as their PascalCase
- * type, enums as their union of numeric values, callbacks as `Function`,
+ * Routes through resolution (classes/interfaces/boxeds/enums as their
+ * PascalCase type, callbacks as `Function`,
  * arrays as `T[]`, lists as `T[]`, hashtables as `Record<K, V>`, primitive
  * categories to their TS counterpart, and `undefined` to `void`).
  *
@@ -82,9 +82,8 @@ const resolvedTsType = (
         case "class":
         case "interface":
         case "boxed":
-            return qualifiedTypeReference(ctx, namespaceName, typeName);
         case "enum":
-            return "number";
+            return qualifiedTypeReference(ctx, namespaceName, typeName);
         case "callback":
             return "((...args: any[]) => any)";
         case "alias":

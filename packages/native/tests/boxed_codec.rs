@@ -34,7 +34,6 @@ fn boxed(ownership: Ownership) -> BoxedType {
 fn struct_type(ownership: Ownership, size: Option<usize>) -> StructType {
     StructType {
         ownership,
-        type_name: "PlainStruct".to_owned(),
         size,
     }
 }

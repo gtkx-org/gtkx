@@ -17,7 +17,6 @@ use native::value::Value;
 fn struct_type() -> Type {
     Type::Struct(StructType {
         ownership: Ownership::Borrowed,
-        type_name: "TestStruct".to_string(),
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
     })
 }
@@ -260,7 +259,6 @@ fn ptr_to_value_float() {
 fn ptr_to_value_struct_null() {
     let ty = Type::Struct(StructType {
         ownership: Ownership::Borrowed,
-        type_name: "TestStruct".to_string(),
         size: Some(16),
     });
 
@@ -279,7 +277,6 @@ fn ptr_to_value_struct_non_null() {
     common::run(|| {
         let ty = Type::Struct(StructType {
             ownership: Ownership::Borrowed,
-            type_name: "TestStruct".to_string(),
             size: Some(16),
         });
 

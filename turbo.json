@@ -1,7 +1,7 @@
 {
     "$schema": "https://turborepo.com/schema.json",
     "globalDependencies": ["tsconfig.base.json", "tsconfig.lib.json", "tsconfig.test.json", "biome.json"],
-    "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION", "GTKX_CODEGEN_TRACE"],
+    "globalEnv": ["NODE_VERSION", "GTK4_VERSION", "VERSION"],
     "globalPassThroughEnv": [
         "TURBO_TOKEN",
         "TURBO_TEAM",
@@ -13,10 +13,7 @@
         "GDK_BACKEND",
         "GDK_DISABLE",
         "GSK_RENDERER",
-        "LIBGL_ALWAYS_SOFTWARE",
-        "GTKX_CODEGEN_TRACE",
-        "GTKX_CODEGEN_TRACE_DIR",
-        "GTKX_REPO_ROOT"
+        "LIBGL_ALWAYS_SOFTWARE"
     ],
     "tasks": {
         "//#lint:all": {

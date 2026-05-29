@@ -984,7 +984,6 @@ fn from_cif_value_struct_transfer_none_logs_warning() {
 
         let struct_type = native::types::StructType {
             ownership: Ownership::Borrowed,
-            type_name: "TestRect".to_string(),
             size: Some(16),
         };
         let type_ = Type::Struct(struct_type);
@@ -1011,7 +1010,6 @@ fn from_cif_value_struct_full_transfer() {
 
         let struct_type = native::types::StructType {
             ownership: Ownership::Full,
-            type_name: "CustomStruct".to_string(),
             size: Some(32),
         };
         let type_ = Type::Struct(struct_type);
@@ -1032,7 +1030,6 @@ fn from_cif_value_struct_null_returns_null_value() {
     common::run(|| {
         let struct_type = native::types::StructType {
             ownership: Ownership::Borrowed,
-            type_name: "TestStruct".to_string(),
             size: Some(16),
         };
         let type_ = Type::Struct(struct_type);
@@ -1052,7 +1049,6 @@ fn from_glib_value_struct_fails() {
 
         let struct_type = native::types::StructType {
             ownership: Ownership::Borrowed,
-            type_name: "PlainStruct".to_string(),
             size: Some(16),
         };
         let type_ = Type::Struct(struct_type);
@@ -1070,7 +1066,6 @@ fn from_cif_value_struct_transfer_none_without_size_creates_unowned() {
 
         let struct_type = native::types::StructType {
             ownership: Ownership::Borrowed,
-            type_name: "UnknownSizeStruct".to_string(),
             size: None,
         };
         let type_ = Type::Struct(struct_type);
@@ -1097,7 +1092,6 @@ fn from_cif_value_struct_owned_without_size() {
 
         let struct_type = native::types::StructType {
             ownership: Ownership::Full,
-            type_name: "UnknownSizeStruct".to_string(),
             size: None,
         };
         let type_ = Type::Struct(struct_type);

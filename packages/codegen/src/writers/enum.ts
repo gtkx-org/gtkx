@@ -6,11 +6,12 @@ import type { GirEnum } from "../gir/enum.js";
 /**
  * Emits the runtime declaration for an `<enumeration>` or `<bitfield>`.
  *
- * Three branches:
- * - `glib:error-domain` present → `makeErrorDomain(quark, members)` typed
- *   as `ErrorDomain<{ members }>`.
+ * Two branches:
+ * - `glib:error-domain` present → `export type Name = number` plus
+ *   `makeErrorDomain(quark, members)` typed as `ErrorDomain<{ members }>`,
+ *   since the domain object must stay `instanceof`-matchable.
  * - GLib-registered enum/flags or C-only enum (no GLib registration) →
- *   `globalThis.Object.freeze({ members })` typed as `Readonly<{ members }>`.
+ *   a TypeScript `enum Name { members }` declaration.
  *
  * Member names are derived from the GIR `name` attribute, uppercased with
  * hyphens normalized to underscores. Names that would start with a digit
@@ -23,22 +24,20 @@ export const emitEnum = (ctx: ModuleContext, enumeration: GirEnum): void => {
     if (!enumeration.introspectable) return;
     const name = pascalCase(enumeration.name);
     const memberKeys = enumeration.members.map((member) => memberKey(member.name));
-    const memberEntries = enumeration.members.map((member, index) => `${memberKeys[index]}: ${member.value}`);
-    const body = `{ ${memberEntries.join(", ")} }`;
-    const typeFields = memberKeys.map((key) => `readonly ${key}: number`).join("; ");
-    ctx.module.appendDeclaration(`export type ${name} = number;`);
     if (enumeration.errorDomain !== undefined) {
+        const memberEntries = enumeration.members.map((member, index) => `${memberKeys[index]}: ${member.value}`);
+        const typeFields = memberKeys.map((key) => `readonly ${key}: number`).join("; ");
         ctx.addRuntimeImport("makeErrorDomain");
         ctx.addRuntimeImport("ErrorDomain");
         const quarkExpression = quarkExpression_(ctx, enumeration.errorDomain);
+        ctx.module.appendDeclaration(`export type ${name} = number;`);
         ctx.module.appendDeclaration(
-            `export const ${name}: ErrorDomain<{ ${typeFields} }> = makeErrorDomain(${quarkExpression}, ${body});`,
+            `export const ${name}: ErrorDomain<{ ${typeFields} }> = makeErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} });`,
         );
         return;
     }
-    ctx.module.appendDeclaration(
-        `export const ${name}: Readonly<{ ${typeFields} }> = globalThis.Object.freeze(${body});`,
-    );
+    const memberDeclarations = enumeration.members.map((member, index) => `${memberKeys[index]} = ${member.value}`);
+    ctx.module.appendDeclaration(`export enum ${name} { ${memberDeclarations.join(", ")} }`);
 };
 
 const memberKey = (name: string): string => {
