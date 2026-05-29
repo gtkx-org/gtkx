@@ -1,7 +1,13 @@
 import type { ModuleContext } from "../dsl/context.js";
 import { camelCase, camelCaseMember } from "../dsl/identifier.js";
 import type { GirFunction } from "../gir/function.js";
-import type { GirParameter, ParameterTransfer } from "../gir/parameter.js";
+import {
+    type GirParameter,
+    isCallerAllocatedOut,
+    isInoutParameter,
+    isOutParameter,
+    type ParameterTransfer,
+} from "../gir/parameter.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { ResolvedNamed } from "../gir/repository.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
@@ -528,32 +534,6 @@ const appendReturn = (
 };
 
 /**
- * Whether a parameter is a pure out-parameter: `direction="out"` and not
- * caller-allocated, so it marshals through a `Ref` cell the callee writes into.
- *
- * @param parameter - The parameter to test
- */
-export const isOutParameter = (parameter: GirParameter): boolean =>
-    parameter.direction === "out" && !parameter.callerAllocates;
-
-/**
- * Whether a parameter is a caller-allocated out-parameter: `direction="out"`
- * with `caller-allocates="1"`, passed as a pre-built handle the callee fills
- * in place rather than through a `Ref` cell.
- *
- * @param parameter - The parameter to test
- */
-export const isCallerAllocatedOut = (parameter: GirParameter): boolean =>
-    parameter.direction === "out" && parameter.callerAllocates;
-
-/**
- * Whether a parameter is an inout parameter (`direction="inout"`).
- *
- * @param parameter - The parameter to test
- */
-export const isInoutParameter = (parameter: GirParameter): boolean => parameter.direction === "inout";
-
-/**
  * Whether a parameter is passed to the FFI binding as a `t.ref(...)` cell.
  *
  * Pure out parameters marshal through a `createRef` cell the native layer
@@ -630,20 +610,76 @@ const parameterCallExpression = (ctx: ModuleContext, parameter: GirParameter, in
 
 const renderCallbackArgument = (ctx: ModuleContext, resolved: ResolvedCallback, name: string): string => {
     const { callback, namespaceName } = resolved;
-    const args = callback.parameters.map((parameter, index) =>
-        wrapReturnValue(ctx, {
-            ref: qualifyTypeRef(parameter.type, namespaceName),
-            transfer: parameter.transferOwnership,
-            nullable: parameter.nullable,
-            valueExpression: `args[${index}]`,
-        }),
-    );
+    const callArgs = callback.parameters
+        .map((parameter, index) =>
+            isOutParameter(parameter)
+                ? undefined
+                : wrapReturnValue(ctx, {
+                      ref: qualifyTypeRef(parameter.type, namespaceName),
+                      transfer: parameter.transferOwnership,
+                      nullable: parameter.nullable,
+                      valueExpression: `args[${index}]`,
+                  }),
+        )
+        .filter((expression): expression is string => expression !== undefined)
+        .join(", ");
     const returnRef = qualifyTypeRef(callback.returnValue.type, namespaceName);
+    const outArgIndices = callback.parameters
+        .map((parameter, index) => (isOutParameter(parameter) ? index : -1))
+        .filter((index) => index >= 0);
+    if (outArgIndices.length > 0) {
+        const body = renderTupleWriteback(ctx, `${name}(${callArgs})`, outArgIndices, returnRef);
+        return `${name} ? (...args) => {\n    ${body}\n} : null`;
+    }
     if (returnRef !== undefined && isHandlePassing(ctx, returnRef)) {
         ctx.addRuntimeImport("getHandle");
-        return `${name} ? (...args) => {\n    const _result = ${name}(${args.join(", ")});\n    return _result != null ? getHandle(_result) : null;\n} : null`;
+        return `${name} ? (...args) => {\n    const _result = ${name}(${callArgs});\n    return _result != null ? getHandle(_result) : null;\n} : null`;
     }
-    return `${name} ? (...args) => ${name}(${args.join(", ")}) : null`;
+    return `${name} ? (...args) => ${name}(${callArgs}) : null`;
+};
+
+/**
+ * Renders the body of a native→JS callback wrapper that returns out-parameters
+ * as a tuple.
+ *
+ * The wrapped user function returns `[primary, ...outs]` (or the scalar out
+ * alone for a void return with a single out, or an out-only tuple otherwise).
+ * This emits `const _result = …;`, writes each out value into its `Ref` cell's
+ * `value` slot (`args[i].value = …`), and returns the primary — keeping the
+ * tuple convention entirely in generated code so the native layer only flushes
+ * cells through their out-pointers. Shared by signal and callback writers.
+ *
+ * @param ctx - The module context
+ * @param callExpression - The expression that invokes the user function
+ * @param outArgIndices - Argument indices of the out-parameter cells
+ * @param returnRef - The primary return type, or `undefined` for void
+ */
+export const renderTupleWriteback = (
+    ctx: ModuleContext,
+    callExpression: string,
+    outArgIndices: readonly number[],
+    returnRef: GirTypeRef | undefined,
+): string => {
+    const lines = [`const _result = ${callExpression};`];
+    const isVoid = returnRef === undefined || (returnRef.kind === "primitive" && returnRef.category === "void");
+    if (!isVoid) {
+        outArgIndices.forEach((argIndex, position) => {
+            lines.push(`args[${argIndex}].value = _result[${position + 1}];`);
+        });
+        if (returnRef !== undefined && isHandlePassing(ctx, returnRef)) {
+            ctx.addRuntimeImport("tryGetHandle");
+            lines.push("return tryGetHandle(_result[0]);");
+        } else {
+            lines.push("return _result[0];");
+        }
+    } else if (outArgIndices.length === 1) {
+        lines.push(`args[${outArgIndices[0]}].value = _result;`);
+    } else {
+        outArgIndices.forEach((argIndex, position) => {
+            lines.push(`args[${argIndex}].value = _result[${position}];`);
+        });
+    }
+    return lines.join("\n    ");
 };
 
 /**

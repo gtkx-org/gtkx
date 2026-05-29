@@ -69,6 +69,32 @@ export const parameterFromNode = (node: RawNode, isInstance: boolean): GirParame
     };
 };
 
+/**
+ * Whether a parameter is a pure out-parameter: `direction="out"` and not
+ * caller-allocated, so it marshals through a `Ref` cell the callee writes into.
+ *
+ * @param parameter - The parameter to test
+ */
+export const isOutParameter = (parameter: GirParameter): boolean =>
+    parameter.direction === "out" && !parameter.callerAllocates;
+
+/**
+ * Whether a parameter is a caller-allocated out-parameter: `direction="out"`
+ * with `caller-allocates="1"`, passed as a pre-built handle the callee fills
+ * in place rather than through a `Ref` cell.
+ *
+ * @param parameter - The parameter to test
+ */
+export const isCallerAllocatedOut = (parameter: GirParameter): boolean =>
+    parameter.direction === "out" && parameter.callerAllocates;
+
+/**
+ * Whether a parameter is an inout parameter (`direction="inout"`).
+ *
+ * @param parameter - The parameter to test
+ */
+export const isInoutParameter = (parameter: GirParameter): boolean => parameter.direction === "inout";
+
 /** A `<return-value>` plus its inferred type and transfer settings. */
 export type GirReturnValue = {
     readonly type: GirTypeRef | undefined;

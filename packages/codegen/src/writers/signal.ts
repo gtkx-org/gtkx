@@ -3,12 +3,13 @@ import { indent, quote } from "../dsl/emit.js";
 import { camelCaseMember, pascalCase } from "../dsl/identifier.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirParameter } from "../gir/parameter.js";
+import { isOutParameter } from "../gir/parameter.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
 import { forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
-import { isHandlePassing, isOutParameter, wrapReturnValue } from "./method.js";
+import { isHandlePassing, renderTupleWriteback, wrapReturnValue } from "./method.js";
 import { writeFfiType } from "./value.js";
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
@@ -186,10 +187,11 @@ const renderInvokeClosure = (
  *
  * The handler returns its results as the tuple {@link writeMethodReturnType}
  * describes (`[primary, ...outs]` when both exist, the scalar out alone for a
- * void return with a single out, or an out-only tuple otherwise). The closure
- * destructures that tuple and writes each out value into its trampoline cell's
- * `value` slot — the native side flushes those cells through the matching C
- * out-pointers, so the tuple convention stays entirely in generated code.
+ * void return with a single out, or an out-only tuple otherwise). The shared
+ * {@link renderTupleWriteback} destructures that tuple and writes each out
+ * value into its trampoline cell's `value` slot — the native side flushes
+ * those cells through the matching C out-pointers, so the tuple convention
+ * stays entirely in generated code.
  *
  * @param ctx - The module context
  * @param callArgs - The rendered in-parameter call arguments
@@ -202,25 +204,8 @@ const renderOutParamInvoke = (
     outArgIndices: readonly number[],
     returnRef: GirTypeRef | undefined,
 ): string => {
-    const lines = [`const _result = handler(${callArgs});`];
-    if (!isVoidRef(returnRef)) {
-        outArgIndices.forEach((argIndex, position) => {
-            lines.push(`args[${argIndex}].value = _result[${position + 1}];`);
-        });
-        if (returnRef !== undefined && isHandlePassing(ctx, returnRef)) {
-            ctx.addRuntimeImport("tryGetHandle");
-            lines.push("return tryGetHandle(_result[0]);");
-        } else {
-            lines.push("return _result[0];");
-        }
-    } else if (outArgIndices.length === 1) {
-        lines.push(`args[${outArgIndices[0]}].value = _result;`);
-    } else {
-        outArgIndices.forEach((argIndex, position) => {
-            lines.push(`args[${argIndex}].value = _result[${position}];`);
-        });
-    }
-    return `(handler, args) => {\n    ${lines.join("\n    ")}\n}`;
+    const body = renderTupleWriteback(ctx, `handler(${callArgs})`, outArgIndices, returnRef);
+    return `(handler, args) => {\n    ${body}\n}`;
 };
 
 const renderReturnGType = (ctx: ModuleContext, ref: GirTypeRef): string => {

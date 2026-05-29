@@ -50,40 +50,9 @@ impl ClosureContext {
 
             let return_type_ref: Option<&Type> = Some(&return_type);
 
-            let ref_pointers: Vec<(*mut c_void, &Type)> = args
-                .iter()
-                .zip(self.arg_types.iter())
-                .filter_map(|(gval, ty)| {
-                    if let Type::Ref(ref_type) = ty {
-                        let ptr = unsafe {
-                            glib::gobject_ffi::g_value_get_pointer(
-                                gval.to_glib_none().0 as *const _,
-                            )
-                        };
-                        Some((ptr, &*ref_type.inner_type))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
             let result = Mailbox::global().invoke_node_and_wait(&self.js_func, args_values, true);
 
             match result {
-                Ok(value::Value::Array(arr)) if !ref_pointers.is_empty() => {
-                    for (i, (ptr, inner_type)) in ref_pointers.iter().enumerate() {
-                        if let Some(val) = arr.get(i + 1)
-                            && !(*ptr).is_null()
-                            && !matches!(val, value::Value::Null | value::Value::Undefined)
-                            && let Err(e) = inner_type.write_value_to_raw_ptr(*ptr, val)
-                        {
-                            NativeErrorReporter::global()
-                                .report(&e.context("closure: failed to write ref value"));
-                        }
-                    }
-                    let return_val = arr.into_iter().next().unwrap_or(value::Value::Undefined);
-                    value::Value::into_glib_value_with_default(return_val, return_type_ref)
-                }
                 Ok(value) => value::Value::into_glib_value_with_default(value, return_type_ref),
                 Err(ref e) => {
                     NativeErrorReporter::global().report(&anyhow::anyhow!(

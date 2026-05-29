@@ -2,7 +2,7 @@ import type { ModuleContext } from "../dsl/context.js";
 import { joinArgs, quote } from "../dsl/emit.js";
 import { callbackFromNode, type GirCallback } from "../gir/callback.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { GirParameter, ParameterTransfer } from "../gir/parameter.js";
+import { type GirParameter, isOutParameter, type ParameterTransfer } from "../gir/parameter.js";
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { ResolvedNamed } from "../gir/repository.js";
 import type { ArrayTypeRef, GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
@@ -135,9 +135,10 @@ export const writeTrampolineType = (
     const resolved = resolveCallbackType(ctx, ref);
     if (resolved === undefined) return undefined;
     const { callback, namespaceName } = resolved;
-    const argTypes = callback.parameters.map((parameter) =>
-        writeFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership),
-    );
+    const argTypes = callback.parameters.map((parameter) => {
+        const ffi = writeFfiType(ctx, qualifyTypeRef(parameter.type, namespaceName), parameter.transferOwnership);
+        return isOutParameter(parameter) ? `t.ref(${ffi})` : ffi;
+    });
     let userDataIndex: number | undefined;
     callback.parameters.forEach((parameter, index) => {
         if (parameter.name === "user_data" || parameter.name === "data") userDataIndex = index;

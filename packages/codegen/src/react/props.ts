@@ -1,7 +1,7 @@
 import { camelCase, pascalCase } from "../dsl/identifier.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import type { GirParameter } from "../gir/parameter.js";
+import { type GirParameter, isOutParameter } from "../gir/parameter.js";
 import { PRIMITIVE_TS_TYPE } from "../gir/primitives.js";
 import type { GirProperty } from "../gir/property.js";
 import { resolveQualifiedClass, splitQualifiedName } from "../gir/qualified-name.js";
@@ -9,7 +9,6 @@ import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository } from "../gir/repository.js";
 import type { GirSignal } from "../gir/signal.js";
 import type { GirTypeRef, NamedTypeRef, PrimitiveTypeRef } from "../gir/type-ref.js";
-import { isOutParameter } from "../writers/method.js";
 import { signalHandlerName } from "./widgets.js";
 
 /**
