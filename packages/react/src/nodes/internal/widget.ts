@@ -42,11 +42,7 @@ export function isAttachedTo(child: Gtk.Widget | null, parent: Gtk.Widget | null
 export function unparentWidget(widget: Gtk.Widget): void {
     const currentParent = widget.getParent();
     if (currentParent === null) return;
-    if (isRemovable(currentParent)) {
-        currentParent.remove(widget);
-    } else {
-        widget.unparent();
-    }
+    detachChild(widget, currentParent);
 }
 
 export function removeChildFromParent(
