@@ -16,10 +16,10 @@ export interface GTypeStamped {
 
 /**
  * Internal abstract base for hand-written `@gtkx/ffi` native wrappers such as
- * the cairo `Matrix`. Generated wrapper classes do not extend it — they emit
- * their own constructor that delegates to `constructNativeObject`. Also the
- * wrapper type threaded through the identity registry. Not exported from the
- * public `@gtkx/ffi` surface.
+ * the cairo `Matrix`. Generated wrapper classes do not extend it — GObject
+ * roots delegate to `constructGObjectInstance` and boxed records allocate
+ * inline in their own constructor. Also the wrapper type threaded through the
+ * identity registry. Not exported from the public `@gtkx/ffi` surface.
  */
 export abstract class NativeObject implements GTypeStamped {
     /** Runtime GType of the underlying GObject or boxed instance. */
@@ -27,9 +27,9 @@ export abstract class NativeObject implements GTypeStamped {
 }
 
 /**
- * Constructor type for a generated native wrapper class. Used as the key type
- * of the construction-metadata registry and accepted by the wrapper-resolution
- * helpers (`getNativeObject`, `registerNativeClass`).
+ * Constructor type for a generated native wrapper class. Accepted by the
+ * wrapper-resolution helpers (`getNativeObject`, `registerNativeClass`) and
+ * used as the key type of the GType identity registries.
  */
 export type NativeClass<T extends object = object> = (abstract new (
     ...args: never[]

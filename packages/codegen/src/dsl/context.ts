@@ -35,11 +35,6 @@ export class ModuleContext {
         this.module.imports.addNamed("../../runtime.js", name);
     }
 
-    /** Adds the well-known `constructNativeObject` import from `object.js`. */
-    addConstructNativeObjectImport(): void {
-        this.module.imports.addNamed("../../object.js", "constructNativeObject");
-    }
-
     /** Adds the canonical `constructGObjectInstance` import from `object.js`. */
     addConstructGObjectInstanceImport(): void {
         this.module.imports.addNamed("../../object.js", "constructGObjectInstance");

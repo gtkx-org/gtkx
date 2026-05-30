@@ -9,7 +9,6 @@
  * runtime registries.
  */
 
-import { type ConstructionDescriptor, registerConstructionMeta } from "./construction-meta.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID } from "./gtype.js";
 import { type ClassVFuncMeta, type NativeClass, registerClassVFuncMeta } from "./handles.js";
@@ -50,8 +49,6 @@ export type NativeClassDescriptor = {
      * broader than `number`.
      */
     readonly gtype?: () => unknown;
-    /** Construction metadata, absent for types that cannot be constructed. */
-    readonly construction?: ConstructionDescriptor;
     /** Overridable vtable slot descriptors, absent when none are marshallable. */
     readonly vfuncs?: ClassVFuncMeta;
     /** Signal table and marshalling surface, absent for signal-free types. */
@@ -63,8 +60,8 @@ export type NativeClassDescriptor = {
  *
  * Called automatically by generated bindings, once per type at module load.
  * Resolves the descriptor's `GType` a single time and records it in the
- * appropriate identity registry, then registers any construction, vfunc, and
- * signal metadata the descriptor carries.
+ * appropriate identity registry, then registers any vfunc and signal metadata
+ * the descriptor carries.
  *
  * @param cls - The generated wrapper class
  * @param descriptor - The bundled registration metadata
@@ -76,10 +73,6 @@ export function registerNativeClass(cls: NativeClass, descriptor: NativeClassDes
         setInterfaceGType(cls, gtype);
     } else {
         setClassGType(cls, gtype);
-    }
-
-    if (descriptor.construction) {
-        registerConstructionMeta(cls, descriptor.construction);
     }
 
     if (descriptor.vfuncs) {

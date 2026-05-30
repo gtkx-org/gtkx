@@ -66,7 +66,6 @@ const buildInterfaceMembers = (ctx: ModuleContext, iface: GirClass, callables: C
         className,
         callables,
         hasGType: true,
-        hasParent: true,
     });
     appendPrerequisiteMethods(ctx, iface, members, claimedNames);
     for (const property of iface.properties) {

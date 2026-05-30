@@ -168,13 +168,4 @@ export class Matrix extends NativeObject {
     }
 }
 
-registerNativeClass(Matrix, {
-    role: "boxed",
-    construction: {
-        kind: "boxed",
-        size: 48,
-        glibTypeName: "cairo_matrix_t",
-        lib: LIB,
-        fields: {},
-    },
-});
+registerNativeClass(Matrix, { role: "boxed" });

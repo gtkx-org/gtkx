@@ -74,18 +74,6 @@ export const emitBindings = (ctx: ModuleContext, callables: Callables): void => 
 };
 
 /**
- * Renders the root `constructor(props) { constructNativeObject(...) }` body.
- *
- * Only the parentless root of a hierarchy (e.g. `GObject.Object`, each boxed
- * record) declares this constructor; every subclass inherits it, so
- * `constructNativeObject` runs exactly once per instantiation. Re-declaring it
- * on subclasses would re-enter `constructNativeObject` once per ancestor and
- * allocate orphaned native instances.
- */
-export const constructorMember = (): string =>
-    `constructor(props: object = {}) {\n    constructNativeObject(this, props);\n}`;
-
-/**
  * Renders a `static <name>(...): Owner` factory method for a GIR `<constructor>`.
  *
  * Returns `undefined` for non-introspectable, shadowed, identifier-less, or
@@ -300,27 +288,24 @@ export type PlainTypeMembersOptions = {
     readonly callables: Callables;
     /** Whether to prepend `declare __gtype__: number;`. */
     readonly hasGType: boolean;
-    /** Whether the enclosing class declares an `extends` clause. Defaults to `false`. */
-    readonly hasParent?: boolean;
 };
 
 /**
  * Renders the shared head of an interface or boxed class body — `__gtype__`
- * declaration (optional), constructor, statics, plain instance methods,
- * and shadowed-method aliases — plus the `claimedNames` set populated by
- * those renderers.
+ * declaration (optional), statics, plain instance methods, and
+ * shadowed-method aliases — plus the `claimedNames` set populated by those
+ * renderers.
  *
- * Callers append property accessors, field accessors, and signal members on
- * top of the returned members list. The class writer takes a different
- * path because it has to consult inherited signatures.
+ * Callers append the constructor, property accessors, field accessors, and
+ * signal members on top of the returned members list. The class writer takes
+ * a different path because it has to consult inherited signatures.
  */
 export const buildPlainTypeMembers = (
     options: PlainTypeMembersOptions,
 ): { readonly members: string[]; readonly claimedNames: Set<string> } => {
-    const { ctx, className, callables, hasGType, hasParent = false } = options;
+    const { ctx, className, callables, hasGType } = options;
     const members: string[] = [];
     if (hasGType) members.push("declare __gtype__: number;");
-    if (!hasParent) members.push(constructorMember());
     const claimedNames = new Set<string>();
     members.push(...renderStaticHead(ctx, callables, className));
     members.push(...renderPlainInstanceMethods(ctx, callables.methods, claimedNames));

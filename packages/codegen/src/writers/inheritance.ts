@@ -71,8 +71,8 @@ export const forEachAncestor = (
  * from an ancestor (or an ancestor-implemented interface).
  *
  * Each returned property carries its references re-rooted to the interface's
- * namespace so the class writer can emit its accessor and construction-meta
- * entry as if the property had been authored on the class.
+ * namespace so the class writer can emit its accessor and constructor prop
+ * as if the property had been authored on the class.
  *
  * @param ctx - The module context
  * @param klass - The implementing class

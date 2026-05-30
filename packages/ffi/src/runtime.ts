@@ -9,7 +9,7 @@
  * import header compact and decouples generated code from the internal
  * module layout of `@gtkx/ffi`.
  *
- * `constructNativeObject` is deliberately *not* re-exported here. It lives
+ * `constructGObjectInstance` is deliberately *not* re-exported here. It lives
  * in `./object.js`, which transitively imports back into this barrel via
  * `./gobject/gvalue.js`. Re-exporting it would close an import cycle through
  * the barrel and impose a load-order constraint on every export below.
@@ -19,12 +19,6 @@
 
 export { createRef } from "@gtkx/native";
 export { promisify } from "./async.js";
-export type {
-    BoxedConstructionMeta,
-    BoxedFieldMeta,
-    ConstructionDescriptor,
-    ConstructionMeta,
-} from "./construction-meta.js";
 export type { ClassVFuncMeta, NativeClass, NativeHandle } from "./handles.js";
 export { getHandle, setHandle, tryGetHandle } from "./handles.js";
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";

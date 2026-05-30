@@ -2,11 +2,11 @@ import type { ModuleContext } from "../dsl/context.js";
 import { indent } from "../dsl/emit.js";
 import { pascalCase } from "../dsl/identifier.js";
 import type { GirBoxed } from "../gir/boxed.js";
+import { renderBoxedConstructor, renderBoxedConstructorPropsInterface } from "./boxed-constructor.js";
 import { renderBoxedFieldAccessor } from "./boxed-field-accessor.js";
 import { computeBoxedFieldSlots } from "./boxed-layout.js";
 import { buildPlainTypeMembers, type Callables, dedupeCallables, emitBindings } from "./callables.js";
 import { isClassStructRecord } from "./class-struct-record.js";
-import { renderBoxedConstructionMeta } from "./construction-meta.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
 import { appendNativeClassRegistration } from "./registration.js";
 
@@ -31,7 +31,6 @@ export const emitBoxed = (ctx: ModuleContext, boxed: GirBoxed): void => {
     if (boxed.flavor === "vtable") return;
     if (boxed.name.length === 0) return;
     if (isClassStructRecord(ctx.namespace.name, boxed)) return;
-    ctx.addConstructNativeObjectImport();
     const className = pascalCase(boxed.name);
     const callables: Callables = {
         constructors: dedupeCallables(boxed.constructors),
@@ -43,6 +42,7 @@ export const emitBoxed = (ctx: ModuleContext, boxed: GirBoxed): void => {
     const members = buildBoxedMembers(ctx, boxed, className, callables);
     const body = members.map((member) => indent(member, 1)).join("\n\n");
     ctx.module.appendDeclaration(`export class ${className} {\n${body}\n}`);
+    ctx.module.appendDeclaration(renderBoxedConstructorPropsInterface(ctx, boxed, className));
 
     const getTypeRef =
         boxed.glibGetType === undefined
@@ -52,7 +52,6 @@ export const emitBoxed = (ctx: ModuleContext, boxed: GirBoxed): void => {
         className,
         role: "boxed",
         getTypeRef,
-        construction: renderBoxedConstructionMeta(ctx, boxed),
     });
 };
 
@@ -68,6 +67,7 @@ const buildBoxedMembers = (
         callables,
         hasGType: boxed.glibGetType !== undefined,
     });
+    members.unshift(renderBoxedConstructor(ctx, boxed, className));
     const { slots } = computeBoxedFieldSlots(ctx, boxed.fields, boxed.isUnion);
     for (const slot of slots) {
         const block = renderBoxedFieldAccessor(ctx, slot, claimedNames, boxed.fields);
