@@ -1,10 +1,9 @@
 import type { GType } from "@gtkx/ffi/gobject";
 import { typeName, typeParent } from "@gtkx/ffi/gobject";
-import { CONSTRUCT_ONLY, PROPS, SIGNALS } from "./generated/internal.js";
+import { CONSTRUCT_ONLY, SIGNALS } from "./generated/internal.js";
 import type { Container } from "./types.js";
 
 const typeNameChainCache = new Map<GType, readonly string[]>();
-const propMetaCache = new Map<GType, Map<string, string | null>>();
 const signalCache = new Map<GType, Map<string, string | null>>();
 const constructOnlyCache = new Map<GType, Map<string, boolean>>();
 
@@ -51,15 +50,6 @@ const memoize = <T>(
     perGtype.set(key, result);
     return result;
 };
-
-export const resolvePropMeta = (instance: Container, key: string): string | null =>
-    memoize(propMetaCache, instance, key, (typeNames) => {
-        for (const name of typeNames) {
-            const result = PROPS[name]?.[key];
-            if (result) return result;
-        }
-        return null;
-    });
 
 export const isConstructOnlyProp = (instance: Container, key: string): boolean =>
     memoize(constructOnlyCache, instance, key, (typeNames) => {

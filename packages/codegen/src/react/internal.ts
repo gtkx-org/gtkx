@@ -4,20 +4,18 @@ import type { GirRepository } from "../gir/repository.js";
 import { implementedInterfaces, isReactNodeClass, iterateClassesWithGlibName, signalHandlerName } from "./widgets.js";
 
 /**
- * Generates `internal.ts` source — the `PROPS`, `SIGNALS`, and
- * `CONSTRUCT_ONLY` tables consumed by the React metadata resolver.
+ * Generates `internal.ts` source — the `SIGNALS` and `CONSTRUCT_ONLY`
+ * tables consumed by the React metadata resolver.
  *
  * Walks every widget across every loaded namespace and emits one entry
- * per GLib type name. Properties are flattened with their interface
- * mixins; signals are mapped from kebab-case to `onCamelCase`; construct-
- * only properties are surfaced as a `Set` for the runtime to consult on
- * mount.
+ * per GLib type name. Signals are mapped from kebab-case to `onCamelCase`;
+ * construct-only properties are surfaced as a `Set` for the runtime to
+ * consult on mount.
  *
  * @param repository - The loaded GIR repository
  */
 export const generateInternal = (repository: GirRepository): string => {
     const widgets = collectWidgets(repository);
-    const propsEntries = widgets.map(({ glibName, props }) => `    "${glibName}": ${renderPropsObject(props)},`);
     const signalsEntries = widgets.map(
         ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
     );
@@ -30,7 +28,6 @@ export const generateInternal = (repository: GirRepository): string => {
 
     return `${[
         preamble,
-        `export const PROPS: Readonly<Record<string, Readonly<Record<string, string>>>> = {\n${propsEntries.join("\n")}\n};`,
         `export const SIGNALS: Readonly<Record<string, Readonly<Record<string, string>>>> = {\n${signalsEntries.join("\n")}\n};`,
         `export const CONSTRUCT_ONLY: Readonly<Record<string, ReadonlySet<string>>> = {\n${constructOnlyEntries.join("\n")}\n};`,
     ].join("\n\n")}\n`;
@@ -39,7 +36,6 @@ export const generateInternal = (repository: GirRepository): string => {
 type WidgetEntry = {
     readonly glibName: string;
     readonly namespace: string;
-    readonly props: ReadonlyArray<readonly [string, string]>;
     readonly signals: ReadonlyArray<readonly [string, string]>;
     readonly constructOnly: readonly string[];
 };
@@ -52,26 +48,11 @@ const collectWidgets = (repository: GirRepository): readonly WidgetEntry[] => {
         entries.push({
             glibName,
             namespace: namespace.name,
-            props: collectProps(sources),
             signals: collectSignals(sources),
             constructOnly: collectConstructOnly(sources),
         });
     }
     return entries.sort((a, b) => a.glibName.localeCompare(b.glibName));
-};
-
-const collectProps = (sources: readonly GirClass[]): ReadonlyArray<readonly [string, string]> => {
-    const seen = new Set<string>();
-    const props: Array<readonly [string, string]> = [];
-    for (const source of sources) {
-        for (const property of source.properties) {
-            const jsName = camelCase(property.name);
-            if (seen.has(jsName)) continue;
-            seen.add(jsName);
-            props.push([jsName, jsName] as const);
-        }
-    }
-    return props;
 };
 
 const collectSignals = (sources: readonly GirClass[]): ReadonlyArray<readonly [string, string]> => {
@@ -101,12 +82,6 @@ const collectConstructOnly = (sources: readonly GirClass[]): readonly string[] =
         }
     }
     return names;
-};
-
-const renderPropsObject = (entries: ReadonlyArray<readonly [string, string]>): string => {
-    if (entries.length === 0) return "{}";
-    const lines = entries.map(([key, value]) => `        ${JSON.stringify(key)}: ${JSON.stringify(value)}`);
-    return `{\n${lines.join(",\n")}\n    }`;
 };
 
 const renderSignalsObject = (entries: ReadonlyArray<readonly [string, string]>): string => {

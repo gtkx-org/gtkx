@@ -17,7 +17,7 @@
  * handler when the prop changes, and {@link arraySync} reconciles an array prop
  * against the widget through clear/add operations.
  */
-import { isConstructOnlyProp, resolvePropMeta, resolveSignal } from "../../metadata.js";
+import { isConstructOnlyProp, resolveSignal } from "../../metadata.js";
 import type { Node } from "../../node.js";
 import type { Container, Props } from "../../types.js";
 import { isEditable } from "./predicates.js";
@@ -263,15 +263,9 @@ const applyGenericProps = (
         if (name === "text" && oldValue !== undefined && isEditable(container) && oldValue !== container.getText()) {
             continue;
         }
-        setProperty(container, name, newValue);
+        if (typeof newValue === "string" && Reflect.get(container, name) === newValue) continue;
+        Reflect.set(container, name, newValue);
     }
-};
-
-const setProperty = (container: Container, key: string, value: unknown): void => {
-    const propName = resolvePropMeta(container, key);
-    if (!propName) return;
-    if (typeof value === "string" && Reflect.get(container, propName) === value) return;
-    Reflect.set(container, propName, value);
 };
 
 const applyTableDescriptors = (context: ApplyContext): void => {

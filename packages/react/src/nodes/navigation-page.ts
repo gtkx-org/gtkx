@@ -5,7 +5,7 @@ import type { Node } from "../node.js";
 import { toCamelCase } from "./internal/naming.js";
 import { hasChanged } from "./internal/props.js";
 import { SingleChildVirtualNode } from "./internal/single-child-virtual.js";
-import { getFocusWidget, isDescendantOf, resolvePropertySetter } from "./internal/widget.js";
+import { getFocusWidget, isDescendantOf } from "./internal/widget.js";
 import { WidgetNode } from "./widget.js";
 
 export class NavigationPageNode extends SingleChildVirtualNode<NavigationPageProps, WidgetNode, WidgetNode> {
@@ -88,11 +88,6 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
 
     private applySlotChild(parentWidget: Gtk.Widget, oldChild: Gtk.Widget | null): void {
         const propId = toCamelCase(this.props.id ?? "");
-        const setter = resolvePropertySetter(parentWidget, propId);
-
-        if (!setter) {
-            throw new Error(`Unable to find property for slot '${propId}' on type '${parentWidget.constructor.name}'`);
-        }
 
         if (oldChild && !this.wrappedPage) {
             const focus = getFocusWidget(oldChild);
@@ -102,7 +97,7 @@ export class NavigationPageNode extends SingleChildVirtualNode<NavigationPagePro
             }
         }
 
-        setter(this.wrappedPage);
+        Reflect.set(parentWidget, propId, this.wrappedPage);
     }
 
     private getParentWidget(): Gtk.Widget {

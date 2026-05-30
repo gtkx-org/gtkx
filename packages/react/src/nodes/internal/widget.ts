@@ -1,5 +1,4 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { resolvePropMeta } from "../../metadata.js";
 
 import { isAddable, isAppendable, isContentWidget, isRemovable, isSingleChild } from "./predicates.js";
 
@@ -71,19 +70,4 @@ export function isDescendantOf(widget: Gtk.Widget, ancestor: Gtk.Widget): boolea
     }
 
     return false;
-}
-
-export function resolvePropertySetter(
-    parentWidget: Gtk.Widget,
-    propId: string,
-): ((child: Gtk.Widget | null) => void) | null {
-    const propName = resolvePropMeta(parentWidget, propId);
-
-    if (!propName) {
-        return null;
-    }
-
-    return (child: Gtk.Widget | null) => {
-        Reflect.set(parentWidget, propName, child);
-    };
 }

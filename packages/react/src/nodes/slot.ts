@@ -3,7 +3,7 @@ import type { SlotProps } from "../jsx.js";
 import type { Node } from "../node.js";
 import type { Props } from "../types.js";
 import { toCamelCase } from "./internal/naming.js";
-import { getFocusWidget, isDescendantOf, resolvePropertySetter } from "./internal/widget.js";
+import { getFocusWidget, isDescendantOf } from "./internal/widget.js";
 import { VirtualNode } from "./virtual.js";
 import { WidgetNode } from "./widget.js";
 
@@ -68,14 +68,12 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
             if (parentWidget.getRoot() !== null) {
                 this.cachedSetter = null;
                 const setter = this.resolveChildSetter(parentWidget);
-                if (setter) {
-                    const oldChild = this.children[0].container;
-                    const focus = getFocusWidget(oldChild);
-                    if (focus && isDescendantOf(focus, oldChild)) {
-                        parentWidget.grabFocus();
-                    }
-                    setter(null);
+                const oldChild = this.children[0].container;
+                const focus = getFocusWidget(oldChild);
+                if (focus && isDescendantOf(focus, oldChild)) {
+                    parentWidget.grabFocus();
                 }
+                setter(null);
             }
             this.detachedParentWidget = null;
         }
@@ -104,14 +102,7 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
     private ensureChildSetter(): (child: Gtk.Widget | null) => void {
         if (this.cachedSetter) return this.cachedSetter;
 
-        const parent = this.getParentWidget();
-        const setter = this.resolveChildSetter(parent);
-
-        if (!setter) {
-            throw new Error(`Unable to find property for Slot '${this.getId()}' on type '${parent.constructor.name}'`);
-        }
-
-        this.cachedSetter = setter;
+        this.cachedSetter = this.resolveChildSetter(this.getParentWidget());
         return this.cachedSetter;
     }
 
@@ -131,7 +122,10 @@ export class SlotNode<P extends Props = SlotProps, TChild extends Node = WidgetN
         setter(childWidget);
     }
 
-    private resolveChildSetter(parent: Gtk.Widget): ((child: Gtk.Widget | null) => void) | null {
-        return resolvePropertySetter(parent, this.getId());
+    private resolveChildSetter(parent: Gtk.Widget): (child: Gtk.Widget | null) => void {
+        const id = this.getId();
+        return (child) => {
+            Reflect.set(parent, id, child);
+        };
     }
 }
