@@ -6,14 +6,11 @@ import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { loadApplicationId } from "../codegen/config-loader.js";
 import { resolveCliTool } from "../internal/resolve-cli-tool.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
+import { BUNDLE_FILENAME, escapeXml, OVERRIDE_SEPARATOR, VIRTUAL_INIT, VIRTUAL_PREFIX } from "./gresource-protocol.js";
 
-const VIRTUAL_PREFIX = "\0gtkx-gresources:";
-const VIRTUAL_INIT = "\0gtkx-gresources-init";
 const RESOURCE_COMPILER = "glib-compile-resources";
-const BUNDLE_FILENAME = "gtkx.gresource";
 const DEFAULT_RESOURCE_PREFIX = "/gtkx/app";
 const RESOURCE_QUERY = "resource";
-const OVERRIDE_SEPARATOR = "\0resource=";
 const MANIFEST_PREFIX = "/";
 
 /**
@@ -76,22 +73,6 @@ const computeResourcePath = (state: PluginState, absFile: string, override: stri
     }
     return `${state.prefix}/${rel}`;
 };
-
-const escapeXml = (value: string): string =>
-    value.replace(/[<>&"']/g, (char) => {
-        switch (char) {
-            case "<":
-                return "&lt;";
-            case ">":
-                return "&gt;";
-            case "&":
-                return "&amp;";
-            case '"':
-                return "&quot;";
-            default:
-                return "&apos;";
-        }
-    });
 
 type ResourceEntry = {
     sourcePath: string;
@@ -396,43 +377,3 @@ export function gtkxResources(): Plugin {
         },
     };
 }
-
-/**
- * Test-only: name of the virtual init module synthesized by
- * {@link gtkxResources}. Exposed so unit tests can drive the `load` hook
- * directly without depending on Vite internals.
- *
- * @internal
- */
-export const __TEST_VIRTUAL_INIT = VIRTUAL_INIT;
-
-/**
- * Test-only: prefix of the virtual asset module ids synthesized by
- * {@link gtkxResources}.
- *
- * @internal
- */
-export const __TEST_VIRTUAL_PREFIX = VIRTUAL_PREFIX;
-
-/**
- * Test-only: separator joining an asset's resolved id to its
- * `?resource=` override inside a virtual asset module id.
- *
- * @internal
- */
-export const __TEST_OVERRIDE_SEPARATOR = OVERRIDE_SEPARATOR;
-
-/**
- * Test-only: filename of the compiled bundle emitted by the build hook.
- *
- * @internal
- */
-export const __TEST_BUNDLE_FILENAME = BUNDLE_FILENAME;
-
-/**
- * Test-only: XML-escapes the five reserved characters (`<`, `>`, `&`, `"`,
- * `'`) used inside the generated GResource manifest.
- *
- * @internal
- */
-export const __TEST_escapeXml = escapeXml;

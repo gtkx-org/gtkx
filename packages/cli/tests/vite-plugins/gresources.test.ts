@@ -5,14 +5,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-    __TEST_BUNDLE_FILENAME,
-    __TEST_escapeXml,
-    __TEST_OVERRIDE_SEPARATOR,
-    __TEST_VIRTUAL_INIT,
-    __TEST_VIRTUAL_PREFIX,
-    deriveResourcePrefix,
-    gtkxResources,
-} from "../../src/vite-plugins/gresources.js";
+    BUNDLE_FILENAME,
+    escapeXml,
+    OVERRIDE_SEPARATOR,
+    VIRTUAL_INIT,
+    VIRTUAL_PREFIX,
+} from "../../src/vite-plugins/gresource-protocol.js";
+import { deriveResourcePrefix, gtkxResources } from "../../src/vite-plugins/gresources.js";
 
 import type { BuildEndHook, LoadHook, ResolveIdHook } from "./plugin-hook-types.js";
 
@@ -127,9 +126,9 @@ describe("gtkxResources (resolveId)", () => {
         const plugin = gtkxResources();
         const result = await (plugin.resolveId as ResolveIdHook).call(
             { resolve: () => Promise.resolve({ id: "" }) },
-            __TEST_VIRTUAL_INIT,
+            VIRTUAL_INIT,
         );
-        expect(result).toBe(__TEST_VIRTUAL_INIT);
+        expect(result).toBe(VIRTUAL_INIT);
     });
 
     it("ignores non-asset sources", async () => {
@@ -147,7 +146,7 @@ describe("gtkxResources (resolveId)", () => {
             { resolve: () => Promise.resolve({ id: "/abs/logo.png" }) },
             "./logo.png",
         );
-        expect(result).toBe(`${__TEST_VIRTUAL_PREFIX}/abs/logo.png`);
+        expect(result).toBe(`${VIRTUAL_PREFIX}/abs/logo.png`);
     });
 
     it("returns undefined when resolve marks the asset external", async () => {
@@ -165,7 +164,7 @@ describe("gtkxResources (resolveId)", () => {
             { resolve: () => Promise.resolve({ id: "/abs/logo.png?import" }) },
             "./logo.png?import",
         );
-        expect(result).toBe(`${__TEST_VIRTUAL_PREFIX}/abs/logo.png?import`);
+        expect(result).toBe(`${VIRTUAL_PREFIX}/abs/logo.png?import`);
     });
 
     it("strips a ?resource= query before resolving and encodes the override", async () => {
@@ -176,7 +175,7 @@ describe("gtkxResources (resolveId)", () => {
             "./logo.png?resource=icons/logo.png",
         );
         expect(resolve).toHaveBeenCalledWith("./logo.png", undefined, expect.objectContaining({ skipSelf: true }));
-        expect(result).toBe(`${__TEST_VIRTUAL_PREFIX}/abs/logo.png${__TEST_OVERRIDE_SEPARATOR}icons/logo.png`);
+        expect(result).toBe(`${VIRTUAL_PREFIX}/abs/logo.png${OVERRIDE_SEPARATOR}icons/logo.png`);
     });
 });
 
@@ -187,10 +186,10 @@ describe("gtkxResources (init module)", () => {
         const plugin = gtkxResources();
         await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
-        const out = (plugin.load as LoadHook)(__TEST_VIRTUAL_INIT) as string;
+        const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
         expect(out).toContain("resourceLoad");
         expect(out).toContain("resourcesRegister");
-        expect(out).toContain(__TEST_BUNDLE_FILENAME);
+        expect(out).toContain(BUNDLE_FILENAME);
         expect(out).toContain("import.meta.url");
         expect(out).toContain("export function ensureRegistered");
     });
@@ -203,9 +202,9 @@ describe("gtkxResources (init module)", () => {
 
         const assetPath = join(tmpDir, "logo.png");
         writeFileSync(assetPath, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-        (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`);
+        (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
 
-        const out = (plugin.load as LoadHook)(__TEST_VIRTUAL_INIT) as string;
+        const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
         expect(out).toContain("resourcesUnregister");
         expect(out).toContain("ensureRegistered");
         expect(out).toContain("__refresh");
@@ -227,7 +226,7 @@ describe("gtkxResources (asset load)", () => {
         await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
         const assetPath = join(tmpDir, "icons/foo.svg");
-        const out = (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`) as string;
+        const out = (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`) as string;
 
         expect(out).toContain('import { ensureRegistered } from "\\u0000gtkx-gresources-init";');
         expect(out).toContain("ensureRegistered();");
@@ -240,7 +239,7 @@ describe("gtkxResources (asset load)", () => {
         await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
         const assetPath = join(tmpDir, "src/theme/dark.css");
-        const virtualId = `${__TEST_VIRTUAL_PREFIX}${assetPath}${__TEST_OVERRIDE_SEPARATOR}style.css`;
+        const virtualId = `${VIRTUAL_PREFIX}${assetPath}${OVERRIDE_SEPARATOR}style.css`;
         const out = (plugin.load as LoadHook)(virtualId) as string;
 
         expect(out).toContain(`export default "resource:///org/gtk/Demo4/style.css";`);
@@ -252,7 +251,7 @@ describe("gtkxResources (asset load)", () => {
         await initPlugin(plugin, "build", tmpDir, "org.gtk.Demo4");
 
         const assetPath = join(tmpDir, "src/demos/css/brick.png");
-        const virtualId = `${__TEST_VIRTUAL_PREFIX}${assetPath}${__TEST_OVERRIDE_SEPARATOR}/css_multiplebgs/brick.png`;
+        const virtualId = `${VIRTUAL_PREFIX}${assetPath}${OVERRIDE_SEPARATOR}/css_multiplebgs/brick.png`;
         const out = (plugin.load as LoadHook)(virtualId) as string;
 
         expect(out).toContain(`export default "resource:///css_multiplebgs/brick.png";`);
@@ -265,9 +264,7 @@ describe("gtkxResources (asset load)", () => {
         await initPlugin(plugin, "build", root);
 
         const outsidePath = join(tmpDir, "outside.png");
-        expect(() => (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${outsidePath}`)).toThrow(
-            /outside the Vite root/,
-        );
+        expect(() => (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${outsidePath}`)).toThrow(/outside the Vite root/);
     });
 });
 
@@ -291,7 +288,7 @@ describe("gtkxResources (buildEnd)", () => {
 
         const assetPath = join(tmpDir, "logo.png");
         writeFileSync(assetPath, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-        (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`);
+        (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
 
         const emitFile = vi.fn();
         (plugin.buildEnd as BuildEndHook).call({ emitFile });
@@ -300,7 +297,7 @@ describe("gtkxResources (buildEnd)", () => {
         const call = emitFile.mock.calls[0]?.[0];
         expect(call).toBeDefined();
         expect(call.type).toBe("asset");
-        expect(call.fileName).toBe(__TEST_BUNDLE_FILENAME);
+        expect(call.fileName).toBe(BUNDLE_FILENAME);
         expect(Buffer.isBuffer(call.source)).toBe(true);
         expect(call.source.length).toBeGreaterThan(0);
     });
@@ -337,7 +334,7 @@ describe("gtkxResources (watcher: change event)", () => {
 
         const assetPath = join(tmpDir, "icon.png");
         writeTinyPng(assetPath);
-        (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`);
+        (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
 
         const refresh = vi.fn();
         const server = createFakeServer(refresh);
@@ -346,7 +343,7 @@ describe("gtkxResources (watcher: change event)", () => {
         server.watcher.emit("change", assetPath);
         await waitTicks();
 
-        expect(server.ssrLoadModule).toHaveBeenCalledWith(__TEST_VIRTUAL_INIT);
+        expect(server.ssrLoadModule).toHaveBeenCalledWith(VIRTUAL_INIT);
         expect(refresh).toHaveBeenCalled();
     });
 });
@@ -362,7 +359,7 @@ describe("gtkxResources (watcher: add event)", () => {
 
         const assetPath = join(tmpDir, "addme.png");
         writeTinyPng(assetPath);
-        (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`);
+        (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
 
         const refresh = vi.fn();
         const server = createFakeServer(refresh);
@@ -406,7 +403,7 @@ describe("gtkxResources (watcher: refresh failure)", () => {
 
         const assetPath = join(tmpDir, "broken.png");
         writeTinyPng(assetPath);
-        (plugin.load as LoadHook)(`${__TEST_VIRTUAL_PREFIX}${assetPath}`);
+        (plugin.load as LoadHook)(`${VIRTUAL_PREFIX}${assetPath}`);
 
         const watcher = new EventEmitter();
         const server = {
@@ -432,26 +429,26 @@ describe("gtkxResources (watcher: refresh failure)", () => {
 
 describe("escapeXml (internal)", () => {
     it("escapes < to &lt;", () => {
-        expect(__TEST_escapeXml("<root>")).toBe("&lt;root&gt;");
+        expect(escapeXml("<root>")).toBe("&lt;root&gt;");
     });
 
     it("escapes & to &amp;", () => {
-        expect(__TEST_escapeXml("a & b")).toBe("a &amp; b");
+        expect(escapeXml("a & b")).toBe("a &amp; b");
     });
 
     it("escapes the double quote to &quot;", () => {
-        expect(__TEST_escapeXml('say "hi"')).toBe("say &quot;hi&quot;");
+        expect(escapeXml('say "hi"')).toBe("say &quot;hi&quot;");
     });
 
     it("escapes the apostrophe to &apos;", () => {
-        expect(__TEST_escapeXml("it's")).toBe("it&apos;s");
+        expect(escapeXml("it's")).toBe("it&apos;s");
     });
 
     it("leaves a plain alphanumeric string untouched", () => {
-        expect(__TEST_escapeXml("plain text 123")).toBe("plain text 123");
+        expect(escapeXml("plain text 123")).toBe("plain text 123");
     });
 
     it("escapes a string containing every reserved character", () => {
-        expect(__TEST_escapeXml(`<a & b="c">'`)).toBe("&lt;a &amp; b=&quot;c&quot;&gt;&apos;");
+        expect(escapeXml(`<a & b="c">'`)).toBe("&lt;a &amp; b=&quot;c&quot;&gt;&apos;");
     });
 });
