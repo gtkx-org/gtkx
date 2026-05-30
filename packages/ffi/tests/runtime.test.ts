@@ -4,10 +4,7 @@ import * as runtime from "../src/runtime.js";
 const EXPECTED_RUNTIME_EXPORTS = [
     "createRef",
     "promisify",
-    "registerConstructionMeta",
-    "getClassVFuncMeta",
     "getHandle",
-    "registerClassVFuncMeta",
     "setHandle",
     "tryGetHandle",
     "alloc",
@@ -20,15 +17,11 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "write",
     "checkError",
     "makeErrorDomain",
-    "NativeError",
-    "registerInterfaceVFuncMeta",
+    "registerNativeClass",
     "getNativeObject",
     "getNativeObjectAsInterface",
-    "registerNativeClass",
-    "registerNativeInterface",
     "connectSignal",
     "emitSignal",
-    "registerSignalMeta",
 ] as const;
 
 describe("runtime barrel", () => {

@@ -1,10 +1,11 @@
+import { createRef } from "@gtkx/native";
 import { describe, expect, it } from "vitest";
 import { FileError, Error as GError, quarkFromString } from "../src/generated/glib/glib.js";
 import type { GType } from "../src/generated/gobject/gobject.js";
 import { typeFromName } from "../src/generated/gobject/gobject.js";
 import * as Gtk from "../src/generated/gtk/gtk.js";
 import { getHandle } from "../src/handles.js";
-import { makeErrorDomain, NativeError } from "../src/native.js";
+import { checkError, makeErrorDomain } from "../src/native.js";
 import { instanceIsA } from "./helpers.js";
 
 const orientableGType = (): GType => typeFromName("GtkOrientable");
@@ -12,76 +13,78 @@ const orientableGType = (): GType => typeFromName("GtkOrientable");
 const FILE_ERROR_DOMAIN = 0xbe1;
 const FILE_ERROR_NOENT = 5;
 
-describe("NativeError", () => {
-    it("extends Error", () => {
-        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
-        const error = new NativeError(gerror);
+const gerrorIn = (domain: number): GError => GError.newLiteral(domain, FILE_ERROR_NOENT, "missing file");
 
-        expect(error).toBeInstanceOf(Error);
-        expect(error).toBeInstanceOf(NativeError);
+describe("checkError", () => {
+    it("does nothing when the error ref is empty", () => {
+        expect(() => checkError(createRef(null), GError)).not.toThrow();
     });
 
-    it("sets the error name to NativeError", () => {
-        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
-        const error = new NativeError(gerror);
+    it("throws the raw GError when the ref is populated", () => {
+        const ref = createRef(getHandle(gerrorIn(FILE_ERROR_DOMAIN)));
 
-        expect(error.name).toBe("NativeError");
+        let thrown: unknown;
+        try {
+            checkError(ref, GError);
+        } catch (error) {
+            thrown = error;
+        }
+
+        expect(thrown).toBeInstanceOf(GError);
     });
 
-    it("uses the GError message for the Error message", () => {
-        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
-        const error = new NativeError(gerror);
+    it("surfaces the GError message, domain, and code on the thrown value", () => {
+        const ref = createRef(getHandle(gerrorIn(FILE_ERROR_DOMAIN)));
 
-        expect(error.message).toBe("missing file");
+        let thrown: GError | undefined;
+        try {
+            checkError(ref, GError);
+        } catch (error) {
+            if (error instanceof GError) thrown = error;
+        }
+
+        expect(thrown?.message).toBe("missing file");
+        expect(thrown?.domain).toBe(FILE_ERROR_DOMAIN);
+        expect(thrown?.code).toBe(FILE_ERROR_NOENT);
     });
 
-    it("falls back to 'Unknown error' when the GError has no message", () => {
-        const fakeGerror = { domain: FILE_ERROR_DOMAIN, code: FILE_ERROR_NOENT, message: null } as unknown as GError;
-        const error = new NativeError(fakeGerror);
+    it("attaches a stack trace pointing past checkError", () => {
+        const ref = createRef(getHandle(gerrorIn(FILE_ERROR_DOMAIN)));
 
-        expect(error.message).toBe("Unknown error");
-    });
+        let stack: string | undefined;
+        try {
+            checkError(ref, GError);
+        } catch (error) {
+            if (typeof error === "object" && error !== null && "stack" in error && typeof error.stack === "string") {
+                stack = error.stack;
+            }
+        }
 
-    it("exposes the GError domain and code as properties", () => {
-        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
-        const error = new NativeError(gerror);
-
-        expect(error.domain).toBe(FILE_ERROR_DOMAIN);
-        expect(error.code).toBe(FILE_ERROR_NOENT);
-    });
-
-    it("captures a stack trace pointing past the NativeError constructor", () => {
-        const gerror = GError.newLiteral(FILE_ERROR_DOMAIN, FILE_ERROR_NOENT, "missing file");
-        const error = new NativeError(gerror);
-
-        expect(typeof error.stack).toBe("string");
-        expect(error.stack ?? "").not.toContain("at new NativeError");
+        expect(typeof stack).toBe("string");
+        expect(stack ?? "").not.toContain("at checkError");
     });
 });
 
 describe("makeErrorDomain", () => {
-    const nativeErrorIn = (domain: number): NativeError =>
-        new NativeError(GError.newLiteral(domain, FILE_ERROR_NOENT, "missing file"));
-
     it("exposes the enum members", () => {
         const domain = makeErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
         expect(domain.NOENT).toBe(FILE_ERROR_NOENT);
     });
 
-    it("matches a NativeError thrown from the same domain via instanceof", () => {
+    it("matches a GError from the same domain via instanceof", () => {
         const domain = makeErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
-        expect(nativeErrorIn(FILE_ERROR_DOMAIN) instanceof domain).toBe(true);
+        expect(gerrorIn(FILE_ERROR_DOMAIN) instanceof domain).toBe(true);
     });
 
-    it("rejects a NativeError from a different domain", () => {
+    it("rejects a GError from a different domain", () => {
         const domain = makeErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
-        expect(nativeErrorIn(FILE_ERROR_DOMAIN + 1) instanceof domain).toBe(false);
+        expect(gerrorIn(FILE_ERROR_DOMAIN + 1) instanceof domain).toBe(false);
     });
 
-    it("rejects values that are not a NativeError", () => {
+    it("rejects values that are not a GError", () => {
         const domain = makeErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
 
         expect(new Error("plain") instanceof domain).toBe(false);
@@ -89,9 +92,8 @@ describe("makeErrorDomain", () => {
 
     it("matches a generated error-domain enum by its GLib quark", () => {
         const gerror = GError.newLiteral(quarkFromString("g-file-error-quark"), FileError.NOENT, "missing file");
-        const error = new NativeError(gerror);
 
-        expect(error instanceof FileError).toBe(true);
+        expect(gerror instanceof FileError).toBe(true);
     });
 });
 

@@ -19,19 +19,20 @@
 
 export { createRef } from "@gtkx/native";
 export { promisify } from "./async.js";
-export type { BoxedFieldMeta, ConstructionMeta, GObjectPropMeta } from "./construction-meta.js";
-export { registerConstructionMeta } from "./construction-meta.js";
-export type { NativeClass, NativeHandle } from "./handles.js";
-export { getClassVFuncMeta, getHandle, registerClassVFuncMeta, setHandle, tryGetHandle } from "./handles.js";
+export type {
+    BoxedConstructionMeta,
+    BoxedFieldMeta,
+    ConstructionDescriptor,
+    ConstructionMeta,
+    GObjectPropMeta,
+} from "./construction-meta.js";
+export type { ClassVFuncMeta, NativeClass, NativeHandle } from "./handles.js";
+export { getHandle, setHandle, tryGetHandle } from "./handles.js";
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
-export { checkError, makeErrorDomain, NativeError } from "./native.js";
-export { registerInterfaceVFuncMeta } from "./register-class.js";
-export {
-    getNativeObject,
-    getNativeObjectAsInterface,
-    registerNativeClass,
-    registerNativeInterface,
-} from "./registry.js";
+export { checkError, makeErrorDomain } from "./native.js";
+export type { NativeClassDescriptor, NativeClassRole, NativeSignalRegistration } from "./register-native-class.js";
+export { registerNativeClass } from "./register-native-class.js";
+export { getNativeObject, getNativeObjectAsInterface } from "./registry.js";
 export type { SignalDescriptor, SignalGObject, SignalGValue, SignalHandler } from "./signals.js";
-export { connectSignal, emitSignal, registerSignalMeta } from "./signals.js";
+export { connectSignal, emitSignal } from "./signals.js";
