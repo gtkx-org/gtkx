@@ -40,9 +40,19 @@ export class ModuleContext {
         this.module.imports.addNamed("../../object.js", "constructNativeObject");
     }
 
+    /** Adds the canonical `constructGObjectInstance` import from `object.js`. */
+    addConstructGObjectInstanceImport(): void {
+        this.module.imports.addNamed("../../object.js", "constructGObjectInstance");
+    }
+
     /** Adds the `valueFromFfi` import from `value-marshal.js`. */
     addValueFromFfiImport(): void {
         this.module.imports.addNamed("../../value-marshal.js", "valueFromFfi");
+    }
+
+    /** Adds the `valueFromFfiOptional` import from `value-marshal.js`. */
+    addValueFromFfiOptionalImport(): void {
+        this.module.imports.addNamed("../../value-marshal.js", "valueFromFfiOptional");
     }
 
     /**

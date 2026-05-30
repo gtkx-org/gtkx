@@ -6,7 +6,7 @@ import { type GirParameter, isInoutParameter, isOutParameter, type ParameterTran
 import { qualifyTypeRef } from "../gir/qualify.js";
 import type { GirRepository, ResolvedNamed } from "../gir/repository.js";
 import type { ArrayTypeRef, GirTypeRef, NamedTypeRef } from "../gir/type-ref.js";
-import { computeBoxedFieldSlots } from "./boxed-field-accessor.js";
+import { computeBoxedFieldSlots } from "./boxed-layout.js";
 
 /**
  * Inline byte sizes for boxed value types whose GIR record is opaque, so the

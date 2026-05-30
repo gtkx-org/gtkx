@@ -5,7 +5,7 @@ import { callbackFromNode, type GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
 import type { GirField } from "../gir/field.js";
 import type { GirTypeRef } from "../gir/type-ref.js";
-import { computeBoxedFieldSlots } from "./boxed-field-accessor.js";
+import { computeBoxedFieldSlots } from "./boxed-layout.js";
 import { writeFfiType } from "./value.js";
 
 type VtableKind = "class" | "interface";

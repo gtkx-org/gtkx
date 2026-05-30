@@ -42,7 +42,7 @@
     },
     "dependencies": {
         "fast-xml-parser": "4.3.6",
-        "typescript": "^6.0.3"
+        "typescript": "^5.9.3"
     },
     "devDependencies": {
         "@types/node": "^25.9.1"

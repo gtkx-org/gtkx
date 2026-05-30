@@ -3,7 +3,6 @@ import {
     type RegisterClassNativeOptions,
     type RegisterClassVfuncDefinition,
 } from "@gtkx/native";
-import { CONSTRUCTION_META, registerConstructionMeta } from "./construction-meta.js";
 import type { GType } from "./generated/gobject/gobject.js";
 import { G_TYPE_INVALID, typeInterfaces } from "./gtype.js";
 import { getClassVFuncMeta, getParentClass, type NativeClass, type NativeHandle } from "./handles.js";
@@ -113,47 +112,15 @@ export function registerClass<T extends NativeClass>(klass: T, options: Register
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings);
     const newGtype: GType = nativeRegisterClass(name, parentGType, nativeOptions);
     setClassGType(klass, newGtype);
-    inheritConstructionMeta(klass, newGtype);
     markStatefulClass(klass);
 
     return klass;
 }
 
-/**
- * Mirrors the parent's GObject construction metadata onto the new subclass
- * with the freshly registered GType. Without this entry, calling
- * `new MySubclass(props)` would throw because `constructNativeObject` looks
- * up `CONSTRUCTION_META` keyed by the runtime constructor. The subclass
- * itself contributes no new GObject properties — those are auto-discovered
- * via the prototype chain by `walkPropsForGObject` — so an empty `props`
- * map is enough; only `gtype` needs to be rebound to the new GType.
- */
-function inheritConstructionMeta(klass: NativeClass, newGtype: GType): void {
-    const parentMeta = findGObjectConstructionMeta(getParentClass(klass));
-    if (!parentMeta) return;
-    registerConstructionMeta(klass, {
-        kind: "gobject",
-        gtype: Number(newGtype),
-        props: {},
-    });
-}
-
-function findGObjectConstructionMeta(
-    klass: NativeClass | null,
-): Extract<ReturnType<NonNullable<typeof CONSTRUCTION_META.get>>, { kind: "gobject" }> | null {
-    let current = klass;
-    while (current) {
-        const meta = CONSTRUCTION_META.get(current);
-        if (meta?.kind === "gobject") return meta;
-        current = getParentClass(current);
-    }
-    return null;
-}
-
 function hasRegisteredAncestor(klass: NativeClass): boolean {
-    let current: NativeClass | null = klass;
+    let current: NativeClass | null = getParentClass(klass);
     while (current) {
-        if (CONSTRUCTION_META.has(current)) return true;
+        if (getClassGType(current) !== G_TYPE_INVALID) return true;
         current = getParentClass(current);
     }
     return false;

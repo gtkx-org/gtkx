@@ -79,12 +79,7 @@ export function registerNativeClass(cls: NativeClass, descriptor: NativeClassDes
     }
 
     if (descriptor.construction) {
-        registerConstructionMeta(
-            cls,
-            descriptor.construction.kind === "gobject"
-                ? { kind: "gobject", gtype, props: descriptor.construction.props }
-                : descriptor.construction,
-        );
+        registerConstructionMeta(cls, descriptor.construction);
     }
 
     if (descriptor.vfuncs) {

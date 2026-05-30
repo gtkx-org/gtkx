@@ -23,7 +23,7 @@ afterEach(() => {
 describe("render and quit", () => {
     it("logs caught render errors via console.error and registers the app", async () => {
         const app = new Gtk.Application({
-            application_id: "org.gtkx.render-coverage",
+            applicationId: "org.gtkx.render-coverage",
             flags: Gio.ApplicationFlags.NON_UNIQUE,
         });
         const stopHandler = vi.fn();

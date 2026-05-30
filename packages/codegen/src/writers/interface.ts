@@ -14,7 +14,6 @@ import {
     renderInstanceMethod,
 } from "./callables.js";
 import { renderVFuncMeta } from "./class-struct.js";
-import { renderGObjectConstructionMeta } from "./construction-meta.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
 import { resolveImplementedInterface } from "./inheritance.js";
 import { methodExportName } from "./method.js";
@@ -37,7 +36,6 @@ import { renderSignalMembers, renderSignalRegistration } from "./signal.js";
 export const emitInterface = (ctx: ModuleContext, iface: GirClass): void => {
     if (!iface.introspectable) return;
     if (iface.name.length === 0) return;
-    ctx.addConstructNativeObjectImport();
     const className = pascalCase(iface.name);
     const callables: Callables = {
         constructors: dedupeCallables(iface.constructors),
@@ -143,12 +141,10 @@ const appendInterfaceRegistrations = (ctx: ModuleContext, iface: GirClass, class
         iface.glibGetType === undefined
             ? undefined
             : renderGetTypeReference(ctx, iface.glibGetType, iface.glibTypeName);
-    const construction = getTypeRef === undefined ? undefined : renderGObjectConstructionMeta(ctx, iface);
     appendNativeClassRegistration(ctx, {
         className,
         role: "interface",
         getTypeRef,
-        construction,
         vfuncs: renderVFuncMeta(ctx, iface),
         signals: renderSignalRegistration(ctx, iface),
     });

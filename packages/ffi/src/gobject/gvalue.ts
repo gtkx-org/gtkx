@@ -1,4 +1,3 @@
-import type { GObjectPropMeta } from "../construction-meta.js";
 import type * as GLib from "../generated/glib/glib.js";
 import type { Object as GObject, GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { typeFromName, typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
@@ -367,13 +366,4 @@ export function fromJS(gtype: GType, value: unknown): Value {
     if (fundamental === Type.BOXED) return newBoxedValue(gtype, value);
 
     throw new Error(`Unsupported GType for Value.fromJS: ${typeName(gtype) ?? String(gtype)}`);
-}
-
-/**
- * Converts a JavaScript prop value into a `GValue` handle suitable for
- * `g_object_new_with_properties`, using the FFI type descriptor recorded in
- * the property's {@link GObjectPropMeta}.
- */
-export function gvalueFromProp(meta: GObjectPropMeta, value: unknown): NativeHandle {
-    return getHandle(newFrom(meta.ffiType, value));
 }

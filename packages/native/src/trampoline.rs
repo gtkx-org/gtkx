@@ -176,7 +176,6 @@ impl TrampolineData {
 
         state_ptr
     }
-
 }
 
 /// Seeds a trampoline out/inout cell with the value currently behind its C
@@ -193,11 +192,13 @@ fn seed_ref_cell(inner_ptr: *mut c_void, inner_type: &Type) -> Value {
         return Value::Null;
     }
     match inner_type {
-        Type::Integer(_) | Type::Float(_) | Type::Tagged(_) | Type::Boolean(_) | Type::Unichar(_) => {
-            inner_type
-                .read_from_raw_ptr(inner_ptr.cast_const(), "inout cell seed")
-                .unwrap_or(Value::Null)
-        }
+        Type::Integer(_)
+        | Type::Float(_)
+        | Type::Tagged(_)
+        | Type::Boolean(_)
+        | Type::Unichar(_) => inner_type
+            .read_from_raw_ptr(inner_ptr.cast_const(), "inout cell seed")
+            .unwrap_or(Value::Null),
         _ => Value::Null,
     }
 }

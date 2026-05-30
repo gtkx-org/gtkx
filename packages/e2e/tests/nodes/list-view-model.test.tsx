@@ -129,7 +129,11 @@ describe("DropDown model prop", () => {
         const store = namedStore(["Choice A", "Choice B"]);
         const ref = createRef<Gtk.DropDown>();
         await render(
-            <GtkDropDown<NameObject> ref={ref} model={store} renderItem={(item) => <GtkLabel label={item.state.name} />} />,
+            <GtkDropDown<NameObject>
+                ref={ref}
+                model={store}
+                renderItem={(item) => <GtkLabel label={item.state.name} />}
+            />,
         );
 
         expect(ref.current).not.toBeNull();

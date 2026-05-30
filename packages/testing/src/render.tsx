@@ -34,7 +34,7 @@ const handleError = (error: unknown): void => {
 const ensureInitialized = (): { app: Gtk.Application; container: Reconciler.FiberRoot } => {
     if (!application) {
         application = new Gtk.Application({
-            application_id: "org.gtkx.testing",
+            applicationId: "org.gtkx.testing",
             flags: Gio.ApplicationFlags.NON_UNIQUE,
         });
         application.register(null);

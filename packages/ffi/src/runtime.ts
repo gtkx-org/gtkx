@@ -24,7 +24,6 @@ export type {
     BoxedFieldMeta,
     ConstructionDescriptor,
     ConstructionMeta,
-    GObjectPropMeta,
 } from "./construction-meta.js";
 export type { ClassVFuncMeta, NativeClass, NativeHandle } from "./handles.js";
 export { getHandle, setHandle, tryGetHandle } from "./handles.js";

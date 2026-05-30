@@ -2,19 +2,6 @@ import type { Type } from "@gtkx/native";
 import type { NativeClass } from "./handles.js";
 
 /**
- * Construction metadata describing how a single property is marshalled
- * into a `GValue` passed to `g_object_new_with_properties`.
- */
-export type GObjectPropMeta = {
-    /** GIR property name in dashed form (e.g. `"label"`, `"use-markup"`). */
-    girName: string;
-    /** FFI type descriptor used to build the `GValue`. */
-    ffiType: Type;
-    /** When `true`, the property is set only at construction time. */
-    constructOnly?: true;
-};
-
-/**
  * Construction metadata describing how a single boxed field is marshalled
  * into native memory after `g_malloc0`.
  *
@@ -55,41 +42,27 @@ export type BoxedConstructionMeta = {
 /**
  * Construction metadata as supplied to `registerNativeClass`.
  *
- * The GObject arm carries no `gtype` — the runtime resolves the descriptor's
- * shared GType once and injects the value when storing the {@link ConstructionMeta}.
+ * Only boxed value types carry construction metadata: their field layout
+ * cannot be introspected at runtime. GObject classes construct through their
+ * generated constructors instead, which translate typed props into `GValue`s
+ * and hand them to the canonical `constructGObjectInstance`.
  */
-export type ConstructionDescriptor =
-    | {
-          kind: "gobject";
-          /** Writable / construct properties declared by this class only. */
-          props: Record<string, GObjectPropMeta>;
-      }
-    | BoxedConstructionMeta;
+export type ConstructionDescriptor = BoxedConstructionMeta;
 
 /**
- * Metadata describing how to construct a registered native type.
+ * Metadata describing how to construct a registered boxed type.
  *
- * One entry per concrete class is registered in {@link CONSTRUCTION_META}
- * at module load via {@link registerConstructionMeta}. The constructor on
- * `NativeObject` consults this registry to dispatch construction.
+ * One entry per boxed record is registered in {@link CONSTRUCTION_META}
+ * at module load via {@link registerConstructionMeta}. The generated boxed
+ * constructor consults this registry through `constructNativeObject`.
  */
-export type ConstructionMeta =
-    | {
-          kind: "gobject";
-          /** Runtime GType of the class, resolved once at registration. */
-          gtype: number;
-          /** Writable / construct properties declared by this class only. */
-          props: Record<string, GObjectPropMeta>;
-      }
-    | BoxedConstructionMeta;
+export type ConstructionMeta = BoxedConstructionMeta;
 
 /**
  * Global registry of construction metadata keyed by the wrapper class.
  *
- * Populated at module load by each generated binding via
- * {@link registerConstructionMeta}. Consumed by `NativeObject`'s constructor
- * (which walks the JS prototype chain to merge inherited GObject props) and
- * by the `@gtkx/react` reconciler.
+ * Populated at module load by each generated boxed binding via
+ * {@link registerConstructionMeta} and consumed by `constructNativeObject`.
  */
 export const CONSTRUCTION_META = new WeakMap<NativeClass, ConstructionMeta>();
 

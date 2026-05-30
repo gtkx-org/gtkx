@@ -195,7 +195,8 @@ fn ffi_decoder_decode_default_bails() {
 
 #[test]
 fn ffi_decoder_decode_with_context_default_delegates_to_decode() {
-    let result = FfiDecoder::decode_with_context(&trampoline_type(), &ffi::FfiValue::Void, &[], &[]);
+    let result =
+        FfiDecoder::decode_with_context(&trampoline_type(), &ffi::FfiValue::Void, &[], &[]);
     assert!(result.is_err());
 }
 

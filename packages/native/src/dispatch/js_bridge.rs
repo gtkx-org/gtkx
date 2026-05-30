@@ -99,7 +99,8 @@ impl Mailbox {
         args: Vec<Value>,
         capture_result: bool,
     ) -> anyhow::Result<Value> {
-        let (value, _) = self.invoke_node_and_wait_with_cells(callback, args, capture_result, Vec::new())?;
+        let (value, _) =
+            self.invoke_node_and_wait_with_cells(callback, args, capture_result, Vec::new())?;
         Ok(value)
     }
 
@@ -171,7 +172,8 @@ impl Mailbox {
                 result_tx,
             } = pending;
             self.enter_callback();
-            let result = Self::execute_callback(env, &callback, args, capture_result, &out_cell_indices);
+            let result =
+                Self::execute_callback(env, &callback, args, capture_result, &out_cell_indices);
             self.leave_callback();
             if result_tx.send(result).is_err() {
                 NativeErrorReporter::global()
@@ -204,7 +206,8 @@ impl Mailbox {
             let Some(arg) = js_args.get(index) else {
                 continue;
             };
-            let cell: JsObject = unsafe { JsObject::from_raw_unchecked(env.raw(), napi::JsValue::raw(arg)) };
+            let cell: JsObject =
+                unsafe { JsObject::from_raw_unchecked(env.raw(), napi::JsValue::raw(arg)) };
             let slot: Unknown<'_> = cell.get_named_property("value")?;
             cells.push((index, Value::from_js_value(env, slot)?));
         }

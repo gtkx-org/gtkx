@@ -37,6 +37,22 @@ export function valueFromFfi(ffiType: FfiType, value: unknown): Value {
 }
 
 /**
+ * Like {@link valueFromFfi}, but returns `undefined` when `value` is
+ * `undefined` (an omitted property) instead of marshalling it.
+ *
+ * Generated GObject constructors call this for each prop they translate, then
+ * spread the results into the record handed up the `super(...)` chain. The
+ * canonical constructor keeps only the entries that produced a `Value`, so an
+ * omitted prop is naturally dropped while an explicit `null` still marshals.
+ *
+ * @param ffiType - The FFI type descriptor.
+ * @param value - The JS value to convert, or `undefined` to skip.
+ */
+export function valueFromFfiOptional(ffiType: FfiType, value: unknown): Value | undefined {
+    return value === undefined ? undefined : newFrom(ffiType, value);
+}
+
+/**
  * Creates a `GValue` typed as `gtype` and marshals `value` into it.
  *
  * The runtime counterpart to {@link valueFromFfi}: where `valueFromFfi`

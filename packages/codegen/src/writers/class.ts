@@ -11,7 +11,6 @@ import {
     appendMethodBinding,
     appendShadowedAliases,
     type Callables,
-    constructorMember,
     dedupeCallables,
     emitBindings,
     indexMethodsByName,
@@ -19,7 +18,7 @@ import {
     renderStaticHead,
 } from "./callables.js";
 import { renderVFuncMeta } from "./class-struct.js";
-import { renderGObjectConstructionMeta } from "./construction-meta.js";
+import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { renderGetTypeReference } from "./gtype-binding.js";
 import { collectInterfaceProperties, forEachAncestor, resolveImplementedInterface } from "./inheritance.js";
 import { inputParameters, methodExportName, writePromisifiedBody, writePromisifiedSignature } from "./method.js";
@@ -44,7 +43,6 @@ import { writeTsType } from "./types-ts.js";
 export const emitClass = (ctx: ModuleContext, klass: GirClass): void => {
     if (!klass.introspectable) return;
     if (klass.name.length === 0) return;
-    ctx.addConstructNativeObjectImport();
     const className = pascalCase(klass.name);
     const callables: Callables = {
         constructors: dedupeCallables(klass.constructors),
@@ -58,6 +56,7 @@ export const emitClass = (ctx: ModuleContext, klass: GirClass): void => {
     const members = buildClassMembers(ctx, klass, callables, parentExpression !== undefined);
     const body = members.map((member) => indent(member, 1)).join("\n\n");
     ctx.module.appendDeclaration(`export class ${className}${extendsClause} {\n${body}\n}`);
+    ctx.module.appendDeclaration(renderConstructorPropsInterface(ctx, klass, className));
 
     const interfaceRefs = klass.implements
         .map((name) => resolveImplementsReference(ctx, name))
@@ -77,7 +76,8 @@ const buildClassMembers = (
 ): readonly string[] => {
     const className = pascalCase(klass.name);
     const members: string[] = ["declare __gtype__: number;"];
-    if (!hasParent) members.push(constructorMember());
+    const constructorBlock = renderClassConstructor(ctx, klass, className, hasParent);
+    if (constructorBlock !== undefined) members.push(constructorBlock);
     const claimedNames = new Set<string>();
     members.push(...renderStaticHead(ctx, callables, className));
     const inherited = collectInheritedMethods(ctx, klass);
@@ -174,12 +174,10 @@ const appendClassRegistrations = (ctx: ModuleContext, klass: GirClass, className
         klass.glibGetType === undefined
             ? undefined
             : renderGetTypeReference(ctx, klass.glibGetType, klass.glibTypeName);
-    const construction = getTypeRef === undefined ? undefined : renderGObjectConstructionMeta(ctx, klass);
     appendNativeClassRegistration(ctx, {
         className,
         role: "class",
         getTypeRef,
-        construction,
         vfuncs: renderVFuncMeta(ctx, klass),
         signals: renderSignalRegistration(ctx, klass),
     });
